@@ -55,20 +55,27 @@
  *
  * ── 为什么用 DTS? ──
  *
- * 本例展示了 4 种 STM32 开发风格, 每种对同一引脚有不同的表述:
+ * 把 SPI 四线从 (MOSI=PA7, MISO=PA6, SCK=PA5, CS=PA4)
+ * 整体换到 (MOSI=PB3, MISO=PB4, SCK=PB5, CS=PB6):
  *
- *   HAL:     GPIO_PIN_9 / GPIO_AF7_USART1
- *   LL:      LL_GPIO_PIN_9 / LL_GPIO_AF_7
- *   SPL:     GPIO_PinSource9 / GPIO_AF_USART1
- *   Register: 9 << GPIO_AFRH_AFSEL9_Pos / 7
+ *   ▸ 无 DTS: 追着每行代码改 GPIOA→GPIOB、引脚号、AF、时钟使能
+ *   ▸ 有 DTS: 只改 board.dts 四行:
  *
- * 没有 DTS 时, 换一个引脚需要排查 4 种写法各改一遍。
- * 通过 DTS, 无论哪种风格都只读 cfg.uart_tx 这一个值,
- * 换引脚时只需改 board.dts:
+ *       spi0: spi@0 {
+ *           mosi  = <3>;         /* PA7 → PB3 */
+ *           miso  = <4>;         /* PA6 → PB4 */
+ *           sclk  = <5>;         /* PA5 → PB5 */
+ *           cs-gpios = <6>;      /* PA4 → PB6 */
+ *       };
  *
- *   &uart0 { tx-pin = <10>; /* PA10 → PA15 */ };
+ *     代码中 GPIOA/GPIOB 的差异由底层驱动在 probe 时
+ *     根据 DTS 引脚号自动推导, 本文件无需修改一行。
  *
- * 这就是设备树继承的核心价值: 配置与实现解耦。
+ *     结论: 修改引脚只需改 board.dts 中的属性值,
+ *          无需动任何 .c / .h 函数。
+ *
+ *     这就是设备树继承的核心价值:
+ *     引脚变更从"排查式改代码"变成"声明式配属性"。
  *
  * fixed_clock_enable() 和 gpio_af_mode() 这类不变硬件操作
  * 直接在各 style 中硬编码, 不经过 DTS.

@@ -55,18 +55,25 @@
  *
  * ── 为什么用 DTS? ──
  *
- * 同一个引脚在不同抽象层有不同的名字。
- * 以 UART_TX = PA9 为例:
+ * 把 SPI 四线从 (MOSI=PB15, MISO=PB14, SCK=PB13, CS=PB12)
+ * 整体换到 (MOSI=PA7, MISO=PA6, SCK=PA5, CS=PA4):
  *
- *   GD32 SPL:    gpio_mode_set(GPIOA, GPIO_MODE_AF, ..., GPIO_PIN_9)
- *   STM32 HAL:   gpio.Pin = GPIO_PIN_9
- *   寄存器直写:   GPIOA->AFR[1] |= 7U << 4
+ *   ▸ 无 DTS: gpio_mode_set(GPIOB,...) → gpio_mode_set(GPIOA,...)
+ *            RCU_GPIOB → RCU_GPIOA; 引脚号 AF 全部重对
+ *   ▸ 有 DTS: 只改 board.dts 四行:
  *
- * 没有 DTS, 换引脚就得逐层排查每个宏名称。
- * 有了 DTS, 无论底层用哪个库, 都只读 cfg.uart_tx:
+ *       spi0: spi@0 {
+ *           mosi  = <7>;         /* PB15 → PA7 */
+ *           miso  = <6>;         /* PB14 → PA6 */
+ *           sclk  = <5>;         /* PB13 → PA5 */
+ *           cs-gpios = <4>;      /* PB12 → PA4 */
+ *       };
  *
- *   &uart0 { tx-pin = <15>; /* 从 PA9 改到 PA15 */ };
+ *     代码中 GPIOA/GPIOB 的差异由底层驱动在 probe 时
+ *     根据 DTS 引脚号自动推导, 本文件无需修改一行。
  *
+ *     结论: 修改引脚只需改 board.dts 中的属性值,
+ *          无需动任何 .c / .h 函数。
  * periph_clock_enable() 和 gpio_af_set() 这类不变硬件操作
  * 直接硬编码, 不经过 DTS.
  * ══════════════════════════════════════════════════════════════════
