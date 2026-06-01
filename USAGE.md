@@ -940,6 +940,33 @@ if (device_get_criticality(dev) == DEVICE_CRIT_HIGH)
 | `DEVICE_CRIT_HIGH` | 停前确保数据持久化 |
 | `DEVICE_CRIT_FATAL` | 停即进入 Safe State |
 
+### 11.8 DTS 优势 — 实例参考
+
+具体实例见 `examples/porting_template/`：
+
+| 文件 | 说明 |
+|------|------|
+| `hal_init_stm32.c` | STM32 四种开发风格 (HAL/LL/SPL/寄存器) 统一接入 DTS |
+| `hal_init_gd32.c` | GD32 标准外设库风格接入 DTS |
+
+以 SPI 四线整体换引脚为例 —— 从 (MOSI=PA7, MISO=PA6, SCK=PA5, CS=PA4) 换到 (MOSI=PB3, MISO=PB4, SCK=PB5, CS=PB6)：
+
+```dts
+spi0: spi@0 {
+    mosi  = <3>;         /* 只改这里，无需动 .c */
+    miso  = <4>;         /* 只改这里，无需动 .c */
+    sclk  = <5>;         /* 只改这里，无需动 .c */
+    cs-gpios = <6>;      /* 只改这里，无需动 .c */
+};
+```
+
+无 DTS 时要改 GPIO 端口、引脚号、AF 映射、时钟使能四处；有 DTS 只改四行属性值。
+
+关键结论：
+- **修改引脚只需改 `board.dts` 中的属性值，无需动任何 `.c` / `.h` 函数**
+- GD32 与 STM32 共用同一套 DTS 适配模式，无缝切换
+- HAL/LL/SPL/寄存器/GD32 库对同一 DTS 属性的读取方式完全一致
+
 ### 12.1 反汇编审查
 
 开启 `CONFIG_BUILD_DISASM=y`，构建后自动生成 `build/disasm/*.lst`：
