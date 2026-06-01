@@ -1,0 +1,134 @@
+# 整个 tree 的前置设置 — 使用前先 menuconfig 配置
+
+menu "Platform"
+choice PLATFORM_MCU
+    prompt "Target MCU platform"
+    default PLATFORM_POSIX
+
+config PLATFORM_ARM_CM7
+    bool "ARM Cortex-M7"
+
+config PLATFORM_ARM_CM4F
+    bool "ARM Cortex-M4F"
+
+config PLATFORM_ARM_CM3
+    bool "ARM Cortex-M3"
+
+config PLATFORM_RISCV
+    bool "RISC-V (32-bit)"
+
+config PLATFORM_POSIX
+    bool "POSIX (host build/test)"
+endchoice
+endmenu
+
+menu "RTOS Backend"
+choice OSAL_BACKEND
+    prompt "OSAL RTOS backend"
+    default OSAL_FREERTOS
+    help
+      选择支持 OSAL 抽象层的 RTOS 内核。
+      一次只能激活一个后端。
+
+config OSAL_FREERTOS
+    bool "FreeRTOS"
+    help
+      FreeRTOS 内核（默认）。支持所有 FreeRTOS 端口。
+
+config OSAL_RTTHREAD
+    bool "RT-Thread"
+    help
+      RT-Thread 内核。
+
+config OSAL_NULL
+    bool "None (bare-metal)"
+    help
+      裸机/无 RTOS。不需要任何内核库。
+      无法创建任务；队列使用环形缓冲区 + 忙等待。
+endchoice
+
+config FREERTOS_USE_TIMERS
+    bool "FreeRTOS software timers (configUSE_TIMERS)"
+    depends on OSAL_FREERTOS
+    default n
+    help
+      启用 FreeRTOS 软件定时器 (xTimerCreate / xTimerStart 等).
+      启用后会创建定时器守护任务 (优先级 configMAX_PRIORITIES - 2).
+      此选项仅对 FreeRTOS 后端生效; RT-Thread 后端请直接使用 rt_timer.
+endmenu
+
+menu "System Log Config"
+    choice SYS_LOG_BACKEND
+        prompt "System log backend"
+        default SYS_LOG_USE_OSAL
+
+    config SYS_LOG_USE_OSAL
+        bool "Route through OSAL (osal_log)"
+
+    config SYS_LOG_USE_ESP
+        bool "Direct ESP-IDF logging (ESP_LOGI)"
+
+    config SYS_LOG_USE_PRINTF
+        bool "Direct printf output (bare-metal)"
+    endchoice
+endmenu
+
+menu "Board Features"
+    config PRODUCTION_LOG
+        bool "Production log ring buffer (NVS-backed)"
+        default n
+        help
+          持久化生产日志环形缓冲区。
+          启用时需要 ESP-IDF NVS；禁用时被桩代码替代。
+          早期移植或最小构建时禁用。
+
+    config SAFETY_SHUTDOWN
+        bool "IEC 61508 safety shutdown subsystem"
+        default n
+        help
+          安全关闭序列：停止 PWM → 设置安全 GPIO 电平 →
+          停止 CPU 核心。禁用时，OSAL_PANIC/关键断言
+          仍会停止 CPU，但跳过所有硬件引脚/回调操作。
+          早期移植时禁用 — 在驱动调通后添加真正的安全功能。
+config ENABLE_WDT
+    bool "Enable watchdog (TWDT + RTC WDT)"
+    default n
+    help
+      启用硬件看门狗（任务看门狗 TWDT 和 RTC 硬件看门狗）。
+      若无特殊理由，建议开启以增强系统可靠性。
+      关闭后 init 阶段跳过 WDT 初始化，loop 中不喂狗。
+      适用于无看门狗硬件或由外部 WDT 管理的场景。
+
+endmenu
+
+menu "System Backend"
+choice SYSTEM_BACKEND
+    prompt "System runtime implementation"
+    default SYSTEM_CPP
+    help
+      选择系统运行时的 C++ 或 C 实现。
+      一次只能激活一个后端。
+
+config SYSTEM_CPP
+    bool "C++ (system_cpp)"
+    help
+      完整的 C++ 系统运行时，包含生命周期、scrubber、WDT、任务管理器。
+      需要 C++ 编译器。
+
+config SYSTEM_C
+    bool "C (system_c, pure C)"
+    help
+      纯 C 系统运行时。功能与 C++ 版本相同，
+      但完全以 C 编译。适用于不能使用 C++ 的项目。
+endchoice
+endmenu
+
+menu "Build Options"
+    config BUILD_DISASM
+        bool "Generate disassembly listings (.lst)"
+        default n
+        help
+          每个库构建后，运行 objdump -d 生成反汇编列表，
+          输出到 build_dir/disasm/*.lst。
+          用于代码大小分析和指令级调试。
+endmenu

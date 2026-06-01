@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mini_tree — 架构总览</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-card: #f8f9fa;
+    --text: #1a1a2e;
+    --text-secondary: #555;
+    --border: #dde1e6;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-bg: #ecfdf5;
+    --orange: #d97706;
+    --orange-bg: #fffbeb;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --code-bg: #f1f5f9;
+    --code-border: #e2e8f0;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', 'Noto Sans SC', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: #fff;
+    padding: 48px 0 40px;
+    margin-bottom: 40px;
+  }
+  header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  header p { font-size: 15px; opacity: .85; }
+
+  /* ── Section ── */
+  section { margin-bottom: 48px; }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 20px 0 10px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 14px;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--accent-light);
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  tr:hover td { background: #f1f5f9; }
+
+  /* ── Code / Pre ── */
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 12px 0;
+  }
+
+  /* ── Badge / Tag ── */
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin: 2px 4px 2px 0;
+  }
+  .tag-blue  { background: var(--accent-light); color: var(--accent); }
+  .tag-green { background: var(--green-bg); color: var(--green); }
+  .tag-orange{ background: var(--orange-bg); color: var(--orange); }
+  .tag-red   { background: var(--red-bg); color: var(--red); }
+
+  /* ── Layer diagram ── */
+  .layer-stack { margin: 16px 0; }
+  .layer {
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    border-left: 4px solid;
+  }
+  .layer-app   { background: #f0f4ff; border-left-color: #2563eb; }
+  .layer-core  { background: #f0fdf4; border-left-color: #059669; }
+  .layer-osal  { background: #fffbeb; border-left-color: #d97706; }
+  .layer-hw    { background: #fef2f2; border-left-color: #dc2626; }
+  .layer strong { display: inline-block; min-width: 120px; }
+
+  /* ── Security layers ── */
+  .sec-grid { display: grid; gap: 12px; }
+  .sec-item {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    align-items: center;
+  }
+  .sec-level {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+  }
+  .sec-name  { font-weight: 600; }
+  .sec-trigger { color: var(--text-secondary); }
+
+  /* ── Matrix state ── */
+  .state-pass {
+    display: inline-block;
+    background: var(--green-bg);
+    color: var(--green);
+    font-weight: 600;
+    font-size: 12px;
+    padding: 2px 12px;
+    border-radius: 10px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 32px 0 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .sec-item { grid-template-columns: 1fr; gap: 4px; }
+    header { padding: 32px 0 24px; }
+    header h1 { font-size: 22px; }
+  }
+
+  /* ── Architecture diagram ── */
+  .arch-svg { margin: 16px 0; }
+  .arch-box {
+    fill: #f8f9fa;
+    stroke: #dde1e6;
+    stroke-width: 1.5;
+    rx: 8;
+  }
+  .arch-label { font-size: 13px; fill: #333; text-anchor: middle; dominant-baseline: central; }
+  .arch-sub   { font-size: 11px; fill: #888; text-anchor: middle; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>mini_tree 架构总览</h1>
+    <p>三层降维解耦拓扑 · 两段式安全点火 · 7 层纵深防御 · 跨平台验证矩阵</p>
+  </div>
+</header>
+
+<main class="container">
+
+<!-- ──── 1. 三层拓扑 ──── -->
+<section>
+<h2>1. 三层降维解耦拓扑</h2>
+<p style="margin-bottom:16px;">mini_tree 在编译链接层切断"芯片 SDK / RTOS"与"应用业务"之间的符号依赖，实现核心逻辑跨平台无感平替。</p>
+
+<div class="layer-stack">
+  <div class="layer layer-app">
+    <strong>宿主应用层</strong>
+    main.cpp / 业务 Service / 外设控制 / 算法控制流
+    <span style="float:right;font-size:12px;color:#2563eb;">仅依赖 mini_tree 接口库</span>
+  </div>
+  <div class="layer layer-core">
+    <strong>核心中间件层</strong>
+    core/ · board/ · system_(c|cpp)/ — EventBus, BufferPool, VFS 设备树, Probe, 看门狗
+  </div>
+  <div class="layer layer-osal">
+    <strong>OSAL 操作系统抽象层</strong>
+    osal_freertos.c · osal_rtthread.c · osal_null.c — 统一 Task/Queue/Mutex/Spinlock/Time
+  </div>
+  <div class="layer layer-hw">
+    <strong>微内核与硬件生态层</strong>
+    FreeRTOS 内核 · RT-Thread 内核 · 裸机 SysTick — Kconfig 编译期选择
+  </div>
+</div>
+</section>
+
+<!-- ──── 2. 模块依赖 ──── -->
+<section>
+<h2>2. 模块职责与依赖关系</h2>
+
+<table>
+  <tr><th>模块</th><th>路径</th><th>职责</th></tr>
+  <tr><td><code>osal</code></td><td>osal/</td><td>OS 抽象 — Task/Queue/Mutex/Spinlock/Time/Log</td></tr>
+  <tr><td><code>core</code></td><td>core/</td><td>EventBus 总线 · BufferPool 无锁池 · 日志 · 黑匣子</td></tr>
+  <tr><td><code>board</code></td><td>board/</td><td>设备树 DTS · VFS 设备框架 · Probe 引擎</td></tr>
+  <tr><td><code>system_cpp</code></td><td>system_cpp/</td><td>C++ 两段式点火 · 看门狗 · 闪存巡检</td></tr>
+  <tr><td><code>system_c</code></td><td>system_c/</td><td>C 版 system 平替 (同名输出 <code>system</code> 库)</td></tr>
+  <tr><td><code>hal_if</code></td><td>hal_if/</td><td>纯头文件硬件抽象 (GPIO/SPI/I2C/UART/PWM/ADC...)</td></tr>
+  <tr><td><code>algorithm</code></td><td>algorithm/</td><td>通用算法组件 (环形 FIFO 等)</td></tr>
+  <tr><td><code>display_if</code></td><td>display_if/</td><td>显示抽象接口</td></tr>
+</table>
+
+<h3>模块依赖拓扑</h3>
+<pre>display_if (无依赖)
+    │
+core ◄── board ◄── system_cpp / system_c
+    │                 │
+    └──── osal ◄──────┘
+              │
+         hal_if (宿主实现)</pre>
+</section>
+
+<!-- ──── 3. 启动时序 ──── -->
+<section>
+<h2>3. 启动时序 (两段式点火)</h2>
+
+<div class="card">
+  <div class="card-title">Phase 1 — System_Pre_OS_Init()</div>
+  <div>OS 启动前执行：Meyers Singleton 预触 · BufferPool 初始化 · RTC WDT + Task WDT · EventBus · Bootloop 基线 · DTS Probe · Scrubber CRC 基线</div>
+</div>
+<div class="card">
+  <div class="card-title">Phase 2 — System_Start_Tasks()</div>
+  <div>OS 启动后执行：EventBus 分发任务 · Task WDT 监控 · 栈水位监控 · Scrubber 巡检任务</div>
+</div>
+
+<pre>main()
+  ├─ platform_init()
+  ├─ platform_register_drivers()
+  ├─ <strong>System_Pre_OS_Init()</strong>      // Phase 1
+  ├─ <strong>System_Start_Tasks()</strong>     // Phase 2
+  ├─ OSAL_NULL? → mini_tree_system_loop()
+  └─ 否则 → vTaskStartScheduler()</pre>
+
+<table>
+  <tr><th>阶段</th><th>时机</th><th>可访问资源</th><th>失败后果</th></tr>
+  <tr><td>Phase 1</td><td>OS 启动前</td><td>CPU + 栈 + BSS/Data</td><td>Bootloop 防护介入</td></tr>
+  <tr><td>Phase 2</td><td>OS 启动后</td><td>多任务 + IPC + Queue</td><td>单任务失败不影响已有服务</td></tr>
+</table>
+</section>
+
+<!-- ──── 4. 核心数据流 ──── -->
+<section>
+<h2>4. 核心数据流</h2>
+
+<h3>EventBus 发布订阅</h3>
+<pre>发布者                    EventBus                    订阅者
+   │                         │                          │
+   ├─ osal_queue_send(evt) ──┤                          │
+   │                         ├─ 快照订阅者列表 (锁保护)
+   │                         ├─ ISR → 直接分发
+   │                         │   否则 → Queue 投递
+   │                         ├─ osal_queue_send(evt) ───┤
+   │                         │                          ├─ osal_queue_receive(evt)</pre>
+
+<h3>BufferPool 无锁分配</h3>
+<pre>分配: __builtin_ctz(bitmap) → CAS(bitmap) → 返回块索引
+释放: atomic_fetch_or(bitmap, 1u &lt;&lt; index)
+特性: O(1), ISR 安全, 零碎片</pre>
+
+<h3>设备树 Probe 流程</h3>
+<pre>board.dts → dtc-lite.py (Kahn 排序) → .rodata 结构数组
+         → DRIVER_REGISTER (构造函数链接) → board_probe_all()
+         → 级联初始化 → 失败联动回滚</pre>
+</section>
+
+<!-- ──── 5. 配置系统 ──── -->
+<section>
+<h2>5. 配置系统</h2>
+
+<pre>Kconfig (.config)
+  ├─ menuconfig.py (图形化)
+  ├─ genconfig.py → build/generated/kconfig/config.h
+  ├─ CMakeLists.txt (条件编译 / add_subdirectory)
+  └─ 代码中 #ifdef CONFIG_*</pre>
+
+<table>
+  <tr><th>菜单</th><th>子选项</th><th>说明</th></tr>
+  <tr><td>Platform</td><td><span class="tag tag-blue">ARM_CM3</span> <span class="tag tag-blue">CM4F</span> <span class="tag tag-blue">CM7</span> <span class="tag tag-blue">RISCV</span> <span class="tag tag-blue">POSIX</span></td><td>目标 MCU</td></tr>
+  <tr><td>OSAL Backend</td><td><span class="tag tag-green">FREERTOS</span> <span class="tag tag-green">RTTHREAD</span> <span class="tag tag-green">NULL</span></td><td>RTOS 选择</td></tr>
+  <tr><td>System Backend</td><td><span class="tag tag-orange">SYSTEM_CPP</span> <span class="tag tag-orange">SYSTEM_C</span></td><td>实现语言 (C++23 / C23)</td></tr>
+  <tr><td>System Log</td><td><span class="tag tag-blue">OSAL</span> <span class="tag tag-blue">ESP</span> <span class="tag tag-blue">PRINTF</span></td><td>日志后端</td></tr>
+  <tr><td>Build</td><td><span class="tag tag-red">BUILD_DISASM</span></td><td>反汇编 .lst 输出</td></tr>
+</table>
+</section>
+
+<!-- ──── 6. 安全架构 ──── -->
+<section>
+<h2>6. 安全架构 (7 层防御)</h2>
+
+<div class="sec-grid">
+  <div class="sec-item"><span class="sec-level">L1</span><span class="sec-name">Bootloop 防护</span><span class="sec-trigger">连续崩溃 ≥ 5 次 → 永久锁 Flash</span></div>
+  <div class="sec-item"><span class="sec-level">L2</span><span class="sec-name">RTC 硬件看门狗</span><span class="sec-trigger">CPU/总线卡死 → 32kHz 独立时钟物理复位</span></div>
+  <div class="sec-item"><span class="sec-level">L3</span><span class="sec-name">Task WDT</span><span class="sec-trigger">3 秒未喂狗 → Core Dump + 硬件复位</span></div>
+  <div class="sec-item"><span class="sec-level">L4</span><span class="sec-name">栈水位监控</span><span class="sec-trigger">剩余 &lt; 512 字节 → 两级预警 → 中断闭锁</span></div>
+  <div class="sec-item"><span class="sec-level">L5</span><span class="sec-name">Flash Scrubber</span><span class="sec-trigger">CRC 失配 → Bit-Rot 检测 → 安全状态</span></div>
+  <div class="sec-item"><span class="sec-level">L6</span><span class="sec-name">Safe State</span><span class="sec-trigger">OSAL_PANIC / init 失败 → 关中断 + 锁调度器</span></div>
+  <div class="sec-item"><span class="sec-level">L7</span><span class="sec-name">反汇编审查</span><span class="sec-trigger">CONFIG_BUILD_DISASM → 指令级验证原子操作</span></div>
+</div>
+
+<h3>安全状态机</h3>
+<pre>正常运行 ◄──── 喂狗 / WDT 刷新
+    │
+    ├─ OSAL_PANIC() ────────► Safe State (关中断, 死循环)
+    ├─ Task WDT 超时 ──────► Core Dump → 硬件复位
+    ├─ RTC WDT 超时 ───────► 物理电源复位
+    ├─ Bootloop ×5 ────────► 永久锁 Flash → Safe State
+    ├─ Scrubber CRC 失配 ───► Safe State (标记损坏页)
+    └─ 栈超限 ─────────────► 中断闭锁 → 硬件复位</pre>
+</section>
+
+<!-- ──── 7. 跨平台验证 ──── -->
+<section>
+<h2>7. 跨平台验证矩阵</h2>
+
+<table>
+  <tr><th>系统后端</th><th>OSAL 后端</th><th>架构</th><th>工具链</th><th>状态</th></tr>
+  <tr><td>system_cpp</td><td>FreeRTOS</td><td>Cortex-M3</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_cpp</td><td>FreeRTOS</td><td>Cortex-M4F</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_cpp</td><td>FreeRTOS</td><td>Cortex-M7</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_cpp</td><td>RT-Thread</td><td>Cortex-M4F</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_cpp</td><td>NULL</td><td>Cortex-M3</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_cpp</td><td>FreeRTOS</td><td>RISC-V RV32</td><td>RISC-V GCC 15.2.0</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_c</td><td>FreeRTOS</td><td>Cortex-M3</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_c</td><td>NULL</td><td>Cortex-M3</td><td>ARM GCC 13.3.1</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_c</td><td>FreeRTOS</td><td>RISC-V RV32</td><td>RISC-V GCC 15.2.0</td><td><span class="state-pass">通过</span></td></tr>
+  <tr><td>system_cpp</td><td>—</td><td>POSIX (MinGW)</td><td>MinGW 8.1.0</td><td><span class="state-pass">通过</span></td></tr>
+</table>
+
+<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;">
+  <div class="card" style="flex:1;min-width:180px;">
+    <div class="card-title">ARM GCC 13.3.1</div>
+    C23 (c2x) · C++23 · STM32CubeCLT
+  </div>
+  <div class="card" style="flex:1;min-width:180px;">
+    <div class="card-title">RISC-V GCC 15.2.0</div>
+    C23 · C++23 · xPack · rv32imac_zicsr
+  </div>
+  <div class="card" style="flex:1;min-width:180px;">
+    <div class="card-title">MinGW 8.1.0</div>
+    C23 · C++23 · Host 构建验证
+  </div>
+</div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    mini_tree — Pure Generic &amp; Architecture-Isolated Embedded Middleware<br>
+    详细文档：<a href="README.md" style="color:var(--accent);">README.md</a> ·
+    <a href="USAGE.md" style="color:var(--accent);">USAGE.md</a> ·
+    <a href="NOTICE.md" style="color:var(--accent);">NOTICE.md</a>
+  </div>
+</footer>
+
+</body>
+</html>

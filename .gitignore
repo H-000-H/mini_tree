@@ -1,0 +1,6 @@
+.gdb_test/
+build*/
+bld*/
+.config
+*.swp
+.DS_Store

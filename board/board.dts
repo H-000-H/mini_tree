@@ -1,0 +1,114 @@
+/dts-v1/;
+
+/ {
+    compatible = "xxx-project";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    model = "xxx-project";
+
+    cpus {
+        cpu@0 {
+            compatible = "esp32,cpu";
+            clock-frequency = <16000000>;
+        };
+    };
+
+    aliases {
+        display0 = &lcd0;
+        audio0 = &speaker_amp0;
+        input0 = &buttons0;
+        console0 = &uart_debug;
+    };
+
+    chosen {
+        stdout = &uart_debug;
+        display = &lcd0;
+        audio-out = &speaker_amp0;
+        input = &buttons0;
+        tick-rate = <1000>;
+        heap-size = <32768>;
+    };
+
+    /* ── 外设节点: 仅用于 DTC 设备计数 (DTC_GEN_COUNT_xxx) ──
+     * 平台 HAL 驱动为通用模板, 引脚号由具体板级 DTS 覆盖.
+     * 移植到新平台时:
+     *   1. 复制本文件到 board/<platform>/board.dts
+     *   2. 填充各外设的引脚属性 (tx-pin, rx-pin, mosi, sclk, sda, scl 等)
+     *   3. 将 status 从 "disabled" 改为 "okay"
+     */
+    soc {
+        uart0: uart@0 {
+            compatible = "esp32,uart";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        i2c0: i2c@0 {
+            compatible = "esp32,i2c-bus";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        spi0: spi@0 {
+            compatible = "esp32,spi-bus";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        i2s0: i2s@0 {
+            compatible = "esp32,i2s-bus";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        adc0: adc@0 {
+            compatible = "esp32,adc";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        pwm0: pwm@0 {
+            compatible = "esp32,pwm";
+            channels = <8>;
+            status = "disabled";
+        };
+
+        gpio0: gpio@0 {
+            compatible = "esp32,gpio";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        lcd0: display@0 {
+            compatible = "myproject,display";
+            reg = <0>;
+            width = <240>;
+            height = <320>;
+            status = "disabled";
+        };
+
+        buttons0: gpio-keys@0 {
+            compatible = "myproject,gpio-keys";
+            reg = <0>;
+            status = "disabled";
+        };
+
+        speaker_amp0: audio@0 {
+            compatible = "myproject,audio-amp";
+            reg = <0>;
+            status = "disabled";
+        };
+    };
+
+    safety {
+        safety_hw: safety-hw {
+            compatible = "board,safety-hw";
+            criticality = "fatal";
+            pin_0 = <15>;
+            safe_level_0 = <0>;
+            pin_1 = <16>;
+            safe_level_1 = <0>;
+            status = "okay";
+        };
+    };
+};

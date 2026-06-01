@@ -1,0 +1,299 @@
+# mini_tree 架构总览
+
+> 本文档从宏观视角描述 mini_tree 的层次划分、核心数据流、启动时序与安全架构。
+
+---
+
+## 目录
+
+1. [三层降维解耦拓扑](#1-三层降维解耦拓扑)
+2. [模块职责与依赖关系](#2-模块职责与依赖关系)
+3. [启动时序 (两段式点火)](#3-启动时序-两段式点火)
+4. [核心数据流](#4-核心数据流)
+5. [配置系统](#5-配置系统)
+6. [安全架构 (7 层防御)](#6-安全架构-7-层防御)
+7. [跨平台验证矩阵](#7-跨平台验证矩阵)
+
+---
+
+## 1. 三层降维解耦拓扑
+
+mini_tree 在物理上将"芯片 SDK / RTOS"与"应用业务"隔离：
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    宿主应用层 (Host Apps)                      │
+│   main.cpp / 业务 Service / 外设控制 / 算法控制流             │
+│   ─── 仅依赖 mini_tree 接口库，不直接接触任何芯片 SDK 符号    │
+├──────────────────────────────────────────────────────────────┤
+│              mini_tree 核心中间件层 (Pure Middleware)          │
+│  ┌───────────┬───────────────┬────────────────────────────┐  │
+│  │ core/     │ board/        │ system_(c/cpp)/             │  │
+│  │ EventBus  │ VFS 设备树    │ 两段式点火 / 看门狗 /       │  │
+│  │ BufferPool│ 驱动 Probe    │ 闪存巡检 / 生命周期         │  │
+│  └───────────┴───────────────┴────────────────────────────┘  │
+├──────────────────────────────────────────────────────────────┤
+│              OSAL 操作系统抽象层 (OS Abstraction)              │
+│      osal_freertos.c  │  osal_rtthread.c  │  osal_null.c     │
+│  统一接口: Task/Queue/Mutex/Spinlock/Time/Log/ISR 上下文     │
+├──────────────────────────────────────────────────────────────┤
+│              微内核与硬件芯片生态层 (Low-Level Engine)         │
+│      FreeRTOS 内核    │  RT-Thread 内核    │  裸机 SysTick    │
+│      (lib/FreeRTOS)   │  (lib/RT-Thread)   │  (无 RTOS)      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 层间契约
+
+| 依赖方向 | 约束 |
+|---------|------|
+| 应用层 → 中间件层 | 应用只链接 `mini_tree` 接口库，不感知 OSAL 后端选择 |
+| 中间件层 → OSAL | RTOS 调用走 `osal_*()`，不直接调用 FreeRTOS/RT-Thread API |
+| OSAL → 内核 | OSAL 后端编译时通过 Kconfig 选且仅选一个，输出同名 `osal` 库 |
+| 中间件层 → 硬件 | 不直接操作寄存器，通过 `hal_if/` 接口委派给宿主实现 |
+
+---
+
+## 2. 模块职责与依赖关系
+
+```
+    ┌──────────┐
+    │ display_if│  (显示抽象 — 可选, 无依赖)
+    └────┬─────┘
+         │
+    ┌────▼─────┐   ┌──────────┐   ┌────────────┐
+    │  core    │◄──│  board   │◄──│ system_cpp │
+    │ EventBus │   │ VFS 设备树│   │ 或 system_c│
+    │BufferPool│   │ 驱动 Probe│   │ 点火/监控  │
+    │ 日志/黑盒│   └──────────┘   └─────┬──────┘
+    └────┬─────┘                        │
+         │                              │
+    ┌────▼─────┐                        │
+    │   osal   │◄───────────────────────┘
+    │ 三后端   │
+    └────┬─────┘
+         │
+    ┌────▼─────┐
+    │  hal_if  │  (纯头文件接口, 宿主实现)
+    └──────────┘
+```
+
+### 核心模块说明
+
+| 模块 | 路径 | 职责 | 关键暴露 |
+|------|------|------|---------|
+| **osal** | `osal/` | OS 抽象层 — Task/Queue/Mutex/Spinlock/Time/Log | `osal.h` 统一 C 接口 |
+| **core** | `core/` | EventBus 总线, BufferPool 内存池, 日志, 黑匣子 | `event_bus.hpp`, `buffer_pool.h` |
+| **board** | `board/` | 设备树 DTS 解析, VFS 设备框架, Probe 引擎 | `device.h`, `driver.h`, `board_config.h` |
+| **system_cpp** | `system_cpp/` | C++ 两段式点火, 看门狗, 闪存巡检, 生命周期 | `system_init.hpp` |
+| **system_c** | `system_c/` | C 版 system 平替 (同名输出 `system` 库) | `system_init.h` |
+| **hal_if** | `hal_if/` | 纯头文件硬件抽象接口 (GPIO/SPI/I2C/UART/PWM/ADC/Flash...) | `hal_*.h` |
+| **algorithm** | `algorithm/` | 通用算法组件 (环形 FIFO 等) | — |
+| **display_if** | `display_if/` | 显示抽象接口 | — |
+
+---
+
+## 3. 启动时序 (两段式点火)
+
+mini_tree 采用两段式点火架构，在 RTOS 启动前后分别完成不同级别的初始化。
+
+```
+main() 入口
+    │
+    ├─ platform_init()                 芯片级初始化: 时钟/RCC/FPU/中断向量
+    ├─ platform_register_drivers()     驱动向 VFS 树注册 (触发构造函数链接)
+    │
+    ├─ [Phase 1] System_Pre_OS_Init()
+    │   ├── Meyers Singleton 预触       避免 ISR 中 __cxa_guard_acquire 死锁
+    │   ├── BufferPool 初始化            无锁内存池
+    │   ├── Watchdog 初始化              RTC WDT + SW Task WDT
+    │   ├── EventBus 初始化              发布订阅总线
+    │   ├── Safe State 基线检查          Bootloop 计数器判定
+    │   ├── DTS Probe (BFS)             设备依赖拓扑排序 + 驱动 Probe
+    │   └── Scrubber CRC 基线            计算闪存 CRC 快照
+    │
+    ├─ [Phase 2] System_Start_Tasks()
+    │   ├── EventBus 分发任务创建
+    │   ├── Task WDT 监控任务创建
+    │   ├── 栈水位监控任务创建
+    │   └── Scrubber 巡检任务创建 (极低优先级)
+    │
+    ├─ OSAL_NULL? ──→ mini_tree_system_loop()    裸机: 主循环轮询
+    └─ 否则 ──────→ vTaskStartScheduler()         RTOS: 启动调度器
+```
+
+### 阶段对比
+
+| 阶段 | 时机 | 可访问资源 | 失败后果 |
+|------|------|-----------|---------|
+| Phase 1 | OS 启动前 | 仅 CPU + 栈 + BSS/Data | 未达安全状态则 Bootloop 防护介入 |
+| Phase 2 | OS 启动后 | 多任务 + IPC + Queue | 单任务失败不影响已有服务 |
+
+---
+
+## 4. 核心数据流
+
+### 4.1 EventBus 发布订阅
+
+```
+发布者                          EventBus                          订阅者
+   │                              │                                 │
+   │  osal_queue_send(evt)        │                                 │
+   │ ─────────────────────────►   │                                 │
+   │                              ├─ 封表后只读? ──→ 跳过 subscribe │
+   │                              ├─ snapshot 订阅者列表 (持有锁)    │
+   │                              ├─ SIOF 防御前? ──→ 静默丢弃      │
+   │                              ├─ ISR 上下文? ──→ 直接分发        │
+   │                              │  否则 ──→ Queue 投递分发任务     │
+   │                              │                                 │
+   │                              │  osal_queue_send(evt)           │
+   │                              │ ───────────────────────────►   │
+   │                              │                                 │
+   │                              │◄── osal_queue_receive(evt) ───│
+
+**安全加固**:
+- **seal() 封表**: Phase 2 点火完成后冻结订阅者数组, 此后任何 subscribe() 调用返回 false.
+  确保 ISR 中 dispatch 遍历的数组为只读静态表, 根除中断/任务读写踩踏.
+- **SIOF 防御**: `g_system_os_initialized` 标志在 Phase 1 完成后置 true.
+  防止 C++ 全局构造函数在 main() 前偷跑 post(), 静默丢弃而非崩溃.
+```
+
+### 4.2 BufferPool 无锁分配
+
+```
+分配请求
+    │
+    ├─ __builtin_ctz(bitmap)    前导零扫描 → 第一个空闲位
+    ├─ CAS (原子比较交换)        竞争安全
+    │   ├─ 成功 → 返回块索引
+    │   └─ 失败 → 重试 (自旋)
+    │
+释放: bitmap |= (1u << index)   原子 OR, ISR 安全
+
+**安全加固**:
+- **DMA 对齐**: 池内存基址强制 32 字节对齐 (`BP_ALIGN_UP` + 超额分配),
+  消除 DMA 引擎对奇数地址触发总线错误的风险. I2S/SPI DMA 地址安全.
+```
+
+### 4.3 中断延迟模型
+
+EventBus 的 ISR → 订阅者通知路径:
+
+```
+硬件中断到达
+    │
+    ├─ ISR 入口 (平台 HAL)          0 µs
+    ├─ osal_queue_send(m_queue)      ~1-3 µs  (FreeRTOS SMP 队列写入)
+    ├─ dispatch 任务唤醒             上下文切换取决于当前任务优先级
+    ├─ snapshot 锁定 + 拷贝           ~2 µs (24 订阅者, ARM CM4F 168MHz)
+    ├─ 遍历匹配回调并执行             取决于回调数 × 匹配时间
+    └─ 订阅者 callback(event)        应用层决定
+```
+
+关键约束:
+- `osal_queue_send` 在 ISR 中从不阻塞, 复杂度 O(1) (固定深度环形队列)
+- dispatch 任务优先级为框架内最高 (FreeRTOS: 30, RT-Thread: 1), 确保事件队列快速排空
+- 订阅者回调在 dispatch 任务上下文中执行, 不得阻塞 (参见 EventBus WARNING 文档)
+
+### 4.4 设备树 Probe 流程
+
+```
+board.dts
+    │
+    ├─ dtc-lite.py (编译期)      Kahn 拓扑排序
+    │   ├─ depends-on 解析       BFS 依赖图
+    │   └─ → board_driver.c     .rodata 结构数组
+    │
+    ├─ DRIVER_REGISTER(drv)      构造函数链接
+    │   └─ → .driver_init_array  段
+    │
+    └─ board_probe_all()         运行时 Probe
+        ├─ 级联初始化 (依赖顺序)
+        ├─ 失败时联动回滚
+        └─ 全失败 → enter_safe_state()
+```
+
+---
+
+## 5. 配置系统
+
+```
+Kconfig 源文件 (.config)
+    │
+    ├─ menuconfig.py (图形化)    用户交互配置
+    │
+    ├─ genconfig.py (编译期)     Kconfig → config.h
+    │   └─ → build/generated/kconfig/config.h
+    │
+    ├─ CMakeLists.txt 条件编译    add_subdirectory / compile_options
+    │
+    └─ 代码中 #ifdef CONFIG_*    编译期分支
+```
+
+### 配置菜单结构
+
+| 顶层菜单 | 子选项 | 说明 |
+|---------|--------|------|
+| Platform | PLATFORM_ARM_CM3/CM4F/CM7/RISCV/POSIX | 目标 MCU 架构 |
+| OSAL Backend | OSAL_FREERTOS / OSAL_RTTHREAD / OSAL_NULL | RTOS 选择 |
+| System Backend | SYSTEM_CPP (C++23) / SYSTEM_C (C23) | system 实现语言 |
+| System Log | SYS_LOG_USE_OSAL / ESP / PRINTF | 日志后端 |
+| Build Options | BUILD_DISASM | 构建期反汇编 .lst 输出 |
+
+---
+
+## 6. 安全架构 (9 层防御)
+
+| 层级 | 名称 | 触发条件 | 响应行为 |
+|------|------|---------|---------|
+| **L1** | Bootloop 防护 | 连续崩溃 ≥ 5 次 | RTC_DATA_ATTR 持久计数器，永久锁 Flash 写入 |
+| **L2** | RTC 硬件看门狗 | CPU/总线完全卡死 | 独立 32kHz 时钟驱动，物理电源复位 |
+| **L3** | Task WDT | 3 秒未喂狗 | Core Dump + 硬件复位 |
+| **L4** | 栈水位监控 | 剩余 < 512 字节 | 两级预警 → 超限中断闭锁 |
+| **L5** | Flash Scrubber | CRC 校验失配 | 后台逐页巡检 → 检测 Bit-Rot → 安全状态 |
+| **L6** | EventBus SIOF 防御 | C++ 全局构造早产 | `g_system_os_initialized` 标志在 Phase 1 末尾置 true. `post()` 检查该标志, 未点火则静默丢弃 |
+| **L7** | EventBus seal 封表 | ISR 读写踩踏 | Phase 2 末尾冻结订阅表, 禁止运行时 `subscribe()`. dispatch 遍历只读数组 |
+| **L8** | Safe State | OSAL_PANIC / 服务 init 失败 | 关中断 + 锁调度器 + 死循环等维修 |
+| **L9** | 反汇编审查 | CONFIG_BUILD_DISASM | 构建期指令级验证原子操作 |
+
+### 安全状态机
+
+```
+正常运行 ◄───── 喂狗/WDT 刷新
+    │
+    ├─ OSAL_PANIC() ──────► Safe State (关中断, 死循环)
+    ├─ SIOF 拦截 ─────────► 静默丢弃 (不崩溃)
+    ├─ seal 封表后 subscribe ─► 返回 false
+    ├─ Task WDT 超时 ────► Core Dump → 硬件复位
+    ├─ RTC WDT 超时 ─────► 物理电源复位
+    ├─ Bootloop ×5 ──────► 永久锁 Flash → Safe State
+    ├─ Scrubber CRC 失配 ─► Safe State (标记损坏页)
+    └─ 栈超限 ───────────► 中断闭锁 → 硬件复位
+```
+
+---
+
+## 7. 跨平台验证矩阵
+
+| 系统后端 | OSAL 后端 | 架构 | 工具链 | 状态 |
+|---------|-----------|------|--------|------|
+| system_cpp | FreeRTOS | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
+| system_cpp | FreeRTOS | ARM Cortex-M4F | ARM GCC 13.3.1 | 通过 |
+| system_cpp | FreeRTOS | ARM Cortex-M7 | ARM GCC 13.3.1 | 通过 |
+| system_cpp | RT-Thread | ARM Cortex-M4F | ARM GCC 13.3.1 | 通过 |
+| system_cpp | NULL | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
+| system_cpp | FreeRTOS | RISC-V RV32 | RISC-V GCC 15.2.0 | 通过 |
+| system_c | FreeRTOS | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
+| system_c | NULL | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
+| system_c | FreeRTOS | RISC-V RV32 | RISC-V GCC 15.2.0 | 通过 |
+| host (MinGW) | — | POSIX | MinGW 8.1.0 | 通过 |
+
+### 工具链版本
+
+| 工具链 | 版本 | C 标准 | C++ 标准 | 备注 |
+|--------|------|--------|---------|------|
+| ARM GCC | 13.3.1 (STM32CubeCLT) | C23 (c2x) | C++23 | ARM 专用 |
+| RISC-V GCC | 15.2.0 (xPack) | C23 | C++23 | RISC-V 专用 |
+| MinGW | 8.1.0 | C23 | C++23 | Host 构建验证 |
+
+> **向下兼容确认**: 实际验证最低 C11、C++17 可正常编译，更低版本（C89/C99、C++98/11）未做验证。建议宿主工程至少使用 C11 或 C++17。

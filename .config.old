@@ -1,0 +1,36 @@
+
+#
+# Platform
+#
+# CONFIG_PLATFORM_ARM_CM4F is not set
+# CONFIG_PLATFORM_ARM_CM3 is not set
+# CONFIG_PLATFORM_RISCV is not set
+CONFIG_PLATFORM_POSIX=y
+# end of Platform
+
+#
+# FreeRTOS CONFIG
+#
+# CONFIG_ENABLE_free_RTOS is not set
+# end of FreeRTOS CONFIG
+
+#
+# SoC Driver Config
+#
+# CONFIG_SOC_DRV_UART is not set
+# CONFIG_SOC_DRV_I2C is not set
+# CONFIG_SOC_DRV_SPI is not set
+# CONFIG_SOC_DRV_GPIO is not set
+# CONFIG_SOC_DRV_I2S is not set
+# CONFIG_SOC_DRV_ADC is not set
+# CONFIG_SOC_DRV_PWM is not set
+# CONFIG_SOC_DRV_RMT_LED is not set
+# end of SoC Driver Config
+
+#
+# System Log Config
+#
+CONFIG_CONFIG_SYS_LOG_USE_OSAL=y
+# CONFIG_CONFIG_SYS_LOG_USE_ESP is not set
+# CONFIG_CONFIG_SYS_LOG_USE_PRINTF is not set
+# end of System Log Config
