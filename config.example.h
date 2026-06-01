@@ -50,8 +50,7 @@
 // =============================================================================
 // Board Features — 板级特性 (独立开关，可多选或全不选)
 // =============================================================================
-// #define CONFIG_PRODUCTION_LOG     // 生产日志环形缓冲区 (NVS 持久化)
-//                                   // 启用时需要 ESP-IDF NVS
+// #define CONFIG_PRODUCTION_LOG     // 生产日志环形缓冲区 (通过 hal_storage 持久化)
 // #define CONFIG_SAFETY_SHUTDOWN    // IEC 61508 安全停机子系统
 //                                   // 停止 PWM → 安全 GPIO 电平 → 停止 CPU 核心
 

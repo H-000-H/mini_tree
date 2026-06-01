@@ -5,21 +5,17 @@
 extern "C" {
 #endif
 
-/*
- * 平台级安全硬件闭锁 (IEC 61508 §7.4.3)
+/* 平台级安全硬件闭锁 (IEC 61508 §7.4.3)
  *
  * 由 enter_safe_state() 在冻结调度器之前调用.
  * 平台实现需完成:
  *   - 强制停止所有活跃外设 (PWM, I2S, SPI, DMA 等)
  *   - 点亮故障指示灯 (Fault LED)
  *   - 启动蜂鸣器报警 (2Hz 方波)
- *
- * 实现由宿主工程提供 (如 soc_port_mcu 或 stm32_hal_port)
  */
 void hal_platform_critical_hardware_lock(void);
 
-/*
- * 平台级 NMI 紧急标记 (IEC 61508 §7.4.3.2 掉电保护)
+/* 平台级 NMI 紧急标记 (IEC 61508 §7.4.3.2 掉电保护)
  *
  * 由 BOD NMI handler 调用, 必须在 IRAM 中执行.
  * 平台实现需完成:

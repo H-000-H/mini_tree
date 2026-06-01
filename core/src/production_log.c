@@ -2,59 +2,38 @@
 
 #include "config.h"
 #include "osal.h"
+#include "hal_storage.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 
 /* ═══════════════════════════════════════════════════════════════════
- * CONFIG_PRODUCTION_LOG — 启用时使用 ESP-IDF NVS 实现
+ * CONFIG_PRODUCTION_LOG — 启用时通过 hal_storage 持久化
  * ═══════════════════════════════════════════════════════════════════ */
 #ifdef CONFIG_PRODUCTION_LOG
 
-#include "nvs_flash.h"
-#include "nvs.h"
+/* 持久化快照: 将环形缓冲区 + 元数据打包为单个 blob */
+#define PROD_LOG_STORAGE_SLOT  0
 
-#define NVS_NS          "prod_log"
-#define NVS_KEY_RING    "ring"
-#define NVS_KEY_HEAD    "head"
-#define NVS_KEY_SEQ     "seq"
-#define RING_BLOB_SIZE  (PROD_LOG_SLOT_COUNT * sizeof(prod_log_entry_t))
+typedef struct
+{
+    uint16_t head;
+    uint32_t seq;
+    prod_log_entry_t ring[PROD_LOG_SLOT_COUNT];
+} prod_log_persist_t;
 
-static prod_log_entry_t s_ring[PROD_LOG_SLOT_COUNT];
-static uint16_t         s_head = 0;
-static uint32_t         s_seq  = 0;
-static bool             s_ready = false;
+static prod_log_persist_t s_state;
+static bool s_ready = false;
 
 int production_log_init(void)
 {
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        nvs_flash_erase();
-        err = nvs_flash_init();
-    }
-    if (err != ESP_OK) return -1;
+    hal_storage_init();
 
-    nvs_handle_t h;
-    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return -2;
+    memset(&s_state, 0, sizeof(s_state));
+    size_t len = sizeof(s_state);
+    hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len);
 
-    size_t len = RING_BLOB_SIZE;
-    err = nvs_get_blob(h, NVS_KEY_RING, s_ring, &len);
-    if (err != ESP_OK)
-    {
-        memset(s_ring, 0, sizeof(s_ring));
-    }
-
-    uint16_t head = 0;
-    if (nvs_get_u16(h, NVS_KEY_HEAD, &head) == ESP_OK)
-        s_head = head;
-
-    uint32_t seq = 0;
-    if (nvs_get_u32(h, NVS_KEY_SEQ, &seq) == ESP_OK)
-        s_seq = seq;
-
-    nvs_close(h);
     s_ready = true;
     return 0;
 }
@@ -63,9 +42,8 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
 {
     if (!s_ready) return;
 
-    /* 仅写入环形缓冲区 (ISR 安全), NVS 持久化在 ISR 中跳过 */
-    prod_log_entry_t* e = &s_ring[s_head];
-    e->seq       = s_seq++;
+    prod_log_entry_t* e = &s_state.ring[s_state.head];
+    e->seq       = s_state.seq++;
     e->timestamp = 0;
     e->level     = (uint8_t)level;
 
@@ -75,20 +53,12 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     strncpy(e->msg, msg ? msg : "", PROD_LOG_MSG_LEN - 1);
     e->msg[PROD_LOG_MSG_LEN - 1] = '\0';
 
-    uint16_t next = (s_head + 1) % PROD_LOG_SLOT_COUNT;
-    s_head = next;
+    s_state.head = (s_state.head + 1) % PROD_LOG_SLOT_COUNT;
 
-    /* NVS 操作非 ISR 安全, ISR 中跳过持久化 */
+    /* ISR 中跳过持久化 (存储操作可能阻塞) */
     if (osal_in_isr()) return;
 
-    nvs_handle_t h;
-    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
-
-    nvs_set_blob(h, NVS_KEY_RING, s_ring, RING_BLOB_SIZE);
-    nvs_set_u16(h, NVS_KEY_HEAD, s_head);
-    nvs_set_u32(h, NVS_KEY_SEQ, s_seq);
-    nvs_commit(h);
-    nvs_close(h);
+    hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state));
 }
 
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
@@ -105,7 +75,7 @@ int production_log_count(void)
 {
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
     {
-        if (s_ring[i].seq == 0 && s_ring[i].level == 0 && s_ring[i].msg[0] == '\0')
+        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 && s_state.ring[i].msg[0] == '\0')
             return i;
     }
     return PROD_LOG_SLOT_COUNT;
@@ -114,7 +84,7 @@ int production_log_count(void)
 const prod_log_entry_t* production_log_get(int index)
 {
     if (index < 0 || index >= PROD_LOG_SLOT_COUNT) return NULL;
-    return &s_ring[index];
+    return &s_state.ring[index];
 }
 
 void production_log_dump(void (*sink)(const char* line))
@@ -124,11 +94,11 @@ void production_log_dump(void (*sink)(const char* line))
     char buf[256];
     sink("=== PRODUCTION LOG DUMP ===");
 
-    int oldest = s_head;
+    int oldest = s_state.head;
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
     {
         int idx = (oldest + i) % PROD_LOG_SLOT_COUNT;
-        const prod_log_entry_t* e = &s_ring[idx];
+        const prod_log_entry_t* e = &s_state.ring[idx];
         if (e->seq == 0 && e->msg[0] == '\0') continue;
 
         const char* lvl_str = "?";
@@ -146,7 +116,7 @@ void production_log_dump(void (*sink)(const char* line))
     sink("=== END ===");
 }
 
-#else /* !CONFIG_ESP_NVS — 空实现 (移植到新平台需提供 backend) */
+#else /* !CONFIG_PRODUCTION_LOG — 空实现 */
 
 int production_log_init(void)
 {

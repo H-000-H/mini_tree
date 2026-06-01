@@ -9,14 +9,10 @@
 extern "C" {
 #endif
 
-/*
- * Flash 抽象接口: 用于巡检/CRC 校验.
- * 平台实现由宿主工程提供 (如 soc_port_mcu 或 stm32_hal_port)
- */
-
+/* Flash 抽象接口: 用于巡检/CRC 校验 */
 bool     hal_flash_read(uint32_t addr, uint8_t* buf, size_t len);
-uint32_t hal_flash_get_app_addr(void);
-uint32_t hal_flash_get_app_size(void);
+uint32_t hal_flash_get_app_addr(void);  /* 应用程序起始地址 */
+uint32_t hal_flash_get_app_size(void);  /* 应用程序大小(字节) */
 
 #ifdef __cplusplus
 }

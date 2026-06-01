@@ -2,29 +2,24 @@
 #define HAL_GPIO_FAST_H
 
 #include "hal_gpio.h"
-#include "driver/gpio.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* ── GPIO 快速内联路径 ──
+ *
+ * 在不支持 VFS 的环境下直接调用 HAL 底层函数, 避免 ioctl 调用开销。
+ * 平台实现可替换为寄存器直写宏以获得极致性能。
+ */
 static inline void hal_gpio_set_level_fast(hal_pin_t pin, int level)
 {
-    int num = HAL_PIN_NUM(pin);
-    if (num >= 0 && num < GPIO_NUM_MAX)
-    {
-        gpio_set_level((gpio_num_t)num, level);
-    }
+    hal_gpio_set_level(pin, level);
 }
 
 static inline int hal_gpio_get_level_fast(hal_pin_t pin)
 {
-    int num = HAL_PIN_NUM(pin);
-    if (num >= 0 && num < GPIO_NUM_MAX)
-    {
-        return gpio_get_level((gpio_num_t)num);
-    }
-    return -1;
+    return hal_gpio_get_level(pin);
 }
 
 #ifdef __cplusplus

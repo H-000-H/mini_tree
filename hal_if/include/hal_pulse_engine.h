@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* ── 协议脉冲引擎接口 ──
+/* 协议脉冲引擎接口
  *
  * 纯硬件抽象：向外发射一串精确时序的控制脉冲。
  * 可用于 WS2812/NeoPixel、红外遥控编码、单总线协议等，
@@ -16,7 +16,7 @@ typedef struct
     uint32_t bit_time_ns;       /* 单 bit 时间基准 (纳秒) */
 } hal_pulse_config_t;
 
-/* ── 发送脉冲序列 ──
+/* 发送脉冲序列
  * engine_id:  脉冲引擎实例编号 (0 ~ N-1)
  * data:       待发送的数据缓冲区
  * len:        数据长度 (字节)

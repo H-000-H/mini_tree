@@ -13,22 +13,24 @@ typedef struct hal_spi_bus hal_spi_bus_t;
 struct device_instance;
 typedef struct device_instance device_t;
 
+/* SPI 总线配置 */
 typedef struct
 {
-    int host_id;
+    int host_id;            /* SPI 控制器编号, 0 = SPI1 */
     int mosi;
     int miso;
     int sclk;
-    int max_transfer_sz;
-    int dma_chan;  /* -1 = 自动 */
+    int max_transfer_sz;    /* 最大传输字节 */
+    int dma_chan;           /* DMA 通道, -1 = 自动 */
 } hal_spi_bus_config_t;
 
+/* SPI 设备配置 */
 typedef struct
 {
-    int mode;            /* 0-3 */
-    int clock_speed_hz;
-    int cs_pin;          /* -1 = 无 */
-    int queue_size;
+    int mode;               /* SPI 模式 0-3 */
+    int clock_speed_hz;     /* 时钟频率(Hz) */
+    int cs_pin;             /* 片选引脚, -1 = 无 */
+    int queue_size;         /* 传输队列深度 */
 } hal_spi_device_config_t;
 
 struct hal_spi_bus
@@ -44,24 +46,21 @@ struct hal_spi_bus
 
 void hal_spi_bus_init_struct(hal_spi_bus_t* bus);
 
-/* ── 总线级互斥锁 (防止多设备共线时序踩踏) ── */
+/* 总线级互斥锁 (防止多设备共线时序踩踏) */
 int hal_spi_lock_bus(int bus_id, uint32_t timeout_ms);
 int hal_spi_unlock_bus(int bus_id);
 
-/* ── 片选控制 (由 HAL 接管, 确保多设备分时访问) ── */
+/* 片选控制 (由 HAL 接管, 确保多设备分时访问) */
 int hal_spi_assert_cs(int bus_id, int cs_line);
 int hal_spi_deassert_cs(int bus_id, int cs_line);
 
-/*
- * 安全状态强制停机: 直接复位所有 SPI 外设 (含 DMA 引擎),
- * 切断任何进行中的显示帧传输, 防止 Safe State 中屏幕乱闪。
- * 调用时机: 进入 enter_safe_state() 之前, 此时 RTOS 尚未冻结。
- */
+/* 安全停机: 复位所有 SPI 外设 (含 DMA 引擎) */
 void hal_spi_force_stop(void);
 
-/* ── 强类型 SPI 总线访问 (替代 ioctl, MISRA C Rule 11.3 合规) ── */
+/* 从 device_t 获取 SPI 总线实例 */
 hal_spi_bus_t* device_get_spi_bus(device_t* dev);
 
+/* ioctl 兼容层 */
 #define SPI_CMD_DEINIT      0x40
 #define SPI_CMD_READ        0x41
 

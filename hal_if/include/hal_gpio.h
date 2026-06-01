@@ -7,15 +7,14 @@
 extern "C" {
 #endif
 
-/* ── 跨平台引脚抽象 (IEC 61508 §7.4.2.4: HAL 层不得泄露架构特性) ──
+/* ── 跨平台引脚抽象 ──
  *
  * hal_pin_t 为 32-bit 复合引脚标识:
- *   [31:16] 端口 (Port)  — ESP32=0, STM32=GPIOA/GPIOB/...
- *   [15: 0] 引脚号 (Pin) — 0~15
+ *   [31:16] 端口号 (Port), 由平台实现定义
+ *   [15: 0] 引脚号 (Pin),  0 开始
  *
- * 平台移植示例:
- *   ESP32:  hal_pin_t pin = HAL_MAKE_PIN(0, GPIO_NUM_5);
- *   STM32:  hal_pin_t pin = HAL_MAKE_PIN(GPIO_PORT_A, GPIO_PIN_5);
+ * 使用方式:
+ *   hal_pin_t pin = HAL_MAKE_PIN(port, pin_num);
  */
 typedef uint32_t hal_pin_t;
 
@@ -25,6 +24,7 @@ typedef uint32_t hal_pin_t;
 #define HAL_PIN_PORT(pin)        ((int)((pin) >> HAL_PIN_PORT_SHIFT))
 #define HAL_PIN_NUM(pin)         ((int)((pin) & HAL_PIN_NUM_MASK))
 
+/* GPIO 方向模式 */
 typedef enum
 {
     HAL_GPIO_MODE_INPUT = 0,
@@ -32,12 +32,15 @@ typedef enum
     HAL_GPIO_MODE_INPUT_OUTPUT,
 } hal_gpio_mode_t;
 
+/* 上下拉模式 */
 typedef enum
 {
-    HAL_GPIO_PULL_DISABLE = 0,
-    HAL_GPIO_PULL_ENABLE,
+    HAL_GPIO_PULL_NONE,         /* 无上下拉 */
+    HAL_GPIO_PULL_UP,           /* 上拉 */
+    HAL_GPIO_PULL_DOWN,         /* 下拉 */
 } hal_gpio_pull_t;
 
+/* 中断触发模式 */
 typedef enum
 {
     HAL_GPIO_INTR_DISABLE = 0,
@@ -46,19 +49,18 @@ typedef enum
     HAL_GPIO_INTR_ANY_EDGE,
 } hal_gpio_intr_t;
 
+/* GPIO 配置 */
 typedef struct
 {
     hal_pin_t pin;
     hal_gpio_mode_t mode;
-    hal_gpio_pull_t pullup;
-    hal_gpio_pull_t pulldown;
+    hal_gpio_pull_t pull;
     hal_gpio_intr_t intr_type;
 } hal_gpio_config_t;
 
 typedef void (*hal_gpio_isr_t)(void* arg);
 
-/* VFS 唯一路径: GPIO 操作强制走 device_ioctl(), 遵守设备状态机 */
-
+/* ioctl 命令 */
 #define GPIO_CMD_CONFIG       0x10
 #define GPIO_CMD_TOGGLE       0x11
 #define GPIO_CMD_INSTALL_ISR  0x12
@@ -80,7 +82,7 @@ typedef struct
     int level;
 } gpio_level_arg_t;
 
-/* ── 快速路径函数声明（实现在 soc_port_esp32/src/gpio.c） ── */
+/* 快速路径函数(直呼 HAL 实现, 绕过 ioctl) */
 int hal_gpio_set_level(hal_pin_t pin, int level);
 int hal_gpio_get_level(hal_pin_t pin);
 
