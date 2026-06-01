@@ -222,7 +222,7 @@ Kconfig SYSTEM_BACKEND
 **system_c/** (C 实现):
 - 纯函数过程式 API
 - `mini_tree_pre_os_init()` / `mini_tree_start_tasks()` / `mini_tree_system_loop()`
-- 与 C++ 版本同名的 `libsystem.a` 输出，宿主无需改链接配置
+- 与 C++ 版本同名的 `libsystem.a` 输出，用户工程无需改链接配置
 
 **C 兼容层修复**:
 - `system_scrubber.hpp`: `<cstdint>` → `<stdint.h>`（C++ 独有的 `<cstdint>` 在 C 编译中不存在）
@@ -256,7 +256,7 @@ Kconfig SYSTEM_BACKEND
 
 ## API 兼容性声明
 
-本文档定义 mini_tree 各头文件的接口稳定性等级, 帮助宿主工程评估升级风险.
+本文档定义 mini_tree 各头文件的接口稳定性等级, 帮助用户工程评估升级风险.
 
 | 等级 | 含义 | 适用范围 |
 |------|------|----------|
@@ -269,7 +269,7 @@ Kconfig SYSTEM_BACKEND
 - 次版本号递增仅做向后兼容的扩展 (新增函数 / 新增字段在 struct 末尾)
 - 补丁版本仅修复 bug, 不修改公开 API 签名和语义
 
-宿主工程应只依赖标记为 **稳定** 的接口. 实验性接口可在评估后使用, 升级时需关注 changelog.
+用户工程应只依赖标记为 **稳定** 的接口. 实验性接口可在评估后使用, 升级时需关注 changelog.
 
 ### 后续规划
 
