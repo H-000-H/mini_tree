@@ -44,6 +44,49 @@ framework to a new MCU platform.
    }
    ```
 
+## Device Tree (DTS) 适配说明
+
+本框架通过设备树实现 **配置与实现解耦**，移植时只需在板级 `board.dts` 中声明外设的引脚/时钟属性，
+驱动代码无需修改。
+
+### 继承覆盖模式
+
+```
+基节点: 默认值硬编码在 C 中 (如 DTS_DEF_UART_TX_PIN)
+覆盖:   device_find_by_label("uart0") → 读取 DTS 节点属性
+        属性不存在 → 保持默认值
+```
+
+### 实例参考
+
+| 文件 | 说明 |
+|------|------|
+| `hal_init_stm32.c` | STM32 四种开发风格 (HAL/LL/SPL/寄存器) 统一接入 DTS |
+| `hal_init_gd32.c` | GD32 标准外设库风格接入 DTS |
+
+两个实例展示了同一场景 —— **SPI 四线整体换引脚**：
+
+```dts
+spi0: spi@0 {
+    mosi  = <3>;         /* 改这里, 无需动 .c */
+    miso  = <4>;         /* 改这里, 无需动 .c */
+    sclk  = <5>;         /* 改这里, 无需动 .c */
+    cs-gpios = <6>;      /* 改这里, 无需动 .c */
+};
+```
+
+关键结论:
+- **修改引脚只需改 `board.dts` 中的属性值，无需动任何 `.c` / `.h` 函数**
+- GD32 与 STM32 共用同一套 DTS 适配模式，无缝切换
+- 不同开发风格 (HAL/LL/SPL/寄存器/GD32 库) 对同一 DTS 属性的读取方式完全一致
+
+### 移植步骤
+
+1. 在 `board/<platform>/board.dts` 中定义外设节点 (参考两个实例顶部的 DTS 注释)
+2. 填写实际的引脚号、时钟频率等属性
+3. `device_find_by_label()` + `device_get_prop_int()` 在驱动中读取
+4. 如需变更引脚，只改 DTS 属性值，不碰 C 代码
+
 ## ESP32 Quick Start
 
 If you're targeting ESP32, the complete HAL implementation is maintained
