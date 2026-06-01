@@ -53,6 +53,20 @@
  *       default-pulse = <5000>;        /* 50% 占空比  */
  *   };
  *
+ * ── 为什么用 DTS? ──
+ *
+ * 同一个引脚在不同抽象层有不同的名字。
+ * 以 UART_TX = PA9 为例:
+ *
+ *   GD32 SPL:    gpio_mode_set(GPIOA, GPIO_MODE_AF, ..., GPIO_PIN_9)
+ *   STM32 HAL:   gpio.Pin = GPIO_PIN_9
+ *   寄存器直写:   GPIOA->AFR[1] |= 7U << 4
+ *
+ * 没有 DTS, 换引脚就得逐层排查每个宏名称。
+ * 有了 DTS, 无论底层用哪个库, 都只读 cfg.uart_tx:
+ *
+ *   &uart0 { tx-pin = <15>; /* 从 PA9 改到 PA15 */ };
+ *
  * periph_clock_enable() 和 gpio_af_set() 这类不变硬件操作
  * 直接硬编码, 不经过 DTS.
  * ══════════════════════════════════════════════════════════════════

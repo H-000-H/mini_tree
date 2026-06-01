@@ -53,6 +53,23 @@
  *       default-pulse = <5000>;        /* 50% 占空比  */
  *   };
  *
+ * ── 为什么用 DTS? ──
+ *
+ * 本例展示了 4 种 STM32 开发风格, 每种对同一引脚有不同的表述:
+ *
+ *   HAL:     GPIO_PIN_9 / GPIO_AF7_USART1
+ *   LL:      LL_GPIO_PIN_9 / LL_GPIO_AF_7
+ *   SPL:     GPIO_PinSource9 / GPIO_AF_USART1
+ *   Register: 9 << GPIO_AFRH_AFSEL9_Pos / 7
+ *
+ * 没有 DTS 时, 换一个引脚需要排查 4 种写法各改一遍。
+ * 通过 DTS, 无论哪种风格都只读 cfg.uart_tx 这一个值,
+ * 换引脚时只需改 board.dts:
+ *
+ *   &uart0 { tx-pin = <10>; /* PA10 → PA15 */ };
+ *
+ * 这就是设备树继承的核心价值: 配置与实现解耦。
+ *
  * fixed_clock_enable() 和 gpio_af_mode() 这类不变硬件操作
  * 直接在各 style 中硬编码, 不经过 DTS.
  * ══════════════════════════════════════════════════════════════════
