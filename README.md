@@ -233,7 +233,7 @@ mini_tree/
 3. **版本控制负担**：编译过程产生大量中间文件（`.crf`、`.d`、`.axf`），需要严格的 `.gitignore` 策略。
 
 **使用规约：**
-- **ARMCC v5 不支持**：项目永久拒绝兼容 ARMCC v5.06。请在 Keil 的 `Options → Target` 中切换为 `Use default compiler version 6` (ARMCLANG/AC6)。欢迎有能力将本架构降级兼容 ARMCC v5 的开发者通过社区 PR 弥补这一空缺，作者不会主动完成此工作。
+- **ARMCC v5 不支持**：ARMCC v5 无法适配本框架。不是永久拒绝兼容，是 ARMCC v5 本身过旧，不支持 C23/C++23 及 GNU 扩展，在不降级整个代码库的前提下不存在兼容的可能。而降级要大改，太花时间了，本人没有那个时间也没有精力再去和远古编译器玩神奇的报错。请在 Keil 的 `Options → Target` 中切换为 `Use default compiler version 6` (ARMCLANG/AC6)。
 - **影子工程模式**：架构设计、代码编写和重构在 VS Code / Cursor（配合 Clangd）中完成。Keil 仅作为工程管理和烧录/调试的辅助工具，不建议在其中编辑代码或管理文件依赖。
 
 Clang 构建示例 (需 18+，且 `clang`、`llvm-ar` 在 PATH 中)：

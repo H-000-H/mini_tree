@@ -116,3 +116,4 @@ static inline int hal_dma_config_block(hal_dma_chan_t* chan,
 #endif
 
 #endif /* HAL_DMA_H */
+
