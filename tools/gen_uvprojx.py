@@ -261,9 +261,25 @@ def generate(platform: str, toolchain: str, osal: str,
 
 
 # ---------------------------------------------------------------------------
+def cleanup(platform: str, toolchain: str, osal: str, output_dir: str = ".") -> int:
+    """Remove generated .uvprojx and Keil-sidecar files (.uvoptx, .uvguix.*)."""
+    import glob as _glob
+    import os as _os
+    prefix: str = os.path.join(output_dir, f"mini_tree_{platform}_{toolchain}_{osal.lower()}")
+    removed: int = 0
+    for pattern in (f"{prefix}.uvprojx", f"{prefix}.uvoptx", f"{prefix}.uvguix.*"):
+        for f in _glob.glob(pattern):
+            _os.remove(f)
+            print(f"[gen_uvprojx] Removed: {f}")
+            removed += 1
+    if removed == 0:
+        print(f"[gen_uvprojx] No Keil files to clean for {platform}/{toolchain}/{osal}")
+    return 0
+
+
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Generate Keil MDK .uvprojx")
+    parser = argparse.ArgumentParser(description="Generate or clean Keil MDK project files")
     parser.add_argument("--platform", choices=list(PLATFORMS), default="arm_cm3")
     parser.add_argument("--toolchain", choices=["keil5", "keil6"], default="keil5")
     parser.add_argument("--osal", choices=["FREERTOS", "RTTHREAD", "NULL"], default="RTTHREAD")
@@ -276,6 +292,10 @@ if __name__ == "__main__":
     parser.add_argument("--flash-size", default="0x100000",
                         help="Flash size in bytes (e.g. 0x100000)")
     parser.add_argument("--output", default=".")
+    parser.add_argument("--clean", action="store_true",
+                        help="Remove generated .uvprojx and Keil sidecar files instead of generating")
     args = parser.parse_args()
+    if args.clean:
+        sys.exit(cleanup(args.platform, args.toolchain, args.osal, args.output))
     sys.exit(generate(args.platform, args.toolchain, args.osal, args.output,
                       args.core, args.clock, args.flash_base, args.flash_size))
