@@ -242,8 +242,6 @@ endchoice
 
 endif
 
-endif
-
 config CUSTOM_C_STANDARD
     bool "Override C/C++ language standard"
     default n
