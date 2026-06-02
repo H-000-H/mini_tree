@@ -8,8 +8,8 @@
 
 # ── OSAL 后端选择 (用于决定 FreeRTOS 兼容头文件路径) ──
 set(OSAL_BACKEND "FREERTOS")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _osal_choice REGEX "^CONFIG_OSAL_")
+if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
+    file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _osal_choice REGEX "^CONFIG_OSAL_")
     if(_osal_choice STREQUAL "CONFIG_OSAL_RTTHREAD=y")
         set(OSAL_BACKEND "RTTHREAD")
     endif()
@@ -29,7 +29,7 @@ target_include_directories(system
     PUBLIC
         "include"
     PRIVATE
-        "${CMAKE_SOURCE_DIR}/hal_if/include"
+        "${PROJECT_SOURCE_DIR}/hal_if/include"
 )
 
 target_link_libraries(system

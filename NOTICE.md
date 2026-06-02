@@ -1,6 +1,6 @@
 # mini_tree — 架构演进与重构全记录
 
-> **摘要**: mini_tree 从 0.x 单体耦合架构 (sound_dsp_project) 经过多轮解耦重构，演变为当前支持 OSAL 三后端 + 双系统编译期隔离 + 工业级安全回路的通用中间件框架。本文档记录关键架构决策与演进路径。
+> **摘要**: 本文档记录 mini_tree 的关键架构决策与演进路径。
 
 ---
 
@@ -11,7 +11,6 @@
 3. [重构全貌统计](#重构全貌统计)
 4. [各轮次明细](#各轮次明细)
 5. [已知限制](#已知限制)
-6. [完整文件索引](#完整文件索引)
 
 ---
 
@@ -57,7 +56,6 @@
 
 | 阶段 | 涉及文件 | 主题 |
 |------|----------|------|
-| Phase 0 (原始状态) | — | sound_dsp_project 0.x 单体耦合架构审计 |
 | 第 1 轮: OSAL 抽象 | osal/ 全量 | FreeRTOS 隔离，创建 osal.h 统一接口 |
 | 第 2 轮: EventBus 解耦 | core/ | ISR 自适应 + subscribe 锁 + KillBus 优雅停机 |
 | 第 3 轮: 系统服务 OSAL 化 | system_cpp/ | system_wdt / task_manager / system_scrubber 迁移 OSAL |
@@ -70,20 +68,6 @@
 ---
 
 ## 各轮次明细
-
-### Phase 0: 原始状态 (sound_dsp_project 0.x)
-
-0.x 版本为 ESP32-S3 音频产品的单体架构，存在以下架构约束：
-
-| 编号 | 约束 | 说明 |
-|------|------|------|
-| ARCH-001 | 业务耦合 | `system_runtime.cpp` 直接引用 AudioService / CloudService / UiService |
-| ARCH-002 | 平台硬编码 | `esp_netif_init()` / `esp_event_loop_create_default()` 在框架层 |
-| ARCH-003 | FreeRTOS 直调 | 无 OSAL 抽象，`xQueueSend` / `xTaskCreate` 散落各处 |
-| ARCH-004 | 单阶段点火 | `SystemRuntime::start()` 一口气全做，无 Phase 1/Phase 2 分离 |
-| ARCH-005 | C++11 标准 | 缺乏现代 C++ 特性支持 |
-| ARCH-006 | 无 Kconfig | 全硬编码宏定义，无统一配置管理 |
-| ARCH-007 | 无裸机支持 | 只能运行在 FreeRTOS 上 |
 
 ### 第 1 轮: OSAL 抽象层建立
 
@@ -244,39 +228,7 @@ Kconfig SYSTEM_BACKEND
 
 ---
 
-## 项目前身与演进路线
-
-### 项目前身
-
-[sound_dsp_project](https://github.com/H-000-H/sound_dsp_project)（基于 ESP32-S3 + LVGL 9.5 的音频 DSP 系统）是 mini_tree 的前驱原型。mini_tree 是在该音频项目过程中，将通用中间件逻辑从具体业务中抽离、泛化后重构而来。
-
-**注意**: 该前驱项目是解耦前的单体架构, 未经过 RT-Thread 适配和系统级优先级审计, 其中发现的许多内存和优先级问题已在 mini_tree 中修复。**仅驱动层的 `DRIVER_REGISTER`、`device_t` 属性读取、goto 清理等写法可参考, 整体架构和服务层请以 mini_tree 当前版本为准。**
-
-因此该前驱项目在目录结构和驱动挂载方式上与当前框架存在差异，反映了从原型到通用框架的演进过程。
-
-## API 兼容性声明
-
-本文档定义 mini_tree 各头文件的接口稳定性等级, 帮助用户工程评估升级风险.
-
-| 等级 | 含义 | 适用范围 |
-|------|------|----------|
-| **稳定** | 语义和签名向后兼容, 主版本内不破坏 | `osal.h`, `device.h`, `driver.h`, `VFS.h`, `event_bus.hpp` (C 封装), `buffer_pool.h`, `safe_state.h` |
-| **实验性** | 可能在大版本间变更, 会提前一个版本标记 deprecated | `task_manager.h`, `system_wdt.h`, `system_scrubber.h`, 各类 `hal_if/*.h`, `production_log.h` |
-| **内部** | 不对外承诺, 随时可改 | `board_devtable.h`, `board_nodes.h`, `board_handles.h`, `task_config.h` (生成文件), `config.h` (Kconfig 产物) |
-
-**稳定接口的变更规则**:
-- 主版本号递增时可破坏兼容性
-- 次版本号递增仅做向后兼容的扩展 (新增函数 / 新增字段在 struct 末尾)
-- 补丁版本仅修复 bug, 不修改公开 API 签名和语义
-
-用户工程应只依赖标记为 **稳定** 的接口. 实验性接口可在评估后使用, 升级时需关注 changelog.
-
-### 后续规划
-
-计划基于 mini_tree v1.0.0 标准接口推出两个参考工程：
-
-- **mini_tree_bare_metal_demo** — 基于 `osal_null.c` 的纯裸机工程示例，展示在无 RTOS 条件下使用 dtc-lite 静态拓扑和位掩码环形队列构建前后台系统
-- **mini_tree_rtos_fully_decoupled** — 基于 FreeRTOS/RT-Thread 双后端的参考工程示例，展示音频 Service、GUI Service 与 ConfigStore 之间通过 EventBus 异步通信的完整模式
+> 本项目衍生自一个 ESP32-S3 音频 DSP 工程，通用中间件逻辑经抽离、泛化后独立为此框架。
 
 ---
 
@@ -299,104 +251,3 @@ Kconfig SYSTEM_BACKEND
 - **BufferPool 对齐策略** — 池内存分配采用超额申请 + 地址向上取整, 而非 `aligned_alloc` / `posix_memalign`, 避免对 C 运行时库的依赖. 对静态池 (`use_static = true`) 场景, 调用者自行确保 `static_mem` 对齐.
 
 - **SIOF 防御的轻量实现** — 使用 `extern bool` 全局标志而非更复杂的 `call_once` / `pthread_once` 模式, 零堆栈和锁开销. 考虑到框架现有的 `m_queue` 判空已能防止崩溃, 该标志更多是作为可维护性层面的双保险, 确保未来新增的 EventBus 方法天然具备点火前拦截能力.
-
----
-
-
-
-### 系统核心
-
-| 文件 | 说明 |
-|------|------|
-| `CMakeLists.txt` | 顶层构建，Kconfig 条件路由，C23/C++23 标准，disasm |
-| `Kconfig` | 全局配置树，Platform / OSAL / System / Log / Board / Build 六菜单 |
-| `.config` | 配置输出 (menuconfig 生成) |
-
-### core/
-
-| 文件 | 说明 |
-|------|------|
-| `include/event_bus.hpp` | 发布订阅总线，ISR 自适应，范围订阅，快照锁 |
-| `include/buffer_pool.h` | 位图无锁 O(1) 内存池 |
-| `include/system_log.hpp` | 日志宏，三后端 (OSAL/ESP/PRINTF) |
-| `include/critical_data.h` | 双重反码 + volatile 关键数据保护 |
-| `include/production_log.h` | NVS 环形错误缓冲 (黑匣子) |
-| `src/event_bus.cpp` | EventBus C 兼容封装 + C++ 分发任务 |
-| `src/buffer_pool.c` | CAS 原子位图分配器 |
-| `src/production_log.c` | 弱符号钩子 Flash 持久化 |
-
-### osal/
-
-| 文件 | 说明 |
-|------|------|
-| `include/osal.h` | 统一抽象接口 (Task/Queue/Mutex/Spinlock/Memory/Time/Log) |
-| `include/osal_null.h` | 裸机后端 ISR 入口/退出/SysTick 声明 |
-| `src/osal_freertos.c` | FreeRTOS 后端实现 |
-| `src/osal_rtthread.c` | RT-Thread 后端实现 |
-| `src/osal_null.c` | 裸机后端实现 (原子环形队列 + 忙等待) |
-
-### system_cpp/ (C++ 后端)
-
-| 文件 | 说明 |
-|------|------|
-| `include/system_init.hpp` | C++ 两段式点火 API |
-| `include/system_runtime.hpp` | 运行时生命周期 (init/start/stop/suspend/resume) |
-| `include/system_wdt.hpp` | Task WDT + RTC WDT + 栈水位监控 |
-| `include/system_scrubber.hpp` | Flash CRC 巡检 |
-| `include/task_manager.hpp` | 任务创建封装 |
-| `include/lifecycle.hpp` | 生命周期基类 + 状态机 |
-| `include/safe_state.h` | Bootloop 防护 + enter_safe_state |
-| `src/system_init.cpp` | Phase 1 + Phase 2 点火实现 |
-| `src/lifecycle.cpp` | 状态机转移实现 |
-
-### system_c/ (C 后端)
-
-| 文件 | 说明 |
-|------|------|
-| `include/system_init.h` | C 两段式点火 API |
-| `include/system_cfg.h` | C 版配置日志宏 |
-| `include/system_wdt.h` | 包装 system_wdt.hpp |
-| `include/system_scrubber.h` | 包装 system_scrubber.hpp |
-| `include/task_manager.h` | C 版任务创建封装 |
-| `src/system_init.c` | C Phase 1 + Phase 2 点火 |
-| `src/system_wdt.c` | C 版看门狗 (static const 替代 constexpr) |
-| `src/system_scrubber.c` | C 版 CRC32 巡检 (全表) |
-| `src/task_manager.c` | C 版任务创建 |
-
-### board/
-
-| 文件 | 说明 |
-|------|------|
-| `board.dts` | 设备树源文件 |
-| `include/device.h` | VFS 设备框架 |
-| `include/driver.h` | DRIVER_REGISTER 宏 |
-| `include/board_config.h` | 集中配置入口 |
-| `src/board_driver.c` | Probe 引擎 + safety shutdown |
-| `src/board_device.c` | 设备树运行时 + 互斥锁 |
-| `tools/dtc-lite.py` | 编译期设备树编译器 (Kahn 排序) |
-
-### hal_if/
-
-| 文件 | 说明 |
-|------|------|
-| `include/hal_gpio.h` | GPIO 抽象 |
-| `include/hal_gpio_fast.h` | Fast-Path 寄存器直写 |
-| `include/hal_spi_bus.h` | SPI 总线抽象 |
-| `include/hal_i2c.h` | I2C 总线抽象 |
-| `include/hal_uart.h` | UART 抽象 |
-| `include/hal_pwm.h` | PWM 抽象 |
-| `include/hal_adc.h` | ADC 抽象 |
-| `include/hal_cpu.h` | CPU 紧急停止抽象 |
-| `include/hal_wdt.h` | 硬件看门狗抽象 |
-| `include/hal_flash.h` | Flash 抽象 |
-| `include/hal_i2s_bus.h` | I2S 总线抽象 |
-| `include/hal_storage.h` | 存储抽象 |
-| `include/hal_platform_safety.h` | 平台安全停机抽象 |
-
-### docs/
-
-| 文件 | 说明 |
-|------|------|
-| `README.md` | 架构总览 + 快速开始 |
-| `USAGE.md` | 完整使用手册 (配置/集成/服务/移植/调试) |
-| `NOTICE.md` | 架构演进与重构全记录 (本文) |

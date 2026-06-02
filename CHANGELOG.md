@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### mini-tree-example 示例工程加固
+
+- **`syscalls.c`** — `_sbrk` 堆栈碰撞检测：`heap_end + incr > &_estack - 4096` 时返回 `ENOMEM`，留 4KB 安全余量防止 newlib `malloc` 踩进栈
+- **`stm32f407zgt6.ld`** — CCM 64KB 上线：新增 `.ccm (NOLOAD)` 段，`__attribute__((section(".ccm")))` 可将 FreeRTOS `ucHeap`、关键任务栈或 ISR 数据放入零等待 SRAM
+- **`hal_stubs.c`** — 栈溢出钩子加固：`cpsid i` 锁死全局中断后再 `for (;;);`，任务栈溢出后系统立即冻结，不给 ISR 继续破坏的机会
+
+### RT-Thread 端口修复
+
+- **`lib/rtthread/libcpu/arm/cortex-m7/context_gcc.S`** — HardFault_Handler FPU 现场修复：原实现仅压入占位 flag，未保存实际 FPU 寄存器 (d8-d15 / s16-s31)。对齐 CM4F 实现，增加 `TST lr, #0x10` 检查 EXC_RETURN bit4，FPU 活跃时 `VSTMDBEQ` 保存 d8-d15，再按 flag → exec_return 顺序压栈。修复后 FPU 异常现场可被 `rt_hw_hard_fault_exception` 完整捕获。
+- **`lib/rtthread/libcpu/arm/cortex-m4/cpuport.c`** — `rt_interrupt_enter/leave` 中断嵌套计数器修复：原实现为空桩（仅 hook + log），`rt_interrupt_nest` 全局计数器永不递增。补入 `extern volatile rt_atomic_t rt_interrupt_nest`，enter 做 `rt_atomic_add`，leave 做 `rt_atomic_sub`，与 `irq.c` 通用弱实现保持一致。CM7/CM3/RISC-V 端口无此问题（均走通用实现）。
+
 ### Keil 工具链重构: ARMCC v5 → ARMCLANG (AC6)
 
 - **`Makefile`**: `TOOLCHAIN=keil5` 从 ARMCC v5 (`armcc`/`armasm`) 切换至 ARMCLANG AC6 (`armclang`)，与 keil6 共享同一 LLVM/Clang 后端

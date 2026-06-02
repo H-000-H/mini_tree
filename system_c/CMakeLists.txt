@@ -6,7 +6,7 @@
 # ==============================================================================
 
 add_library(system STATIC
-    "${CMAKE_SOURCE_DIR}/system_cpp/src/safe_state.c"
+    "${PROJECT_SOURCE_DIR}/system_cpp/src/safe_state.c"
     "src/system_init.c"
     "src/system_scrubber.c"
     "src/system_wdt.c"
@@ -17,8 +17,8 @@ target_include_directories(system
     PUBLIC
         "include"
     PRIVATE
-        "${CMAKE_SOURCE_DIR}/system_cpp/include"
-        "${CMAKE_SOURCE_DIR}/hal_if/include"
+        "${PROJECT_SOURCE_DIR}/system_cpp/include"
+        "${PROJECT_SOURCE_DIR}/hal_if/include"
 )
 
 target_link_libraries(system
@@ -26,6 +26,7 @@ target_link_libraries(system
         core
     PRIVATE
         board
+        osal
 )
 
 add_dependencies(system kconfig_generate)

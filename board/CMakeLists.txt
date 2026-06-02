@@ -9,7 +9,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # ---- DTS 生成 ----
 set(BOARD_DTS            "${CMAKE_CURRENT_SOURCE_DIR}/board.dts")
-set(DTC_LITE             "${CMAKE_SOURCE_DIR}/tools/dtc-lite.py")
+set(DTC_LITE             "${PROJECT_SOURCE_DIR}/tools/dtc-lite.py")
 set(GENERATED_BOARD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 file(MAKE_DIRECTORY "${GENERATED_BOARD_DIR}")
@@ -54,7 +54,7 @@ target_include_directories(board
         "include"
         "${GENERATED_BOARD_DIR}"
     PRIVATE
-        "${CMAKE_SOURCE_DIR}/core/include"
+        "${PROJECT_SOURCE_DIR}/core/include"
 )
 
 target_link_libraries(board

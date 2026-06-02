@@ -54,10 +54,31 @@ project(mini_tree VERSION 1.0.0 LANGUAGES C CXX ASM)
 # ---------------------------------------------------------------------------
 # 1.5 跨平台工具链拦截锁
 # ---------------------------------------------------------------------------
-# 若设置了 FREERTOS_PORT（表明交叉编译目标）但未指定工具链文件，则告警
-if(NOT CMAKE_TOOLCHAIN_FILE AND NOT (FREERTOS_PORT STREQUAL ""))
-    message(WARNING "【架构警报】: 正在交叉编译嵌入式目标，但未指定 CMAKE_TOOLCHAIN_FILE!\n"
-                    "建议使用: cmake -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain_arm_cm3.cmake -DFREERTOS_PORT=GCC_ARM_CM3 ..")
+# 当配置为嵌入式目标（非 POSIX）但未指定工具链文件时，告警引导
+#   -DFREERTOS_PORT 方式: 明确指定 → 必须配工具链
+#   Kconfig 方式 (.config) : 从 .config 读取平台 → 也可判断是否嵌入式
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    set(_needs_toolchain FALSE)
+    if(NOT (FREERTOS_PORT STREQUAL ""))
+        set(_needs_toolchain TRUE)
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
+        file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/.config" _plat REGEX "^CONFIG_PLATFORM_(ARM_CM|RISCV)=y")
+        if(_plat)
+            set(_needs_toolchain TRUE)
+        endif()
+        unset(_plat)
+    endif()
+    if(_needs_toolchain)
+        message(WARNING "【架构警报】: 正在交叉编译嵌入式目标，但未指定 CMAKE_TOOLCHAIN_FILE!\n"
+                        "建议使用:\n"
+                        "  cmake -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain_arm_cm4f.cmake ..\n"
+                        "可用的工具链文件:\n"
+                        "  cmake/toolchain_arm_cm3.cmake   - ARM Cortex-M3\n"
+                        "  cmake/toolchain_arm_cm4f.cmake  - ARM Cortex-M4F\n"
+                        "  cmake/toolchain_arm_cm7.cmake   - ARM Cortex-M7\n"
+                        "  cmake/toolchain_riscv.cmake     - RISC-V (32-bit)")
+    endif()
+    unset(_needs_toolchain)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -97,22 +118,30 @@ else()
     )
 endif()
 
-# ── C/C++ 标准 (按编译器支持能力选择) ──
+# ── C/C++ 标准 ──
+# ARMClang: CMake 原生支持 C11/C20, 用 CMAKE_C_STANDARD 即可.
+# GCC/Clang: 显式 -std= 标志, 回避 CMake ≤3.28 对 ARM GCC 13
+#   C23 映射不全的问题 (arm-none-eabi-gcc 13 用 -std=c2x 而非 -std=c23).
+#   工具链文件自带 -std=, 会覆盖本处标志 (last -std= wins), 无冲突.
 if(CMAKE_C_COMPILER_ID STREQUAL "ARMClang")
     set(CMAKE_C_STANDARD 11)
     set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_C_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 else()
-    set(CMAKE_C_STANDARD 23)
-    set(CMAKE_CXX_STANDARD 23)
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS "14.0")
+        add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=c2x>)
+    else()
+        add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=c23>)
+    endif()
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++23>)
 endif()
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── Kconfig C/C++ 标准覆盖 (CUSTOM_C_STANDARD, opt-in) ──
 # 当 .config 中存在 CONFIG_CUSTOM_C_STANDARD=y 时,
 # 用 Kconfig 中的 C_STANDARD / CXX_STANDARD 替换 CMake 默认值.
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(READ "${CMAKE_SOURCE_DIR}/.config" _std_config)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/.config" _std_config)
     if(_std_config MATCHES "CONFIG_CUSTOM_C_STANDARD=y")
         string(REGEX MATCH "CONFIG_C_STANDARD=\"([^\"]*)\"" _dummy "${_std_config}")
         if(CMAKE_MATCH_1)
@@ -134,7 +163,7 @@ endif()
 set(FREERTOS_PORT "" CACHE STRING "FreeRTOS 架构端口 (空 = 从 Kconfig 派生)")
 set(FREERTOS_HEAP "4" CACHE STRING "FreeRTOS 堆分配器 (1-5)")
 
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.config")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
 
 # ---------------------------------------------------------------------------
 # 4. Python3 & Kconfig 代码生成
@@ -142,16 +171,16 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_D
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig")
-set(KCONFIG_SRC     "${CMAKE_SOURCE_DIR}/Kconfig")
-set(KCONFIG_DOT     "${CMAKE_SOURCE_DIR}/.config")
+set(KCONFIG_SRC     "${CMAKE_CURRENT_SOURCE_DIR}/Kconfig")
+set(KCONFIG_DOT     "${CMAKE_CURRENT_SOURCE_DIR}/.config")
 set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
 
 add_custom_command(
     OUTPUT  "${KCONFIG_OUT}"
     COMMAND ${Python3_EXECUTABLE}
-            "${CMAKE_SOURCE_DIR}/tools/genconfig.py"
-            "${KCONFIG_SRC}" "${KCONFIG_GEN_DIR}" "${KCONFIG_DOT}"
-    DEPENDS "${KCONFIG_SRC}" "${CMAKE_SOURCE_DIR}/tools/genconfig.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/genconfig.py"
+            "${KCONFIG_SRC}" "${KCONFIG_GEN_DIR}" --config "${KCONFIG_DOT}"
+    DEPENDS "${KCONFIG_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/genconfig.py"
     COMMENT "生成 config.h ← Kconfig"
     VERBATIM
 )
@@ -167,8 +196,8 @@ elseif(FREERTOS_PORT STREQUAL "GCC_RISC_V")
     set(_riscv TRUE)
 elseif(FREERTOS_PORT STREQUAL "")
     # 未设置 FREERTOS_PORT (RT-Thread 后端) → 从 .config 读取
-    if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-        file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
+        file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
         if(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM7=y")
             set(_arm_core "7")
         elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM4F=y")
@@ -194,8 +223,8 @@ endif()
 # 4. Kconfig 静态断言防御 (CMake Static Assert)
 # ---------------------------------------------------------------------------
 # 注意：此检查在 _arm_core / _riscv 销毁前执行，以便复用平台检测结果
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(READ "${CMAKE_SOURCE_DIR}/.config" _config_content)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/.config" _config_content)
 
     # 防御 1: OSAL 后端冲突检测（Kconfig choice 理论上应保证互斥，此为双重保险）
     if(_config_content MATCHES "CONFIG_OSAL_FREERTOS=y" AND
@@ -227,8 +256,8 @@ add_subdirectory(osal)
 add_subdirectory(core)
 add_subdirectory(board)
 # ── 系统后端 (Kconfig SYSTEM_CPP / SYSTEM_C) ──
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _system_backend REGEX "^CONFIG_SYSTEM_")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/.config" _system_backend REGEX "^CONFIG_SYSTEM_")
     if(_system_backend STREQUAL "CONFIG_SYSTEM_C=y")
         add_subdirectory(system_c)
         set(MINI_TREE_SYSTEM_INC "${CMAKE_CURRENT_SOURCE_DIR}/system_c/include")
@@ -272,8 +301,8 @@ target_include_directories(mini_tree INTERFACE
 )
 
 # ── 反汇编 (由 Kconfig CONFIG_BUILD_DISASM 控制) ──
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _disasm REGEX "^CONFIG_BUILD_DISASM=y")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.config")
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/.config" _disasm REGEX "^CONFIG_BUILD_DISASM=y")
     if(_disasm STREQUAL "CONFIG_BUILD_DISASM=y")
         set(CONFIG_BUILD_DISASM TRUE)
     endif()

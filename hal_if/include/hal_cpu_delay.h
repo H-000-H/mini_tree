@@ -25,6 +25,7 @@ extern "C" {
  *   #include "hal_cpu_delay.h"
  *
  *   hal_delay_init();
+ *   hal_delay_ms(10);   // 阻塞 10ms
  *   hal_delay_us(10);   // 阻塞 10μs
  *   hal_delay_cycles(24); // 阻塞 24 个 CPU 周期
  */
@@ -134,6 +135,17 @@ static inline void hal_delay_cycles(uint32_t cycles)
     if (n == 0) n = 1;
     while (n--) { __asm__ volatile("nop"); }
 #endif
+}
+
+/* ── 阻塞延时 (毫秒) ──
+ *
+ * 基于 hal_delay_us 实现，阻塞指定毫秒数。
+ * 注意: 毫秒延时用简单的循环累加实现，极长延时（> 1000 ms）在低主频
+ * MCU 上可能因 32 位周期计数器溢出导致精度下降。
+ */
+static inline void hal_delay_ms(uint32_t ms)
+{
+    while (ms--) hal_delay_us(1000);
 }
 
 #ifdef __cplusplus

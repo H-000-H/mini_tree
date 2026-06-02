@@ -10,7 +10,7 @@
  * 否则 pdMS_TO_TICKS / portTICK_PERIOD_MS 等所有时间换算将完全错误.
  * 可通过 board_config.h 或在 CMake 层面用 -D 覆盖此值.
  */
-#define configCPU_CLOCK_HZ                      16000000
+#define configCPU_CLOCK_HZ                      168000000
 #define configTICK_RATE_HZ                      1000
 #define configMAX_PRIORITIES                    32
 #define configMINIMAL_STACK_SIZE                128
@@ -33,8 +33,11 @@
  * 即: NVIC 优先级 0~4 的中断处理程序不得调用 xQueueSendFromISR 等.
  * 违反此约束会导致 FreeRTOS 内部断言失败 (BASEPRI 屏蔽).
  * 移植驱动时, 务必确认 ISR 优先级满足此要求.
+ *
+ * STM32F407 NVIC 实现 4 位优先级 (16 级), 硬件寄存器值需要左移 4 位:
+ *   configMAX_SYSCALL_INTERRUPT_PRIORITY = configLIBRARY_... << 4
  */
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    5
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY    (5 << 4)  /* = 80, 屏蔽优先级 ≥ 5 的中断 */
 #define configKERNEL_INTERRUPT_PRIORITY         255
 #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY     5
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY          15

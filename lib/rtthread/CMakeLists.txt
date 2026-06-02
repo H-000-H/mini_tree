@@ -15,8 +15,8 @@
 
 # ── 从 Kconfig 选择架构端口 ──
 set(RTTHREAD_PORT "arm/cortex-m4")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
+if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
+    file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
     if(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM7=y")
         set(RTTHREAD_PORT "arm/cortex-m7")
     elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM3=y")
@@ -32,9 +32,13 @@ endif()
 set(RTTHREAD_KERNEL_SRCS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/clock.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cpu_up.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/defunct.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/idle.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ipc.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/irq.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/klibc/kerrno.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/klibc/kstdio.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/klibc/kstring.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/kservice.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/mem.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/object.c"
@@ -78,16 +82,18 @@ add_library(rtthread_kernel STATIC ${RTTHREAD_KERNEL_SRCS})
 target_include_directories(rtthread_kernel
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}"               # rtconfig.h (默认, PUBLIC 供 osal 层间接包含)
     PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"               # rtconfig.h (默认)
         "${CMAKE_CURRENT_SOURCE_DIR}/libcpu/${RTTHREAD_PORT}"
-        "${CMAKE_SOURCE_DIR}/board/include"
+        "${PROJECT_SOURCE_DIR}/board/include"
         "${CMAKE_BINARY_DIR}/generated/kconfig"
 )
 
 # ── 内部符号可见性 ──
 target_compile_definitions(rtthread_kernel PRIVATE
     __RT_KERNEL_SOURCE__
+    RT_KLIBC_USING_LIBC_VSNPRINTF
+    RT_KLIBC_USING_LIBC_VSSCANF
 )
 
 add_dependencies(rtthread_kernel kconfig_generate)

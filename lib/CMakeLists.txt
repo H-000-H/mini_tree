@@ -8,8 +8,8 @@
 
 # ── 从 Kconfig .config 读取 OSAL 后端选择 ──
 set(OSAL_BACKEND "FREERTOS")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _osal_choice REGEX "^CONFIG_OSAL_")
+if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
+    file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _osal_choice REGEX "^CONFIG_OSAL_")
     if(_osal_choice STREQUAL "CONFIG_OSAL_RTTHREAD=y")
         set(OSAL_BACKEND "RTTHREAD")
     elseif(_osal_choice STREQUAL "CONFIG_OSAL_NULL=y")

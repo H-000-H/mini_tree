@@ -13,7 +13,7 @@
 
 # This library provides the hal_* symbols that mini_tree expects.
 # Each function is declared in hal_if/include/*.h — implement them
-# using your MCU's SDK (STM32 HAL, ESP-IDF, NXP MCUXpresso, etc.).
+# using your MCU's SDK.
 add_library(your_hal_port STATIC
     hal_cpu.c
     hal_flash.c
@@ -26,7 +26,6 @@ add_library(your_hal_port STATIC
 target_include_directories(your_hal_port
     PRIVATE
         # Add your MCU SDK include paths here
-        # ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc
 )
 
 target_link_libraries(your_hal_port

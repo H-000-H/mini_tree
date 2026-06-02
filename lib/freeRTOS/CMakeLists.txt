@@ -18,8 +18,8 @@
 if(FREERTOS_PORT STREQUAL "")
     # 未通过 -D 指定 → 从 Kconfig .config 读取平台选择
     set(FREERTOS_PORT "GCC_POSIX")
-    if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-        file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
+    if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
+        file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
         if(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM7=y")
             set(FREERTOS_PORT "GCC_ARM_CM4F")
         elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM3=y")
@@ -97,8 +97,8 @@ target_include_directories(freertos_kernel
         "${CMAKE_CURRENT_SOURCE_DIR}"                     # FreeRTOSConfig.h (用户提供)
         "${CMAKE_CURRENT_SOURCE_DIR}/${FREERTOS_PORT_INCDIR}"   # portmacro.h
     PRIVATE
-        "${CMAKE_SOURCE_DIR}/board/include"     # board_config.h → dt_config_gen.h (DTS 时钟)
-        "${CMAKE_BINARY_DIR}/board/generated"   # dt_config_gen.h (由 dtc-lite.py 生成)
+        "${PROJECT_SOURCE_DIR}/board/include"     # board_config.h → dt_config_gen.h (DTS 时钟)
+        "${PROJECT_BINARY_DIR}/board/generated"     # dt_config_gen.h (由 dtc-lite.py 生成)
 )
 
 # ── 依赖 DTS 代码生成 + Kconfig ──

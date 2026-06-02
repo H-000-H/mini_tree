@@ -7,8 +7,8 @@
 
 # ── OSAL 后端选择 ──
 set(OSAL_BACKEND "FREERTOS")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.config" _osal_choice REGEX "^CONFIG_OSAL_")
+if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
+    file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _osal_choice REGEX "^CONFIG_OSAL_")
     if(_osal_choice STREQUAL "CONFIG_OSAL_RTTHREAD=y")
         set(OSAL_BACKEND "RTTHREAD")
     endif()
@@ -25,8 +25,8 @@ target_include_directories(core
         "include"
         "${KCONFIG_GEN_DIR}"
     PRIVATE
-        "${CMAKE_SOURCE_DIR}/system_cpp/include"
-        "${CMAKE_SOURCE_DIR}/hal_if/include"
+        "${PROJECT_SOURCE_DIR}/system_cpp/include"
+        "${PROJECT_SOURCE_DIR}/hal_if/include"
 )
 
 # core ↔ system 存在循环符号依赖（event_bus ↔ safe_state/wdt），

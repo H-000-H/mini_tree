@@ -473,6 +473,8 @@ rt_inline rt_uint32_t rt_hw_get_ipsr(void)
 void rt_interrupt_enter(void)
 {
     extern void (*rt_interrupt_enter_hook)(void);
+    extern volatile rt_atomic_t rt_interrupt_nest;
+    rt_atomic_add(&(rt_interrupt_nest), 1);
     RT_OBJECT_HOOK_CALL(rt_interrupt_enter_hook,());
     LOG_D("irq has come...");
 }
@@ -487,8 +489,10 @@ void rt_interrupt_enter(void)
 void rt_interrupt_leave(void)
 {
     extern void (*rt_interrupt_leave_hook)(void);
+    extern volatile rt_atomic_t rt_interrupt_nest;
     LOG_D("irq is going to leave");
     RT_OBJECT_HOOK_CALL(rt_interrupt_leave_hook,());
+    rt_atomic_sub(&(rt_interrupt_nest), 1);
 }
 
 /**
