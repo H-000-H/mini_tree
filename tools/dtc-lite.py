@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 dtc-lite.py — MCU 编译期 DeviceTree 编译器
@@ -22,51 +21,56 @@ Output (in output_dir/):
     board_handles.h     — chosen/alias 注入句柄
 """
 
-import sys
+from __future__ import annotations
+
+import argparse
 import os
 import re
-from collections import OrderedDict
+import shutil
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 # =========================================================================
 #  Tokenizer（分词器）
 # =========================================================================
 
-TOKEN_EOF      = 0
-TOKEN_LBRACE   = 1   # {
-TOKEN_RBRACE   = 2   # }
-TOKEN_SEMI     = 3   # ;
-TOKEN_EQ       = 4   # =
-TOKEN_LANGLE   = 5   # <
-TOKEN_RANGLE   = 6   # >
-TOKEN_SLASH    = 7   # /
-TOKEN_AMPERS   = 8   # &
-TOKEN_COLON    = 9   # :
-TOKEN_COMMA    = 10  # ,
-TOKEN_STRING   = 11  # "string"
-TOKEN_INT      = 12  # 123
-TOKEN_IDENT    = 13  # identifier-with-hy-phens
-TOKEN_DTSV1    = 14  # /dts-v1/
-TOKEN_POUND    = 15  # # (for #include, etc.)
-TOKEN_AT       = 16  # @ (unit-address separator)
+TOKEN_EOF: int = 0
+TOKEN_LBRACE: int = 1   # {
+TOKEN_RBRACE: int = 2   # }
+TOKEN_SEMI: int = 3     # ;
+TOKEN_EQ: int = 4       # =
+TOKEN_LANGLE: int = 5   # <
+TOKEN_RANGLE: int = 6   # >
+TOKEN_SLASH: int = 7    # /
+TOKEN_AMPERS: int = 8   # &
+TOKEN_COLON: int = 9    # :
+TOKEN_COMMA: int = 10   # ,
+TOKEN_STRING: int = 11  # "string"
+TOKEN_INT: int = 12     # 123
+TOKEN_IDENT: int = 13   # identifier-with-hy-phens
+TOKEN_DTSV1: int = 14   # /dts-v1/
+TOKEN_POUND: int = 15   # # (for #include, etc.)
+TOKEN_AT: int = 16      # @ (unit-address separator)
 
-token_names = {
+token_names: Dict[int, str] = {
     0: "EOF", 1: "{", 2: "}", 3: ";", 4: "=",
     5: "<", 6: ">", 7: "/", 8: "&", 9: ":",
     10: ",", 11: "STRING", 12: "INT", 13: "IDENT",
-    14: "/dts-v1/", 15: "#", 16: "@"
+    14: "/dts-v1/", 15: "#", 16: "@",
 }
 
 
 class Token:
     __slots__ = ('type', 'value', 'line', 'col')
-    def __init__(self, type, value=None, line=0, col=0):
-        self.type = type
-        self.value = value
-        self.line = line
-        self.col = col
+    def __init__(self, type: int, value: Any = None, line: int = 0, col: int = 0) -> None:
+        self.type: int = type
+        self.value: Any = value
+        self.line: int = line
+        self.col: int = col
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.value is not None:
             return f"Token({token_names.get(self.type, self.type)}, '{self.value}')"
         return f"Token({token_names.get(self.type, self.type)})"
@@ -75,18 +79,18 @@ class Token:
 class Tokenizer:
     """DTS 分词器 — 手写有限状态机。"""
 
-    def __init__(self, text, filename="<dts>"):
-        self.text = text
-        self.filename = filename
-        self.pos = 0
-        self.line = 1
-        self.col = 1
+    def __init__(self, text: str, filename: str = "<dts>") -> None:
+        self.text: str = text
+        self.filename: str = filename
+        self.pos: int = 0
+        self.line: int = 1
+        self.col: int = 1
 
-    def peek(self):
+    def peek(self) -> str:
         return self.text[self.pos] if self.pos < len(self.text) else '\0'
 
-    def advance(self):
-        ch = self.text[self.pos] if self.pos < len(self.text) else '\0'
+    def advance(self) -> str:
+        ch: str = self.text[self.pos] if self.pos < len(self.text) else '\0'
         self.pos += 1
         if ch == '\n':
             self.line += 1
@@ -95,44 +99,43 @@ class Tokenizer:
             self.col += 1
         return ch
 
-    def skip_ws(self):
+    def skip_ws(self) -> None:
         while self.pos < len(self.text):
-            ch = self.peek()
+            ch: str = self.peek()
             if ch in ' \t\n\r':
                 self.advance()
             else:
                 break
 
-    def skip_line_comment(self):
+    def skip_line_comment(self) -> None:
         while self.pos < len(self.text):
-            ch = self.advance()
+            ch: str = self.advance()
             if ch == '\n':
                 return
 
-    def skip_block_comment(self):
+    def skip_block_comment(self) -> None:
         while self.pos + 1 < len(self.text):
             if self.peek() == '*' and self.text[self.pos + 1] == '/':
-                self.advance()  # *
-                self.advance()  # /
+                self.advance()
+                self.advance()
                 return
             self.advance()
         raise SyntaxError(f"{self.filename}:{self.line}: unterminated block comment")
 
-    def error(self, msg):
+    def error(self, msg: str) -> None:
         raise SyntaxError(f"{self.filename}:{self.line}:{self.col}: {msg}")
 
-    def tokenize(self):
-        tokens = []
+    def tokenize(self) -> List[Token]:
+        tokens: List[Token] = []
         while self.pos < len(self.text):
-            ch = self.peek()
-            line, col = self.line, self.col
+            ch: str = self.peek()
+            line: int = self.line
+            col: int = self.col
 
-            # 空白
             if ch in ' \t\n\r':
                 self.skip_ws()
                 continue
 
-            # 注释
             if ch == '/':
                 if self.pos + 1 < len(self.text):
                     if self.text[self.pos + 1] == '/':
@@ -143,9 +146,7 @@ class Tokenizer:
                         self.advance()
                         self.skip_block_comment()
                         continue
-                # 单独的 / — 可能是 /dts-v1/ 或根节点
                 if self.pos + 7 < len(self.text) and self.text[self.pos:self.pos+8] == '/dts-v1/':
-                    # /dts-v1/
                     for _ in range(8):
                         self.advance()
                     tokens.append(Token(TOKEN_DTSV1, None, line, col))
@@ -154,16 +155,15 @@ class Tokenizer:
                 self.advance()
                 continue
 
-            # 字符串
             if ch == '"':
                 self.advance()
-                s = []
+                s: List[str] = []
                 while self.pos < len(self.text):
-                    c = self.advance()
+                    c: str = self.advance()
                     if c == '"':
                         break
                     if c == '\\':
-                        c2 = self.advance()
+                        c2: str = self.advance()
                         if c2 == 'n':
                             s.append('\n')
                         elif c2 == 't':
@@ -181,7 +181,6 @@ class Tokenizer:
                 tokens.append(Token(TOKEN_STRING, ''.join(s), line, col))
                 continue
 
-            # 符号单字符
             if ch == '{':
                 tokens.append(Token(TOKEN_LBRACE, None, line, col))
                 self.advance()
@@ -227,19 +226,17 @@ class Tokenizer:
                 self.advance()
                 continue
 
-            # 数字 (含负数)
             if ch.isdigit() or (ch == '-' and self.pos + 1 < len(self.text)
                                 and self.text[self.pos + 1].isdigit()):
-                start = self.pos
+                start: int = self.pos
                 if ch == '-':
                     self.advance()
                 while self.pos < len(self.text) and self.peek().isdigit():
                     self.advance()
-                val = int(self.text[start:self.pos])
+                val: int = int(self.text[start:self.pos])
                 tokens.append(Token(TOKEN_INT, val, line, col))
                 continue
 
-            # 标识符 (含连字符, @, .)
             if ch.isalpha() or ch == '_' or ch == '.':
                 start = self.pos
                 while self.pos < len(self.text):
@@ -248,10 +245,9 @@ class Tokenizer:
                         self.advance()
                     else:
                         break
-                ident = self.text[start:self.pos]
-                # 检查是否是 /dts-v1/ （从 / 开始的情况已经处理过了）
+                ident: str = self.text[start:self.pos]
                 if ident == 'dts-v1' and start > 0 and self.text[start-1] == '/':
-                    continue  # 已被上面的 /dts-v1 逻辑处理
+                    continue
                 tokens.append(Token(TOKEN_IDENT, ident, line, col))
                 continue
 
@@ -269,18 +265,18 @@ class DtsProperty:
     """DTS 属性 (key = value)"""
     __slots__ = ('name', 'strings', 'ints', 'phandles', 'line')
 
-    def __init__(self, name, line=0):
-        self.name = name
-        self.strings = []    # 字符串值
-        self.ints = []       # 整数值
-        self.phandles = []   # phandle 引用 (label string)
-        self.line = line
+    def __init__(self, name: str, line: int = 0) -> None:
+        self.name: str = name
+        self.strings: List[str] = []
+        self.ints: List[int] = []
+        self.phandles: List[str] = []
+        self.line: int = line
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return not self.strings and not self.ints and not self.phandles
 
-    def __repr__(self):
-        parts = []
+    def __repr__(self) -> str:
+        parts: List[str] = []
         if self.strings:
             parts.append(f'"{self.strings[0]}"')
         if self.ints:
@@ -294,71 +290,70 @@ class DtsNode:
     """DTS 节点"""
     __slots__ = ('name', 'label', 'parent', 'children', 'props', 'line')
 
-    def __init__(self, name, label=None, parent=None, line=0):
-        self.name = name
-        self.label = label
-        self.parent = parent
-        self.children = []    # Ordered: 子节点列表
-        self.props = []       # Property 列表
-        self.line = line
+    def __init__(self, name: str, label: Optional[str] = None,
+                 parent: Optional[DtsNode] = None, line: int = 0) -> None:
+        self.name: str = name
+        self.label: Optional[str] = label
+        self.parent: Optional[DtsNode] = parent
+        self.children: List[DtsNode] = []
+        self.props: List[DtsProperty] = []
+        self.line: int = line
 
     @property
-    def path(self):
+    def path(self) -> str:
         """从根到当前节点的路径"""
-        parts = []
-        node = self
+        parts: List[str] = []
+        node: Optional[DtsNode] = self
         while node:
             if node.name:
                 parts.insert(0, node.name)
             node = node.parent
         return '/' + '/'.join(parts)
 
-    def find_child(self, name):
+    def find_child(self, name: str) -> Optional[DtsNode]:
         for c in self.children:
             if c.name == name:
                 return c
         return None
 
-    def find_node_by_path(self, path):
+    def find_node_by_path(self, path: str) -> Optional[DtsNode]:
         """按路径查找子节点 (相对路径或绝对路径)"""
         if path.startswith('/'):
-            # 绝对路径: 从根开始
-            parts = [p for p in path.split('/') if p]
-            node = self
-            while node.parent:
+            parts: List[str] = [p for p in path.split('/') if p]
+            node: Optional[DtsNode] = self
+            while node and node.parent:
                 node = node.parent
             for part in parts:
-                node = node.find_child(part)
-                if not node:
+                if node is None:
                     return None
+                node = node.find_child(part)
             return node
         else:
-            # 相对路径
             parts = path.split('/')
-            node = self
+            node: Optional[DtsNode] = self
             for part in parts:
-                node = node.find_child(part)
-                if not node:
+                if node is None:
                     return None
+                node = node.find_child(part)
             return node
 
-    def get_prop(self, name):
+    def get_prop(self, name: str) -> Optional[DtsProperty]:
         for p in self.props:
             if p.name == name:
                 return p
         return None
 
-    def collect_all_devices(self):
+    def collect_all_devices(self) -> List[DtsNode]:
         """递归收集所有包含 compatible 属性的节点 (候选设备)"""
-        devices = []
+        devices: List[DtsNode] = []
         if any(p.name == 'compatible' for p in self.props):
             devices.append(self)
         for c in self.children:
             devices.extend(c.collect_all_devices())
         return devices
 
-    def __repr__(self):
-        lbl = f"{self.label}: " if self.label else ""
+    def __repr__(self) -> str:
+        lbl: str = f"{self.label}: " if self.label else ""
         return f"Node({lbl}{self.name})"
 
 
@@ -369,21 +364,21 @@ class DtsNode:
 class DtsParser:
     """DTS 递归下降解析器"""
 
-    def __init__(self, tokens):
-        self.tokens = tokens
-        self.pos = 0
+    def __init__(self, tokens: List[Token]) -> None:
+        self.tokens: List[Token] = tokens
+        self.pos: int = 0
 
-    def peek(self, offset=0):
-        idx = self.pos + offset
+    def peek(self, offset: int = 0) -> Optional[Token]:
+        idx: int = self.pos + offset
         return self.tokens[idx] if idx < len(self.tokens) else None
 
-    def advance(self):
-        t = self.tokens[self.pos]
+    def advance(self) -> Token:
+        t: Token = self.tokens[self.pos]
         self.pos += 1
         return t
 
-    def expect(self, type, msg=None):
-        t = self.advance()
+    def expect(self, type: int, msg: Optional[str] = None) -> Token:
+        t: Token = self.advance()
         if t.type != type:
             raise SyntaxError(
                 f"line {t.line}: expected {token_names.get(type, type)}"
@@ -392,91 +387,76 @@ class DtsParser:
             )
         return t
 
-    def skip_semi(self):
+    def skip_semi(self) -> None:
         """跳过可选的分号 (某些 DTS 风格可省略)"""
         if self.peek() and self.peek().type == TOKEN_SEMI:
             self.advance()
 
-    def parse(self):
+    def parse(self) -> DtsNode:
         """dts := header root nodes"""
         self.parse_header()
-        root = self.parse_node()
+        root: Optional[DtsNode] = self.parse_node()
         if not root or root.name != '':
             raise SyntaxError("missing root node '/'")
         return root
 
-    def parse_header(self):
+    def parse_header(self) -> None:
         """header := '/dts-v1/' ';'"""
         if self.peek() and self.peek().type == TOKEN_DTSV1:
             self.advance()
             self.skip_semi()
-        # 如果没 header 也 OK
 
-    def parse_node(self):
+    def parse_node(self) -> Optional[DtsNode]:
         """node := ['/' | label ':' name] '{' body '}' ';'?"""
         if not self.peek():
             return None
 
-        t = self.peek()
-        line = t.line
-        label = None
-        name = None
+        t: Token = self.peek()
+        line: int = t.line
+        label: Optional[str] = None
+        name: Optional[str] = None
 
-        # 根节点: /
         if t.type == TOKEN_SLASH:
             self.advance()
             name = ''
         elif t.type == TOKEN_IDENT:
-            # 可能是 label: name 或仅有 name 或仅有 label:
-            ident = self.advance()
+            ident: str = self.advance().value
             if self.peek() and self.peek().type == TOKEN_COLON:
-                # label: name {  or label: {
-                self.advance()  # :
+                self.advance()
                 label = ident
                 if self.peek() and self.peek().type == TOKEN_IDENT:
                     name = self.advance().value
                 else:
-                    name = label  # label 即名字
+                    name = label
             elif self.peek() and self.peek().type == TOKEN_AT:
-                # name@addr
-                name = ident.value
+                name = ident
             else:
-                name = ident.value
+                name = ident
         else:
             return None
 
-        # 处理 name@addr: name 部分可能包含 @addr
         if self.peek() and self.peek().type == TOKEN_AT:
-            self.advance()  # @
-            addr = self.advance()
-            if addr.type == TOKEN_INT:
-                name = f"{name}@{addr.value}"
-            elif addr.type == TOKEN_IDENT:
-                name = f"{name}@{addr.value}"
+            self.advance()
+            addr_tok: Token = self.advance()
+            addr_str: str = str(addr_tok.value) if addr_tok.type in (TOKEN_INT, TOKEN_IDENT) else ""
+            name = f"{name}@{addr_str}"
 
-        # 期待 {
         if not self.peek() or self.peek().type != TOKEN_LBRACE:
-            # 没有 { — 不是节点, 退回
-            if label:
-                # label: 可能是属性引用
-                pass
             return None
 
-        node = DtsNode(name, label=label, parent=None, line=line)
-        self.advance()  # {
+        node: DtsNode = DtsNode(name, label=label, parent=None, line=line)
+        self.advance()
 
-        # 解析 body (props + children)
         while self.peek() and self.peek().type != TOKEN_RBRACE:
             t = self.peek()
 
             if t.type == TOKEN_POUND:
-                # #address-cells / #size-cells — # 是属性名的一部分
-                self.advance()  # #
+                self.advance()
                 if self.peek() and self.peek().type == TOKEN_IDENT:
                     ident = "#" + self.advance().value
                     if self.peek() and self.peek().type == TOKEN_EQ:
-                        self.advance()  # =
-                        prop = DtsProperty(ident, line=t.line)
+                        self.advance()
+                        prop: DtsProperty = DtsProperty(ident, line=t.line)
                         self.parse_prop_value(prop)
                         node.props.append(prop)
                     else:
@@ -486,14 +466,12 @@ class DtsParser:
                 continue
 
             if t.type == TOKEN_IDENT:
-                # 可能是属性或子节点
                 ident = t.value
                 self.advance()
 
                 if self.peek() and self.peek().type == TOKEN_LBRACE:
-                    # 子节点 (无 label)
-                    child = DtsNode(ident, parent=node, line=t.line)
-                    self.advance()  # {
+                    child: DtsNode = DtsNode(ident, parent=node, line=t.line)
+                    self.advance()
                     while self.peek() and self.peek().type != TOKEN_RBRACE:
                         self.parse_body_item(child)
                     if self.peek() and self.peek().type == TOKEN_RBRACE:
@@ -502,25 +480,22 @@ class DtsParser:
                     node.children.append(child)
 
                 elif self.peek() and self.peek().type == TOKEN_COLON:
-                    # label: name { — 子节点带 label
-                    self.advance()  # :
-                    label_name = ident
+                    self.advance()
+                    label_name: str = ident
                     if self.peek() and self.peek().type == TOKEN_IDENT:
-                        child_name = self.advance().value
+                        child_name: str = self.advance().value
                     else:
                         child_name = label_name
 
                     if self.peek() and self.peek().type == TOKEN_AT:
-                        self.advance()  # @
-                        addr = self.advance()
-                        if addr.type == TOKEN_INT:
-                            child_name = f"{child_name}@{addr.value}"
-                        elif addr.type == TOKEN_IDENT:
-                            child_name = f"{child_name}@{addr.value}"
+                        self.advance()
+                        addr_tok = self.advance()
+                        addr_str = str(addr_tok.value) if addr_tok.type in (TOKEN_INT, TOKEN_IDENT) else ""
+                        child_name = f"{child_name}@{addr_str}"
 
                     if self.peek() and self.peek().type == TOKEN_LBRACE:
                         child = DtsNode(child_name, label=label_name, parent=node, line=t.line)
-                        self.advance()  # {
+                        self.advance()
                         while self.peek() and self.peek().type != TOKEN_RBRACE:
                             self.parse_body_item(child)
                         if self.peek() and self.peek().type == TOKEN_RBRACE:
@@ -528,22 +503,19 @@ class DtsParser:
                         self.skip_semi()
                         node.children.append(child)
                     else:
-                        # label: value; — 属性值引用?
-                        # 当作属性处理
                         prop = DtsProperty(label_name, line=t.line)
                         while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_RBRACE, TOKEN_EOF):
-                            val_token = self.advance()
+                            val_token: Token = self.advance()
                             if val_token.type == TOKEN_STRING:
                                 prop.strings.append(val_token.value)
                             elif val_token.type == TOKEN_INT:
                                 prop.ints.append(val_token.value)
                             elif val_token.type == TOKEN_AMPERS:
-                                # phandle: &label
-                                ph = self.advance()
+                                ph: Token = self.advance()
                                 if ph.type == TOKEN_IDENT:
                                     prop.phandles.append(ph.value)
                             elif val_token.type in (TOKEN_LANGLE, TOKEN_RANGLE):
-                                pass  # 忽略界符
+                                pass
                             elif val_token.type == TOKEN_COMMA:
                                 pass
                         if self.peek() and self.peek().type == TOKEN_SEMI:
@@ -551,21 +523,17 @@ class DtsParser:
                         node.props.append(prop)
 
                 elif self.peek() and self.peek().type == TOKEN_EQ:
-                    # 属性 key = value;
-                    self.advance()  # =
+                    self.advance()
                     prop = DtsProperty(ident, line=t.line)
                     self.parse_prop_value(prop)
                     node.props.append(prop)
 
                 elif self.peek() and self.peek().type == TOKEN_SEMI:
-                    # 空属性 (key; )
                     node.props.append(DtsProperty(ident, line=t.line))
                     self.advance()
                     node.props[-1].strings = ["true"]
 
                 else:
-                    # 可能是子节点名后缺少 { ?
-                    # 尝试当作属性处理
                     prop = DtsProperty(ident, line=t.line)
                     while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_RBRACE, TOKEN_EOF):
                         val_token = self.advance()
@@ -577,35 +545,26 @@ class DtsParser:
                             ph = self.advance()
                             if ph.type == TOKEN_IDENT:
                                 prop.phandles.append(ph.value)
-                        elif val_token.type == TOKEN_AT:
-                            # 可能是 name@addr 后缺少 {
-                            pass
-                        elif val_token.type == TOKEN_COLON:
-                            pass
-                        elif val_token.type in (TOKEN_LANGLE, TOKEN_RANGLE, TOKEN_COMMA):
+                        elif val_token.type in (TOKEN_LANGLE, TOKEN_RANGLE, TOKEN_COMMA, TOKEN_AT, TOKEN_COLON):
                             pass
                     if self.peek() and self.peek().type == TOKEN_SEMI:
                         self.advance()
                     node.props.append(prop)
 
             elif t.type == TOKEN_AMPERS:
-                # &label { ... } — 引用标签的节点
                 self.advance()
-                lbl = self.advance()
-                ref_node = DtsNode(f"&{lbl.value}", parent=node, line=t.line)
+                lbl: Token = self.advance()
                 if self.peek() and self.peek().type == TOKEN_LBRACE:
                     self.advance()
+                    ref_node: DtsNode = DtsNode(f"&{lbl.value}", parent=node, line=t.line)
                     while self.peek() and self.peek().type != TOKEN_RBRACE:
                         self.parse_body_item(ref_node)
                     if self.peek() and self.peek().type == TOKEN_RBRACE:
                         self.advance()
                     self.skip_semi()
-                # 不添加 & 节点到 children
-                # 这是 overlay 语法, MCU Lite 不支持
                 pass
 
             elif t.type in (TOKEN_SLASH, TOKEN_DTSV1):
-                # 已处理
                 self.advance()
 
             else:
@@ -617,21 +576,20 @@ class DtsParser:
 
         return node
 
-    def parse_body_item(self, parent):
+    def parse_body_item(self, parent: DtsNode) -> None:
         """解析 body 中的一项 (prop 或 child node)"""
         if not self.peek():
             return
 
-        t = self.peek()
+        t: Token = self.peek()
 
         if t.type == TOKEN_POUND:
-            # #address-cells / #size-cells
             self.advance()
             if self.peek() and self.peek().type == TOKEN_IDENT:
-                ident = "#" + self.advance().value
+                ident: str = "#" + self.advance().value
                 if self.peek() and self.peek().type == TOKEN_EQ:
                     self.advance()
-                    prop = DtsProperty(ident, line=t.line)
+                    prop: DtsProperty = DtsProperty(ident, line=t.line)
                     self.parse_prop_value(prop)
                     parent.props.append(prop)
                 else:
@@ -645,8 +603,7 @@ class DtsParser:
             self.advance()
 
             if self.peek() and self.peek().type == TOKEN_LBRACE:
-                # 子节点
-                child = DtsNode(ident, parent=parent, line=t.line)
+                child: DtsNode = DtsNode(ident, parent=parent, line=t.line)
                 self.advance()
                 while self.peek() and self.peek().type != TOKEN_RBRACE:
                     self.parse_body_item(child)
@@ -656,20 +613,16 @@ class DtsParser:
                 parent.children.append(child)
 
             elif self.peek() and self.peek().type == TOKEN_COLON:
-                # label: name { or label: {
                 self.advance()
-                label_name = ident
-                child_name = label_name
+                label_name: str = ident
+                child_name: str = label_name
                 if self.peek() and self.peek().type == TOKEN_IDENT:
                     child_name = self.advance().value
-                # @addr
                 if self.peek() and self.peek().type == TOKEN_AT:
                     self.advance()
-                    addr = self.advance()
-                    if addr.type == TOKEN_INT:
-                        child_name = f"{child_name}@{addr.value}"
-                    elif addr.type == TOKEN_IDENT:
-                        child_name = f"{child_name}@{addr.value}"
+                    addr_tok: Token = self.advance()
+                    addr_str: str = str(addr_tok.value) if addr_tok.type in (TOKEN_INT, TOKEN_IDENT) else ""
+                    child_name = f"{child_name}@{addr_str}"
                 if self.peek() and self.peek().type == TOKEN_LBRACE:
                     child = DtsNode(child_name, label=label_name, parent=parent, line=t.line)
                     self.advance()
@@ -680,30 +633,26 @@ class DtsParser:
                     self.skip_semi()
                     parent.children.append(child)
                 else:
-                    # label (no brace) — 可能是个引用标记
                     prop = DtsProperty(label_name, line=t.line)
                     parent.props.append(prop)
 
             elif self.peek() and self.peek().type == TOKEN_EQ:
-                # 属性
-                self.advance()  # =
+                self.advance()
                 prop = DtsProperty(ident, line=t.line)
                 self.parse_prop_value(prop)
                 parent.props.append(prop)
 
             elif self.peek() and self.peek().type == TOKEN_SEMI:
-                # 空属性
                 prop = DtsProperty(ident, line=t.line)
                 prop.strings = ["true"]
                 parent.props.append(prop)
                 self.advance()
 
             elif self.peek() and self.peek().type == TOKEN_AT:
-                # name@addr { — 子节点
-                self.advance()  # @
-                addr = self.advance()
-                addr_val = addr.value if addr.type == TOKEN_INT else str(addr.value)
-                child_name = f"{ident}@{addr_val}"
+                self.advance()
+                addr_tok = self.advance()
+                addr_str = str(addr_tok.value) if addr_tok.type == TOKEN_INT else str(addr_tok.value)
+                child_name = f"{ident}@{addr_str}"
                 if self.peek() and self.peek().type == TOKEN_LBRACE:
                     child = DtsNode(child_name, parent=parent, line=t.line)
                     self.advance()
@@ -716,7 +665,7 @@ class DtsParser:
                 else:
                     prop = DtsProperty(child_name, line=t.line)
                     while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_RBRACE, TOKEN_EOF):
-                        vt = self.advance()
+                        vt: Token = self.advance()
                         if vt.type == TOKEN_INT:
                             prop.ints.append(vt.value)
                     if self.peek() and self.peek().type == TOKEN_SEMI:
@@ -724,7 +673,6 @@ class DtsParser:
                     parent.props.append(prop)
 
             else:
-                # 未知 — 尝试属性
                 prop = DtsProperty(ident, line=t.line)
                 while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_RBRACE, TOKEN_EOF):
                     vt = self.advance()
@@ -733,7 +681,7 @@ class DtsParser:
                     elif vt.type == TOKEN_INT:
                         prop.ints.append(vt.value)
                     elif vt.type == TOKEN_AMPERS:
-                        ph = self.advance()
+                        ph: Token = self.advance()
                         if ph.type == TOKEN_IDENT:
                             prop.phandles.append(ph.value)
                     elif vt.type in (TOKEN_LANGLE, TOKEN_RANGLE, TOKEN_COMMA, TOKEN_AT, TOKEN_COLON, TOKEN_SLASH):
@@ -743,15 +691,15 @@ class DtsParser:
                 parent.props.append(prop)
 
         elif t.type == TOKEN_RBRACE:
-            return  # 父级处理
+            return
 
         else:
-            self.advance()  # 跳过未知 token
+            self.advance()
 
-    def parse_prop_value(self, prop):
+    def parse_prop_value(self, prop: DtsProperty) -> None:
         """解析属性值 (可能是 strings, <ints>, phandles 的组合)"""
         while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_RBRACE, TOKEN_EOF):
-            t = self.peek()
+            t: Token = self.peek()
             if t.type == TOKEN_STRING:
                 self.advance()
                 prop.strings.append(t.value)
@@ -760,15 +708,14 @@ class DtsParser:
                 prop.ints.append(t.value)
             elif t.type == TOKEN_LANGLE:
                 self.advance()
-                # 解析 < ... > 中的内容
                 while self.peek() and self.peek().type != TOKEN_RANGLE:
-                    inner = self.peek()
+                    inner: Token = self.peek()
                     if inner.type == TOKEN_INT:
                         self.advance()
                         prop.ints.append(inner.value)
                     elif inner.type == TOKEN_AMPERS:
                         self.advance()
-                        ph = self.advance()
+                        ph: Token = self.advance()
                         if ph.type == TOKEN_IDENT:
                             prop.phandles.append(ph.value)
                     else:
@@ -782,28 +729,27 @@ class DtsParser:
                     prop.phandles.append(ph.value)
             elif t.type == TOKEN_COMMA:
                 self.advance()
-                # 逗号分隔, 忽略
             else:
                 break
         if self.peek() and self.peek().type == TOKEN_SEMI:
             self.advance()
 
-    def parse_value_sequence(self):
+    def parse_value_sequence(self) -> List[Tuple[str, Any]]:
         """解析值序列直到 ; 或 }"""
-        values = []
+        values: List[Tuple[str, Any]] = []
         while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_RBRACE, TOKEN_EOF):
-            t = self.advance()
+            t: Token = self.advance()
             if t.type == TOKEN_STRING:
                 values.append(('string', t.value))
             elif t.type == TOKEN_INT:
                 values.append(('int', t.value))
             elif t.type == TOKEN_LANGLE:
                 while self.peek() and self.peek().type != TOKEN_RANGLE:
-                    it = self.advance()
+                    it: Token = self.advance()
                     if it.type == TOKEN_INT:
                         values.append(('int', it.value))
                     elif it.type == TOKEN_AMPERS:
-                        ph = self.advance()
+                        ph: Token = self.advance()
                         if ph.type == TOKEN_IDENT:
                             values.append(('phandle', ph.value))
                 if self.peek() and self.peek().type == TOKEN_RANGLE:
@@ -822,67 +768,54 @@ class DtsParser:
 class DTSCompiler:
     """DTS 编译器: 解析 → 解析 → 生成"""
 
-    def __init__(self, dts_path, driver_dirs=None):
-        self.dts_path = dts_path
-        self.driver_dirs = driver_dirs or []
-        self.root = None
-        self.label_map = {}     # label → DtsNode
-        self.alias_map = {}     # alias_name → DtsNode
-        self.chosen_map = {}    # chosen_key → DtsNode
-        self.device_list = []   # 所有设备节点 (含 compatible)
-        self.driver_map = {}    # compatible → (probe_fn_name, remove_fn_name)
-        self._macros = {}       # 预处理器宏表 (name → value)
-        self._visited = set()   # #include 防循环
+    def __init__(self, dts_path: str, driver_dirs: Optional[List[str]] = None) -> None:
+        self.dts_path: str = dts_path
+        self.driver_dirs: List[str] = driver_dirs or []
+        self.root: Optional[DtsNode] = None
+        self.label_map: Dict[str, DtsNode] = {}
+        self.alias_map: Dict[str, Any] = {}
+        self.chosen_map: Dict[str, DtsNode] = {}
+        self.device_list: List[DtsNode] = []
+        self.driver_map: Dict[str, Tuple[str, str]] = {}
+        self._macros: Dict[str, str] = {}
+        self._visited: Set[str] = set()
 
-    def _preprocess(self, text):
-        """类 CPP 预处理: #include 展开 + #define 宏替换
-
-        支持 dt-bindings 风格的头文件, 处理:
-          - #include "file" / #include <file>   (递归展开)
-          - #define NAME value                  (宏定义, 后续替换)
-          - #ifndef / #define / #endif          (include guard)
-          - 其他 # 行                             (忽略)
-
-        返回值: 宏展开后的 DTS 文本, 直接送入 Tokenizer.
-        """
-        base_dir = os.path.dirname(os.path.abspath(self.dts_path))
-        result = self._preprocess_lines(text, base_dir)
+    def _preprocess(self, text: str) -> str:
+        """类 CPP 预处理: #include 展开 + #define 宏替换"""
+        base_dir: str = os.path.dirname(os.path.abspath(self.dts_path))
+        result: List[str] = self._preprocess_lines(text, base_dir)
         return '\n'.join(result)
 
-    def _preprocess_lines(self, text, base_dir):
-        lines = text.split('\n')
-        out = []
-        skip_depth = 0          # #if/#ifndef 跳过深度
-        guard_active = False    # True 时正在跳过 include-guard 块
+    def _preprocess_lines(self, text: str, base_dir: str) -> List[str]:
+        lines: List[str] = text.split('\n')
+        out: List[str] = []
+        skip_depth: int = 0
+        guard_active: bool = False
 
         for line in lines:
-            stripped = line.strip()
+            stripped: str = line.strip()
 
-            # ── #include "file" / #include <file> ──
             m = re.match(r'#include\s+"([^"]+)"', stripped)
             if not m:
                 m = re.match(r'#include\s+<([^>]+)>', stripped)
             if m and skip_depth == 0:
-                inc_path = self._resolve_inc(m.group(1), base_dir)
+                inc_path: Optional[str] = self._resolve_inc(m.group(1), base_dir)
                 if inc_path:
                     with open(inc_path, 'r', encoding='utf-8') as f:
-                        inc_text = f.read()
-                    inc_lines = self._preprocess_lines(
+                        inc_text: str = f.read()
+                    inc_lines: List[str] = self._preprocess_lines(
                         inc_text, os.path.dirname(inc_path))
                     out.extend(inc_lines)
                 continue
 
-            # ── 跳过 # 预处理行 ──
             if stripped.startswith('#'):
                 m_def = re.match(r'#define\s+(\w+)\s*(.*)', stripped)
                 m_ifn = re.match(r'#ifndef\s+(\w+)', stripped)
                 m_ifd = re.match(r'#ifdef\s+(\w+)', stripped)
 
                 if m_def and skip_depth == 0:
-                    # #define NAME [value]
                     self._macros[m_def.group(1)] = m_def.group(2).strip()
                 elif m_ifn and skip_depth == 0:
-                    # #ifndef NAME — 跳过 block (宏可能已定义)
                     skip_depth = 1
                     guard_active = True
                 elif m_ifd and skip_depth == 0:
@@ -891,30 +824,27 @@ class DTSCompiler:
                     skip_depth -= 1
                     if skip_depth == 0:
                         guard_active = False
-                # 其他 # 开头的行 (#else, #undef 等) — 跳过
                 continue
 
             if skip_depth > 0:
                 continue
 
-            # ── 宏替换 ──
             out.append(self._replace_macros(line))
 
         return out
 
-    def _replace_macros(self, text):
+    def _replace_macros(self, text: str) -> str:
         """将文本中已知宏替换为值 (贪心匹配, 长名优先)"""
         if not self._macros:
             return text
-        # 按名字长度降序, 避免短名误吞长名 (FOOBAR 先于 FOO)
         for name in sorted(self._macros, key=lambda n: -len(n)):
             text = re.sub(r'\b' + re.escape(name) + r'\b',
                           self._macros[name], text)
         return text
 
-    def _resolve_inc(self, name, base_dir):
+    def _resolve_inc(self, name: str, base_dir: str) -> Optional[str]:
         """解析 #include 路径, 返回绝对路径; 已包含则返回 None"""
-        candidates = [
+        candidates: List[str] = [
             os.path.join(base_dir, name),
             os.path.join(os.getcwd(), name),
         ]
@@ -929,67 +859,58 @@ class DTSCompiler:
               f"(searched {base_dir}, {os.getcwd()})", file=sys.stderr)
         return None
 
-    def compile(self):
+    def compile(self) -> DTSCompiler:
         """完整编译流程"""
-        # 1. 解析 DTS (含 #include / #define 预处理)
         with open(self.dts_path, 'r', encoding='utf-8') as f:
-            text = f.read()
+            text: str = f.read()
         text = self._preprocess(text)
-        tokenizer = Tokenizer(text, self.dts_path)
-        tokens = tokenizer.tokenize()
-        parser = DtsParser(tokens)
+        tokenizer: Tokenizer = Tokenizer(text, self.dts_path)
+        tokens: List[Token] = tokenizer.tokenize()
+        parser: DtsParser = DtsParser(tokens)
         self.root = parser.parse()
 
-        # 2. 构建 label 映射
         self._build_label_map(self.root)
-
-        # 3. 解析 aliases 和 chosen
         self._parse_special_nodes()
-
-        # 4. 收集所有设备
         self.device_list = self.root.collect_all_devices()
         self._deduplicate_devices()
-
-        # 5. 扫描驱动注册
         self._scan_drivers()
-
-        # 6. 验证兼容性匹配
         self._validate_compatibles()
 
         return self
 
-    def _deduplicate_devices(self):
+    def _deduplicate_devices(self) -> None:
         """去重 (同名节点只保留一个)"""
-        seen = set()
-        unique = []
+        seen: Set[str] = set()
+        unique: List[DtsNode] = []
         for dev in self.device_list:
-            key = dev.path
+            key: str = dev.path
             if key not in seen:
                 seen.add(key)
                 unique.append(dev)
         self.device_list = unique
 
-    def _build_label_map(self, node):
+    def _build_label_map(self, node: DtsNode) -> None:
         """递归构建 label → node 映射"""
         if node.label:
             self.label_map[node.label] = node
         for c in node.children:
             self._build_label_map(c)
 
-    def _parse_special_nodes(self):
+    def _parse_special_nodes(self) -> None:
         """解析 aliases 和 chosen 节点"""
-        aliases_node = self.root.find_node_by_path('/aliases')
+        if self.root is None:
+            return
+        aliases_node: Optional[DtsNode] = self.root.find_node_by_path('/aliases')
         if aliases_node:
             for prop in aliases_node.props:
                 if prop.phandles:
-                    label = prop.phandles[0]
+                    label: str = prop.phandles[0]
                     if label in self.label_map:
                         self.alias_map[prop.name] = self.label_map[label]
                 elif prop.strings:
-                    # alias 值也可能是一个路径
                     self.alias_map[prop.name] = prop.strings[0]
 
-        chosen_node = self.root.find_node_by_path('/chosen')
+        chosen_node: Optional[DtsNode] = self.root.find_node_by_path('/chosen')
         if chosen_node:
             for prop in chosen_node.props:
                 if prop.phandles:
@@ -997,15 +918,13 @@ class DTSCompiler:
                     if label in self.label_map:
                         self.chosen_map[prop.name] = self.label_map[label]
                 elif prop.strings:
-                    # chosen 值也可能是路径
-                    node = self.root.find_node_by_path(prop.strings[0])
+                    node: Optional[DtsNode] = self.root.find_node_by_path(prop.strings[0])
                     if node:
                         self.chosen_map[prop.name] = node
 
-    def _scan_drivers(self):
+    def _scan_drivers(self) -> None:
         """扫描驱动源文件, 提取 DRIVER_REGISTER 宏"""
-        # DRIVER_REGISTER(name, "compatible", probe_fn, remove_fn)
-        pattern = re.compile(
+        pattern: re.Pattern[str] = re.compile(
             r'DRIVER_REGISTER\s*\(\s*(\w+)\s*,\s*"([^"]+)"\s*,\s*(\w+)\s*,\s*(\w+)\s*\)'
         )
 
@@ -1015,25 +934,24 @@ class DTSCompiler:
             for root_dir, dirs, files in os.walk(drv_dir):
                 for f in files:
                     if f.endswith('.c') or f.endswith('.h'):
-                        path = os.path.join(root_dir, f)
-                        # 跳过 >1MB 的文件 — 驱动注册不会出现在 SDK 巨型文件中
+                        path: str = os.path.join(root_dir, f)
                         if os.path.getsize(path) > 1024 * 1024:
                             continue
                         try:
                             with open(path, 'r', encoding='utf-8') as fh:
-                                content = fh.read()
+                                content: str = fh.read()
                             for m in pattern.finditer(content):
-                                name = m.group(1)
-                                compat = m.group(2)
-                                probe_fn = f"board_driver_probe_{name}"
-                                remove_fn = f"board_driver_remove_{name}"
+                                drv_name: str = m.group(1)
+                                compat: str = m.group(2)
+                                probe_fn: str = f"board_driver_probe_{drv_name}"
+                                remove_fn: str = f"board_driver_remove_{drv_name}"
                                 self.driver_map[compat] = (probe_fn, remove_fn)
                         except Exception:
-                            pass  # 跳过不可读的文件
+                            pass
 
-    def _validate_compatibles(self):
+    def _validate_compatibles(self) -> None:
         """验证: 所有设备的 compatible 在 driver_map 中都有对应"""
-        PLATFORM = {
+        PLATFORM: Set[str] = {
             'esp32,cpu',
             'esp32,spi-bus',
             'esp32,i2s-bus',
@@ -1043,22 +961,20 @@ class DTSCompiler:
             'esp32,rmt-tx',
             'esp32,adc',
         }
-        errors = []
+        errors: List[str] = []
         for dev in self.device_list:
-            # 跳过根节点 (/) — 它的 compatible 只是板子标识, 不需要驱动
             if dev.parent is None:
                 continue
-            compat_prop = dev.get_prop('compatible')
+            compat_prop: Optional[DtsProperty] = dev.get_prop('compatible')
             if compat_prop and compat_prop.strings:
-                compat = compat_prop.strings[0]
+                compat: str = compat_prop.strings[0]
                 if compat in PLATFORM:
                     continue
                 if compat not in self.driver_map:
-                    # 检查是否有 "status" = "disabled" 或 "reserved"
-                    status_prop = dev.get_prop('status')
-                    is_disabled = (status_prop and
-                                   status_prop.strings and
-                                   status_prop.strings[0] == 'disabled')
+                    status_prop: Optional[DtsProperty] = dev.get_prop('status')
+                    is_disabled: bool = (status_prop and
+                                         status_prop.strings and
+                                         status_prop.strings[0] == 'disabled')
                     if not is_disabled:
                         errors.append(
                             f"device '{dev.path}' (compatible='{compat}'): "
@@ -1069,41 +985,38 @@ class DTSCompiler:
                 print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(1)
 
-    def get_device_deps(self, dev):
+    def get_device_deps(self, dev: DtsNode) -> List[str]:
         """获取设备的依赖 phandle 列表"""
-        deps = []
-        # 1. 显式 depends-on 或 depends_on
+        deps: List[str] = []
         for pname in ('depends-on', 'depends_on'):
-            prop = dev.get_prop(pname)
+            prop: Optional[DtsProperty] = dev.get_prop(pname)
             if prop:
                 deps.extend(prop.phandles)
-        # 2. parent 节点 (如 spi 的子节点)
         if dev.parent and dev.parent.name not in ('', 'soc', 'display', 'audio', 'input', 'leds', 'storage'):
-            parent_label = dev.parent.label
+            parent_label: Optional[str] = dev.parent.label
             if parent_label:
                 deps.append(parent_label)
         return deps
 
-    def topological_sort(self):
+    def topological_sort(self) -> List[int]:
         """
         对设备列表进行拓扑排序 (Kahn's algorithm)
         返回按依赖顺序排列的设备索引列表
         """
-        n = len(self.device_list)
-        # 构建设备名 → 索引的映射
-        name_to_idx = {}
-        label_to_idx = {}
+        n: int = len(self.device_list)
+        name_to_idx: Dict[str, int] = {}
+        label_to_idx: Dict[str, int] = {}
         for i, dev in enumerate(self.device_list):
             name_to_idx[dev.name] = i
             if dev.label:
                 label_to_idx[dev.label] = i
 
-        graph = [[] for _ in range(n)]
-        in_degree = [0] * n
+        graph: List[List[int]] = [[] for _ in range(n)]
+        in_degree: List[int] = [0] * n
 
         for i, dev in enumerate(self.device_list):
-            deps = self.get_device_deps(dev)
-            dep_indices = set()
+            deps: List[str] = self.get_device_deps(dev)
+            dep_indices: Set[int] = set()
             for dep_label in deps:
                 if dep_label in label_to_idx:
                     dep_indices.add(label_to_idx[dep_label])
@@ -1111,12 +1024,11 @@ class DTSCompiler:
                 graph[di].append(i)
                 in_degree[i] += 1
 
-        # Kahn
-        queue = [i for i in range(n) if in_degree[i] == 0]
-        result = []
+        queue: List[int] = [i for i in range(n) if in_degree[i] == 0]
+        result: List[int] = []
 
         while queue:
-            node = queue.pop(0)
+            node: int = queue.pop(0)
             result.append(node)
             for neighbor in graph[node]:
                 in_degree[neighbor] -= 1
@@ -1124,56 +1036,50 @@ class DTSCompiler:
                     queue.append(neighbor)
 
         if len(result) != n:
-            # 找循环
-            cycle_nodes = [self.device_list[i].path for i in range(n) if in_degree[i] > 0]
+            cycle_nodes: List[str] = [self.device_list[i].path for i in range(n) if in_degree[i] > 0]
             raise RuntimeError(
                 f"Circular dependency detected among devices: {cycle_nodes}"
             )
 
-        return result  # 按 probe 顺序排列的设备索引
+        return result
 
-    def compute_cascade_tables(self):
+    def compute_cascade_tables(self) -> Dict[int, List[int]]:
         """
         计算故障传播表: 对于每个设备, 找出所有传递依赖它的设备.
         返回 cascade_map = { dev_idx: [dependent_idx, ...] }
-        运行时 disable_dependents 用此表代替 BFS 收敛.
         """
-        n = len(self.device_list)
-        # 构建前向依赖图: parent → child (parent 失败 → child 应被禁用)
-        label_to_idx = {}
+        n: int = len(self.device_list)
+        label_to_idx: Dict[str, int] = {}
         for i, dev in enumerate(self.device_list):
             if dev.label:
                 label_to_idx[dev.label] = i
 
-        graph = [[] for _ in range(n)]
+        graph: List[List[int]] = [[] for _ in range(n)]
         for i, dev in enumerate(self.device_list):
-            deps = self.get_device_deps(dev)
-            dep_set = set()
+            deps: List[str] = self.get_device_deps(dev)
+            dep_set: Set[int] = set()
             for dep_label in deps:
                 if dep_label in label_to_idx:
                     dep_set.add(label_to_idx[dep_label])
             for di in dep_set:
-                graph[di].append(i)  # di → i: di is dependency, i is dependent
+                graph[di].append(i)
 
-        # 拓扑顺序 (用于下游排序)
-        order = self.topological_sort()
-        order_idx = {dev: pos for pos, dev in enumerate(order)}
+        order: List[int] = self.topological_sort()
+        order_idx: Dict[int, int] = {dev: pos for pos, dev in enumerate(order)}
 
-        # 对每个设备 DFS 求传递闭包
-        cascade = {}
+        cascade: Dict[int, List[int]] = {}
         for i in range(n):
-            visited = set()
-            stack = list(graph[i])  # 直接下游
+            visited: Set[int] = set()
+            stack: List[int] = list(graph[i])
             while stack:
-                child = stack.pop()
+                child: int = stack.pop()
                 if child in visited:
                     continue
                 visited.add(child)
                 for grandchild in graph[child]:
                     if grandchild not in visited:
                         stack.append(grandchild)
-            # 按 probe 顺序排列
-            sorted_visited = sorted(visited, key=lambda x: order_idx.get(x, x))
+            sorted_visited: List[int] = sorted(visited, key=lambda x: order_idx.get(x, x))
             if sorted_visited:
                 cascade[i] = sorted_visited
 
@@ -1187,17 +1093,31 @@ class DTSCompiler:
 class CGenerator:
     """从编译结果生成 C 代码"""
 
-    def __init__(self, compiler, output_dir):
-        self.compiler = compiler
-        self.output_dir = output_dir
+    def __init__(self, compiler: DTSCompiler, output_dir: str) -> None:
+        self.compiler: DTSCompiler = compiler
+        self.output_dir: str = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
-    def _write_if_changed(self, path, content):
+    def _atomic_write(self, path: str, content: str) -> None:
+        """原子写入：先写临时文件再 mv 替换，防止生成残缺的 C 文件"""
+        if not content.endswith('\n'):
+            content += '\n'
+        tmp: str = path + ".tmp"
+        try:
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(content)
+            shutil.move(tmp, path)
+        except Exception:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
+
+    def _write_if_changed(self, path: str, content: str) -> None:
         """防抖写入: 内容一致时不触碰磁盘, 保护 Makefile 时间戳"""
         if not content.endswith('\n'):
             content += '\n'
         try:
-            display = os.path.relpath(path)
+            display: str = os.path.relpath(path)
         except ValueError:
             display = os.path.basename(path)
         if os.path.exists(path):
@@ -1205,11 +1125,10 @@ class CGenerator:
                 if f.read() == content:
                     print(f"  [keep] {display}")
                     return
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(content)
+        self._atomic_write(path, content)
         print(f"  [gen]  {display}")
 
-    def gen_all(self):
+    def gen_all(self) -> None:
         """生成所有输出文件"""
         self._gen_board_nodes_h()
         self._gen_board_devtable_h()
@@ -1219,18 +1138,18 @@ class CGenerator:
         self._gen_dt_config_h()
         self._gen_board_force_link_c()
 
-    def _snake_name(self, name):
+    def _snake_name(self, name: str) -> str:
         """设备名 → 枚举/变量名 (sanitize)"""
-        n = name.replace('@', '_').replace('-', '_').replace('.', '_').replace('/', '_')
+        n: str = name.replace('@', '_').replace('-', '_').replace('.', '_').replace('/', '_')
         return n.upper()
 
-    def _c_safe_name(self, name):
+    def _c_safe_name(self, name: str) -> str:
         """设备名 → C 标识符"""
-        n = name.replace('@', '_').replace('-', '_').replace('.', '_').replace('/', '_')
+        n: str = name.replace('@', '_').replace('-', '_').replace('.', '_').replace('/', '_')
         return n
 
-    def _generate_includes(self):
-        lines = [
+    def _generate_includes(self) -> str:
+        lines: List[str] = [
             '#include <stdint.h>',
             '#include <stddef.h>',
             '#include <stdbool.h>',
@@ -1238,12 +1157,12 @@ class CGenerator:
         ]
         return '\n'.join(lines)
 
-    def _gen_board_nodes_h(self):
+    def _gen_board_nodes_h(self) -> None:
         """生成 board_nodes.h — DEV_ID 枚举 + chosen/alias 宏"""
-        devs = self.compiler.device_list
-        path = os.path.join(self.output_dir, 'board_nodes.h')
+        devs: List[DtsNode] = self.compiler.device_list
+        path: str = os.path.join(self.output_dir, 'board_nodes.h')
 
-        lines = [
+        lines: List[str] = [
             '#ifndef BOARD_NODES_H',
             '#define BOARD_NODES_H',
             '',
@@ -1254,7 +1173,7 @@ class CGenerator:
         ]
 
         for i, dev in enumerate(devs):
-            name = self._snake_name(dev.name)
+            name: str = self._snake_name(dev.name)
             lines.append(f'    DEV_ID_{name} = {i},')
 
         lines += [
@@ -1263,16 +1182,14 @@ class CGenerator:
             '',
         ]
 
-        # chosen 宏
         if self.compiler.chosen_map:
             lines.append('/* ===== chosen 设备 ===== */')
             for key, node in self.compiler.chosen_map.items():
-                cname = self._snake_name(key)
-                dname = self._snake_name(node.name)
+                cname: str = self._snake_name(key)
+                dname: str = self._snake_name(node.name)
                 lines.append(f'#define CHOSEN_{cname}    DEV_ID_{dname}')
             lines.append('')
 
-        # alias 宏
         if self.compiler.alias_map:
             lines.append('/* ===== alias 宏 ===== */')
             for key, node in self.compiler.alias_map.items():
@@ -1286,25 +1203,23 @@ class CGenerator:
 
         self._write_if_changed(path, '\n'.join(lines))
 
-    def _gen_board_force_link_c(self):
-        """生成 board_force_link.c — 强制链接器保留所有 driver_map 中的 probe 函数
-        由 dtc-lite 扫描 DRIVER_REGISTER 宏自动生成, 消除手动维护.
-        """
-        path = os.path.join(self.output_dir, 'board_force_link.c')
+    def _gen_board_force_link_c(self) -> None:
+        """生成 board_force_link.c — 强制链接器保留所有 driver_map 中的 probe 函数"""
+        path: str = os.path.join(self.output_dir, 'board_force_link.c')
+        driver_map: Dict[str, Tuple[str, str]] = self.compiler.driver_map
 
-        driver_map = self.compiler.driver_map
         if not driver_map:
             self._write_if_changed(path, '/* no drivers registered — nothing to force-link */')
-            print(f"  [gen] {path} (empty)")
+            print(f"  [gen] {os.path.basename(path)} (empty)")
             return
 
-        externs = []
-        refs = []
+        externs: List[str] = []
+        refs: List[str] = []
         for compat, (probe_fn, _) in sorted(driver_map.items()):
             externs.append(f'extern int __attribute__((weak)) {probe_fn}(device_t*);')
             refs.append(f'    s_fake_ref = (void*){probe_fn};')
 
-        lines = [
+        lines: List[str] = [
             '#include "device.h"',
             '',
             '/* ===== 自动生成 — 由 dtc-lite.py 扫描 DRIVER_REGISTER 宏生成 ===== */',
@@ -1322,11 +1237,11 @@ class CGenerator:
 
         self._write_if_changed(path, '\n'.join(lines))
 
-    def _gen_board_devtable_h(self):
+    def _gen_board_devtable_h(self) -> None:
         """生成 board_devtable.h — 设备表访问 API"""
-        path = os.path.join(self.output_dir, 'board_devtable.h')
+        path: str = os.path.join(self.output_dir, 'board_devtable.h')
 
-        lines = [
+        lines: List[str] = [
             '#ifndef BOARD_DEVTABLE_H',
             '#define BOARD_DEVTABLE_H',
             '',
@@ -1366,49 +1281,44 @@ class CGenerator:
             '',
             '#endif /* BOARD_DEVTABLE_H */',
         ]
-
         self._write_if_changed(path, '\n'.join(lines))
 
-    def _gen_board_devtable_c(self):
+    def _gen_board_devtable_c(self) -> None:
         """生成 board_devtable.c — 静态 device_node_t 表"""
-        devs = self.compiler.device_list
-        path = os.path.join(self.output_dir, 'board_devtable.c')
+        devs: List[DtsNode] = self.compiler.device_list
+        path: str = os.path.join(self.output_dir, 'board_devtable.c')
 
-        # 为每个设备生成属性数组
-        prop_arrays = []
-        dep_arrays = []
+        prop_arrays: List[str] = []
+        dep_arrays: List[str] = []
 
         for i, dev in enumerate(devs):
-            safe = self._c_safe_name(dev.name)
-            # 属性
-            prop_list = [p for p in dev.props if p.name not in
+            safe: str = self._c_safe_name(dev.name)
+            prop_list: List[DtsProperty] = [p for p in dev.props if p.name not in
                          ('compatible', 'depends-on', 'depends_on', 'status', 'criticality')]
             if prop_list:
                 prop_arrays.append(f'/* {dev.path} */')
                 prop_arrays.append(f'static const device_prop_t DEV_{safe}_props[] = {{')
                 for p in prop_list:
-                    val = ""
+                    val: str = ""
                     if p.ints:
                         val = " ".join(hex(i) for i in p.ints)
                     elif p.strings:
                         val = p.strings[0]
                     elif p.phandles:
                         val = p.phandles[0]
-                    # 用字符串存所有值
                     prop_arrays.append(f'    {{"{p.name}", "{val}"}},')
                 prop_arrays.append('};')
                 prop_arrays.append('')
 
-        # 依赖数组 (按 label 索引)
-        label_to_idx = {}
+        label_to_idx: Dict[str, int] = {}
         for i, dev in enumerate(devs):
             if dev.label:
                 label_to_idx[dev.label] = i
 
         for i, dev in enumerate(devs):
             safe = self._c_safe_name(dev.name)
-            deps = self.compiler.get_device_deps(dev)
-            dep_ids = []
+            deps: List[str] = self.compiler.get_device_deps(dev)
+            dep_ids: List[int] = []
             for dep_label in deps:
                 if dep_label in label_to_idx:
                     dep_ids.append(label_to_idx[dep_label])
@@ -1418,50 +1328,43 @@ class CGenerator:
                 dep_arrays.append('};')
                 dep_arrays.append('')
 
-        # 节点表
-        node_entries = []
+        node_entries: List[str] = []
         for i, dev in enumerate(devs):
             safe = self._c_safe_name(dev.name)
 
-            # compatible
-            compat_prop = dev.get_prop('compatible')
-            compat_str = compat_prop.strings[0] if compat_prop and compat_prop.strings else ""
+            compat_prop: Optional[DtsProperty] = dev.get_prop('compatible')
+            compat_str: str = compat_prop.strings[0] if compat_prop and compat_prop.strings else ""
 
-            # status
-            status_prop = dev.get_prop('status')
+            status_prop: Optional[DtsProperty] = dev.get_prop('status')
             if status_prop and status_prop.strings and status_prop.strings[0] == 'disabled':
-                status_val = 'DEVICE_STATUS_DISABLED'
+                status_val: str = 'DEVICE_STATUS_DISABLED'
             else:
                 status_val = 'DEVICE_STATUS_READY'
 
-            # criticality
-            crit_prop = dev.get_prop('criticality')
+            crit_prop: Optional[DtsProperty] = dev.get_prop('criticality')
             if crit_prop and crit_prop.strings:
-                crit_map = {'fatal': 'DEVICE_CRIT_FATAL', 'warning': 'DEVICE_CRIT_WARNING', 'ignore': 'DEVICE_CRIT_IGNORE'}
-                crit_val = crit_map.get(crit_prop.strings[0].lower(), 'DEVICE_CRIT_WARNING')
+                crit_map: Dict[str, str] = {'fatal': 'DEVICE_CRIT_FATAL', 'warning': 'DEVICE_CRIT_WARNING', 'ignore': 'DEVICE_CRIT_IGNORE'}
+                crit_val: str = crit_map.get(crit_prop.strings[0].lower(), 'DEVICE_CRIT_WARNING')
             else:
                 crit_val = 'DEVICE_CRIT_WARNING'
 
-            EXCLUDED_PROPS = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality', 'direct')
+            EXCLUDED_PROPS: Tuple[str, ...] = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality', 'direct')
 
-            prop_ref = f'DEV_{safe}_props' if any(
+            prop_ref: str = f'DEV_{safe}_props' if any(
                 p.name not in EXCLUDED_PROPS
                 for p in dev.props
             ) else 'NULL'
 
-            dep_ref = f'DEV_{safe}_deps' if any(
+            dep_ref: str = f'DEV_{safe}_deps' if any(
                 dep in label_to_idx for dep in self.compiler.get_device_deps(dev)
             ) else 'NULL'
 
-            dep_count = sum(1 for dep in self.compiler.get_device_deps(dev)
+            dep_count: int = sum(1 for dep in self.compiler.get_device_deps(dev)
                           if dep in label_to_idx)
-            label_val = dev.label or ""
+            label_val: str = dev.label or ""
 
-            EXCLUDED_PROPS = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality', 'direct')
-
-            # flags
-            direct_prop = dev.get_prop('direct')
-            flags_val = 'DEVICE_FLAG_DIRECT' if direct_prop else '0'
+            direct_prop: Optional[DtsProperty] = dev.get_prop('direct')
+            flags_val: str = 'DEVICE_FLAG_DIRECT' if direct_prop else '0'
 
             node_entries.append(
                 f'    [DEV_ID_{self._snake_name(dev.name)}] = {{\n'
@@ -1479,7 +1382,7 @@ class CGenerator:
                 f'    }},'
             )
 
-        lines = [
+        lines: List[str] = [
             '#include "board_nodes.h"',
             '#include "board_devtable.h"',
             '#include "device.h"',
@@ -1536,16 +1439,15 @@ class CGenerator:
             '}',
             '',
         ]
-
         self._write_if_changed(path, '\n'.join(lines))
 
-    def _gen_board_probe_c(self):
+    def _gen_board_probe_c(self) -> None:
         """生成 board_probe.c — probe/remove 表 + 拓扑排序顺序"""
-        devs = self.compiler.device_list
-        order = self.compiler.topological_sort()
-        path = os.path.join(self.output_dir, 'board_probe.c')
+        devs: List[DtsNode] = self.compiler.device_list
+        order: List[int] = self.compiler.topological_sort()
+        path: str = os.path.join(self.output_dir, 'board_probe.c')
 
-        PLATFORM = {
+        PLATFORM: Set[str] = {
             'esp32,cpu',
             'esp32,spi-bus',
             'esp32,i2s-bus',
@@ -1556,33 +1458,28 @@ class CGenerator:
             'esp32,adc',
         }
 
-        has_platform = False
+        has_platform: bool = False
 
-        # 收集驱动 probe + remove 函数的外部声明
-        probe_externs = []
-        remove_externs = []
-        probe_array = []
-        remove_array = []
+        probe_externs: List[str] = []
+        remove_externs: List[str] = []
+        probe_array: List[str] = []
+        remove_array: List[str] = []
         for i in devs:
-            compat_prop = i.get_prop('compatible')
-            snake = self._snake_name(i.name)
+            compat_prop: Optional[DtsProperty] = i.get_prop('compatible')
+            snake: str = self._snake_name(i.name)
             if compat_prop and compat_prop.strings:
-                compat = compat_prop.strings[0]
+                compat: str = compat_prop.strings[0]
                 if compat in self.compiler.driver_map:
+                    p_fn: str
+                    r_fn: str
                     p_fn, r_fn = self.compiler.driver_map[compat]
                     probe_externs.append(f'extern int __attribute__((weak)) {p_fn}(device_t* dev);')
                     remove_externs.append(f'extern int __attribute__((weak)) {r_fn}(device_t* dev);')
-                    probe_array.append(
-                        f'    [DEV_ID_{snake}] = {p_fn},'
-                    )
-                    remove_array.append(
-                        f'    [DEV_ID_{snake}] = {r_fn},'
-                    )
+                    probe_array.append(f'    [DEV_ID_{snake}] = {p_fn},')
+                    remove_array.append(f'    [DEV_ID_{snake}] = {r_fn},')
                 elif compat in PLATFORM:
                     has_platform = True
-                    probe_array.append(
-                        f'    [DEV_ID_{snake}] = board_platform_probe,'
-                    )
+                    probe_array.append(f'    [DEV_ID_{snake}] = board_platform_probe,')
                     remove_array.append(f'    [DEV_ID_{snake}] = NULL,')
                 else:
                     probe_array.append(f'    [DEV_ID_{snake}] = NULL,')
@@ -1591,13 +1488,12 @@ class CGenerator:
                 probe_array.append(f'    [DEV_ID_{snake}] = NULL,')
                 remove_array.append(f'    [DEV_ID_{snake}] = NULL,')
 
-        # 排序后的顺序
-        order_entries = []
+        order_entries: List[str] = []
         for idx in order:
-            dev = devs[idx]
+            dev: DtsNode = devs[idx]
             order_entries.append(f'    DEV_ID_{self._snake_name(dev.name)},')
 
-        lines = [
+        lines: List[str] = [
             '#include "board_nodes.h"',
             '#include "board_devtable.h"',
             '#include "device.h"',
@@ -1658,13 +1554,11 @@ class CGenerator:
             '/* ===== 故障传播表 (编译期预计算, 替代运行时 BFS) ===== */',
         ]
 
-        # 编译期计算故障传播
-        cascade = self.compiler.compute_cascade_tables()
-        dev_count = len(devs)
+        cascade: Dict[int, List[int]] = self.compiler.compute_cascade_tables()
+        dev_count: int = len(devs)
 
-        # 扁平数据 + 计数 + 偏移
-        flat_data = []
-        counts = [0] * dev_count
+        flat_data: List[int] = []
+        counts: List[int] = [0] * dev_count
         for i in range(dev_count):
             if i in cascade:
                 counts[i] = len(cascade[i])
@@ -1672,8 +1566,8 @@ class CGenerator:
             else:
                 counts[i] = 0
 
-        offsets = [0] * dev_count
-        cumulative = 0
+        offsets: List[int] = [0] * dev_count
+        cumulative: int = 0
         for i in range(dev_count):
             offsets[i] = cumulative
             cumulative += counts[i]
@@ -1685,7 +1579,7 @@ class CGenerator:
             for idx in order:
                 if idx in cascade:
                     for dep_idx in cascade[idx]:
-                        dep_dev = devs[dep_idx]
+                        dep_dev: DtsNode = devs[dep_idx]
                         lines.append(f'    DEV_ID_{self._snake_name(dep_dev.name)},')
             lines += [
                 '};',
@@ -1712,14 +1606,13 @@ class CGenerator:
             ]
 
         lines += ['']
-
         self._write_if_changed(path, '\n'.join(lines))
 
-    def _gen_board_handles_h(self):
+    def _gen_board_handles_h(self) -> None:
         """生成 board_handles.h — chosen/alias 注入宏"""
-        path = os.path.join(self.output_dir, 'board_handles.h')
+        path: str = os.path.join(self.output_dir, 'board_handles.h')
 
-        lines = [
+        lines: List[str] = [
             '#ifndef BOARD_HANDLES_H',
             '#define BOARD_HANDLES_H',
             '',
@@ -1741,7 +1634,7 @@ class CGenerator:
             lines.append('#ifndef BOARD_CHOSEN_DEFINED')
             lines.append('#define BOARD_CHOSEN_DEFINED')
             for key, node in self.compiler.chosen_map.items():
-                dname = self._snake_name(node.name)
+                dname: str = self._snake_name(node.name)
                 lines.append(f'#define BOARD_CHOSEN_{self._snake_name(key)}   DEV_ID_{dname}')
             lines.append('#endif')
             lines.append('')
@@ -1757,28 +1650,24 @@ class CGenerator:
             '#endif /* BOARD_HANDLES_H */',
             '',
         ]
-
         self._write_if_changed(path, '\n'.join(lines))
 
-    def _gen_dt_config_h(self):
-        """生成 dt_config_gen.h — 从 DTS 设备计数自动生成 Pool Size 宏
-        IEC 61508 §7.4.2.4: 禁止拍脑袋硬编码资源上限.
-        所有静态池大小由编译期设备树唯一确定.
-        """
-        devs = self.compiler.device_list
-        path = os.path.join(self.output_dir, 'dt_config_gen.h')
+    def _gen_dt_config_h(self) -> None:
+        """生成 dt_config_gen.h — 从 DTS 设备计数自动生成 Pool Size 宏"""
+        devs: List[DtsNode] = self.compiler.device_list
+        path: str = os.path.join(self.output_dir, 'dt_config_gen.h')
 
-        compat_counts = {}
+        compat_counts: Dict[str, int] = {}
         for dev in devs:
-            compat_prop = dev.get_prop('compatible')
+            compat_prop: Optional[DtsProperty] = dev.get_prop('compatible')
             if compat_prop and compat_prop.strings:
-                compat = compat_prop.strings[0]
+                compat: str = compat_prop.strings[0]
                 compat_counts[compat] = compat_counts.get(compat, 0) + 1
 
-        def _compat_to_macro(compat):
+        def _compat_to_macro(compat: str) -> str:
             return compat.replace(',', '_').replace('-', '_').replace('.', '_').upper()
 
-        lines = [
+        lines: List[str] = [
             '#ifndef DT_CONFIG_GEN_H',
             '#define DT_CONFIG_GEN_H',
             '',
@@ -1792,19 +1681,17 @@ class CGenerator:
             '',
         ]
 
-        # ── 设备计数 (per compatible) ──
         for compat in sorted(compat_counts.keys()):
-            macro = _compat_to_macro(compat)
+            macro: str = _compat_to_macro(compat)
             lines.append(f'#define DTC_GEN_COUNT_{macro}  {compat_counts[compat]}')
 
-        # ── 时钟频率: 从 /cpus/cpu@0/clock-frequency 提取 ──
-        cpu_node = None
+        cpu_node: Optional[DtsNode] = None
         for dev in devs:
             if dev.path in ('/cpus/cpu@0', '/cpus/cpu@0/'):
                 cpu_node = dev
                 break
         if cpu_node:
-            cf_prop = cpu_node.get_prop('clock-frequency')
+            cf_prop: Optional[DtsProperty] = cpu_node.get_prop('clock-frequency')
             if cf_prop and cf_prop.ints:
                 lines.append(f'#define DTC_GEN_CPU_CLOCK_HZ  {cf_prop.ints[0]}')
             else:
@@ -1812,10 +1699,9 @@ class CGenerator:
         else:
             lines.append(f'#define DTC_GEN_CPU_CLOCK_HZ  16000000')
 
-        # ── Tick 频率: 从 /chosen/tick-rate 提取 ──
-        chosen_node = self.compiler.root.find_node_by_path('/chosen') if self.compiler.root else None
+        chosen_node: Optional[DtsNode] = self.compiler.root.find_node_by_path('/chosen') if self.compiler.root else None
         if chosen_node:
-            tr_prop = chosen_node.get_prop('tick-rate')
+            tr_prop: Optional[DtsProperty] = chosen_node.get_prop('tick-rate')
             if tr_prop and tr_prop.ints:
                 lines.append(f'#define DTC_GEN_TICK_RATE_HZ  {tr_prop.ints[0]}')
             else:
@@ -1823,9 +1709,8 @@ class CGenerator:
         else:
             lines.append(f'#define DTC_GEN_TICK_RATE_HZ  1000')
 
-        # ── 堆大小: 从 /chosen/heap-size 提取 (用于 FreeRTOS configTOTAL_HEAP_SIZE) ──
         if chosen_node:
-            hs_prop = chosen_node.get_prop('heap-size')
+            hs_prop: Optional[DtsProperty] = chosen_node.get_prop('heap-size')
             if hs_prop and hs_prop.ints:
                 lines.append(f'#define DTC_GEN_HEAP_SIZE  {hs_prop.ints[0]}')
             else:
@@ -1838,22 +1723,28 @@ class CGenerator:
             '#endif /* DT_CONFIG_GEN_H */',
             '',
         ]
-
         self._write_if_changed(path, '\n'.join(lines))
 
 
 # =========================================================================
 #  主函数
-# =========================================================================""
+# =========================================================================
 
-def main():
-    if len(sys.argv) < 3:
-        print(__doc__)
-        sys.exit(1)
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="MCU 编译期 DeviceTree 编译器 — DTS → C 代码生成"
+    )
+    parser.add_argument("dts_path", type=str, help="输入的 .dts 文件路径")
+    parser.add_argument("output_dir", type=str, help="生成文件的输出目录")
+    parser.add_argument(
+        "driver_dirs", type=str, nargs="*", default=[],
+        help="扫描 DRIVER_REGISTER 宏的驱动源码目录 (可多个)",
+    )
+    args = parser.parse_args()
 
-    dts_path = sys.argv[1]
-    output_dir = sys.argv[2]
-    driver_dirs = sys.argv[3:] if len(sys.argv) > 3 else []
+    dts_path: str = args.dts_path
+    output_dir: str = args.output_dir
+    driver_dirs: List[str] = args.driver_dirs
 
     if not os.path.isfile(dts_path):
         print(f"ERROR: DTS file not found: {dts_path}", file=sys.stderr)
@@ -1864,22 +1755,22 @@ def main():
     if driver_dirs:
         print(f"  driver scan: {', '.join(driver_dirs)}")
 
-    compiler = DTSCompiler(dts_path, driver_dirs)
+    compiler: DTSCompiler = DTSCompiler(dts_path, driver_dirs)
     compiler.compile()
 
     print(f"  devices: {len(compiler.device_list)}")
     for dev in compiler.device_list:
-        compat_prop = dev.get_prop('compatible')
-        compat = compat_prop.strings[0] if compat_prop and compat_prop.strings else "(no compatible)"
-        deps = compiler.get_device_deps(dev)
-        dep_labels = ', '.join(deps) if deps else '(none)'
+        compat_prop: Optional[DtsProperty] = dev.get_prop('compatible')
+        compat: str = compat_prop.strings[0] if compat_prop and compat_prop.strings else "(no compatible)"
+        deps: List[str] = compiler.get_device_deps(dev)
+        dep_labels: str = ', '.join(deps) if deps else '(none)'
         print(f"    {dev.path:40s} compat={compat:25s} deps=[{dep_labels}]")
 
     print(f"  drivers matched: {len(compiler.driver_map)}")
     for compat, fn in sorted(compiler.driver_map.items()):
         print(f"    {compat:40s} → {fn}")
 
-    generator = CGenerator(compiler, output_dir)
+    generator: CGenerator = CGenerator(compiler, output_dir)
     generator.gen_all()
 
     print("dtc-lite: done")

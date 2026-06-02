@@ -95,7 +95,7 @@ sound_dsp_project/           # ESP-IDF 用户工程
 ```cpp
 // main.cpp
 void app_main(void) {
-    // 提前 touch 所有 Singleton, 防 ISR 死锁
+    // 提前 touch 相关 Singleton, 防 ISR 死锁
     (void)EventBus::getInstance();
     (void)KeyInput::getInstance();
     (void)AudioService::getInstance();
@@ -130,7 +130,7 @@ int main(void) {
 python tools/p2s.py -p arm_cm3 -t gcc -o freertos
 python tools/p2s.py -p arm_cm4f -t keil5 -o rtthread
 python tools/p2s.py -p arm_cm7 -t keil5 -o null
-python tools/p2s.py -l          # 列出所有可用组合
+python tools/p2s.py -l          # 列出可用组合
 python tools/p2s.py --menuconfig  # 配置后构建
 python tools/p2s.py --clean       # 清理
 ```
@@ -205,7 +205,7 @@ python tools/menuconfig.py
 ### 5.3 配置值来源优先级
 
 1. `.config` 文件 (menuconfig 生成)
-2. `-DFREERTOS_PORT=GCC_ARM_CM3` 等 CMake 变量 (完全跳过 Kconfig)
+2. `-DFREERTOS_PORT=GCC_ARM_CM3` 等 CMake 变量 (跳过 Kconfig)
 3. 默认值 (无配置时)
 
 ### 5.4 手动配置 (无 menuconfig 环境)
@@ -218,7 +218,7 @@ cp config.example.h build/generated/kconfig/config.h
 # 编辑 config.h，取消注释所需选项
 ```
 
-配置文件范例见项目根目录 [`config.example.h`](config.example.h)。所有选项默认注释，取消注释即启用。
+配置文件范例见项目根目录 [`config.example.h`](config.example.h)。选项默认注释，取消注释即启用。
 
 ### 5.5 在代码中使用配置
 
@@ -355,7 +355,7 @@ int main(void)
 
 void app_main(void)
 {
-    // Touch 所有 Singleton (防 ISR 死锁)
+    // Touch 相关 Singleton (防 ISR 死锁)
     (void)EventBus::getInstance();
     (void)AudioService::getInstance();
     (void)UiService::getInstance();
@@ -364,7 +364,7 @@ void app_main(void)
 }
 ```
 
-> 注意：0.x 方式存在业务耦合——`system_runtime.cpp` 直接引用了 AudioService、CloudService 等业务服务。当前版本已彻底解耦，system 层不包含任何业务引用。
+> 注意：0.x 方式存在业务耦合——`system_runtime.cpp` 直接引用了 AudioService、CloudService 等业务服务。当前版本已解耦，system 层不包含业务引用。
 
 ---
 
@@ -372,7 +372,7 @@ void app_main(void)
 
 ### 8.1 Meyers Singleton 模式
 
-所有服务使用 C++11 线程安全的局部静态变量：
+服务使用 C++11 线程安全的局部静态变量：
 
 ```cpp
 // audio_service.hpp
@@ -417,7 +417,7 @@ AudioService& AudioService::getInstance()
 ### 8.3 EventBus 通信
 
 > **重要约束**:
-> - **seal 封表**: subscribe() 只能在 Phase 2 点火完成前调用. 封表后所有 subscribe() 返回 false.
+> - **seal 封表**: subscribe() 只能在 Phase 2 点火完成前调用. 封表后 subscribe() 返回 false.
 > - **SIOF 防御**: post() 在 Phase 1 完成前静默丢弃事件, 防止 C++ 全局构造函数在 main() 前偷跑.
 
 ```cpp
@@ -660,7 +660,7 @@ device_t* touch   = board_dev_get(ALIAS_TOUCH);
 
 #### 自定义属性
 
-DTS 中声明的所有非内置属性，驱动均可在 probe 时读取：
+DTS 中声明的非内置属性，驱动均可在 probe 时读取：
 
 ```dts
 spi_display: display@0 {
@@ -831,7 +831,7 @@ int board_driver_probe_my_device(device_t* dev)
         goto cleanup_tx;
     }
 
-    /* 所有资源就绪, 挂入设备节点 */
+    /* 资源就绪, 挂入设备节点 */
     dev->priv_data = rx_buf;           /* 驱动持有 rx_buf, tx_buf 从 rx_buf 偏移得到 */
     dev_set_priv(dev, rx_buf);
     ret = 0;
@@ -855,8 +855,8 @@ cleanup:
 |------|------|
 | 标签名**标注释放对象** | `cleanup_rx` / `cleanup_tx` 直接表明释放什么, 而非泛化的 `err1` / `err2` |
 | 标签链**严格逆序** | 第 3 步失败 → 释放第 2 步的资源 (rx), 不碰第 1 步 (lock). 每个标签不做多余的事 |
-| 成功路径也走 goto | 保证所有出口统一经过同一段代码, 避免后续修改时漏掉清理逻辑 |
-| 变量在函数顶**全初始化** | `rx_buf = NULL`, `lock = NULL`, 确保任何标签路径上的 `osal_free(NULL)` / `osal_mutex_destroy(NULL)` 安全 |
+| 成功路径也走 goto | 确保出口统一经过同一段代码, 避免后续修改时漏掉清理逻辑 |
+| 变量在函数顶**全初始化** | `rx_buf = NULL`, `lock = NULL`, 确保标签路径上的 `osal_free(NULL)` / `osal_mutex_destroy(NULL)` 安全 |
 
 这个模式不限于 Probe, 也适用于驱动 `remove`、DMA 描述符链构建、多步骤芯片配置序列等需要"分配到一半失败也要干净回滚"的场景.
 
@@ -987,9 +987,9 @@ spi0: spi@0 {
 无 DTS 时要改 GPIO 端口、引脚号、AF 映射、时钟使能四处；有 DTS 只改四行属性值。
 
 关键结论：
-- **修改引脚只需改 `board.dts` 中的属性值，无需动任何 `.c` / `.h` 函数**
+- **修改引脚只需改 `board.dts` 中的属性值，无需动 `.c` / `.h` 函数**
 - GD32 与 STM32 共用同一套 DTS 适配模式，无缝切换
-- HAL/LL/SPL/寄存器/GD32 库对同一 DTS 属性的读取方式完全一致
+- HAL/LL/SPL/寄存器/GD32 库对同一 DTS 属性的读取方式一致
 
 ## 12. 调试与监控
 
@@ -1074,7 +1074,7 @@ BufferPool 特性：
 ```
 HardFault: PC=0x40082B9A, CFSR=0x00000100  →  UsageFault[INVSTATE]
 ```
-`INVSTATE` 标志 PC 地址最低位为 0 — C 函数指针的最低位必须是 1 (Thumb 态). 说明某个函数指针被 NULL 赋值或结构体偏移计算错误导致 LSB 丢失. 排查所有 `.ops = {NULL}` 未实现的方法和 `memcpy`/`memset` 覆盖了函数指针表的情况.
+`INVSTATE` 标志 PC 地址最低位为 0 — C 函数指针的最低位需为 1 (Thumb 态). 说明某个函数指针被 NULL 赋值或结构体偏移计算错误导致 LSB 丢失. 排查 `.ops = {NULL}` 未实现的方法和 `memcpy`/`memset` 覆盖了函数指针表的情况.
 
 ```
 HardFault: PC=0x40081D44, CFSR=0x00000082  →  MemFault[MMARVALID] + BusFault[PRECISERR]
@@ -1335,13 +1335,13 @@ openocd -f interface/jlink.cfg -f target/stm32f1x.cfg
 2. 在 `soc_port_` 中实现
 3. 驱动通过 `device_t*` 获取硬件配置并调用 HAL
 
-### Q: 为什么需要在启动前 touch 所有 Singleton？
+### Q: 为什么需要在启动前 touch 相关 Singleton？
 
 ```cpp
 (void)EventBus::getInstance();  // 预触摸
 ```
 
-C++11 局部静态变量的首次初始化使用 `__cxa_guard_acquire` 互斥锁。如果在 ISR 中首次调用 `getInstance()`，互斥锁可能导致死锁。在 RTOS 启动前预先 touch 所有 Singleton 可避免此问题。
+C++11 局部静态变量的首次初始化使用 `__cxa_guard_acquire` 互斥锁。如果在 ISR 中首次调用 `getInstance()`，互斥锁可能导致死锁。在 RTOS 启动前预先 touch 相关 Singleton 可避免此问题。
 
 当前版本的两段式点火在 Phase 1（RTOS 启动前）自然完成了 Singleton 实例化，无需显式 touch。
 
@@ -1534,7 +1534,7 @@ Project → Options for Target → Target → ARM Compiler → "Use default comp
 4. **调试反馈闭环**：
    若在调试过程中定位到代码逻辑问题，切换回 VS Code/Cursor 修改并保存，让 Keil 重新编译。不建议在 Keil 编辑器内直接修改代码。
 5. **提交前清理**：
-   调试结束后，确认 `.gitignore` 已过滤所有编译中间文件（`.crf`、`.o`、`.d` 等），保持仓库整洁。
+   调试结束后，确认 `.gitignore` 已过滤编译中间文件（`.crf`、`.o`、`.d` 等），保持仓库整洁。
 
 ---
 
@@ -1602,7 +1602,7 @@ if (hal_is_in_isr()) {
 
 #### ISR 安全红线
 
-DEBUG 模式下，`HAL_ASSERT_NOT_ISR()` 插入在所有 VFS 入口（`device_write/read/ioctl/open/close/suspend/resume`）。若在中断中误调 VFS，自动触发 trap 并打印错误信息：
+DEBUG 模式下，`HAL_ASSERT_NOT_ISR()` 插入在 VFS 入口（`device_write/read/ioctl/open/close/suspend/resume`）。若在中断中误调 VFS，自动触发 trap 并打印错误信息：
 
 ```
 [FATAL] VFS call from ISR context! Remove VFS calls from ISR or bypass VFS.
@@ -1638,7 +1638,7 @@ hal_pwm_fast_set_duty(STM32_TIM2_BASE, 1, 500);
 
 DMA 个体传输的 setup 开销远大于传输本身。传 1 字节和传 1KB 消耗几乎相同的配置/中断周期，byte-by-byte 传输 ≈ 放大数百次 setup 开销。
 
-**音频、屏幕刷新等高带宽场景，必须使用块传输：**
+**音频、屏幕刷新等高带宽场景，建议使用块传输：**
 
 ```c
 #include "hal_dma.h"
@@ -1736,5 +1736,5 @@ memcpy(&_sram_code, &_ram_code_flash, (uint8_t*)&_eram_code - (uint8_t*)&_sram_c
 - [ ] 该路径的执行频率是否 >10kHz？（低于此阈值走 VFS 即可）
 - [ ] 是否可以接受此部分代码丧失跨平台移植性？
 - [ ] 调用前，硬件外设时钟和初始化是否已完成？
-- [ ] ISR 中是否完全避免了 VFS/OSAL 锁相关调用？
+- [ ] ISR 中是否避免了 VFS/OSAL 锁相关调用？
 

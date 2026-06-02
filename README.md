@@ -37,7 +37,7 @@
 python tools/p2s.py -p arm_cm3 -t gcc -o freertos
 python tools/p2s.py -p arm_cm4f -t keil5 -o rtthread
 python tools/p2s.py --menuconfig          # 先配置再构建
-python tools/p2s.py -l                     # 列出所有可用组合
+python tools/p2s.py -l                     # 列出可用组合
 
 # 或直接使用 Makefile
 make PLATFORM=arm_cm4f TOOLCHAIN=gcc
@@ -103,7 +103,7 @@ int main(void) {
 
 ### OSAL 三栖抽象层
 
-OSAL 统一封装了 FreeRTOS / RT-Thread / NULL (裸机) 三种后端，对外暴露完全一致的 C 接口。上层无感知后端切换：
+OSAL 统一封装了 FreeRTOS / RT-Thread / NULL (裸机) 三种后端，对外暴露一致的 C 接口。上层无感知后端切换：
 
 - **FreeRTOS** — 完整多任务调度，支持 SMP 多核
 - **RT-Thread** — 通过 OSAL 代理接管线程与 IPC，FinSH 终端作为选配外挂

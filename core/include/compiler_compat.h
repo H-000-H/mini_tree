@@ -7,7 +7,7 @@
  */
 
 #define COMPAT_ALIGNED(n) __attribute__((aligned(n)))
-#define COMPAT_WEAK(func) __attribute__((weak)) func
+#define COMPAT_WEAK __attribute__((weak))
 #define COMPAT_TRAP()     __builtin_trap()
 #define COMPAT_CTZ(x)     __builtin_ctz(x)
 

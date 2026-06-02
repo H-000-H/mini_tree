@@ -93,7 +93,20 @@ bool osal_task_is_running(osal_task_handle_t task);
 const char* osal_task_get_name(osal_task_handle_t task);
 uint32_t osal_task_get_stack_watermark(osal_task_handle_t task);
 
-/* ── 队列 (定长消息队列) ── */
+/* ── 队列 (定长消息队列) ──
+ *
+ * 发送接口提供两条路径:
+ *   osal_queue_send()         — 内部通过 osal_in_isr() 自动识别上下文,
+ *                                在 ISR 中自动走 FromISR 路径 (含 yield),
+ *                                在任务中支持 timeout_ms 阻塞. 省心但隐含
+ *                                一次 osal_in_isr() 调用开销和 yield 判断.
+ *   osal_queue_send_from_isr() — 显式 ISR 版本, 不猜测, 不 yield.
+ *                                调用方自己保证在 ISR 上下文中调用.
+ *
+ * ★ 推荐: 确定在 ISR 中时优先用 osal_queue_send_from_isr(),
+ *   意图直白, 零额外判断, 代码审查时一目了然.
+ *   不确定或懒得区分时, 用 osal_queue_send() 自动推导也不会错.
+ */
 typedef void* osal_queue_handle_t;
 
 osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size);

@@ -11,12 +11,16 @@
   python tools/p2s.py -l                                     # 列出可用组合
 """
 
-import sys
+from __future__ import annotations
+
+import argparse
 import os
 import subprocess
-import argparse
+import sys
+from typing import Dict, List
 
-MAKEFILE_PLATFORMS = {
+
+MAKEFILE_PLATFORMS: Dict[str, str] = {
     "arm_cm3": "arm_cm3",
     "arm_cm4f": "arm_cm4f",
     "arm_cm7": "arm_cm7",
@@ -24,22 +28,22 @@ MAKEFILE_PLATFORMS = {
     "posix": "posix",
 }
 
-TOOLCHAINS = {
+TOOLCHAINS: Dict[str, str] = {
     "gcc": "gcc",
     "clang": "clang",
     "keil5": "keil5",
     "keil6": "keil6",
 }
 
-OSALS = {
+OSALS: Dict[str, str] = {
     "freertos": "FREERTOS",
     "rtthread": "RTTHREAD",
     "null": "NULL",
 }
 
 
-def run_make(platform, toolchain, osal, freertos_heap=4):
-    cmd = [
+def run_make(platform: str, toolchain: str, osal: str, freertos_heap: int = 4) -> int:
+    cmd: List[str] = [
         "mingw32-make",
         f"PLATFORM={platform}",
         f"TOOLCHAIN={toolchain}",
@@ -47,18 +51,24 @@ def run_make(platform, toolchain, osal, freertos_heap=4):
         f"FREERTOS_HEAP={freertos_heap}",
     ]
     print(f"[p2s] {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    project_root: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    result: subprocess.CompletedProcess[str] = subprocess.run(
+        cmd, cwd=project_root
+    )
     return result.returncode
 
 
-def run_menuconfig():
+def run_menuconfig() -> int:
     print("[p2s] 启动 menuconfig ...")
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "menuconfig.py")
-    result = subprocess.run([sys.executable, script])
+    script_dir: str = os.path.dirname(os.path.abspath(__file__))
+    script: str = os.path.join(script_dir, "menuconfig.py")
+    result: subprocess.CompletedProcess[str] = subprocess.run(
+        [sys.executable, script]
+    )
     return result.returncode
 
 
-def show_combinations():
+def show_combinations() -> None:
     print("可用构建组合:")
     print()
     for plat in ["arm_cm3", "arm_cm4f", "arm_cm7", "riscv", "posix"]:
@@ -72,7 +82,7 @@ def show_combinations():
         print()
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="mini_tree 一键构建脚本",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -101,10 +111,9 @@ def main():
     if args.menuconfig:
         return run_menuconfig()
 
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
     if args.clean:
         print("[p2s] 清理 ...")
+        project_root: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         subprocess.run(["mingw32-make", "clean"], cwd=project_root)
         return 0
 

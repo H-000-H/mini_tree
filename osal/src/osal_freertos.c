@@ -348,15 +348,13 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
 }
 
 /* ── 硬件安全关断 (weak) ── */
-COMPAT_WEAK(safety_hardware_shutdown)
-void safety_hardware_shutdown(void)
+COMPAT_WEAK void safety_hardware_shutdown(void)
 {
     COMPAT_TRAP();
 }
 
 /* ── Panic 安全互锁 (weak) ── */
-COMPAT_WEAK(osal_panic_interlock)
-void osal_panic_interlock(void)
+COMPAT_WEAK void osal_panic_interlock(void)
 {
     /* 板级可覆盖: 喂硬件看门狗, 切断执行器供电, 等待复位 */
 }

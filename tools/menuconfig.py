@@ -5,16 +5,20 @@
   python tools/menuconfig.py
 """
 
-import sys
+from __future__ import annotations
+
 import os
+import sys
+from typing import Optional
 
-KCONFIG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KCONFIG_PATH = os.path.join(KCONFIG_DIR, "Kconfig")
+
+KCONFIG_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+KCONFIG_PATH: str = os.path.join(KCONFIG_DIR, "Kconfig")
 
 
-def main():
+def main() -> int:
     try:
-        from kconfiglib import Kconfig, standard_kconfig
+        from kconfiglib import Kconfig
     except ImportError:
         print("[menuconfig] 错误: 请先安装 kconfiglib: pip install kconfiglib")
         return 1
@@ -25,8 +29,8 @@ def main():
 
     os.chdir(KCONFIG_DIR)
 
-    kconf = Kconfig(filename=KCONFIG_PATH, warn=False)
-    from menuconfig import menuconfig
+    kconf: Kconfig = Kconfig(filename=KCONFIG_PATH, warn=False)
+    from menuconfig import menuconfig  # type: ignore[import-untyped]
     menuconfig(kconf)
     return 0
 

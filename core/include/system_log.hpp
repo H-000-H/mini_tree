@@ -42,3 +42,4 @@
 } while(0)
 #define DRV_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO,  tag, fmt, ##__VA_ARGS__)
 #define DRV_LOGD(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)
+#define DRV_LOGV(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)

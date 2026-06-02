@@ -33,6 +33,68 @@
 - **`osal.h`**: ARMCC v5 C++ 模式 `UINT32_MAX` 缺失兼容处理（AC6 切换后移除）
 - **`osal_freertos.c` / `osal_null.c`**: 同步信号量 count 类型适配
 
+### 构建脚本硬化 — 全量类型注解 + argparse + 原子写入
+
+所有 `tools/` Python 脚本统一遵循两条安全基线：
+
+**原子写入**：生成 `.h`/`.c` 文件采用先写 `.tmp` 再 `shutil.move()` 替换的模式，防止中断留下残缺文件。写入前通过 `_write_if_changed()`/`_needs_update()` 做内容比对，内容不变时不动磁盘，保护 Makefile 时间戳避免雪崩重编。
+
+**显式类型注解**：每个函数/方法的参数、返回值、局部变量均显式标注类型，不依赖自动推导。
+
+| 脚本 | 注解规模 |
+|------|---------|
+| `genconfig.py` | 76 处 |
+| `post_build_crc.py` | 98 处 |
+| `gen_uvprojx.py` | 155 处 |
+| `p2s.py` | 70 处 |
+| `menuconfig.py` | 15 处 |
+| `dtc-lite.py` | ~1200 处 |
+
+可在 CI 中通过 `mypy tools/ --strict` 做静态类型检查。
+
+各脚本具体变更：
+
+- **`tools/genconfig.py`**: `argparse` 替换裸 `sys.argv`，`pathlib.Path` 替换 `os.path`，新增 `_atomic_write()` 和 `_needs_update()` 内容比对防抖
+- **`tools/dtc-lite.py`**: `argparse` 替换裸 `sys.argv`，`pathlib.Path` 替换 `os.path`，新增 `_atomic_write()`，移除未使用 `tempfile`/`OrderedDict` 导入
+- **`tools/post_build_crc.py`**: `pathlib.Path` 替换 `os.path`，新增 `_atomic_write()` + `_needs_update()`，提取 `_compute_crc()`/`_replace_in_file()`/`_write_new_header()` 辅助函数
+- **`tools/gen_uvprojx.py`**: 155 处显式类型注解（`scan_src()` → `List[str]`、`discover_sources()` → `Dict[str, List[str]]` 等）
+- **`tools/p2s.py`**: 70 处显式类型注解（`run_make()` → `int`、`show_combinations()` → `None` 等）
+- **`tools/menuconfig.py`**: 15 处显式类型注解（`main()` → `int` 等）
+
+### C 修复
+
+- **`core/include/system_log.hpp`**: 新增 `DRV_LOGV` 宏 — `osal_log(OSAL_LOG_DEBUG, tag, fmt, ...)`，修复 board_driver.c 编译错误
+- **`core/include/compiler_compat.h`**: `COMPAT_WEAK` 从函数式宏 `#define COMPAT_WEAK(func) __attribute__((weak)) func` 重构为属性宏 `#define COMPAT_WEAK __attribute__((weak))`，消除 implicit-int 冲突；同步更新 `osal_freertos.c`、`osal_rtthread.c`、`osal_null.c` 共 6 处调用点
+
+### 文档新增 (已合并至此文件，源文件已删除)
+
+日志系统分为 **SYS_LOG（系统日志）** 和 **DRV_LOG（驱动日志）** 两层：
+
+```
+SYS_LOG — 应用/框架层，Kconfig 可选择后端
+  ├── CONFIG_SYS_LOG_USE_OSAL   → osal_log()
+  ├── CONFIG_SYS_LOG_USE_ESP    → ESP_LOGI/LOGW/LOGE
+  └── CONFIG_SYS_LOG_USE_PRINTF → printf（默认，无外部依赖）
+
+DRV_LOG — 驱动层，固定走 osal_log()
+  ├── DRV_LOGE / DRV_LOGW       → Error/Warning 同时推入 production_log 黑匣子
+  └── DRV_LOGI / DRV_LOGD / DRV_LOGV → Info/Debug/Verbose 仅 osal_log()
+```
+
+- SYS_LOG 后端由 Kconfig 编译期选择，运行时不可切换
+- DRV_LOG 固定在 `osal_log()` 之上，`DRV_LOGE`/`DRV_LOGW` 额外推入黑匣子用于故障事后分析
+- `DRV_LOGV` 可在 `NDEBUG` 时被编译器优化剔除
+- 各模块统一包含 `system_log.hpp`，不直接调用 `printf` 或 `osal_log`
+
+### 文档语言收敛 — 移除绝对化表述
+
+- **`ARCHITECTURE.md`**: 移除"任何"、"完全上收"→"上收"、"完全卡死"→"卡死"
+- **`USAGE.md`**: 14 处修正 — "所有"→移除、"完全跳过"→"跳过"、"完全一致"→"一致"、"必须使用"→"建议使用"等
+- **`NOTICE.md`**: "覆盖所有已知"→"覆盖已知"、"永远是只读的"→"是只读的"
+- **`README.md`**: "完全一致的 C 接口"→"一致的 C 接口"、"所有可用组合"→"可用组合"
+- **`CONTRIBUTING.md`**: "禁止提交"→"请勿提交"、"任何包含"→"包含"
+- **`examples/porting_template/README.md`**: "无需动任何"→"无需动"、"完全一致"→"一致"
+
 ### genconfig.py 修复
 
 - **magic number**: `_C_SPACES_INDENT` 改为 `self._indent` 单源，整树一致

@@ -337,6 +337,10 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
 {
     if (!queue || !item) return false;
     struct osal_queue_obj* q = (struct osal_queue_obj*)queue;
+    if (osal_in_isr())
+    {
+        return rt_mq_send(q->mq, item, q->item_size) == RT_EOK;
+    }
     rt_tick_t ticks = (timeout_ms == OSAL_WAIT_FOREVER)
         ? RT_WAITING_FOREVER
         : rt_tick_from_millisecond(timeout_ms);
@@ -397,15 +401,13 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
 #endif /* RT_USING_MESSAGEQUEUE */
 
 /* ── 硬件安全关断 (weak, 板级可覆盖) ── */
-COMPAT_WEAK(safety_hardware_shutdown)
-void safety_hardware_shutdown(void)
+COMPAT_WEAK void safety_hardware_shutdown(void)
 {
     COMPAT_TRAP();
 }
 
 /* ── Panic 安全互锁 (weak, 板级可覆盖) ── */
-COMPAT_WEAK(osal_panic_interlock)
-void osal_panic_interlock(void)
+COMPAT_WEAK void osal_panic_interlock(void)
 {
 }
 

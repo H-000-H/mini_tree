@@ -282,7 +282,7 @@ Kconfig SYSTEM_BACKEND
 
 ## 第 8 轮: 硅片级安全加固 (最终轮)
 
-**动机**: 覆盖所有已知嵌入式软件失效模式中尚未被框架防御的三个死角: ISR 与任务对订阅者数组的读写踩踏、DMA 引擎因内存不对齐触发的总线错误、以及 C++ 静态初始化顺序惨案 (SIOF) 导致的 main() 前崩溃。
+**动机**: 覆盖已知嵌入式软件失效模式中尚未被框架防御的三个死角: ISR 与任务对订阅者数组的读写踩踏、DMA 引擎因内存不对齐触发的总线错误、以及 C++ 静态初始化顺序惨案 (SIOF) 导致的 main() 前崩溃。
 
 **变更清单**:
 
@@ -294,7 +294,7 @@ Kconfig SYSTEM_BACKEND
 
 **设计要点**:
 
-- **seal 封表** — 非加锁方案, 通过架构契约而非运行时互斥切断读写踩踏路径. seal 后 subscribe 返回 false, 相当于在架构层面禁止运行时动态路由. 对于 ISR post 场景, 这意味着 dispatch 遍历的订阅者数组在 vTaskStartScheduler 启动后永远是只读的.
+- **seal 封表** — 非加锁方案, 通过架构契约而非运行时互斥切断读写踩踏路径. seal 后 subscribe 返回 false, 相当于在架构层面禁止运行时动态路由. 对于 ISR post 场景, 这意味着 dispatch 遍历的订阅者数组在 vTaskStartScheduler 启动后是只读的.
 
 - **BufferPool 对齐策略** — 池内存分配采用超额申请 + 地址向上取整, 而非 `aligned_alloc` / `posix_memalign`, 避免对 C 运行时库的依赖. 对静态池 (`use_static = true`) 场景, 调用者自行确保 `static_mem` 对齐.
 
