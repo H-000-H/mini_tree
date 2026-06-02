@@ -24,9 +24,9 @@ from xml.etree import ElementTree as ET
 # platform -> Keil CPU/FPU mapping
 # ---------------------------------------------------------------------------
 PLATFORMS: Dict[str, Dict[str, object]] = {
-    "arm_cm3":  {"cpu": "Cortex-M3",   "fpu": 0, "core": "STM32F103C8"},
-    "arm_cm4f": {"cpu": "Cortex-M4FP", "fpu": 2, "core": "STM32F407VG"},
-    "arm_cm7":  {"cpu": "Cortex-M7",   "fpu": 2, "core": "STM32F746NG"},
+    "arm_cm3":  {"cpu": "Cortex-M3",   "fpu": 0},
+    "arm_cm4f": {"cpu": "Cortex-M4FP", "fpu": 2},
+    "arm_cm7":  {"cpu": "Cortex-M7",   "fpu": 2},
 }
 
 ARM_PORTS: Dict[str, str] = {
@@ -123,7 +123,12 @@ def indent(elem: ET.Element, level: int = 0) -> None:
 # ---------------------------------------------------------------------------
 # UVprojx generation
 # ---------------------------------------------------------------------------
-def generate(platform: str, toolchain: str, osal: str, output_dir: str = ".") -> int:
+def generate(platform: str, toolchain: str, osal: str,
+             output_dir: str = ".",
+             core_model: str = "ARMCM3",
+             clock_hz: int = 16000000,
+             flash_base: str = "0x08000000",
+             flash_size: str = "0x100000") -> int:
     plat: Dict[str, object] = PLATFORMS[platform]
     project_name: str = f"mini_tree_{platform}_{toolchain}_{osal.lower()}"
     source_groups: Dict[str, List[str]] = discover_sources(platform, toolchain, osal)
@@ -176,14 +181,14 @@ def generate(platform: str, toolchain: str, osal: str, output_dir: str = ".") ->
     tard: ET.Element = make_sub(topt, "TargetArmAds")
     make_sub(tard, "Cpu", str(plat["cpu"]))
     make_sub(tard, "FPU", str(plat["fpu"]))
-    make_sub(tard, "Core", str(plat["core"]))
-    make_sub(tard, "Clock", "168000000")
+    make_sub(tard, "Core", core_model)
+    make_sub(tard, "Clock", str(clock_hz))
 
     mcx: ET.Element = make_sub(tard, "MemoryAreas")
     mm: ET.Element = make_sub(mcx, "MemoryArea")
     make_sub(mm, "Name", "Flash")
-    make_sub(mm, "StartAddress", "0x08000000")
-    make_sub(mm, "Size", "0x100000")
+    make_sub(mm, "StartAddress", flash_base)
+    make_sub(mm, "Size", flash_size)
     make_sub(mm, "Type", "0")
     make_sub(mm, "Startup", "1")
 
@@ -262,6 +267,15 @@ if __name__ == "__main__":
     parser.add_argument("--platform", choices=list(PLATFORMS), default="arm_cm3")
     parser.add_argument("--toolchain", choices=["keil5", "keil6"], default="keil5")
     parser.add_argument("--osal", choices=["FREERTOS", "RTTHREAD", "NULL"], default="RTTHREAD")
+    parser.add_argument("--core", default="ARMCM3",
+                        help="Keil device/core name (e.g. STM32F407VG)")
+    parser.add_argument("--clock", type=int, default=16000000,
+                        help="CPU clock in Hz")
+    parser.add_argument("--flash-base", default="0x08000000",
+                        help="Flash base address (e.g. 0x08000000)")
+    parser.add_argument("--flash-size", default="0x100000",
+                        help="Flash size in bytes (e.g. 0x100000)")
     parser.add_argument("--output", default=".")
     args = parser.parse_args()
-    sys.exit(generate(args.platform, args.toolchain, args.osal, args.output))
+    sys.exit(generate(args.platform, args.toolchain, args.osal, args.output,
+                      args.core, args.clock, args.flash_base, args.flash_size))

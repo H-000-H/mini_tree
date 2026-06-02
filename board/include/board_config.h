@@ -20,14 +20,16 @@
  *  DTS 自动推导的池大小 (由 dtc-lite.py 扫描 compatible 计数生成)
  *  ═══════════════════════════════════════════════════════════════════ */
 
-/* ── 简短别名 (映射到 DTC_GEN_COUNT_xxx) ── */
-#define UART_COUNT    DTC_GEN_COUNT_ESP32_UART
-#define I2C_COUNT     DTC_GEN_COUNT_ESP32_I2C_BUS
-#define SPI_COUNT     DTC_GEN_COUNT_ESP32_SPI_BUS
-#define I2S_COUNT     DTC_GEN_COUNT_ESP32_I2S_BUS
-#define ADC_COUNT     DTC_GEN_COUNT_ESP32_ADC
-#define PWM_COUNT     DTC_GEN_COUNT_ESP32_PWM
-#define GPIO_COUNT    DTC_GEN_COUNT_ESP32_GPIO
+/* ── 简短别名 (映射到 DTC_GEN_COUNT_xxx) ──
+ * 移植时替换 vendor 为你的 compatible 前缀:
+ *   例: compatible = "mychip,uart" → DTC_GEN_COUNT_MYCHIP_UART
+ */
+#define UART_COUNT    DTC_GEN_COUNT_VENDOR_UART
+#define I2C_COUNT     DTC_GEN_COUNT_VENDOR_I2C_BUS
+#define SPI_COUNT     DTC_GEN_COUNT_VENDOR_SPI_BUS
+#define ADC_COUNT     DTC_GEN_COUNT_VENDOR_ADC
+#define PWM_COUNT     DTC_GEN_COUNT_VENDOR_PWM
+#define GPIO_COUNT    DTC_GEN_COUNT_VENDOR_GPIO
 
 
 /* ═══════════════════════════════════════════════════════════════════
