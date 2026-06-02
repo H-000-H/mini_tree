@@ -56,9 +56,13 @@ typedef struct device_node
     const device_id_t*  deps;
     uint8_t             status;         /* 编译期默认状态 */
     uint8_t             criticality;    /* DEVICE_CRIT_xxx: probe 失败时的系统行为 */
+    uint8_t             flags;          /* DEVICE_FLAG_xxx */
     uint8_t             prop_count;
     uint8_t             dep_count;
 } device_node_t;
+
+/* 编译期节点标志 */
+#define DEVICE_FLAG_DIRECT    0x01  /* 直接访问 (direct), 无需运行时 device_t 实例 */
 
 
 /* ── VFS 操作表 ── */

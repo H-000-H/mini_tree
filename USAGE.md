@@ -24,6 +24,7 @@
 14. [多核配置](#14-多核配置)
 15. [OSAL_NULL 单元测试](#15-osal_null-单元测试)
 16. [Keil MDK 集成说明](#16-keil-mdk-集成说明)
+17. [红线区 — 硬实时 Fast Path](#17-红线区--硬实时-fast-path)
 
 ---
 
@@ -1529,4 +1530,131 @@ Project → Options for Target → Target → ARM Compiler → "Use default comp
    若在调试过程中定位到代码逻辑问题，切换回 VS Code/Cursor 修改并保存，让 Keil 重新编译。不建议在 Keil 编辑器内直接修改代码。
 5. **提交前清理**：
    调试结束后，确认 `.gitignore` 已过滤所有编译中间文件（`.crf`、`.o`、`.d` 等），保持仓库整洁。
+
+---
+
+## 17. 红线区 — 硬实时 Fast Path
+
+### 17.1 红线/蓝线架构原则
+
+代码量占比 95% 的**蓝线区**（UI、网络、按键、日志）强制使用 VFS/OSAL，牺牲性能换取可移植性和安全性。代码量 5% 的**红线区**（电机 FOC、音频 DSP、高频协议）允许暴力开后门，直接操作寄存器，为纳秒级实时性牺牲可移植性。
+
+### 17.2 Fast Path 文件清单
+
+| 文件 | 用途 | 平台通用性 |
+|------|------|-----------|
+| `hal_gpio_fast.h` | GPIO set/clr/toggle/read 寄存器直写 | ★★★ STM32/GD32/AT32 通用 |
+| `hal_cpu_fast.h` | NVIC 使能/禁能/优先级 + ISR 上下文检测 + 全局中断开关 | ★★★ Cortex-M 通用 |
+| `hal_pwm_fast.h` | 运行时占空比/周期直写（**仅声明 API，无通用实现**） | ☆☆☆ 平台自行实现 |
+
+### 17.3 GPIO Fast Path
+
+"Fast" 的核心含义是 **绕过 VFS** (device_ioctl → 持锁 → 状态检查 → 函数指针跳转)，具体实现因平台而异，不一定是寄存器直写：
+
+| 平台 | 实现方式 |
+|------|---------|
+| STM32/GD32/AT32 (Cortex-M) | BSRR/ODR/IDR 寄存器直写，单条 STR 指令 |
+| ESP32 | 调用 `gpio_set_level()` 等 ESP-IDF API |
+| NXP MCUXpresso | 调用 `GPIO_PinWrite()` 等 SDK API |
+
+```c
+#include "hal_gpio_fast.h"
+
+/* 各平台统一 API, 底层实现不同 */
+hal_gpio_fast_set(GPIOA_BASE, 1U << PIN_LED);
+hal_gpio_fast_clr(GPIOA_BASE, 1U << PIN_LED);
+hal_gpio_fast_toggle(GPIOA_BASE, 1U << PIN_LED);
+uint32_t val = hal_gpio_fast_read(GPIOA_BASE);
+```
+
+> 适用于高于 10kHz 的 GPIO 翻转频率。低频操作请走标准 VFS 路径。
+> SoC 移植时定义 `HAL_GPIO_FAST_OVERRIDE` 即可替换为平台自己的实现。
+
+### 17.4 CPU / NVIC Fast Path
+
+`hal_cpu_fast.h` 提供不依赖 CMSIS 的 NVIC 操作，以及 DEBUG 模式下的 ISR 安全断言。
+
+```c
+#include "hal_cpu_fast.h"
+
+/* NVIC 直写 */
+hal_irq_enable(29);             // 使能 TIM3 中断 (IRQn=29)
+hal_irq_disable(29);            // 禁能
+hal_irq_set_priority(29, 5);    // 设置优先级
+
+/* 全局中断开关 — 临界段保护 */
+uint32_t mask = hal_irq_disable_all();
+// ... 原子操作 ...
+hal_irq_restore(mask);
+
+/* ISR 上下文检测 — 运行时环境判断 */
+if (hal_is_in_isr()) {
+    // 当前在中断中，仅调用 ISR 安全函数
+    osal_queue_send(queue, &evt, 0);
+}
+```
+
+#### ISR 安全红线
+
+DEBUG 模式下，`HAL_ASSERT_NOT_ISR()` 插入在所有 VFS 入口（`device_write/read/ioctl/open/close/suspend/resume`）。若在中断中误调 VFS，自动触发 trap 并打印错误信息：
+
+```
+[FATAL] VFS call from ISR context! Remove VFS calls from ISR or bypass VFS.
+```
+
+Release 模式下断言编译为空，零开销。
+
+### 17.5 PWM Fast Path
+
+`hal_pwm_fast.h` **仅声明 API 签名**，不提供通用实现。因 PWM 定时器寄存器布局因芯片厂商而异，本框架无法给出统一的寄存器偏移。
+
+如果项目的控制环需要在每个周期更新占空比（如电机 FOC 20kHz），用户应在 `hal_if/soc/<chip_name>/` 层自行实现：
+
+```c
+// 以 STM32 通用定时器为例 — 放入 soc_port_stm32f4 或类似文件中
+#include "hal_pwm_fast.h"
+
+#define STM32_TIM2_BASE    0x40000000UL
+#define STM32_CCR1_OFFSET  0x34UL
+
+static inline void hal_pwm_fast_set_duty(uint32_t tim_base, int channel, uint32_t duty)
+{
+    *(volatile uint32_t*)(tim_base + STM32_CCR1_OFFSET + ((uint32_t)channel << 2)) = duty;
+}
+
+// 使用:
+hal_pwm_fast_set_duty(STM32_TIM2_BASE, 1, 500);
+```
+
+> 未来可能由社区或后续版本补充常见平台的默认实现。当前版本保持架构通用性，不引入平台特定代码。
+
+### 17.6 DMA 块传输约束
+
+DMA 个体传输的 setup 开销远大于传输本身。传 1 字节和传 1KB 消耗几乎相同的配置/中断周期，byte-by-byte 传输 ≈ 放大数百次 setup 开销。
+
+**音频、屏幕刷新等高带宽场景，必须使用块传输：**
+
+```c
+#include "hal_dma.h"
+
+/* ✅ 正确: 块传输，一次 DMA 传完整帧 */
+hal_dma_config_block(chan, src, dst, 1024, HAL_DMA_WIDTH_WORD);
+
+/* ❌ 错误: 逐字节传，setup 开销爆炸 */
+chan->config(chan, src + i, dst + i, 1);   // 实际写到循环里就是灾难
+```
+
+DEBUG 模式下 `hal_dma_config_block()` 自动卡住：
+- 地址未对齐（addr % width ≠ 0）
+- 块大小 < 32 字节
+- Release 编译为空，零开销
+
+### 17.7 红线区接入检查清单
+
+在决定对某段代码使用 Fast Path 前，确认以下条件：
+
+- [ ] 该路径的执行频率是否 >10kHz？（低于此阈值走 VFS 即可）
+- [ ] 是否可以接受此部分代码丧失跨平台移植性？
+- [ ] 调用前，硬件外设时钟和初始化是否已完成？
+- [ ] ISR 中是否完全避免了 VFS/OSAL 锁相关调用？
 

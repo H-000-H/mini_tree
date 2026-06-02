@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "compiler_compat.h"
+#include "hal_cpu_fast.h"
 #include "event_bus.hpp"
 #include "safe_state.h"
 
@@ -69,7 +70,8 @@ int device_tree_init(void)
         s_devices[i].lock        = NULL;
         s_devices[i].platform_data = NULL;
 
-        if (node && s_devices[i].status != DEVICE_STATUS_DISABLED)
+        if (node && s_devices[i].status != DEVICE_STATUS_DISABLED
+            && !(node->flags & DEVICE_FLAG_DIRECT))
         {
             osal_mutex_t* lock = NULL;
             if (osal_mutex_create_static(&lock, s_device_lock_storage[i], sizeof(s_device_lock_storage[i])) == 0)
@@ -383,6 +385,7 @@ int device_get_count(void)
 int device_open(device_t* dev, void* arg)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
 
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (!dev->ops || (!dev->ops->open && !dev->ops->init))
@@ -408,6 +411,7 @@ int device_open(device_t* dev, void* arg)
 int device_close(device_t* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (!dev->ops || !dev->ops->close)
     {
@@ -432,6 +436,7 @@ int device_close(device_t* dev)
 int device_write(device_t* dev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (!dev->ops || !dev->ops->write || dev->status != DEVICE_STATUS_RUNNING)
     {
@@ -446,6 +451,7 @@ int device_write(device_t* dev, const void* buf, size_t len, uint32_t timeout_ms
 int device_read(device_t* dev, void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (!dev->ops || !dev->ops->read || dev->status != DEVICE_STATUS_RUNNING)
     {
@@ -460,6 +466,7 @@ int device_read(device_t* dev, void* buf, size_t len, uint32_t timeout_ms)
 int device_ioctl(device_t* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (!dev->ops || !dev->ops->ioctl || dev->status != DEVICE_STATUS_RUNNING)
     {
@@ -474,6 +481,7 @@ int device_ioctl(device_t* dev, int cmd, void* arg, size_t arg_len, uint32_t tim
 int device_suspend(device_t* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
 
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (dev->status != DEVICE_STATUS_RUNNING)
@@ -500,6 +508,7 @@ int device_suspend(device_t* dev)
 int device_resume(device_t* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
+    HAL_ASSERT_NOT_ISR();
 
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     if (dev->status != DEVICE_STATUS_SUSPENDED)

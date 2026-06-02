@@ -1339,7 +1339,7 @@ class CGenerator:
             else:
                 crit_val = 'DEVICE_CRIT_WARNING'
 
-            EXCLUDED_PROPS = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality')
+            EXCLUDED_PROPS = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality', 'direct')
 
             prop_ref = f'DEV_{safe}_props' if any(
                 p.name not in EXCLUDED_PROPS
@@ -1354,7 +1354,11 @@ class CGenerator:
                           if dep in label_to_idx)
             label_val = dev.label or ""
 
-            EXCLUDED_PROPS = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality')
+            EXCLUDED_PROPS = ('compatible', 'depends-on', 'depends_on', 'status', 'criticality', 'direct')
+
+            # flags
+            direct_prop = dev.get_prop('direct')
+            flags_val = 'DEVICE_FLAG_DIRECT' if direct_prop else '0'
 
             node_entries.append(
                 f'    [DEV_ID_{self._snake_name(dev.name)}] = {{\n'
@@ -1364,6 +1368,7 @@ class CGenerator:
                 f'        .path       = "{dev.path}",\n'
                 f'        .status     = {status_val},\n'
                 f'        .criticality = {crit_val},\n'
+                f'        .flags      = {flags_val},\n'
                 f'        .prop_count = {len([p for p in dev.props if p.name not in EXCLUDED_PROPS])},\n'
                 f'        .props      = {prop_ref},\n'
                 f'        .dep_count  = {dep_count},\n'

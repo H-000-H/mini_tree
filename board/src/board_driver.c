@@ -108,6 +108,10 @@ static int device_dependency_not_ready(const device_t* dev)
         device_t* dep = board_dev_get(dev->node->deps[i]);
         if (!dep) return 1;
 
+        /* DIRECT 设备不参与 VFS 生命周期, 视为始终就绪 */
+        if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
+            continue;
+
         device_status_t status = device_get_status(dep);
         if (status == DEVICE_STATUS_ERROR ||
             status == DEVICE_STATUS_REMOVED)
@@ -126,6 +130,10 @@ static int device_dependency_pending(const device_t* dev)
     {
         device_t* dep = board_dev_get(dev->node->deps[i]);
         if (!dep) return 1;
+
+        /* DIRECT 设备始终就绪 */
+        if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
+            continue;
 
         device_status_t status = device_get_status(dep);
         if (status != DEVICE_STATUS_PROBED &&
@@ -244,6 +252,12 @@ int board_driver_probe_all(void)
 
             if (!dev || device_get_status(dev) == DEVICE_STATUS_DISABLED)
             {
+                continue;
+            }
+            /* DIRECT 设备不经过 VFS probe, 跳过 */
+            if (dev->node && (dev->node->flags & DEVICE_FLAG_DIRECT))
+            {
+                DRV_LOGV(kTag, "skip probe: '%s' (direct)", device_get_name(dev));
                 continue;
             }
             if (device_get_status(dev) == DEVICE_STATUS_PROBED ||
