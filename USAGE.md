@@ -1683,7 +1683,53 @@ void pulse_us(void) {
 
 > 非标准主频（非整 MHz）自动使用 64 位乘法，精度不损失。
 
-### 17.8 红线区接入检查清单
+### 17.8 RAM_EXEC — 零抖动代码驻留
+
+Cortex-M7 @400MHz 下 Flash 读速约 40MHz（10+ wait states）。Cache 命中时取指 1 周期，Miss 时等 Flash 几十周期→控制环抖动。
+
+`RAM_EXEC` 将高频函数搬移到 ITCM/DTCM/SRAM，Cache Miss 归零。
+
+```c
+#include "compiler_compat.h"
+
+RAM_EXEC void hall_sensor_isr(void)
+{
+    /* 在 TCM 中执行, 零等待状态 */
+    hal_gpio_fast_set(GPIOA_BASE, PIN_MASK);
+}
+```
+
+**Linker script 改动（以 STM32 ITCM 为例）：**
+
+```ld
+/* 在 MEMORY 区声明 ITCM */
+MEMORY
+{
+    ITCM    (rx)  : ORIGIN = 0x00000000, LENGTH = 16K
+    FLASH   (rx)  : ORIGIN = 0x08000000, LENGTH = 1M
+    RAM     (rw)  : ORIGIN = 0x20000000, LENGTH = 128K
+}
+
+/* 添加 .ram_code 段, 加载在 FLASH, 运行在 ITCM */
+.ram_code : {
+    *(.ram_code*)
+} > ITCM AT> FLASH
+
+_sram_code   = ADDR(.ram_code);
+_eram_code   = ADDR(.ram_code) + SIZEOF(.ram_code);
+_ram_code_flash = LOADADDR(.ram_code);
+```
+
+**Startup 搬运（调用 `System_Pre_OS_Init` 前执行）：**
+
+```c
+extern uint32_t _sram_code, _eram_code, _ram_code_flash;
+memcpy(&_sram_code, &_ram_code_flash, (uint8_t*)&_eram_code - (uint8_t*)&_sram_code);
+```
+
+> 需要修改 linker script，芯片出厂启动文件可能自带 TCM 复制，先确认。
+
+### 17.9 红线区接入检查清单
 
 在决定对某段代码使用 Fast Path 前，确认以下条件：
 
