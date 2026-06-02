@@ -3,6 +3,7 @@
 #include "config.h"
 #include "osal.h"
 #include "board_config.h"
+#include "compiler_compat.h"
 
 #include <rtthread.h>
 #include <rthw.h>
@@ -11,7 +12,7 @@
 #include <stdlib.h>
 
 /*
- * 最小堆大小 — 宿主工程可在 board_config.h 中用 RTT_HEAP_SIZE 覆盖.
+ * 最小堆大小 — 用户工程可在 board_config.h 中用 RTT_HEAP_SIZE 覆盖.
  * 实际线程栈、IPC 对象等内存从此堆分配.
  */
 #ifndef RTT_HEAP_SIZE
@@ -263,14 +264,14 @@ void osal_task_delete(osal_task_handle_t task)
 bool osal_task_is_running(osal_task_handle_t task)
 {
     if (!task) return false;
-    rt_uint8_t stat = ((rt_thread_t)task)->stat & RT_THREAD_STAT_MASK;
+    rt_uint8_t stat = RT_SCHED_CTX((rt_thread_t)task).stat & RT_THREAD_STAT_MASK;
     return stat != RT_THREAD_CLOSE && stat != RT_THREAD_INIT;
 }
 
 const char* osal_task_get_name(osal_task_handle_t task)
 {
     if (!task) return "?";
-    return ((rt_thread_t)task)->name;
+    return ((struct rt_object*)((rt_thread_t)task))->name;
 }
 
 /* RTT 使用 '#' (0x23) 填充线程栈, 从栈底扫描连续填充字节即得空闲栈大小 */
@@ -300,6 +301,7 @@ uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
 }
 
 /* ── 队列 (基于 rt_mq 消息队列, 支持任意定长消息) ── */
+#ifdef RT_USING_MESSAGEQUEUE
 struct osal_queue_obj
 {
     rt_mq_t mq;
@@ -355,18 +357,55 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
     rt_tick_t ticks = (timeout_ms == OSAL_WAIT_FOREVER)
         ? RT_WAITING_FOREVER
         : rt_tick_from_millisecond(timeout_ms);
-    /* rt_mq_recv 返回接收字节数 (>0) 成功, 负值表示超时/错误 */
     return rt_mq_recv(q->mq, item, q->item_size, ticks) >= 0;
 }
+#else
+osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
+{
+    (void)queue_len;
+    (void)item_size;
+    return NULL;
+}
+
+void osal_queue_delete(osal_queue_handle_t queue)
+{
+    (void)queue;
+}
+
+bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeout_ms)
+{
+    (void)queue;
+    (void)item;
+    (void)timeout_ms;
+    return false;
+}
+
+bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item)
+{
+    (void)queue;
+    (void)item;
+    return false;
+}
+
+bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_ms)
+{
+    (void)queue;
+    (void)item;
+    (void)timeout_ms;
+    return false;
+}
+#endif /* RT_USING_MESSAGEQUEUE */
 
 /* ── 硬件安全关断 (weak, 板级可覆盖) ── */
-__attribute__((weak)) void safety_hardware_shutdown(void)
+COMPAT_WEAK(safety_hardware_shutdown)
+void safety_hardware_shutdown(void)
 {
-    __builtin_trap();
+    COMPAT_TRAP();
 }
 
 /* ── Panic 安全互锁 (weak, 板级可覆盖) ── */
-__attribute__((weak)) void osal_panic_interlock(void)
+COMPAT_WEAK(osal_panic_interlock)
+void osal_panic_interlock(void)
 {
 }
 

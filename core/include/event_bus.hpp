@@ -12,7 +12,7 @@
 #define EVENT_SYS_DEVICE_REMOVED 0x0003  /* 设备从设备树中移除 */
 
 /* ── 用户事件基线 ──
- * 宿主工程在业务代码中基于此值定义自有事件:
+ * 用户工程在业务代码中基于此值定义自有事件:
  *   #define EVENT_MY_FEATURE  (EVENT_USER_BASE + 0)
  *   #define EVENT_MY_TIMER    (EVENT_USER_BASE + 1)
  * 框架只搬运事件 ID, 不解释其含义.
@@ -66,7 +66,7 @@ public:
      *    - 执行阻塞 I/O (SPI 传输、Flash 擦写等)
      *    - 执行长时间计算或忙等
      *    - 调用 osal_delay_ms 或任何阻塞操作
-     *  长时间工作应转发到宿主专用任务 (设置标志位、发信号量、入工作队列). */
+     *  长时间工作应转发到用户专用任务 (设置标志位、发信号量、入工作队列). */
     void start();
     void stop();
 

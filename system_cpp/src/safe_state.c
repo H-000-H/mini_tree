@@ -12,6 +12,7 @@
     #define OS_SCHEDULER_SUSPEND()      vTaskSuspendAll()
     #define OS_INTERRUPTS_DISABLE()     portDISABLE_INTERRUPTS()
 #elif defined(CONFIG_OSAL_RTTHREAD)
+    #include <rtthread.h>
     #include <rthw.h>
     #define OS_SCHEDULER_SUSPEND()      rt_enter_critical()
     #define OS_INTERRUPTS_DISABLE()     rt_hw_interrupt_disable()

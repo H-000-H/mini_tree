@@ -2,6 +2,7 @@
 #include "safe_state.h"
 #include "system_log.hpp"
 #include "system_wdt.hpp"
+#include "compiler_compat.h"
 
 /* SIOF (Static Initialization Order Fiasco) 防御:
  *   在 System_Pre_OS_Init (Phase 1) 完成前, 禁止所有 EventBus 操作.

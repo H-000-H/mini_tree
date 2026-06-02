@@ -206,7 +206,7 @@ void system_safety_hardware_shutdown(const char* reason)
     hal_cpu_emergency_stop_all_cores();
 #else
     /* 最小安全停机: CONFIG_SAFETY_SHUTDOWN 未启用, 仅停机.
-     * 移植阶段宿主工程可在此处添加自己的安全逻辑后再 halt. */
+     * 移植阶段用户工程可在此处添加自己的安全逻辑后再 halt. */
     (void)reason;
 #endif /* CONFIG_SAFETY_SHUTDOWN */
 

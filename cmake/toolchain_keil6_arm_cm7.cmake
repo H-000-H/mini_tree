@@ -1,0 +1,14 @@
+# ARM Cortex-M7 交叉编译工具链 (Keil MDK v6 / ARMCLANG)
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR arm)
+
+set(CMAKE_C_COMPILER   armclang)
+set(CMAKE_CXX_COMPILER armclang)
+set(CMAKE_ASM_COMPILER armclang)
+set(CMAKE_AR           armar)
+
+set(CMAKE_C_FLAGS   "--target=arm-arm-none-eabi -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-d16 -std=c17 -Wall -Wextra -Os -g" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "--target=arm-arm-none-eabi -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-d16 -std=c++20 -Wall -Wextra -Os -g -fno-exceptions -fno-rtti" CACHE STRING "" FORCE)
+set(CMAKE_ASM_FLAGS "--target=arm-arm-none-eabi -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-d16 -x assembler-with-cpp" CACHE STRING "" FORCE)
+
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

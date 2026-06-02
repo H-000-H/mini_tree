@@ -2,12 +2,14 @@
 #include "VFS.h"
 #include "osal.h"
 
+#include "board_config.h"
 #include "board_devtable.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "compiler_compat.h"
 #include "event_bus.hpp"
 #include "safe_state.h"
 
@@ -17,10 +19,10 @@ _Static_assert(OSAL_MUTEX_POOL_SIZE >= DEV_ID_COUNT,
 
 /* ── 运行时设备实例表 ── */
 static device_t s_devices[DEV_ID_COUNT];
-static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] __attribute__((aligned(4)));
+static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
 
 /* ── device_set_status FSM 原子锁 (IEC 61508 2.7.1) ── */
-static uint8_t s_status_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] __attribute__((aligned(4)));
+static uint8_t s_status_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4);
 static osal_spinlock_t* const s_status_lock = (osal_spinlock_t*)s_status_lock_storage;
 
 static int device_status_can_transit(device_status_t from, device_status_t to)
@@ -188,6 +190,9 @@ static int safe_parse_int32(const char* str, int* out)
 
     while (*p)
     {
+        /* 空格作为自然终止符 — 兼容 multi-int 属性串如 "1073758208 1024" */
+        if (*p == ' ') break;
+
         uint32_t digit;
         if (*p >= '0' && *p <= '9')      digit = (uint32_t)(*p - '0');
         else if (*p >= 'a' && *p <= 'f') digit = (uint32_t)(*p - 'a' + 10);
@@ -216,6 +221,47 @@ int device_get_prop_int(const device_t* dev, const char* key, int* val)
             return safe_parse_int32(node->props[i].value, val);
     }
     return VFS_ERR_INVAL;
+}
+
+int device_get_prop_int_array(const device_t* dev, const char* key, int* out_arr, int max_len)
+{
+    if (!dev || !dev->node || !key || !out_arr || max_len <= 0) return VFS_ERR_INVAL;
+
+    const char* value = NULL;
+    for (int i = 0; i < dev->node->prop_count; i++)
+    {
+        if (strcmp(dev->node->props[i].key, key) == 0)
+        {
+            value = dev->node->props[i].value;
+            break;
+        }
+    }
+    if (!value) return VFS_ERR_INVAL;
+
+    /* 解析空格分隔的整数串 */
+    int count = 0;
+    const char* p = value;
+    while (*p && count < max_len)
+    {
+        while (*p == ' ') p++;
+        if (!*p) break;
+
+        /* 计算当前 token 长度 */
+        const char* start = p;
+        while (*p && *p != ' ') p++;
+
+        /* 复制 token 到临时缓冲区 */
+        char token[64];
+        size_t len = (size_t)(p - start);
+        if (len >= sizeof(token)) return VFS_ERR_INVAL;
+        memcpy(token, start, len);
+        token[len] = '\0';
+
+        if (safe_parse_int32(token, &out_arr[count]) != 0) return VFS_ERR_INVAL;
+        count++;
+    }
+
+    return count;
 }
 
 int device_get_prop_str(const device_t* dev, const char* key, const char** val)

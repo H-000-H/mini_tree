@@ -49,7 +49,7 @@
 #define INCLUDE_xQueueGetMutexHolder            1
 #define INCLUDE_uxTaskGetStackHighWaterMark     1
 
-/* ── RISC-V MTIME/CLINT (0 = 无硬件定时器, 由宿主工程覆盖) ── */
+/* ── RISC-V MTIME/CLINT (0 = 无硬件定时器, 由用户工程覆盖) ── */
 #define configCLINT_BASE_ADDRESS              0
 
 #define configCHECK_FOR_STACK_OVERFLOW          2

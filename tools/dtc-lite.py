@@ -913,6 +913,9 @@ class DTSCompiler:
                 for f in files:
                     if f.endswith('.c') or f.endswith('.h'):
                         path = os.path.join(root_dir, f)
+                        # 跳过 >1MB 的文件 — 驱动注册不会出现在 SDK 巨型文件中
+                        if os.path.getsize(path) > 1024 * 1024:
+                            continue
                         try:
                             with open(path, 'r', encoding='utf-8') as fh:
                                 content = fh.read()
@@ -1086,6 +1089,23 @@ class CGenerator:
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
+    def _write_if_changed(self, path, content):
+        """防抖写入: 内容一致时不触碰磁盘, 保护 Makefile 时间戳"""
+        if not content.endswith('\n'):
+            content += '\n'
+        try:
+            display = os.path.relpath(path)
+        except ValueError:
+            display = os.path.basename(path)
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                if f.read() == content:
+                    print(f"  [keep] {display}")
+                    return
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"  [gen]  {display}")
+
     def gen_all(self):
         """生成所有输出文件"""
         self._gen_board_nodes_h()
@@ -1161,9 +1181,7 @@ class CGenerator:
         lines.append('#endif /* BOARD_NODES_H */')
         lines.append('')
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_board_force_link_c(self):
         """生成 board_force_link.c — 强制链接器保留所有 driver_map 中的 probe 函数
@@ -1173,15 +1191,14 @@ class CGenerator:
 
         driver_map = self.compiler.driver_map
         if not driver_map:
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write('/* no drivers registered — nothing to force-link */\n')
+            self._write_if_changed(path, '/* no drivers registered — nothing to force-link */')
             print(f"  [gen] {path} (empty)")
             return
 
         externs = []
         refs = []
         for compat, (probe_fn, _) in sorted(driver_map.items()):
-            externs.append(f'extern int {probe_fn}(device_t*);')
+            externs.append(f'extern int __attribute__((weak)) {probe_fn}(device_t*);')
             refs.append(f'    s_fake_ref = (void*){probe_fn};')
 
         lines = [
@@ -1200,9 +1217,7 @@ class CGenerator:
             '}',
         ]
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_board_devtable_h(self):
         """生成 board_devtable.h — 设备表访问 API"""
@@ -1249,9 +1264,7 @@ class CGenerator:
             '#endif /* BOARD_DEVTABLE_H */',
         ]
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_board_devtable_c(self):
         """生成 board_devtable.c — 静态 device_node_t 表"""
@@ -1273,7 +1286,7 @@ class CGenerator:
                 for p in prop_list:
                     val = ""
                     if p.ints:
-                        val = str(p.ints[0])
+                        val = " ".join(hex(i) for i in p.ints)
                     elif p.strings:
                         val = p.strings[0]
                     elif p.phandles:
@@ -1416,9 +1429,7 @@ class CGenerator:
             '',
         ]
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_board_probe_c(self):
         """生成 board_probe.c — probe/remove 表 + 拓扑排序顺序"""
@@ -1451,8 +1462,8 @@ class CGenerator:
                 compat = compat_prop.strings[0]
                 if compat in self.compiler.driver_map:
                     p_fn, r_fn = self.compiler.driver_map[compat]
-                    probe_externs.append(f'extern int {p_fn}(device_t* dev);')
-                    remove_externs.append(f'extern int {r_fn}(device_t* dev);')
+                    probe_externs.append(f'extern int __attribute__((weak)) {p_fn}(device_t* dev);')
+                    remove_externs.append(f'extern int __attribute__((weak)) {r_fn}(device_t* dev);')
                     probe_array.append(
                         f'    [DEV_ID_{snake}] = {p_fn},'
                     )
@@ -1501,13 +1512,13 @@ class CGenerator:
 
         lines += [
             '',
-            '/* ===== probe 函数表 (按 DEV_ID 索引) ===== */',
-            f'static probe_fn_t s_probe_fns[DEV_ID_COUNT] = {{',
+            '/* ===== probe 函数表 (按 DEV_ID 索引, .rodata) ===== */',
+            f'static const probe_fn_t s_probe_fns[DEV_ID_COUNT] = {{',
         ] + probe_array + [
             '};',
             '',
-            '/* ===== remove 函数表 (按 DEV_ID 索引) ===== */',
-            f'static remove_fn_t s_remove_fns[DEV_ID_COUNT] = {{',
+            '/* ===== remove 函数表 (按 DEV_ID 索引, .rodata) ===== */',
+            f'static const remove_fn_t s_remove_fns[DEV_ID_COUNT] = {{',
         ] + remove_array + [
             '};',
             '',
@@ -1594,9 +1605,7 @@ class CGenerator:
 
         lines += ['']
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_board_handles_h(self):
         """生成 board_handles.h — chosen/alias 注入宏"""
@@ -1641,9 +1650,7 @@ class CGenerator:
             '',
         ]
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_dt_config_h(self):
         """生成 dt_config_gen.h — 从 DTS 设备计数自动生成 Pool Size 宏
@@ -1724,9 +1731,7 @@ class CGenerator:
             '',
         ]
 
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        print(f"  [gen] {path}")
+        self._write_if_changed(path, '\n'.join(lines))
 
 
 # =========================================================================

@@ -9,7 +9,7 @@
 #   CONFIG_PLATFORM_ARM_CM7  → cortex-m7
 #   CONFIG_PLATFORM_RISCV    → risc-v (common)
 #
-# rtconfig.h 默认使用同目录下的版本; 宿主工程可在自己的 include
+# rtconfig.h 默认使用同目录下的版本; 用户工程可在自己的 include
 # 路径中放置 rtconfig.h 来覆盖 (同 FreeRTOSConfig.h 的注入模式).
 # ==============================================================================
 

@@ -3,6 +3,7 @@
 #include "config.h"
 #include "osal.h"
 #include "board_config.h"
+#include "compiler_compat.h"
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -435,12 +436,14 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
  *  硬件安全关断 & 日志 (与其他后端相同)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-__attribute__((weak)) void safety_hardware_shutdown(void)
+COMPAT_WEAK(safety_hardware_shutdown)
+void safety_hardware_shutdown(void)
 {
-    __builtin_trap();
+    COMPAT_TRAP();
 }
 
-__attribute__((weak)) void osal_panic_interlock(void)
+COMPAT_WEAK(osal_panic_interlock)
+void osal_panic_interlock(void)
 {
 }
 

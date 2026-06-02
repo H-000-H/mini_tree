@@ -13,3 +13,5 @@ target_include_directories(hal_if
     PUBLIC
         "include"
 )
+
+add_dependencies(hal_if kconfig_generate)

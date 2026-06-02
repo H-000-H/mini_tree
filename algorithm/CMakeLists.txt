@@ -12,3 +12,5 @@ target_include_directories(algorithm
     PUBLIC
         "buffer"
 )
+
+add_dependencies(algorithm kconfig_generate)

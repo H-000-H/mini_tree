@@ -8,7 +8,7 @@
 #   GCC_ARM_CM3   — ARM Cortex-M3
 #   GCC_ARM_CM4F  — ARM Cortex-M4F / CM7 (非 r0p1)
 #   GCC_RISC_V    — RISC-V (需要 FREERTOS_RISCV_EXTENSION)
-#   GCC_POSIX     — POSIX (宿主编译/测试)
+#   GCC_POSIX     — POSIX (用户编译/测试)
 #
 # 端口也可通过 Kconfig → PLATFORM_MCU 选择, CMake 会自动同步.
 # Kconfig 默认值: PLATFORM_POSIX
@@ -94,15 +94,16 @@ add_library(freertos_kernel STATIC ${FREERTOS_KERNEL_SRCS})
 target_include_directories(freertos_kernel
     PUBLIC
         "include"
-        "${CMAKE_CURRENT_SOURCE_DIR}"                     # FreeRTOSConfig.h (宿主提供)
+        "${CMAKE_CURRENT_SOURCE_DIR}"                     # FreeRTOSConfig.h (用户提供)
         "${CMAKE_CURRENT_SOURCE_DIR}/${FREERTOS_PORT_INCDIR}"   # portmacro.h
     PRIVATE
         "${CMAKE_SOURCE_DIR}/board/include"     # board_config.h → dt_config_gen.h (DTS 时钟)
         "${CMAKE_BINARY_DIR}/board/generated"   # dt_config_gen.h (由 dtc-lite.py 生成)
 )
 
-# ── 依赖 DTS 代码生成 (board_dts_generate 在 board 组件中定义, 先于 lib 注册) ──
+# ── 依赖 DTS 代码生成 + Kconfig ──
 add_dependencies(freertos_kernel board_dts_generate)
+add_dependencies(freertos_kernel kconfig_generate)
 
 # ── RISC-V 扩展定义 ──
 if(FREERTOS_PORT STREQUAL "GCC_RISC_V")
@@ -121,7 +122,7 @@ if(FREERTOS_NEED_PTHREADS)
     target_link_libraries(freertos_kernel PRIVATE Threads::Threads rt)
 endif()
 
-# ── ARM 端口对齐要求 ──
-if(FREERTOS_PORT MATCHES "^GCC_ARM_")
+# ── ARM 端口对齐要求 (ARMCLANG 不支持 -mno-unaligned-access) ──
+if(FREERTOS_PORT MATCHES "^GCC_ARM_" AND NOT CMAKE_C_COMPILER_ID STREQUAL "ARMClang")
     target_compile_options(freertos_kernel PRIVATE -mthumb -mno-unaligned-access)
 endif()

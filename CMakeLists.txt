@@ -1,7 +1,7 @@
 # ==============================================================================
 # mini_tree — 通用嵌入式中间件框架
 # ==============================================================================
-# 宿主工程通过 add_subdirectory 引入, 链接 mini_tree 接口库即可:
+# 用户工程通过 add_subdirectory 引入, 链接 mini_tree 接口库即可:
 #
 #   add_subdirectory(path/to/mini_tree)
 #   target_link_libraries(my_app PRIVATE mini_tree)
@@ -39,9 +39,9 @@
 #   2. -DFREERTOS_PORT=GCC_ARM_CM3 — 跳过 Kconfig, 直接指定 FreeRTOS 后端+架构
 #   3. 无配置 — 默认 FreeRTOS + POSIX (本地编译验证)
 #
-# 宿主需提供:
+# 用户需提供:
 #   所有后端: hal_* 符号 (硬件抽象层实现)
-#   FreeRTOS: FreeRTOSConfig.h (通过宿主 include 路径注入)
+#   FreeRTOS: FreeRTOSConfig.h (通过用户 include 路径注入)
 # ==============================================================================
 
 cmake_minimum_required(VERSION 3.16)
@@ -67,27 +67,69 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
+# ── 编译器通用标志 (GCC / Clang / ARMClang 均支持) ──
 add_compile_options(
-    -Wall -Wextra -Werror=implicit-function-declaration
-    $<$<CONFIG:Debug>:-Og>
-    $<$<CONFIG:Debug>:-ggdb>
-    $<$<CONFIG:Release>:-Os>
     $<$<CONFIG:Release>:-DNDEBUG>
-    # C++ 裸机环境: 禁用异常和 RTTI (不得使用 try/catch/typeid)
-    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
-    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
-    # 强制注入 Kconfig 宏定义, 杜绝 #include "config.h" 遗漏
-    -include "${CMAKE_BINARY_DIR}/generated/kconfig/config.h"
 )
 
-set(CMAKE_C_STANDARD 23)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+# ── GCC / Clang 标志 (ARMClang 不支持部分调试选项) ──
+if(CMAKE_C_COMPILER_ID STREQUAL "ARMClang")
+    # ARMCLANG: -Og / -ggdb 不支持, 调试信息由工具链文件的 -g 提供
+    add_compile_options(
+        -Wall -Wextra -Werror=implicit-function-declaration
+        $<$<CONFIG:Release>:-Os>
+        # C++ 裸机环境: 禁用异常和 RTTI
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+        -include "${CMAKE_BINARY_DIR}/generated/kconfig/config.h"
+    )
+else()
+    # GCC / Clang (完整功能)
+    add_compile_options(
+        -Wall -Wextra -Werror=implicit-function-declaration
+        $<$<CONFIG:Debug>:-Og>
+        $<$<CONFIG:Debug>:-ggdb>
+        $<$<CONFIG:Release>:-Os>
+        # C++ 裸机环境: 禁用异常和 RTTI
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+        -include "${CMAKE_BINARY_DIR}/generated/kconfig/config.h"
+    )
+endif()
 
-set(CMAKE_CXX_STANDARD 23)
+# ── C/C++ 标准 (按编译器支持能力选择) ──
+if(CMAKE_C_COMPILER_ID STREQUAL "ARMClang")
+    set(CMAKE_C_STANDARD 11)
+    set(CMAKE_CXX_STANDARD 20)
+else()
+    set(CMAKE_C_STANDARD 23)
+    set(CMAKE_CXX_STANDARD 23)
+endif()
+set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ── Kconfig C/C++ 标准覆盖 (CUSTOM_C_STANDARD, opt-in) ──
+# 当 .config 中存在 CONFIG_CUSTOM_C_STANDARD=y 时,
+# 用 Kconfig 中的 C_STANDARD / CXX_STANDARD 替换 CMake 默认值.
+if(EXISTS "${CMAKE_SOURCE_DIR}/.config")
+    file(READ "${CMAKE_SOURCE_DIR}/.config" _std_config)
+    if(_std_config MATCHES "CONFIG_CUSTOM_C_STANDARD=y")
+        string(REGEX MATCH "CONFIG_C_STANDARD=\"([^\"]*)\"" _dummy "${_std_config}")
+        if(CMAKE_MATCH_1)
+            set(CMAKE_C_STANDARD "")
+            add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=${CMAKE_MATCH_1}>)
+        endif()
+        string(REGEX MATCH "CONFIG_CXX_STANDARD=\"([^\"]*)\"" _dummy "${_std_config}")
+        if(CMAKE_MATCH_1)
+            set(CMAKE_CXX_STANDARD "")
+            add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=${CMAKE_MATCH_1}>)
+        endif()
+    endif()
+    unset(_std_config)
+endif()
+
 # ---------------------------------------------------------------------------
-# 3. FreeRTOS 端口配置 (由宿主工程通过 -D 指定或 Kconfig 派生)
+# 3. FreeRTOS 端口配置 (由用户工程通过 -D 指定或 Kconfig 派生)
 # ---------------------------------------------------------------------------
 set(FREERTOS_PORT "" CACHE STRING "FreeRTOS 架构端口 (空 = 从 Kconfig 派生)")
 set(FREERTOS_HEAP "4" CACHE STRING "FreeRTOS 堆分配器 (1-5)")
@@ -204,7 +246,7 @@ add_subdirectory(display_if)
 add_subdirectory(lib)
 
 # ---------------------------------------------------------------------------
-# 6. mini_tree 接口库 — 宿主工程通过 target_link_libraries(... mini_tree) 引入
+# 6. mini_tree 接口库 — 用户工程通过 target_link_libraries(... mini_tree) 引入
 # ---------------------------------------------------------------------------
 add_library(mini_tree INTERFACE)
 
@@ -219,7 +261,7 @@ target_link_libraries(mini_tree INTERFACE
     system
 )
 
-# 将框架头文件路径和 Kconfig 生成路径暴露给宿主工程
+# 将框架头文件路径和 Kconfig 生成路径暴露给用户工程
 target_include_directories(mini_tree INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/board/include>

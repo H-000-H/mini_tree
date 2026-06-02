@@ -43,7 +43,7 @@
 #define BOARD_STACK_ALARM_RATIO_DEFAULT 15  /* 百分比：当剩余空间不足总栈空间的 15% 时告警 */
 
 /* ── 安全状态 (Safe State) 硬件引脚 ──
- * 宿主工程应在自己的 board_config.h 中覆盖这些值, 例如:
+ * 用户工程应在自己的 board_config.h 中覆盖这些值, 例如:
  *   #define BOARD_SAFE_STATE_BUZZER_PIN    15
  *   #define BOARD_SAFE_STATE_FAULT_LED_PIN 2
  */

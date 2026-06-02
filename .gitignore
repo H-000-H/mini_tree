@@ -4,3 +4,11 @@ bld*/
 .config
 *.swp
 .DS_Store
+__pycache__/
+*.pyc
+*.o
+*.uvguix.*
+*.uvoptx
+.config.*
+default.config
+build_log.txt

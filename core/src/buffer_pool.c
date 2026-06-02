@@ -1,5 +1,6 @@
 #include "buffer_pool.h"
 #include "osal.h"
+#include "compiler_compat.h"
 
 #include <string.h>
 
@@ -126,7 +127,7 @@ static uint32_t bitmap_alloc(volatile uint32_t* mask)
     do {
         old = *mask;
         if (old == 0) return BP_MAX_BUFS;
-        bit = __builtin_ctz(old);  /* 找最低位 1 → 第一个空闲 */
+        bit = COMPAT_CTZ(old);  /* 找最低位 1 → 第一个空闲 */
         new_mask = old & ~(1u << bit);
     } while (!BP_CAS(mask, &old, new_mask));
     return (uint32_t)bit;

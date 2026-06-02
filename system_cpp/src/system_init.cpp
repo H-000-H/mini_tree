@@ -41,7 +41,7 @@ bool g_system_os_initialized = false;
  *    - 事件总线初始化 (创建 FreeRTOS 队列)
  *
  *  不创建任务、启动服务或探测驱动 —
- *  这些属于阶段 2, 在宿主注册其 HAL 之后进行.
+ *  这些属于阶段 2, 在用户注册其 HAL 之后进行.
  * ═══════════════════════════════════════════════════════════════════════════ */
 void MiniTree::System_Pre_OS_Init(void)
 {
@@ -79,8 +79,8 @@ void MiniTree::System_Pre_OS_Init(void)
     g_system_os_initialized = true;
 
     /*
-     * ─── 宿主服务初始化钩子点 ───
-     * 宿主工程应在此处调用自身的服务 init(),
+     * ─── 用户服务初始化钩子点 ───
+     * 用户工程应在此处调用自身的服务 init(),
      * 在 MiniTree::System_Pre_OS_Init() 之后且
      * MiniTree::System_Start_Tasks() 之前。示例:
      *
@@ -96,14 +96,14 @@ void MiniTree::System_Pre_OS_Init(void)
 /* ═══════════════════════════════════════════════════════════════════════════
  *  阶段 2: 创建框架任务
  *
- *  在宿主驱动注册之后、vTaskStartScheduler() 之前调用。
+ *  在用户驱动注册之后、vTaskStartScheduler() 之前调用。
  *  完成以下操作:
  *    - 驱动探测 (设备树 ←→ HAL 驱动匹配)
  *    - TWDT 初始化
  *    - Flash 位腐烂巡检启动
  *    - 启动循环计数器清除
  *
- *  宿主工程在 MiniTree::System_Start_Tasks() 之后、
+ *  用户工程在 MiniTree::System_Start_Tasks() 之后、
  *  vTaskStartScheduler() 之前创建自身的业务任务 (UI、云、音频等).
  * ═══════════════════════════════════════════════════════════════════════════ */
 void MiniTree::System_Start_Tasks(void)
@@ -112,7 +112,7 @@ void MiniTree::System_Start_Tasks(void)
 
     EventBus::getInstance().start();
 
-    /* 驱动探测 (宿主驱动在阶段 1 和阶段 2 之间注册) */
+    /* 驱动探测 (用户驱动在阶段 1 和阶段 2 之间注册) */
     int probe_fail = board_driver_probe_all();
     if (probe_fail != 0)
     {
@@ -137,8 +137,8 @@ void MiniTree::System_Start_Tasks(void)
     EventBus::getInstance().seal();
 
     /*
-     * ─── 宿主任务创建钩子点 ───
-     * 宿主工程在此处创建自身的任务:
+     * ─── 用户任务创建钩子点 ───
+     * 用户工程在此处创建自身的任务:
      *
      *   MiniTree::System_Start_Tasks();
      *   xTaskCreate(my_app_task, "app", 2048, NULL, 1, NULL);

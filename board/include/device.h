@@ -99,6 +99,7 @@ device_t* device_get_phandle_dev(const device_t* dev, const char* key);
 
 /* ── 读取属性（从 dev->node 读取） ── */
 int device_get_prop_int(const device_t* dev, const char* key, int* val);
+int device_get_prop_int_array(const device_t* dev, const char* key, int* out_arr, int max_len);
 int device_get_prop_str(const device_t* dev, const char* key, const char** val);
 int device_get_prop_bool(const device_t* dev, const char* key, int* val);
 const char* device_get_name(const device_t* dev);

@@ -35,7 +35,7 @@ bool config_store_factory_reset(void);
 int config_store_health(void);
 
 /* ── 持久化后端回调桥接器 ──
- * 宿主工程通过此函数注入底层存储的读写能力。
+ * 用户工程通过此函数注入底层存储的读写能力。
  * 若不注册，config_store_commit() 将使用默认的 hal_storage 路径。
  *
  * 用法:

@@ -9,7 +9,7 @@ extern "C" {
 
 /* ── RMS 单调速率调度优先级 (数值越高优先级越高) ── */
 
-/* ── 任务配置结构 (由宿主工程定义实例, 配合 board_task_create 使用) ── */
+/* ── 任务配置结构 (由用户工程定义实例, 配合 board_task_create 使用) ── */
 typedef struct
 {
     const char* name;

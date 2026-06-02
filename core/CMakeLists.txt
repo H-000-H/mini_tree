@@ -26,6 +26,7 @@ target_include_directories(core
         "${KCONFIG_GEN_DIR}"
     PRIVATE
         "${CMAKE_SOURCE_DIR}/system_cpp/include"
+        "${CMAKE_SOURCE_DIR}/hal_if/include"
 )
 
 # core ↔ system 存在循环符号依赖（event_bus ↔ safe_state/wdt），

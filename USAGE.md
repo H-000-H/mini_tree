@@ -23,6 +23,7 @@
 13. [常见问题](#13-常见问题)
 14. [多核配置](#14-多核配置)
 15. [OSAL_NULL 单元测试](#15-osal_null-单元测试)
+16. [Keil MDK 集成说明](#16-keil-mdk-集成说明)
 
 ---
 
@@ -121,7 +122,19 @@ int main(void) {
 
 ## 4. 快速开始
 
-### 4.1 作为独立静态库引入 (推荐)
+### 4.1 一键构建 (推荐)
+
+```bash
+# 构建: python tools/p2s.py -p <platform> -t <toolchain> -o <osal>
+python tools/p2s.py -p arm_cm3 -t gcc -o freertos
+python tools/p2s.py -p arm_cm4f -t keil5 -o rtthread
+python tools/p2s.py -p arm_cm7 -t keil5 -o null
+python tools/p2s.py -l          # 列出所有可用组合
+python tools/p2s.py --menuconfig  # 配置后构建
+python tools/p2s.py --clean       # 清理
+```
+
+### 4.2 作为独立静态库引入 (推荐)
 
 用户工程的 `CMakeLists.txt`：
 
@@ -135,7 +148,7 @@ target_link_libraries(my_app PRIVATE mini_tree)
 - FreeRTOS 后端：`FreeRTOSConfig.h`
 - RT-Thread 后端：RT-Thread 内核配置
 
-### 4.2 作为 ESP-IDF 组件 (0.x 兼容方式)
+### 4.3 作为 ESP-IDF 组件 (0.x 兼容方式)
 
 参考 sound_dsp_project，将各组件放入 `components/` 目录：
 
@@ -507,38 +520,25 @@ EventBus 的发布者和订阅者无需感知对方存在。UI 模块不引用 A
         └── Flash ──────────────────  hal_flash.h
 ```
 
-### 10.2 实现 HAL 插座
+### 10.2 实现 HAL 插座 (Subsystem Ops 模式)
 
-每个 `hal_if/include/` 中的接口需要在 `soc_port_` 中提供实现。
-
-参考 0.x `soc_port_esp32/`：
+每个 `hal_if/include/` 中的接口在 `hal_if/soc/<chip_name>/` 下提供实现。驱动通过纯虚 `hal_ops` 操作表绑定，核心层不直接引用芯片 SDK 符号：
 
 ```c
-// soc_port_esp32/src/spi.c
-#include "hal_spi_bus.h"
-#include "driver/spi_master.h"
+// 推荐路径: hal_if/soc/esp32s3/hal_gpio_esp32.c
+#include "hal_gpio.h"
+#include "driver/gpio.h"  // 芯片 SDK 仅在 .c 内部包含，不泄露到头文件
 
-struct hal_spi_bus_t {
-    spi_host_device_t host;
-    spi_device_handle_t dev;
+/* 1. 实现底层的无状态契约 */
+static int esp32_gpio_set_level(device_t* dev, int level) {
+    int pin = (int)(intptr_t)dev->priv_data;
+    return gpio_set_level((gpio_num_t)pin, level);
+}
+
+/* 2. 实例化 Ops 表 (挂入 device_t->subsys_priv) */
+static const hal_gpio_ops_t s_esp32_gpio_ops = {
+    .set_level = esp32_gpio_set_level,
 };
-
-hal_spi_bus_t* hal_spi_bus_init(int host, uint32_t clk_hz)
-{
-    hal_spi_bus_t* bus = calloc(1, sizeof(hal_spi_bus_t));
-    // ... ESP32-S3 SPI 初始化
-    return bus;
-}
-
-bool hal_spi_transfer(hal_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len)
-{
-    spi_transaction_t t = {
-        .length = len * 8,
-        .tx_buffer = tx,
-        .rx_buffer = rx,
-    };
-    return spi_device_transmit(bus->dev, &t) == ESP_OK;
-}
 ```
 
 ### 10.3 移植模板
@@ -677,6 +677,24 @@ int board_driver_probe_spi_lcd(device_t* dev)
     device_get_prop_int(dev, "height", &height);
     device_get_prop_int(dev, "fps",    &fps);
 
+    return 0;
+}
+```
+
+#### 多参数解析 (Array Parsing)
+
+DTS 中支持多值数组属性，如 `reg = <0x40013000 0x400>;`。`dtc-lite.py` 将其编译为空格分隔的字符串，驱动通过 `device_get_prop_int_array` 读取：
+
+```c
+int board_driver_probe_spi(device_t* dev)
+{
+    int reg_info[2] = {0};
+
+    if (device_get_prop_int_array(dev, "reg", reg_info, 2) == 2) {
+        int base_addr = reg_info[0];   // 0x40013000
+        int mem_size  = reg_info[1];   // 0x400
+        // 初始化真实寄存器...
+    }
     return 0;
 }
 ```
@@ -966,6 +984,8 @@ spi0: spi@0 {
 - **修改引脚只需改 `board.dts` 中的属性值，无需动任何 `.c` / `.h` 函数**
 - GD32 与 STM32 共用同一套 DTS 适配模式，无缝切换
 - HAL/LL/SPL/寄存器/GD32 库对同一 DTS 属性的读取方式完全一致
+
+## 12. 调试与监控
 
 ### 12.1 反汇编审查
 
@@ -1452,11 +1472,61 @@ void test_eventbus(void)
 
 OSAL_NULL 适用于**逻辑和状态机测试** (属性解析、状态转移、BufferPool 位图操作). 并发竞态、中断上下文、DMA 时序等硬件相关测试仍需在目标硬件上执行.
 
-- **sound_dsp_project** (`D:\ESP32_PROJECT\sound_dsp_project\`) — 0.x 未解耦架构的 ESP32-S3 音频原型项目，包含：
-  - LVGL 图形界面 + 触摸交互
-  - 音频播放 (MP3 解码, 功放驱动 MAX98357A)
-  - MQTT 云接入 + OTA
-  - 双核隔离 (Core 1: UI+Audio, Core 0: Network)
-  - ESP32-S3 全外设 HAL 实现参考
+## 16. Keil MDK 集成说明
 
-> **注意**: 该项目是解耦前的单体原型, 未经过 RT-Thread 适配和系统级优先级审计。仅驱动层的 `DRIVER_REGISTER`、`device_t` 属性读取、goto 清理等写法可参考 (参见 §8.4), 具体驱动事例待完成。整体架构和服务层请以 mini_tree 当前版本为准。
+> **不推荐日常使用 Keil**。项目的构建、验证和优化全部围绕 GCC/Clang 进行。硬件调试优先使用逻辑分析仪和示波器，它们能直接观测信号时序，比 Keil IDE 的调试器更高效。只有遇到 GCC/Clang 无法重现的"神奇"编译错误时，才考虑用 Keil IDE 做调试入口。
+
+### 16.1 工具链选择
+
+Keil MDK 5.38 及以上版本已搭载 Arm Compiler 6 (ARMCLANG, AC6)，基于 LLVM/Clang 后端。**ARMCC v5.06 编译器 (Compiler 5) 已不被支持**，原因：
+
+| 问题 | ARMCC v5 (已废弃) | ARMCLANG AC6 |
+|------|-------------------|--------------|
+| C 标准 | C99（不支持 C23 特性） | C17 / C2x |
+| C++ 标准 | C++03（不支持 `enum class`、`constexpr` 等） | C++17 / C++20 |
+| GNU 汇编 | 不支持 `.S` 文件（需手动转换） | 原生支持 |
+| `__attribute__((constructor))` | 不支持 | 原生支持 |
+| `__atomic_*` 内置函数 | 不支持 | 原生支持 |
+| FreeRTOS GCC 端口 | 不兼容 | 可直接编译 |
+
+### 16.2 如何启用 ARMCLANG
+
+在 Keil IDE 中依次选择：
+
+```
+Project → Options for Target → Target → ARM Compiler → "Use default compiler version 6"
+```
+
+确认当前使用的确实是 Arm Compiler 6 后，即可正常编译。
+
+### 16.3 调试优先方案
+
+| 优先级 | 方案 | 适用场景 |
+|--------|------|---------|
+| 首选 | **逻辑分析仪** (Saleae/Kingst/DSLogic) | 观察 GPIO/SPI/I2C/UART 信号时序，定位驱动级问题 |
+| 首选 | **示波器** | 模拟信号、PWM 占空比、电源噪声、信号完整性 |
+| 备选 | Keil IDE 调试器 | 单步调试、寄存器查看、HardFault 现场分析 |
+
+### 16.4 维护说明
+
+- **keil5** — 作者不再适配。欢迎有能力将本架构降级兼容 ARMCC v5 的贡献者通过社区 PR 弥补这一空缺，作者不会主动完成此工作。
+- **keil6** — 仅在大版本更新时同步调整，不做小版本追踪。工具链演进和问题修复优先面向 GCC/Clang。
+- 欢迎社区贡献 Keil 相关的改进和升级，在不打乱整体架构的前提下乐意接纳。
+
+### 16.5 Keil 影子工程联调指南
+
+需要利用 Keil 的底层调试能力时，推荐以下工作流以确保架构隔离：
+
+1. **在现代 IDE 中完成构建**：
+   在 VS Code/Cursor 中使用 CMake 或 Makefile 完成代码编写，确保静态分析零警告。
+2. **生成 Keil 影子工程**：
+   通过框架提供的模板或 CMake 生成器创建 `.uvprojx`，在 Keil 中打开。
+3. **烧录与调试**：
+   - 配置目标调试器（J-Link / ST-Link）。
+   - 确认编译器已切换至 **AC6 (ARMCLANG)**。
+   - 执行 Download 或 Debug 进入硬件调试。
+4. **调试反馈闭环**：
+   若在调试过程中定位到代码逻辑问题，切换回 VS Code/Cursor 修改并保存，让 Keil 重新编译。不建议在 Keil 编辑器内直接修改代码。
+5. **提交前清理**：
+   调试结束后，确认 `.gitignore` 已过滤所有编译中间文件（`.crf`、`.o`、`.d` 等），保持仓库整洁。
+

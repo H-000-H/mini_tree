@@ -3,7 +3,7 @@
 /*
  * mini_tree C 版本系统初始化接口.
  *
- * 宿主工程在 main() 中按两段式点火调用:
+ * 用户工程在 main() 中按两段式点火调用:
  *
  *   int main(void) {
  *       platform_hardware_init();

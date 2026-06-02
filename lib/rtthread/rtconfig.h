@@ -29,6 +29,7 @@
 /* ── IPC (用于 OSAL mutex) ── */
 #define RT_USING_SEMAPHORE
 #define RT_USING_MUTEX
+#define RT_USING_MESSAGEQUEUE
 
 /* ── Memory ── */
 #define RT_USING_HEAP

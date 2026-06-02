@@ -123,6 +123,152 @@ config SYSTEM_C
 endchoice
 endmenu
 
+menu "Toolchain"
+choice TOOLCHAIN
+    prompt "Compiler toolchain"
+    default TOOLCHAIN_GCC
+    help
+      选择编译器工具链。工具链文件位于 cmake/ 目录。
+      CMake 构建时仍需通过 -DCMAKE_TOOLCHAIN_FILE= 指定对应文件。
+      Makefile 构建时自动读取此选项选择编译器。
+
+config TOOLCHAIN_GCC
+    bool "GCC (arm-none-eabi-)"
+    help
+      GNU Arm Embedded Toolchain (默认)。
+      工具链: cmake/toolchain_arm_cm*.cmake
+
+config TOOLCHAIN_CLANG
+    bool "Clang/LLVM"
+    help
+      LLVM Clang 交叉编译器。需 Clang 18+，且 clang、llvm-ar 在 PATH 中。
+      工具链: cmake/toolchain_clang_arm_cm*.cmake
+
+config TOOLCHAIN_KEIL6
+    bool "Keil MDK v6 (ARMCLANG)"
+    depends on PLATFORM_ARM_CM3 || PLATFORM_ARM_CM4F || PLATFORM_ARM_CM7
+    help
+      ARMCLANG v6 (Keil MDK v6)。ARMCLANG 基于 LLVM，
+      可直接编译 GCC 语法的内联汇编 / .S 文件。
+      需 armclang、armar 在 PATH 中。
+      工具链: cmake/toolchain_keil6_arm_cm*.cmake
+
+config TOOLCHAIN_KEIL5
+    bool "Keil MDK v5 (ARMCLANG AC6)"
+    depends on PLATFORM_ARM_CM3 || PLATFORM_ARM_CM4F || PLATFORM_ARM_CM7
+    help
+      ARMCLANG AC6 (Keil MDK v5)。与 keil6 共享同一 LLVM/Clang 后端，
+      原生支持 GCC 汇编 / .S / C++17 / __attribute__((constructor))。
+      需 armclang、armar 在 PATH 中。
+      工具链: cmake/toolchain_keil5_arm_cm*.cmake
+endchoice
+
+if TOOLCHAIN_GCC
+
+choice
+    prompt "GCC version"
+    default TOOLCHAIN_GCC_VER_13_3_1
+
+config TOOLCHAIN_GCC_VER_13_3_1
+    bool "13.3.1 (推荐)"
+
+config TOOLCHAIN_GCC_VER_12_3
+    bool "12.3"
+
+config TOOLCHAIN_GCC_VER_10_3
+    bool "10.3"
+
+config TOOLCHAIN_GCC_VER_9_2
+    bool "9.2"
+
+endchoice
+
+endif
+
+if TOOLCHAIN_CLANG
+
+choice
+    prompt "Clang version"
+    default TOOLCHAIN_CLANG_VER_18
+
+config TOOLCHAIN_CLANG_VER_18
+    bool "18 (推荐)"
+
+config TOOLCHAIN_CLANG_VER_17
+    bool "17"
+
+config TOOLCHAIN_CLANG_VER_16
+    bool "16"
+
+config TOOLCHAIN_CLANG_VER_15
+    bool "15"
+
+endchoice
+
+endif
+
+if TOOLCHAIN_KEIL6
+
+choice
+    prompt "ARMCLANG version"
+    default TOOLCHAIN_KEIL6_VER_6_21
+
+config TOOLCHAIN_KEIL6_VER_6_21
+    bool "6.21 (推荐)"
+
+config TOOLCHAIN_KEIL6_VER_6_20
+    bool "6.20"
+
+config TOOLCHAIN_KEIL6_VER_6_19
+    bool "6.19"
+
+endchoice
+
+endif
+
+if TOOLCHAIN_KEIL5
+
+choice
+    prompt "ARMCLANG version"
+    default TOOLCHAIN_KEIL5_VER_6_19
+
+config TOOLCHAIN_KEIL5_VER_6_19
+    bool "6.19 (推荐)"
+
+config TOOLCHAIN_KEIL5_VER_6_18
+    bool "6.18"
+
+endchoice
+
+endif
+
+endif
+
+config CUSTOM_C_STANDARD
+    bool "Override C/C++ language standard"
+    default n
+    help
+      启用后可自定义 C/C++ 语言标准，适用于需要固定标准而非 CMake 自动选择的场景。
+      关闭则使用 CMakeLists.txt 中根据编译器设定的默认值。
+
+if CUSTOM_C_STANDARD
+
+config C_STANDARD
+    string "C language standard"
+    default "c23"
+    help
+      如 c11、c17、c23 等。
+
+config CXX_STANDARD
+    string "C++ language standard"
+    default "c++23"
+    help
+      如 c++11、c++17、c++20、c++23 等。
+
+endif
+
+endmenu
+
 menu "Build Options"
     config BUILD_DISASM
         bool "Generate disassembly listings (.lst)"
