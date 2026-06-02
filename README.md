@@ -210,11 +210,11 @@ mini_tree/
 | :--- | :---: | :--- |
 | **Clang / LLVM** | ★★★★★ | 优秀的静态分析与错误诊断能力，清晰的报错信息有助于复杂代码调试与重构。 |
 | **GNU Make / Makefile** | ★★★★★ | 简洁、零运行时依赖。配合 Kconfig 实现构建期物理裁剪。 |
-| **ARM GCC** | ★★★★☆ | 久经检验的开源工业标准工具链，支持 C23/C++23。 |
-| **VS Code / Cursor / Trae** | ★★★★☆ | 现代编辑器生态，配合 CMake 和 `dtc-lite.py` 可完成一键配置与构建。 |
+| **ARM GCC** | ★★★★★  | 久经检验的开源工业标准工具链，支持 C23/C++23。 |
+| **VS Code / Cursor / Trae** | ★★★★★  | 现代编辑器生态，配合 CMake 和 `dtc-lite.py` 可完成一键配置与构建。 |
 | **ARMCLANG (STM32CubeCLT)** | ★★★★☆ | 免费获取，基于 LLVM/Clang 后端，与 GCC 生态互补。 |
 | **Ninja** | ★★★★☆ | 加速 CMake 增量构建的轻量构建工具。 |
-| **MinGW** | ★★★☆☆ | Windows 平台本地 POSIX 测试环境。 |
+| **MinGW** | ★★★★☆ | Windows 平台本地 POSIX 测试环境。 |
 | **Keil MDK (AC6)** | ★★☆☆☆ | 作为工程管理和烧录辅助工具保留。详见下方维护政策。 |
 | **Keil MDK (ARMCC v5)** | 不支持 | 编译器过旧，不支持 C23/C++23 及 GNU 扩展，已被项目淘汰。 |
 
