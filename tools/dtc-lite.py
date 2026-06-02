@@ -9,6 +9,11 @@ dtc-lite.py — MCU 编译期 DeviceTree 编译器
 用法:
     python dtc-lite.py board.dts output_dir [driver_dirs ...]
 
+DTS 预处理:
+    支持 #include "file" / #include <file> 展开, #define 宏替换,
+    以及 #ifndef/#endif include guard。
+    可配合 dt-bindings/ 头文件使用常量宏 (如 GPIO_ACTIVE_HIGH)。
+
 Output (in output_dir/):
     board_nodes.h       — DEV_ID_xxx 枚举 + chosen/alias 宏
     board_devtable.h    — 设备表访问 API
@@ -826,12 +831,110 @@ class DTSCompiler:
         self.chosen_map = {}    # chosen_key → DtsNode
         self.device_list = []   # 所有设备节点 (含 compatible)
         self.driver_map = {}    # compatible → (probe_fn_name, remove_fn_name)
+        self._macros = {}       # 预处理器宏表 (name → value)
+        self._visited = set()   # #include 防循环
+
+    def _preprocess(self, text):
+        """类 CPP 预处理: #include 展开 + #define 宏替换
+
+        支持 dt-bindings 风格的头文件, 处理:
+          - #include "file" / #include <file>   (递归展开)
+          - #define NAME value                  (宏定义, 后续替换)
+          - #ifndef / #define / #endif          (include guard)
+          - 其他 # 行                             (忽略)
+
+        返回值: 宏展开后的 DTS 文本, 直接送入 Tokenizer.
+        """
+        base_dir = os.path.dirname(os.path.abspath(self.dts_path))
+        result = self._preprocess_lines(text, base_dir)
+        return '\n'.join(result)
+
+    def _preprocess_lines(self, text, base_dir):
+        lines = text.split('\n')
+        out = []
+        skip_depth = 0          # #if/#ifndef 跳过深度
+        guard_active = False    # True 时正在跳过 include-guard 块
+
+        for line in lines:
+            stripped = line.strip()
+
+            # ── #include "file" / #include <file> ──
+            m = re.match(r'#include\s+"([^"]+)"', stripped)
+            if not m:
+                m = re.match(r'#include\s+<([^>]+)>', stripped)
+            if m and skip_depth == 0:
+                inc_path = self._resolve_inc(m.group(1), base_dir)
+                if inc_path:
+                    with open(inc_path, 'r', encoding='utf-8') as f:
+                        inc_text = f.read()
+                    inc_lines = self._preprocess_lines(
+                        inc_text, os.path.dirname(inc_path))
+                    out.extend(inc_lines)
+                continue
+
+            # ── 跳过 # 预处理行 ──
+            if stripped.startswith('#'):
+                m_def = re.match(r'#define\s+(\w+)\s*(.*)', stripped)
+                m_ifn = re.match(r'#ifndef\s+(\w+)', stripped)
+                m_ifd = re.match(r'#ifdef\s+(\w+)', stripped)
+
+                if m_def and skip_depth == 0:
+                    # #define NAME [value]
+                    self._macros[m_def.group(1)] = m_def.group(2).strip()
+                elif m_ifn and skip_depth == 0:
+                    # #ifndef NAME — 跳过 block (宏可能已定义)
+                    skip_depth = 1
+                    guard_active = True
+                elif m_ifd and skip_depth == 0:
+                    skip_depth = 1
+                elif stripped == '#endif' and skip_depth > 0:
+                    skip_depth -= 1
+                    if skip_depth == 0:
+                        guard_active = False
+                # 其他 # 开头的行 (#else, #undef 等) — 跳过
+                continue
+
+            if skip_depth > 0:
+                continue
+
+            # ── 宏替换 ──
+            out.append(self._replace_macros(line))
+
+        return out
+
+    def _replace_macros(self, text):
+        """将文本中已知宏替换为值 (贪心匹配, 长名优先)"""
+        if not self._macros:
+            return text
+        # 按名字长度降序, 避免短名误吞长名 (FOOBAR 先于 FOO)
+        for name in sorted(self._macros, key=lambda n: -len(n)):
+            text = re.sub(r'\b' + re.escape(name) + r'\b',
+                          self._macros[name], text)
+        return text
+
+    def _resolve_inc(self, name, base_dir):
+        """解析 #include 路径, 返回绝对路径; 已包含则返回 None"""
+        candidates = [
+            os.path.join(base_dir, name),
+            os.path.join(os.getcwd(), name),
+        ]
+        for p in candidates:
+            p = os.path.normpath(p)
+            if os.path.isfile(p):
+                if p in self._visited:
+                    return None
+                self._visited.add(p)
+                return p
+        print(f"[dtc-lite] warning: include not found: '{name}' "
+              f"(searched {base_dir}, {os.getcwd()})", file=sys.stderr)
+        return None
 
     def compile(self):
         """完整编译流程"""
-        # 1. 解析 DTS
+        # 1. 解析 DTS (含 #include / #define 预处理)
         with open(self.dts_path, 'r', encoding='utf-8') as f:
             text = f.read()
+        text = self._preprocess(text)
         tokenizer = Tokenizer(text, self.dts_path)
         tokens = tokenizer.tokenize()
         parser = DtsParser(tokens)

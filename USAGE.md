@@ -563,8 +563,12 @@ static const hal_gpio_ops_t s_esp32_gpio_ops = {
 
 硬件拓扑在 `board/board.dts` 中声明：
 
+支持 `#include` 预处理，可使用 dt-bindings 头文件中的宏常量：
+
 ```dts
 /dts-v1/;
+
+#include "dt-bindings/gpio.h"
 
 / {
     compatible = "my-project";
@@ -615,6 +619,7 @@ DTS 文件中的每个设备节点通过 `key = value;` 声明属性，驱动在
 | `depends-on` | 依赖的设备（phandle 引用），驱动在此之后 probe | `<&i2c0>` |
 | `criticality` | 安全关键等级，probe 失败时的系统行为 | `"fatal"` / `"warning"` / `"ignore"` |
 | `reg` | 寄存器地址或设备地址 | `<0x40021000>` |
+| （宏常量） | `#include` 头文件中的 `#define`，在 DTS 中直接使用 | `<GPIO_ACTIVE_HIGH>` |
 | `interrupts` | 中断号 | `<25>` |
 | `label` | 人类可读名 | `"spi_bus1"` |
 
