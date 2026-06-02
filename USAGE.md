@@ -1545,6 +1545,7 @@ Project → Options for Target → Target → ARM Compiler → "Use default comp
 |------|------|-----------|
 | `hal_gpio_fast.h` | GPIO set/clr/toggle/read 寄存器直写 | ★★★ STM32/GD32/AT32 通用 |
 | `hal_cpu_fast.h` | NVIC 使能/禁能/优先级 + ISR 上下文检测 + 全局中断开关 | ★★★ Cortex-M 通用 |
+| `hal_cpu_delay.h` | 微秒级硬实时阻塞延时 (DWT/rdcycle) | ★★★ ARM + RISC-V |
 | `hal_pwm_fast.h` | 运行时占空比/周期直写（**仅声明 API，无通用实现**） | ☆☆☆ 平台自行实现 |
 
 ### 17.3 GPIO Fast Path
@@ -1649,7 +1650,35 @@ DEBUG 模式下 `hal_dma_config_block()` 自动卡住：
 - 块大小 < 32 字节
 - Release 编译为空，零开销
 
-### 17.7 红线区接入检查清单
+### 17.7 硬实时微秒延时
+
+`hal_cpu_delay.h` 基于 CPU 硬件周期计数器，提供不受 OS 调度影响的阻塞延时。
+
+```c
+#define HAL_CPU_FREQ_HZ  240000000UL
+#include "hal_cpu_delay.h"
+
+void init(void) {
+    hal_delay_init();                     // 启动 DWT 周期计数器
+}
+
+void pulse_us(void) {
+    hal_gpio_fast_set(PORT, PIN);         // 置位
+    hal_delay_us(10);                     // 精确 10μs
+    hal_gpio_fast_clr(PORT, PIN);         // 复位
+}
+```
+
+| 平台 | 底层机制 | 精度 |
+|------|---------|------|
+| Cortex-M3/4/7/33 | DWT_CYCCNT (0xE0001004) | 1 cycle (~5ns @ 200MHz) |
+| Cortex-M0/M0+ | SysTick->VAL 回退 | 受 OS 配置影响 |
+| RISC-V RV32 | rdcycle (mcycle) | 1 cycle |
+| 其他 | NOP 循环 (粗略) | 精度差, 仅编译通过 |
+
+> 非标准主频（非整 MHz）自动使用 64 位乘法，精度不损失。
+
+### 17.8 红线区接入检查清单
 
 在决定对某段代码使用 Fast Path 前，确认以下条件：
 
