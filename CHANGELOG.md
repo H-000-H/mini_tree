@@ -97,15 +97,6 @@ DRV_LOG — 驱动层，固定走 osal_log()
 - `DRV_LOGV` 可在 `NDEBUG` 时被编译器优化剔除
 - 各模块统一包含 `system_log.hpp`，不直接调用 `printf` 或 `osal_log`
 
-### 文档语言收敛 — 移除绝对化表述
-
-- **`ARCHITECTURE.md`**: 移除"任何"、"完全上收"→"上收"、"完全卡死"→"卡死"
-- **`USAGE.md`**: 14 处修正 — "所有"→移除、"完全跳过"→"跳过"、"完全一致"→"一致"、"必须使用"→"建议使用"等
-- **`NOTICE.md`**: "覆盖所有已知"→"覆盖已知"、"永远是只读的"→"是只读的"
-- **`README.md`**: "完全一致的 C 接口"→"一致的 C 接口"、"所有可用组合"→"可用组合"
-- **`CONTRIBUTING.md`**: "禁止提交"→"请勿提交"、"任何包含"→"包含"
-- **`examples/porting_template/README.md`**: "无需动任何"→"无需动"、"完全一致"→"一致"
-
 ### genconfig.py 修复
 
 - **magic number**: `_C_SPACES_INDENT` 改为 `self._indent` 单源，整树一致

@@ -40,7 +40,13 @@ static const hal_gpio_ops_t s_mychip_gpio_ops = {
 
 核心层、驱动层、应用层只通过 `hal_gpio_ops_t` 操作硬件，与具体芯片解耦。
 
-### 6.3 移植模板
+### 6.3 ESP32 (ESP-IDF) 移植
+
+示例工程：[https://github.com/H-000-H/mini-tree-example](https://github.com/H-000-H/mini-tree-example)
+
+mini_tree 以 ESP-IDF 组件形式引入，配置改用 `config.h` 而非 Kconfig（ESP-IDF 已有 Kconfig），请见示例工程中的 `components/mini_tree/config.h` 和 `CMakeLists.txt`。
+
+### 6.4 移植模板
 
 参考 `examples/porting_template/` 中的文件骨架：
 
