@@ -9,6 +9,7 @@
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR riscv)
+set(FREERTOS_PORT GCC_RISC_V CACHE STRING "FreeRTOS port type (set by toolchain file)")
 
 set(RISCV_TOOLCHAIN_DIR "D:/ESP32/xpack-riscv-none-elf-gcc-15.2.0-1")
 

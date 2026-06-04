@@ -1,6 +1,6 @@
 #include "task_manager.hpp"
 
-#include "system_log.hpp"
+#include "system_log.h"
 #include "system_wdt.hpp"
 
 static constexpr const char* kTag = "TaskManager";

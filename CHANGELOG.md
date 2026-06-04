@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### C 修复
+
+- **`core/src/buffer_pool.c`** — 移除重复定义的 `bp_alloc_isr`（第 219 行已定义，第 252 行重复），修复 ARM GCC 全架构编译错误。
+
+### infrastructure 整理
+
+- **`core/include/system_log.hpp` → `system_log.h`** — 文件内容为纯 C 兼容宏，改名 `.h` 避免 C 文件包含 `.hpp`；同步更新全部 8 处 `#include`。
+- **`system_c/include/`** — `system_scrubber.h`、`system_wdt.h` 自声明函数，不再套壳包含 `.hpp`。
+- **`tools/menuconfig.py` → `tools/kconfig_gui.py`** — 文件名与 kconfiglib 的 `menuconfig` 模块冲突导致自导入失败；重命名消除冲突，同步更新 5 处引用。
+- **`cmake/toolchain_riscv.cmake`** — 工具链文件自动设置 `FREERTOS_PORT=GCC_RISC_V`，编译时无需额外传参。
+
+### 文档新增
+
+- **`README.md`** — 新增"致谢与设计参考"章节，列出 LVGL、Linux、RT-Thread、Zephyr 等设计来源。
+- **`NOTICE.md` / `ARCHITECTURE.md`** — MPU/PMP、Power Management、64-bit 适配三条待优化项移至 `TODOLIST.md`。
+
 ### mini-tree-example 示例工程加固
 
 - **`syscalls.c`** — `_sbrk` 堆栈碰撞检测：`heap_end + incr > &_estack - 4096` 时返回 `ENOMEM`，留 4KB 安全余量防止 newlib `malloc` 踩进栈

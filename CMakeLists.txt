@@ -35,7 +35,7 @@
 #   }
 #
 # 配置方式 (三选一):
-#   1. menuconfig (推荐) — 运行 tools/menuconfig.py 生成 .config
+#   1. menuconfig (推荐) — 运行 tools/kconfig_gui.py 生成 .config
 #   2. -DFREERTOS_PORT=GCC_ARM_CM3 — 跳过 Kconfig, 直接指定 FreeRTOS 后端+架构
 #   3. 无配置 — 默认 FreeRTOS + POSIX (本地编译验证)
 #

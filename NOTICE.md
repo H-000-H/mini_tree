@@ -223,8 +223,6 @@ Kconfig SYSTEM_BACKEND
 | **无异步 DMA 事件驱动** | EventBus 分发为同步轮询 | RTOS 模式下由独立 Task 驱动 |
 | **dtc-lite 非标准 DTS** | 不兼容 Linux DTS 语法 | 专为 MCU 裁剪，零运行时开销 |
 | **Scrubber CRC 基线固化** | 出厂后无法更新基线 | OTA 时可重算并更新 |
-| **仅 32-bit 架构验证** | 未在 64-bit 平台测试 | RISC-V 64 / ARMv8-A 需适配 |
-| **无 Power Management** | 无 suspend/resume 框架 | OSAL 层预留接口，待实现 |
 
 ---
 

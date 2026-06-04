@@ -46,7 +46,7 @@ target_link_libraries(my_app PRIVATE mini_tree)
 ### 3.1 menuconfig 图形化配置
 
 ```bash
-python tools/menuconfig.py
+python tools/kconfig_gui.py
 ```
 
 ### 3.2 核心配置项

@@ -228,7 +228,7 @@ board.dts
 ```
 Kconfig 源文件 (.config)
     │
-    ├─ menuconfig.py (图形化)    用户交互配置
+    ├─ kconfig_gui.py (图形化)   用户交互配置
     │
     ├─ genconfig.py (编译期)     Kconfig → config.h
     │   └─ → build/generated/kconfig/config.h
@@ -279,14 +279,6 @@ Kconfig 源文件 (.config)
     ├─ Scrubber CRC 失配 ─► Safe State (标记损坏页)
     └─ 栈超限 ───────────► 中断闭锁 → 硬件复位
 ```
-
-### 待完善
-
-| 功能 | 说明 |
-|------|------|
-| **MPU/PMP 内存保护** | 为每个驱动分配内存白名单，越权写入即触发 MemManage Fault 停机。暂未实现 — 作者对该领域涉猎尚浅，期待社区大神贡献代码。 |
-
----
 
 ## 7. 跨平台验证矩阵
 

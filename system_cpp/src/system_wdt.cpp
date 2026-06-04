@@ -2,7 +2,7 @@
 
 #include "hal_wdt.h"
 #include "board_config.h"
-#include "system_log.hpp"
+#include "system_log.h"
 
 static constexpr const char* kTag = "SysWDT";
 static bool s_initialized = false;

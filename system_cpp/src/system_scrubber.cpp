@@ -3,7 +3,7 @@
 #include "hal_flash.h"
 #include "board_config.h"
 #include "safe_state.h"
-#include "system_log.hpp"
+#include "system_log.h"
 #include "system_wdt.hpp"
 
 static constexpr const char* kTag = "Scrubber";

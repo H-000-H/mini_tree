@@ -5,7 +5,7 @@
 #include "hal_pwm.h"
 #include "hal_cpu.h"
 #include "hal_gpio.h"
-#include "system_log.hpp"
+#include "system_log.h"
 #include "board_devtable.h"
 
 #include <stdio.h>

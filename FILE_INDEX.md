@@ -14,7 +14,7 @@
 |------|------|
 | `include/event_bus.hpp` | 发布订阅总线，ISR 自适应，范围订阅，快照锁 |
 | `include/buffer_pool.h` | 位图无锁 O(1) 内存池 |
-| `include/system_log.hpp` | 日志宏，三后端 (OSAL/ESP/PRINTF) |
+| `include/system_log.h` | 日志宏，三后端 (OSAL/ESP/PRINTF) |
 | `include/critical_data.h` | 双重反码 + volatile 关键数据保护 |
 | `include/production_log.h` | NVS 环形错误缓冲 (黑匣子) |
 | `src/event_bus.cpp` | EventBus C 兼容封装 + C++ 分发任务 |

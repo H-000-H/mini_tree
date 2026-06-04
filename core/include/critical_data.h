@@ -65,9 +65,9 @@ extern "C" {
  *   if (corrupted) enter_safe_state("voltage corrupted");
  */
 template <typename T>
-class CriticalStorage {
-    static_assert(sizeof(T) <= sizeof(uint32_t),
-                  "CriticalStorage: type must fit in 32 bits");
+class CriticalStorage 
+{
+    static_assert(sizeof(T) <= sizeof(uint32_t),"CriticalStorage: type must fit in 32 bits");
 public:
     explicit CriticalStorage(T init_val = T())
     {
@@ -91,7 +91,8 @@ public:
 
     T get_secure(bool* is_corrupted = nullptr) const
     {
-        if (!validate()) {
+        if (!validate()) 
+        {
             if (is_corrupted) *is_corrupted = true;
             return T(0);
         }

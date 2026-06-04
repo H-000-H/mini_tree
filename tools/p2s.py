@@ -61,7 +61,7 @@ def run_make(platform: str, toolchain: str, osal: str, freertos_heap: int = 4) -
 def run_menuconfig() -> int:
     print("[p2s] 启动 menuconfig ...")
     script_dir: str = os.path.dirname(os.path.abspath(__file__))
-    script: str = os.path.join(script_dir, "menuconfig.py")
+    script: str = os.path.join(script_dir, "kconfig_gui.py")
     result: subprocess.CompletedProcess[str] = subprocess.run(
         [sys.executable, script]
     )

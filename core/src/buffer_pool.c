@@ -124,12 +124,14 @@ static uint32_t bitmap_alloc(volatile uint32_t* mask)
     uint32_t old, new_mask;
     int bit;
 
-    do {
+    do 
+    {
         old = *mask;
         if (old == 0) return BP_MAX_BUFS;
         bit = COMPAT_CTZ(old);  /* 找最低位 1 → 第一个空闲 */
         new_mask = old & ~(1u << bit);
-    } while (!BP_CAS(mask, &old, new_mask));
+    } 
+    while (!BP_CAS(mask, &old, new_mask));
     return (uint32_t)bit;
 }
 
@@ -245,18 +247,6 @@ void bp_free_isr(bp_t* pool, void* buf)
 uint32_t bp_used(const bp_t* pool)
 {
     return pool ? BP_LOAD(&((bp_t*)pool)->used) : 0;
-}
-
-uint32_t bp_peak(const bp_t* pool)
-{
-    return pool ? BP_LOAD(&((bp_t*)pool)->peak) : 0;
-}
-
-void bp_reset_peak(bp_t* pool)
-{
-    if (!pool) return;
-    uint32_t cur = BP_LOAD(&pool->used);
-    BP_STORE(&pool->peak, cur);
 }
 
 void bp_destroy(bp_t* pool)

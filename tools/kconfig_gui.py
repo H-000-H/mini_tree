@@ -2,7 +2,7 @@
 """mini_tree Kconfig 图形化配置工具 — 依赖 kconfiglib。
 
 用法:
-  python tools/menuconfig.py
+  python tools/kconfig_gui.py
 """
 
 from __future__ import annotations

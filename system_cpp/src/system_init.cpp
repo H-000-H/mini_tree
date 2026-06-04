@@ -1,6 +1,6 @@
 #include "system_init.hpp"
 
-#include "system_log.hpp"
+#include "system_log.h"
 #include "system_wdt.hpp"
 #include "system_scrubber.hpp"
 #include "safe_state.h"
