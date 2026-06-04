@@ -229,7 +229,17 @@ int osal_task_create(const char* name, uint32_t stack_size,
                      uint32_t priority, osal_task_entry_t entry,
                      void* param, int core_id)
 {
+#if CONFIG_CPU_CORES > 1
+    if (core_id > 0)
+    {
+        printf("[osal] WARN: task '%s' requested Core %d, "
+               "but AMP Core 1 has no OS scheduler. "
+               "Falling back to Core 0.\n", name, core_id);
+        core_id = 0;
+    }
+#else
     (void)core_id;
+#endif
 
     TaskHandle_t handle = NULL;
     BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),
@@ -244,7 +254,17 @@ int osal_task_create_handle(const char* name, uint32_t stack_size,
                             osal_task_handle_t* out_handle)
 {
     if (!out_handle) return -1;
+#if CONFIG_CPU_CORES > 1
+    if (core_id > 0)
+    {
+        printf("[osal] WARN: task '%s' requested Core %d, "
+               "but AMP Core 1 has no OS scheduler. "
+               "Falling back to Core 0.\n", name, core_id);
+        core_id = 0;
+    }
+#else
     (void)core_id;
+#endif
 
     TaskHandle_t handle = NULL;
     BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),

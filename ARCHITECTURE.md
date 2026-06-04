@@ -124,6 +124,7 @@ main() 入口
     │   ├── EventBus 分发任务创建
     │   ├── Task WDT 监控任务创建
     │   ├── 栈水位监控任务创建
+    │   ├── [AMP] hal_cpu_secondary_startup()  释放副核运行裸机
     │   └── Scrubber 巡检任务创建 (极低优先级)
     │
     ├─ OSAL_NULL? ──→ mini_tree_system_loop()    裸机: 主循环轮询

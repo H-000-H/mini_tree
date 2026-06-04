@@ -22,6 +22,21 @@ config PLATFORM_POSIX
 endchoice
 endmenu
 
+menu "Multi-core Configuration"
+
+config CPU_CORES
+    int "Number of CPU cores"
+    default 1
+    range 1 2
+    help
+      CPU 核心数量。1 = 单核模式（默认）。
+      2 = 双核 AMP 模式，Core 0 跑 RTOS，
+      Core 1 跑裸机代码。
+      设为 2 时板级需实现
+      hal_cpu_secondary_startup()。
+
+endmenu
+
 menu "RTOS Backend"
 choice OSAL_BACKEND
     prompt "OSAL RTOS backend"

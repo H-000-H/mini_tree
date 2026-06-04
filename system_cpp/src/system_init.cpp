@@ -8,6 +8,7 @@
 #include "event_bus.hpp"
 #include "device.h"
 #include "driver.h"
+#include "hal_cpu.h"
 
 /* ── 启动期全局中断控制 (平台抽象) ──
  * 在 Pre_OS_Init 入口关全局中断, 阻断 ISR 抢跑访问未就绪的框架状态.
@@ -144,6 +145,11 @@ void MiniTree::System_Start_Tasks(void)
      *   xTaskCreate(my_app_task, "app", 2048, NULL, 1, NULL);
      *   vTaskStartScheduler();
      */
+
+#if CONFIG_CPU_CORES > 1
+    /* AMP: 启动副核心 (Core 1 跑 hal_cpu_baremetal_entry) */
+    hal_cpu_secondary_startup();
+#endif
 
     SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
 }

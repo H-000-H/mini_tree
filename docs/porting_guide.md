@@ -58,3 +58,46 @@ mini_tree 以 ESP-IDF 组件形式引入，配置沿用原生 Kconfig 流程（`
 | `hal_storage.c` | NVS 存储接口 |
 | `hal_platform_safety.c` | 平台级安全停机 |
 | `hal_force_stop.c` | 强制外设停止 |
+
+### 6.5 AMP 双核移植
+
+当目标 MCU 为双核且启用 `CONFIG_CPU_CORES=2` 时，需实现以下三个 HAL 函数：
+
+| 函数 | 必须/可选 | 说明 |
+|------|----------|------|
+| `hal_cpu_secondary_startup()` | **必须** | 释放副核 (Core 1) 复位，让其从 `hal_cpu_baremetal_entry` 开始执行 |
+| `hal_cpu_baremetal_entry()` | 可选 | 副核裸机入口，默认死循环；板级覆盖实现 Core 1 主循环 |
+| `hal_cpu_get_id()` | 可选 | 返回当前核心 ID（0/1），默认返回 0 |
+
+**各平台典型实现参考：**
+
+- **STM32H7 (Cortex-M7 + M4)：**
+  ```c
+  void hal_cpu_secondary_startup(void) {
+      RCC->GCR |= RCC_GCR_BOOT_C2;  // 释放 CM4 核复位
+  }
+  int hal_cpu_get_id(void) {
+      return (SCB->CPUID & 0xF0000000) ? 1 : 0;
+  }
+  ```
+
+- **GD32 双核 Cortex-M：**
+  ```c
+  void hal_cpu_secondary_startup(void) {
+      SYS_CFG->CTL |= SYS_CFG_CTL_CPU1_BOOT;
+  }
+  ```
+
+- **RISC-V 双核：**
+  ```c
+  void hal_cpu_secondary_startup(void) {
+      // 发核间中断或操作复位控制寄存器
+  }
+  int hal_cpu_get_id(void) {
+      uint32_t hartid;
+      __asm__ volatile("csrr %0, mhartid" : "=r"(hartid));
+      return (int)hartid;
+  }
+  ```
+
+启动时机：框架在 `System_Start_Tasks()` (Phase 2) 末尾、`vTaskStartScheduler()` 之前自动调用 `hal_cpu_secondary_startup()`。

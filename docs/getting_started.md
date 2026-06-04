@@ -58,6 +58,8 @@ python tools/kconfig_gui.py
 | | `PLATFORM_ARM_CM7` | ARM Cortex-M7 |
 | | `PLATFORM_RISCV` | RISC-V 32-bit |
 | | `PLATFORM_POSIX` | POSIX (本地编译验证) |
+| **Multi-core** | `CPU_CORES=1` | 单核模式（默认） |
+| | `CPU_CORES=2` | 双核 AMP（Core 0 RTOS, Core 1 裸机） |
 | **RTOS Backend** | `OSAL_FREERTOS` | FreeRTOS 后端 |
 | | `OSAL_RTTHREAD` | RT-Thread 后端 |
 | | `OSAL_NULL` | 裸机 (前后台系统) |
@@ -187,6 +189,7 @@ int main(void)
     //   - Flash Scrubber 启动
     //   - Bootloop 计数器清零
     //   - EventBus seal 封表
+    //   - [AMP] hal_cpu_secondary_startup (CPU_CORES>1 时启动副核)
 
     /* ─── Step 5: 用户创建自有业务任务 ─── */
     osal_task_create("app", 4096, 5, my_app_task, NULL);

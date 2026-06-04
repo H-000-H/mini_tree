@@ -7,6 +7,7 @@
 #include "safe_state.h"
 #include "system_wdt.h"
 #include "system_scrubber.h"
+#include "hal_cpu.h"
 
 /* ── 启动期全局中断控制 ── */
 #if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
@@ -84,6 +85,11 @@ void mini_tree_start_tasks(void)
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
     event_bus_seal();
+
+#if CONFIG_CPU_CORES > 1
+    /* AMP: 启动副核心 (Core 1 跑 hal_cpu_baremetal_entry) */
+    hal_cpu_secondary_startup();
+#endif
 
     SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
 }

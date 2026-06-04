@@ -4,6 +4,10 @@
 # 根据 Kconfig OSAL_BACKEND 选择编译对应的 RTOS 内核:
 #   CONFIG_OSAL_FREERTOS  → freeRTOS/   (freertos_kernel)
 #   CONFIG_OSAL_RTTHREAD  → rtthread/   (rtthread_kernel)
+#
+# 注意: lib/freeRTOS/ 和 lib/rtthread/ 面向 ARM/RISC-V 平台。
+# Xtensa (ESP32) 用户请使用 ESP-IDF 内置 FreeRTOS，不走本目录。
+# 详见顶层 README.md。
 # ==============================================================================
 
 # ── 从 Kconfig .config 读取 OSAL 后端选择 ──

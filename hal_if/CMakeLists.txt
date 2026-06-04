@@ -15,3 +15,11 @@ target_include_directories(hal_if
 )
 
 add_dependencies(hal_if kconfig_generate)
+
+# ── AMP 双核源码 (由 Kconfig CPU_CORES 控制) ──
+if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
+    file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _cpu_cores REGEX "^CONFIG_CPU_CORES=")
+    if(_cpu_cores MATCHES "=2$")
+        target_sources(hal_if PRIVATE "src/hal_cpu_amp.c")
+    endif()
+endif()

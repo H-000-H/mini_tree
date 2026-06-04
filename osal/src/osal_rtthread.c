@@ -205,6 +205,18 @@ int osal_task_create(const char* name, uint32_t stack_size,
 {
     rtt_heap_init_once();
 
+#if CONFIG_CPU_CORES > 1
+    if (core_id > 0)
+    {
+        printf("[osal] WARN: task '%s' requested Core %d, "
+               "but AMP Core 1 has no OS scheduler. "
+               "Falling back to Core 0.\n", name, core_id);
+        core_id = 0;
+    }
+#else
+    (void)core_id;
+#endif
+
     rt_thread_t thread = rt_thread_create(name, entry, param,
                                           stack_size, priority, 10);
     if (!thread) return -1;
@@ -230,6 +242,18 @@ int osal_task_create_handle(const char* name, uint32_t stack_size,
 {
     if (!out_handle) return -1;
     rtt_heap_init_once();
+
+#if CONFIG_CPU_CORES > 1
+    if (core_id > 0)
+    {
+        printf("[osal] WARN: task '%s' requested Core %d, "
+               "but AMP Core 1 has no OS scheduler. "
+               "Falling back to Core 0.\n", name, core_id);
+        core_id = 0;
+    }
+#else
+    (void)core_id;
+#endif
 
     rt_thread_t thread = rt_thread_create(name, entry, param,
                                           stack_size, priority, 10);

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### 双核 AMP 支持 (Asymmetric Multi-Processing)
+
+- **`Kconfig`** — 新增 `menu "Multi-core Configuration"` → `CPU_CORES`（默认 1，范围 1-2）。1 = 单核，2 = 双核 AMP 模式（Core 0 跑 RTOS，Core 1 跑裸机）
+- **`hal_if/include/hal_cpu.h`** — 新增 3 个 AMP 函数声明：`hal_cpu_secondary_startup()`、`hal_cpu_baremetal_entry()`、`hal_cpu_get_id()`
+- **`hal_if/src/hal_cpu_amp.c`** — **新建**，三个 weak 符号默认实现（副核入口死循环、启动空操作、核心 ID 返回 0）
+- **`hal_if/CMakeLists.txt`** — `CPU_CORES > 1` 时条件编译 `hal_cpu_amp.c`
+- **`osal/src/osal_freertos.c`**、`osal/src/osal_rtthread.c` — AMP 模式下 `core_id > 0` 自动回退到 Core 0 并打印警告
+- **`system_cpp/src/system_init.cpp`**、**`system_c/src/system_init.c`** — Phase 2 末尾调用 `hal_cpu_secondary_startup()`
+- **`examples/porting_template/hal_cpu.c`** — 添加 AMP 移植注释和 STM32H7/GD32/RISC-V 示例
+- **`config.example.h`** — 添加 `CONFIG_CPU_CORES` 示例注释
+
 ### C 修复
 
 - **`core/src/buffer_pool.c`** — 移除重复定义的 `bp_alloc_isr`（第 219 行已定义，第 252 行重复），修复 ARM GCC 全架构编译错误。
