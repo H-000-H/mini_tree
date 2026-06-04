@@ -78,6 +78,18 @@ ESP-IDF 已内置 Kconfig，因此 ESP32 端口不再引入第二套 Kconfig 流
 
 ---
 
+## 致谢与设计参考
+本项目的设计深受以下开源项目与社区的启发：
+
+- **[LVGL](https://github.com/lvgl/lvgl)** — 裸机状态机设计，EventBus 和 Service 生命周期管理参考了它的事件驱动模式。
+- **[Linux 内核](https://github.com/torvalds/linux)** — 设备树自动 Probe 机制和分层抽象思想，贯穿了框架的整体设计。
+- **[RT-Thread](https://github.com/RT-Thread/rt-thread)** — 设备驱动框架和 IPC 设计是重要的参考。
+- **[Zephyr](https://github.com/zephyrproject-rtos/zephyr)** — OSAL 抽象层和模块化编译隔离的思路来源。
+- **抖音 & B 站的嵌入式 up 主们** — 精致的项目演示视频提供了很多实践视角。
+- **GitHub 上未能一一提及的开源项目** — 开发过程中参考了许多嵌入式项目的工程实践。
+
+---
+
 ## License
 
 本项目基于 [MIT License](LICENSE) 开源。欢迎任何形式的商业与非商业使用、修改及分发。
