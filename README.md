@@ -70,11 +70,19 @@ Makefile 工具链：ARM GCC / ARM Clang / RISC-V GCC / ARMCLANG (Keil 5/6)
 | 平台 | 工程 | 说明 |
 |------|------|------|
 | **STM32F407ZGT6** (ARM CM4F) | [stm32_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32_test) | FreeRTOS / RT-Thread / 裸机三后端切换测试，直操作寄存器，无 SDK |
-| **ESP32-S3** (Xtensa LX7) | [esp32_test](https://github.com/H-000-H/mini-tree-example/tree/master/esp32_test) | ESP-IDF 组件集成，config.h 配置，hal_esp32s3.c 硬件适配，WS2812 驱动示例 |
+| **ESP32-S3** (Xtensa LX7) | [esp32_test](https://github.com/H-000-H/mini-tree-example/tree/master/esp32_test) | ESP-IDF 组件集成，Kconfig 配置，hal_esp32s3.c 硬件适配，WS2812 驱动示例 |
 
 ### ESP32 端口特殊说明
 
-ESP-IDF 已内置 Kconfig，因此 ESP32 端口不再引入第二套 Kconfig 流程，改为 `components/mini_tree/config.h` 作为编译期配置入口（运行前修改 `config.h` 即可，无需 menuconfig）。构建使用 `idf_component_register()` 注册组件，非原生 `add_library` 写法。OSAL 默认 FreeRTOS（IDF 内置），语言默认 C++（物联网场景），可通过 config.h 切换。
+ESP32 端口的 mini_tree 组件沿用原生 Kconfig 配置流程，通过 `components/mini_tree/Kconfig` 和 `tools/menuconfig.py` / `tools/genconfig.py` 管理编译期选项，不依赖 ESP-IDF 的 Kconfig 体系，不与 `sdkconfig` 冲突。构建使用 `idf_component_register()` 注册组件，非原生 `add_library` 写法。
+
+配置方式：
+```bash
+cd components/mini_tree && python tools/menuconfig.py
+```
+或直接编辑 `components/mini_tree/.config`，`idf.py build` 时 `genconfig.py` 自动生成 `config.h`。
+
+OSAL 默认 FreeRTOS（IDF 内置），语言默认 C++（物联网场景），均可通过 Kconfig 切换。
 
 ---
 

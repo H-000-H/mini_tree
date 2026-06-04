@@ -44,7 +44,7 @@ static const hal_gpio_ops_t s_mychip_gpio_ops = {
 
 示例工程：[https://github.com/H-000-H/mini-tree-example](https://github.com/H-000-H/mini-tree-example)
 
-mini_tree 以 ESP-IDF 组件形式引入，配置改用 `config.h` 而非 Kconfig（ESP-IDF 已有 Kconfig），请见示例工程中的 `components/mini_tree/config.h` 和 `CMakeLists.txt`。
+mini_tree 以 ESP-IDF 组件形式引入，配置沿用原生 Kconfig 流程（`Kconfig` + `tools/menuconfig.py` + `tools/genconfig.py`），通过 `idf_component_register()` 注册组件。详见示例工程中的 `components/mini_tree/Kconfig`、`.config` 和 `CMakeLists.txt`。
 
 ### 6.4 移植模板
 
