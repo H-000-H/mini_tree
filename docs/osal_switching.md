@@ -1,6 +1,7 @@
 ## 14. OSAL 后端切换注意事项（重要）
 
 > 本章总结在 [mini-tree-example](https://github.com/H-000-H/mini-tree-example) (STM32F407ZGT6) 上切换 OSAL 后端时踩过的坑。
+> CM3 平台可参考 [stm32f103c8t6_cubemx_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32f103c8t6_cubemx_test) 中的 OSAL_NULL 裸机配置。
 > 在其它平台/RTOS 版本上移植时同样适用——每一条都曾导致"LED 常量"级别的硬故障。
 
 ### 14.1 NVIC 优先级移位（FreeRTOS 常量亮的元凶）

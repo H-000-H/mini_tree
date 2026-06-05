@@ -39,6 +39,12 @@ target_link_libraries(my_app PRIVATE mini_tree)
 - FreeRTOS 后端：`FreeRTOSConfig.h`
 - RT-Thread 后端：RT-Thread 内核配置
 
+#### CubeMX HAL 集成
+
+mini_tree 可与 STM32CubeMX HAL 配合使用：CubeMX 生成外设初始化代码（`MX_*_Init()`），
+`soc_port_` 层基于 HAL API 实现 `hal_if` 接口，通过 CMake configure-time 文件注入覆盖子模块中的 board 配置。
+参考示例：[stm32f103c8t6_cubemx_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32f103c8t6_cubemx_test)。
+
 ---
 
 ## 3. 配置系统

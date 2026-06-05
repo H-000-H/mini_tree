@@ -74,6 +74,10 @@ public:
     void start();
     void stop();
 
+    /** 裸机手动分发: 非阻塞排空事件队列, 逐一派发给订阅者.
+     *  RTOS 模式下由 dispatch_task 自动处理, 无需调用此函数. */
+    void dispatch_all();
+
     /** 封表: 禁止运行时动态订阅.
      *  在 System_Start_Tasks (Phase 2) 末尾调用, 此后 subscribe() 全部失败.
      *  确保 ISR 中 post() 遍历的订阅者数组是只读静态表, 绝无读写踩踏. */

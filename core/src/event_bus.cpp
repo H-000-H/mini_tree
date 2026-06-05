@@ -221,6 +221,40 @@ void EventBus::seal()
     m_is_sealed = true;
 }
 
+void EventBus::dispatch_all()
+{
+    if (!m_queue || !m_inited) return;
+
+    Event event;
+    while (osal_queue_receive(m_queue, &event, 0))  /* 0 = 非阻塞 */
+    {
+        /* 取快照 (与 dispatch_task 一致) */
+        Subscriber snapshot[kMaxSubscribers];
+        size_t snapshot_count = 0;
+
+        if (m_sub_lock)
+        {
+            if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != 0)
+                return;
+        }
+        snapshot_count = m_count;
+        for (size_t i = 0; i < snapshot_count; i++)
+            snapshot[i] = m_subscribers[i];
+        if (m_sub_lock)
+            osal_mutex_unlock(m_sub_lock);
+
+        for (size_t i = 0; i < snapshot_count; i++)
+        {
+            Subscriber& sub = snapshot[i];
+            if (sub.callback != nullptr &&
+                event.id >= sub.id_min && event.id <= sub.id_max)
+            {
+                sub.callback(event, sub.user_data);
+            }
+        }
+    }
+}
+
 /* ── C 兼容封装 ── */
 extern "C" bool event_bus_init(void)
 {
