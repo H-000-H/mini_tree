@@ -1015,6 +1015,9 @@ class DTSCompiler:
                 elif stripped == '#endif' and skip_depth > 0:
                     skip_depth -= 1
                     continue
+                elif stripped == '#endif':
+                    # skip_depth==0 的 #endif: guard 未激活, 吞掉防泄漏
+                    continue
 
             if skip_depth > 0:
                 continue
@@ -1137,6 +1140,8 @@ class DTSCompiler:
         result: List[Tuple[int, int, int]] = []
         for j in range(0, len(ints), cells):
             chunk: List[int] = ints[j:j + cells]
+            if len(chunk) < cells:
+                break  # 尾部残缺 cell 组, 忽略 (函数式宏展开可能引入额外 int)
             if cells == 1:
                 result.append((chunk[0], 0, 0))
             elif cells == 2:
