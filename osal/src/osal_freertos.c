@@ -212,7 +212,7 @@ static StaticTask_t  s_idle_tcb;
 
 void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer,
                                     StackType_t** ppxIdleTaskStackBuffer,
-                                    uint32_t* pulIdleTaskStackSize)
+                                    configSTACK_DEPTH_TYPE* pulIdleTaskStackSize)
 {
     *ppxIdleTaskTCBBuffer   = &s_idle_tcb;
     *ppxIdleTaskStackBuffer = s_idle_stack;

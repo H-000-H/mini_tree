@@ -221,7 +221,7 @@ Kconfig SYSTEM_BACKEND
 | **OSAL_NULL 无多任务** | 裸机模式下 Task 创建返回 NULL | 提供 `mini_tree_system_loop()` 主循环轮询 |
 | **BufferPool 固定块大小** | 小块浪费内存，大块无法分配 | 按典型消息 Size 配置 Kconfig |
 | **无异步 DMA 事件驱动** | EventBus 分发为同步轮询 | RTOS 模式下由独立 Task 驱动 |
-| **dtc-lite 非标准 DTS** | 不兼容 Linux DTS 语法 | 专为 MCU 裁剪，零运行时开销 |
+| **dtc-lite Linux DTS 兼容** | 低版本未实现 overlay / reg 分组 | 自 v1.6.0 起支持 `&label` overlay、`#address-cells`/`#size-cells` reg 分组、`/include/` 指令。详见 `docs/driver_guide.md` 第 7.3 节差异表 |
 | **Scrubber CRC 基线固化** | 出厂后无法更新基线 | OTA 时可重算并更新 |
 
 ---

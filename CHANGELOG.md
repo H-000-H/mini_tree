@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Linux DTS 源级兼容
+
+- **`tools/dtc-lite.py`** — 修复 `&label` overlay 合并（`_merge_overlays()`）、支持 `/include/` 指令、支持 `()` 和宏标识符在 `<>` 内的解析、`reg` 按 `#address-cells/#size-cells` 分组生成
+- **`board/include/device.h`** — 新增 `device_reg_t` 结构体和 `device_get_reg()` API，支持多地址单元 reg 读取
+- **`board/include/freertos_compat.h`** — **新建**，MinGW POSIX 信号兼容层（`sigaction`、`SIGALRM`、`sigset_t`）
+- **`board/include/sys/times.h`** — **新建**，MinGW `sys/times.h` 兼容头
+- **`lib/rtthread/libcpu/x86/atomic.c`** — **新建**，RT-Thread x86 原子操作实现
+- **`lib/freeRTOS/portable/ThirdParty/GCC/Posix/utils/wait_for_event.h`** — **新建**，FreeRTOS POSIX port 缺失头文件
+- **`lib/freeRTOS/portable/ThirdParty/GCC/Posix/utils/wait_for_event.c`** — 修复 MinGW 缺少 `pthread_mutexattr_setrobust`/`pthread_mutex_consistent`
+- **`Makefile`** — FreeRTOS port.c 注入 `freertos_compat.h`；RT-Thread 原子操作按平台选择（ARM→atomic_arm.c，x86→atomic.c）
+- **`osal/src/osal_freertos.c`** — `vApplicationGetIdleTaskMemory` 第三参数类型更正为 `configSTACK_DEPTH_TYPE*`
+- **三后端 POSIX 构建验证通过** — NULL / FreeRTOS / RT-Thread 在 MinGW-w64 下全部编译成功
+- **MCU 交叉编译验证通过** — `arm_cm4f + NULL` 和 `arm_cm4f + FreeRTOS` 均通过
+
+### 中断框架基础支持
+
+- **`board/include/device.h`** — 新增 `device_irq_t` 结构体（irq/type/flags），`device_node_t` 新增 `irqs`/`irq_count` 字段
+- **`board/src/board_device.c`** — 新增 `device_get_irq()` API，与 `device_get_reg()` 同模式
+- **`tools/dtc-lite.py`** — 中断三件套：
+  - `_scan_interrupt_controllers()` — DFS 扫描所有含 `interrupt-controller` 的节点，构建 `#interrupt-cells` 映射
+  - `_resolve_device_interrupts()` — 沿父链解析 `interrupt-parent`，按 `#interrupt-cells` 分组（1/2/3 cells），生成 `(irq, type, flags)` 元组
+  - C 生成器 — 为每个有 `interrupts` 的设备生成 `DEV_xxx_IRQS[]` 数组
+- **`tools/dtc-lite.py`** — 修复预处理器误吞 `#interrupt-cells` 等 DTS `#` 属性行（只跳过 `#define`/`#ifndef`/`#ifdef`/`#endif`，其余放行）
+
 ### 双核 AMP 支持 (Asymmetric Multi-Processing)
 
 - **`Kconfig`** — 新增 `menu "Multi-core Configuration"` → `CPU_CORES`（默认 1，范围 1-2）。1 = 单核，2 = 双核 AMP 模式（Core 0 跑 RTOS，Core 1 跑裸机）

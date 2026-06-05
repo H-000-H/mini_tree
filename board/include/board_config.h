@@ -57,7 +57,9 @@
 #endif
 
 /* ── OSAL 互斥锁池 (device_t per-device lock + 驱动内部锁) ── */
+#ifndef OSAL_MUTEX_POOL_SIZE
 #define OSAL_MUTEX_POOL_SIZE      24
+#endif
 
 /* ── 设备树运行时 ── */
 #define BOARD_MAX_DEVICE_COUNT    32
