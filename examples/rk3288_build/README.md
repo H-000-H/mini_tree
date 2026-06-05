@@ -2,7 +2,8 @@
 
 ## 说明
 
-本目录是用 **rk3288.dtsi**（Rockchip SoC 真实设备树）通过 dtc-lite.py 生成的 DTS 解析产物，用于验证 dtc-lite.py 对 Linux 真实 .dtsi 的解析能力（[支持/不支持项目见末尾表格](#已知差异与-linux-dts-对比)）。
+本目录是用 **rk3288.dtsi**（Rockchip SoC 真实设备树）通过 dtc-lite.py 生成的 DTS 解析产物(本人在验证时修改过lite-dts.py文件因此你无法使用现在提供的py
+文件去验证。若想要验证需要修改400行左右的py文件因为这和项目本身的意图没有关系了所以本人不会把py文件放到这里)，用于验证 dtc-lite.py 对 Linux 真实 .dtsi 的解析能力（[支持/不支持项目见末尾表格](#已知差异与-linux-dts-对比)）。
 
 ## 目录结构
 
