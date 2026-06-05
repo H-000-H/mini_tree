@@ -7,8 +7,8 @@ set(CMAKE_CXX_COMPILER armclang)
 set(CMAKE_ASM_COMPILER armclang)
 set(CMAKE_AR           armar)
 
-set(CMAKE_C_FLAGS   "--target=arm-arm-none-eabi -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -std=c17 -Wall -Wextra -Os -g" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS "--target=arm-arm-none-eabi -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -std=c++20 -Wall -Wextra -Os -g -fno-exceptions -fno-rtti" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS   "--target=arm-arm-none-eabi -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -std=c17 -Wall -Wextra -Os -g -ffreestanding" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "--target=arm-arm-none-eabi -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -std=c++20 -Wall -Wextra -Os -g -fno-exceptions -fno-rtti -ffreestanding" CACHE STRING "" FORCE)
 set(CMAKE_ASM_FLAGS "--target=arm-arm-none-eabi -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -x assembler-with-cpp" CACHE STRING "" FORCE)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

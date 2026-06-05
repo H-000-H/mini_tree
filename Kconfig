@@ -268,13 +268,13 @@ if CUSTOM_C_STANDARD
 
 config C_STANDARD
     string "C language standard"
-    default "c23"
+    default "c17"
     help
       如 c11、c17、c23 等。
 
 config CXX_STANDARD
     string "C++ language standard"
-    default "c++23"
+    default "c++17"
     help
       如 c++11、c++17、c++20、c++23 等。
 
