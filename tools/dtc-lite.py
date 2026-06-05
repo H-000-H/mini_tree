@@ -1951,6 +1951,7 @@ class CGenerator:
         remove_externs: List[str] = []
         probe_array: List[str] = []
         remove_array: List[str] = []
+        seen_externs: Set[str] = set()
         for i in devs:
             compat_prop: Optional[DtsProperty] = i.get_prop('compatible')
             snake: str = self._snake_name(i.name)
@@ -1960,8 +1961,10 @@ class CGenerator:
                     p_fn: str
                     r_fn: str
                     p_fn, r_fn = self.compiler.driver_map[compat]
-                    probe_externs.append(f'extern int __attribute__((weak)) {p_fn}(device_t* dev);')
-                    remove_externs.append(f'extern int __attribute__((weak)) {r_fn}(device_t* dev);')
+                    if p_fn not in seen_externs:
+                        seen_externs.add(p_fn)
+                        probe_externs.append(f'extern int __attribute__((weak)) {p_fn}(device_t* dev);')
+                        remove_externs.append(f'extern int __attribute__((weak)) {r_fn}(device_t* dev);')
                     probe_array.append(f'    [DEV_ID_{snake}] = {p_fn},')
                     remove_array.append(f'    [DEV_ID_{snake}] = {r_fn},')
                 elif compat in PLATFORM:
