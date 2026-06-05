@@ -150,7 +150,7 @@ audio_codec: codec@0 {
 
 #### 与 Linux DTS 的差异
 
-mini_tree 的 DTS 旨在实现 **Linux 源级兼容**——同一份 `.dtsi` 文件可同时被 Linux DTC 和 dtc-lite 处理：
+mini_tree 的 DTS 支持解析 Linux 真实 `.dtsi` 文件（MCU 常用子集）：
 
 | 特性 | Linux DTC | mini_tree dtc-lite |
 |------|-----------|-------------------|
@@ -160,7 +160,7 @@ mini_tree 的 DTS 旨在实现 **Linux 源级兼容**——同一份 `.dtsi` 文
 | `&label` overlay | 支持 | **支持**：属性覆盖 + 子节点递归合并 |
 | `&label` 跨文件前向引用 | 支持 | 支持（后处理合并阶段已建好全局 label_map） |
 | phandle 自动分配 | 自动 | 用 label 替代 |
-| `/delete-node/` / `/delete-property/` | 支持 | 不支持 |
+| `/delete-node/` / `/delete-property/` | 支持 | 支持 |
 | 编译输出 | dtb 二进制 | 直接生成 C 代码（`.rodata` 静态表） |
 
 驱动中通过 `device_get_reg()` 读取分组后的 reg 条目，无需关心 cell 大小。

@@ -73,7 +73,7 @@ Makefile 工具链：ARM GCC / ARM Clang / RISC-V GCC / ARMCLANG (Keil 5/6)
 |------|------|------|
 | **STM32F407ZGT6** (ARM CM4F) | [stm32_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32_test) | FreeRTOS / RT-Thread / 裸机三后端切换测试，直操作寄存器，无 SDK |
 | **ESP32-S3** (Xtensa LX7) | [esp32_test](https://github.com/H-000-H/mini-tree-example/tree/master/esp32_test) | ESP-IDF 组件集成，Kconfig 配置，hal_esp32s3.c 硬件适配，WS2812 驱动示例 |
-| **RK3288 DTS 兼容验证** | [examples/rk3288_build/](examples/rk3288_build/README.md) | Linux DTS 源级兼容验证，rk3288.dtsi 无需修改即可被 dtc-lite.py 解析 |
+| **RK3288 DTS 源级解析验证** | [examples/rk3288_build/](examples/rk3288_build/README.md) | 验证 dtc-lite.py 对 Linux 真实 .dtsi 的解析能力（支持 reg/中断/节点操作，[详见能力表格](examples/rk3288_build/README.md#已知差异与-linux-dts-对比)）。[代码量对比](examples/rk3288_build/README.md#设备树优势代码量对比)：253 行 DTS → 3170 行 C |
 
 ### ESP32 端口特殊说明
 

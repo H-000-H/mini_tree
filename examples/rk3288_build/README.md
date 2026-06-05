@@ -2,10 +2,7 @@
 
 ## 说明
 
-本目录是用 **rk3288.dtsi**（Rockchip SoC 真实设备树）通过 dtc-lite.py 生成的 DTS 解析产物，用于验证：
-
-- **Linux DTS 源级兼容** — rk3288.dtsi 无需修改即可被 dtc-lite.py 解析
-- **无缝移植能力** — 同一套 .dtsi 文件，既可用于 Linux 内核驱动，也可用于 mini_tree MCU 项目
+本目录是用 **rk3288.dtsi**（Rockchip SoC 真实设备树）通过 dtc-lite.py 生成的 DTS 解析产物，用于验证 dtc-lite.py 对 Linux 真实 .dtsi 的解析能力（[支持/不支持项目见末尾表格](#已知差异与-linux-dts-对比)）。
 
 ## 目录结构
 
@@ -68,17 +65,17 @@ python tools/dtc-lite.py examples/rk3288_build/dts/board.dts examples/rk3288_bui
 python tools/dtc-lite.py examples/rk3288_build/dts/board.dts examples/rk3288_build/board/generated
 ```
 
-> **注意**：rk3288 是 Cortex-A12 应用处理器，其 DTS 包含 GIC-400 中断控制器、PL330 DMAC、CRU 时钟框架等 Linux 级外设，不在 MCU 的裸机/FreeRTOS 场景下运行。本例仅验证 dtc-lite.py 的 **Linux DTS 源级兼容性** — 同一份 .dtsi 无需修改即可被解析生成 C 结构体。
+> **注意**：rk3288 是 Cortex-A12 应用处理器，其 DTS 包含 GIC-400 中断控制器、PL330 DMAC、CRU 时钟框架等 Linux 级外设，不在 MCU 的裸机/FreeRTOS 场景下运行。本例仅验证 dtc-lite.py 对 Linux 真实 .dtsi 的解析能力，支持 reg/中断/节点操作等 MCU 常用子集，完整能力见[差异表](#已知差异与-linux-dts-对比)。
 
 ## 移植验证
 
-本构建证明了：
+本构建验证了 dtc-lite.py 对 Linux DTS 的解析能力（详见[差异表](#已知差异与-linux-dts-对比)）：
 
-1. rk3288.dtsi 中的 `&label` overlay、`#address-cells`/`#size-cells`、宏表达式全部正确解析
+1. `&label` overlay、`#address-cells`/`#size-cells`、宏表达式正确解析
 2. reg 属性按 `ac/sc` 正确分组，`device_get_reg()` 可准确读取
-3. 中断三件套（`interrupt-parent` + `#interrupt-cells` + `interrupt-controller`）完整支持
+3. 基本中断支持（`interrupt-parent` + `#interrupt-cells` + `interrupt-controller`）
 4. 多个 `<>` 块的中断分组有效
-5. Linux 内核的 .dtsi 文件可直接纳入 mini_tree 项目使用（需提供对应 dt-bindings 头文件）
+5. Linux 内核的 .dtsi 文件可被 dtc-lite.py 解析生成 C 结构体（需提供对应 dt-bindings 头文件）
 
 ## 设备树优势：代码量对比
 
