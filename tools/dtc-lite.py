@@ -460,6 +460,19 @@ class DtsParser:
             elif t.type == TOKEN_DTSV1:
                 self.advance()
                 continue
+            elif t.type == TOKEN_AMPERS:
+                self.advance()
+                lbl: Token = self.advance()
+                if self.peek() and self.peek().type == TOKEN_LBRACE:
+                    self.advance()
+                    ref_node: DtsNode = DtsNode(f"&{lbl.value}", parent=root, line=t.line)
+                    while self.peek() and self.peek().type != TOKEN_RBRACE:
+                        self.parse_body_item(ref_node)
+                    if self.peek() and self.peek().type == TOKEN_RBRACE:
+                        self.advance()
+                    self.skip_semi()
+                    root.children.append(ref_node)
+                continue
             else:
                 break
 
@@ -817,6 +830,19 @@ class DtsParser:
             self.advance()
             self._delete_prop_from(parent)
             self.skip_semi()
+
+        elif t.type == TOKEN_AMPERS:
+            self.advance()
+            lbl: Token = self.advance()
+            if self.peek() and self.peek().type == TOKEN_LBRACE:
+                self.advance()
+                ref_node: DtsNode = DtsNode(f"&{lbl.value}", parent=parent, line=t.line)
+                while self.peek() and self.peek().type != TOKEN_RBRACE:
+                    self.parse_body_item(ref_node)
+                if self.peek() and self.peek().type == TOKEN_RBRACE:
+                    self.advance()
+                self.skip_semi()
+                parent.children.append(ref_node)
 
         elif t.type == TOKEN_RBRACE:
             return
