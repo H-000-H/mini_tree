@@ -49,7 +49,7 @@ struct event * event_create( void )
     {
         ev->event_triggered = false;
         pthread_mutexattr_init( &ev->mutexattr );
-        #ifndef __APPLE__
+        #if !defined(__APPLE__) && !defined(_WIN32)
             pthread_mutexattr_setrobust( &ev->mutexattr, PTHREAD_MUTEX_ROBUST );
         #endif
         pthread_mutex_init( &ev->mutex, &ev->mutexattr );
@@ -73,7 +73,7 @@ bool event_wait( struct event * ev )
 {
     if( pthread_mutex_lock( &ev->mutex ) == EOWNERDEAD )
     {
-        #ifndef __APPLE__
+        #if !defined(__APPLE__) && !defined(_WIN32)
             /* If the thread owning the mutex died, make the mutex consistent. */
             pthread_mutex_consistent( &ev->mutex );
         #endif
@@ -101,7 +101,7 @@ bool event_wait_timed( struct event * ev,
     ts.tv_nsec += ( ( ms % 1000 ) * 1000000 );
     if( pthread_mutex_lock( &ev->mutex ) == EOWNERDEAD )
     {
-        #ifndef __APPLE__
+        #if !defined(__APPLE__) && !defined(_WIN32)
             /* If the thread owning the mutex died, make the mutex consistent. */
             pthread_mutex_consistent( &ev->mutex );
         #endif
@@ -127,7 +127,7 @@ void event_signal( struct event * ev )
 {
     if( pthread_mutex_lock( &ev->mutex ) == EOWNERDEAD )
     {
-        #ifndef __APPLE__
+        #if !defined(__APPLE__) && !defined(_WIN32)
             /* If the thread owning the mutex died, make the mutex consistent. */
             pthread_mutex_consistent( &ev->mutex );
         #endif

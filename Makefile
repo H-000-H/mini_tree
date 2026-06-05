@@ -450,26 +450,31 @@ RTTHREAD_SRCS := \
   lib/rtthread/src/scheduler_up.c \
   lib/rtthread/src/thread.c \
   lib/rtthread/src/timer.c \
-  lib/rtthread/libcpu/arm/common/atomic_arm.c
 
 # RT-Thread 架构端口
 ifeq ($(PLATFORM_MCU),ARM_CM3)
+  RTTHREAD_SRCS += lib/rtthread/libcpu/arm/common/atomic_arm.c
   RTTHREAD_ARCH_DIR := arm/cortex-m3
   RTTHREAD_SRCS += \
     lib/rtthread/libcpu/arm/cortex-m3/context_gcc.S \
     lib/rtthread/libcpu/arm/cortex-m3/cpuport.c
 endif
 ifeq ($(PLATFORM_MCU),ARM_CM4F)
+  RTTHREAD_SRCS += lib/rtthread/libcpu/arm/common/atomic_arm.c
   RTTHREAD_ARCH_DIR := arm/cortex-m4
   RTTHREAD_SRCS += \
     lib/rtthread/libcpu/arm/cortex-m4/context_gcc.S \
     lib/rtthread/libcpu/arm/cortex-m4/cpuport.c
 endif
 ifeq ($(PLATFORM_MCU),ARM_CM7)
+  RTTHREAD_SRCS += lib/rtthread/libcpu/arm/common/atomic_arm.c
   RTTHREAD_ARCH_DIR := arm/cortex-m7
   RTTHREAD_SRCS += \
     lib/rtthread/libcpu/arm/cortex-m7/context_gcc.S \
     lib/rtthread/libcpu/arm/cortex-m7/cpuport.c
+endif
+ifeq ($(PLATFORM_MCU),POSIX)
+  RTTHREAD_SRCS += lib/rtthread/libcpu/x86/atomic.c
 endif
 ifeq ($(PLATFORM_MCU),RISCV)
   RTTHREAD_ARCH_DIR := risc-v/common
@@ -511,6 +516,12 @@ ALL_LIBS := $(LIBS)
 $(OBJ_DIR)/lib/rtthread/%.o: lib/rtthread/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(KCONFIG_DEFS) -D__RT_KERNEL_SOURCE__ $(INCLUDES) -c $< -o $@
+	@echo "  CC    $<"
+
+# FreeRTOS POSIX port needs POSIX signal compat on MinGW
+$(OBJ_DIR)/lib/freeRTOS/portable/ThirdParty/GCC/Posix/port.o: lib/freeRTOS/portable/ThirdParty/GCC/Posix/port.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -include board/include/freertos_compat.h $(KCONFIG_DEFS) $(INCLUDES) -c $< -o $@
 	@echo "  CC    $<"
 
 define COMPILE_C

@@ -63,7 +63,7 @@ void osal_spinlock_lock(osal_spinlock_t* lock);
 void osal_spinlock_unlock(osal_spinlock_t* lock);
 
 /* ── 互斥锁 ── */
-#define OSAL_MUTEX_STORAGE_SIZE 96   /* 足够容纳 struct osal_mutex + 静态信号量缓存 */
+#define OSAL_MUTEX_STORAGE_SIZE 160  /* 足够容纳 struct osal_mutex + 静态信号量缓存 (64-bit POSIX 约 144) */
 
 int osal_mutex_create(osal_mutex_t** out);
 int osal_mutex_create_static(osal_mutex_t** out, void* storage, size_t storage_size);

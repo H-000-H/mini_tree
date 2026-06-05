@@ -286,6 +286,24 @@ int device_get_prop_bool(const device_t* dev, const char* key, int* val)
     return device_get_prop_int(dev, key, val);
 }
 
+int device_get_reg(const device_t* dev, int idx, const device_reg_t** out)
+{
+    if (!dev || !dev->node || !out) return VFS_ERR_INVAL;
+    if (idx < 0 || idx >= (int)dev->node->reg_count) return VFS_ERR_INVAL;
+    if (!dev->node->regs) return VFS_ERR_INVAL;
+    *out = &dev->node->regs[idx];
+    return 0;
+}
+
+int device_get_irq(const device_t* dev, int idx, const device_irq_t** out)
+{
+    if (!dev || !dev->node || !out) return VFS_ERR_INVAL;
+    if (idx < 0 || idx >= (int)dev->node->irq_count) return VFS_ERR_INVAL;
+    if (!dev->node->irqs) return VFS_ERR_INVAL;
+    *out = &dev->node->irqs[idx];
+    return 0;
+}
+
 const char* device_get_name(const device_t* dev)
 {
     return dev && dev->node ? dev->node->name : NULL;

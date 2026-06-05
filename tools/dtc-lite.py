@@ -53,12 +53,16 @@ TOKEN_IDENT: int = 13   # identifier-with-hy-phens
 TOKEN_DTSV1: int = 14   # /dts-v1/
 TOKEN_POUND: int = 15   # # (for #include, etc.)
 TOKEN_AT: int = 16      # @ (unit-address separator)
+TOKEN_DELETE_NODE: int = 17  # /delete-node/
+TOKEN_DELETE_PROP: int = 18  # /delete-property/
 
 token_names: Dict[int, str] = {
+
     0: "EOF", 1: "{", 2: "}", 3: ";", 4: "=",
     5: "<", 6: ">", 7: "/", 8: "&", 9: ":",
     10: ",", 11: "STRING", 12: "INT", 13: "IDENT",
     14: "/dts-v1/", 15: "#", 16: "@",
+    17: "/delete-node/", 18: "/delete-property/",
 }
 
 
@@ -77,7 +81,7 @@ class Token:
 
 
 class Tokenizer:
-    """DTS 分词器 — 手写有限状态机。"""
+    """DTS 分词器 — 有限状态机。"""
 
     def __init__(self, text: str, filename: str = "<dts>") -> None:
         self.text: str = text
@@ -150,6 +154,18 @@ class Tokenizer:
                     for _ in range(8):
                         self.advance()
                     tokens.append(Token(TOKEN_DTSV1, None, line, col))
+                    continue
+                if (self.pos + 12 < len(self.text) and
+                    self.text[self.pos:self.pos+13] == '/delete-node/'):
+                    for _ in range(13):
+                        self.advance()
+                    tokens.append(Token(TOKEN_DELETE_NODE, None, line, col))
+                    continue
+                if (self.pos + 16 < len(self.text) and
+                    self.text[self.pos:self.pos+17] == '/delete-property/'):
+                    for _ in range(17):
+                        self.advance()
+                    tokens.append(Token(TOKEN_DELETE_PROP, None, line, col))
                     continue
                 tokens.append(Token(TOKEN_SLASH, None, line, col))
                 self.advance()
@@ -229,11 +245,17 @@ class Tokenizer:
             if ch.isdigit() or (ch == '-' and self.pos + 1 < len(self.text)
                                 and self.text[self.pos + 1].isdigit()):
                 start: int = self.pos
-                if ch == '-':
+                if ch == '0' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] in ('x', 'X'):
                     self.advance()
-                while self.pos < len(self.text) and self.peek().isdigit():
                     self.advance()
-                val: int = int(self.text[start:self.pos])
+                    while self.pos < len(self.text) and (self.peek().isdigit() or self.peek() in 'abcdefABCDEF'):
+                        self.advance()
+                else:
+                    if ch == '-':
+                        self.advance()
+                    while self.pos < len(self.text) and self.peek().isdigit():
+                        self.advance()
+                val: int = int(self.text[start:self.pos], 0)
                 tokens.append(Token(TOKEN_INT, val, line, col))
                 continue
 
@@ -249,6 +271,10 @@ class Tokenizer:
                 if ident == 'dts-v1' and start > 0 and self.text[start-1] == '/':
                     continue
                 tokens.append(Token(TOKEN_IDENT, ident, line, col))
+                continue
+
+            if ch in '()|!~^':
+                self.advance()
                 continue
 
             self.error(f"unexpected character '{ch}'")
@@ -393,12 +419,92 @@ class DtsParser:
             self.advance()
 
     def parse(self) -> DtsNode:
-        """dts := header root nodes"""
+        """dts := header root nodes (支持多 / 节合并)"""
         self.parse_header()
         root: Optional[DtsNode] = self.parse_node()
         if not root or root.name != '':
             raise SyntaxError("missing root node '/'")
+
+        # 后续 / { ... } 节: Linux DTS 支持同文件拆分为多个根节
+        if root:
+            self._merge_extra_root_sections(root)
         return root
+
+    def _merge_extra_root_sections(self, root: DtsNode) -> None:
+        """合并后续 / { ... } 节到 root"""
+        while self.peek() and self.peek().type != TOKEN_EOF:
+            t: Token = self.peek()
+            if t.type == TOKEN_SLASH:
+                self.advance()
+                if self.peek() and self.peek().type == TOKEN_LBRACE:
+                    extra: DtsNode = self._parse_root_body_only(root_for_delete=root)
+                    if extra:
+                        for prop in extra.props:
+                            existing: Optional[DtsProperty] = root.get_prop(prop.name)
+                            if existing:
+                                existing.strings = prop.strings
+                                existing.ints = prop.ints
+                                existing.phandles = prop.phandles
+                            else:
+                                root.props.append(prop)
+                        for child in extra.children:
+                            existing_child: Optional[DtsNode] = root.find_child(child.name)
+                            if existing_child:
+                                self._merge_node_into(existing_child, child)
+                            else:
+                                child.parent = root
+                                root.children.append(child)
+                continue
+            elif t.type == TOKEN_DTSV1:
+                self.advance()
+                continue
+            else:
+                break
+
+    def _parse_root_body_only(self, root_for_delete: Optional[DtsNode] = None) -> Optional[DtsNode]:
+        """解析 / { body } 中的 body, 返回临时节点
+
+        若 root_for_delete 不为 None, 其中的 /delete-node/ 和 /delete-property/
+        直接作用于 root_for_delete (而非 temp 节点), 确保合并节中的删除指令生效。
+        """
+        if not self.peek() or self.peek().type != TOKEN_LBRACE:
+            return None
+        self.advance()
+        tmp: DtsNode = DtsNode('_root_extra', line=0)
+        while self.peek() and self.peek().type != TOKEN_RBRACE:
+            if root_for_delete and self.peek().type in (TOKEN_DELETE_NODE, TOKEN_DELETE_PROP):
+                # 顶层删除直接作用于 root, 不经过 tmp
+                t = self.advance()
+                if t.type == TOKEN_DELETE_NODE:
+                    self._delete_node_from(root_for_delete)
+                else:
+                    self._delete_prop_from(root_for_delete)
+                self.skip_semi()
+            else:
+                self.parse_body_item(tmp)
+        if self.peek() and self.peek().type == TOKEN_RBRACE:
+            self.advance()
+        self.skip_semi()
+        return tmp
+
+    def _merge_node_into(self, target: DtsNode, src: DtsNode) -> None:
+        """递归合并 src 到 target"""
+        for prop in src.props:
+            existing: Optional[DtsProperty] = target.get_prop(prop.name)
+            if existing:
+                existing.strings = prop.strings
+                existing.ints = prop.ints
+                existing.phandles = prop.phandles
+            else:
+                target.props.append(prop)
+        for child in src.children:
+            existing_child: Optional[DtsNode] = target.find_child(child.name)
+            if existing_child:
+                self._merge_node_into(existing_child, child)
+            else:
+                child.parent = target
+                target.children.append(child)
+
 
     def parse_header(self) -> None:
         """header := '/dts-v1/' ';'"""
@@ -562,7 +668,17 @@ class DtsParser:
                     if self.peek() and self.peek().type == TOKEN_RBRACE:
                         self.advance()
                     self.skip_semi()
-                pass
+                    node.children.append(ref_node)
+
+            elif t.type == TOKEN_DELETE_NODE:
+                self.advance()
+                self._delete_node_from(node)
+                self.skip_semi()
+
+            elif t.type == TOKEN_DELETE_PROP:
+                self.advance()
+                self._delete_prop_from(node)
+                self.skip_semi()
 
             elif t.type in (TOKEN_SLASH, TOKEN_DTSV1):
                 self.advance()
@@ -690,11 +806,74 @@ class DtsParser:
                     self.advance()
                 parent.props.append(prop)
 
+        elif t.type == TOKEN_DELETE_NODE:
+            self.advance()
+            self._delete_node_from(parent)
+            self.skip_semi()
+
+        elif t.type == TOKEN_DELETE_PROP:
+            self.advance()
+            self._delete_prop_from(parent)
+            self.skip_semi()
+
         elif t.type == TOKEN_RBRACE:
             return
 
         else:
             self.advance()
+
+    def _delete_node_from(self, parent: DtsNode) -> None:
+        """处理 /delete-node/ 指令 — 从 parent 中移除子节点"""
+        t: Optional[Token] = self.peek()
+        if not t:
+            return
+
+        if t.type == TOKEN_AMPERS:
+            self.advance()
+            lbl: Token = self.advance() if self.peek() else None
+            if lbl and lbl.type == TOKEN_IDENT:
+                parent.children = [c for c in parent.children if c.label != lbl.value]
+
+        elif t.type == TOKEN_IDENT:
+            name: str = t.value
+            self.advance()
+            if self.peek() and self.peek().type == TOKEN_AT:
+                self.advance()
+                addr_tok: Token = self.advance() if self.peek() else None
+                addr_str: str = str(addr_tok.value) if addr_tok and addr_tok.type == TOKEN_INT else ""
+                name = f"{name}@{addr_str}"
+            parent.children = [c for c in parent.children if c.name != name]
+
+        elif t.type == TOKEN_SLASH:
+            parts: List[str] = []
+            self.advance()
+            while self.peek() and self.peek().type not in (TOKEN_SEMI, TOKEN_EOF):
+                if self.peek().type == TOKEN_IDENT:
+                    parts.append(self.advance().value)
+                elif self.peek().type == TOKEN_SLASH:
+                    self.advance()
+                elif self.peek().type == TOKEN_AT:
+                    self.advance()
+                    nxt: Token = self.advance() if self.peek() else None
+                    if nxt:
+                        parts[-1] = f"{parts[-1]}@{nxt.value}"
+                else:
+                    break
+            if parts:
+                target: Optional[DtsNode] = parent
+                for i, part in enumerate(parts):
+                    if target is None:
+                        break
+                    if i == len(parts) - 1:
+                        target.children = [c for c in target.children if c.name != part]
+                    else:
+                        target = target.find_child(part)
+
+    def _delete_prop_from(self, parent: DtsNode) -> None:
+        """处理 /delete-property/ 指令 — 从 parent 中移除属性"""
+        if self.peek() and self.peek().type == TOKEN_IDENT:
+            name: str = self.advance().value
+            parent.props = [p for p in parent.props if p.name != name]
 
     def parse_prop_value(self, prop: DtsProperty) -> None:
         """解析属性值 (可能是 strings, <ints>, phandles 的组合)"""
@@ -718,6 +897,8 @@ class DtsParser:
                         ph: Token = self.advance()
                         if ph.type == TOKEN_IDENT:
                             prop.phandles.append(ph.value)
+                    elif inner.type == TOKEN_IDENT:
+                        self.advance()
                     else:
                         break
                 if self.peek() and self.peek().type == TOKEN_RANGLE:
@@ -752,6 +933,8 @@ class DtsParser:
                         ph: Token = self.advance()
                         if ph.type == TOKEN_IDENT:
                             values.append(('phandle', ph.value))
+                    elif it.type == TOKEN_IDENT:
+                        pass
                 if self.peek() and self.peek().type == TOKEN_RANGLE:
                     self.advance()
             elif t.type == TOKEN_AMPERS:
@@ -777,6 +960,8 @@ class DTSCompiler:
         self.chosen_map: Dict[str, DtsNode] = {}
         self.device_list: List[DtsNode] = []
         self.driver_map: Dict[str, Tuple[str, str]] = {}
+        self.interrupt_controllers: Dict[str, Tuple[DtsNode, int]] = {}  # label → (node, #interrupt-cells)
+        self.device_irq_info: List[List[Tuple[int, int, int]]] = []  # index matches device_list
         self._macros: Dict[str, str] = {}
         self._visited: Set[str] = set()
 
@@ -790,7 +975,6 @@ class DTSCompiler:
         lines: List[str] = text.split('\n')
         out: List[str] = []
         skip_depth: int = 0
-        guard_active: bool = False
 
         for line in lines:
             stripped: str = line.strip()
@@ -798,6 +982,8 @@ class DTSCompiler:
             m = re.match(r'#include\s+"([^"]+)"', stripped)
             if not m:
                 m = re.match(r'#include\s+<([^>]+)>', stripped)
+            if not m:
+                m = re.match(r'/include/\s+"([^"]+)"', stripped)
             if m and skip_depth == 0:
                 inc_path: Optional[str] = self._resolve_inc(m.group(1), base_dir)
                 if inc_path:
@@ -815,16 +1001,20 @@ class DTSCompiler:
 
                 if m_def and skip_depth == 0:
                     self._macros[m_def.group(1)] = m_def.group(2).strip()
+                    continue
                 elif m_ifn and skip_depth == 0:
-                    skip_depth = 1
-                    guard_active = True
+                    macro_name: str = m_ifn.group(1)
+                    if macro_name in self._macros:
+                        skip_depth = 1
+                    continue
                 elif m_ifd and skip_depth == 0:
-                    skip_depth = 1
+                    macro_name = m_ifd.group(1)
+                    if macro_name not in self._macros:
+                        skip_depth = 1
+                    continue
                 elif stripped == '#endif' and skip_depth > 0:
                     skip_depth -= 1
-                    if skip_depth == 0:
-                        guard_active = False
-                continue
+                    continue
 
             if skip_depth > 0:
                 continue
@@ -870,9 +1060,12 @@ class DTSCompiler:
         self.root = parser.parse()
 
         self._build_label_map(self.root)
+        self._merge_overlays()
         self._parse_special_nodes()
+        self._scan_interrupt_controllers()
         self.device_list = self.root.collect_all_devices()
         self._deduplicate_devices()
+        self._resolve_interrupts()
         self._scan_drivers()
         self._validate_compatibles()
 
@@ -889,12 +1082,143 @@ class DTSCompiler:
                 unique.append(dev)
         self.device_list = unique
 
+    def _scan_interrupt_controllers(self) -> None:
+        """DFS 扫描所有含 interrupt-controller 的节点, 构建映射"""
+        def _dfs(node: DtsNode) -> None:
+            if node.get_prop('interrupt-controller'):
+                cells_prop: Optional[DtsProperty] = node.get_prop('#interrupt-cells')
+                cells: int = cells_prop.ints[0] if cells_prop and cells_prop.ints else 1
+                if node.label:
+                    self.interrupt_controllers[node.label] = (node, cells)
+            for child in node.children:
+                _dfs(child)
+        if self.root:
+            _dfs(self.root)
+
+    def _resolve_interrupts(self) -> None:
+        """为所有设备解析 interrupts → 猜测 irq 号"""
+        self.device_irq_info = [[] for _ in self.device_list]
+        for i, dev in enumerate(self.device_list):
+            irqs: List[Tuple[int, int, int]] = self._resolve_device_interrupts(dev)
+            self.device_irq_info[i] = irqs
+
+    def _resolve_device_interrupts(self, dev: DtsNode) -> List[Tuple[int, int, int]]:
+        """解析单个设备的 interrupts 属性
+
+        返回 [(irq, type, flags), ...] 元组列表:
+          - #interrupt-cells=1: 单 cell 即为 irq, type=0, flags=0
+          - #interrupt-cells=2: cell[0]=irq, cell[1]=type, flags=0
+          - #interrupt-cells=3: cell[0]=type, cell[1]=irq, cell[2]=flags (GIC 风格)
+        """
+        prop: Optional[DtsProperty] = dev.get_prop('interrupts')
+        if not prop or not prop.ints:
+            return []
+
+        ints: List[int] = prop.ints
+
+        # 找 interrupt-parent (先看自身, 再沿父链)
+        parent_label: Optional[str] = None
+        ip_prop: Optional[DtsProperty] = dev.get_prop('interrupt-parent')
+        if ip_prop and ip_prop.phandles:
+            parent_label = ip_prop.phandles[0]
+        if not parent_label:
+            p: Optional[DtsNode] = dev.parent
+            while p:
+                ip_prop = p.get_prop('interrupt-parent')
+                if ip_prop and ip_prop.phandles:
+                    parent_label = ip_prop.phandles[0]
+                    break
+                p = p.parent
+
+        cells: int = 1  # default
+        if parent_label and parent_label in self.interrupt_controllers:
+            _, cells = self.interrupt_controllers[parent_label]
+
+        result: List[Tuple[int, int, int]] = []
+        for j in range(0, len(ints), cells):
+            chunk: List[int] = ints[j:j + cells]
+            if cells == 1:
+                result.append((chunk[0], 0, 0))
+            elif cells == 2:
+                result.append((chunk[0], chunk[1], 0))
+            elif cells >= 3:
+                result.append((chunk[1], chunk[0], chunk[2]))
+            else:
+                result.append((chunk[0], 0, 0))
+        return result
+
     def _build_label_map(self, node: DtsNode) -> None:
         """递归构建 label → node 映射"""
         if node.label:
             self.label_map[node.label] = node
         for c in node.children:
             self._build_label_map(c)
+
+    def _merge_overlays(self) -> None:
+        """将 &label { ... } overlay 节点合并到 label 对应的目标节点。
+
+        解析器已将 &label { body } 挂为父节点的子节点(名称为 &label)，
+        这里后处理: 在 label_map 中找到目标，合并属性+子节点，移除引用。
+        """
+        refs: List[DtsNode] = []
+        self._collect_ref_nodes(self.root, refs)
+
+        for ref in refs:
+            label: str = ref.name[1:]  # 去掉 "&" 前缀
+            target: Optional[DtsNode] = self.label_map.get(label)
+            if target is None:
+                print(f"[dtc-lite] warning: overlay references unknown label "
+                      f"'{label}' at line {ref.line}", file=sys.stderr)
+                continue
+
+            # 合并属性: 同名覆盖，新属性追加
+            for prop in ref.props:
+                existing: Optional[DtsProperty] = target.get_prop(prop.name)
+                if existing:
+                    existing.strings = prop.strings
+                    existing.ints = prop.ints
+                    existing.phandles = prop.phandles
+                else:
+                    target.props.append(prop)
+
+            # 合并子节点: 递归检查同名子节点并合并
+            for child in ref.children:
+                existing_child: Optional[DtsNode] = target.find_child(child.name)
+                if existing_child:
+                    self._merge_node(existing_child, child)
+                else:
+                    child.parent = target
+                    target.children.append(child)
+
+            # 从父节点移除引用节点
+            if ref.parent:
+                ref.parent.children = [c for c in ref.parent.children
+                                       if c is not ref]
+
+    def _collect_ref_nodes(self, node: DtsNode, refs: List[DtsNode]) -> None:
+        """DFS 收集所有 &label 引用节点"""
+        if node.name.startswith('&'):
+            refs.append(node)
+        for child in node.children:
+            self._collect_ref_nodes(child, refs)
+
+    def _merge_node(self, target: DtsNode, src: DtsNode) -> None:
+        """将 src 节点的属性+子节点合并到 target 节点"""
+        for prop in src.props:
+            existing: Optional[DtsProperty] = target.get_prop(prop.name)
+            if existing:
+                existing.strings = prop.strings
+                existing.ints = prop.ints
+                existing.phandles = prop.phandles
+            else:
+                target.props.append(prop)
+        for child in src.children:
+            existing_child: Optional[DtsNode] = target.find_child(child.name)
+            if existing_child:
+                self._merge_node(existing_child, child)
+            else:
+                child.parent = target
+                target.children.append(child)
 
     def _parse_special_nodes(self) -> None:
         """解析 aliases 和 chosen 节点"""
@@ -960,6 +1284,14 @@ class DTSCompiler:
             'esp32,i2c-bus',
             'esp32,rmt-tx',
             'esp32,adc',
+            'arm,gic-400',
+            'arm,cortex-a12',
+            'arm,cortex-a7',
+            'arm,cortex-m4',
+            'arm,cortex-m3',
+            'arm,cortex-m7',
+            'arm,cortex-m0',
+            'arm,armv7-timer',
         }
         errors: List[str] = []
         for dev in self.device_list:
@@ -983,7 +1315,28 @@ class DTSCompiler:
         if errors:
             for e in errors:
                 print(f"ERROR: {e}", file=sys.stderr)
-            sys.exit(1)
+            if self.driver_dirs:
+                sys.exit(1)
+
+    def _resolve_address_cells(self, node: DtsNode) -> Tuple[int, int]:
+        """沿父链向上查找 #address-cells / #size-cells, 默认 1/1"""
+        ac: int = 1
+        sc: int = 1
+        parent: Optional[DtsNode] = node.parent
+        while parent:
+            ac_prop: Optional[DtsProperty] = parent.get_prop('#address-cells')
+            if ac_prop and ac_prop.ints:
+                ac = ac_prop.ints[0]
+                break
+            parent = parent.parent
+        parent = node.parent
+        while parent:
+            sc_prop: Optional[DtsProperty] = parent.get_prop('#size-cells')
+            if sc_prop and sc_prop.ints:
+                sc = sc_prop.ints[0]
+                break
+            parent = parent.parent
+        return ac, sc
 
     def get_device_deps(self, dev: DtsNode) -> List[str]:
         """获取设备的依赖 phandle 列表"""
@@ -1328,6 +1681,81 @@ class CGenerator:
                 dep_arrays.append('};')
                 dep_arrays.append('')
 
+        # ===== reg 分组表 =====
+        reg_data_arrays: List[str] = []
+        reg_arrays: List[str] = []
+        reg_info_map: Dict[int, Tuple[int, List[str]]] = {}  # dev_idx -> (reg_count, reg_symbol)
+        for i, dev in enumerate(devs):
+            safe: str = self._c_safe_name(dev.name)
+            reg_prop: Optional[DtsProperty] = dev.get_prop('reg')
+            if not reg_prop or not reg_prop.ints:
+                reg_info_map[i] = (0, 'NULL')
+                continue
+
+            ac, sc = self.compiler._resolve_address_cells(dev)
+            ints: List[int] = reg_prop.ints
+            entry_size: int = ac + sc
+            if entry_size <= 0:
+                reg_info_map[i] = (0, 'NULL')
+                continue
+
+            # 按 (ac+sc) 分组为多个 reg 条目
+            entries: List[Tuple[List[int], List[int]]] = []
+            for j in range(0, len(ints), entry_size):
+                chunk: List[int] = ints[j:j + entry_size]
+                addr_part: List[int] = chunk[:ac]
+                size_part: List[int] = chunk[ac:] if sc > 0 else []
+                entries.append((addr_part, size_part))
+
+            # 生成平铺数据数组
+            flat: List[str] = []
+            for addr_part, size_part in entries:
+                flat.extend(hex(v) for v in addr_part)
+                flat.extend(hex(v) for v in size_part)
+
+            reg_data_arrays.append(f'static const uint32_t DEV_{safe}_REG_DATA[] = {{')
+            reg_data_arrays.append(f'    {", ".join(flat)},')
+            reg_data_arrays.append('};')
+
+            # 生成 device_reg_t 数组
+            offset: int = 0
+            reg_entries: List[str] = []
+            for addr_part, size_part in entries:
+                size_ref: str = f'&DEV_{safe}_REG_DATA[{offset + len(addr_part)}]'
+                if sc == 0:
+                    size_ref = 'NULL'
+                reg_entries.append(
+                    f'    {{ .addr = &DEV_{safe}_REG_DATA[{offset}], .addr_cells = {ac},'
+                    f' .size = {size_ref}, .size_cells = {sc} }},'
+                )
+                offset += len(addr_part) + len(size_part)
+
+            reg_arr_name: str = f'DEV_{safe}_REGS'
+            reg_arrays.append(f'static const device_reg_t {reg_arr_name}[] = {{')
+            reg_arrays.extend(reg_entries)
+            reg_arrays.append('};')
+            reg_arrays.append('')
+            reg_info_map[i] = (len(entries), reg_arr_name)
+
+        # ===== irq 表 =====
+        irq_arrays: List[str] = []
+        irq_info_map: Dict[int, Tuple[int, str]] = {}
+        for i, dev in enumerate(devs):
+            safe_i: str = self._c_safe_name(dev.name)
+            irq_list: List[Tuple[int, int, int]] = self.compiler.device_irq_info[i] if i < len(self.compiler.device_irq_info) else []
+            if not irq_list:
+                irq_info_map[i] = (0, 'NULL')
+                continue
+            irq_entries_str: List[str] = []
+            for irq, typ, flags in irq_list:
+                irq_entries_str.append(f'    {{ .irq = {irq}, .type = {typ}, .flags = {flags} }},')
+            irq_arr_name: str = f'DEV_{safe_i}_IRQS'
+            irq_arrays.append(f'static const device_irq_t {irq_arr_name}[] = {{')
+            irq_arrays.extend(irq_entries_str)
+            irq_arrays.append('};')
+            irq_arrays.append('')
+            irq_info_map[i] = (len(irq_list), irq_arr_name)
+
         node_entries: List[str] = []
         for i, dev in enumerate(devs):
             safe = self._c_safe_name(dev.name)
@@ -1366,6 +1794,14 @@ class CGenerator:
             direct_prop: Optional[DtsProperty] = dev.get_prop('direct')
             flags_val: str = 'DEVICE_FLAG_DIRECT' if direct_prop else '0'
 
+            reg_count: int
+            reg_ref: str
+            reg_count, reg_ref = reg_info_map[i]
+
+            irq_count: int
+            irq_ref: str
+            irq_count, irq_ref = irq_info_map[i]
+
             node_entries.append(
                 f'    [DEV_ID_{self._snake_name(dev.name)}] = {{\n'
                 f'        .name       = "{dev.name}",\n'
@@ -1379,6 +1815,10 @@ class CGenerator:
                 f'        .props      = {prop_ref},\n'
                 f'        .dep_count  = {dep_count},\n'
                 f'        .deps       = (const device_id_t*){dep_ref},\n'
+                f'        .reg_count  = {reg_count},\n'
+                f'        .regs       = (const device_reg_t*){reg_ref},\n'
+                f'        .irq_count  = {irq_count},\n'
+                f'        .irqs       = (const device_irq_t*){irq_ref},\n'
                 f'    }},'
             )
 
@@ -1395,6 +1835,12 @@ class CGenerator:
             '/* ===== 依赖表 ===== */',
             '',
         ] + dep_arrays + [
+            '/* ===== reg 分组表 (预分组, 按 #address-cells / #size-cells) ===== */',
+            '',
+        ] + reg_data_arrays + reg_arrays + [
+            '/* ===== irq 表 (预分组, 按 #interrupt-cells) ===== */',
+            '',
+        ] + irq_arrays + [
             '/* ===== 主节点表 (只读 .rodata) ===== */',
             f'static const device_node_t s_nodes[DEV_ID_COUNT] = {{',
         ] + node_entries + [
@@ -1456,6 +1902,14 @@ class CGenerator:
             'esp32,i2c-bus',
             'esp32,rmt-tx',
             'esp32,adc',
+            'arm,gic-400',
+            'arm,cortex-a12',
+            'arm,cortex-a7',
+            'arm,cortex-m4',
+            'arm,cortex-m3',
+            'arm,cortex-m7',
+            'arm,cortex-m0',
+            'arm,armv7-timer',
         }
 
         has_platform: bool = False

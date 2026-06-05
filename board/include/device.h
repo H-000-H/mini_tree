@@ -41,6 +41,23 @@ typedef enum
     DEVICE_STATUS_REMOVED,
 } device_status_t;
 
+/* ── reg 条目（由 dtc-lite 按 #address-cells / #size-cells 分组） ── */
+typedef struct
+{
+    const uint32_t* addr;       /* 地址值数组 [#address-cells 个] */
+    const uint32_t* size;       /* 长度值数组 [#size-cells 个] (NULL 若 size-cells == 0) */
+    uint8_t         addr_cells;
+    uint8_t         size_cells;
+} device_reg_t;
+
+/* ── interrupt 条目（由 dtc-lite 按 #interrupt-cells 分组） ── */
+typedef struct
+{
+    int             irq;        /* 中断号（供 hal_irq_enable 使用） */
+    int             type;       /* 中断类型（GIC SPI=0, PPI=1, 或直接填 flags） */
+    int             flags;      /* 中断标志（IRQ_TYPE_LEVEL_HIGH 等） */
+} device_irq_t;
+
 /* ── 前向声明 ── */
 typedef struct device_instance device_t;
 /* 子系统操作表由驱动通过 priv_data 魔术头注入, 不在 device_t 中硬编码 */
@@ -54,11 +71,15 @@ typedef struct device_node
     const char*         path;           /* DTS 全路径 (如 /soc/spi2@0) */
     const device_prop_t* props;
     const device_id_t*  deps;
+    const device_reg_t* regs;        /* reg 条目表（预分组, NULL 表示无 reg） */
+    const device_irq_t* irqs;        /* interrupt 表（预分组, NULL 表示无 interrupts） */
     uint8_t             status;         /* 编译期默认状态 */
     uint8_t             criticality;    /* DEVICE_CRIT_xxx: probe 失败时的系统行为 */
     uint8_t             flags;          /* DEVICE_FLAG_xxx */
     uint8_t             prop_count;
     uint8_t             dep_count;
+    uint8_t             reg_count;      /* reg 条目数 */
+    uint8_t             irq_count;      /* interrupt 条目数 */
 } device_node_t;
 
 /* 编译期节点标志 */
@@ -110,6 +131,12 @@ const char* device_get_name(const device_t* dev);
 const char* device_get_compatible(const device_t* dev);
 device_status_t device_get_status(const device_t* dev);
 device_criticality_t device_get_criticality(const device_t* dev);
+
+/* ── 读取第 idx 条 reg 条目（按 #address-cells / #size-cells 分组） ── */
+int device_get_reg(const device_t* dev, int idx, const device_reg_t** out);
+
+/* ── 读取第 idx 条 interrupt 条目（按 #interrupt-cells 分组） ── */
+int device_get_irq(const device_t* dev, int idx, const device_irq_t** out);
 
 /* ── 运行时状态管理 ── */
 int device_set_status(device_t* dev, device_status_t status);
