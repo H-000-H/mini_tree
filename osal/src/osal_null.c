@@ -452,8 +452,8 @@ void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 
     va_list args;
     va_start(args, fmt);
-    printf("[%s] ", tag ? tag : "drv");
-    vprintf(fmt, args);
+    /* printf disabled */
+    /* printf disabled */
     printf("\n");
     va_end(args);
 }

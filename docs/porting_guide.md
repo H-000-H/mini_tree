@@ -44,6 +44,10 @@ static const hal_gpio_ops_t s_mychip_gpio_ops = {
 
 示例工程：[https://github.com/H-000-H/mini-tree-example](https://github.com/H-000-H/mini-tree-example)
 
+- **stm32_test** — STM32F407ZGT6，直操作寄存器，三后端切换测试
+- **stm32f103c8t6_cubemx_test** — STM32F103C8T6，CubeMX HAL 集成，内存极限测试
+- **esp32_test** — ESP32-S3，ESP-IDF 组件形式引入
+
 mini_tree 以 ESP-IDF 组件形式引入，配置沿用原生 Kconfig 流程（`Kconfig` + `tools/menuconfig.py` + `tools/genconfig.py`），通过 `idf_component_register()` 注册组件。详见示例工程中的 `components/mini_tree/Kconfig`、`.config` 和 `CMakeLists.txt`。
 
 ### 6.4 移植模板

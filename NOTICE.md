@@ -63,7 +63,7 @@
 | 第 5 轮: OSAL_NULL 裸机后端 | osal/ | 原子操作 + 位掩码无锁环形队列平替 RTOS IPC |
 | 第 6 轮: 工具链硬化 | CMake + cmake/ | C23/C++23 升级，fno-exceptions/fno-rtti，disasm 目标 |
 | 第 7 轮: system 双后端 | system_c/ + system_cpp/ + Kconfig | C++ / C 编译期选择，Kconfig SYSTEM_BACKEND |
-| **总计** | **~85+ 文件** | **7 轮重构 + 文档体系** |
+| **总计** | **~85+ 文件** | **8 轮重构 + 文档体系** |
 
 ---
 

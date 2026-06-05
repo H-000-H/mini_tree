@@ -89,8 +89,7 @@ int device_tree_init(void)
     /* 池水位线预警 */
     if (board_dev_count() >= OSAL_MUTEX_POOL_SIZE * 9 / 10)
     {
-        printf("[WARN] device_tree_init: mutex pool >90%% used (%d/%d)\n",
-               board_dev_count(), OSAL_MUTEX_POOL_SIZE);
+        /* printf disabled: pool >90% warning */
     }
 
     return board_dev_count() > 0 ? 0 : -1;

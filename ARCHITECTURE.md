@@ -289,7 +289,7 @@ Kconfig 源文件 (.config)
 | system_cpp | FreeRTOS | ARM Cortex-M4F | ARM GCC 13.3.1 | 通过 |
 | system_cpp | FreeRTOS | ARM Cortex-M7 | ARM GCC 13.3.1 | 通过 |
 | system_cpp | RT-Thread | ARM Cortex-M4F | ARM GCC 13.3.1 | 通过 |
-| system_cpp | NULL | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
+| system_cpp | NULL | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 (STM32F103C8T6 实物) |
 | system_cpp | FreeRTOS | RISC-V RV32 | RISC-V GCC 15.2.0 | 通过 |
 | system_c | FreeRTOS | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
 | system_c | NULL | ARM Cortex-M3 | ARM GCC 13.3.1 | 通过 |
