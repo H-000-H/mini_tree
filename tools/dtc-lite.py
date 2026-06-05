@@ -253,9 +253,11 @@ class Tokenizer:
                 else:
                     if ch == '-':
                         self.advance()
-                    while self.pos < len(self.text) and self.peek().isdigit():
+                    while self.pos < len(self.text) and (self.peek().isdigit() or self.peek() in 'abcdefABCDEF'):
                         self.advance()
-                val: int = int(self.text[start:self.pos], 0)
+                raw: str = self.text[start:self.pos]
+                has_hex_letters: bool = any(c in 'abcdefABCDEF' for c in raw)
+                val: int = int(raw, 16) if has_hex_letters else int(raw, 0)
                 tokens.append(Token(TOKEN_INT, val, line, col))
                 continue
 
@@ -1262,7 +1264,7 @@ class DTSCompiler:
                 continue
             for root_dir, dirs, files in os.walk(drv_dir):
                 for f in files:
-                    if f.endswith('.c') or f.endswith('.h'):
+                    if f.endswith('.c') or f.endswith('.h') or f.endswith('.cpp'):
                         path: str = os.path.join(root_dir, f)
                         if os.path.getsize(path) > 1024 * 1024:
                             continue
