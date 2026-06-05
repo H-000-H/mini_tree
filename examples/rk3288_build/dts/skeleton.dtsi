@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Minimal skeleton.dtsi for dtc-lite compatibility.
+ *
+ * rk3288.dtsi includes "skeleton.dtsi" for basic / node structure.
+ * 注意: 不包含 /dts-v1/; header, 该指令应由顶层 board.dts 发出.
+ */
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+};
