@@ -14,10 +14,3 @@
 - 补丁版本仅修复 bug, 不修改公开 API 签名和语义
 
 用户工程应只依赖标记为 **稳定** 的接口. 实验性接口可在评估后使用, 升级时需关注 changelog.
-
-### 后续规划
-
-计划基于 mini_tree v1.0.0 标准接口推出两个参考工程：
-
-- **mini_tree_bare_metal_demo** — 基于 `osal_null.c` 的纯裸机工程示例，展示在无 RTOS 条件下使用 dtc-lite 静态拓扑和位掩码环形队列构建前后台系统
-- **mini_tree_rtos_fully_decoupled** — 基于 FreeRTOS/RT-Thread 双后端的参考工程示例，展示音频 Service、GUI Service 与 ConfigStore 之间通过 EventBus 异步通信的完整模式

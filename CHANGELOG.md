@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### 新项目规划
+
+- **`ROADMAP.md`** — **新建**，新增项目路线图（含作者说明），两条路线：ESP32-S3 DSP 音频处理综合项目（LVGL + MQTT + DSP）和基于 CAN 的工业控制 / 汽车控制项目（AT32 + GD32/STM32），用于检验框架在 Xtensa 架构、高并发高实时场景下的适配与性能天花板
+- **`FILE_INDEX.md`** — 新增 `ROADMAP.md` 索引项
+
 ### Linux DTS 源级兼容
 
 - **`tools/dtc-lite.py`** — 修复 `&label` overlay 合并（`_merge_overlays()`）、支持 `/include/` 指令、支持 `()` 和宏标识符在 `<>` 内的解析、`reg` 按 `#address-cells/#size-cells` 分组生成
