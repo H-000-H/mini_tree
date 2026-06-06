@@ -12,3 +12,4 @@ __pycache__/
 .config.*
 default.config
 build_log.txt
+.claude/

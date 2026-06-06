@@ -100,6 +100,7 @@
 | `API_COMPATIBILITY.md` | API 兼容性声明 |
 | `FILE_INDEX.md` | 文件索引 (本文) |
 | `CHANGELOG.md` | 更新日志 |
+| `ROADMAP.md` | 未来项目路线图（ESP32-S3 DSP、CAN 工控/汽车） |
 | `CONTRIBUTING.md` | 贡献指南 |
 | `docs/getting_started.md` | 快速开始、配置、工程集成、点火时序 |
 | `docs/porting_guide.md` | 硬件移植指南 |
