@@ -1,4 +1,5 @@
 #include "lifecycle.hpp"
+#include "compiler_compat_poison.h"
 
 bool Lifecycle::can_transit(ModuleState from, ModuleState to)
 {

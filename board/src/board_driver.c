@@ -7,9 +7,11 @@
 #include "hal_gpio.h"
 #include "system_log.h"
 #include "board_devtable.h"
+#include "compiler_compat.h"
 
 #include <stdio.h>
 #include <string.h>
+#include "compiler_compat_poison.h"
 
 static const char* kTag = "board_drv";
 
@@ -24,13 +26,13 @@ static volatile int s_shutdown_entered = 0;
  * ═══════════════════════════════════════════════════════════════════ */
 #ifdef CONFIG_SAFETY_SHUTDOWN
 
-typedef struct
+struct safety_pin
 {
     hal_pin_t pin;
     int       safe_level;
-} safety_pin_t;
+};
 
-static safety_pin_t g_safety_pins[BOARD_MAX_SAFETY_PINS];
+static struct safety_pin g_safety_pins[BOARD_MAX_SAFETY_PINS];
 static int          g_safety_pin_count;
 
 static safety_shutdown_fn_t g_safety_cbs[BOARD_SAFETY_MAX_CALLBACKS];
@@ -55,7 +57,7 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 }
 
 /* ── 安全硬件伪驱动: 读取 DTS pin_N / safe_level_N 列表 ── */
-static int board_safety_hw_probe(device_t* dev)
+static int board_safety_hw_probe(struct device* dev)
 {
     int pin;
     int safe_level = 0;
@@ -65,21 +67,21 @@ static int board_safety_hw_probe(device_t* dev)
     {
         snprintf(pin_prop, sizeof(pin_prop), "pin_%d", idx);
         snprintf(level_prop, sizeof(level_prop), "safe_level_%d", idx);
-        if (device_get_prop_int(dev, pin_prop, &pin) != 0) break;
+        if (device_get_prop_int(dev, pin_prop, &pin) != VFS_OK) break;
         device_get_prop_int(dev, level_prop, &safe_level);
         board_safety_add_pin(pin, safe_level);
         idx++;
     }
     DRV_LOGI(kTag, "safety-hw: %d shutdown pins registered", g_safety_pin_count);
-    return 0;
+    return VFS_OK;
 }
 
-static int board_safety_hw_remove(device_t* dev)
+static int board_safety_hw_remove(struct device* dev)
 {
     (void)dev;
     g_safety_pin_count = 0;
     g_safety_cb_count  = 0;
-    return 0;
+    return VFS_OK;
 }
 
 DRIVER_REGISTER(board_safety_hw, "board,safety-hw",
@@ -99,20 +101,20 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 
 #endif /* CONFIG_SAFETY_SHUTDOWN */
 
-static int device_dependency_not_ready(const device_t* dev)
+static int device_dependency_not_ready(const struct device* dev)
 {
     if (!dev || !dev->node || !dev->node->deps) return 0;
 
     for (int i = 0; i < dev->node->dep_count; i++)
     {
-        device_t* dep = board_dev_get(dev->node->deps[i]);
+        struct device* dep = board_dev_get(dev->node->deps[i]);
         if (!dep) return 1;
 
         /* DIRECT 设备不参与 VFS 生命周期, 视为始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
             continue;
 
-        device_status_t status = device_get_status(dep);
+        enum device_status status = device_get_status(dep);
         if (status == DEVICE_STATUS_ERROR ||
             status == DEVICE_STATUS_REMOVED)
         {
@@ -122,20 +124,20 @@ static int device_dependency_not_ready(const device_t* dev)
     return 0;
 }
 
-static int device_dependency_pending(const device_t* dev)
+static int device_dependency_pending(const struct device* dev)
 {
     if (!dev || !dev->node || !dev->node->deps) return 0;
 
     for (int i = 0; i < dev->node->dep_count; i++)
     {
-        device_t* dep = board_dev_get(dev->node->deps[i]);
+        struct device* dep = board_dev_get(dev->node->deps[i]);
         if (!dep) return 1;
 
         /* DIRECT 设备始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
             continue;
 
-        device_status_t status = device_get_status(dep);
+        enum device_status status = device_get_status(dep);
         if (status != DEVICE_STATUS_PROBED &&
             status != DEVICE_STATUS_RUNNING &&
             status != DEVICE_STATUS_SUSPENDED)
@@ -146,9 +148,9 @@ static int device_dependency_pending(const device_t* dev)
     return 0;
 }
 
-static void handle_probe_failure(device_t* dev, device_id_t id)
+static void handle_probe_failure(struct device* dev, device_id_t id)
 {
-    device_criticality_t crit = device_get_criticality(dev);
+    enum device_criticality crit = device_get_criticality(dev);
     switch (crit)
     {
     case DEVICE_CRIT_FATAL:
@@ -173,11 +175,11 @@ static void disable_dependents(device_id_t failed_id)
 
     for (int i = 0; i < count; i++)
     {
-        device_t* child = board_dev_get(list[i]);
+        struct device* child = board_dev_get(list[i]);
         if (!child) continue;
-        device_status_t st = device_get_status(child);
+        enum device_status st = device_get_status(child);
         if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED) continue;
-        (void)device_set_status(child, DEVICE_STATUS_DISABLED);
+        COMPAT_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
         DRV_LOGW(kTag, "cascade: '%s' disabled (dependency '%s' failed)",
                  device_get_name(child), device_get_name(board_dev_get(failed_id)));
     }
@@ -247,13 +249,11 @@ int board_driver_probe_all(void)
         for (int i = 0; i < count; i++)
         {
             device_id_t id = order[i];
-            device_t* dev = board_dev_get(id);
+            struct device* dev = board_dev_get(id);
             probe_fn_t probe = board_probe_get_fn(id);
 
             if (!dev || device_get_status(dev) == DEVICE_STATUS_DISABLED)
-            {
                 continue;
-            }
             /* DIRECT 设备不经过 VFS probe, 跳过 */
             if (dev->node && (dev->node->flags & DEVICE_FLAG_DIRECT))
             {
@@ -262,9 +262,7 @@ int board_driver_probe_all(void)
             }
             if (device_get_status(dev) == DEVICE_STATUS_PROBED ||
                 device_get_status(dev) == DEVICE_STATUS_RUNNING)
-            {
                 continue;
-            }
 
             if (device_dependency_not_ready(dev))
             {
@@ -273,7 +271,7 @@ int board_driver_probe_all(void)
                     deferred++;
                     continue;
                 }
-                (void)device_set_status(dev, DEVICE_STATUS_DISABLED);
+                COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
                 fail++;
                 DRV_LOGW(kTag, "skip '%s': dependency permanently unavailable",
                          device_get_name(dev));
@@ -284,36 +282,26 @@ int board_driver_probe_all(void)
             {
                 DRV_LOGW(kTag, "no generated probe for '%s' (compat=%s)",
                          device_get_name(dev), device_get_compatible(dev));
-                (void)device_set_status(dev, DEVICE_STATUS_DISABLED);
-                handle_probe_failure(dev, id);
-                disable_dependents(id);
-                fail++;
-                continue;
+                COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
+                goto probe_fail;
             }
 
             DRV_LOGI(kTag, "probing '%s' (%s) ...",
                      device_get_name(dev), device_get_compatible(dev));
             int ret = probe(dev);
-            if (ret == 0)
+            if (ret == VFS_OK)
             {
-                (void)device_set_status(dev, DEVICE_STATUS_PROBED);
-                int open_ret = 0;
+                COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_PROBED));
+                int open_ret = VFS_OK;
                 if (dev->ops && (dev->ops->open || dev->ops->init))
-                {
                     open_ret = device_open(dev, NULL);
-                }
-                if (open_ret != 0)
+                if (open_ret != VFS_OK)
                 {
-                    (void)device_set_status(dev, DEVICE_STATUS_ERROR);
-                    handle_probe_failure(dev, id);
-                    disable_dependents(id);
-                    fail++;
+                    COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
                     DRV_LOGE(kTag, "device_open FAILED: %s (ret=%d)", device_get_name(dev), open_ret);
+                    goto probe_fail;
                 }
-                else
-                {
-                    ok++;
-                }
+                ok++;
             }
             else if (ret == VFS_ERR_DEFER)
             {
@@ -323,12 +311,16 @@ int board_driver_probe_all(void)
             }
             else
             {
-                (void)device_set_status(dev, DEVICE_STATUS_ERROR);
-                handle_probe_failure(dev, id);
-                disable_dependents(id);
-                fail++;
+                COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
                 DRV_LOGE(kTag, "probe FAILED: %s (ret=%d)", device_get_name(dev), ret);
+                goto probe_fail;
             }
+            continue;
+
+        probe_fail:
+            handle_probe_failure(dev, id);
+            disable_dependents(id);
+            fail++;
         }
 
         if (deferred == 0) break;
@@ -338,12 +330,12 @@ int board_driver_probe_all(void)
                      deferred, pass + 1);
             for (int i = 0; i < count; i++)
             {
-                device_t* dev = board_dev_get(order[i]);
+                struct device* dev = board_dev_get(order[i]);
                 if (dev && device_get_status(dev) != DEVICE_STATUS_PROBED &&
                     device_get_status(dev) != DEVICE_STATUS_RUNNING &&
                     device_dependency_pending(dev))
                 {
-                    (void)device_set_status(dev, DEVICE_STATUS_DISABLED);
+                    COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
                     fail++;
                     DRV_LOGE(kTag, "DEFER stall: '%s' permanently disabled",
                              device_get_name(dev));
@@ -369,12 +361,12 @@ int board_driver_remove_all(void)
     for (int i = count - 1; i >= 0; i--)
     {
         device_id_t id = order[i];
-        device_t* dev = board_dev_get(id);
+        struct device* dev = board_dev_get(id);
 
         if (!dev)
             continue;
 
-        device_status_t status = device_get_status(dev);
+        enum device_status status = device_get_status(dev);
         if (status != DEVICE_STATUS_PROBED &&
             status != DEVICE_STATUS_RUNNING &&
             status != DEVICE_STATUS_SUSPENDED)
@@ -386,15 +378,15 @@ int board_driver_remove_all(void)
         if (remove_fn)
         {
             int ret = remove_fn(dev);
-            if (ret != 0)
+            if (ret != VFS_OK)
             {
                 DRV_LOGE(kTag, "remove FAILED: %s (ret=%d) — keeping ERROR state",
                          device_get_name(dev), ret);
-                (void)device_set_status(dev, DEVICE_STATUS_ERROR);
+                COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
                 continue;
             }
         }
-        (void)device_set_status(dev, DEVICE_STATUS_READY);
+        COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_READY));
     }
-    return 0;
+    return VFS_OK;
 }

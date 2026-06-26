@@ -1,23 +1,27 @@
 # ==============================================================================
 # board — 板级支持 (设备树、驱动注册、配置存储、VFS)
 # ==============================================================================
-# 从 board.dts 生成设备表代码，注册板级驱动。
-# 设备树生成需要 Python + dtc-lite。
+# 设备树布局 (Linux 写法; dts / dtsi 分目录):
+#   board/dts/stm32f407zgt6.dts       — 板级入口 (#include 头 + / { } + &label)
+#   board/dtsi/stm32f407.dtsi         — SoC 根 / { compatible, soc: soc { simple-bus } }
+#   board/dtsi/stm32f407-spi.dtsi     — &soc { spi@0 { ... } }
+#   board/dt-bindings/                — #include <dt-bindings/...>
+#   board/docs/devicetree.md          — 布局、无序全解耦版说明、compatible 属性契约
+#   tools/dtc-lite.py                 — 编译期生成 board_* / dt_config_gen.h
 # ==============================================================================
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-# ---- DTS 生成 ----
-set(BOARD_DTS            "${CMAKE_CURRENT_SOURCE_DIR}/board.dts")
-set(DTC_LITE             "${PROJECT_SOURCE_DIR}/tools/dtc-lite.py")
-set(GENERATED_BOARD_DIR  "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(BOARD_DTS             "${CMAKE_CURRENT_SOURCE_DIR}/dts/stm32f407zgt6.dts")
+set(BOARD_DTSI_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/dtsi")
+set(DTC_LITE              "${PROJECT_SOURCE_DIR}/tools/dtc-lite.py")
+set(GENERATED_BOARD_DIR   "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 file(MAKE_DIRECTORY "${GENERATED_BOARD_DIR}")
 
 set(GENERATED_BOARD_SRCS
     "${GENERATED_BOARD_DIR}/board_devtable.c"
     "${GENERATED_BOARD_DIR}/board_probe.c"
-    "${GENERATED_BOARD_DIR}/board_force_link.c"
 )
 
 set(GENERATED_BOARD_HDRS
@@ -30,8 +34,15 @@ add_custom_command(
     OUTPUT  ${GENERATED_BOARD_SRCS} ${GENERATED_BOARD_HDRS}
     COMMAND ${Python3_EXECUTABLE}
             "${DTC_LITE}" "${BOARD_DTS}" "${GENERATED_BOARD_DIR}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    DEPENDS "${BOARD_DTS}" "${DTC_LITE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/spi"
+    DEPENDS
+        "${BOARD_DTS}"
+        "${BOARD_DTSI_DIR}/stm32f407.dtsi"
+        "${BOARD_DTSI_DIR}/stm32f407-spi.dtsi"
+        "${CMAKE_CURRENT_SOURCE_DIR}/dt-bindings/spi/spi-parameter.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/spi/spi_bus.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/spi/spi_client.c"
+        "${DTC_LITE}"
     VERBATIM
 )
 
@@ -44,6 +55,8 @@ add_library(board STATIC
     "src/task_config.c"
     "src/task_utils.c"
     "src/board_device.c"
+    "src/bus.c"
+    "src/dev_lifecycle.c"
     "src/board_driver.c"
     "src/config_store.c"
     ${GENERATED_BOARD_SRCS}
@@ -61,6 +74,8 @@ target_link_libraries(board
     PUBLIC
         osal
         core
+        hal_bus
+        hal_inst
         hal_if
 )
 

@@ -3,7 +3,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 typedef void (*board_task_entry_t)(void* param);
@@ -15,3 +16,4 @@ void* board_task_create(const char* name, uint32_t stack_size,
 #ifdef __cplusplus
 }
 #endif
+

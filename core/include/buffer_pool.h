@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "compiler_compat.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 /* ── Buffer Pool — 预分配定长缓冲区池 ──
@@ -21,13 +23,14 @@ extern "C" {
  *   - 内置峰值追踪 (调试/认证用)
  *
  * 用法:
- *   static bp_config_t cfg = {
+ *   static struct bp_config cfg =
+ {
  *       .name = "audio",
  *       .buf_size = 256,
  *       .buf_count = 16,
  *       .align = BP_ALIGN_DMA,
  *   };
- *   bp_t* pool = bp_create(&cfg);
+ *   struct bp_pool* pool = bp_create(&cfg);
  *   void* buf = bp_alloc(pool);
  *   // ... 使用 buf ...
  *   bp_free(pool, buf);
@@ -42,7 +45,7 @@ typedef enum
     BP_ALIGN_CACHE = 2,  /* 缓存行对齐 (由工具链定义) */
 } bp_align_t;
 
-typedef struct
+struct bp_config
 {
     const char* name;        /* 调试标识名 */
     size_t      buf_size;    /* 每个 buffer 的数据区大小 */
@@ -51,27 +54,29 @@ typedef struct
     bool        use_static;  /* true=使用外部静态内存, false=内部 osal_calloc */
     void*       static_mem;  /* use_static 时, 指向外部内存基址 */
     size_t      static_len;  /* static_mem 总大小 */
-} bp_config_t;
+};
 
-typedef struct bp_pool bp_t;
+struct bp_pool;
 
 /* ── 生命周期 ── */
-bp_t* bp_create(const bp_config_t* config);
-void  bp_destroy(bp_t* pool);
+struct bp_pool* bp_create(const struct bp_config* config) COMPAT_WARN_UNUSED_RESULT;
+void  bp_destroy(struct bp_pool* pool);
 
 /* ── 分配/释放 ── */
-void* bp_alloc(bp_t* pool);
-void  bp_free(bp_t* pool, void* buf);
+void* bp_alloc(struct bp_pool* pool) COMPAT_WARN_UNUSED_RESULT;
+void  bp_free(struct bp_pool* pool, void* buf);
 
 /* ISR 安全版本 (实际与普通版本相同, 原子操作本身 ISR 安全) */
-void* bp_alloc_isr(bp_t* pool);
-void  bp_free_isr(bp_t* pool, void* buf);
+void* bp_alloc_isr(struct bp_pool* pool) COMPAT_WARN_UNUSED_RESULT;
+void  bp_free_isr(struct bp_pool* pool, void* buf);
 
 /* ── 统计诊断 ── */
-uint32_t bp_used(const bp_t* pool);
-uint32_t bp_peak(const bp_t* pool);
-void     bp_reset_peak(bp_t* pool);
+uint32_t bp_used(const struct bp_pool* pool);
+uint32_t bp_peak(const struct bp_pool* pool);
+void     bp_reset_peak(struct bp_pool* pool);
 
 #ifdef __cplusplus
 }
 #endif
+
+

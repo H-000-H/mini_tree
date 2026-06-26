@@ -1,14 +1,18 @@
 #include "system_init.hpp"
+#include "system_init.h"
 
-#include "system_log.h"
+#include "system_cfg.h"
 #include "system_wdt.hpp"
 #include "system_scrubber.hpp"
 #include "safe_state.h"
+#include "hal_cpu.h"
+#include "compiler_compat.h"
+#include "compiler_compat_poison.h"
 
-#include "event_bus.hpp"
+#include "event_bus.h"
 #include "device.h"
 #include "driver.h"
-#include "hal_cpu.h"
+#include "VFS.h"
 
 /* ── 启动期全局中断控制 (平台抽象) ──
  * 在 Pre_OS_Init 入口关全局中断, 阻断 ISR 抢跑访问未就绪的框架状态.
@@ -62,19 +66,19 @@ void MiniTree::System_Pre_OS_Init(void)
 #endif
 
     /* 设备树初始化 (编译时生成的节点表) */
-    if (device_tree_init() != 0)
+    if (device_tree_init() != VFS_OK)
     {
-        SYS_LOGW(kTag, "device_tree_init returned non-zero (non-fatal)");
+        SYS_LOGW(kTag, "device_tree_init failed (non-fatal)");
     }
 
     /* 事件总线两阶段初始化 (SIOF 防御) */
-    if (!EventBus::getInstance().init())
+    if (!event_bus_init())
     {
         SYS_LOGE(kTag, "EventBus init failed — entering safe state");
         enter_safe_state("EventBus init failed");
         return;
     }
-    EventBus::getInstance().post(EVENT_SYS_BOOT);
+    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
 
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
     g_system_os_initialized = true;
@@ -111,7 +115,7 @@ void MiniTree::System_Start_Tasks(void)
 {
     SYS_LOGI(kTag, "=== MiniTree Phase 2: Start Tasks ===");
 
-    EventBus::getInstance().start();
+    event_bus_start();
 
     /* 驱动探测 (用户驱动在阶段 1 和阶段 2 之间注册) */
     int probe_fail = board_driver_probe_all();
@@ -126,16 +130,23 @@ void MiniTree::System_Start_Tasks(void)
 #endif
 
     /* Flash 位腐烂巡检 */
+    /* Flash 位腐烂巡检 */
+#ifdef CONFIG_ENABLE_FLASH_SCRUBBER
     system_scrubber_init();
     system_scrubber_start();
+#endif
 
     /* 启动循环计数器清除 */
     safe_state_clear_bootloop();
 
-    EventBus::getInstance().post(EVENT_SYS_READY);
+    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
-    EventBus::getInstance().seal();
+    event_bus_seal();
+
+#if CONFIG_CPU_CORES > 1
+    hal_cpu_secondary_startup();
+#endif
 
     /*
      * ─── 用户任务创建钩子点 ───
@@ -145,11 +156,6 @@ void MiniTree::System_Start_Tasks(void)
      *   xTaskCreate(my_app_task, "app", 2048, NULL, 1, NULL);
      *   vTaskStartScheduler();
      */
-
-#if CONFIG_CPU_CORES > 1
-    /* AMP: 启动副核心 (Core 1 跑 hal_cpu_baremetal_entry) */
-    hal_cpu_secondary_startup();
-#endif
 
     SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
 }
@@ -162,4 +168,22 @@ void MiniTree::System_Start_Tasks(void)
 extern "C" void system_init_complete(void)
 {
     IRQ_ENABLE();
+}
+
+extern "C" void mini_tree_pre_os_init(void)
+{
+    MiniTree::System_Pre_OS_Init();
+}
+
+extern "C" void mini_tree_start_tasks(void)
+{
+    MiniTree::System_Start_Tasks();
+}
+
+extern "C" void mini_tree_system_loop(void)
+{
+#ifdef CONFIG_ENABLE_WDT
+    system_wdt_feed();
+    system_wdt_feed_rtc();
+#endif
 }

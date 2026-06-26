@@ -21,7 +21,6 @@
 12. [常见问题](docs/faq.md)
 13. [问题总结：RT-Thread FPU 踩坑](docs/problem_summary.md)
 14. [OSAL 后端切换注意事项](docs/osal_switching.md)
-15. [Keil MDK 集成说明](docs/keil_integration.md)
 
 ---
 
@@ -36,7 +35,12 @@
 | **VFS** | 拟物化文件系统，设备树的运行时抽象视图 |
 | **Phase 1** | RTOS 启动前的早期初始化（看门狗、EventBus 预置） |
 | **Phase 2** | RTOS 启动后的驱动探针与任务创建 |
-| **hal_if** | 硬件抽象层接口，定义外设操作插座 |
-| **soc_port_** | 具体芯片的 HAL 实现（如 soc_port_mychip） |
+| **hal/** | 硬件抽象层接口与通用实现（`hal/hal_if_dummy.c`、`hal/cpu/`、`hal/pwm/` 等），具体芯片实现由项目通过 `HAL_SRCS` 变量提供 |
+| **bus/** | 总线层（`bus/spi/`、`bus/uart/`、`bus/dma/`），介于 `hal/` 与 `vfs/` 之间 |
+| **vfs/** | VFS 设备节点实现（`vfs/spi/`、`vfs/uart/`、`vfs/gpio/`），提供 `device_*` API |
+| **DRIVER_REGISTER** | 驱动注册宏，编译期由 dtc-lite 扫描收录到 probe 表，运行时自动匹配 DTS `compatible` |
+| **device_find_by_label** | 按 DTS `label` 查找设备，业务层与硬件的唯一耦合点 |
+| **task_manager_create_task** | 业务任务创建入口（封装 `osal_task_create_handle` + 自动 TWDT 订阅） |
+| **SystemCmd** | 异步"邮局"模式命令路由器，handler 只投递不阻塞 |
 | **Scrubber** | 闪存巡检任务，检测 Flash Bit-Rot |
 | **TWDT** | 任务看门狗，监控任务是否按时喂狗 |

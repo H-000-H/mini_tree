@@ -32,6 +32,7 @@ struct Event
 /* ── C 兼容事件投递 (供 .c 文件使用) ── */
 bool event_bus_init(void);
 bool event_bus_post(uint32_t id, uintptr_t arg);
+bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required);
 void event_bus_start(void);
 void event_bus_seal(void);
 
@@ -54,6 +55,7 @@ public:
                    EventCallback callback, void* user_data = nullptr);
 
     bool post(uint32_t id, uintptr_t arg = 0);
+    bool post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required);
     size_t dropped_count() const;
     /** 启动事件分发任务.
      *  分发任务优先级: FreeRTOS 后端 = 30, RT-Thread 后端 = 1.
@@ -66,21 +68,13 @@ public:
      *    - 执行阻塞 I/O (SPI 传输、Flash 擦写等)
      *    - 执行长时间计算或忙等
      *    - 调用 osal_delay_ms 或任何阻塞操作
-     *  长时间工作应转发到用户专用任务 (设置标志位、发信号量、入工作队列).
-     *  作者建议:
-     *  回调走 EventBus 的（订阅事件、定时器回调等）→ 用 void* user_data + 普通函数。因为 EventBus 的定义是 C/C++ 兼容的，不能用带捕获的 lambda。
-     *  业务层自己内部的回调（模块内部的事件转发、算法完成通知等）→ 用 lambda 捕获 这样你的上下文会更加清晰。
-     */
+     *  长时间工作应转发到用户专用任务 (设置标志位、发信号量、入工作队列). */
     void start();
     void stop();
 
-    /** 裸机手动分发: 非阻塞排空事件队列, 逐一派发给订阅者.
-     *  RTOS 模式下由 dispatch_task 自动处理, 无需调用此函数. */
-    void dispatch_all();
-
     /** 封表: 禁止运行时动态订阅.
      *  在 System_Start_Tasks (Phase 2) 末尾调用, 此后 subscribe() 全部失败.
-     *  确保 ISR 中 post() 遍历的订阅者数组是只读静态表, 绝无读写踩踏. */
+     *  确保 ISR 中 post_from_isr() 遍历的订阅者数组是只读静态表, 绝无读写踩踏. */
     void seal();
 
 private:
@@ -108,10 +102,13 @@ private:
     void* m_task = nullptr;
     size_t m_dropped = 0;
 
-    osal_mutex_t* m_sub_lock = nullptr;
+    struct osal_mutex* m_sub_lock = nullptr;
     uint8_t m_sub_lock_storage[OSAL_MUTEX_STORAGE_SIZE];
 
     static void dispatch_task(void* param);
+
+    bool post_internal(uint32_t id, uintptr_t arg, bool from_isr,
+                       bool* px_yield_required);
 };
 
 #endif /* __cplusplus */

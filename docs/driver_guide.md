@@ -127,8 +127,8 @@ C 代码中通过宏直接引用：
 
 ```c
 #include "board_handles.h"
-device_t* console = board_dev_get(CHOSEN_CONSOLE);
-device_t* touch   = board_dev_get(ALIAS_TOUCH);
+struct device* console = board_dev_get(CHOSEN_CONSOLE);
+struct device* touch   = board_dev_get(ALIAS_TOUCH);
 ```
 
 #### 依赖关系
@@ -182,19 +182,23 @@ mini_tree 的 DTS 支持解析 Linux 真实 `.dtsi` 文件（MCU 常用子集）
 ### 7.5 驱动注册与 Probe
 
 ```c
-// 驱动注册 (构造函数自动调用)
-DRIVER(my_uart) {
-    .compatible = "vendor,uart",
-    .probe = my_uart_probe,
-    .remove = my_uart_remove,
-};
+// 驱动注册 (宏展开为 board_driver_probe_<name> / board_driver_remove_<name>,
+// 由编译期 dtc-lite.py 扫描收录, 运行时无 strcmp 匹配)
+DRIVER_REGISTER(my_uart, "vendor,uart", my_uart_probe, my_uart_remove);
 
 // Probe 函数
-int my_uart_probe(device_t* dev)
+int my_uart_probe(struct device* dev)
 {
     int baud;
     device_get_prop_int(dev, "baud", &baud);
     // 初始化硬件
+    return 0;
+}
+
+// Remove 函数
+int my_uart_remove(struct device* dev)
+{
+    // 释放资源
     return 0;
 }
 ```
@@ -211,7 +215,7 @@ GPIO 初始化 → 按键驱动 Probe
 ### 7.7 驱动 Probe 的 goto 清理模式
 
 ```c
-int my_driver_probe(device_t* dev)
+int my_driver_probe(struct device* dev)
 {
     void*       rx_buf = NULL;
     osal_mutex_t* lock = NULL;
@@ -237,7 +241,7 @@ int my_driver_probe(device_t* dev)
     }
 
     /* 成功 */
-    dev_set_priv(dev, rx_buf);
+    device_set_priv(dev, rx_buf);
     ret = 0;
     goto cleanup;
 
@@ -267,7 +271,7 @@ PROBED → REMOVED (remove)
 mini_tree 为每个设备预分配递归互斥锁：
 
 ```c
-int my_drv_write(device_t* dev, const void* buf, size_t len, uint32_t timeout_ms)
+int my_drv_write(struct device* dev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     if (device_lock(dev) != 0) return VFS_ERR_BUSY;
     /* ... 写硬件寄存器 ... */

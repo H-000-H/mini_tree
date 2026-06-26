@@ -1,9 +1,14 @@
-# 整个 tree 的前置设置 — 使用前先 menuconfig 配置
+# mini_tree Kconfig (STM32F407ZGT6)
+# Edit mini_tree/.config or run tools/menuconfig.py
+
+menu "mini_tree Configuration"
 
 menu "Platform"
-choice PLATFORM_MCU
-    prompt "Target MCU platform"
-    default PLATFORM_POSIX
+choice
+    prompt "Target MCU"
+    default PLATFORM_ARM_CM4F
+    help
+      Select the target processor architecture.
 
 config PLATFORM_ARM_CM7
     bool "ARM Cortex-M7"
@@ -16,9 +21,6 @@ config PLATFORM_ARM_CM3
 
 config PLATFORM_RISCV
     bool "RISC-V (32-bit)"
-
-config PLATFORM_POSIX
-    bool "POSIX (host build/test)"
 endchoice
 endmenu
 
@@ -37,257 +39,195 @@ config CPU_CORES
 
 endmenu
 
-menu "RTOS Backend"
-choice OSAL_BACKEND
-    prompt "OSAL RTOS backend"
-    default OSAL_FREERTOS
+menu "OSAL Backend"
+choice
+    prompt "RTOS backend"
+    default OSAL_NULL
     help
-      选择支持 OSAL 抽象层的 RTOS 内核。
-      一次只能激活一个后端。
+      Select the OS abstraction layer backend.
 
 config OSAL_FREERTOS
     bool "FreeRTOS"
     help
-      FreeRTOS 内核（默认）。支持所有 FreeRTOS 端口。
+      Use bundled or project-supplied FreeRTOS.
 
 config OSAL_RTTHREAD
     bool "RT-Thread"
     help
-      RT-Thread 内核。
+      Use RT-Thread kernel as OSAL backend.
 
 config OSAL_NULL
     bool "None (bare-metal)"
     help
-      裸机/无 RTOS。不需要任何内核库。
-      无法创建任务；队列使用环形缓冲区 + 忙等待。
+      No RTOS. Queue uses ring buffer + busy-wait.
 endchoice
-
-config FREERTOS_USE_TIMERS
-    bool "FreeRTOS software timers (configUSE_TIMERS)"
-    depends on OSAL_FREERTOS
-    default n
-    help
-      启用 FreeRTOS 软件定时器 (xTimerCreate / xTimerStart 等).
-      启用后会创建定时器守护任务 (优先级 configMAX_PRIORITIES - 2).
-      此选项仅对 FreeRTOS 后端生效; RT-Thread 后端请直接使用 rt_timer.
 endmenu
 
-menu "System Log Config"
-    choice SYS_LOG_BACKEND
-        prompt "System log backend"
-        default SYS_LOG_USE_OSAL
-
-    config SYS_LOG_USE_OSAL
-        bool "Route through OSAL (osal_log)"
-
-    config SYS_LOG_USE_ESP
-        bool "Direct ESP-IDF logging (ESP_LOGI)"
-
-    config SYS_LOG_USE_PRINTF
-        bool "Direct printf output (bare-metal)"
-    endchoice
-endmenu
-
-menu "Board Features"
-    config PRODUCTION_LOG
-        bool "Production log ring buffer (NVS-backed)"
-        default n
-        help
-          持久化生产日志环形缓冲区。
-          启用时需要 ESP-IDF NVS；禁用时被桩代码替代。
-          早期移植或最小构建时禁用。
-
-    config SAFETY_SHUTDOWN
-        bool "IEC 61508 safety shutdown subsystem"
-        default n
-        help
-          安全关闭序列：停止 PWM → 设置安全 GPIO 电平 →
-          停止 CPU 核心。禁用时，OSAL_PANIC/关键断言
-          仍会停止 CPU，但跳过所有硬件引脚/回调操作。
-          早期移植时禁用 — 在驱动调通后添加真正的安全功能。
-config ENABLE_WDT
-    bool "Enable watchdog (TWDT + RTC WDT)"
-    default n
+menu "System Log"
+choice
+    prompt "Log backend"
+    default SYS_LOG_USE_PRINTF
     help
-      启用硬件看门狗（任务看门狗 TWDT 和 RTC 硬件看门狗）。
-      若无特殊理由，建议开启以增强系统可靠性。
-      关闭后 init 阶段跳过 WDT 初始化，loop 中不喂狗。
-      适用于无看门狗硬件或由外部 WDT 管理的场景。
+      Select system log output backend.
 
+config SYS_LOG_USE_PRINTF
+    bool "Direct printf"
+    help
+      Output via plain printf.
+
+config SYS_LOG_USE_OSAL
+    bool "OSAL logging"
+    help
+      Output via OSAL log interface.
+endchoice
 endmenu
 
 menu "System Backend"
-choice SYSTEM_BACKEND
+choice
     prompt "System runtime implementation"
     default SYSTEM_CPP
     help
-      选择系统运行时的 C++ 或 C 实现。
-      一次只能激活一个后端。
-
-config SYSTEM_CPP
-    bool "C++ (system_cpp)"
-    help
-      完整的 C++ 系统运行时，包含生命周期、scrubber、WDT、任务管理器。
-      需要 C++ 编译器。
+      Select C or C++ system backend.
 
 config SYSTEM_C
-    bool "C (system_c, pure C)"
+    bool "C"
     help
-      纯 C 系统运行时。功能与 C++ 版本相同，
-      但完全以 C 编译。适用于不能使用 C++ 的项目。
+      Pure C system runtime.
+
+config SYSTEM_CPP
+    bool "C++"
+    help
+      C++ system runtime.
 endchoice
 endmenu
 
-menu "Toolchain"
-choice TOOLCHAIN
-    prompt "Compiler toolchain"
-    default TOOLCHAIN_GCC
-    help
-      选择编译器工具链。工具链文件位于 cmake/ 目录。
-      CMake 构建时仍需通过 -DCMAKE_TOOLCHAIN_FILE= 指定对应文件。
-      Makefile 构建时自动读取此选项选择编译器。
+menu "Board Features"
 
-config TOOLCHAIN_GCC
-    bool "GCC (arm-none-eabi-)"
-    help
-      GNU Arm Embedded Toolchain (默认)。
-      工具链: cmake/toolchain_arm_cm*.cmake
-
-config TOOLCHAIN_CLANG
-    bool "Clang/LLVM"
-    help
-      LLVM Clang 交叉编译器。需 Clang 18+，且 clang、llvm-ar 在 PATH 中。
-      工具链: cmake/toolchain_clang_arm_cm*.cmake
-
-config TOOLCHAIN_KEIL6
-    bool "Keil MDK v6 (ARMCLANG)"
-    depends on PLATFORM_ARM_CM3 || PLATFORM_ARM_CM4F || PLATFORM_ARM_CM7
-    help
-      ARMCLANG v6 (Keil MDK v6)。ARMCLANG 基于 LLVM，
-      可直接编译 GCC 语法的内联汇编 / .S 文件。
-      需 armclang、armar 在 PATH 中。
-      工具链: cmake/toolchain_keil6_arm_cm*.cmake
-
-config TOOLCHAIN_KEIL5
-    bool "Keil MDK v5 (ARMCLANG AC6)"
-    depends on PLATFORM_ARM_CM3 || PLATFORM_ARM_CM4F || PLATFORM_ARM_CM7
-    help
-      ARMCLANG AC6 (Keil MDK v5)。与 keil6 共享同一 LLVM/Clang 后端，
-      原生支持 GCC 汇编 / .S / C++17 / __attribute__((constructor))。
-      需 armclang、armar 在 PATH 中。
-      工具链: cmake/toolchain_keil5_arm_cm*.cmake
-endchoice
-
-if TOOLCHAIN_GCC
-
-choice
-    prompt "GCC version"
-    default TOOLCHAIN_GCC_VER_13_3_1
-
-config TOOLCHAIN_GCC_VER_13_3_1
-    bool "13.3.1 (推荐)"
-
-config TOOLCHAIN_GCC_VER_12_3
-    bool "12.3"
-
-config TOOLCHAIN_GCC_VER_10_3
-    bool "10.3"
-
-config TOOLCHAIN_GCC_VER_9_2
-    bool "9.2"
-
-endchoice
-
-endif
-
-if TOOLCHAIN_CLANG
-
-choice
-    prompt "Clang version"
-    default TOOLCHAIN_CLANG_VER_18
-
-config TOOLCHAIN_CLANG_VER_18
-    bool "18 (推荐)"
-
-config TOOLCHAIN_CLANG_VER_17
-    bool "17"
-
-config TOOLCHAIN_CLANG_VER_16
-    bool "16"
-
-config TOOLCHAIN_CLANG_VER_15
-    bool "15"
-
-endchoice
-
-endif
-
-if TOOLCHAIN_KEIL6
-
-choice
-    prompt "ARMCLANG version"
-    default TOOLCHAIN_KEIL6_VER_6_21
-
-config TOOLCHAIN_KEIL6_VER_6_21
-    bool "6.21 (推荐)"
-
-config TOOLCHAIN_KEIL6_VER_6_20
-    bool "6.20"
-
-config TOOLCHAIN_KEIL6_VER_6_19
-    bool "6.19"
-
-endchoice
-
-endif
-
-if TOOLCHAIN_KEIL5
-
-choice
-    prompt "ARMCLANG version"
-    default TOOLCHAIN_KEIL5_VER_6_19
-
-config TOOLCHAIN_KEIL5_VER_6_19
-    bool "6.19 (推荐)"
-
-config TOOLCHAIN_KEIL5_VER_6_18
-    bool "6.18"
-
-endchoice
-
-endif
-
-config CUSTOM_C_STANDARD
-    bool "Override C/C++ language standard"
+config PRODUCTION_LOG
+    bool "Production log"
     default n
     help
-      启用后可自定义 C/C++ 语言标准，适用于需要固定标准而非 CMake 自动选择的场景。
-      关闭则使用 CMakeLists.txt 中根据编译器设定的默认值。
+      Enable production-level logging.
 
-if CUSTOM_C_STANDARD
-
-config C_STANDARD
-    string "C language standard"
-    default "c17"
+config SAFETY_SHUTDOWN
+    bool "Safety shutdown"
+    default n
     help
-      如 c11、c17、c23 等。
+      Enable hardware-level safety shutdown.
 
-config CXX_STANDARD
-    string "C++ language standard"
-    default "c++17"
+config ENABLE_WDT
+    bool "Watchdog (IWDG + TWDT)"
+    default y
     help
-      如 c++11、c++17、c++20、c++23 等。
+      Enable independent watchdog and task watchdog stubs.
 
-endif
+config ENABLE_FLASH_SCRUBBER
+    bool "Flash bit-rot scrubber background task"
+    default y
+    help
+      Periodically scan flash and verify CRC baseline.
+      Independent of ENABLE_WDT.
+endmenu
+
+menu "HAL GPIO"
+
+config HAL_GPIO_PORT_ENUM
+    bool "GPIO port enum (GPIOA/B/C for multi-port MCUs)"
+    default y
+    help
+      Enable gpio-port field in device tree for multi-port MCUs (STM32/CH32).
+      hal_pin_probe reads port when enabled; port is always 0 on ESP32.
+
+choice HAL_PIN_MAP_MODE
+    prompt "Logical pin to HW GPIO encoding"
+    default HAL_PIN_MAP_LINEAR
+    help
+      How hal_pin_map_hw_gpio() encodes hal_pin_t for subsystems
+      that need a single integer (e.g. ESP-IDF SPI pin numbers).
+
+config HAL_PIN_MAP_FLAT
+    bool "Flat (pin field only, ESP32)"
+
+config HAL_PIN_MAP_LINEAR
+    bool "Linear (port << 4 | pin, STM32/CH32)"
+
+endchoice
+
+choice HAL_GPIO_BACKEND
+    prompt "GPIO driver backend"
+    default HAL_GPIO_STM32
+    help
+      Platform-specific GPIO implementation linked at build time.
+
+config HAL_GPIO_ESP32
+    bool "ESP-IDF gpio driver"
+
+config HAL_GPIO_STM32
+    bool "STM32 register GPIO"
+
+config HAL_GPIO_CH32
+    bool "CH32 GPIO library"
+
+endchoice
+
+endmenu
+
+menu "Runtime Capacity"
+
+config EVENT_BUS_QUEUE_LEN
+    int "Event bus queue depth"
+    default 64
+    range 8 256
+
+config EVENT_BUS_MAX_SUBSCRIBERS
+    int "Event bus max subscribers"
+    default 24
+    range 4 64
+
+config EVENT_BUS_DISPATCH_STACK
+    int "Event bus dispatch task stack (bytes)"
+    default 2048
+    range 512 8192
+
+config OSAL_MUTEX_POOL_SIZE
+    int "OSAL static mutex pool size"
+    default 24
+    range 4 64
+
+config BOARD_STACK_MONITOR_MAX_TASKS
+    int "Stack monitor max registered tasks"
+    default 8
+    range 1 32
+
+endmenu
+
+menu "Compiler Compatibility"
+
+config COMPILER_GNU_EXTENSIONS
+    bool "GNU compiler extensions (container_of, likely/unlikely)"
+    default y
+    help
+      Enable GNU statement expressions and builtins in compiler_compat.h.
+      Supported by GCC and Clang.
+
+config COMPILER_WARN_UNUSED_RESULT
+    bool "Warn on ignored function results (COMPAT_WARN_UNUSED_RESULT)"
+    default y
+    depends on COMPILER_GNU_EXTENSIONS
+    help
+      Annotate critical APIs so the compiler warns when return values
+      are discarded. Use COMPAT_IGNORE_RESULT() to silence intentionally.
 
 endmenu
 
 menu "Build Options"
-    config BUILD_DISASM
-        bool "Generate disassembly listings (.lst)"
-        default n
-        help
-          每个库构建后，运行 objdump -d 生成反汇编列表，
-          输出到 build_dir/disasm/*.lst。
-          用于代码大小分析和指令级调试。
+
+config BUILD_DISASM
+    bool "Generate disassembly listing"
+    default y
+    help
+      Generate .lst disassembly listing after build.
+      Build-time artifact only; does not affect Flash/RAM usage.
+endmenu
+
 endmenu

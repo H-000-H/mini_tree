@@ -4,9 +4,9 @@
 
 | 等级 | 含义 | 适用范围 |
 |------|------|----------|
-| **稳定** | 语义和签名向后兼容, 主版本内不破坏 | `osal.h`, `device.h`, `driver.h`, `VFS.h`, `event_bus.hpp` (C 封装), `buffer_pool.h`, `safe_state.h` |
-| **实验性** | 可能在大版本间变更, 会提前一个版本标记 deprecated | `task_manager.h`, `system_wdt.h`, `system_scrubber.h`, 各类 `hal_if/*.h`, `production_log.h` |
-| **内部** | 不对外承诺, 随时可改 | `board_devtable.h`, `board_nodes.h`, `board_handles.h`, `task_config.h` (生成文件), `config.h` (Kconfig 产物) |
+| **稳定** | 语义和签名向后兼容, 主版本内不破坏 | `osal.h`, `device.h` (`device_find_by_label`/`device_open`/`device_read`/`device_write`/`device_ioctl`), `driver.h` (`DRIVER_REGISTER`), `buffer_pool.h`, `safe_state.h`, `task_manager.h` (`task_manager_create_task`), `system_init.h` (`mini_tree_pre_os_init`/`mini_tree_start_tasks`/`system_init_complete`) |
+| **实验性** | 可能在大版本间变更, 会提前一个版本标记 deprecated | `event_bus.hpp` (C++ Singleton), `system_cmd.hpp` (`SystemCmd::dispatch`/`registerCmd`), `system_wdt.h`, `system_scrubber.h`, 各类 `hal/**/*.h`, `bus/**/*.h`, `vfs/**/*.h`, `production_log.h` |
+| **内部** | 不对外承诺, 随时可改 | `board_devtable.h`, `board_nodes.h`, `board_handles.h`, `task_config.h` (生成文件), `dt_config_gen.h` (Kconfig/DTS 产物), `config.h` (Kconfig 产物) |
 
 **稳定接口的变更规则**:
 - 主版本号递增时可破坏兼容性

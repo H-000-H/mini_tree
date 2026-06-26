@@ -3,6 +3,7 @@
 #include "system_log.h"
 #include "system_wdt.hpp"
 #include "compiler_compat.h"
+#include "compiler_compat_poison.h"
 
 /* SIOF (Static Initialization Order Fiasco) 防御:
  *   在 System_Pre_OS_Init (Phase 1) 完成前, 禁止所有 EventBus 操作.
@@ -33,8 +34,8 @@ bool EventBus::init()
         return false;
     }
 
-    osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage));
-    if (m_sub_lock == nullptr)
+    if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) != 0
+        || m_sub_lock == nullptr)
     {
         SYS_LOGE(kTag, "FATAL: mutex create failed");
         osal_queue_delete(m_queue);
@@ -86,26 +87,42 @@ bool EventBus::subscribe(uint32_t id_min, uint32_t id_max,
 
 bool EventBus::post(uint32_t id, uintptr_t arg)
 {
+    if (osal_in_isr())
+        return false;
+
+    return post_internal(id, arg, false, nullptr);
+}
+
+bool EventBus::post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
+{
+    return post_internal(id, arg, true, px_yield_required);
+}
+
+bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr,
+                             bool* px_yield_required)
+{
     if (m_queue == nullptr)
     {
         return false;
     }
 
-    /* SIOF 防御: 系统未初始化前静默丢弃 */
     if (!g_system_os_initialized)
     {
         return false;
     }
 
     const Event event = {id, arg};
+    bool ok;
 
-    /* osal_queue_send 内部自动嗅探 ISR 上下文, 无需调用者区分 */
-    bool ok = osal_queue_send(m_queue, &event, 0);
+    if (from_isr)
+        ok = osal_queue_send_from_isr(m_queue, &event, px_yield_required);
+    else
+        ok = osal_queue_send(m_queue, &event, 0);
 
     if (!ok)
     {
         __atomic_add_fetch(&m_dropped, 1, __ATOMIC_RELAXED);
-        if (!osal_in_isr())
+        if (!from_isr)
         {
             size_t cur = __atomic_load_n(&m_dropped, __ATOMIC_RELAXED);
             if ((cur % 8) == 0 && cur != 0)
@@ -183,7 +200,7 @@ void EventBus::start()
     osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio,
                             dispatch_task, this, 0, &m_task);
     system_wdt_subscribe(m_task);
-    SYS_LOGI(kTag, "dispatch task started prio %u", kDispatchPrio);
+    SYS_LOGI(kTag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
 }
 
 void EventBus::stop()
@@ -221,40 +238,6 @@ void EventBus::seal()
     m_is_sealed = true;
 }
 
-void EventBus::dispatch_all()
-{
-    if (!m_queue || !m_inited) return;
-
-    Event event;
-    while (osal_queue_receive(m_queue, &event, 0))  /* 0 = 非阻塞 */
-    {
-        /* 取快照 (与 dispatch_task 一致) */
-        Subscriber snapshot[kMaxSubscribers];
-        size_t snapshot_count = 0;
-
-        if (m_sub_lock)
-        {
-            if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != 0)
-                return;
-        }
-        snapshot_count = m_count;
-        for (size_t i = 0; i < snapshot_count; i++)
-            snapshot[i] = m_subscribers[i];
-        if (m_sub_lock)
-            osal_mutex_unlock(m_sub_lock);
-
-        for (size_t i = 0; i < snapshot_count; i++)
-        {
-            Subscriber& sub = snapshot[i];
-            if (sub.callback != nullptr &&
-                event.id >= sub.id_min && event.id <= sub.id_max)
-            {
-                sub.callback(event, sub.user_data);
-            }
-        }
-    }
-}
-
 /* ── C 兼容封装 ── */
 extern "C" bool event_bus_init(void)
 {
@@ -264,6 +247,12 @@ extern "C" bool event_bus_init(void)
 extern "C" bool event_bus_post(uint32_t id, uintptr_t arg)
 {
     return EventBus::getInstance().post(id, arg);
+}
+
+extern "C" bool event_bus_post_from_isr(uint32_t id, uintptr_t arg,
+                                        bool* px_yield_required)
+{
+    return EventBus::getInstance().post_from_isr(id, arg, px_yield_required);
 }
 
 extern "C" void event_bus_start(void)

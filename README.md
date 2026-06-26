@@ -3,10 +3,18 @@
 ![Version](https://img.shields.io/badge/version-v1.5.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
-![C/C++](https://img.shields.io/badge/standard-C%2B%2B23%20%7C%20C23-orange.svg)
+![C/C++](https://img.shields.io/badge/standard-C%2B%2B17%20%7C%20C17-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-ARM%20%7C%20RISC--V%20%7C%20POSIX-lightgrey.svg)
 
 `mini_tree` 是一个面向嵌入式系统的通用中间件框架。通过三层解耦架构，在编译链接层隔离芯片 SDK 与上层业务代码，使核心逻辑可跨平台复用。
+
+**架构基准**：以 **ARM Cortex-M 系列** 与 **RISC-V RV32** 为通用基准，覆盖裸机 / FreeRTOS / RT-Thread 三种 OSAL 后端，支持 **Linux / Windows / Docker** 三平台原生编译。ESP32（Xtensa LX）作为异构架构，通过 **原生 Linux / Windows** 工具链接入（ESP-IDF 官方双端支持，不走 Docker），不作为通用基准。
+
+| 架构基准 | 支持平台 | 工具链 |
+|----------|---------|--------|
+| ARM Cortex-M（通用基准） | Linux / Windows / Docker | ARM GCC / ARM Clang |
+| RISC-V RV32（通用基准） | Linux / Windows / Docker | RISC-V GCC |
+| ESP32 Xtensa LX（异构架构） | Linux / Windows | Xtensa GCC（随 ESP-IDF） |
 
 ## 适用场景
 
@@ -20,7 +28,7 @@
 
 | 内核 | 版本 | 说明 |
 |------|------|------|
-| FreeRTOS | v2026.04.00 LTS | ARM Cortex-M3/M4F/M7, RISC-V RV32IMAC |
+| FreeRTOS | v2026.04.00 LTS | ARM Cortex-M3/M4F/M7, RISC-V RV32IMAC, Xtensa LX6/LX7 (ESP-IDF SMP) |
 | RT-Thread | v5.2.2 | 标准微内核 |
 | 裸机 | — | 无 RTOS，1ms SysTick 状态机 + 原子操作替代 IPC |
 
@@ -60,35 +68,24 @@
 
 已通过 10 种组合验证，详见 [ARCHITECTURE.md §7](ARCHITECTURE.md#7-跨平台验证矩阵)：
 
-CMake 工具链：ARM GCC 13.3.1 / ARM Clang 18+ / RISC-V GCC 15.2.0 / MinGW 8.1.0 / ARMCLANG 6+
-Makefile 工具链：ARM GCC / ARM Clang / RISC-V GCC / ARMCLANG (Keil 5/6)
+CMake 工具链：Docker ARM GCC 14.2.1 / Windows 原生 ARM GCC 13.3.1 (STM32CubeCLT) ；Docker RISC-V GCC 8.2.0 / Windows 原生 RISC-V GCC 15.2.0 (WCH MounRiver Studio) ；Xtensa GCC (ESP-IDF v5.5.2) / MinGW 8.1.0 (host test)
 
-> **跨平台验证说明**：本架构的编译验证基于主机侧的多工具链混合测试（ARM GCC / ARM Clang / RISC-V GCC / ARMCLANG AC6 等），覆盖了 Makefile、CMake、Keil 三种构建系统。具体板级运行可能因芯片 errata、启动代码差异或外设配置引入额外问题，期待社区开发者在实际硬件上的测试反馈与贡献。
+> **跨平台验证说明**：本架构以 ARM Cortex-M 与 RISC-V RV32 为通用基准，编译验证基于主机侧的多工具链混合测试（ARM GCC / ARM Clang / RISC-V GCC 等），统一通过 CMake 构建系统管理。具体板级运行可能因芯片 errata、启动代码差异或外设配置引入额外问题，期待社区开发者在实际硬件上的测试反馈与贡献。
 
----
+### ESP32 异构架构适配
 
-## 示例工程
+ESP32（Xtensa LX6/LX7）与 ARM/RISC-V 在中断模型、FPU、启动流程、SDK 体系上差异显著，**不作为通用基准**，按以下策略接入：
 
-| 平台 | 工程 | 说明 |
-|------|------|------|
-| **STM32F407ZGT6** (ARM CM4F) | [stm32_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32_test) | FreeRTOS / RT-Thread / 裸机三后端切换测试，直操作寄存器，无 SDK |
-| **ESP32-S3** (Xtensa LX7) | [esp32_test](https://github.com/H-000-H/mini-tree-example/tree/master/esp32_test) | ESP-IDF 组件集成，Kconfig 配置，hal_esp32s3.c 硬件适配，WS2812 驱动示例 |
-| **RK3288 DTS 源级解析验证** | [examples/rk3288_build/](examples/rk3288_build/README.md) | 验证 dtc-lite.py 对 Linux 真实 .dtsi 的解析能力（支持 reg/中断/节点操作，[详见能力表格](examples/rk3288_build/README.md#已知差异与-linux-dts-对比)）。[代码量对比](examples/rk3288_build/README.md#设备树优势代码量对比)：253 行 DTS → 3170 行 C |
-| **STM32F103C8T6** (ARM CM3) | [stm32f103c8t6_cubemx_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32f103c8t6_cubemx_test) | CubeMX HAL 集成示例，内存极限测试。大量外设 HAL 封装（GPIO/SPI/I2C/ADC/TIM/PWM/CAN/RTC/OLED/WiFi/MQTT/LFS），展示框架在小资源 MCU 上的集成模式 |
+- **构建路径**：ESP32 走 **原生 Linux / Windows 工具链**（`idf.py` + Xtensa GCC，ESP-IDF 官方双端支持），不走 Docker，保证 Linux 与 Windows 双端可编译
+- **RTOS 后端**：直接使用 ESP-IDF 自带的 SMP FreeRTOS，不编译本仓库 `lib/freeRTOS/` 中的 ARM/RISC-V 汇编端口
+- **组件集成**：通过 `idf_component_register()` 注册 `components/mini_tree`，沿用原生 Kconfig 配置流程（`tools/menuconfig.py` + `tools/genconfig.py`），与 `sdkconfig` 不冲突
+- **裸机后端**（`OSAL_NULL`）无 RTOS 端口限制，可正常使用
 
-### ESP32 端口特殊说明
-
-ESP32 端口的 mini_tree 组件沿用原生 Kconfig 配置流程，通过 `components/mini_tree/Kconfig` 和 `tools/menuconfig.py` / `tools/genconfig.py` 管理编译期选项，依赖 ESP-IDF 的 Kconfig 体系，不与 `sdkconfig` 冲突。构建使用 `idf_component_register()` 注册组件，非原生 `add_library` 写法。
-
-配置方式：
+配置示例：
 ```bash
 cd components/mini_tree && python tools/menuconfig.py
+# 或直接编辑 components/mini_tree/.config，idf.py build 时 genconfig.py 自动生成 config.h
 ```
-或直接编辑 `components/mini_tree/.config`，`idf.py build` 时 `genconfig.py` 自动生成 `config.h`。
-
-OSAL 默认 FreeRTOS（IDF 内置），语言默认 C++（物联网场景），均可通过 Kconfig 切换。
-
-> **注意**：本仓库 `lib/freeRTOS/` 和 `lib/rtthread/` 的 RTOS 内核移植层基于 **ARM / RISC-V 汇编**（上下文切换、中断模型、临界区实现），与 Xtensa 架构**不兼容**。ESP32 上 FreeRTOS 后端直接使用 ESP-IDF 自带的魔改 FreeRTOS（SMP 双核），不编译 `lib/freeRTOS/` 中的源码。裸机后端（`OSAL_NULL`）无此限制。详见示例工程的 README。
 
 ---
 

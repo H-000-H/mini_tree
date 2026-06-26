@@ -1,10 +1,12 @@
 #include "system_scrubber.hpp"
 
 #include "hal_flash.h"
-#include "board_config.h"
+#include "system_scrubber_config.h"
 #include "safe_state.h"
-#include "system_log.h"
+#include "system_cfg.h"
 #include "system_wdt.hpp"
+#include "osal.h"
+#include "compiler_compat_poison.h"
 
 static constexpr const char* kTag = "Scrubber";
 static constexpr uint32_t kScrubberPrio =

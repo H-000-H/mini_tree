@@ -1,13 +1,17 @@
 #include "system_init.h"
 #include "system_cfg.h"
 
-#include "event_bus.hpp"
+#include "event_bus.h"
 #include "device.h"
 #include "driver.h"
+#include "VFS.h"
 #include "safe_state.h"
 #include "system_wdt.h"
 #include "system_scrubber.h"
 #include "hal_cpu.h"
+#include "compiler_compat.h"
+#include "config.h"
+#include "compiler_compat_poison.h"
 
 /* ── 启动期全局中断控制 ── */
 #if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
@@ -41,9 +45,9 @@ void mini_tree_pre_os_init(void)
     system_wdt_init_rtc(8000);
 #endif
 
-    if (device_tree_init() != 0)
+    if (device_tree_init() != VFS_OK)
     {
-        SYS_LOGW(kTag, "device_tree_init returned non-zero (non-fatal)");
+        SYS_LOGW(kTag, "device_tree_init failed (non-fatal)");
     }
 
     if (!event_bus_init())
@@ -52,7 +56,7 @@ void mini_tree_pre_os_init(void)
         enter_safe_state("EventBus init failed");
         return;
     }
-    event_bus_post(EVENT_SYS_BOOT, 0);
+    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
 
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
     g_system_os_initialized = true;
@@ -76,12 +80,14 @@ void mini_tree_start_tasks(void)
     system_wdt_init(3000);
 #endif
 
+#ifdef CONFIG_ENABLE_FLASH_SCRUBBER
     system_scrubber_init();
     system_scrubber_start();
+#endif
 
     safe_state_clear_bootloop();
 
-    event_bus_post(EVENT_SYS_READY, 0);
+    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
     event_bus_seal();

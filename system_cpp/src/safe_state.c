@@ -4,22 +4,7 @@
 #include "osal.h"
 
 #include <stdint.h>
-
-/* ── OS 调度器挂起 / 中断禁用 (OSAL 内部接口, 避免直接依赖 FreeRTOS/RT-Thread 头文件) ── */
-#if defined(CONFIG_OSAL_FREERTOS)
-    #include "FreeRTOS.h"
-    #include "task.h"
-    #define OS_SCHEDULER_SUSPEND()      vTaskSuspendAll()
-    #define OS_INTERRUPTS_DISABLE()     portDISABLE_INTERRUPTS()
-#elif defined(CONFIG_OSAL_RTTHREAD)
-    #include <rtthread.h>
-    #include <rthw.h>
-    #define OS_SCHEDULER_SUSPEND()      rt_enter_critical()
-    #define OS_INTERRUPTS_DISABLE()     rt_hw_interrupt_disable()
-#else
-    #define OS_SCHEDULER_SUSPEND()
-    #define OS_INTERRUPTS_DISABLE()
-#endif
+#include "compiler_compat_poison.h"
 
 /* Bootloop 退避阈值: 连续 Panic/软件复位 ≥ BOOTLOOP_THRESHOLD 次 → 永久安全锁死 */
 #define BOOTLOOP_THRESHOLD  5
@@ -63,8 +48,8 @@ void enter_safe_state(const char* reason)
     hal_platform_critical_hardware_lock();
 
     /* 冻结 OS */
-    OS_SCHEDULER_SUSPEND();
-    OS_INTERRUPTS_DISABLE();
+    osal_sched_suspend();
+    osal_int_disable();
 
     while (1)
     {

@@ -48,7 +48,7 @@ target_include_directories(osal
         "${PROJECT_SOURCE_DIR}/board/include"
         "${PROJECT_SOURCE_DIR}/core/include"
         "${CMAKE_BINARY_DIR}/generated/kconfig"
-        "${PROJECT_BINARY_DIR}/board/generated"
+        "${CMAKE_BINARY_DIR}/generated/board/mini_tree"
 )
 
 add_dependencies(osal kconfig_generate)

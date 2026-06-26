@@ -5,31 +5,35 @@
 #include <stddef.h>
 
 #include "board_nodes.h"
+#include "dev_lifecycle.h"
+#include "compiler_compat.h"
+#include "hal_gpio.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 /* ── 设备树常量 ── */
 #define MAX_DEVICES   DEV_ID_COUNT
 
 /* ── 编译期属性: dtc-lite 在构建期展开, runtime 只读静态表 ── */
-typedef struct
+struct device_property
 {
     const char* key;
     const char* value;
-} device_prop_t;
+};
 
 /* ── 设备关键性等级 ── */
-typedef enum
+enum device_criticality
 {
     DEVICE_CRIT_IGNORE = 0,   /* 可无声忽略 */
     DEVICE_CRIT_WARNING,      /* 失败时记录告警 (默认) */
     DEVICE_CRIT_FATAL,        /* 失败时触发 OSAL_PANIC 安全停机 */
-} device_criticality_t;
+};
 
 /* ── 设备状态 ── */
-typedef enum
+enum device_status
 {
     DEVICE_STATUS_DISABLED = 0,
     DEVICE_STATUS_UNINIT,
@@ -39,40 +43,40 @@ typedef enum
     DEVICE_STATUS_SUSPENDED,
     DEVICE_STATUS_ERROR,
     DEVICE_STATUS_REMOVED,
-} device_status_t;
+};
 
 /* ── reg 条目（由 dtc-lite 按 #address-cells / #size-cells 分组） ── */
-typedef struct
+struct device_reg
 {
     const uint32_t* addr;       /* 地址值数组 [#address-cells 个] */
     const uint32_t* size;       /* 长度值数组 [#size-cells 个] (NULL 若 size-cells == 0) */
     uint8_t         addr_cells;
     uint8_t         size_cells;
-} device_reg_t;
+};
 
 /* ── interrupt 条目（由 dtc-lite 按 #interrupt-cells 分组） ── */
-typedef struct
+struct device_irq
 {
     int             irq;        /* 中断号（供 hal_irq_enable 使用） */
     int             type;       /* 中断类型（GIC SPI=0, PPI=1, 或直接填 flags） */
     int             flags;      /* 中断标志（IRQ_TYPE_LEVEL_HIGH 等） */
-} device_irq_t;
+};
 
 /* ── 前向声明 ── */
-typedef struct device_instance device_t;
-/* 子系统操作表由驱动通过 priv_data 魔术头注入, 不在 device_t 中硬编码 */
+struct device;
+/* 子系统操作表由驱动通过 priv_data 魔术头注入, 不在 struct device 中硬编码 */
 
 /* ── 编译期只读设备树节点 ── */
-typedef struct device_node
+struct device_node
 {
     const char*         name;
     const char*         label;          /* DTS label (如 pwm_backlight) */
     const char*         compatible;
     const char*         path;           /* DTS 全路径 (如 /soc/spi2@0) */
-    const device_prop_t* props;
+    const struct device_property* props;
     const device_id_t*  deps;
-    const device_reg_t* regs;        /* reg 条目表（预分组, NULL 表示无 reg） */
-    const device_irq_t* irqs;        /* interrupt 表（预分组, NULL 表示无 interrupts） */
+    const struct device_reg* regs;      /* reg 条目表（预分组, NULL 表示无 reg） */
+    const struct device_irq* irqs;      /* interrupt 表（预分组, NULL 表示无 interrupts） */
     uint8_t             status;         /* 编译期默认状态 */
     uint8_t             criticality;    /* DEVICE_CRIT_xxx: probe 失败时的系统行为 */
     uint8_t             flags;          /* DEVICE_FLAG_xxx */
@@ -80,105 +84,123 @@ typedef struct device_node
     uint8_t             dep_count;
     uint8_t             reg_count;      /* reg 条目数 */
     uint8_t             irq_count;      /* interrupt 条目数 */
-} device_node_t;
+};
+
+/* 各 compatible 属性契约见 board/docs/devicetree.md */
 
 /* 编译期节点标志 */
-#define DEVICE_FLAG_DIRECT    0x01  /* 直接访问 (direct), 无需运行时 device_t 实例 */
+#define DEVICE_FLAG_DIRECT    0x01  /* 直接访问 (direct), 无需运行时 struct device 实例 */
 
 
 /* ── VFS 操作表 ── */
-typedef struct file_operation
+struct file_operations
 {
-    int (*init) (device_t* dev);
-    int (*open) (device_t* dev, void* arg);
-    int (*close)(device_t* dev);
-    int (*write)(device_t* dev, const void* buffer, size_t len, uint32_t timeout_ms);
-    int (*read) (device_t* dev, void* buffer, size_t len, uint32_t timeout_ms);
-    int (*ioctl)(device_t* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms);
-    int (*suspend)(device_t* dev);
-    int (*resume)(device_t* dev);
-} file_operation_t;
+    int (*init) (struct device* dev);
+    int (*open) (struct device* dev, void* arg);
+    int (*close)(struct device* dev);
+    int (*write)(struct device* dev, const void* buffer, size_t len, uint32_t timeout_ms);
+    int (*read) (struct device* dev, void* buffer, size_t len, uint32_t timeout_ms);
+    int (*ioctl)(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms);
+    int (*suspend)(struct device* dev);
+    int (*resume)(struct device* dev);
+};
 
 /* ── 运行时设备实例 ── */
-typedef struct device_instance
+struct device
 {
-    const device_node_t*   node;       /* 指向编译期节点 */
-    device_status_t        status;     /* 运行时状态 */
-    void*                  priv_data;  /* 驱动私有数据 (VFS 层) */
-    void*                  subsys_priv;/* 子系统私有数据 (sensor_if/display_if 魔术头, 零偏移假设, MISRA 11.3 合规) */
-    const file_operation_t* ops;       /* 操作函数表 */
-    struct osal_mutex*     lock;       /* per-device mutex (device_tree_init 中编译期静态分配) */
-    void*                  platform_data; /* board 层注入的静态数据, probe 前设置 */
-} device_t;
+    const struct device_node* node;       /* 指向编译期节点 */
+    enum device_status        status;     /* 运行时状态 */
+    void*                     priv_data;  /* 驱动私有数据 (VFS 层) */
+    const struct file_operations* ops;    /* 操作函数表 */
+    struct osal_mutex*        lock;       /* per-device 递归锁 (create_static_recursive) */
+    struct dev_lifecycle           lc;         /* 驱动 I/O 生命周期 (probe 时 device_lc_bind) */
+    void*                     platform_data; /* board 层注入的静态数据, probe 前设置 */
+};
 
 /* ── 查找设备 ── */
-device_t* device_find(const char* name);
-device_t* device_find_by_label(const char* label);
-device_t* device_find_by_compatible(const char* compatible);
-device_t* device_find_by_id(device_id_t id);
-device_t* device_find_by_path(const char* path);
-device_t* device_get_parent(const device_t* dev);
+struct device* device_find(const char* name);
+struct device* device_find_by_label(const char* label);
+struct device* device_find_by_compatible(const char* compatible);
+struct device* device_find_by_id(device_id_t id);
+struct device* device_find_by_path(const char* path) COMPAT_WARN_UNUSED_RESULT;
+struct device* device_get_parent(const struct device* dev);
 
 /* ── 从属性中解析 phandle 引用并返回目标设备 ── */
-device_t* device_get_phandle_dev(const device_t* dev, const char* key);
+struct device* device_get_phandle_dev(const struct device* dev, const char* key)
+    COMPAT_WARN_UNUSED_RESULT;
 
 /* ── 读取属性（从 dev->node 读取） ── */
-int device_get_prop_int(const device_t* dev, const char* key, int* val);
-int device_get_prop_int_array(const device_t* dev, const char* key, int* out_arr, int max_len);
-int device_get_prop_str(const device_t* dev, const char* key, const char** val);
-int device_get_prop_bool(const device_t* dev, const char* key, int* val);
-const char* device_get_name(const device_t* dev);
-const char* device_get_compatible(const device_t* dev);
-device_status_t device_get_status(const device_t* dev);
-device_criticality_t device_get_criticality(const device_t* dev);
+int device_get_prop_int(const struct device* dev, const char* key, int* val)
+    COMPAT_WARN_UNUSED_RESULT;
+int device_get_prop_int_array(const struct device* dev, const char* key, int* out_arr, int max_len)
+    COMPAT_WARN_UNUSED_RESULT;
+int device_get_prop_str(const struct device* dev, const char* key, const char** val)
+    COMPAT_WARN_UNUSED_RESULT;
+int device_get_prop_bool(const struct device* dev, const char* key, int* val)
+    COMPAT_WARN_UNUSED_RESULT;
+
+/* 从 DTS 属性读取 port + pin → hal_pin_t (port_key 可省略, 默认 0) */
+int hal_pin_probe(const struct device* dev, const char* port_key, const char* pin_key,
+                  hal_pin_t* out) COMPAT_WARN_UNUSED_RESULT;
+
+const char* device_get_name(const struct device* dev);
+const char* device_get_compatible(const struct device* dev);
+enum device_status device_get_status(const struct device* dev);
+enum device_criticality device_get_criticality(const struct device* dev);
 
 /* ── 读取第 idx 条 reg 条目（按 #address-cells / #size-cells 分组） ── */
-int device_get_reg(const device_t* dev, int idx, const device_reg_t** out);
+int device_get_reg(const struct device* dev, int idx, const struct device_reg** out)
+    COMPAT_WARN_UNUSED_RESULT;
 
 /* ── 读取第 idx 条 interrupt 条目（按 #interrupt-cells 分组） ── */
-int device_get_irq(const device_t* dev, int idx, const device_irq_t** out);
+int device_get_irq(const struct device* dev, int idx, const struct device_irq** out)
+    COMPAT_WARN_UNUSED_RESULT;
 
 /* ── 运行时状态管理 ── */
-int device_set_status(device_t* dev, device_status_t status);
-int device_set_priv(device_t* dev, void* priv);
-void* device_get_priv(const device_t* dev);
-
-/* ── 子系统私有数据 (MISRA C 2012 Rule 11.3 合规, 替代隐式偏移继承) ── */
-int device_set_subsys_priv(device_t* dev, void* subsys_priv);
-void* device_get_subsys_priv(const device_t* dev);
+int device_set_status(struct device* dev, enum device_status status) COMPAT_WARN_UNUSED_RESULT;
+int device_set_priv(struct device* dev, void* priv) COMPAT_WARN_UNUSED_RESULT;
+void* device_get_priv(const struct device* dev);
 
 /* ── 设备遍历 ── */
-device_t* device_get_first(void);
-device_t* device_get_next(const device_t* prev);
+struct device* device_get_first(void);
+struct device* device_get_next(const struct device* prev);
 int device_get_count(void);
 
 /* ── 设备树加载 ── */
-int device_tree_init(void);
+int device_tree_init(void) COMPAT_WARN_UNUSED_RESULT;
 
 /* ── 设备锁（device_tree_init 中已完成全量静态分配） ── */
-int device_lock(device_t* dev);
-int device_unlock(device_t* dev);
+int device_lock(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int device_unlock(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
 
 /* ── 驱动卸载清理 ──
  * 清除 dev->priv_data + dev->ops, 切断幽灵指针链.
  * 由 driver remove 函数在最后调用, 替代手写 device_set_priv(dev,NULL)+dev->ops=NULL.
  */
-void device_ops_unregister(device_t* dev);
+void device_ops_unregister(struct device* dev);
+
+/* ── 驱动 I/O 生命周期 (dev_lifecycle 绑定在 struct device 上) ── */
+struct dev_lifecycle* device_lc(struct device* dev);
+void device_lc_bind(struct device* dev, struct osal_mutex* io_lock);
 
 /* ── VFS 便捷包装（框架层自动持锁, IEC 61508 §7.4.3.1） ──
  * device_open/close/suspend/resume + device_write/read/ioctl 均在持锁状态下
  * 完成状态检查与 ops 调用, 确保 check-then-act 的原子性.
  */
-int device_open(device_t* dev, void* arg);
-int device_close(device_t* dev);
-int device_write(device_t* dev, const void* buf, size_t len, uint32_t timeout_ms);
-int device_read(device_t* dev, void* buf, size_t len, uint32_t timeout_ms);
-int device_ioctl(device_t* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms);
-int device_suspend(device_t* dev);
-int device_resume(device_t* dev);
+int device_open(struct device* dev, void* arg) COMPAT_WARN_UNUSED_RESULT;
+int device_close(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int device_write(struct device* dev, const void* buf, size_t len, uint32_t timeout_ms)
+    COMPAT_WARN_UNUSED_RESULT;
+int device_read(struct device* dev, void* buf, size_t len, uint32_t timeout_ms)
+    COMPAT_WARN_UNUSED_RESULT;
+int device_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+    COMPAT_WARN_UNUSED_RESULT;
+int device_suspend(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int device_resume(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* BOARD_DEVICE_H */
+

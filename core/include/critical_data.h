@@ -5,7 +5,8 @@
 #include <cstring>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 /*
@@ -22,7 +23,8 @@ extern "C" {
  *   CRITICAL_VAR_WRITE(g_infusion_rate_ml_h, 50);
  *
  *   int32_t rate;
- *   if (CRITICAL_VAR_READ(g_infusion_rate_ml_h, &rate)) {
+ *   if (CRITICAL_VAR_READ(g_infusion_rate_ml_h, &rate))
+ {
  *       // 校验通过
  *   } else {
  *       enter_safe_state("CRITICAL_VAR corruption");
@@ -65,9 +67,9 @@ extern "C" {
  *   if (corrupted) enter_safe_state("voltage corrupted");
  */
 template <typename T>
-class CriticalStorage 
-{
-    static_assert(sizeof(T) <= sizeof(uint32_t),"CriticalStorage: type must fit in 32 bits");
+class CriticalStorage {
+    static_assert(sizeof(T) <= sizeof(uint32_t),
+                  "CriticalStorage: type must fit in 32 bits");
 public:
     explicit CriticalStorage(T init_val = T())
     {
@@ -91,7 +93,7 @@ public:
 
     T get_secure(bool* is_corrupted = nullptr) const
     {
-        if (!validate()) 
+        if (!validate())
         {
             if (is_corrupted) *is_corrupted = true;
             return T(0);
@@ -106,3 +108,5 @@ private:
 };
 
 #endif /* __cplusplus */
+
+
