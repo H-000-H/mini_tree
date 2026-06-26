@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
  *  task_config.c — 系统任务配置实例
  *
- *  本文件仅提供 board_task_config_t 类型定义与创建工具.
+ *  本文件仅提供 struct board_task_config 类型定义与创建工具.
  *  具体的业务任务实例 (如 UI、Cloud) 由用户工程自行定义.
  *
  *  优先级说明:
@@ -12,7 +12,8 @@
  *      Scrubber:      FreeRTOS=1,  RT-Thread=30
  *
  *  用途示例 (用户工程 main.c):
- *     const board_task_config_t my_app_task = {
+ *     const struct board_task_config my_app_task =
+ {
  *         .name       = "my_app",
  *         .stack_size = 4096,
  *         .priority   = 15,   // 中等优先级
@@ -24,3 +25,5 @@
  * ═══════════════════════════════════════════════════════════════════ */
 
 #include "task_config.h"
+#include "compiler_compat_poison.h"
+

@@ -3,6 +3,7 @@
 #include "hal_wdt.h"
 #include "board_config.h"
 #include "system_cfg.h"
+#include "compiler_compat_poison.h"
 
 static const char* kTag = "SysWDT";
 static bool s_initialized = false;

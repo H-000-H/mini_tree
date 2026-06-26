@@ -19,7 +19,7 @@
 | 决策 | 影响范围 | 说明 |
 |------|----------|------|
 | OSAL 三栖抽象层 | 全框架 | FreeRTOS / RT-Thread / NULL 统一 C 接口，上层无感切换 |
-| 系统双后端 Kconfig 隔离 | system_cpp + system_c | 编译期选择 C++23 或 C23 实现，输出同名 system 库 |
+| 系统双后端 Kconfig 隔离 | system_cpp + system_c | 编译期选择 C++17 或 C17 实现，输出同名 mini_tree 静态库 |
 | 编译期设备树 (dtc-lite) | board + drivers | Kahn 拓扑排序，零运行时解析，零硬编码引脚 |
 | BSS 静态池分配 | 全驱动 | 零运行时堆分配，确定性内存布局 |
 | BufferPool 无锁位图分配 | core | O(1) 分配/释放, ISR 安全, 零碎片, 32 字节 DMA 对齐 |
@@ -28,10 +28,10 @@
 | 双重看门狗 (WDT + RTC) | system | SW Task WDT 防死循环 + HW RTC WDT 防总线死锁 |
 | 500ms 锁超时原则 | 全框架 | 拒绝 OSAL_WAIT_FOREVER，防级联死锁 |
 | 构建期反汇编追踪 | CMake | CONFIG_BUILD_DISASM 自动生成 .lst，指令级审查 |
-| C23/C++23 标准 | 全框架 | ARM GCC 13 / RISC-V GCC 15 / MinGW 全工具链覆盖 |
+| C17/C++17 标准 | 全框架 | Docker: ARM GCC 14.2.1 / RISC-V GCC 8.2.0 (WCH)；Windows 原生: ARM GCC 13.3.1 (CubeCLT) / RISC-V GCC 15.2.0 (MounRiver)；MinGW 全工具链覆盖 |
 | fno-exceptions / fno-rtti | C++ 全量 | 裸机 C++ 环境禁用异常与运行时类型识别 |
 | Meyers Singleton 预触 | 启动阶段 | ISR 前完成 __cxa_guard_acquire，杜绝 ABI 死锁 |
-| hal_pin_t 复合引脚 | hal_if | 32-bit port+pin 编码，ARM + RISC-V 跨架构移植 |
+| hal_pin_t 复合引脚 | hal/ | 32-bit port+pin 编码，ARM + RISC-V 跨架构移植 |
 
 ---
 
@@ -45,9 +45,8 @@
 | **L4** — 栈水位监控 | 剩余 < 512 字节 | 两级预警，超限中断闭锁 |
 | **L5** — Flash Scrubber | CRC 校验失配 | 后台逐页巡检, 检测到 Bit-Rot 进入安全状态 |
 | **L6** — Safe State | OSAL_PANIC 或服务 init 失败 | 关中断 + 锁调度器 + 死循环等待维修介入 |
-| **L6** — EventBus SIOF 防御 | C++ 全局构造函数早产 | Phase 1 末尾 `g_system_os_initialized = true`, post() 静默丢弃 |
-| **L7** — EventBus seal 封表 | ISR 读写踩踏 | Phase 2 末尾冻结订阅表, dispatch 遍历只读数组 |
-| **L8** — Safe State | OSAL_PANIC 或服务 init 失败 | 关中断 + 锁调度器 + 死循环等待维修介入 |
+| **L7** — EventBus SIOF 防御 | C++ 全局构造函数早产 | Phase 1 末尾 `g_system_os_initialized = true`, post() 静默丢弃 |
+| **L8** — EventBus seal 封表 | ISR 读写踩踏 | Phase 2 末尾冻结订阅表, dispatch 遍历只读数组 |
 | **L9** — 反汇编审查 | CONFIG_BUILD_DISASM | 构建期指令级验证原子操作与死代码 |
 
 ---
@@ -61,8 +60,9 @@
 | 第 3 轮: 系统服务 OSAL 化 | system_cpp/ | system_wdt / task_manager / system_scrubber 迁移 OSAL |
 | 第 4 轮: BufferPool | core/ | 位图无锁 O(1) 分配器，零碎片 |
 | 第 5 轮: OSAL_NULL 裸机后端 | osal/ | 原子操作 + 位掩码无锁环形队列平替 RTOS IPC |
-| 第 6 轮: 工具链硬化 | CMake + cmake/ | C23/C++23 升级，fno-exceptions/fno-rtti，disasm 目标 |
+| 第 6 轮: 工具链硬化 | CMake + cmake/ | C17/C++17 标准统一，fno-exceptions/fno-rtti，disasm 目标 |
 | 第 7 轮: system 双后端 | system_c/ + system_cpp/ + Kconfig | C++ / C 编译期选择，Kconfig SYSTEM_BACKEND |
+| 第 8 轮: 硅片级安全加固 | core/ + system_cpp/ | seal 封表 / DMA 对齐 / SIOF 防御 |
 | **总计** | **~85+ 文件** | **8 轮重构 + 文档体系** |
 
 ---
@@ -79,10 +79,12 @@
 之前:                              之后:
 xQueueSend(m_queue, &evt, 0);      osal_queue_send(m_queue, &evt, 0);
 vTaskDelay(ms);                     osal_delay_ms(ms);
-xTaskCreatePinnedToCore(...);       osal_task_create_handle(...);
+xTaskCreatePinnedToCore(...);       task_manager_create_task(...);
 portDISABLE_INTERRUPTS();           osal_spinlock_lock(&lock);
 __get_IPSR();                       osal_in_isr();
 ```
+
+> 注: 应用层业务任务通过 `task_manager_create_task()`（封装 `osal_task_create_handle()` + 自动 TWDT 订阅）创建；底层 OSAL API `osal_task_create_handle()` 仅在框架内部使用。
 
 **文件**: `osal/include/osal.h` + `osal/src/osal_freertos.c` + `osal/src/osal_rtthread.c`
 
@@ -110,8 +112,8 @@ __get_IPSR();                       osal_in_isr();
 | 文件 | 关键变更 |
 |------|----------|
 | `system_wdt.cpp` | `xTaskGetTickCount` → `osal_time_ms` |
-| `task_manager.cpp` | `xTaskCreateStaticPinnedToCore` → `osal_task_create_handle` |
-| `system_scrubber.cpp` | `xTaskCreate` → `osal_task_create_handle` |
+| `task_manager.cpp` | `xTaskCreateStaticPinnedToCore` → `task_manager_create_task` (内含 `osal_task_create_handle`) |
+| `system_scrubber.cpp` | `xTaskCreate` → `task_manager_create_task` |
 
 ### 第 4 轮: BufferPool 无锁内存池
 
@@ -161,29 +163,46 @@ static uint32_t bitmap_alloc(volatile uint32_t* mask)
 
 ### 第 6 轮: 工具链硬化与标准升级
 
-**动机**: 项目需支持 ARM / RISC-V / MinGW 三工具链，统一 C23/C++23 标准。
+**动机**: 项目需支持 ARM / RISC-V / Xtensa 三工具链，统一 C17/C++17 标准。
 
 **变更清单**:
 
 | 项目 | 变更 |
 |------|------|
-| C 标准 | C11 → C23 (ARM: `-std=c2x`, RISC-V: `-std=c23`) |
-| C++ 标准 | C++11 → C++23 |
+| C 标准 | C11 → C17 (`-std=c17`, GCC 扩展开启 `CMAKE_C_EXTENSIONS ON`) |
+| C++ 标准 | C++11 → C++17 (`-std=c++17`, GCC 扩展开启 `CMAKE_CXX_EXTENSIONS ON`) |
 | C++ 特性 | 全量 `-fno-exceptions -fno-rtti` |
-| ARM 工具链 | ARM GCC 13.3.1 (STM32CubeCLT) |
-| RISC-V 工具链 | RISC-V GCC 15.2.0 (xPack) |
-| host 工具链 | MinGW 8.1.0 |
-| 反汇编 | `CONFIG_BUILD_DISASM` → 自动生成 `build/disasm/*.lst` |
+| ARM 工具链 | Docker: ARM GCC 14.2.1 / Windows 原生: ARM GCC 13.3.1 (STM32CubeCLT 1.20.0) |
+| RISC-V 工具链 | Docker: RISC-V GCC 8.2.0 / Windows 原生: RISC-V GCC 15.2.0 (WCH MounRiver Studio GCC15) |
+| Xtensa 工具链 | Xtensa GCC (ESP-IDF) |
+| host 工具链 | MinGW 8.1.0 (host unit test) |
+| 反汇编 | `CONFIG_BUILD_DISASM` → 自动生成 `build/<preset>/disasm/*.lst` |
 
 **CMake 实践**:
 
 ```cmake
-# ARM GCC 13 不支持 -std=c23, 使用 c2x (C23 草案名称)
-set(CMAKE_C_FLAGS "-mcpu=cortex-m3 -mthumb -std=c2x -Os -g" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS "-mcpu=cortex-m3 -mthumb -std=c++23 -Os -g" CACHE STRING "" FORCE)
+# CH32V307 CMakeLists.txt (RISC-V, GCC 8.2.0+/15.2.0)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 
-# RISC-V GCC 15 原生支持 C23
-add_compile_options(-march=rv32imac_zicsr -mabi=ilp32 -mcmodel=medany)
+# RISC-V 架构参数（GCC 8.2.0+/15.2.0 兼容）
+set(CH307_ARCH_OPTS
+    -march=rv32imac
+    -mabi=ilp32
+    -mcmodel=medany
+    -msmall-data-limit=8
+    -mno-save-restore
+)
+
+# C++ 裁剪: 全模块禁用 RTTI / 异常
+target_compile_options(mini_tree PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+)
 ```
 
 ### 第 7 轮: System 双后端 Kconfig 隔离
@@ -194,19 +213,29 @@ add_compile_options(-march=rv32imac_zicsr -mabi=ilp32 -mcmodel=medany)
 
 ```
 Kconfig SYSTEM_BACKEND
-  ├── SYSTEM_CPP (默认) ──→ system_cpp/ ──→ libsystem.a (C++23)
-  └── SYSTEM_C      ──→ system_c/  ──→ libsystem.a (C23)
+  ├── SYSTEM_CPP (默认) ──→ system_cpp/ ──→ mini_tree 静态库 (C++17)
+  └── SYSTEM_C      ──→ system_c/  ──→ mini_tree 静态库 (C17)
 ```
 
 **system_cpp/** (C++ 实现):
 - Meyers Singleton 生命周期
-- `MiniTree::System_Pre_OS_Init()` / `MiniTree::System_Start_Tasks()` / `MiniTree::System_Loop()`
-- 完整生命周期回调
+- 完整 `mini_tree_pre_os_init()` / `mini_tree_start_tasks()` / `system_init_complete()` 入口
+- 完整生命周期回调（EventBus seal / Task WDT 订阅）
 
 **system_c/** (C 实现):
 - 纯函数过程式 API
-- `mini_tree_pre_os_init()` / `mini_tree_start_tasks()` / `mini_tree_system_loop()`
-- 与 C++ 版本同名的 `libsystem.a` 输出，用户工程无需改链接配置
+- 同名 `mini_tree` 静态库输出，用户工程无需改链接配置
+- 移除 C++ `EventBus::getInstance().poll()`，裸机循环仅喂狗
+
+**两后端共享 C API**:
+
+```c
+// 入口 (system_cpp 或 system_c 都提供)
+void mini_tree_pre_os_init(void);          // Phase 1: Pre-OS Init
+void mini_tree_start_tasks(void);          // Phase 2: Start Tasks
+void system_init_complete(void);           // 标记 Phase 2 完成, seal EventBus
+bool mini_tree_system_loop(void);          // 裸机主循环 (OSAL_NULL)
+```
 
 **C 兼容层修复**:
 - `system_scrubber.hpp`: `<cstdint>` → `<stdint.h>`（C++ 独有的 `<cstdint>` 在 C 编译中不存在）

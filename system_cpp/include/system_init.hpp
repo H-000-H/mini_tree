@@ -7,8 +7,6 @@ namespace MiniTree {
  * 用户工程在 main() 中按此顺序调用:
  *
  *   int main(void) {
- *       platform_hardware_init();            // 平台 HAL/时钟初始化
- *
  *       MiniTree::System_Pre_OS_Init();      // [1] 框架预初始化 (EventBus, 安全, RTC WDT, 关全局中断)
  *       platform_register_all_drivers();     // 向 VFS 注册平台驱动
  *       MyApp::init_services();              // 用户业务服务 init()

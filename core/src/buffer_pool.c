@@ -1,6 +1,7 @@
 #include "buffer_pool.h"
 #include "osal.h"
 #include "compiler_compat.h"
+#include "compiler_compat_poison.h"
 
 #include <string.h>
 
@@ -124,14 +125,13 @@ static uint32_t bitmap_alloc(volatile uint32_t* mask)
     uint32_t old, new_mask;
     int bit;
 
-    do 
+    do
     {
         old = *mask;
         if (old == 0) return BP_MAX_BUFS;
         bit = COMPAT_CTZ(old);  /* 找最低位 1 → 第一个空闲 */
         new_mask = old & ~(1u << bit);
-    } 
-    while (!BP_CAS(mask, &old, new_mask));
+    } while (!BP_CAS(mask, &old, new_mask));
     return (uint32_t)bit;
 }
 
@@ -145,7 +145,7 @@ static void bitmap_free(volatile uint32_t* mask, uint32_t bit)
  *  公共接口
  * ═══════════════════════════════════════════════════════════════════════ */
 
-bp_t* bp_create(const bp_config_t* config)
+struct bp_pool* bp_create(const struct bp_config* config)
 {
     if (!config || !config->name || config->buf_count == 0 ||
         config->buf_count > BP_MAX_BUFS)
@@ -157,7 +157,7 @@ bp_t* bp_create(const bp_config_t* config)
     size_t total   = real_bs * config->buf_count;
 
     /* 分配控制块 */
-    bp_t* pool = (bp_t*)osal_calloc(1, sizeof(bp_t));
+    struct bp_pool* pool = (struct bp_pool*)osal_calloc(1, sizeof(struct bp_pool));
     if (!pool) return NULL;
 
     /* 分配或引用缓冲区内存 */
@@ -198,7 +198,7 @@ bp_t* bp_create(const bp_config_t* config)
     return pool;
 }
 
-void* bp_alloc(bp_t* pool)
+void* bp_alloc(struct bp_pool* pool)
 {
     if (!pool) return NULL;
 
@@ -208,7 +208,8 @@ void* bp_alloc(bp_t* pool)
     uint32_t u = BP_ADD_FETCH(&pool->used, 1);
     /* 更新峰值 (无锁 CAS) */
     uint32_t p;
-    do {
+    do
+    {
         p = pool->peak;
         if (u <= p) break;
     } while (!BP_CAS(&pool->peak, &p, u));
@@ -216,12 +217,12 @@ void* bp_alloc(bp_t* pool)
     return pool->pool_mem + idx * pool->buf_size;
 }
 
-void* bp_alloc_isr(bp_t* pool)
+void* bp_alloc_isr(struct bp_pool* pool)
 {
     return bp_alloc(pool);
 }
 
-void bp_free(bp_t* pool, void* buf)
+void bp_free(struct bp_pool* pool, void* buf)
 {
     if (!pool || !buf) return;
 
@@ -239,17 +240,29 @@ void bp_free(bp_t* pool, void* buf)
     BP_SUB_FETCH(&pool->used, 1);
 }
 
-void bp_free_isr(bp_t* pool, void* buf)
+void bp_free_isr(struct bp_pool* pool, void* buf)
 {
     bp_free(pool, buf);
 }
 
-uint32_t bp_used(const bp_t* pool)
+uint32_t bp_used(const struct bp_pool* pool)
 {
-    return pool ? BP_LOAD(&((bp_t*)pool)->used) : 0;
+    return pool ? BP_LOAD(&((struct bp_pool*)pool)->used) : 0;
 }
 
-void bp_destroy(bp_t* pool)
+uint32_t bp_peak(const struct bp_pool* pool)
+{
+    return pool ? BP_LOAD(&((struct bp_pool*)pool)->peak) : 0;
+}
+
+void bp_reset_peak(struct bp_pool* pool)
+{
+    if (!pool) return;
+    uint32_t cur = BP_LOAD(&pool->used);
+    BP_STORE(&pool->peak, cur);
+}
+
+void bp_destroy(struct bp_pool* pool)
 {
     if (!pool) return;
     if (pool->owned)
@@ -258,3 +271,4 @@ void bp_destroy(bp_t* pool)
     }
     osal_free(pool);
 }
+

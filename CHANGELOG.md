@@ -2,9 +2,77 @@
 
 ## [Unreleased]
 
+### Windows 三平台编译验证
+
+在 Windows 原生环境完成 ST/ESP/CH 三节点编译验证，工具链版本区分平台标注：
+
+- **STM32F407ZGT6** — ARM GCC 13.3.1 (STM32CubeCLT 1.20.0)，FLASH 2.80%, RAM 6.71% ✓
+- **CH32V307** — RISC-V GCC 15.2.0 (MounRiver Studio GCC15)，FLASH 15.55%, RAM 33.63% ✓
+- **ESP32-S3** — Xtensa GCC (ESP-IDF v5.5.2)，bin 304KB, 70% free ✓
+
+文档修正：将原标注的单一工具链版本（Docker: ARM GCC 14.2.1 / RISC-V GCC 8.2.0）改为区分 Docker 与 Windows 原生版本。涉及 `ARCHITECTURE.md` §7 验证矩阵、`NOTICE.md`、`CONTRIBUTING.md`、`README.md`、`docs/faq.md`。
+
+工具链 cmake 修复：`gcc-arm-none-eabi.cmake` 补充 `STM32CubeCLT_1.20.0` 版本化路径；`riscv32-wch-elf-ch32v307.cmake` 补充 `RISC-V Embedded GCC12`/`GCC` 路径作为回退。
+
+### Linux (WSL) 三平台编译验证
+
+在 WSL 纯 Linux 环境完成 ST/ESP/CH 三节点编译验证（主开发环境）：
+
+- **STM32F407ZGT6** — ARM GCC 14.2.1 (系统包)，FLASH 3.12%, RAM 6.70% ✓
+- **CH32V307** — RISC-V GCC (WCH 工具链)，FLASH 16.05%, RAM 33.26% ✓
+- **ESP32-S3** — Xtensa GCC 16.1.0 (ESP-IDF v6.2)，bin 319KB, 70% free ✓
+
+工具修复：`tools/genconfig.py` 新增 `esp_kconfiglib.core` 作为第三回退导入路径，兼容 ESP-IDF v6.2 的 esp_kconfiglib 分支（`kconfiglib` 包仅 re-export `Kconfig` 类，不含 `BOOL`/`HEX`/`INT`/`STRING` 常量）。
+
+### 开发平台策略与 Keil 支持移除
+
+- **`CONTRIBUTING.md`** — 新增"开发平台策略"章节：明确作者已将主开发环境迁移至 WSL（纯 Linux 环境）以兼顾 Linux 服务端工具链与 MCU 交叉编译的平衡，并解决 Windows 原生环境下多套工具链的路径冲突与版本碎片化问题。Windows 原生降级为半支持（仅跨平台兼容性验证），Docker 为可选复现路径。
+- **Keil 支持正式移除**：新增"关于 Keil 的说明"章节，从构建系统不兼容（CMake+Ninja+GCC 体系与 `.uvprojx` 异构）、C/C++ 标准受限（ARMCC 对 C++17 支持不完整）、跨架构能力缺失（Keil 仅支持 ARM，无法覆盖 RISC-V/Xtensa）、南向隔离原则破坏四个维度说明 Keil 天生不属于本套系统。PR 规约新增禁止引入 Keil 工程文件与 ARMCC 专属适配代码的条款。
+
+### 文档全面对齐当前架构
+
+- **`docs/service_spec.md`** — 重写"服务编写规范"与"应用层解耦规范"。删除过时的 `vfs_open`/`vfs_write` POSIX 风格 API 描述，统一为 `device_find_by_label`/`device_open`/`device_read`/`device_write`/`device_ioctl`/`task_manager_create_task`。新增"异步邮局模式"章节，说明 `SystemCmd` 单例 + 领域任务专属 `osal_queue` 的解耦机制。
+- **`docs/debug_monitor.md`** — 修正反汇编路径为 `build/<preset>/disasm/`，移除 `hal_if.lst` 残留改为 `hal.lst`。补充 RISC-V (CH32V307) 异常寄存器 (`mepc`/`mcause`/`mtval`) 说明，新增 `wch-openocd` + `riscv32-wch-elf-gdb` CLI 路线，新增业务任务调试技巧表。
+- **`docs/osal_switching.md`** — 工具链命令更新为 `cmake --preset Debug`（由 `CMakePresets.json` 自动选择 `gcc-arm-none-eabi.cmake` / `riscv32-wch-elf-ch32v307.cmake`），补充三端路径探测说明。
+- **`NOTICE.md`** — 修正工具链版本：ARM GCC 13.3.1 → 14.2.1 (STM32CubeCLT)，RISC-V GCC 15.2.0 → 8.2.0 (WCH MounRiver Studio)。C/C++ 标准从 C23/C++23 降为 C17/C++17（与实际 `CMakeLists.txt` 一致）。将 `hal_if` 术语统一为 `hal/`。业务任务创建 API 从 `osal_task_create_handle` 改为 `task_manager_create_task`。
+- **`USAGE.md`** — 术语表新增 `hal/`、`bus/`、`vfs/`、`DRIVER_REGISTER`、`device_find_by_label`、`task_manager_create_task`、`SystemCmd` 等当前架构实际术语；删除过时的 `hal_if`、`soc_port_`。
+- **`API_COMPATIBILITY.md`** — 稳定接口列表新增 `device.h` 的 `device_*` 系列、`task_manager.h` 的 `task_manager_create_task`、`system_init.h` 的两段式点火 API。实验性接口新增 `SystemCmd`、`bus/**/*.h`、`vfs/**/*.h`。
+- **`FILE_INDEX.md`** — 新增 `bus/`、`vfs/` 子系统索引；`board/src/` 补充 `dev_lifecycle.c`/`bus.c`/`config_store.c`/`task_config.c`/`task_utils.c`；`system_cpp/` 补充 `system_cmd.hpp`/`system_cmd.cpp`/`task_manager.cpp`。
+- **`README.md`** — 修正 badge 为 C++17/C17，工具链版本对齐实际（ARM GCC 14.2.1 / RISC-V GCC 8.2.0 / Xtensa GCC / MinGW 8.1.0）。
+
+### Windows 三平台编译验证
+
+- 在 Windows 原生 cmd/PowerShell 下成功编译验证 STM32F407ZGT6 / CH32V307 / ESP32-S3 三节点
+- **`STM32F407ZGT6/cmake/gcc-arm-none-eabi.cmake`** — 修复 Windows 工具链路径拼接缺失 `.exe` 后缀问题，改用 `find_program` 自动处理。补充 STM32CubeCLT 安装路径到 HINTS
+- **`CH32V307/cmake/riscv32-wch-elf-ch32v307.cmake`** — 修复正则表达式匹配和工具链路径问题，补充 MounRiver_Studio2 安装路径到 HINTS
+- **`CH32V307/CMakeLists.txt`** — `python3` 替换为 `${Python3_EXECUTABLE}`，避免 Windows Store stub 干扰
+
+### 架构基准统一
+
+- 删除所有 STM32 专属示例和 CubeMX 集成章节，替换为厂商无关的 HAL 集成指南
+- 明确 ARM Cortex-M 与 RISC-V RV32 为通用基准（支持 Linux/Windows/Docker 三平台）
+- ESP32 (Xtensa) 作为异构架构，走原生 Linux/Windows 工具链（ESP-IDF 官方双端，不走 Docker）
+
+### 子系统文档与顶层文档对齐
+
+- **`board/docs/devicetree.md`** — 标题从"ESP32-S3 设备树说明"改为通用标题，文件布局从 ESP32 专属改为通用 `<project>/mini_tree/board/` 路径模板，新增 `BOARD_DTS` 变量传入说明，CMake 集成章节补充 `${Python3_EXECUTABLE}` 调用与三节点集成方式差异。
+- **`bus/spi/SPI.md`** — 完整重写为多架构通用文档。明确 HAL 实现由项目通过 `HAL_SRCS` 变量提供；`compatible` 的 `<vendor>` 段因芯片而异（STM32/CH32/ESP32）；引脚映射区分多端口 MCU（`port<<4|pin`）与单端口 SoC（裸 GPIO）；HAL 实现文件命名约定为 `hal/spi/spi_hal_<chip>.c`。
+- **`tools/README.md`** — 补充 dtc-lite 生成的完整文件列表（`board_nodes.h` / `board_handles.h`），新增 `add_custom_command` CMake 集成示例，新增 `genconfig.py` / `kconfig_gui.py` / `post_build_crc.py` / `firmware_size_report.py` 等工具说明。
+- **`docs/getting_started.md`** — 删除 `toolchain_arm_cm4f.cmake` 过时引用，改为 `cmake --preset Debug`；删除 `soc_port_` / `hal_if` 过时术语，统一为 `HAL_SRCS` / `hal/`；用户工程结构示例对齐异构多核项目布局；HAL 实现约定改为通过 `HAL_SRCS` 变量传入。
+- **`docs/porting_guide.md`** — 已对齐多架构基准（含 ARM Cortex-M7+M4 / GD32 同构双核 / RISC-V 双核示例），无需修改。
+- **`ARCHITECTURE.md`** — 修正配置菜单中 `C++23/C23` 为 `C++17/C17`，工具链版本表统一为 C17/C++17 标准。
+- **`CONTRIBUTING.md`** — 工具链版本对齐实际（ARM GCC 14.2.1 / RISC-V GCC 8.2.0 / Xtensa GCC / MinGW 8.1.0），构建验证改为 `build.sh` 统一入口 + CMake Presets，补充 `find_program` 三端自动探测说明。
+- **`docs/faq.md`** — 删除 `soc_port_` / `osal_task_create_handle` 过时引用，新增 `task_manager_create_task` 与 `device_find_by_label` 排查章节，新增"业务任务与硬件解耦"异步邮局模式说明，C23 错误改为 C17 历史说明。
+
+---
+
+## [Historical]
+
+
+
 ### 新项目规划
 
-- **`ROADMAP.md`** — **新建**，新增项目路线图（含作者说明），两条路线：ESP32-S3 DSP 音频处理综合项目（LVGL + MQTT + DSP）和基于 CAN 的工业控制 / 汽车控制项目（AT32 + GD32/STM32），用于检验框架在 Xtensa 架构、高并发高实时场景下的适配与性能天花板
+- **`ROADMAP.md`** — **新建**，新增项目路线图，以异构多核项目（Heterogeneous-Multicore: STM32F407ZGT6 / CH32V307 / ESP32-S3 / i.MX6ULL）为参考实现，验证框架在 ARM Cortex-M / RISC-V RV32 / Xtensa LX 三类架构、Linux/Windows/Docker 三平台原生编译下的适配与跨平台一致性
 - **`FILE_INDEX.md`** — 新增 `ROADMAP.md` 索引项
 
 ### Linux DTS 源级兼容
@@ -34,13 +102,11 @@
 ### 双核 AMP 支持 (Asymmetric Multi-Processing)
 
 - **`Kconfig`** — 新增 `menu "Multi-core Configuration"` → `CPU_CORES`（默认 1，范围 1-2）。1 = 单核，2 = 双核 AMP 模式（Core 0 跑 RTOS，Core 1 跑裸机）
-- **`hal_if/include/hal_cpu.h`** — 新增 3 个 AMP 函数声明：`hal_cpu_secondary_startup()`、`hal_cpu_baremetal_entry()`、`hal_cpu_get_id()`
-- **`hal_if/src/hal_cpu_amp.c`** — **新建**，三个 weak 符号默认实现（副核入口死循环、启动空操作、核心 ID 返回 0）
-- **`hal_if/CMakeLists.txt`** — `CPU_CORES > 1` 时条件编译 `hal_cpu_amp.c`
-- **`osal/src/osal_freertos.c`**、`osal/src/osal_rtthread.c` — AMP 模式下 `core_id > 0` 自动回退到 Core 0 并打印警告
+- **`hal/cpu/hal_cpu.h`** — 新增 3 个 AMP 函数声明：`hal_cpu_secondary_startup()`、`hal_cpu_baremetal_entry()`、`hal_cpu_get_id()`
+- **`hal/cpu/hal_cpu_amp.c`** — **新建**，三个 weak 符号默认实现（副核入口死循环、启动空操作、核心 ID 返回 0）
+- **`hal/paths.cmake`** — `CPU_CORES > 1` 时条件编译 `hal_cpu_amp.c`
+- **`osal/src/osal_freertos.c`**、`osal/src/osal_rtthread.c`** — AMP 模式下 `core_id > 0` 自动回退到 Core 0 并打印警告
 - **`system_cpp/src/system_init.cpp`**、**`system_c/src/system_init.c`** — Phase 2 末尾调用 `hal_cpu_secondary_startup()`
-- **`examples/porting_template/hal_cpu.c`** — 添加 AMP 移植注释和 STM32H7/GD32/RISC-V 示例
-- **`config.example.h`** — 添加 `CONFIG_CPU_CORES` 示例注释
 
 ### C 修复
 
@@ -58,34 +124,12 @@
 - **`README.md`** — 新增"致谢与设计参考"章节，列出 LVGL、Linux、RT-Thread、Zephyr 等设计来源。
 - **`NOTICE.md` / `ARCHITECTURE.md`** — MPU/PMP、Power Management、64-bit 适配三条待优化项移至 `TODOLIST.md`。
 
-### mini-tree-example 示例工程加固
 
-- **`syscalls.c`** — `_sbrk` 堆栈碰撞检测：`heap_end + incr > &_estack - 4096` 时返回 `ENOMEM`，留 4KB 安全余量防止 newlib `malloc` 踩进栈
-- **`stm32f407zgt6.ld`** — CCM 64KB 上线：新增 `.ccm (NOLOAD)` 段，`__attribute__((section(".ccm")))` 可将 FreeRTOS `ucHeap`、关键任务栈或 ISR 数据放入零等待 SRAM
-- **`hal_stubs.c`** — 栈溢出钩子加固：`cpsid i` 锁死全局中断后再 `for (;;);`，任务栈溢出后系统立即冻结，不给 ISR 继续破坏的机会
 
 ### RT-Thread 端口修复
 
 - **`lib/rtthread/libcpu/arm/cortex-m7/context_gcc.S`** — HardFault_Handler FPU 现场修复：原实现仅压入占位 flag，未保存实际 FPU 寄存器 (d8-d15 / s16-s31)。对齐 CM4F 实现，增加 `TST lr, #0x10` 检查 EXC_RETURN bit4，FPU 活跃时 `VSTMDBEQ` 保存 d8-d15，再按 flag → exec_return 顺序压栈。修复后 FPU 异常现场可被 `rt_hw_hard_fault_exception` 完整捕获。
 - **`lib/rtthread/libcpu/arm/cortex-m4/cpuport.c`** — `rt_interrupt_enter/leave` 中断嵌套计数器修复：原实现为空桩（仅 hook + log），`rt_interrupt_nest` 全局计数器永不递增。补入 `extern volatile rt_atomic_t rt_interrupt_nest`，enter 做 `rt_atomic_add`，leave 做 `rt_atomic_sub`，与 `irq.c` 通用弱实现保持一致。CM7/CM3/RISC-V 端口无此问题（均走通用实现）。
-
-### Keil 工具链重构: ARMCC v5 → ARMCLANG (AC6)
-
-- **`Makefile`**: `TOOLCHAIN=keil5` 从 ARMCC v5 (`armcc`/`armasm`) 切换至 ARMCLANG AC6 (`armclang`)，与 keil6 共享同一 LLVM/Clang 后端
-- **`tools/gen_uvprojx.py`**: `.uvprojx` 生成目标从 ARMCC v5 改为 AC6，`MiscControls` 使用 GCC 风格 flags (`-std=c17 -Wall`)
-- **AC6 原生支持** — 无需 ARMCC v5 专用 workaround：
-  - GNU `.S` 汇编文件（`context_gcc.S` 等）不再跳过
-  - `enum class` / C++17 全量支持，`lifecycle.cpp`、`system_runtime.cpp` 恢复编译
-  - `__attribute__((constructor))` 原生支持
-  - `__atomic_*` 内置函数原生支持，删除 `compat/armcc/stdatomic.h` 存根
-  - FreeRTOS GCC 端口（GCC 内联汇编）可编译
-- **构建验证** — CM3+RTTHREAD / CM4F+FREERTOS / CM7+NULL 三种组合均通过 ARMCLANG 编译
-
-### Makefile 构建改进
-
-- **默认目标修复**: 新增 `.DEFAULT_GOAL := all`，`make` 裸命令正确构建全部库而非仅 config.h
-- **AC6 标准降级**: ARMCLANG 6.x 不支持 `-std=c23`，Kconfig 标准覆盖时自动降级 c23→c17、c++23→c++17
-- **自动检测**: keil5 工具链自动定位 `C:/Keil_v5/ARM/ARMCLANG/bin/armclang.exe` 和 `armar.exe`
 
 ### dtc-lite.py 优化
 
@@ -97,14 +141,13 @@
 ### OSAL & RT-Thread 修复
 
 - **`osal_rtthread.c`**: 适配 RT-Thread v5.x 内核 API。修复信号量/互斥量 count 访问、时基单位转换（OS ticks → RT-Thread `RT_TICK_PER_SECOND`）、OP和MQ默认初始化宏
-- **`osal.h`**: ARMCC v5 C++ 模式 `UINT32_MAX` 缺失兼容处理（AC6 切换后移除）
 - **`osal_freertos.c` / `osal_null.c`**: 同步信号量 count 类型适配
 
 ### 构建脚本硬化 — 全量类型注解 + argparse + 原子写入
 
 所有 `tools/` Python 脚本统一遵循两条安全基线：
 
-**原子写入**：生成 `.h`/`.c` 文件采用先写 `.tmp` 再 `shutil.move()` 替换的模式，防止中断留下残缺文件。写入前通过 `_write_if_changed()`/`_needs_update()` 做内容比对，内容不变时不动磁盘，保护 Makefile 时间戳避免雪崩重编。
+**原子写入**：生成 `.h`/`.c` 文件采用先写 `.tmp` 再 `shutil.move()` 替换的模式，防止中断留下残缺文件。写入前通过 `_write_if_changed()`/`_needs_update()` 做内容比对，内容不变时不动磁盘，保护构建时间戳避免雪崩重编。
 
 **显式类型注解**：每个函数/方法的参数、返回值、局部变量均显式标注类型，不依赖自动推导。
 
@@ -112,8 +155,6 @@
 |------|---------|
 | `genconfig.py` | 76 处 |
 | `post_build_crc.py` | 98 处 |
-| `gen_uvprojx.py` | 155 处 |
-| `p2s.py` | 70 处 |
 | `menuconfig.py` | 15 处 |
 | `dtc-lite.py` | ~1200 处 |
 
@@ -124,8 +165,6 @@
 - **`tools/genconfig.py`**: `argparse` 替换裸 `sys.argv`，`pathlib.Path` 替换 `os.path`，新增 `_atomic_write()` 和 `_needs_update()` 内容比对防抖
 - **`tools/dtc-lite.py`**: `argparse` 替换裸 `sys.argv`，`pathlib.Path` 替换 `os.path`，新增 `_atomic_write()`，移除未使用 `tempfile`/`OrderedDict` 导入
 - **`tools/post_build_crc.py`**: `pathlib.Path` 替换 `os.path`，新增 `_atomic_write()` + `_needs_update()`，提取 `_compute_crc()`/`_replace_in_file()`/`_write_new_header()` 辅助函数
-- **`tools/gen_uvprojx.py`**: 155 处显式类型注解（`scan_src()` → `List[str]`、`discover_sources()` → `Dict[str, List[str]]` 等）
-- **`tools/p2s.py`**: 70 处显式类型注解（`run_make()` → `int`、`show_combinations()` → `None` 等）
 - **`tools/menuconfig.py`**: 15 处显式类型注解（`main()` → `int` 等）
 
 ### C 修复

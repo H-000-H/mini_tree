@@ -2,10 +2,11 @@
 
 #include "system_cfg.h"
 #include "system_wdt.h"
+#include "compiler_compat_poison.h"
 
 static const char* kTag = "TaskManager";
 
-osal_task_handle_t task_manager_create(const board_task_config_t* config,
+osal_task_handle_t task_manager_create(const struct board_task_config* config,
                                        void (*entry)(void*), void* param)
 {
     if (entry == NULL || config == NULL)
@@ -33,7 +34,7 @@ osal_task_handle_t task_manager_create_task(const char* name, uint32_t stack_siz
                                             uint32_t priority, void (*entry)(void*),
                                             void* param, int core_id)
 {
-    board_task_config_t cfg = {0};
+    struct board_task_config cfg = {0};
     cfg.name = name ? name : "unknown";
     cfg.stack_size = stack_size;
     cfg.priority = priority;

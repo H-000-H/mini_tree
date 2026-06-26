@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "compiler_compat_poison.h"
 
 /*
  * 配置源缓冲区基地址与大小.
@@ -33,7 +34,7 @@ typedef enum
     CS_TYPE_STRING = 3,
 } cs_type_t;
 
-typedef struct
+struct cs_entry
 {
     char     key[32];
     cs_type_t type;
@@ -45,9 +46,9 @@ typedef struct
         char  s[64];
     } value;
     bool dirty;
-} cs_entry_t;
+};
 
-static cs_entry_t s_entries[MAX_ENTRIES];
+static struct cs_entry s_entries[MAX_ENTRIES];
 static int        s_entry_count;
 static int        s_health;
 static bool       s_storage_ready;
@@ -58,7 +59,8 @@ static config_store_write_hook_t s_write_hook = NULL;
  */
 static uint32_t crc32_le(uint32_t crc, const uint8_t* buf, uint32_t len)
 {
-    static const uint32_t kTable[256] = {
+    static const uint32_t kTable[256] =
+    {
         0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
         0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
         0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
@@ -121,7 +123,7 @@ static const char* find_json_value(const char* key)
 
     char search_pat[64];
     search_pat[0] = '"';
-    memcpy(search_pat + 1, key, key_len);
+    __builtin_memcpy(search_pat + 1, key, key_len);
     search_pat[key_len + 1] = '"';
     search_pat[key_len + 2] = ':';
     search_pat[key_len + 3] = '\0';
@@ -132,7 +134,7 @@ static const char* find_json_value(const char* key)
     return found + key_len + 3;
 }
 
-static cs_entry_t* find_entry(const char* key)
+static struct cs_entry* find_entry(const char* key)
 {
     for (int i = 0; i < s_entry_count; i++)
     {
@@ -142,15 +144,15 @@ static cs_entry_t* find_entry(const char* key)
     return NULL;
 }
 
-static cs_entry_t* add_entry(const char* key, cs_type_t type)
+static struct cs_entry* add_entry(const char* key, cs_type_t type)
 {
     if (s_entry_count >= MAX_ENTRIES) return NULL;
-    cs_entry_t* e = &s_entries[s_entry_count++];
+    struct cs_entry* e = &s_entries[s_entry_count++];
     strncpy(e->key, key, sizeof(e->key) - 1);
     e->key[sizeof(e->key) - 1] = '\0';
     e->type  = type;
     e->dirty = false;
-    memset(&e->value, 0, sizeof(e->value));
+    __builtin_memset(&e->value, 0, sizeof(e->value));
     return e;
 }
 
@@ -201,10 +203,10 @@ static bool load_factory_defaults(void)
         }
 
         char key_buf[32];
-        memcpy(key_buf, key_start, key_len);
+        __builtin_memcpy(key_buf, key_start, key_len);
         key_buf[key_len] = '\0';
 
-        cs_entry_t* e = add_entry(key_buf, type);
+        struct cs_entry* e = add_entry(key_buf, type);
         if (e)
         {
             switch (type)
@@ -218,14 +220,15 @@ static bool load_factory_defaults(void)
             case CS_TYPE_FLOAT:
                 e->value.f = (float)atof(val_start);
                 break;
-            case CS_TYPE_STRING: {
+            case CS_TYPE_STRING:
+            {
                 const char* q1 = strchr(val_start, '"');
                 const char* q2 = q1 ? strchr(q1 + 1, '"') : NULL;
                 if (q1 && q2)
                 {
                     size_t slen = (size_t)(q2 - q1 - 1);
                     if (slen >= sizeof(e->value.s)) slen = sizeof(e->value.s) - 1;
-                    memcpy(e->value.s, q1 + 1, slen);
+                    __builtin_memcpy(e->value.s, q1 + 1, slen);
                     e->value.s[slen] = '\0';
                 }
                 break;
@@ -246,12 +249,12 @@ static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
 
     for (int i = 0; i < s_entry_count; i++)
     {
-        cs_entry_t* e = &s_entries[i];
+        struct cs_entry* e = &s_entries[i];
         uint8_t key_len = (uint8_t)strlen(e->key);
         if (pos + 1 + key_len + 1 + 8 > buf_size) return false;
 
         buf[pos++] = key_len;
-        memcpy(buf + pos, e->key, key_len);
+        __builtin_memcpy(buf + pos, e->key, key_len);
         pos += key_len;
         buf[pos++] = (uint8_t)e->type;
 
@@ -263,9 +266,10 @@ static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
             buf[pos++] = (uint8_t)((e->value.i >> 16) & 0xFF);
             buf[pos++] = (uint8_t)((e->value.i >> 24) & 0xFF);
             break;
-        case CS_TYPE_FLOAT: {
+        case CS_TYPE_FLOAT:
+        {
             uint32_t bits;
-            memcpy(&bits, &e->value.f, sizeof(bits));
+            __builtin_memcpy(&bits, &e->value.f, sizeof(bits));
             buf[pos++] = (uint8_t)(bits & 0xFF);
             buf[pos++] = (uint8_t)((bits >> 8) & 0xFF);
             buf[pos++] = (uint8_t)((bits >> 16) & 0xFF);
@@ -275,11 +279,12 @@ static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
         case CS_TYPE_BOOL:
             buf[pos++] = e->value.b ? 1 : 0;
             break;
-        case CS_TYPE_STRING: {
+        case CS_TYPE_STRING:
+        {
             uint16_t slen = (uint16_t)strlen(e->value.s);
             buf[pos++] = (uint8_t)(slen & 0xFF);
             buf[pos++] = (uint8_t)((slen >> 8) & 0xFF);
-            memcpy(buf + pos, e->value.s, slen);
+            __builtin_memcpy(buf + pos, e->value.s, slen);
             pos += slen;
             break;
         }
@@ -304,14 +309,14 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
         if (pos + key_len > len || key_len >= 32) return false;
 
         char key[32];
-        memcpy(key, buf + pos, key_len);
+        __builtin_memcpy(key, buf + pos, key_len);
         key[key_len] = '\0';
         pos += key_len;
 
         if (pos >= len) return false;
         cs_type_t type = (cs_type_t)buf[pos++];
 
-        cs_entry_t* e = add_entry(key, type);
+        struct cs_entry* e = add_entry(key, type);
         if (!e) continue;
 
         switch (type)
@@ -324,13 +329,14 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
                        | ((int)buf[pos + 3] << 24);
             pos += 4;
             break;
-        case CS_TYPE_FLOAT: {
+        case CS_TYPE_FLOAT:
+        {
             if (pos + 4 > len) return false;
             uint32_t bits = (uint32_t)buf[pos]
                           | ((uint32_t)buf[pos + 1] << 8)
                           | ((uint32_t)buf[pos + 2] << 16)
                           | ((uint32_t)buf[pos + 3] << 24);
-            memcpy(&e->value.f, &bits, sizeof(e->value.f));
+            __builtin_memcpy(&e->value.f, &bits, sizeof(e->value.f));
             pos += 4;
             break;
         }
@@ -338,13 +344,14 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
             if (pos >= len) return false;
             e->value.b = (buf[pos++] != 0);
             break;
-        case CS_TYPE_STRING: {
+        case CS_TYPE_STRING:
+        {
             if (pos + 2 > len) return false;
             uint16_t slen = (uint16_t)buf[pos] | ((uint16_t)buf[pos + 1] << 8);
             pos += 2;
             if (pos + slen > len) return false;
             if (slen >= sizeof(e->value.s)) slen = (uint16_t)(sizeof(e->value.s) - 1);
-            memcpy(e->value.s, buf + pos, slen);
+            __builtin_memcpy(e->value.s, buf + pos, slen);
             e->value.s[slen] = '\0';
             pos += slen;
             break;
@@ -377,7 +384,7 @@ static bool load_from_storage(uint8_t slot)
     if (len < 6) return false;
 
     uint32_t stored_crc;
-    memcpy(&stored_crc, buf, sizeof(stored_crc));
+    __builtin_memcpy(&stored_crc, buf, sizeof(stored_crc));
 
     uint32_t calc_crc = crc32_le(0, buf + 4, (uint32_t)(len - 4));
     if (stored_crc != calc_crc)
@@ -408,7 +415,7 @@ static bool save_to_storage(uint8_t slot)
     if (!blob_serialize(buf + 4, BLOB_MAX - 4, &out_len)) return false;
 
     uint32_t crc = crc32_le(0, buf + 4, (uint32_t)out_len);
-    memcpy(buf, &crc, sizeof(crc));
+    __builtin_memcpy(buf, &crc, sizeof(crc));
     out_len += 4;
 
     if (!hal_storage_write_blob(slot, buf, out_len)) return false;
@@ -447,7 +454,7 @@ bool config_store_init(void)
 
 bool config_store_get_bool(const char* key, bool default_value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (e && e->type == CS_TYPE_BOOL) return e->value.b;
 
     const char* value = find_json_value(key);
@@ -461,7 +468,7 @@ bool config_store_get_bool(const char* key, bool default_value)
 
 int config_store_get_int(const char* key, int default_value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (e && e->type == CS_TYPE_INT) return e->value.i;
 
     const char* value = find_json_value(key);
@@ -470,7 +477,7 @@ int config_store_get_int(const char* key, int default_value)
 
 float config_store_get_float(const char* key, float default_value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (e && e->type == CS_TYPE_FLOAT) return e->value.f;
 
     const char* value = find_json_value(key);
@@ -479,7 +486,7 @@ float config_store_get_float(const char* key, float default_value)
 
 const char* config_store_get_string(const char* key, const char* default_value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (e && e->type == CS_TYPE_STRING) return e->value.s;
 
     const char* value = find_json_value(key);
@@ -492,7 +499,7 @@ const char* config_store_get_string(const char* key, const char* default_value)
 
 bool config_store_set_bool(const char* key, bool value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (!e) e = add_entry(key, CS_TYPE_BOOL);
     if (!e) return false;
     e->type = CS_TYPE_BOOL;
@@ -503,7 +510,7 @@ bool config_store_set_bool(const char* key, bool value)
 
 bool config_store_set_int(const char* key, int value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (!e) e = add_entry(key, CS_TYPE_INT);
     if (!e) return false;
     e->type = CS_TYPE_INT;
@@ -514,7 +521,7 @@ bool config_store_set_int(const char* key, int value)
 
 bool config_store_set_float(const char* key, float value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (!e) e = add_entry(key, CS_TYPE_FLOAT);
     if (!e) return false;
     e->type = CS_TYPE_FLOAT;
@@ -525,7 +532,7 @@ bool config_store_set_float(const char* key, float value)
 
 bool config_store_set_string(const char* key, const char* value)
 {
-    cs_entry_t* e = find_entry(key);
+    struct cs_entry* e = find_entry(key);
     if (!e) e = add_entry(key, CS_TYPE_STRING);
     if (!e) return false;
     e->type = CS_TYPE_STRING;
@@ -593,3 +600,4 @@ int config_store_health(void)
 {
     return s_health;
 }
+

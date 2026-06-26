@@ -5,16 +5,19 @@
 开启 `CONFIG_BUILD_DISASM=y`：
 
 ```bash
-cmake -B build -DCONFIG_BUILD_DISASM=y
-cmake --build build
-ls build/disasm/
-# algorithm.lst  board.lst  core.lst  hal_if.lst  osal.lst  system.lst
+cmake --preset Debug -DCONFIG_BUILD_DISASM=y
+cmake --build build/Debug
+ls build/Debug/disasm/
+# algorithm.lst  board.lst  core.lst  hal.lst  osal.lst  system.lst
 ```
 
+> 反汇编 `.lst` 路径在 `<build_dir>/<preset>/disasm/` 下，由 `mini_tree/cmake/disasm.cmake` 通过 `mini_tree_add_disasm_postbuild()` 注入到具体项目的 POST_BUILD 阶段。`hal.lst` 包含 `hal/hal_if_dummy.c`、`hal/cpu/hal_cpu_amp.c`、`hal/pwm/hal_pwm.c` 以及具体项目提供的 `HAL_SRCS`。
+
 审查要点：
-- BufferPool 无锁分配的原子指令 (`lock cmpxchg`)
-- `__builtin_ctz` 的前导零扫描 (`bsf` / `clz`)
+- BufferPool 无锁分配的原子指令 (`lock cmpxchg` / RV32 `amoswap`)
+- `__builtin_ctz` 的前导零扫描（ARM `rbit+clz` / RISC-V `ctz`）
 - 编译器是否内联了关键路径上的小函数
+- C++ `fno-rtti` / `fno-exceptions` 后是否仍残留 RTTI 符号
 
 ### 10.2 安全监控
 
@@ -41,12 +44,16 @@ ARM Cortex-M 硬故障关键寄存器：
 定位步骤：
 
 1. 从调试器提取 `PC` 值
-2. `arm-none-eabi-objdump -S build/board/src/board_device.lst`
+2. 反查反汇编 `.lst`：
+   - STM32：`arm-none-eabi-objdump -S build/Debug/disasm/hal.lst`
+   - CH32V307：`riscv32-wch-elf-objdump -S build/Debug/disasm/hal.lst`
 3. 在 `.lst` 中搜索 `PC` 地址定位源码行
 
-### 10.4 烧录与调试 (CMake / Makefile 路线)
+> RISC-V (CH32V307) 异常寄存器：`mepc`（异常 PC）、`mcause`（异常原因）、`mtval`（异常值）。
 
-CMake/Makefile 构建产出的 `.elf` 通过以下两条路线烧录调试。Keil 路线见 [Keil MDK 集成说明](keil_integration.md)。
+### 10.4 烧录与调试 (CMake 路线)
+
+CMake 构建产出的 `.elf` 通过以下路线烧录调试。
 
 #### 路线 A：Cortex-Debug 插件 (主流推荐)
 
@@ -64,12 +71,12 @@ VS Code 的 **Cortex-Debug** 插件（绿色瓢虫图标）提供图形化调试
         "interface": "swd",
         "runToMain": true,
         "svdFile": "path/to/your_chip.svd",
-        "executable": "${workspaceFolder}/build/demo.elf"
+        "executable": "${workspaceFolder}/build/Debug/ch307_node.elf"
     }]
 }
 ```
 
-CMake 与 Makefile 的 .elf 输出路径不同（`build/` vs `build_make/`），按实际路径修改 `executable` 指向。
+CMake 的 .elf 输出路径在 `build/<preset>/` 下，按实际路径修改 `executable` 指向（如 `build/Debug/ch307_node.elf`）。
 
 配置好后 F5 启动调试，打断点、看外设寄存器、变量监视全在 VS Code 界面内完成。
 
@@ -78,12 +85,17 @@ CMake 与 Makefile 的 .elf 输出路径不同（`build/` vs `build_make/`），
 无插件或 CI 环境下使用：
 
 ```bash
-# 以目标芯片为例，替换为实际芯片配置
-openocd -f interface/stlink.cfg -f target/your_chip_target.cfg
-```
+# STM32 (ARM): OpenOCD + arm-none-eabi-gdb
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+arm-none-eabi-gdb build/Debug/demo.elf \
+    -ex "target remote :3333" \
+    -ex "monitor reset halt" \
+    -ex "load" \
+    -ex "continue"
 
-```bash
-arm-none-eabi-gdb build/demo.elf \
+# CH32V307 (RISC-V): wch-openocd + riscv32-wch-elf-gdb
+wch-openocd -f interface/cmsis-dap.cfg -f target/riscv.cfg
+riscv32-wch-elf-gdb build/Debug/ch307_node.elf \
     -ex "target remote :3333" \
     -ex "monitor reset halt" \
     -ex "load" \
@@ -138,3 +150,16 @@ void test_eventbus(void)
     assert(received);
 }
 ```
+
+### 10.6 业务任务调试技巧
+
+业务任务通过 `task_manager_create_task()` 创建并自动订阅 TWDT，调试时可借助以下机制：
+
+| 现象 | 排查方向 |
+|------|----------|
+| 3 秒后复位（TWDT 触发） | 任务死循环或 `device_read` 阻塞超时；检查是否调用 `system_wdt_feed()` |
+| 设备找不到（`IS_ERR(dev)`） | DTS 未定义该 `label`，或 `status="disabled"`；查 `device_get_status(dev)` |
+| `device_open` 返回 `VFS_ERR_BUSY` | 设备已被其他任务打开且未关闭；检查 `ref_count` |
+| `device_ioctl` 返回 `VFS_ERR_INVAL` | `cmd` 不支持或 `arg_len` 不匹配；查驱动 `ops->ioctl` 实现 |
+| 任务创建后立即删除 | `task_manager_create_task` 返回 NULL；查 stack_size 是否过大（SRAM 不够） |
+| SPI 收包后 `dispatch` 不到 handler | 命令名拼写不一致；`app_cmd_handlers_register()` 未在 `start_tasks` 前调用 |

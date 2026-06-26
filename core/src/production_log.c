@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "compiler_compat_poison.h"
 
 /* ═══════════════════════════════════════════════════════════════════
  * CONFIG_PRODUCTION_LOG — 启用时通过 hal_storage 持久化
@@ -16,14 +17,15 @@
 /* 持久化快照: 将环形缓冲区 + 元数据打包为单个 blob */
 #define PROD_LOG_STORAGE_SLOT  0
 
-typedef struct
+struct prod_log_persist
+
 {
     uint16_t head;
     uint32_t seq;
-    prod_log_entry_t ring[PROD_LOG_SLOT_COUNT];
-} prod_log_persist_t;
+    struct prod_log_entry ring[PROD_LOG_SLOT_COUNT];
+};
 
-static prod_log_persist_t s_state;
+static struct prod_log_persist s_state;
 static bool s_ready = false;
 
 int production_log_init(void)
@@ -42,7 +44,7 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
 {
     if (!s_ready) return;
 
-    prod_log_entry_t* e = &s_state.ring[s_state.head];
+    struct prod_log_entry* e = &s_state.ring[s_state.head];
     e->seq       = s_state.seq++;
     e->timestamp = 0;
     e->level     = (uint8_t)level;
@@ -81,7 +83,7 @@ int production_log_count(void)
     return PROD_LOG_SLOT_COUNT;
 }
 
-const prod_log_entry_t* production_log_get(int index)
+const struct prod_log_entry* production_log_get(int index)
 {
     if (index < 0 || index >= PROD_LOG_SLOT_COUNT) return NULL;
     return &s_state.ring[index];
@@ -98,7 +100,7 @@ void production_log_dump(void (*sink)(const char* line))
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
     {
         int idx = (oldest + i) % PROD_LOG_SLOT_COUNT;
-        const prod_log_entry_t* e = &s_state.ring[idx];
+        const struct prod_log_entry* e = &s_state.ring[idx];
         if (e->seq == 0 && e->msg[0] == '\0') continue;
 
         const char* lvl_str = "?";
@@ -138,7 +140,7 @@ int production_log_count(void)
     return 0;
 }
 
-const prod_log_entry_t* production_log_get(int index)
+const struct prod_log_entry* production_log_get(int index)
 {
     (void)index;
     return NULL;

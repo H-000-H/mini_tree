@@ -1,5 +1,6 @@
 #include "task_utils.h"
 #include "osal.h"
+#include "compiler_compat_poison.h"
 
 void* board_task_create(const char* name, uint32_t stack_size,
                         uint32_t priority, board_task_entry_t entry,

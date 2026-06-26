@@ -3,7 +3,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 /* ── 裸机移植辅助接口 ──
@@ -24,6 +25,8 @@ extern "C" {
  *       // ... 处理 ...
  *       osal_null_isr_exit();
  *   }
+ *
+ * 原子后端在 menuconfig → OSAL Backend → Bare-metal Atomic Backend 配置.
  */
 
 /* 在 ISR 入口调用 (设置 osal_in_isr() 为 true) */
@@ -38,3 +41,4 @@ void osal_null_systick_handler(void);
 #ifdef __cplusplus
 }
 #endif
+

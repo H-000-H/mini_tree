@@ -26,6 +26,8 @@ target_include_directories(core
         "${KCONFIG_GEN_DIR}"
     PRIVATE
         "${PROJECT_SOURCE_DIR}/system_cpp/include"
+        "${PROJECT_SOURCE_DIR}/hal_bus/include"
+        "${PROJECT_SOURCE_DIR}/hal_inst/include"
         "${PROJECT_SOURCE_DIR}/hal_if/include"
 )
 

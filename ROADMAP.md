@@ -3,31 +3,42 @@
 > **作者前言**
 >
 > 本人学习和生活方面依然要兼顾，不可能一直按理论盯着代码哪里会犯病然后去优化。所谓实践出真理——会在移植项目过程中完成架构的综合性修改。
->
-> 大家不用担心这两个任务是简单 demo，作者承诺：一定是开最高的频率去跑，在不影响成品的基础上尽量多开任务，测试 VFS 表和直接操作寄存器（fast path）**到底满了多少**（瓶颈天花板在哪），并且代码带注释发布在 `examples/` 下。
 
 ---
 
-## 项目一：ESP32-S3 DSP 音频处理综合项目
+## 参考实现：异构多核项目（Heterogeneous-Multicore）
 
-- **平台**：ESP32-S3（Xtensa LX7 双核）
-- **技术栈**：LVGL + MQTT + DSP 音频处理
-- **目标**：
-  - 检测框架对 Xtensa 架构特殊特性（LX7 双核、cache 体系、硬件加速器等）的适配能力
-  - 全速运行（开最高频率），在保证成品效果的前提下尽可能多开任务
-  - 实测 VFS 表与直接操作寄存器（fast path）**性能天花板在哪，满了多少**
-  - 测试高并发高实时场景下架构的稳定性
-  - 所有代码带注释，发布在 `examples/` 下
-- **意义**：实践出真理，在移植过程中完成架构的综合性修改，检验这套框架能否驾驭 ESP32-S3 这种非 ARM 的 DSP 场景
+mini_tree 不再维护独立的 `examples/` 展示工程，改为以一个**真实在做的异构多核项目**作为参考实现，在移植过程中完成架构的综合性修改与验证。
 
-## 项目二：基于 CAN 的工业控制 / 汽车控制项目
+| 节点 | 架构基准 | 角色 | 支持平台 |
+|------|---------|------|---------|
+| **STM32F407ZGT6** | ARM Cortex-M4F（通用基准） | 实时控制层（PID/PWM/DMA/CAN 心跳） | Linux / Windows / Docker |
+| **CH32V307** | RISC-V RV32（通用基准） | 网关层（CAN 路由 / Flash OTA / 流量整形） | Linux / Windows / Docker |
+| **ESP32-S3** | Xtensa LX7（异构架构） | USB CDC-ECM 虚拟网卡 + SPI FFT 协处理器 | Linux / Windows（不走 Docker） |
+| **i.MX6ULL** | ARM Cortex-A7（应用层） | LVGL UI / MQTT Broker / SocketCAN 网关 | Linux BSP（Yocto） |
 
-- **平台组合**：AT32 + GD32/STM32 搭配
-- **技术栈**：CAN 总线 + 工业 / 汽车控制
-- **目标**：
-  - 展示全平台芯片支持能力（AT32 + GD32/STM32 混合方案）
-  - 高时钟频率、高并发、高实时场景下检验架构**到底能不能经受住检验**
-  - 在作者能力范围内向工业界靠拢——代码写法、安全性设计均按工业级标准
-  - 实测 VFS 表与直接操作寄存器（fast path）**瓶颈满了多少**
-  - 所有代码带注释，发布在 `examples/` 下
-- **意义**：证明架构在工业 / 汽车领域的高实时要求下依然可靠，不只是简单 demo
+### 验证目标
+
+- 检验框架对 **ARM / RISC-V / Xtensa** 三类架构的统一适配能力
+- ESP32-S3 全速运行（开最高频率），在保证成品效果的前提下尽可能多开任务
+- 实测 VFS 表与直接操作寄存器（fast path）**性能天花板在哪，满了多少**
+- 高时钟频率、高并发、高实时场景下检验架构**到底能不能经受住检验**
+- CAN 总线跨节点通信可靠性、OTA 双区升级、工业级安全与故障自愈
+
+### 构建验证
+
+三节点均要求在 **Linux 与 Windows** 双端原生可编译：
+
+```bash
+# ARM (STM32F407) / RISC-V (CH32V307) — 走 Docker / Linux 原生 / Windows 原生
+./build.sh stm32 -native    # 或 -docker
+./build.sh ch32   -native    # 或 -docker
+
+# ESP32-S3 — 仅走原生 Linux / Windows（ESP-IDF 官方双端，不走 Docker）
+./build.sh esp32  -native
+```
+
+### 意义
+
+- 验证 ESP32 异构架构通过原生 Linux/Windows 工具链接入的可行性，无需 Docker 依赖
+

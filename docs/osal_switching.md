@@ -1,14 +1,13 @@
 ## 14. OSAL 后端切换注意事项（重要）
 
-> 本章总结在 [mini-tree-example](https://github.com/H-000-H/mini-tree-example) (STM32F407ZGT6) 上切换 OSAL 后端时踩过的坑。
-> CM3 平台可参考 [stm32f103c8t6_cubemx_test](https://github.com/H-000-H/mini-tree-example/tree/master/stm32f103c8t6_cubemx_test) 中的 OSAL_NULL 裸机配置。
-> 在其它平台/RTOS 版本上移植时同样适用——每一条都曾导致"LED 常量"级别的硬故障。
+> 本章总结在 ARM Cortex-M 平台（Cortex-M3/M4F/M7）上切换 OSAL 后端时踩过的坑。
+> 这些经验在其它架构/RTOS 版本上移植时同样适用——每一条都曾导致"LED 常量"级别的硬故障。
 
 ### 14.1 NVIC 优先级移位（FreeRTOS 常量亮的元凶）
 
 **现象：** FreeRTOS `xPortStartScheduler()` 内部断言失败 → 系统卡死 → LED 常量。
 
-**成因：** STM32F407 的 NVIC 只实现 4 位优先级（16 级），但 FreeRTOS
+**成因：** 多数 Cortex-M3/M4 的 NVIC 只实现 4 位优先级（16 级），但 FreeRTOS
 `configMAX_SYSCALL_INTERRUPT_PRIORITY` 在 8 位优先级假设下被写入寄存器。
 实际硬件只取高 4 位，低 4 位被忽略。
 
@@ -33,7 +32,7 @@
 
 **排查清单：**
 
-1. 查芯片参考手册确定 `NVIC_PRIO_BITS`（STM32F1/F2/F4 = 4, STM32H5/H7/H7R = 4, 大部分商用 M3/M4/M7 = 3~4；仅少部分非 ST 的 M7 实现 8 位）
+1. 查芯片参考手册确定 `NVIC_PRIO_BITS`（大部分商用 Cortex-M3/M4/M7 = 3~4 位；少部分 Cortex-M7 实现完整 8 位）
 2. `configMAX_SYSCALL_INTERRUPT_PRIORITY` 必须等于 `configLIBRARY_... << (8 - NVIC_PRIO_BITS)`
 3. 调试器读出 `SHPR2/SHPR3` 寄存器确认写入值符合预期
 4. 若串口可用，使能 `configASSERT` 看断言信息
@@ -124,9 +123,11 @@ void SysTick_Handler(void)
 
 ```bash
 rm -rf build
-cmake -B build -G "MinGW Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain_arm_cm4f.cmake
-cmake --build build
+cmake --preset Debug              # 工具链文件由 CMakePresets.json 自动选择
+cmake --build build/Debug
 ```
+
+> 各节点的工具链文件位于 `项目根/cmake/` 下：STM32F407 → `gcc-arm-none-eabi.cmake`，CH32V307 → `riscv32-wch-elf-ch32v307.cmake`。三端（Docker/Linux/Windows）的编译器路径探测由工具链文件内的 `find_program` 自动处理。
 
 > 习惯上：每次改 `.config` 后先删 `build/` 再重新 configure。
 
@@ -186,19 +187,34 @@ system (编译 safe_state.c 需要 FreeRTOS.h)
 - `hal_delay_ms` 依赖 `hal_delay_init()` 开启 DWT_CYCCNT，Phase 1 前必须调用
 
 ```c
-int main(void)
-{
-    platform_init();
+pre_execution(50)
+static void board_periph_init(void) {
+    MX_*_Init();                    // 厂商外设初始化
     hal_delay_init();               // ← 必须！否则 hal_delay_* 卡死
+}
 
-    mini_tree_pre_os_init();
+extern "C" __attribute__((used, section(".entry"))) int my_node_main(void)
+{
+    HAL_Init();
+    SystemClock_Config();
+
+    mini_tree_pre_os_init();        // Phase 1
 
     // Phase 1 — 只能用 hal_delay_*
     hal_delay_ms(100);
 
-    osal_task_create("work", 512, 2, work_task, NULL, 0);
-    system_init_complete();
-    vTaskStartScheduler();
+    board_register_all_drivers();
+    mini_tree_start_tasks();        // Phase 2
+
+    // Phase 2 后创建业务任务 (推荐用 task_manager_create_task)
+    task_manager_create_task("work", 512, 2, work_task, NULL, 0);
+
+    system_init_complete();         // 释放全局中断
+#if CONFIG_OSAL_NULL
+    while (1) { mini_tree_system_loop(); }
+#else
+    task_rtos_main();               // 封装 vTaskStartScheduler()
+#endif
 }
 
 void work_task(void* param)

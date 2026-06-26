@@ -4,9 +4,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "compiler_compat.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 #define PROD_LOG_SLOT_COUNT 32
@@ -20,25 +22,26 @@ typedef enum
     PROD_LOG_INFO  = 2,
 } prod_log_level_t;
 
-typedef struct
+struct prod_log_entry
+
 {
     uint32_t seq;
     uint32_t timestamp;
     uint8_t  level;
     char     tag[PROD_LOG_TAG_LEN];
     char     msg[PROD_LOG_MSG_LEN];
-} prod_log_entry_t;
+};
 
 int  production_log_init(void);
 
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg);
 
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
-    __attribute__((format(printf, 3, 4)));
+    COMPAT_FMT_PRINTF(3, 4);
 
 int  production_log_count(void);
 
-const prod_log_entry_t* production_log_get(int index);
+const struct prod_log_entry* production_log_get(int index);
 
 void production_log_dump(void (*sink)(const char* line));
 

@@ -11,11 +11,11 @@
                              [--algo crc32]
 
     # 传统 ESP-IDF 兼容模式 (位置参数):
-    python post_build_crc.py firmware.bin board_config.h
+    python post_build_crc.py firmware.bin system_scrubber_crc_gen.h
 
-输出示例 (crc_config.h):
-    #ifndef FIRMWARE_CRC_BASELINE
-    #define FIRMWARE_CRC_BASELINE 0xA1B2C3D4
+输出示例 (system_scrubber_crc_gen.h):
+    #ifndef SYSTEM_SCRUBBER_CRC_BASELINE
+    #define SYSTEM_SCRUBBER_CRC_BASELINE 0xA1B2C3D4
     #endif
 """
 
@@ -106,8 +106,8 @@ def main() -> None:
     parser.add_argument("--input", "-i", type=Path, help="Input binary file")
     parser.add_argument("--output", "-o", type=Path, help="Output C header file (omit for stdout)")
     parser.add_argument(
-        "--define", "-d", default="FIRMWARE_CRC_BASELINE",
-        help="C macro name (default: FIRMWARE_CRC_BASELINE)",
+        "--define", "-d", default="SYSTEM_SCRUBBER_CRC_BASELINE",
+        help="C macro name (default: SYSTEM_SCRUBBER_CRC_BASELINE)",
     )
     parser.add_argument(
         "--algo", default="crc32", choices=list(ALGOS),

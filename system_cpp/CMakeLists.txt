@@ -29,6 +29,8 @@ target_include_directories(system
     PUBLIC
         "include"
     PRIVATE
+        "${PROJECT_SOURCE_DIR}/hal_bus/include"
+        "${PROJECT_SOURCE_DIR}/hal_inst/include"
         "${PROJECT_SOURCE_DIR}/hal_if/include"
 )
 

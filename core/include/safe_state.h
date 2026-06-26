@@ -3,7 +3,8 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 /*
@@ -38,3 +39,4 @@ void safe_state_nmi_emergency_stamp(void);
 #ifdef __cplusplus
 }
 #endif
+

@@ -6,7 +6,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 /*
@@ -39,7 +40,8 @@ int config_store_health(void);
  * 若不注册，config_store_commit() 将使用默认的 hal_storage 路径。
  *
  * 用法:
- *   static bool my_write(const uint8_t* data, size_t len) {
+ *   static bool my_write(const uint8_t* data, size_t len)
+ {
  *       return my_flash_write(0x1000, data, len);
  *   }
  *   config_store_register_write_hook(my_write);
