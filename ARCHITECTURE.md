@@ -294,9 +294,9 @@ Kconfig 源文件 (.config)
 
 ## 7. 跨平台验证矩阵
 
-> 本架构以 ARM Cortex-M 与 RISC-V RV32 为通用基准，支持 Linux / Windows / Docker 三平台原生编译。ESP32（Xtensa LX）作为异构架构通过原生 Linux / Windows 工具链接入（ESP-IDF 官方双端支持，不走 Docker），不参与下表通用基准验证。
+> 本架构以 ARM Cortex-M 与 RISC-V RV32 为通用基准。主开发与验证环境为 **Linux**（原生 / Docker），同时作为通用中间件，**Windows 原生编译同样可用**。ESP32（Xtensa LX）作为异构架构通过原生 Linux / Windows 工具链接入（ESP-IDF 官方双端支持，不走 Docker），不参与下表通用基准验证。
 >
-> 下表"工具链"列标注的是 Docker 镜像内置版本（ARM GCC 14.2.1 / RISC-V GCC 8.2.0）。Windows 原生编译使用 ARM GCC 13.3.1 (STM32CubeCLT 1.20.0) / RISC-V GCC 15.2.0 (MounRiver GCC15)，参考实现验证表见下方。
+> 下表"工具链"列标注的是 Linux 环境版本（ARM GCC 14.2.1 / RISC-V GCC 8.2.0 WCH）。Windows 原生编译使用 ARM GCC 13.3.1 (STM32CubeCLT 1.20.0) / RISC-V GCC 15.2.0 (MounRiver GCC15)，参考实现验证表见下方。
 
 | 系统后端 | OSAL 后端 | 架构 | 工具链 | 状态 |
 |---------|-----------|------|--------|------|
@@ -324,7 +324,7 @@ Kconfig 源文件 (.config)
 
 ### 工具链版本
 
-> 下表区分三平台实际版本。Linux native (WSL) 为主开发环境，Docker 镜像内置版本用于 CI 复现，Windows 原生版本为兼容性验证实测值。`find_program` 三端自动探测，任一可用版本均可编译。
+> 下表区分各平台实际版本。Linux native (WSL) 为主开发环境，Docker 镜像内置版本用于 CI 复现。Windows 原生版本为兼容性验证实测值，作为通用中间件同样可用。`find_program` 三端自动探测，任一可用版本均可编译。
 
 | 工具链 | Linux native (WSL) | Docker 版本 | Windows 原生版本 (实测) | C 标准 | C++ 标准 | 备注 |
 |--------|-------------------|------------|----------------------|--------|---------|------|
