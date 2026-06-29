@@ -2,15 +2,15 @@
 
 ## 开发平台策略
 
-为兼顾 Linux 服务端工具链与 MCU 交叉编译的平衡，并彻底解决 Windows 原生环境下多套工具链（ARM GCC / RISC-V GCC / Xtensa GCC / MinGW）的路径冲突与版本碎片化问题，**作者已将主开发环境迁移至 WSL（Windows Subsystem for Linux）这一纯 Linux 开发环境**。
+项目现已全面转向 **Linux 环境**（原生 Linux / WSL / Docker）作为主开发与验证平台，以兼顾 Linux 服务端工具链与 MCU 交叉编译的平衡，并彻底解决 Windows 原生环境下多套工具链（ARM GCC / RISC-V GCC / Xtensa GCC / MinGW）的路径冲突与版本碎片化问题。
 
-各平台的定位如下：
+同时，由于 `mini_tree` 是**通用嵌入式中间件**，核心层与环境无关，仅依赖 CMake + GCC 工具链和标准 C/C++，**Windows 原生编译同样可用**。各平台的定位如下：
 
 | 平台 | 状态 | 定位 |
 |------|------|------|
-| **WSL / Linux 原生** | 主开发环境 | 作者日常开发与 CI 验证的基准环境，工具链通过系统包管理器统一安装，路径与版本完全可控 |
-| **Windows 原生** | 半支持 | 仅作为跨平台兼容性验证入口（通过 `find_program` 三端自动探测工具链），可编译但非主开发路径 |
-| **Docker** | 可选 | 通过 `build.sh -docker` 一键复现 Linux 环境，适合无 WSL 的贡献者 |
+| **Linux 原生 / WSL** | 主开发环境 | 作者日常开发与 CI 验证的基准环境，工具链通过系统包管理器统一安装，路径与版本完全可控 |
+| **Docker** | 可选 | 通过 `build.sh -docker` 一键复现 Linux 环境，适合无 Linux/WSL 的贡献者 |
+| **Windows 原生** | 可用 | 作为通用中间件，同样支持 Windows 原生编译（通过 `find_program` 三端自动探测工具链），可编译但非主开发路径 |
 | **Keil (MDK / ARMCC)** | 已废弃 | **本中间件移除 Keil 支持，且不推荐使用该开发方式** |
 
 ### 关于 Keil 的说明
@@ -26,20 +26,34 @@ Keil（MDK-ARM / ARMCC / AC5 / AC6）**天生不属于本套系统**，原因如
 
 ## 环境搭建
 
+### 推荐 Linux 发行版
+
+> 主开发环境为 Linux，但并非所有 Linux 环境都适合嵌入式交叉编译与硬件烧录。以下为作者实际使用后的推荐与避坑：
+
+| 环境 | 推荐度 | 说明 |
+|------|--------|------|
+| **LMDE** (Linux Mint Debian Edition) | ✅ 推荐 | 轻量、稳定、基于 Debian，资源占用低，虚拟机运行流畅不卡顿。APT 包管理器与 Debian 工具链无缝对接 |
+| **Debian** (稳定版) | ✅ 推荐 | 与 LMDE 同源，适合纯命令行或轻量桌面 |
+| **其他轻量级虚拟机** (Xubuntu / Lubuntu / Linux Lite) | ✅ 可以 | 资源占用小的发行版均可，虚拟机跑起来不卡即可 |
+| **Ubuntu** (标准版) | ❌ 不推荐 | 体积大、GNOME 桌面重，虚拟机里又大又卡，影响开发体验 |
+| **WSL** (Windows Subsystem for Linux) | ❌ 不推荐 | 嵌入式烧录需要直接操作 USB 串口、J-Link/ST-Link 等硬件调试器，WSL 对 USB 直通支持不稳定，烧录流程经常挂，折腾成本高 |
+
+> **总结**：嵌入式开发建议直接上虚拟机安装轻量级 Linux 发行版（首选 **LMDE**），USB 直通稳定、工具链一条龙、不会卡。不建议在 WSL 里折腾烧录，也别在虚拟机里跑 Ubuntu——太重了。
+
 ### 工具链
 
-| 目标                            | 工具链                                     | 安装指引                                                |
-| ----------------------------- | --------------------------------------- | --------------------------------------------------- |
-| ARM Cortex-M3/4/7 (STM32F407) | Docker: ARM GCC 14.2.1 / Windows 原生: ARM GCC 13.3.1 (STM32CubeCLT 1.20.0) | ST 官方 STM32CubeCLT 安装包                              |
-| RISC-V RV32 (CH32V307)        | Docker: RISC-V GCC 8.2.0 / Windows 原生: RISC-V GCC 15.2.0 (WCH MounRiver Studio GCC15) | 沁恒 MounRiver Studio 2 自带                            |
-| ESP32 (Xtensa LX)             | Xtensa GCC (随 ESP-IDF v5.5.2)                  | ESP-IDF 安装包Linux/Windows 部署（不走 Docker(原生就自带docker)） |
-| Host 编译验证                     | MinGW 8.1.0 (Windows) / GCC (Linux)     | 系统包管理器                                              |
+| 目标                            | 工具链 (Linux 主环境)                      | Windows 也支持                                       | 安装指引                                                |
+| ----------------------------- | --------------------------------------- | -------------------------------------------------- | --------------------------------------------------- |
+| ARM Cortex-M3/4/7 (STM32F407) | Linux: ARM GCC 14.2.1 (系统包) / Docker: ARM GCC 14.2.1 | ARM GCC 13.3.1 (STM32CubeCLT 1.20.0)                | ST 官方 STM32CubeCLT 安装包                              |
+| RISC-V RV32 (CH32V307)        | Linux: RISC-V GCC (WCH 工具链) / Docker: RISC-V GCC 8.2.0 | RISC-V GCC 15.2.0 (WCH MounRiver Studio GCC15)      | 沁恒 MounRiver Studio 2 自带                            |
+| ESP32 (Xtensa LX)             | Xtensa GCC (随 ESP-IDF v5.5.2+)                  | Xtensa GCC (随 ESP-IDF v5.5.2+)                     | ESP-IDF 安装包 Linux/Windows 部署（不走 Docker） |
+| Host 编译验证                     | GCC (Linux) / MinGW 8.1.0 (Windows)      | MinGW 8.1.0                                        | 系统包管理器                                              |
 
 > 工具链路径由各节点的 `cmake/*.cmake` 文件通过 `find_program` 三端自动探测（Docker `/opt` → Linux 标准路径 → Windows 标准路径 → PATH），无需手动设置环境变量。
 
 ### 构建验证
 
-通过项目根目录的 `build.sh` 统一入口（默认 Docker，`-native` 强制宿主原生）：
+通过项目根目录的 `build.sh` 统一入口（默认 Docker，`-native` 强制宿主原生，Linux/Windows 均可）：
 
 ```bash
 # 三节点原生构建（Linux/Windows 均可）

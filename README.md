@@ -8,13 +8,13 @@
 
 `mini_tree` 是一个面向嵌入式系统的通用中间件框架。通过三层解耦架构，在编译链接层隔离芯片 SDK 与上层业务代码，使核心逻辑可跨平台复用。
 
-**架构基准**：以 **ARM Cortex-M 系列** 与 **RISC-V RV32** 为通用基准，覆盖裸机 / FreeRTOS / RT-Thread 三种 OSAL 后端，支持 **Linux / Windows / Docker** 三平台原生编译。ESP32（Xtensa LX）作为异构架构，通过 **原生 Linux / Windows** 工具链接入（ESP-IDF 官方双端支持，不走 Docker），不作为通用基准。
+**架构基准**：以 **ARM Cortex-M 系列** 与 **RISC-V RV32** 为通用基准，覆盖裸机 / FreeRTOS / RT-Thread 三种 OSAL 后端。主开发与验证环境为 **Linux**（原生 / WSL / Docker），同时作为通用中间件天然跨平台，**Windows 原生编译**同样可用。ESP32（Xtensa LX）作为异构架构，通过 **原生 Linux / Windows** 工具链接入（ESP-IDF 官方双端支持，不走 Docker），不作为通用基准。
 
-| 架构基准 | 支持平台 | 工具链 |
-|----------|---------|--------|
-| ARM Cortex-M（通用基准） | Linux / Windows / Docker | ARM GCC / ARM Clang |
-| RISC-V RV32（通用基准） | Linux / Windows / Docker | RISC-V GCC |
-| ESP32 Xtensa LX（异构架构） | Linux / Windows | Xtensa GCC（随 ESP-IDF） |
+| 架构基准 | 主平台 | 也支持 (中间件跨平台) | 工具链 |
+|----------|--------|----------------------|--------|
+| ARM Cortex-M（通用基准） | Linux (原生/WSL/Docker) | Windows 原生 | ARM GCC / ARM Clang |
+| RISC-V RV32（通用基准） | Linux (原生/WSL/Docker) | Windows 原生 | RISC-V GCC |
+| ESP32 Xtensa LX（异构架构） | Linux | Windows (ESP-IDF 官方双端) | Xtensa GCC（随 ESP-IDF） |
 
 ## 适用场景
 
@@ -66,17 +66,17 @@
 
 ## 跨平台验证
 
-已通过 10 种组合验证，详见 [ARCHITECTURE.md §7](ARCHITECTURE.md#7-跨平台验证矩阵)：
+主环境为 Linux，已通过 10 种组合验证，详见 [ARCHITECTURE.md §7](ARCHITECTURE.md#7-跨平台验证矩阵)：
 
-CMake 工具链：Docker ARM GCC 14.2.1 / Windows 原生 ARM GCC 13.3.1 (STM32CubeCLT) ；Docker RISC-V GCC 8.2.0 / Windows 原生 RISC-V GCC 15.2.0 (WCH MounRiver Studio) ；Xtensa GCC (ESP-IDF v5.5.2) / MinGW 8.1.0 (host test)
+CMake 工具链：Linux ARM GCC 14.2.1 / Docker ARM GCC 14.2.1 / Windows 原生 ARM GCC 13.3.1 (STM32CubeCLT) ；RISC-V GCC (WCH 工具链) / Windows 原生 RISC-V GCC 15.2.0 (WCH MounRiver Studio) ；Xtensa GCC (ESP-IDF) / MinGW 8.1.0 (host test)
 
-> **跨平台验证说明**：本架构以 ARM Cortex-M 与 RISC-V RV32 为通用基准，编译验证基于主机侧的多工具链混合测试（ARM GCC / ARM Clang / RISC-V GCC 等），统一通过 CMake 构建系统管理。具体板级运行可能因芯片 errata、启动代码差异或外设配置引入额外问题，期待社区开发者在实际硬件上的测试反馈与贡献。
+> **跨平台验证说明**：本架构以 ARM Cortex-M 与 RISC-V RV32 为通用基准，编译验证基于主机侧的多工具链混合测试（ARM GCC / ARM Clang / RISC-V GCC 等），统一通过 CMake 构建系统管理。作为通用中间件，核心层与环境无关，Windows 同样可编译运行。具体板级运行可能因芯片 errata、启动代码差异或外设配置引入额外问题，期待社区开发者在实际硬件上的测试反馈与贡献。
 
 ### ESP32 异构架构适配
 
 ESP32（Xtensa LX6/LX7）与 ARM/RISC-V 在中断模型、FPU、启动流程、SDK 体系上差异显著，**不作为通用基准**，按以下策略接入：
 
-- **构建路径**：ESP32 走 **原生 Linux / Windows 工具链**（`idf.py` + Xtensa GCC，ESP-IDF 官方双端支持），不走 Docker，保证 Linux 与 Windows 双端可编译
+- **构建路径**：ESP32 主环境走 **Linux 原生工具链**（`idf.py` + Xtensa GCC），同时 **Windows 原生也支持**（ESP-IDF 官方双端），不走 Docker
 - **RTOS 后端**：直接使用 ESP-IDF 自带的 SMP FreeRTOS，不编译本仓库 `lib/freeRTOS/` 中的 ARM/RISC-V 汇编端口
 - **组件集成**：通过 `idf_component_register()` 注册 `components/mini_tree`，沿用原生 Kconfig 配置流程（`tools/menuconfig.py` + `tools/genconfig.py`），与 `sdkconfig` 不冲突
 - **裸机后端**（`OSAL_NULL`）无 RTOS 端口限制，可正常使用
