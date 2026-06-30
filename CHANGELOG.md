@@ -2,6 +2,54 @@
 
 ## [Unreleased]
 
+### 统一中间件架构
+
+mini_tree/ 收敛为纯中间件, 完成 VFS / Bus / HAL 三层解耦:
+
+- **VFS 层** (`vfs/`) — `file_operations` + `dev_lifecycle` + DTS, 注册 `spi-master` / `uart` / `heterogeneous,gpios` 等 compatible
+- **Bus 层** (`bus/` + `board/include/bus.h`) — host/client 池 + atomic `ref_count` + `controller_ops`
+- **HAL 层** (`hal/**/*.h` 平台中立头) — 平台 `.c` 实现由各项目目录通过 `HAL_SRCS` 变量集成
+
+三层隔离由 `core/include/compiler_compat_poison.h` 的 `#pragma GCC poison` 在编译期强制 (bus 外禁调 hal 符号, vfs 外禁调 bus 符号), 新增 **L10 防御层**.
+
+**硬件直投模式**: 移除 `hal_gpio_ops_t` / `hal_spi_ops_t` 等 vtable/ops 间接层, DTSI 厂商宏值直投, HAL 零翻译透传给 LL 库 / ESP-IDF driver.
+
+**统一 compatible strings**: 去除 `stm32,` / `ch32,` / `esp32,` 平台前缀, 三平台 IP dtsi 中 `compatible` 统一为 `spi-master` / `spi-slave` / `uart` / `uart-client` / `heterogeneous,gpios` / `heterogeneous,spi-master-client` / `heterogeneous,fft-spi-slave` / `*-platform-cap`. dtc-lite `_validate_compatibles()` 在编译期校验驱动匹配.
+
+**统一 HAL 头结构体** (平台中立):
+
+- `hal_spi_pin_cfg  { uintptr_t port; uint16_t pin; uint32_t clk_periph; uint32_t af; }`
+- `hal_uart_pin_cfg { uintptr_t port; uint16_t pin; uint32_t clk_periph; uint32_t af; }`
+- `hal_gpio_obj_t   { uintptr_t port; uint16_t pin; uint32_t clk_periph; bool is_used; }` (嵌入 VFS priv, HAL 无池管理)
+
+涉及文件: `hal/spi/hal_spi.h`, `hal/uart/hal_uart.h`, `hal/gpio/hal_gpio.h`, `board/include/bus.h`, `vfs/spi/spi_vfs.{c,h}`, `vfs/uart/uart_vfs.{c,h}`, `vfs/gpio/vfs-gpio.{c,h}`, `core/include/compiler_compat_poison.h`.
+
+### hal_pin_t 完全删除
+
+删除 `hal_pin_t` 复合引脚 32-bit port+pin 编码及其所有辅助函数, 改为 `hal_spi_pin_cfg` / `hal_uart_pin_cfg` / `hal_gpio_obj_t` 三组结构体, 各自携带 `port` / `pin` / `clk_periph` / `af` (`is_used`) 字段. 同步删除 `hal_gpio_ops_t`, `hal_spi_ops_t` 等 vtable/ops 表, HAL 接口改为函数原型直投. 涉及 `hal/**/*.h` 头文件全部重写.
+
+### Apache-2.0 license 统一
+
+所有源文件 license 统一为 Apache-2.0, 头部添加 `/* SPDX-License-Identifier: Apache-2.0 */`. 此前混合的 MIT / Apache-2.0 / 无 license 头状态全部收敛. `tools/genconfig.py` 生成头模板同步注入 SPDX 标识.
+
+### ESP32 适配统一 HAL 模式
+
+ESP32 平台适配迁移到统一 HAL 头结构体 (`hal_spi_pin_cfg` / `hal_uart_pin_cfg` / `hal_gpio_obj_t`), 不再为 ESP32 单独维护 ops/vtable 路径. ESP32 DMA 在无硬件支持的场景返回 `-ENOTSUP` stub, 与 `hal_if_dummy.c` 兜底实现一致, 避免 `#ifdef ESP_PLATFORM` 散落各处.
+
+### 三平台 DTSI compatible 统一
+
+STM32 / CH32 / ESP32 三平台 IP dtsi 中 `compatible` 字段去除平台前缀:
+
+| 之前 | 之后 |
+|------|------|
+| `stm32,spi-master` / `ch32,spi-master` / `esp32,spi-master` | `spi-master` |
+| `stm32,uart` / `ch32,uart` / `esp32,uart` | `uart` |
+| `stm32,gpios` / ... | `heterogeneous,gpios` |
+| `stm32,spi-master-client` / ... | `heterogeneous,spi-master-client` |
+| `stm32,spi-platform-cap` / `ch32,spi-platform-cap` / `esp32,spi-platform-cap` | `*-platform-cap` (平台能力声明, dtc-lite 编译期识别) |
+
+业务侧 `device_find_by_label()` 通过节点 `label` 获取设备, 不直接依赖 compatible string, 因此 compatible 调整对业务 API 兼容性无影响.
+
 ### Windows 三平台编译验证
 
 在 Windows 原生环境完成 ST/ESP/CH 三节点编译验证，工具链版本区分平台标注：

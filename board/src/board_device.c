@@ -1,3 +1,12 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * board_device.c — 板级设备模型运行时实现
+ *
+ * 维护 device 实例表与递归互斥锁池 (device_tree_init 静态分配, 池水位线预警).
+ * 实现设备查找、属性解析 (safe_parse_int32 替代 strtol, MISRA C 21.6 合规).
+ * VFS 转发层在 dev->lock 保护下完成 check-then-act; device_ops_unregister
+ * 持锁斩断 ops 防 TOCTOU 竞态 (IEC 61508 §7.4.3.1).
+ */
 #include "device.h"
 #include "VFS.h"
 #include "dev_lifecycle.h"
@@ -646,33 +655,4 @@ void device_lc_bind(struct device* dev, struct osal_mutex* io_lock)
 {
     if (dev)
         dev_lc_init(&dev->lc, io_lock);
-}
-
-static hal_pin_t pin_from_parts(int port, int pin)
-{
-    int p = (port >= 0) ? port : HAL_GPIO_PORT_DEFAULT;
-    return hal_pin_make(p, (uint16_t)pin);
-}
-
-int hal_pin_probe(const struct device* dev, const char* port_key, const char* pin_key,
-                  hal_pin_t* out)
-{
-    int port = 0;
-    int pin  = -1;
-
-    if (!dev || !pin_key || !out)
-        return VFS_ERR_INVAL;
-
-    if (device_get_prop_int(dev, pin_key, &pin))
-        return VFS_ERR_INVAL;
-
-#if !COMPAT_HAVE_KCONFIG || defined(CONFIG_HAL_GPIO_PORT_ENUM)
-    if (port_key)
-        COMPAT_IGNORE_RESULT(device_get_prop_int(dev, port_key, &port));
-#else
-    (void)port_key;
-#endif
-
-    *out = pin_from_parts(port, pin);
-    return VFS_OK;
 }

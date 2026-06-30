@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #ifndef SYSTEM_SCRUBBER_CRC_GEN_H
 #define SYSTEM_SCRUBBER_CRC_GEN_H
 

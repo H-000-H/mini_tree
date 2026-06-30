@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * BH (Bottom Half) — 中断下半部工作队列核心
+ *
+ * 无锁环形队列, ISR 仅入队不执行 fn; 消费者线程 drain 排空
+ * pending/executing/rerun 三原子位实现合并与补跑, 执行期间再触发不丢失
+ */
 #ifndef BH_H
 #define BH_H
 

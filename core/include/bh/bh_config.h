@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * bh_config — BH 下半部可调参数默认值
+ *
+ * BH_QUEUE_DEPTH 必须为 2 的幂 (默认 32), 可在 board_config.h 覆盖
+ * bh_os 任务默认栈深/优先级/名称, 均可被工程侧覆盖
+ */
 #ifndef BH_CONFIG_H
 #define BH_CONFIG_H
 

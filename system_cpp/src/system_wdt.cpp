@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_wdt.cpp — 看门狗与栈监控实现
+ *
+ * TWDT 与 RTC_WDT 均委托 hal_wdt_* HAL 接口, 自身仅维护 active 标志
+ * 栈监控表 s_stack_entries 固定容量 BOARD_STACK_MONITOR_MAX_TASKS
+ * check_all 按水印字节分 INFO/WARN/CRITICAL 三级日志, wm=0 视为溢出
+ */
 #include "system_wdt.hpp"
 #include "system_cfg.h"
 #include "hal_wdt.h"

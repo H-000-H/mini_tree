@@ -6,7 +6,7 @@ import os
 import shutil
 from typing import Dict, List, Optional, Set, Tuple
 
-from .ast import DtsNode, DtsProperty
+from .dts_ast import DtsNode, DtsProperty
 from .compiler import DTSCompiler
 from .platform import is_platform_node
 
@@ -653,6 +653,28 @@ class CGenerator:
                 lines.append(f'#define DTC_GEN_HEAP_SIZE  32768')
         else:
             lines.append(f'#define DTC_GEN_HEAP_SIZE  32768')
+
+        # ── platform-cap 节点：外设级平台容量参数 ──
+        # IP dtsi 中的 compatible 以 "-platform-cap" 结尾，
+        # 去掉后缀后的字符串转为前缀，所有整数属性 → DTC_GEN_<前缀>_<属性> 宏。
+        # 例：compatible = "stm32,spi-platform-cap" → 前缀 "STM32_SPI"
+        for dev in devs:
+            cprop: Optional[DtsProperty] = dev.get_prop('compatible')
+            if not cprop or not cprop.strings:
+                continue
+            compat: str = cprop.strings[0]
+            if not compat.endswith('-platform-cap'):
+                continue
+            stem: str = compat[:-len('-platform-cap')]
+            prefix: str = stem.replace(',', '_').replace('-', '_').upper()
+            for prop in dev.props:
+                pname: str = prop.name
+                if pname in ('compatible', '#address-cells', '#size-cells', 'reg', 'status'):
+                    continue
+                if not prop.ints:
+                    continue
+                macro = f'DTC_GEN_{prefix}_{pname.replace("-", "_").upper()}'
+                lines.append(f'#define {macro}  {prop.ints[0]}')
 
         lines += [
             '',

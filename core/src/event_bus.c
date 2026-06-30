@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * event_bus.c — 轻量事件通知总线
  *

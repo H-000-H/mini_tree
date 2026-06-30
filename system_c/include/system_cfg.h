@@ -1,5 +1,8 @@
-/* C 版本 system 组件的通用配置与日志宏.
- * 便捷再导出: 引入本头文件即获得 SYS_LOGI/SYS_LOGW/SYS_LOGE 等日志宏.
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_cfg — C 版 system 组件通用配置入口
+ *
+ * 便捷再导出: 引入本头即获得 SYS_LOGI/SYS_LOGW/SYS_LOGE 等日志宏。
  */
 #pragma once
 

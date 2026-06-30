@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * osal_rtthread.c — OSAL RT-Thread 后端实现
+ *
+ * 将 OSAL API 映射到 rt_mutex/rt_sem/rt_mq/rt_thread 等 RT-Thread 原语
+ * 维护独立系统堆 s_rtt_heap (RTT_HEAP_SIZE, 板级可覆盖), 首次分配时惰性初始化
+ * 优先级语义与 FreeRTOS 相反 (0=最高), 切换后端时需注意
+ */
 #ifdef CONFIG_OSAL_RTTHREAD
 
 #define ALLOW_STDIO_OUTPUT
@@ -417,7 +425,7 @@ void osal_yield_from_isr(bool yield_required)
     (void)yield_required;
 }
 
-/* ── 任务创建 (无句柄版本, 保留兼容) ── */
+/* ── 任务创建 (无句柄, 创建后自动启动) ── */
 int osal_task_create(const char* name, uint32_t stack_size,
                      uint32_t priority, osal_task_entry_t entry,
                      void* param, int core_id)

@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * osal_null.c — OSAL 裸机后端实现 (无 RTOS)
+ *
+ * 同步原语基于 C11 stdatomic 或 GCC __atomic 内建 (Kconfig OSAL_NULL_ATOMIC_*)
+ * 队列采用 SPSC 环形缓冲 + 掩码, 互斥锁用 CAS + 递归深度计数
+ * 任务创建固定失败, osal_delay_ms 为忙等, 适用早期移植与极简 MCU
+ */
 #ifdef CONFIG_OSAL_NULL
 
 #define ALLOW_HEAP_ALLOC

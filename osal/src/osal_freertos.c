@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * osal_freertos.c — OSAL FreeRTOS 后端实现
+ *
+ * 将 OSAL API 映射到 xSemaphore/xQueue/xTaskCreate 等 FreeRTOS 原语
+ * 静态互斥锁/信号量池 + 槽位池 (osal_pool), ISR 检测按 ARM/RISC-V 架构分支
+ * ESP32 平台额外嵌入 portMUX 适配 taskENTER_CRITICAL_ISR 路径
+ */
 #ifdef  CONFIG_OSAL_FREERTOS
 
 #define ALLOW_HEAP_ALLOC
@@ -224,7 +232,7 @@ static osal_pool_t       s_mutex_pool_ctrl COMPAT_ALIGNED(4);
 pre_execution(150)
 static void osal_mutex_pool_boot_init(void)
 {
-    osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE);
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE));
 }
 
 /* ── 获取现在时间 ── */
@@ -385,7 +393,7 @@ static osal_pool_t   s_sem_pool_ctrl COMPAT_ALIGNED(4);
 pre_execution(151)
 static void osal_sem_pool_boot_init(void)
 {
-    osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE);
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE));
 }
 
 static int osal_sem_init_binary(struct osal_sem* sem)

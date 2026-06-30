@@ -1,6 +1,6 @@
-"""dtc-lite — MCU 编译期 DeviceTree 编译器 (PLY 词法/语法分析)."""
+"""dtc-lite — MCU 编译期 DeviceTree 编译器 (Lark + Transformer 解析)."""
 
-from .ast import DtsNode, DtsProperty
+from .dts_ast import DtsNode, DtsProperty
 from .compiler import DTSCompiler
 from .generator import CGenerator
 from .parser import parse_dts

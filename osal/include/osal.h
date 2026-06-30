@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * OSAL — 操作系统抽象层公共头文件
+ *
+ * 定义平台无关的 RTOS 接口: 互斥锁/信号量/自旋锁/队列/任务/时间/内存
+ * 上层仅依赖本头文件, 实现由 osal_freertos/osal_rtthread/osal_null 三后端提供
+ * 含 OSAL_PANIC/CRITICAL_ASSERT 宏, 触发后调用 system_safety_hardware_shutdown
+ */
 #ifndef BOARD_OSAL_H
 #define BOARD_OSAL_H
 
@@ -288,10 +296,10 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item,
 
                                                             /*安全互锁与硬件关断*/
 /*===========================================================================================================================================================*/
-/* ── 安全互锁 (weak, 板级可重写, 保留用于 OEM 兼容) ── */
+/* panic 互锁 (weak, 默认 trap, 板级可覆盖) */
 void osal_panic_interlock(void);
 
-/* ── 硬件安全关断 (weak, 保留用于外部 OEM 代码兼容) ── */
+/* 硬件安全关断 (weak, 默认 trap, 板级可覆盖) */
 void safety_hardware_shutdown(void);
 
 /* ── 板级硬件安全关断 (强符号, 板级必须实现) ──

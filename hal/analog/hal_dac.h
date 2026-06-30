@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * DAC HAL — 数模转换抽象接口
+ *
+ * 支持 8/12/16 位对齐与输出缓冲、DMA 自动输出模式
+ * 提供 write / write_dma / stop_dma 及 force_stop 安全停机
+ */
 #ifndef HAL_DAC_H
 #define HAL_DAC_H
 

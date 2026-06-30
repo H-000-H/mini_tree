@@ -1,20 +1,23 @@
-"""DTS 编译器: 预处理、PLY 解析、语义合并与驱动校验."""
+"""DTS 编译器: 预处理、lark 解析、语义合并与驱动校验."""
 
 from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from .ast import DtsNode, DtsProperty
+from .dts_ast import DtsNode, DtsProperty
 from .parser import parse_dts
 from .platform import is_platform_node
 
 class DTSCompiler:
     """DTS 编译器: 解析 → 解析 → 生成"""
 
-    def __init__(self, dts_path: str, driver_dirs: Optional[List[str]] = None) -> None:
+    def __init__(self, dts_path: str, driver_dirs: Optional[List[str]] = None,
+                 extra_inc_dirs: Optional[List[str]] = None,
+                 extra_defines: Optional[List[str]] = None) -> None:
         self.dts_path: str = dts_path
         self.board_dir: str = os.path.dirname(os.path.dirname(os.path.abspath(dts_path)))
         self.driver_dirs: List[str] = driver_dirs or []
@@ -28,76 +31,396 @@ class DTSCompiler:
         self.device_irq_info: List[List[Tuple[int, int, int]]] = []  # index matches device_list
         self._macros: Dict[str, str] = {}
         self._visited: Set[str] = set()
+        # 通用 C 头支持: 用户通过命令行 -I / -D 传入任意厂商头搜索路径与预定义宏,
+        # dtc-lite 见到 #include <xxx.h> 不在 dt-bindings/ 下时, 就用 cpp 跑该头
+        # 提取全部 #define (含链式展开与常量求值), 不再为每个厂商写发现逻辑.
+        self._extra_inc_dirs: List[str] = extra_inc_dirs or []
+        self._extra_defines: List[str] = extra_defines or []
+        # 已用 cpp 提取过宏的头文件集合 (避免对同一头文件重复跑 cpp)
+        self._cpp_headers_loaded: Set[str] = set()
 
     def _preprocess(self, text: str) -> str:
         base_dir: str = os.path.dirname(os.path.abspath(self.dts_path))
         result: List[str] = self._preprocess_lines(text, base_dir)
         return '\n'.join(result)
 
+    # ───────────────────────── 通用 C 头支持 ─────────────────────────
+
+    def _is_extra_header(self, path: str) -> bool:
+        """判断一个绝对路径是否落在用户 -I 传入的搜索路径内。
+
+        命中即用 cpp 跑该头提取宏; 否则按 dt-bindings / 相对路径走 Python 预处理。
+        """
+        if not path:
+            return False
+        norm: str = os.path.realpath(path)
+        for d in self._extra_inc_dirs:
+            try:
+                if os.path.commonpath([norm, os.path.realpath(d)]) == os.path.realpath(d):
+                    return True
+            except ValueError:
+                continue
+        return False
+
+    def _extract_header_macros(self, header_path: str) -> bool:
+        """用系统的 C 预处理器 (优先 arm-none-eabi-gcc, 回退 gcc/cpp) 跑该头
+        (及其传递依赖), 同时提取:
+
+          1. 所有 ``#define`` 宏  — 用 ``cpp -E -P -dM``
+          2. 所有 ``enum`` 块里的常量 — 用 ``cpp -E -P`` 得到展开后文本再正则解析
+
+        提取出的宏以原始宏体文本形式存入 ``self._macros``，后续由
+        ``_replace_macros`` 链式解析、由 ``_eval_c_constant`` 计算常量表达式。
+
+        返回 True 表示成功；False 表示 cpp 不可用或失败 (调用方应回退到旧路径)。
+
+        这是通用机制: 只要用户在命令行传 ``-I<dir> -D<macro>`` 就能让任意厂商/
+        SDK 头 (STM32 LL / ESP-IDF / WCH Standard Peripheral / FreeRTOS ...)
+        里的 #define 与 enum 直接被 dtsi 引用, 无需为每个厂商在 py 里写发现逻辑。
+        """
+        if header_path in self._cpp_headers_loaded:
+            return True
+        cpp: Optional[str] = self._find_cpp()
+        if cpp is None:
+            return False
+
+        # --- 公共参数 ---
+        inc_args: List[str] = []
+        for d in self._extra_inc_dirs:
+            inc_args.append(f'-I{d}')
+        for define in self._extra_defines:
+            inc_args.append(f'-D{define}')
+
+        # --- 第 1 步: cpp -dM 提取 #define ---
+        cmd_dM: List[str] = [cpp, '-E', '-P', '-dM', '-x', 'c'] + inc_args + [header_path]
+        define_text: str = ''
+        try:
+            proc: subprocess.CompletedProcess = subprocess.run(
+                cmd_dM, capture_output=True, text=True, timeout=30, check=False,
+            )
+            if proc.returncode == 0 or proc.stdout:
+                define_text = proc.stdout
+        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+            print(f"[dtc-lite] warning: cpp -dM failed on "
+                  f"'{header_path}': {e}", file=sys.stderr)
+            return False
+        if proc.returncode != 0:
+            print(f"[dtc-lite] warning: cpp -dM returned {proc.returncode} on "
+                  f"'{header_path}'", file=sys.stderr)
+            if not define_text:
+                return False
+
+        # cpp -dM 输出形如:  #define NAME VALUE
+        for line in define_text.split('\n'):
+            line = line.rstrip('\r')
+            m: Optional[re.Match] = re.match(
+                r'#define\s+(\w+)(?:\s+(.*))?$', line)
+            if m:
+                name: str = m.group(1)
+                value: str = (m.group(2) or '').strip()
+                # 不覆盖用户在 dt-bindings 里手写的宏 (dt-bindings 优先级更高)
+                if name not in self._macros:
+                    self._macros[name] = value
+
+        # --- 第 2 步: cpp -E -P 提取 enum 块 ---
+        # enum 常量不会被 -dM 输出 (cpp 只输出 #define), 必须用 -E -P 拿展开后
+        # 文本再正则解析. 输出含函数体/typedef 等, 但 enum 块语法独特, 正则可
+        # 精确匹配 ``enum [Name] { ... }`` (体里无嵌套大括号).
+        cmd_E: List[str] = [cpp, '-E', '-P', '-x', 'c'] + inc_args + [header_path]
+        try:
+            proc2: subprocess.CompletedProcess = subprocess.run(
+                cmd_E, capture_output=True, text=True, timeout=30, check=False,
+            )
+            if proc2.returncode == 0 or proc2.stdout:
+                self._extract_enums_from_text(proc2.stdout)
+        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+            print(f"[dtc-lite] warning: cpp -E failed on "
+                  f"'{header_path}': {e}", file=sys.stderr)
+            # define 已提取, enum 缺失不算致命
+        if proc2.returncode != 0:
+            print(f"[dtc-lite] warning: cpp -E returned {proc2.returncode} on "
+                  f"'{header_path}' (enums may be incomplete)", file=sys.stderr)
+
+        self._cpp_headers_loaded.add(header_path)
+        return True
+
+    def _extract_enums_from_text(self, text: str) -> None:
+        """从 cpp 预处理后的文本里解析所有 ``enum [Tag] { ... }`` 块, 把每个
+        命名常量按 C 规则求值后存入 ``self._macros``。
+
+        C enum 规则:
+          * 第一项若无显式值, 默认 0
+          * 后续项若无显式值, 取上一项 + 1
+          * 显式值可为任意 C 整型常量表达式 (含已有宏、位运算、括号等)
+
+        支持: typedef enum { ... } Name;  enum Tag { ... };  enum { ... };
+        不支持嵌套大括号 (enum 体内不应有大括号)。
+        """
+        # 剥注释 (cpp -E 仍保留 // 与 /* */ 在某些情况下)
+        t: str = re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)
+        t = re.sub(r'//[^\n]*', ' ', t)
+        # 匹配 enum 块: enum 关键字 + 可选 tag + { 体 } (体内无大括号)
+        for m in re.finditer(r'\benum\b\s*(?:\w+\s*)?\{([^{}]*)\}', t):
+            body: str = m.group(1)
+            cur_val: int = -1  # 第一项无 = 时取 0 (下面的 +1)
+            for item in body.split(','):
+                item = item.strip()
+                if not item:
+                    continue
+                # 形如 NAME = EXPR 或 NAME
+                mm: Optional[re.Match] = re.match(
+                    r'(\w+)\s*(?:=\s*(.+))?$', item, re.S)
+                if not mm:
+                    continue
+                ename: str = mm.group(1)
+                eexpr: str = (mm.group(2) or '').strip()
+                if eexpr:
+                    # 链式宏替换 + 求值
+                    resolved: str = self._replace_macros(eexpr)
+                    val: Optional[int] = self._eval_c_constant(resolved)
+                    if val is None:
+                        # 求值失败 (依赖函数/未定义符号), 按递增兜底
+                        cur_val += 1
+                        val = cur_val
+                else:
+                    cur_val += 1
+                    val = cur_val
+                cur_val = val
+                if ename not in self._macros:
+                    self._macros[ename] = f'0x{val:X}'
+
+    @staticmethod
+    def _find_cpp() -> Optional[str]:
+        """优先选择 arm-none-eabi-gcc (与项目工具链一致), 退到 gcc/cpp."""
+        for c in ('arm-none-eabi-gcc', 'arm-none-eabi-cpp', 'gcc', 'cpp'):
+            try:
+                subprocess.run([c, '--version'], capture_output=True,
+                               timeout=3, check=False)
+                return c
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+        return None
+
+    # ───────────────────────── 预处理 ─────────────────────────
+
     def _preprocess_lines(self, text: str, base_dir: str) -> List[str]:
+        """预处理 DTS 文本: 展开 #include、记录 #define 宏、按 #ifndef/#ifdef/#else
+        跳过被屏蔽的分支。支持嵌套条件编译与头文件保护宏 (header guards)。
+
+        厂商头支持:
+          - 当 #include 解析到一个位于 ``Drivers/`` 之下的厂商头 (如
+            ``stm32f4xx_ll_tim.h``) 时, 改用系统 cpp 跑 ``-E -P -dM`` 提取该头
+            及其传递依赖的全部 #define, 直接灌入 ``_macros``; 不再递归内联该头
+            文本 (厂商头里大量 #if defined(...) 与 extern "C" 等, 用 cpp 解析最稳)。
+          - dt-bindings 头仍走原 Python 预处理路径, 保留 #ifndef guard 等特性。
+        """
         lines: List[str] = text.split('\n')
         out: List[str] = []
-        skip_depth: int = 0
+        # 栈: (本分支是否跳过, 父级是否在跳过)
+        skip_stack: List[Tuple[bool, bool]] = []
+
+        def _skipping() -> bool:
+            return any(s for s, _ in skip_stack)
 
         for line in lines:
             stripped: str = line.strip()
 
+            # 1) #include "..." / #include <...> / /include/ "..."
             m = re.match(r'#include\s+"([^"]+)"', stripped)
             if not m:
                 m = re.match(r'#include\s+<([^>]+)>', stripped)
             if not m:
                 m = re.match(r'/include/\s+"([^"]+)"', stripped)
-            if m and skip_depth == 0:
+            if m and not _skipping():
                 inc_path: Optional[str] = self._resolve_inc(m.group(1), base_dir)
                 if inc_path:
-                    with open(inc_path, 'r', encoding='utf-8') as f:
-                        inc_text: str = f.read()
-                    inc_lines: List[str] = self._preprocess_lines(
-                        inc_text, os.path.dirname(inc_path))
-                    out.extend(inc_lines)
+                    if self._is_extra_header(inc_path):
+                        # 用户 -I 路径里的头 (厂商/SDK): 用 cpp 一次性提取全部宏, 不内联文本
+                        if not self._extract_header_macros(inc_path):
+                            # cpp 不可用时回退: 用原路径展开 (尽力而为)
+                            with open(inc_path, 'r', encoding='utf-8') as f:
+                                inc_text = f.read()
+                            out.extend(self._preprocess_lines(
+                                inc_text, os.path.dirname(inc_path)))
+                    else:
+                        # dt-bindings 或相对路径头: 原 Python 路径展开 (保留 header guard)
+                        with open(inc_path, 'r', encoding='utf-8') as f:
+                            inc_text: str = f.read()
+                        inc_lines: List[str] = self._preprocess_lines(
+                            inc_text, os.path.dirname(inc_path))
+                        out.extend(inc_lines)
                 continue
 
+            # 2) 预处理指令
             if stripped.startswith('#'):
-                m_def = re.match(r'#define\s+(\s+)\s*(.*)', stripped)
-                if not m_def:
-                    m_def = re.match(r'#define\s+(\w+)\s*(.*)', stripped)
+                # #pragma once —— 由 _resolve_inc 的 _visited 去重保证，这里直接忽略
+                if re.match(r'#pragma\s+once\b', stripped):
+                    continue
+
+                # #define NAME [VALUE]   (VALUE 可空，如头文件保护宏)
+                m_def = re.match(r'#define\s+(\w+)(?:\s+(.*))?$', stripped)
+                if m_def is not None and not _skipping():
+                    name: str = m_def.group(1)
+                    value: str = (m_def.group(2) or '').strip()
+                    self._macros[name] = value
+                    continue
+
+                # #undef NAME
+                m_und = re.match(r'#undef\s+(\w+)', stripped)
+                if m_und is not None and not _skipping():
+                    self._macros.pop(m_und.group(1), None)
+                    continue
+
+                # #ifndef NAME —— 若 NAME 已定义则跳过本分支
                 m_ifn = re.match(r'#ifndef\s+(\w+)', stripped)
+                if m_ifn is not None:
+                    parent_skipped: bool = _skipping()
+                    this_skipped: bool = parent_skipped or (m_ifn.group(1) in self._macros)
+                    skip_stack.append((this_skipped, parent_skipped))
+                    continue
+
+                # #ifdef NAME —— 若 NAME 未定义则跳过本分支
                 m_ifd = re.match(r'#ifdef\s+(\w+)', stripped)
-
-                if m_def and skip_depth == 0:
-                    self._macros[m_def.group(1)] = m_def.group(2).strip()
-                    continue
-                elif m_ifn and skip_depth == 0:
-                    macro_name: str = m_ifn.group(1)
-                    if macro_name in self._macros:
-                        skip_depth = 1
-                    continue
-                elif m_ifd and skip_depth == 0:
-                    macro_name = m_ifd.group(1)
-                    if macro_name not in self._macros:
-                        skip_depth = 1
-                    continue
-                elif stripped == '#endif' and skip_depth > 0:
-                    skip_depth -= 1
-                    continue
-                elif stripped == '#endif':
+                if m_ifd is not None:
+                    parent_skipped = _skipping()
+                    this_skipped = parent_skipped or (m_ifd.group(1) not in self._macros)
+                    skip_stack.append((this_skipped, parent_skipped))
                     continue
 
-            if skip_depth > 0:
+                # #else —— 翻转当前分支 (仅当父级未跳过时才真正翻转)
+                if stripped == '#else':
+                    if skip_stack:
+                        this_skipped, parent_skipped = skip_stack.pop()
+                        new_skipped: bool = True if parent_skipped else (not this_skipped)
+                        skip_stack.append((new_skipped, parent_skipped))
+                    continue
+
+                # #endif —— 弹出栈顶分支
+                if stripped == '#endif':
+                    if skip_stack:
+                        skip_stack.pop()
+                    continue
+
+                # 其它指令 (#if / #elif / #error / #warning / #line ...) —— 跳过该行
+                # 不影响 _skipping() 状态，避免误吞内容行
                 continue
 
+            # 3) 被屏蔽分支内的普通内容行直接丢弃
+            if _skipping():
+                continue
+
+            # 4) 宏链式展开 + 常量求值, 然后输出
             out.append(self._replace_macros(line))
 
         return out
 
+    # ───────────────────────── 宏展开与常量求值 ─────────────────────────
+
+    _C_INT_RE = re.compile(r'(0[xX][0-9a-fA-F]+|\d+)([uU][lL]{0,2}|[lL]{1,2}[uU]?)\b')
+
+    def _strip_c_int_suffix(self, text: str) -> str:
+        """剥离 C 整数字面量的 U/L/UL 后缀, 如 0x10U → 0x10, 8UL → 8."""
+        return self._C_INT_RE.sub(lambda m: m.group(1), text)
+
     def _replace_macros(self, text: str) -> str:
+        """对文本做宏替换。空值宏 (如头文件保护宏 DTS_TIM_CTL_H) 不参与替换，
+        避免把恰好包含该名字的标识符误替换成空串。用函数做替换值，防止宏值中
+        的反斜杠序列 (如 ``\\1``) 被 ``re.sub`` 当作回溯引用。
+
+        链式展开: 重复替换直到不再变化或达到上限 (处理 ``A → B → C → 0x10`` 这种
+        厂商头里常见的链式 #define)。
+        """
         if not self._macros:
             return text
-        for name in sorted(self._macros, key=lambda n: -len(n)):
-            if name:
-                text = re.sub(r'\b' + re.escape(name) + r'\b',
-                              self._macros[name], text)
-        return text
+        max_iters: int = 16
+        for _ in range(max_iters):
+            new_text: str = text
+            for name in sorted(self._macros, key=lambda n: -len(n)):
+                if not name:
+                    continue
+                value: str = self._macros[name]
+                if not value:
+                    # 空值宏 (头文件保护) 跳过
+                    continue
+                new_text = re.sub(r'\b' + re.escape(name) + r'\b',
+                                  lambda _m, v=value: v, new_text)
+            if new_text == text:
+                break
+            text = new_text
+
+        # 常量求值: 对形如 ``< EXPR >`` 的属性值, 尝试把 EXPR 算成单个整数
+        return self._eval_angle_value(text)
+
+    def _eval_angle_value(self, text: str) -> str:
+        """对文本中所有 ``< EXPR >`` 片段尝试做 C 常量求值。
+
+        仅当 EXPR 含 ``<<`` / ``>>`` / ``|`` / ``&`` / ``~`` / ``^`` / ``(`` 等
+        运算符或带 U/L 后缀的整数时才尝试求值, 失败则原样返回 (留给词法分析处理)。
+        成功则用 ``< 0xNN >`` 形式替换, 保持与 dt-bindings 既有产物一致。
+
+        注意: 表达式里可能含 ``<<`` / ``>>``, 单纯用 ``[^<>]`` 排除会失败, 所以
+        用 ``(?:(?:<<|>>)|[^<>])`` 这种"先吃双字符运算符, 再吃普通字符"的策略。
+        """
+        if '<' not in text:
+            return text
+
+        def _replace(m: re.Match) -> str:
+            expr: str = m.group(1).strip()
+            if not expr:
+                return m.group(0)
+            # 仅在需要求值时尝试, 避免对 ``<foo>`` 这种纯标识符误判
+            if not re.search(r'[|&~^<>()]|\b0[xX][0-9a-fA-F]+\b', expr):
+                # 简单整数已可直接被 lexer 接受; 但若带 U/L 后缀也帮它脱掉
+                if re.search(r'[uUlL]', expr):
+                    stripped: str = self._strip_c_int_suffix(expr).strip()
+                    return f'<{stripped}>'
+                return m.group(0)
+            val: Optional[int] = self._eval_c_constant(expr)
+            if val is None:
+                return m.group(0)
+            return f'<0x{val:X}>'
+
+        return re.sub(r'<((?:(?:<<|>>)|[^<>])*)>', _replace, text)
+
+    def _eval_c_constant(self, expr: str) -> Optional[int]:
+        """安全地求值一个 C 整型常量表达式。
+
+        支持: 整数字面量 (含 U/L/UL 后缀), ``<<`` ``>>`` ``|`` ``&`` ``^`` ``~``
+        ``+`` ``-`` ``*`` ``/`` ``%`` 以及括号。不支持函数调用 / sizeof / 复合字面量。
+
+        返回: 求得的整数, 或 None (求值失败)。
+        """
+        if not expr:
+            return None
+        # 去掉所有 C 注释 (/* */ 与 //) —— cpp -dM 的输出已经剥过, 这里保险再剥一次
+        s: str = re.sub(r'/\*.*?\*/', ' ', expr, flags=re.S)
+        s = re.sub(r'//[^\n]*', ' ', s)
+        # 剥 C 整数类型 cast: (uint8_t)/(uint16_t)/(uint32_t)/(int)/...
+        # 厂商宏常见形如 ((uint32_t)0x00000001), 剥掉 cast 后成 (0x00000001) 可求值
+        s = re.sub(
+            r'\(\s*(?:uint8_t|uint16_t|uint32_t|uint64_t|int8_t|int16_t|int32_t|int64_t|unsigned|signed|unsigned\s+int|unsigned\s+long|unsigned\s+char|signed\s+int|signed\s+long|signed\s+char|int|long|short|char)\s*\)',
+            '', s)
+        # 剥离整数后缀
+        s = self._strip_c_int_suffix(s)
+        # 仅允许下列字符 (空白、数字、标识符为空、运算符、括号)
+        # 若含其它字符 (函数名、sizeof 等) 直接放弃
+        if not re.fullmatch(r'[\s0-9a-fA-FxX+\-*/%|&~^()<>=!]*', s):
+            return None
+        # 把 C 的位运算符原样保留 (Python 语法一致); 但 << / >> 已是 Python 运算符
+        # 把单独的 = 滤掉 (避免被 eval 误判为赋值)
+        s = s.replace('=', '')
+        # C 的逻辑非 ! → Python not (注意: != 上面已把 = 删掉, 剩 ! 等于 not X)
+        # 用简单替换: 独立的 ! 替成 ' not '
+        s = re.sub(r'(?<![!=!])!(?!=)', ' not ', s)
+        try:
+            value: int = eval(s, {'__builtins__': {}}, {})  # noqa: S307 (deliberate)
+            if isinstance(value, bool):  # True/False 不应出现, 但保险
+                return None
+            if not isinstance(value, int):
+                return None
+            return value
+        except Exception:
+            return None
 
     def _resolve_inc(self, name: str, base_dir: str) -> Optional[str]:
         candidates: List[str] = [
@@ -108,6 +431,9 @@ class DTSCompiler:
         ]
         if name.startswith('dt-bindings/'):
             candidates.insert(0, os.path.join(self.board_dir, name))
+        # 用户 -I 传入的搜索路径: 让 #include <厂商头.h> / <任意 sdk 头> 都能找到
+        for d in self._extra_inc_dirs:
+            candidates.append(os.path.join(d, name))
         for p in candidates:
             p = os.path.normpath(p)
             if os.path.isfile(p):
@@ -115,8 +441,12 @@ class DTSCompiler:
                     return None
                 self._visited.add(p)
                 return p
-        print(f"[dtc-lite] warning: include not found: '{name}' "
-              f"(searched {base_dir}, {os.getcwd()})", file=sys.stderr)
+        msg: str = (f"[dtc-lite] warning: include not found: '{name}' "
+                    f"(searched {base_dir}, {os.getcwd()}")
+        if self._extra_inc_dirs:
+            msg += f", extra -I dirs: {', '.join(self._extra_inc_dirs)}"
+        msg += ")"
+        print(msg, file=sys.stderr)
         return None
 
     def compile(self) -> DTSCompiler:

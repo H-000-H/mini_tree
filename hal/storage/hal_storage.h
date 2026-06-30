@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Storage HAL — 双槽 A/B 持久化存储抽象
+ *
+ * slot 0/1 配合单字节 flag 标记当前有效槽位
+ * 提供 blob 读写、全擦除及扇区级 ioctl (geometry/erase/wp)
+ */
 #ifndef HAL_STORAGE_H
 #define HAL_STORAGE_H
 

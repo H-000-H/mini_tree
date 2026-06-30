@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * DMA Capability — 核心
  *
@@ -22,12 +22,19 @@ static uint8_t             s_dma_chan_used[BUS_DMA_MAX_CHANNELS];
 static osal_pool_t         s_dma_chan_pool;
 static uint8_t             s_dma_inited;
 
+/**
+ * @brief DMA 通道池初始化 (pre_execution 早期初始化)
+ */
 pre_execution(160)
 static void bus_dma_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_dma_chan_pool, s_dma_chan_used, BUS_DMA_MAX_CHANNELS));
 }
 
+/**
+ * @brief SoC backend 初始化 (惰性, 首次 request_chan 时触发)
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV 或 VFS_ERR_IO
+ */
 static int bus_dma_soc_init(void)
 {
     if (s_dma_inited)
@@ -40,6 +47,13 @@ static int bus_dma_soc_init(void)
     return VFS_OK;
 }
 
+/**
+ * @brief 申请 DMA 通道 (通过 DTS phandle 查找 dma_dev, 从静态池分配并 SoC request)
+ * @param dev 使用 DMA 的 device
+ * @param name DTS phandle 名称
+ * @param out 输出 DMA 通道指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ */
 int bus_dma_request_chan(struct device* dev, const char* name,
                           struct bus_dma_chan** out)
 {
@@ -81,6 +95,10 @@ int bus_dma_request_chan(struct device* dev, const char* name,
     return VFS_OK;
 }
 
+/**
+ * @brief 释放 DMA 通道 (调 SoC release, 清零描述符, 归还静态池)
+ * @param chan DMA 通道指针
+ */
 void bus_dma_release_chan(struct bus_dma_chan* chan)
 {
     int pool_idx;
@@ -97,6 +115,12 @@ void bus_dma_release_chan(struct bus_dma_chan* chan)
     osal_pool_release(&s_dma_chan_pool, pool_idx);
 }
 
+/**
+ * @brief 提交并启动 DMA 传输 (转发到 SoC submit)
+ * @param chan DMA 通道指针
+ * @param xfer 传输描述符
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 SoC 错误码
+ */
 int bus_dma_submit(struct bus_dma_chan* chan, const bus_dma_xfer_t* xfer)
 {
     if (!chan || !chan->in_use || !xfer)
@@ -104,6 +128,12 @@ int bus_dma_submit(struct bus_dma_chan* chan, const bus_dma_xfer_t* xfer)
     return g_bus_dma_soc_ops.submit(chan, xfer);
 }
 
+/**
+ * @brief 等待 DMA 传输完成 (转发到 SoC wait)
+ * @param chan DMA 通道指针
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 SoC 错误码
+ */
 int bus_dma_wait(struct bus_dma_chan* chan, uint32_t timeout_ms)
 {
     if (!chan || !chan->in_use)
@@ -111,6 +141,11 @@ int bus_dma_wait(struct bus_dma_chan* chan, uint32_t timeout_ms)
     return g_bus_dma_soc_ops.wait(chan, timeout_ms);
 }
 
+/**
+ * @brief 中止 DMA 传输 (转发到 SoC abort)
+ * @param chan DMA 通道指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 SoC 错误码
+ */
 int bus_dma_abort(struct bus_dma_chan* chan)
 {
     if (!chan || !chan->in_use)
@@ -118,6 +153,13 @@ int bus_dma_abort(struct bus_dma_chan* chan)
     return g_bus_dma_soc_ops.abort(chan);
 }
 
+/**
+ * @brief 设置 DMA 传输完成回调
+ * @param chan DMA 通道指针
+ * @param cb 回调函数
+ * @param user_data 回调用户数据
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
 int bus_dma_set_callback(struct bus_dma_chan* chan,
                           bus_dma_callback_t cb, void* user_data)
 {
@@ -128,6 +170,11 @@ int bus_dma_set_callback(struct bus_dma_chan* chan,
     return VFS_OK;
 }
 
+/**
+ * @brief 查询 DMA 通道是否忙碌 (转发到 SoC busy)
+ * @param chan DMA 通道指针
+ * @return 忙碌返回 1, 空闲或无效返回 0
+ */
 int bus_dma_busy(struct bus_dma_chan* chan)
 {
     if (!chan || !chan->in_use)
@@ -135,6 +182,9 @@ int bus_dma_busy(struct bus_dma_chan* chan)
     return g_bus_dma_soc_ops.busy(chan);
 }
 
+/**
+ * @brief 强制停止所有 DMA 传输 (转发到 SoC force_stop)
+ */
 void bus_dma_force_stop(void)
 {
     if (g_bus_dma_soc_ops.force_stop)

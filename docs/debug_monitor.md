@@ -11,7 +11,7 @@ ls build/Debug/disasm/
 # algorithm.lst  board.lst  core.lst  hal.lst  osal.lst  system.lst
 ```
 
-> 反汇编 `.lst` 路径在 `<build_dir>/<preset>/disasm/` 下，由 `mini_tree/cmake/disasm.cmake` 通过 `mini_tree_add_disasm_postbuild()` 注入到具体项目的 POST_BUILD 阶段。`hal.lst` 包含 `hal/hal_if_dummy.c`、`hal/cpu/hal_cpu_amp.c`、`hal/pwm/hal_pwm.c` 以及具体项目提供的 `HAL_SRCS`。
+> 反汇编 `.lst` 路径在 `<build_dir>/<preset>/disasm/` 下，由 `cmake/disasm.cmake` 通过 `mini_tree_add_disasm_postbuild()` 注入到具体项目的 POST_BUILD 阶段。`hal.lst` 包含 `hal/hal_if_dummy.c`、`hal/cpu/hal_cpu_amp.c`、`hal/pwm/hal_pwm.c` 以及各平台目录下的 HAL 实现文件（如 `hal/spi/hal_spi_stm32.c`、`hal/uart/hal_uart_ch32.c`、`hal/gpio/hal_gpio_esp32.c`），具体由 `.config` 中 `CONFIG_HAL_GPIO_<VENDOR>` 选项决定。
 
 审查要点：
 - BufferPool 无锁分配的原子指令 (`lock cmpxchg` / RV32 `amoswap`)

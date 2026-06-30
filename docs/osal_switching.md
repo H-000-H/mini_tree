@@ -2,6 +2,7 @@
 
 > 本章总结在 ARM Cortex-M 平台（Cortex-M3/M4F/M7）上切换 OSAL 后端时踩过的坑。
 > 这些经验在其它架构/RTOS 版本上移植时同样适用——每一条都曾导致"LED 常量"级别的硬故障。
+> 平台特定的中断控制 API（`hal_irq_enable`/`hal_irq_disable`/`hal_irq_set_priority`/`hal_irq_disable_all`/`hal_irq_restore`/`hal_is_in_isr`）已在 `hal/cpu/hal_cpu.h` 中以 `static inline` 形式提供，直接操作 NVIC/PRIMASK 寄存器。
 
 ### 14.1 NVIC 优先级移位（FreeRTOS 常量亮的元凶）
 
@@ -36,6 +37,8 @@
 2. `configMAX_SYSCALL_INTERRUPT_PRIORITY` 必须等于 `configLIBRARY_... << (8 - NVIC_PRIO_BITS)`
 3. 调试器读出 `SHPR2/SHPR3` 寄存器确认写入值符合预期
 4. 若串口可用，使能 `configASSERT` 看断言信息
+
+> 框架提供的 `hal_irq_set_priority(irq, prio)` 直接写 `NVIC_IPR` 寄存器（8 位域），调用方需自行按 `NVIC_PRIO_BITS` 计算正确移位值。
 
 ### 14.2 向量表 — 处理函数名因 OS 而异
 
@@ -173,18 +176,20 @@ system (编译 safe_state.c 需要 FreeRTOS.h)
 
 | 函数 | 上下文 | 精度 | 阻塞方式 | 可用场景 |
 |------|--------|------|---------|---------|
-| `hal_delay_us(n)` | 任意（含 ISR） | 1 μs | DWT_CYCCNT 忙等 | ISR、Phase 1 微秒级延时 |
-| `hal_delay_ms(n)` | 任意 | ~1 ms | DWT_CYCCNT 忙等 | Phase 1、裸机主循环 |
+| `hal_delay_us(n)` | 任意（含 ISR） | 1 μs | 硬件周期计数器忙等 | ISR、Phase 1 微秒级延时 |
+| `hal_delay_ms(n)` | 任意 | ~1 ms | 硬件周期计数器忙等 | Phase 1、裸机主循环 |
 | `osal_task_delay(n)` | 仅任务上下文 | 1 tick | 任务挂起（不占 CPU） | Phase 2 任务内 |
 | `vTaskDelay(n)` | 仅 FreeRTOS 任务 | 1 tick | 任务挂起 | 同 osal_task_delay |
 | `rt_thread_mdelay(n)` | 仅 RT-Thread 线程 | 1 tick | 线程挂起 | 同 osal_task_delay |
+
+> HAL 延时 API 在 `hal/cpu/hal_cpu_delay.h` 中声明，由各平台的 `hal_cpu_delay_<chip>.c` 实现（STM32 用 DWT_CYCCNT，CH32 用 WCH Delay 库，ESP32 用 `esp_rom_delay_us`）。
 
 **要点：**
 
 - **Phase 1（OS 启动前）只能用 `hal_delay_*`**，此时调度器还没跑，`osal_task_delay` 会死锁
 - **ISR 中只能用 `hal_delay_us`**（短时忙等），不能用任何阻塞式延时
-- **任务中优先用 `osal_task_delay`**，避免 DWT 忙等浪费 CPU
-- `hal_delay_ms` 依赖 `hal_delay_init()` 开启 DWT_CYCCNT，Phase 1 前必须调用
+- **任务中优先用 `osal_task_delay`**，避免硬件周期计数器忙等浪费 CPU
+- `hal_delay_ms` 依赖 `hal_delay_init()` 开启周期计数器，Phase 1 前必须调用
 
 ```c
 pre_execution(50)

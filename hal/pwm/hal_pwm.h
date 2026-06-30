@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * PWM HAL — 脉宽调制通道抽象
+ *
+ * 按引脚配置频率与分辨率位数, 支持占空比读写
+ * 含定时器寄存器直写 inline stub 供硬实时环使用
+ */
 #ifndef HAL_PWM_H
 #define HAL_PWM_H
 
@@ -13,7 +20,7 @@ extern "C"
 /*===========================================================================================================================================================*/
 struct hal_pwm_config
 {
-    hal_pin_t pin;                /* 输出引脚 */
+    int pin;                /* 输出引脚 (DTSI 直投, 平台语义: STM32/WCH=port<<16|pin, ESP32=SoC GPIO 编号) */
     int freq_hz;            /* PWM 频率(Hz) */
     int resolution_bits;    /* 分辨率位数, 0 = 硬件默认 */
 };

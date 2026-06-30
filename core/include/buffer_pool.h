@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Buffer Pool — 预分配定长缓冲区池接口
+ *
+ * 替代动态 malloc 消除碎片; 适用于 EventBus 零拷贝、DMA、驱动 I/O 队列
+ * O(1) 分配/释放 (位图+CLZ), ISR 安全 (原子位操作), 内置峰值追踪
+ */
 #pragma once
 
 #include <stdint.h>

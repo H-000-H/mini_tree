@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * EventBus C++ 单例 — 事件分发任务与订阅管理
+ *
+ * 单例模式, dispatch 任务为框架内最高优先级, 确保事件队列快速排空
+ * 回调在快照副本上执行不持锁, 避免优先级反转; seal() 后禁止动态订阅
+ */
 #pragma once
 
 #include <stdint.h>
@@ -29,7 +36,7 @@ struct Event
     uintptr_t arg;
 };
 
-/* ── C 兼容事件投递 (供 .c 文件使用) ── */
+/* ── C 接口 (extern "C", 供 .c 文件调用) ── */
 bool event_bus_init(void);
 bool event_bus_post(uint32_t id, uintptr_t arg);
 bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required);

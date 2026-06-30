@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * CPU 延时 HAL — 硬实时微秒阻塞延时
+ *
+ * 基于 CPU 硬件周期计数器, 不受 OS tick 与调度影响
+ * 供 1-Wire / DHT11 / WS2812 / 软件 I2C 等 μs 级定时使用
+ */
 #ifndef HAL_CPU_DELAY_H
 #define HAL_CPU_DELAY_H
 
