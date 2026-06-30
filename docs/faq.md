@@ -21,9 +21,11 @@
 
 ### Q: 如何添加新的 HAL 接口？
 
-1. 在 `hal/` 对应子目录中声明操作表结构体（如 `hal/spi/spi_hal.h`）
-2. 在具体芯片项目中实现（通过 `HAL_SRCS` 变量传入，例如 `hal/spi/spi_hal_stm32.c`）
-3. 驱动通过 `struct device*` 的 `device_ioctl` 调用，或总线层（`bus/spi/spi_bus.c`）通过 `spi_hal_*()` 调用
+1. 在 `hal/` 对应子目录中声明统一头文件（如 `hal/spi/hal_spi.h`），头文件保持厂商中性，仅含 `uintptr_t`/`int`/`void*` 与结构体定义、init 函数、`static inline` 快速路径
+2. 在各平台目录下实现 `hal/<periph>/hal_<periph>_<chip>.c`（如 `hal/spi/hal_spi_stm32.c`），厂商头文件由 `.c` 内部 `#include` 并内部 cast；具体平台由 `.config` 中 `CONFIG_HAL_GPIO_<VENDOR>` 等选项决定，框架 CMakeLists.txt 自动选择
+3. 驱动通过 `struct device*` 的 `device_ioctl` 调用，或总线层（`bus/spi/spi_bus.c`）通过 `hal_spi_*()` 调用（如 `hal_spi_bus_host_init`、`hal_spi_dev_init`、`spi_sync`）
+
+> 命名规范：所有 HAL 函数使用 `hal_<periph>_*` 前缀（如 `hal_spi_bus_host_init`、`hal_uart_dev_init`、`hal_gpio_fast_set_level`），不再使用旧的 `spi_hal_*` / `uart_hal_*` 命名。HAL 实现文件按平台目录组织，不再使用 `HAL_SRCS` 变量统一收集。
 
 ### Q: 为什么需要在启动前 touch Singleton？
 
@@ -86,4 +88,4 @@ cd CH32V307 && cmake --preset Debug && cmake --build build/Debug
 1. DTS 未定义该 `label`：检查 `board.dts` 是否有 `label = "ws2812";`
 2. DTS 中 `status = "disabled"`：`device_get_status(dev)` 返回 `DEVICE_STATUS_DISABLED`
 3. dtc-lite 未生成设备表：确认 `BOARD_DTS` 变量在项目 CMakeLists.txt 中已设置
-4. 驱动未注册：确认 `DRIVER_REGISTER(my_drv, "compatible", probe, remove)` 已存在
+4. 驱动未注册：确认 `DRIVER_REGISTER(my_drv, "compatible", probe, remove)` 已存在，且 `compatible` 字符串与 DTS 中一致（注意：当前统一无平台前缀，如 `uart`、`spi-master`、`gpio`、`*-platform-cap`）

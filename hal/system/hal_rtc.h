@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * RTC HAL — 实时时钟抽象接口
+ *
+ * 提供时间读写、闹钟回调与秒级唤醒定时器
+ * 支持 12/24 时制配置及 force_stop 安全停机
+ */
 #ifndef HAL_RTC_H
 #define HAL_RTC_H
 

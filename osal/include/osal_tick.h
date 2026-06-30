@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * osal_tick.h — RTOS tick 类型定义
+ *
+ * osal_tick_t 由 Kconfig CONFIG_OSAL_* 在编译期选定后端类型
+ * FreeRTOS 用 TickType_t, RT-Thread 用 rt_tick_t, 裸机用 uint32_t
+ * 调用方无需关心底层类型, 直接传递给 timeout_to_ticks 等接口
+ */
 #ifndef OSAL_TICK_H
 #define OSAL_TICK_H
 

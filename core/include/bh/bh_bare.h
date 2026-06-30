@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * bh_bare — 裸机 (无 OS) 下半部适配
+ *
+ * 在 bh 队列上叠加 pending_drain 标志, ISR 置位、主循环轮询
+ * bh_bare_poll() 先清标志再 drain, drain 期间新 ISR 重新置位, 防丢唤醒
+ */
 #ifndef BH_BARE_H
 #define BH_BARE_H
 

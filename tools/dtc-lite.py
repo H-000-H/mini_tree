@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-dtc-lite.py — MCU 编译期 DeviceTree 编译器 (PLY 词法分析版)
+dtc-lite.py — MCU 编译期 DeviceTree 编译器 (Lark + Transformer 解析)
 
 编译期 DTS → C 代码生成器。
-词法分析由 PLY (Python Lex-Yacc) 驱动，语法分析为递归下降，语义合并与 C 生成逻辑不变。
+文法由 Lark (Earley 算法) 定义, Transformer 把 parse tree 转 AST, 语义合并与 C 生成逻辑不变.
 
 用法与 CMake 集成保持不变:
   python dtc-lite.py board/dts/esp32-s3-devkitc-1.dts <output_dir> [driver_dirs...]

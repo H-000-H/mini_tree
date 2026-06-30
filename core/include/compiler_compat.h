@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * compiler_compat — 编译器兼容性抽象层
+ *
+ * 统一 GCC/Clang 的 __attribute__ 与内置函数差异, 功能受 Kconfig 开关控制
+ * 提供 warn_unused_result、format、container_of、likely/unlikely、RAM_EXEC 等通用宏
+ */
 #ifndef COMPILER_COMPAT_H
 #define COMPILER_COMPAT_H
 
@@ -344,5 +351,29 @@ typedef enum
     LSB ,
 }Endianness;
 /*===========================================================================================================================================================*/
-
+// =================================================================
+// ETL __underlying_type 内建支持检测
+// =================================================================
+// 老 GCC (如 RISC-V 8.2.0) 不提供 __has_builtin (GCC 10 才引入), ETL 的
+// determine_builtin_support.h 因此把 ETL_USING_BUILTIN_UNDERLYING_TYPE 默认
+// 置 0, 导致 etl::underlying_type 退化为需要用户手动特化的版本, 实例化时
+// 触发 "No user defined specialisation" static_assert。
+//
+// __underlying_type 自 GCC 4.7 / Clang 3.x 起即为内建。本头通过 osal.h 在
+// system_cmd.hpp 引入 ETL 头之前被包含, 这里显式声明可用, 让 ETL 走内建
+// 特化路径 (template <typename T, bool = is_enum<T>::value>), 自动适配所有枚举。
+//
+// 注意: 之前尝试用偏特化
+//   template <typename T>
+//   struct underlying_type<typename std::enable_if<std::is_enum<T>::value, T>::type> {...};
+// 捕获所有枚举, 但 enable_if<...>::type 是非推导上下文, T 无法从
+// underlying_type<EnumT> 中推导, 编译器报 "template parameters not
+// deducible in partial specialization"。改用 ETL 内建路径才是正解。
+#ifdef __cplusplus
+#if !defined(ETL_USING_BUILTIN_UNDERLYING_TYPE) && !defined(ETL_USE_TYPE_TRAITS_BUILTINS)
+#  if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 407))
+#    define ETL_USING_BUILTIN_UNDERLYING_TYPE 1
+#  endif
+#endif
+#endif
 #endif /* COMPILER_COMPAT_H */

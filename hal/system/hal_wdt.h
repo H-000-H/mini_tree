@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * WDT HAL — 硬件/任务双看门狗抽象 (IEC 61508 SIL 4)
+ *
+ * RTC_WDT 使用独立时钟, CPU 卡死 SysTick 停摆仍可触发硬件复位
+ * TWDT 基于任务超时, 支持 subscribe/unsubscribe 与 feed
+ */
 #ifndef HAL_WDT_H
 #define HAL_WDT_H
 

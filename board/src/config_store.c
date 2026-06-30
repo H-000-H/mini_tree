@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * config_store.c — 键值配置存储实现
+ *
+ * 内存维护 cs_entry 表 (最多 32 项), 工厂默认值由 JSON 缓冲区解析加载.
+ * 持久化采用 A/B slot blob + CRC32 校验, 写入后直读验证, 损坏自动回退备用槽.
+ * commit 优先调用注册的 write_hook, 否则走 hal_storage 默认 A/B 路径.
+ */
 #include "config_store.h"
 #include "hal_storage.h"
 

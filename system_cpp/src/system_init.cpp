@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_init.cpp — MiniTree 两阶段系统初始化实现
+ *
+ * Phase 1 Pre_OS_Init: 关中断 → bootloop 保护 → RTC_WDT → 设备树 → EventBus
+ * Phase 2 Start_Tasks: 驱动探测 → TWDT → scrubber → 清 bootloop → seal EventBus
+ * 全局中断由 system_init_complete() 释放, g_system_os_initialized 守护 SIOF
+ */
 #include "system_init.hpp"
 #include "system_init.h"
 

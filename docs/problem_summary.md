@@ -1,4 +1,6 @@
-﻿## 13. 问题总结：RT-Thread 路径"烧录后常量，复位后闪几下灭"
+## 13. 问题总结：RT-Thread 路径"烧录后常量，复位后闪几下灭"
+
+> 本问题在 ARM Cortex-M4F 平台（使用 `-mfloat-abi=hard -mfpu=fpv4-sp-d16` 工具链，如 STM32F407 等 Cortex-M4F 系列 MCU）上发现并修复。属 Cortex-M4F 通用问题，非特定厂商。本章为平台特定经验记录，与中间件层架构无关。
 
 ### 根因
 
@@ -15,8 +17,6 @@
 
 1. **startup.c** — `Reset_Handler` 在 SP 设置后、data/bss 初始化前，写入 `CPACR |= 0x00F00000` 开放 CP10/CP11 全权限
 2. **main.c** — `system_clock_init` 规范化：先关 PLL → 再改参数 → 再开 PLL → 切 SYSCLK → 最后设总线分频（符合芯片参考手册 PLL 切换时序要求）
-
-> 以上问题在 ARM Cortex-M4F 平台（使用 `-mfloat-abi=hard -mfpu=fpv4-sp-d16` 工具链，如 STM32F407 等 Cortex-M4F 系列 MCU）上发现并修复。属 Cortex-M4F 通用问题，非特定厂商。
 
 ### 为什么 FreeRTOS / 裸机能过
 

@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * 平台安全 HAL — 硬件闭锁与 NMI 紧急标记 (IEC 61508 §7.4.3)
+ *
+ * critical_hardware_lock: 冻结调度器前强停外设并点亮故障 LED/蜂鸣器
+ * nmi_emergency_stamp: IRAM 内执行, 写持久崩溃标记, 禁用 printf/mutex/Flash
+ */
 #ifndef HAL_PLATFORM_SAFETY_H
 #define HAL_PLATFORM_SAFETY_H
 

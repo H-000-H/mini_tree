@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * safe_state — 不可恢复安全状态与 Bootloop 防护接口
+ *
+ * Bootloop 退避: 连续异常启动 ≥5 次永久锁死, 防止 SPI Flash 物理烧穿
+ * enter_safe_state() 永不返回 (Task 上下文); NMI 掉电场景用 nmi_emergency_stamp()
+ */
 #pragma once
 
 #include <stdbool.h>

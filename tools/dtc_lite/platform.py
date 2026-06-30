@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .ast import DtsNode
+from .dts_ast import DtsNode
 
 # 空属性标记：节点仅为 SoC/总线描述，不绑定 VFS 驱动
 _PLATFORM_FLAG_PROPS = frozenset({

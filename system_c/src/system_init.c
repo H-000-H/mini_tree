@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_init (C 实现) — 两阶段启动流程
+ *
+ * Phase 1 (Pre-OS): 关中断 → bootloop 检查 → RTC_WDT → 设备树 → EventBus
+ * Phase 2 (Start-Tasks): 驱动探测 → TWDT → scrubber → seal EventBus → AMP 副核
+ */
 #include "system_init.h"
 #include "system_cfg.h"
 

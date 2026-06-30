@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * task_manager (C 实现) — 任务创建与 TWDT 自动订阅
+ *
+ * task_manager_create: 按 board_task_config 创建任务并自动订阅 TWDT。
+ * task_manager_create_task: 便捷包装, 内部构造 config 后委托 create。
+ */
 #include "task_manager.h"
 
 #include "system_cfg.h"

@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * dev_lifecycle.h — 设备 I/O 生命周期状态机头文件
+ *
+ * 定义 dev_lifecycle (opens/io_active/state + io_lock), 实现 Linux 字符设备风格
+ * 的 open/close/io/remove 四阶段生命周期, REMOVING 状态拒绝新 open 与 I/O.
+ * remove_drain 成功返回时持有 io_lock, 须与 remove_finish 成对调用释放.
+ */
 #ifndef DEV_LIFECYCLE_H
 #define DEV_LIFECYCLE_H
 

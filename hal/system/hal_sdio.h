@@ -1,7 +1,13 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SDIO HAL — SD/MMC/SDIO 总线抽象
+ *
+ * 支持 1/4/8 位总线宽度与默认/高速模式, CLK/CMD/D0-D3 引脚可配置
+ * 按扇区读写并查询扇区大小、总扇区数与卡类型 (SD/MMC/SDIO)
+ */
 #ifndef HAL_SDIO_H
 #define HAL_SDIO_H
 
-#include "hal_gpio.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -33,12 +39,12 @@ struct hal_sdio_config
     int                 sdio_id;        /* SDIO 控制器编号, 0 = SDIO1 */
     hal_sdio_bus_width_t bus_width;     /* 总线宽度 */
     hal_sdio_speed_t    speed;          /* 速度模式 */
-    hal_pin_t                 clk_pin;        /* CLK 引脚 */
-    hal_pin_t                 cmd_pin;        /* CMD 引脚 */
-    hal_pin_t                 d0_pin;         /* D0 引脚 */
-    hal_pin_t                 d1_pin;         /* D1 引脚, hal_pin_invalid() = 未用 */
-    hal_pin_t                 d2_pin;         /* D2 引脚, hal_pin_invalid() = 未用 */
-    hal_pin_t                 d3_pin;         /* D3 引脚, hal_pin_invalid() = 未用 */
+    int                 clk_pin;        /* CLK 引脚 (DTSI 直投, 平台语义: STM32/WCH=port<<16|pin, ESP32=SoC GPIO 编号) */
+    int                 cmd_pin;        /* CMD 引脚 */
+    int                 d0_pin;         /* D0 引脚 */
+    int                 d1_pin;         /* D1 引脚, -1 = 未用 */
+    int                 d2_pin;         /* D2 引脚, -1 = 未用 */
+    int                 d3_pin;         /* D3 引脚, -1 = 未用 */
 };
 /*===========================================================================================================================================================*/
 

@@ -7,14 +7,14 @@ import os
 import sys
 from typing import List, Optional
 
-from .ast import DtsProperty
+from .dts_ast import DtsProperty
 from .compiler import DTSCompiler
 from .generator import CGenerator
 
 
 def main(argv: Optional[List[str]] = None) -> None:
     parser = argparse.ArgumentParser(
-        description='MCU 编译期 DeviceTree 编译器 — DTS → C 代码生成 (PLY)',
+        description='MCU 编译期 DeviceTree 编译器 — DTS → C 代码生成 (Lark + Transformer)',
     )
     parser.add_argument('dts_path', type=str, help='输入的 .dts 文件路径')
     parser.add_argument('output_dir', type=str, help='生成文件的输出目录')
@@ -22,11 +22,22 @@ def main(argv: Optional[List[str]] = None) -> None:
         'driver_dirs', type=str, nargs='*', default=[],
         help='扫描 DRIVER_REGISTER 宏的驱动源码目录 (可多个)',
     )
+    parser.add_argument(
+        '-I', '--include', action='append', default=[], metavar='DIR',
+        help='额外头文件搜索路径 (可多个): 让 dtsi 里 #include <厂商头.h> '
+             '能找到, 命中后用 cpp -E -P -dM 提取该头全部 #define',
+    )
+    parser.add_argument(
+        '-D', '--define', action='append', default=[], metavar='NAME[=VAL]',
+        help='预定义宏 (可多个): 传给 cpp, 如 -DSTM32F407xx -DUSE_FULL_LL_DRIVER',
+    )
     args = parser.parse_args(argv)
 
     dts_path: str = args.dts_path
     output_dir: str = args.output_dir
     driver_dirs: List[str] = args.driver_dirs
+    extra_inc_dirs: List[str] = args.include
+    extra_defines: List[str] = args.define
 
     if not os.path.isfile(dts_path):
         print(f'ERROR: DTS file not found: {dts_path}', file=sys.stderr)
@@ -36,8 +47,14 @@ def main(argv: Optional[List[str]] = None) -> None:
     print(f'  output: {output_dir}')
     if driver_dirs:
         print(f'  driver scan: {", ".join(driver_dirs)}')
+    if extra_inc_dirs:
+        print(f'  extra -I: {", ".join(extra_inc_dirs)}')
+    if extra_defines:
+        print(f'  extra -D: {", ".join(extra_defines)}')
 
-    compiler = DTSCompiler(dts_path, driver_dirs)
+    compiler = DTSCompiler(dts_path, driver_dirs,
+                            extra_inc_dirs=extra_inc_dirs,
+                            extra_defines=extra_defines)
     compiler.compile()
 
     print(f'  devices: {len(compiler.device_list)}')

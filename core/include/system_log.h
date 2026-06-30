@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #ifndef SYSTEM_LOG_H
 #define SYSTEM_LOG_H
 

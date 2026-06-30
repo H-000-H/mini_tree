@@ -1,163 +1,106 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
- * GPIO HAL 层 — 硬件抽象接口 (STM32/CH32)
+ * GPIO HAL 层 — 硬件抽象接口 (跨平台统一头)
  *
- * 结构与 API 与 ESP32 hal_gpio.h 对齐, 采用 fast/safe 双层 inline。
- * 职责: 虚拟引脚抽象 + 寄存器直写, 不含锁/中断管理。
+ * 设计: 结构体封装, DTSI 直投厂商宏值, HAL 零翻译零查表。
+ * - STM32/WCH: gpio-port = <GPIOA_BASE>, gpio-pin = <GPIO_PIN_5>,
+ *   gpio-clk  = <LL_AHB1_GRP1_PERIPH_GPIOA> / <RCC_APB2Periph_GPIOA>,
+ *   gpio-mode = <LL_GPIO_MODE_OUTPUT> / <GPIO_Mode_Out_PP>,
+ *   gpio-pull = <LL_GPIO_PULL_NO>  (WCH 忽略 pull, mode+pull 编码在一起)
+ * - ESP32: gpio-port = <0>, gpio-pin = <5>  (SoC GPIO 编号),
+ *   gpio-clk  = <0>,  gpio-mode = <GPIO_MODE_OUTPUT>,
+ *   gpio-pull = <GPIO_FLOATING>
+ * - hal_gpio_obj_t 嵌入 VFS priv, VFS probe 填值, HAL 无池管理
+ * - fast-path 实现在各平台 hal_gpio_*.c, 直接刷寄存器/调 ESP-IDF API
  *
- * 虚拟引脚 hal_pin_t:
- *   v[0] = port_idx (0=GPIOA, 1=GPIOB, ...)
- *   v[1] = pin_idx  (0..15)
- *   平台通过 g_*_port_lut[] / g_*_pin_lut[] 解包为寄存器地址与掩码。
+ * 头中立化: 本头不暴露任何 vendor 类型, 只用 uintptr_t/int/void*。
+ * vendor 头由 hal_gpio_*.c 内部 include, fast-path 实现也在 .c 中。
  */
 #ifndef HAL_GPIO_H
 #define HAL_GPIO_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "compiler_compat.h"
 #include "VFS.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-                                                            /*虚拟引脚实体与宏*/
-/*===========================================================================================================================================================*/
-#define HAL_GPIO_PORT_DEFAULT 0
-#define HAL_PIN_INVALID_NUM   UINT16_MAX
-
-/* 跨平台虚拟逻辑引脚
- * 无论哪个平台，都不要把原生指针或原生掩码丢进来！
- * v[0] (port): 虚拟端口号。如 0=PORTA, 1=PORTB, 2=PORTC... (ESP32固定为0)
- * v[1] (pin):  虚拟引脚号。如 0=PIN0, 1=PIN1, 5=PIN5...
- */
-typedef struct hal_pin
-{
-    uint16_t v[2];   /* v[0]=port_idx, v[1]=pin_idx */
-} hal_pin_t;
-
-#define HAL_PIN_PORT(p) ((int)(p).v[0])
-#define HAL_PIN_NUM(p)  ((int)(p).v[1])
-#define HAL_MAKE_PIN(port, num) hal_pin_make((int)(port), (uint16_t)(num))
-/*===========================================================================================================================================================*/
-
-                                                            /*inline 构造与校验*/
-/*===========================================================================================================================================================*/
-static inline hal_pin_t hal_pin_make(int port, uint16_t pin)
-{
-    hal_pin_t p = { .v = { (uint16_t)port, pin } };
-    return p;
-}
-
-static inline hal_pin_t hal_pin_invalid(void)
-{
-    hal_pin_t p = { .v = { HAL_GPIO_PORT_DEFAULT, HAL_PIN_INVALID_NUM } };
-    return p;
-}
-
-static inline int hal_pin_is_valid(hal_pin_t p)
-{
-    return p.v[1] != HAL_PIN_INVALID_NUM;
-}
-
-static inline int hal_pin_equal(hal_pin_t a, hal_pin_t b)
-{
-    return a.v[0] == b.v[0] && a.v[1] == b.v[1];
-}
-/*===========================================================================================================================================================*/
-
-                                                            /*DTS/硬件映射 API*/
-/*===========================================================================================================================================================*/
-int hal_gpio_dts_resolve(uint32_t dts_port, uint32_t dts_pin, int *hw_gpio_out) COMPAT_WARN_UNUSED_RESULT;
-int hal_pin_map_hw_gpio(hal_pin_t pin);
-/*===========================================================================================================================================================*/
-
-                                                            /*GPIO 模式枚举*/
+                                                            /*GPIO 电平与模式配置*/
 /*===========================================================================================================================================================*/
 #define HAL_GPIO_HIGH_LEVEL 1
 #define HAL_GPIO_LOW_LEVEL  0
 
-typedef enum
-{
-    HAL_GPIO_MODE_INPUT = 0,
-    HAL_GPIO_MODE_OUTPUT,
-    HAL_GPIO_MODE_INPUT_OUTPUT,
-    HAL_GPIO_MODE_OPEN_DRAIN,
-} hal_gpio_mode_t;
+#ifndef HAL_GPIO_OBJ_POOL_SIZE
+#define HAL_GPIO_OBJ_POOL_SIZE 16
+#endif
 
-typedef enum
-{
-    HAL_GPIO_PULL_NONE = 0,
-    HAL_GPIO_PULL_UP,
-    HAL_GPIO_PULL_DOWN,
-} hal_gpio_pull_t;
-/*===========================================================================================================================================================*/
-
-                                                            /*模式配置结构*/
-/*===========================================================================================================================================================*/
+/* 模式配置: 直接承载厂商宏值 (LL_GPIO_MODE_* / GPIOMode_TypeDef / gpio_mode_t),
+ * 拒绝二次翻译。WCH 平台 pull 字段被忽略 (mode+pull 编码在一起)。 */
 struct hal_gpio_mode_cfg
 {
-    int mode;
-    int pull;
+    uint32_t mode;
+    uint32_t pull;
 };
 /*===========================================================================================================================================================*/
 
-#include "stm32f4xx_hal.h"
-
-#define HAL_GPIO_PORT_COUNT 7
-#define HAL_GPIO_PIN_COUNT  16
-
-_Static_assert(HAL_GPIO_PORT_COUNT > 0, "hal gpio: port count");
-_Static_assert(HAL_GPIO_PIN_COUNT > 0, "hal gpio: pin count");
-_Static_assert(HAL_PIN_INVALID_NUM > HAL_GPIO_PIN_COUNT, "hal gpio: invalid pin sentinel");
-
-extern GPIO_TypeDef *const g_stm32_port_lut[HAL_GPIO_PORT_COUNT];
-extern const uint16_t      g_stm32_pin_lut[HAL_GPIO_PIN_COUNT];
-
-                                                            /*fast path inline*/
+                                                            /*GPIO 核心对象 (嵌入 VFS, HAL 无池管理)*/
 /*===========================================================================================================================================================*/
-/* 裸调 fast path: 直呼 SoC GPIO, 无额外校验; VFS 在 dev_lc 持锁后使用 */
-static inline int COMPAT_WARN_UNUSED_RESULT hal_gpio_fast_set_level(hal_pin_t pin, int level)
+/* 纯硬件直投实体, 所有字段由 DTSI 提供厂商宏值, HAL 零计算。
+ * - 嵌入 VFS priv 结构体, 由 VFS osal_pool 管理生命周期
+ * - HAL 层无池管理, 无 alloc/free, 无 pre_execution
+ * - fast-path 实现在 hal_gpio_*.c, 直接解引用对象指针刷寄存器/调 API
+ *
+ * 跨平台字段说明:
+ * - STM32/WCH: port = GPIO_TypeDef* 基地址, pin = GPIO_PIN_x, clk_periph = RCC 时钟
+ * - ESP32: port = 0 (无基地址概念), pin = SoC GPIO 编号, clk_periph = 0 (内部处理)
+ */
+typedef struct hal_gpio_obj
 {
-    uint32_t port_idx = (uint32_t)HAL_PIN_PORT(pin);
-    uint32_t pin_idx  = (uint32_t)HAL_PIN_NUM(pin);
-
-    HAL_GPIO_WritePin(g_stm32_port_lut[port_idx], g_stm32_pin_lut[pin_idx],level ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    return VFS_OK;
-}
-
-static inline int COMPAT_WARN_UNUSED_RESULT hal_gpio_fast_get_level(hal_pin_t pin, int *level_out)
-{
-    uint32_t port_idx = (uint32_t)HAL_PIN_PORT(pin);
-    uint32_t pin_idx  = (uint32_t)HAL_PIN_NUM(pin);
-
-    if (!level_out)
-        return VFS_ERR_INVAL;
-    *level_out = (HAL_GPIO_ReadPin(g_stm32_port_lut[port_idx], g_stm32_pin_lut[pin_idx]) ==GPIO_PIN_SET)? 1: 0;
-    return VFS_OK;
-}
-
-static inline int COMPAT_WARN_UNUSED_RESULT hal_gpio_fast_toggle(hal_pin_t pin)
-{
-    uint32_t port_idx = (uint32_t)HAL_PIN_PORT(pin);
-    uint32_t pin_idx  = (uint32_t)HAL_PIN_NUM(pin);
-
-    HAL_GPIO_TogglePin(g_stm32_port_lut[port_idx], g_stm32_pin_lut[pin_idx]);
-    return VFS_OK;
-}
+    uintptr_t     port;
+    uint16_t      pin;
+    uint32_t      clk_periph;
+    bool          is_used;    /* 运行时激活状态 (VFS probe 置 true) */
+} hal_gpio_obj_t;
 /*===========================================================================================================================================================*/
 
-                                                            /*安全包装 API*/
+                                                            /*fast path (实现在 hal_gpio_*.c, 零分支零查表)*/
 /*===========================================================================================================================================================*/
-int hal_gpio_set_level(hal_pin_t pin, int level) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_get_level(hal_pin_t pin) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_read_level(hal_pin_t pin, int *level_out) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_toggle(hal_pin_t pin) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_init(hal_pin_t pin, const struct hal_gpio_mode_cfg *cfg) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_deinit(hal_pin_t pin) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_write_raw_dts(uint32_t dts_port, uint32_t dts_pin, uint8_t level) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_read_raw_dts(uint32_t dts_port, uint32_t dts_pin, uint8_t *level_out) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 快路径: 设置 GPIO 输出电平
+ * @param obj   GPIO 对象指针
+ * @param level 目标电平 (1=高, 0=低)
+ * @return 成功返回 VFS_OK, obj 为空返回 VFS_ERR_INVAL
+ */
+int hal_gpio_fast_set_level(hal_gpio_obj_t* obj, int level) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief 快路径: 读取 GPIO 当前输入电平
+ * @param obj       GPIO 对象指针
+ * @param level_out 用于回传电平的指针 (1=高, 0=低)
+ * @return 成功返回 VFS_OK, obj 或 level_out 为空返回 VFS_ERR_INVAL
+ */
+int hal_gpio_fast_get_level(hal_gpio_obj_t* obj, int *level_out) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief 快路径: 翻转 GPIO 输出电平
+ * @param obj GPIO 对象指针
+ * @return 成功返回 VFS_OK, obj 为空返回 VFS_ERR_INVAL
+ */
+int hal_gpio_fast_toggle(hal_gpio_obj_t* obj) COMPAT_WARN_UNUSED_RESULT;
+/*===========================================================================================================================================================*/
+
+                                                            /*HAL API (基于对象指针)*/
+/*===========================================================================================================================================================*/
+int hal_gpio_init(hal_gpio_obj_t* obj, const struct hal_gpio_mode_cfg *cfg) COMPAT_WARN_UNUSED_RESULT;
+int hal_gpio_deinit(hal_gpio_obj_t* obj) COMPAT_WARN_UNUSED_RESULT;
+
+/* Raw 原始接口: 直接数字强转物理硬刷, 绝不占用池子内存。
+ * STM32/WCH: dts_port_base = GPIO 基地址, dts_pin_mask = GPIO_PIN_x
+ * ESP32: dts_port_base = SoC GPIO 编号, dts_pin_mask 忽略 */
+int hal_gpio_write_raw_dts(uint32_t dts_port_base, uint32_t dts_pin_mask, uint8_t level);
 /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus
@@ -165,3 +108,4 @@ int hal_gpio_read_raw_dts(uint32_t dts_port, uint32_t dts_pin, uint8_t *level_ou
 #endif
 
 #endif /* HAL_GPIO_H */
+ 

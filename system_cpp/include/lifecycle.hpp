@@ -1,6 +1,13 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Lifecycle — 系统模块统一生命周期接口
+ *
+ * 定义 ModuleState 状态机: Created→Initialized→Started→Suspended→Stopped/Failed
+ * 抽象基类强制子类实现 init/start/stop/suspend/resume/state 六个钩子
+ * can_transit 守护状态转移合法性, Failed 为终态不可恢复
+ */
 #pragma once
-
-#include <cstdint>
+#include "osal.h"
 
 enum class ModuleState : uint8_t
 {

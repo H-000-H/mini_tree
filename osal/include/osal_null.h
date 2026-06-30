@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * osal_null.h — 裸机后端移植辅助接口
+ *
+ * 仅 CONFIG_OSAL_NULL 后端使用, 提供 ISR 入口/出口与 SysTick 钩子
+ * osal_null_isr_enter/exit 维护 ISR 嵌套计数, 驱动 osal_in_isr() 判定
+ * osal_null_systick_handler 累加单调 ms 时钟, 须在 SysTick_Handler 中调用
+ */
 #pragma once
 
 #include <stdint.h>

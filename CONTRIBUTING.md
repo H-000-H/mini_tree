@@ -95,11 +95,13 @@ mini\_tree 仍处于早期阶段，以下列出几个已知有待完善的方向
 
 ## 1. 外设适配层移植 (hal 的南向隔离)
 
-`hal/` 定义了硬件抽象接口与平台实现。具体的芯片适配代码必须遵循**南向物理隔离**原则：
+`mini_tree/hal/` 仅含平台中立头文件（结构体定义、init 函数原型、`static inline` 快速路径）与少量通用 `.c`（`hal_if_dummy.c`、`hal_cpu_amp.c`、`hal_pwm.c`）。具体芯片的 `.c` 实现下沉到各平台项目目录（如 `platform/<vendor>/<board>/mini_tree/hal/<periph>/hal_<periph>_<chip>.c`）。芯片适配代码必须遵循**南向物理隔离**原则：
 
-- **代码位置**：具体芯片实现放入 `hal/soc/<chip_name>/` 目录，通过 CMake Kconfig 开关包裹。核心层（`core/`、`board/`、`osal/`）中不得出现与具体芯片相关的条件编译。
-- **符号闭包**：芯片厂家的专用头文件（如 ST 的 `stm32f4xx_hal.h`、ESP-IDF 的 `driver/gpio.h`）只允许包含在对应的 `.c` 实现文件内部，不得泄露到 `hal/` 各子目录的公共头文件中。
-- **巨型 SDK 的管理**：对于 NXP MCUXpresso、ESP-IDF 等体积庞大的厂商 SDK，建议建立独立的 Git 仓库，通过 **Git Submodule** 在 `hal/soc/` 下按需挂载，避免膨胀核心仓库。
+- **代码位置**：平台特定的 HAL `.c` 实现放入各平台项目目录的 `hal/<periph>/` 下，文件名遵循 `hal_<periph>_<chip>.c` 约定，通过各平台项目的 `CMakeLists.txt` 集成。核心层（`core/`、`board/`、`osal/`、`vfs/`、`bus/`）中不得出现与具体芯片相关的条件编译或厂商 SDK 符号。
+- **符号闭包**：芯片厂家的专用头文件（如 ST 的 `stm32f4xx_hal.h`、WCH 的 `ch32v30x.h`、ESP-IDF 的 `driver/gpio.h`）只允许包含在对应的 `.c` 实现文件内部，HAL 头文件（`hal/**/*.h`）必须保持厂商中性，不得泄露厂商 include。
+- **硬件直投模式**：HAL 头结构体统一为 `hal_spi_pin_cfg` / `hal_uart_pin_cfg` / `hal_gpio_obj_t`（`uintptr_t port` / `uint16_t pin` / `uint32_t clk_periph` / `uint32_t af`），DTSI 厂商宏值直投给 LL 库，无自定义 enum 或 switch 映射。严禁引入 vtable/ops 间接层（如 `hal_gpio_ops_t` / `s_spi_bus_ops` / `bus_ops`），严禁直接寄存器操作，所有硬件操作必须通过厂商 LL 库函数。
+- **统一 compatible strings**：三平台 IP dtsi 中 `compatible` 统一为 `spi-master` / `spi-slave` / `uart` / `gpio` / `*-platform-cap`，不得引入 `stm32,` / `ch32,` / `esp32,` 平台前缀。
+- **巨型 SDK 的管理**：对于 NXP MCUXpresso、ESP-IDF 等体积庞大的厂商 SDK，建议放在 `platform/<vendor>/` 下独立管理，避免膨胀 `mini_tree/` 核心仓库。
 
 ## 2. 多核 SMP 下的 Cache 对齐 —— 一个理论风险点
 
@@ -142,7 +144,8 @@ mini\_tree 仍处于早期阶段，以下列出几个已知有待完善的方向
 
 - 确认 Debug 和 Release 模式下 `-Wall -Wextra -Werror` 零警告通过
 - 不引入 C++ 异常（`try/catch`）和 RTTI（`typeid`），保持 `-fno-exceptions -fno-rtti` 编译
-- 不向 `core/`、`board/`、`osal/` 引入具体芯片 SDK 符号
+- 不向 `core/`、`board/`、`osal/`、`vfs/`、`bus/` 引入具体芯片 SDK 符号（厂商 include / 宏 / 类型），这些目录必须平台中性
+- 不引入 vtable/ops 间接层（如 `hal_gpio_ops_t` / `bus_ops`）、不引入 `hal_pin_t` 虚拟引脚抽象、不引入平台前缀 compatible 字符串（如 `stm32,` / `ch32,` / `esp32,`）
 
 ***
 

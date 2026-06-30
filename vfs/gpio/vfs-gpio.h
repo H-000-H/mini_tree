@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #ifndef VFS_GPIO_H
 #define VFS_GPIO_H
 
@@ -18,34 +19,34 @@ extern "C" {
 struct vfs_gpio_arg
 {
     int level;
-    hal_pin_t pin;
+    hal_gpio_obj_t* obj;   /* 指向 VFS priv 嵌入的 HAL 对象 */
 };
 
 static int inline vfs_gpio_set_level(struct vfs_gpio_arg* vfs_arg)
 {
     if (IS_ERR(vfs_arg))
         return PTR_ERR(vfs_arg);
-    if (!hal_pin_is_valid(vfs_arg->pin))
+    if (!vfs_arg->obj)
         return VFS_ERR_INVAL;
-    return hal_gpio_fast_set_level(vfs_arg->pin, vfs_arg->level);
+    return hal_gpio_fast_set_level(vfs_arg->obj, vfs_arg->level);
 }
 
 static int inline vfs_gpio_get_level(struct vfs_gpio_arg* vfs_arg)
 {
     if (IS_ERR(vfs_arg))
         return PTR_ERR(vfs_arg);
-    if (!hal_pin_is_valid(vfs_arg->pin))
+    if (!vfs_arg->obj)
         return VFS_ERR_INVAL;
-    return hal_gpio_fast_get_level(vfs_arg->pin, &vfs_arg->level);
+    return hal_gpio_fast_get_level(vfs_arg->obj, &vfs_arg->level);
 }
 
 static int inline vfs_gpio_toggle(struct vfs_gpio_arg* vfs_arg)
 {
     if (IS_ERR(vfs_arg))
         return PTR_ERR(vfs_arg);
-    if (!hal_pin_is_valid(vfs_arg->pin))
+    if (!vfs_arg->obj)
         return VFS_ERR_INVAL;
-    return hal_gpio_fast_toggle(vfs_arg->pin);
+    return hal_gpio_fast_toggle(vfs_arg->obj);
 }
 
 #ifdef __cplusplus
@@ -56,15 +57,12 @@ static int inline vfs_gpio_toggle(struct vfs_gpio_arg* vfs_arg)
  * 分层隔离:
  *   - vfs-gpio.c 定义 VFS_GPIO_IMPL, 可调用 hal_gpio_init/deinit 等 HAL API
  *   - 其他文件包含本头, 非 fast 的 hal_gpio_* 符号被 #pragma GCC poison
- *   - 保留 hal_gpio_fast_* 及 hal_pin_map_hw_gpio (fast inline 内部依赖)
+ *   - 保留 hal_gpio_fast_* (fast inline 内部依赖)
  *   - 强制走 vfs_gpio_set_level / vfs_gpio_ioctl 等 VFS API
  *@=========================================================================================================================*/
 #ifndef VFS_GPIO_IMPL
 #pragma GCC poison hal_gpio_init hal_gpio_deinit
-#pragma GCC poison hal_gpio_set_level hal_gpio_get_level hal_gpio_read_level
-#pragma GCC poison hal_gpio_toggle
-#pragma GCC poison hal_gpio_write_raw_dts hal_gpio_read_raw_dts
-#pragma GCC poison hal_gpio_dts_resolve
+#pragma GCC poison hal_gpio_write_raw_dts
 #endif
 
 #endif /* VFS_GPIO_H */

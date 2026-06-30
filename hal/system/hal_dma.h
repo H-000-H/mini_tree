@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * DMA HAL — 直接内存访问通道抽象
+ *
+ * 三向传输 (MEM/PERIPH) 与字节/半字/字宽度、地址递增配置
+ * 块传输约束: 最小 32 字节且长度需按宽度对齐, 含完成回调
+ */
 #ifndef HAL_DMA_H
 #define HAL_DMA_H
 

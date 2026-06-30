@@ -1,10 +1,16 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Production Log — 量产日志环形缓冲区实现
+ *
+ * 启用 CONFIG_PRODUCTION_LOG 时以 blob 形式持久化到 hal_storage, 掉电可恢复
+ * ISR 中跳过持久化写 (存储可能阻塞), 仅更新内存环形缓冲
+ */
 #include "production_log.h"
 
 #include "config.h"
 #include "osal.h"
 #include "hal_storage.h"
 
-#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include "compiler_compat_poison.h"
@@ -18,7 +24,6 @@
 #define PROD_LOG_STORAGE_SLOT  0
 
 struct prod_log_persist
-
 {
     uint16_t head;
     uint32_t seq;
@@ -32,7 +37,7 @@ int production_log_init(void)
 {
     hal_storage_init();
 
-    memset(&s_state, 0, sizeof(s_state));
+    __builtin_memset(&s_state, 0, sizeof(s_state));
     size_t len = sizeof(s_state);
     hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len);
 

@@ -31,7 +31,10 @@
 | C17/C++17 标准 | 全框架 | Docker: ARM GCC 14.2.1 / RISC-V GCC 8.2.0 (WCH)；Windows 原生: ARM GCC 13.3.1 (CubeCLT) / RISC-V GCC 15.2.0 (MounRiver)；MinGW 全工具链覆盖 |
 | fno-exceptions / fno-rtti | C++ 全量 | 裸机 C++ 环境禁用异常与运行时类型识别 |
 | Meyers Singleton 预触 | 启动阶段 | ISR 前完成 __cxa_guard_acquire，杜绝 ABI 死锁 |
-| hal_pin_t 复合引脚 | hal/ | 32-bit port+pin 编码，ARM + RISC-V 跨架构移植 |
+| 硬件直投模式 | hal/ + bus/ + vfs/ | 无 vtable / ops 间接层, DTSI 厂商宏值直投, HAL 零翻译透传给 LL 库 / ESP-IDF driver |
+| 统一中间件 | mini_tree/ 整体 | mini_tree/ 作为纯中间件, 平台特定 HAL `.c` 实现下沉到各平台项目目录 (STM32 / CH32 / ESP32), 通过 `HAL_SRCS` 变量集成 |
+| 统一 compatible strings | board/ + vfs/ + drivers/ | 去除平台前缀 (`stm32,` / `ch32,` / `esp32,`), 采用 `spi-master` / `uart` / `heterogeneous,gpios` 等跨平台统一字串, `*-platform-cap` 用于 IP dtsi 平台能力声明 |
+| Apache-2.0 license | 全仓 | 所有源文件统一为 Apache-2.0, 头部 `SPDX-License-Identifier: Apache-2.0` |
 
 ---
 
@@ -48,6 +51,7 @@
 | **L7** — EventBus SIOF 防御 | C++ 全局构造函数早产 | Phase 1 末尾 `g_system_os_initialized = true`, post() 静默丢弃 |
 | **L8** — EventBus seal 封表 | ISR 读写踩踏 | Phase 2 末尾冻结订阅表, dispatch 遍历只读数组 |
 | **L9** — 反汇编审查 | CONFIG_BUILD_DISASM | 构建期指令级验证原子操作与死代码 |
+| **L10** — Poison 隔离强制 | bus/vfs 跨层调 hal/bus 符号 | `compiler_compat_poison.h` 的 `#pragma GCC poison` 编译期拦截 |
 
 ---
 
@@ -63,7 +67,8 @@
 | 第 6 轮: 工具链硬化 | CMake + cmake/ | C17/C++17 标准统一，fno-exceptions/fno-rtti，disasm 目标 |
 | 第 7 轮: system 双后端 | system_c/ + system_cpp/ + Kconfig | C++ / C 编译期选择，Kconfig SYSTEM_BACKEND |
 | 第 8 轮: 硅片级安全加固 | core/ + system_cpp/ | seal 封表 / DMA 对齐 / SIOF 防御 |
-| **总计** | **~85+ 文件** | **8 轮重构 + 文档体系** |
+| 第 9 轮: 统一中间件架构 | mini_tree/ 全量 + hal/ + bus/ + vfs/ | VFS / Bus / HAL 三层解耦, 硬件直投模式, hal_pin_t 删除, 统一 compatible strings, Apache-2.0 license |
+| **总计** | **~90+ 文件** | **9 轮重构 + 文档体系** |
 
 ---
 
@@ -241,25 +246,7 @@ bool mini_tree_system_loop(void);          // 裸机主循环 (OSAL_NULL)
 - `system_scrubber.hpp`: `<cstdint>` → `<stdint.h>`（C++ 独有的 `<cstdint>` 在 C 编译中不存在）
 - `system_init.c`: 移除 C++ `EventBus::getInstance().poll()`，裸机循环仅喂狗
 
----
-
-## 已知限制
-
-| 限制 | 影响 | 缓解 |
-|------|------|------|
-| **OSAL_NULL 无多任务** | 裸机模式下 Task 创建返回 NULL | 提供 `mini_tree_system_loop()` 主循环轮询 |
-| **BufferPool 固定块大小** | 小块浪费内存，大块无法分配 | 按典型消息 Size 配置 Kconfig |
-| **无异步 DMA 事件驱动** | EventBus 分发为同步轮询 | RTOS 模式下由独立 Task 驱动 |
-| **dtc-lite Linux DTS 兼容** | 低版本未实现 overlay / reg 分组 | 自 v1.6.0 起支持 `&label` overlay、`#address-cells`/`#size-cells` reg 分组、`/include/` 指令。详见 `docs/driver_guide.md` 第 7.3 节差异表 |
-| **Scrubber CRC 基线固化** | 出厂后无法更新基线 | OTA 时可重算并更新 |
-
----
-
-> 本项目衍生自一个 ESP32-S3 音频 DSP 工程，通用中间件逻辑经抽离、泛化后独立为此框架。
-
----
-
-## 第 8 轮: 硅片级安全加固 (最终轮)
+### 第 8 轮: 硅片级安全加固
 
 **动机**: 覆盖已知嵌入式软件失效模式中尚未被框架防御的三个死角: ISR 与任务对订阅者数组的读写踩踏、DMA 引擎因内存不对齐触发的总线错误、以及 C++ 静态初始化顺序惨案 (SIOF) 导致的 main() 前崩溃。
 
@@ -278,3 +265,66 @@ bool mini_tree_system_loop(void);          // 裸机主循环 (OSAL_NULL)
 - **BufferPool 对齐策略** — 池内存分配采用超额申请 + 地址向上取整, 而非 `aligned_alloc` / `posix_memalign`, 避免对 C 运行时库的依赖. 对静态池 (`use_static = true`) 场景, 调用者自行确保 `static_mem` 对齐.
 
 - **SIOF 防御的轻量实现** — 使用 `extern bool` 全局标志而非更复杂的 `call_once` / `pthread_once` 模式, 零堆栈和锁开销. 考虑到框架现有的 `m_queue` 判空已能防止崩溃, 该标志更多是作为可维护性层面的双保险, 确保未来新增的 EventBus 方法天然具备点火前拦截能力.
+
+### 第 9 轮: 统一中间件架构
+
+**动机**: 早期 HAL/Bus/VFS 三层之间存在 vtable/ops 间接层、平台前缀 compatible、`hal_pin_t` 复合引脚编码等历史包袱, 导致跨架构移植成本高, 平台 `HAL_SRCS` 接入复杂. 本轮将 `mini_tree/` 收敛为纯中间件, 平台特定代码全部下沉到各平台项目目录.
+
+**三层解耦**:
+
+```
+应用层 ── device_find_by_label / device_open / device_read / device_write / device_ioctl
+   │
+   ▼
+VFS 层 (vfs/) ── file_operations + dev_lifecycle + DTS, 注册 "spi-master" / "uart" / "heterogeneous,gpios" 等
+   │   ▲ compiler_compat_poison.h: vfs 外禁调 bus 符号
+   ▼
+Bus 层 (bus/ + board/include/bus.h) ── host/client 池 + atomic ref_count + controller_ops
+   │   ▲ compiler_compat_poison.h: bus 外禁调 hal 符号
+   ▼
+HAL 层 (hal/**/*.h 平台中立头) ── 平台 .c 实现由 HAL_SRCS 提供
+```
+
+**硬件直投模式 (核心决策)**:
+
+| 项 | 之前 (ops/vtable) | 之后 (硬件直投) |
+|---|---|---|
+| HAL 接口 | `hal_gpio_ops_t` / `hal_spi_ops_t` 等 ops 表 | 函数原型直投, 无间接层 |
+| 引脚编码 | `hal_pin_t` 32-bit port+pin 复合 | `hal_spi_pin_cfg { port, pin, clk_periph, af }` 三组结构体 |
+| 厂商值 | HAL `.c` 内翻译 / 解码 | DTSI 厂商宏值直投, HAL 零翻译透传 LL 库 / ESP-IDF driver |
+| 命名 | `spi_hal_*` | `hal_spi_*` (统一) |
+| compatible | `stm32,spi-master` / `ch32,spi-master` 等带平台前缀 | `spi-master` / `uart` / `heterogeneous,gpios` 等统一字串 |
+| License | 混合 (部分 MIT, 部分 Apache-2.0) | 统一 Apache-2.0, `SPDX-License-Identifier: Apache-2.0` 头 |
+
+**统一 HAL 头结构体** (平台中立):
+
+```c
+struct hal_spi_pin_cfg  { uintptr_t port; uint16_t pin; uint32_t clk_periph; uint32_t af; };
+struct hal_uart_pin_cfg { uintptr_t port; uint16_t pin; uint32_t clk_periph; uint32_t af; };
+typedef struct {
+    uintptr_t port; uint16_t pin; uint32_t clk_periph; bool is_used;
+} hal_gpio_obj_t;   // 嵌入 VFS priv, HAL 无池管理
+```
+
+**ESP32 适配**: 统一 HAL 模式后, ESP32 平台 `.c` 复用相同 HAL 头结构体, DMA 在无硬件支持的场景返回 `-ENOTSUP` stub (不再为 ESP32 单独维护 ops 路径).
+
+**三平台 DTSI compatible 统一**: STM32 / CH32 / ESP32 三平台 IP dtsi 中 `compatible` 字段去除 `stm32,` / `ch32,` / `esp32,` 前缀, 改为 `*-platform-cap` 通用平台能力声明字串, dtc-lite `_validate_compatibles()` 在编译期校验驱动匹配.
+
+**L10 防御层**: `compiler_compat_poison.h` 通过 `#pragma GCC poison` 在编译期拦截跨层调用 (bus 外禁调 hal 符号, vfs 外禁调 bus 符号), 将三层解耦从约定升级为编译期硬约束.
+
+---
+
+## 已知限制
+
+| 限制 | 影响 | 缓解 |
+|------|------|------|
+| **OSAL_NULL 无多任务** | 裸机模式下 Task 创建返回 NULL | 提供 `mini_tree_system_loop()` 主循环轮询 |
+| **BufferPool 固定块大小** | 小块浪费内存，大块无法分配 | 按典型消息 Size 配置 Kconfig |
+| **无异步 DMA 事件驱动** | EventBus 分发为同步轮询 | RTOS 模式下由独立 Task 驱动 |
+| **dtc-lite Linux DTS 兼容** | 低版本未实现 overlay / reg 分组 | 自 v1.6.0 起支持 `&label` overlay、`#address-cells`/`#size-cells` reg 分组、`/include/` 指令。详见 `docs/driver_guide.md` 第 7.3 节差异表 |
+| **Scrubber CRC 基线固化** | 出厂后无法更新基线 | OTA 时可重算并更新 |
+| **HAL 平台 `.c` 不在仓内** | 平台实现由各项目目录通过 `HAL_SRCS` 提供 | 头文件 (`hal/**/*.h`) 提供完整契约, 各平台项目自负责 `.c` 实现 |
+
+---
+
+> 本项目衍生自一个 ESP32-S3 音频 DSP 工程，通用中间件逻辑经抽离、泛化后独立为此框架。

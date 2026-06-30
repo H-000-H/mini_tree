@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * VFS.h — VFS 错误码与指针错误编码头文件
+ *
+ * 定义 VFS_ERR_xxx 错误码 (映射到 -EAGAIN/-ETIMEDOUT/-EHWPOISON 等 errno),
+ * 提供 ERR_PTR/PTR_ERR/IS_ERR 内联函数 (Linux 内核风格指针-错误编码).
+ * 错误指针落入 ERR_SECTION_BASE 之上的保留段, 与有效设备指针区分.
+ */
 #ifndef VFS_H
 #define VFS_H
 #include <errno.h>

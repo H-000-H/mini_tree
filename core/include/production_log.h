@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Production Log — 量产日志环形缓冲区接口
+ *
+ * 固定 32 槽位, 每条含 level/tag/msg, 用于产线故障现场追溯
+ * 启用 CONFIG_PRODUCTION_LOG 时经 hal_storage 持久化, 否则为空实现
+ */
 #ifndef PRODUCTION_LOG_H
 #define PRODUCTION_LOG_H
 

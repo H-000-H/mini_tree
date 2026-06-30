@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * bh_os — RTOS 下半部适配 (信号量唤醒)
+ *
+ * 在 bh 队列上叠加二值信号量, ISR 入队后 post 唤醒专用 bh 任务
+ * bh_os_task_entry() 阻塞 sem, 唤醒后 drain; 任务参数复用 bh_config 默认值
+ */
 #ifndef BH_OS_H
 #define BH_OS_H
 

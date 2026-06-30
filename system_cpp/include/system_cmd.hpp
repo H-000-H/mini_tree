@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * System Command Dispatcher — 双后端 (OS / Bare-metal)
  *
@@ -14,13 +15,13 @@
 #include <cstddef>
 #include <type_traits>
 #include <new>
-#include <utility>
 #include "osal.h"
 
 /* 后端选择: bare-metal 不需要 ETL */
 #ifndef CONFIG_OSAL_NULL
 #include <etl/map.h>
 #include <etl/string.h>
+#include <etl/type_traits.h>
 #endif
 #ifndef SYS_CMD_MAX_NAME_LEN
 #define SYS_CMD_MAX_NAME_LEN    16

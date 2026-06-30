@@ -1,3 +1,12 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * board_driver.c — 板级驱动核心实现
+ *
+ * board_driver_probe_all: 3 趟 deferred probe, 按依赖拓扑顺序匹配驱动,
+ *   失败按 criticality 分级 (FATAL 触发 OSAL_PANIC, WARNING 告警, IGNORE 静默).
+ * board_driver_remove_all: 逆 probe 顺序卸载, 失败保留 ERROR 状态.
+ * 实现 IEC 61508 安全停机子系统 (safety pin + 回调 + emergency_stop_all_cores).
+ */
 #include "config.h"
 #include "driver.h"
 #include "VFS.h"
@@ -28,8 +37,8 @@ static volatile int s_shutdown_entered = 0;
 
 struct safety_pin
 {
-    hal_pin_t pin;
-    int       safe_level;
+    int pin;
+    int safe_level;
 };
 
 static struct safety_pin g_safety_pins[BOARD_MAX_SAFETY_PINS];
@@ -38,7 +47,7 @@ static int          g_safety_pin_count;
 static safety_shutdown_fn_t g_safety_cbs[BOARD_SAFETY_MAX_CALLBACKS];
 static int                  g_safety_cb_count;
 
-void board_safety_add_pin(hal_pin_t pin, int safe_level)
+void board_safety_add_pin(int pin, int safe_level)
 {
     if (g_safety_pin_count < BOARD_MAX_SAFETY_PINS)
     {
@@ -89,7 +98,7 @@ DRIVER_REGISTER(board_safety_hw, "board,safety-hw",
 
 #else /* !CONFIG_SAFETY_SHUTDOWN */
 
-void board_safety_add_pin(hal_pin_t pin, int safe_level)
+void board_safety_add_pin(int pin, int safe_level)
 {
     (void)pin; (void)safe_level;
 }
@@ -108,7 +117,8 @@ static int device_dependency_not_ready(const struct device* dev)
     for (int i = 0; i < dev->node->dep_count; i++)
     {
         struct device* dep = board_dev_get(dev->node->deps[i]);
-        if (!dep) return 1;
+        if (IS_ERR(dep))
+            return 1;
 
         /* DIRECT 设备不参与 VFS 生命周期, 视为始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
@@ -131,7 +141,8 @@ static int device_dependency_pending(const struct device* dev)
     for (int i = 0; i < dev->node->dep_count; i++)
     {
         struct device* dep = board_dev_get(dev->node->deps[i]);
-        if (!dep) return 1;
+        if (IS_ERR(dep))
+            return 1;
 
         /* DIRECT 设备始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
@@ -176,7 +187,8 @@ static void disable_dependents(device_id_t failed_id)
     for (int i = 0; i < count; i++)
     {
         struct device* child = board_dev_get(list[i]);
-        if (!child) continue;
+        if (IS_ERR(child) || !child)
+            continue;
         enum device_status st = device_get_status(child);
         if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED) continue;
         COMPAT_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
@@ -252,7 +264,7 @@ int board_driver_probe_all(void)
             struct device* dev = board_dev_get(id);
             probe_fn_t probe = board_probe_get_fn(id);
 
-            if (!dev || device_get_status(dev) == DEVICE_STATUS_DISABLED)
+            if (IS_ERR(dev) || device_get_status(dev) == DEVICE_STATUS_DISABLED)
                 continue;
             /* DIRECT 设备不经过 VFS probe, 跳过 */
             if (dev->node && (dev->node->flags & DEVICE_FLAG_DIRECT))
@@ -331,7 +343,8 @@ int board_driver_probe_all(void)
             for (int i = 0; i < count; i++)
             {
                 struct device* dev = board_dev_get(order[i]);
-                if (dev && device_get_status(dev) != DEVICE_STATUS_PROBED &&
+                if (!IS_ERR(dev) && dev &&
+                    device_get_status(dev) != DEVICE_STATUS_PROBED &&
                     device_get_status(dev) != DEVICE_STATUS_RUNNING &&
                     device_dependency_pending(dev))
                 {
@@ -363,7 +376,7 @@ int board_driver_remove_all(void)
         device_id_t id = order[i];
         struct device* dev = board_dev_get(id);
 
-        if (!dev)
+        if (IS_ERR(dev))
             continue;
 
         enum device_status status = device_get_status(dev);

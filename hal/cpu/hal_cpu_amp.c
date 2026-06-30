@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * hal_cpu_amp.c — AMP (Asymmetric Multi-Processing) 弱符号默认实现
  *

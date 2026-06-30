@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * TaskManager — OSAL 任务创建工具类
+ *
+ * 基于 board_task_config 结构创建任务, 自动订阅 TWDT 看门狗
+ * 提供两类接口: create (配置结构体) 与 create_task (参数直传)
+ * 头文件 task_manager.h 暴露 C 链接接口供纯 C 模块调用
+ */
 #pragma once
 
 #include "task_config.h"

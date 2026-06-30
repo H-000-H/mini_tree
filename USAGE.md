@@ -35,8 +35,8 @@
 | **VFS** | 拟物化文件系统，设备树的运行时抽象视图 |
 | **Phase 1** | RTOS 启动前的早期初始化（看门狗、EventBus 预置） |
 | **Phase 2** | RTOS 启动后的驱动探针与任务创建 |
-| **hal/** | 硬件抽象层接口与通用实现（`hal/hal_if_dummy.c`、`hal/cpu/`、`hal/pwm/` 等），具体芯片实现由项目通过 `HAL_SRCS` 变量提供 |
-| **bus/** | 总线层（`bus/spi/`、`bus/uart/`、`bus/dma/`），介于 `hal/` 与 `vfs/` 之间 |
+| **hal/** | 硬件抽象层，仅含平台中立头文件（`hal/gpio/`、`hal/spi/`、`hal/uart/`、`hal/analog/`、`hal/cpu/`、`hal/pwm/`、`hal/system/`、`hal/storage/`）与少量通用 `.c`（`hal_if_dummy.c`、`hal_cpu_amp.c`、`hal_pwm.c`），平台特定 `.c` 实现下沉到各平台项目目录（`platform/<vendor>/<board>/mini_tree/hal/<periph>/hal_<periph>_<chip>.c`） |
+| **bus/** | 总线层（`bus/spi/`、`bus/uart/`、`bus/dma/`），介于 `hal/` 与 `vfs/` 之间，提供 `bus_controller` / `bus_client` / `bus_dma_chan` 抽象 |
 | **vfs/** | VFS 设备节点实现（`vfs/spi/`、`vfs/uart/`、`vfs/gpio/`），提供 `device_*` API |
 | **DRIVER_REGISTER** | 驱动注册宏，编译期由 dtc-lite 扫描收录到 probe 表，运行时自动匹配 DTS `compatible` |
 | **device_find_by_label** | 按 DTS `label` 查找设备，业务层与硬件的唯一耦合点 |

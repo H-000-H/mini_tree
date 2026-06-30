@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * EventBus C 接口 — 轻量发布/订阅事件总线
+ *
+ * 框架只搬运事件 ID, 不解释业务语义; 用户事件基于 EVENT_USER_BASE 自定义
+ * 支持 ID 区间订阅, task 与 ISR 上下文均可 post
+ */
 #ifndef EVENT_BUS_H
 #define EVENT_BUS_H
 

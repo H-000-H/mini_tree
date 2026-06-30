@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * task_manager.cpp — TaskManager 任务创建实现
+ *
+ * 调用 osal_task_create_handle 创建任务, 失败返回 nullptr
+ * 任务创建成功后自动 system_wdt_subscribe 订阅 TWDT
+ * 暴露 C 链接 task_manager_create / task_manager_create_task 供纯 C 调用
+ */
 #include "task_manager.hpp"
 #include "task_manager.h"
 

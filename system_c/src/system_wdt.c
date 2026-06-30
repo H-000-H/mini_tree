@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_wdt (C 实现) — 看门狗与栈水位监控
+ *
+ * RTC_WDT: 独立硬件看门狗, OTA 时可延长超时。
+ * TWDT: 任务级看门狗, 超时触发 panic。
+ * 栈监控: 注册任务水位阈值, 周期检查 overflow/critical/warn。
+ */
 #include "system_wdt.h"
 
 #include "hal_wdt.h"

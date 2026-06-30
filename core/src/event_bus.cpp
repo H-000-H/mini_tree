@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * EventBus C++ 实现 — 事件分发任务与订阅管理
+ *
+ * 单例 + SIOF 防御 (OS 未初始化前拒绝操作); dispatch 在快照副本上回调不持锁
+ * 提供 extern "C" 包装, 供 .c 文件调用同一总线实例
+ */
 #include "event_bus.hpp"
 #include "safe_state.h"
 #include "system_log.h"
@@ -238,7 +245,7 @@ void EventBus::seal()
     m_is_sealed = true;
 }
 
-/* ── C 兼容封装 ── */
+/* ── C 接口 (extern "C") ── */
 extern "C" bool event_bus_init(void)
 {
     return EventBus::getInstance().init();

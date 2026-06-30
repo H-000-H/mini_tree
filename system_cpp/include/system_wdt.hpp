@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_wdt — 工业/医疗级看门狗与栈监控接口
+ *
+ * TWDT 任务看门狗: 3 秒未喂狗触发 Core Dump + 硬件复位
+ * RTC_WDT 独立 32kHz 时钟, IEC 61508 SIL4, CPU 总线停滞仍可冷启动
+ * 栈水位监控: 注册任务阈值, system_wdt_stack_check_all 周期巡检预警
+ */
 #pragma once
 
 #include "osal.h"
