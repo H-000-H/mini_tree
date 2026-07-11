@@ -4,7 +4,7 @@
  *
  * 架构: VFS → [Bus (本文件)] → HAL; hal_spi_bus_host 嵌入 spi_bus_host (无 vtable)
  * 职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
- *   client I/O (open/close/transfer) + 异步传输 (async/poll, master, DMA+ISR)
+ *   client I/O (open/close/transfer) + 同步传输 (poll, master)
  *
  * 隔离: 未定义 SPI_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_spi_* 与 spi_sync;
  *   允许 config 类型供 VFS 填充, 强制走 spi_bus API
@@ -179,10 +179,8 @@ int  spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms)
 #pragma GCC poison hal_spi_dev_init hal_spi_dev_hw_open hal_spi_dev_hw_close
 #pragma GCC poison hal_spi_dev_register hal_spi_dev_unregister
 #pragma GCC poison spi_sync spi_slave_sync spi_slave_queue_tx hal_spi_get_trans_result
-#pragma GCC poison hal_spi_transfer
 #pragma GCC poison hal_spi_transfer_async hal_spi_transfer_poll
 #pragma GCC poison hal_spi_callback_t
-#pragma GCC poison spi_device_config spi_bus_config spi_controller spi_device
 #endif
 
 #endif /* SPI_BUS_H */

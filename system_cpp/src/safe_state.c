@@ -8,7 +8,7 @@
  */
 #include "safe_state.h"
 #include "hal_platform_safety.h"
-#include "hal_cpu.h"
+#include "hal_amp.h"
 #include "osal.h"
 
 #include <stdint.h>
@@ -55,9 +55,9 @@ void enter_safe_state(const char* reason)
     /* 平台具体硬件闭锁 (PWM/I2S/SPI 停止, LED, 蜂鸣器) */
     hal_platform_critical_hardware_lock();
 
-    /* 冻结 OS */
-    osal_sched_suspend();
-    osal_int_disable();
+    /* 冻结 OS (单向不可恢复) */
+    osal_sched_freeze();
+    osal_int_freeze();
 
     while (1)
     {

@@ -564,7 +564,13 @@ bool config_store_commit(void)
     /* 优先使用注册的回调桥 */
     if (s_write_hook)
     {
-        return s_write_hook(buf, out_len);
+        bool ok = s_write_hook(buf, out_len);
+        if (ok)
+        {
+            for (int i = 0; i < s_entry_count; i++)
+                s_entries[i].dirty = false;
+        }
+        return ok;
     }
 
     /* 默认 hal_storage A/B slot 路径 */

@@ -2,7 +2,7 @@
 /*@=========================================================================================================================*
  * UART BUS 实现 — UART 总线子系统 bus 层
  *
- * 静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_dev, ref_count) + s_uart_clients[CLIENT_MAX]
+ * 静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) + s_uart_clients[CLIENT_MAX]
  * 数据流: VFS → uart_bus_open/close/read/write → uart_client_from_device → hal_uart_*
  *
  * HAL 直接调用 (无 vtable): host_init→hal_uart_dev_init, register→hw_open,
@@ -12,7 +12,7 @@
  * 引用计数: register/unregister 改 ref_count (open/close 只 IO gate); deinit >0 拒绝销毁
  *
  * 平台中立: 本文件不引用任何厂商 SDK, 所有硬件细节由 HAL 实现 (hal_uart_*.c) 承载。
- * bus 层仅持有 hal_uart_dev (嵌入 host), 透传 hal_uart_config (VFS 从 DTSI 硬件直投填充)。
+ * bus 层仅持有 hal_uart_bus_host (嵌入 host), 透传 hal_uart_config (VFS 从 DTSI 硬件直投填充)。
  *@=========================================================================================================================*/
 #define UART_BUS_IMPL
 #include "uart_bus.h"
@@ -28,7 +28,7 @@
 
 struct uart_bus_host {
     struct device*             dev;
-    struct hal_uart_dev        hal_dev;   /* 嵌入, 非 vtable 指针 */
+    struct hal_uart_bus_host   hal_host;  /* 嵌入, 非 vtable 指针 */
     atomic_int                 ref_count; /* atomic, 无锁计数 */
     uint8_t                    in_use;
 };
@@ -181,7 +181,7 @@ static int uart_host_init_impl(struct device* dev, const void* cfg)
     atomic_init(&host->ref_count, 0);
 
     /* HAL dev 嵌入 host, 直接传对象指针, 零翻译透传 config */
-    hal_uart_dev_init(&host->hal_dev, idx, host_cfg);
+    COMPAT_IGNORE_RESULT(hal_uart_dev_init(&host->hal_host, host_cfg));
 
     ret = bus_controller_bind_full(dev, BUS_TYPE_UART,
                                     &s_uart_controller_ops, host);
@@ -220,8 +220,8 @@ static int uart_host_deinit_impl(struct device* dev)
     bus_controller_unbind(dev);
 
     /* HAL close: 关闭 UART (如果已 open) */
-    if (host->hal_dev.hw_inited)
-        COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_dev));
+    if (host->hal_host.hw_inited)
+        COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
 
     uart_host_pool_release((int)(host - s_uart_hosts));
     return VFS_OK;
@@ -302,7 +302,7 @@ static int uart_client_register_impl(struct device* dev, const void* cfg, void**
     cli->host = host;
 
     /* HAL hw_open: 配置 UART + 引脚 (DTSI 硬件直投值) */
-    ret = hal_uart_dev_hw_open(&host->hal_dev);
+    ret = hal_uart_dev_hw_open(&host->hal_host);
     if (ret != VFS_OK)
     {
         uart_client_pool_release(idx);
@@ -332,8 +332,8 @@ static void uart_client_unregister_impl(struct device* dev)
     host = cli->host;
 
     /* 显式关闭 UART (对齐 SPI) */
-    if (host && host->hal_dev.hw_inited)
-        COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_dev));
+    if (host && host->hal_host.hw_inited)
+        COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
 
     if (host)
         atomic_fetch_sub(&host->ref_count, 1);  /* 对齐 spi: client_unregister -1 */
@@ -394,18 +394,17 @@ int uart_bus_close(struct device* dev)
  * @param dev client device
  * @param data 待写入数据
  * @param len 数据长度
- * @param timeout_ms 超时 (毫秒, 当前实现未使用)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 HAL 错误码
  */
 int uart_bus_write(struct device* dev,
-                    const uint8_t* data, size_t len,
-                    uint32_t timeout_ms)
+                    const uint8_t* data, size_t len)
 {
     struct uart_bus_client* cli = uart_client_from_device(dev);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    struct hal_uart_dev     hal_dev;
     if (!cli || !cli->host || !data || len == 0)
         return VFS_ERR_INVAL;
-    return hal_uart_write(&cli->host->hal_dev, data, len);
+    hal_dev.ctlr = &cli->host->hal_host;
+    return hal_uart_write(&hal_dev, data, len);
 }
 
 /**
@@ -413,16 +412,15 @@ int uart_bus_write(struct device* dev,
  * @param dev client device
  * @param data 读取缓冲区
  * @param len 读取长度
- * @param timeout_ms 超时 (毫秒, 当前实现未使用)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 HAL 错误码
  */
 int uart_bus_read(struct device* dev,
-                   uint8_t* data, size_t len,
-                   uint32_t timeout_ms)
+                   uint8_t* data, size_t len)
 {
     struct uart_bus_client* cli = uart_client_from_device(dev);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    struct hal_uart_dev     hal_dev;
     if (!cli || !cli->host || !data || len == 0)
         return VFS_ERR_INVAL;
-    return hal_uart_read(&cli->host->hal_dev, data, len);
+    hal_dev.ctlr = &cli->host->hal_host;
+    return hal_uart_read(&hal_dev, data, len);
 }

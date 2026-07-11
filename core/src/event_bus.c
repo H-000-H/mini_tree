@@ -20,7 +20,7 @@
  *   在 System_Pre_OS_Init (Phase 1) 完成前, 禁止所有 EventBus 操作.
  *   防止 C++ 全局构造函数在 main() 之前偷跑调用 post/subscribe.
  *   定义位于 system_init.c / system_init.cpp. */
-extern bool g_system_os_initialized;
+extern volatile bool g_system_os_initialized;
 
 #define K_TAG               "EventBus"
 #define K_QUEUE_LEN         CONFIG_EVENT_BUS_QUEUE_LEN
@@ -84,7 +84,7 @@ static void event_bus_dispatch_task(void* param)
 
         if (s_bus.sub_lock)
         {
-            if (osal_mutex_lock(s_bus.sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != 0)
+            if (osal_mutex_lock(s_bus.sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
             {
                 SYS_LOGE(K_TAG, "Fatal: EventBus dispatch lock timeout — safe shutdown");
                 enter_safe_state("EventBus mutex deadlock");
@@ -154,7 +154,7 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max,
     if (s_bus.sub_lock == NULL)     return false;
     if (id_min > id_max)            return false;
 
-    if (osal_mutex_lock(s_bus.sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != 0)
+    if (osal_mutex_lock(s_bus.sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
         SYS_LOGE(K_TAG, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
         return false;
@@ -178,7 +178,7 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max,
 static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
                                     bool* px_yield_required)
 {
-    if (s_bus.queue == NULL)
+    if (s_bus.queue == NULL || !s_bus.inited)
     {
         return false;
     }
@@ -269,10 +269,10 @@ void event_bus_stop(void)
         osal_task_delete(handle);
     }
 
-    /* 销毁队列, 完整逆操作 init() */
+    /* 先标记未初始化, 阻止新的 post, 再销毁队列 */
+    s_bus.inited = false;
     osal_queue_delete(s_bus.queue);
     s_bus.queue = NULL;
-    s_bus.inited = false;
 }
 
 void event_bus_seal(void)

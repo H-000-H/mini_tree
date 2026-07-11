@@ -15,7 +15,7 @@
 #include "safe_state.h"
 #include "system_wdt.h"
 #include "system_scrubber.h"
-#include "hal_cpu.h"
+#include "hal_amp.h"
 #include "compiler_compat.h"
 #include "config.h"
 #include "compiler_compat_poison.h"
@@ -35,7 +35,7 @@
 static const char* kTag = "SysInit";
 
 /* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
-bool g_system_os_initialized = false;
+volatile bool g_system_os_initialized = false;
 
 void mini_tree_pre_os_init(void)
 {

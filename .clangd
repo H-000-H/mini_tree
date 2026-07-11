@@ -1,0 +1,120 @@
+CompileFlags:
+  CompilationDatabase: ../build/Debug
+
+Diagnostics:
+  UnusedIncludes: None
+
+---
+If:
+  PathMatch: .*mini_tree[/\\].*\.(c|S)$
+CompileFlags:
+  CompilationDatabase: ../build/Debug
+
+---
+If:
+  PathMatch: .*mini_tree[/\\].*\.cpp$
+CompileFlags:
+  CompilationDatabase: ../build/Debug
+
+---
+If:
+  PathMatch: .*[/\\]hal[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../core/include
+    - -I../../board/include
+    - -I../../algorithm/buffer
+    - -I../../osal/include
+
+---
+If:
+  PathMatch: .*[/\\]board[/\\]include[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../core/include
+    - -I../../osal/include
+
+---
+If:
+  PathMatch: .*[/\\]core[/\\]include[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../board/include
+    - -I../../osal/include
+
+---
+If:
+  PathMatch: .*[/\\]osal[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../core/include
+
+---
+If:
+  PathMatch: .*[/\\]vfs[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../board/include
+    - -I../../core/include
+    - -I../../osal/include
+    - -I../../hal/gpio
+    - -I../../hal/tim
+    - -I../../hal/adc
+    - -I../../hal/dac
+    - -I../../bus/spi
+    - -I../../bus/uart
+
+---
+If:
+  PathMatch: .*[/\\]bus[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../core/include
+    - -I../../board/include
+    - -I../../osal/include
+    - -I../../hal/gpio
+    - -I../../hal/spi
+    - -I../../hal/uart
+
+---
+If:
+  PathMatch: .*[/\\]interrupt[/\\].*\.h$
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -std=gnu17
+    - -x
+    - c-header
+    - -I.
+    - -I../../core/include
+    - -I../../board/include

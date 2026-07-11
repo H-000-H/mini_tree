@@ -11,8 +11,8 @@
 #include "driver.h"
 #include "VFS.h"
 #include "osal.h"
-#include "hal_pwm.h"
-#include "hal_cpu.h"
+#include "hal_platform_safety.h"
+#include "hal_amp.h"
 #include "hal_gpio.h"
 #include "system_log.h"
 #include "board_devtable.h"
@@ -117,8 +117,7 @@ static int device_dependency_not_ready(const struct device* dev)
     for (int i = 0; i < dev->node->dep_count; i++)
     {
         struct device* dep = board_dev_get(dev->node->deps[i]);
-        if (IS_ERR(dep))
-            return 1;
+        if (!dep) return 1;
 
         /* DIRECT 设备不参与 VFS 生命周期, 视为始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
@@ -141,8 +140,7 @@ static int device_dependency_pending(const struct device* dev)
     for (int i = 0; i < dev->node->dep_count; i++)
     {
         struct device* dep = board_dev_get(dev->node->deps[i]);
-        if (IS_ERR(dep))
-            return 1;
+        if (!dep) return 1;
 
         /* DIRECT 设备始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
@@ -187,8 +185,7 @@ static void disable_dependents(device_id_t failed_id)
     for (int i = 0; i < count; i++)
     {
         struct device* child = board_dev_get(list[i]);
-        if (IS_ERR(child) || !child)
-            continue;
+        if (!child) continue;
         enum device_status st = device_get_status(child);
         if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED) continue;
         COMPAT_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
@@ -264,7 +261,7 @@ int board_driver_probe_all(void)
             struct device* dev = board_dev_get(id);
             probe_fn_t probe = board_probe_get_fn(id);
 
-            if (IS_ERR(dev) || device_get_status(dev) == DEVICE_STATUS_DISABLED)
+            if (!dev || device_get_status(dev) == DEVICE_STATUS_DISABLED)
                 continue;
             /* DIRECT 设备不经过 VFS probe, 跳过 */
             if (dev->node && (dev->node->flags & DEVICE_FLAG_DIRECT))
@@ -343,8 +340,7 @@ int board_driver_probe_all(void)
             for (int i = 0; i < count; i++)
             {
                 struct device* dev = board_dev_get(order[i]);
-                if (!IS_ERR(dev) && dev &&
-                    device_get_status(dev) != DEVICE_STATUS_PROBED &&
+                if (dev && device_get_status(dev) != DEVICE_STATUS_PROBED &&
                     device_get_status(dev) != DEVICE_STATUS_RUNNING &&
                     device_dependency_pending(dev))
                 {
@@ -376,7 +372,7 @@ int board_driver_remove_all(void)
         device_id_t id = order[i];
         struct device* dev = board_dev_get(id);
 
-        if (IS_ERR(dev))
+        if (!dev)
             continue;
 
         enum device_status status = device_get_status(dev);

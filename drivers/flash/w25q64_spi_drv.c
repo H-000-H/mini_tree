@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * W25Q64 SPI Flash 驱动（新架构版）
- *
- * 通过标准 device API 访问下层的 SPI VFS 驱动，
- * 不再直接依赖 spi_master_client 等总线层私有结构。
+ * 该文件实现了 W25Q64 SPI Flash 驱动
+ * 通过标准 device API 访问下层的 SPI VFS 驱动
  */
 #include "w25q64_drv.h"
-#include "spi_vfs.h"
+#include "vfs-spi.h"
 #include "device.h"
 #include "driver.h"
 #include "dev_lifecycle.h"
@@ -47,23 +45,36 @@ struct w25q64_device
 static struct w25q64_device s_w25q64_pool[W25Q64_COUNT] COMPAT_ALIGNED(4);
 static uint8_t              s_w25q64_used[W25Q64_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t          s_w25q64_pool_ctrl COMPAT_ALIGNED(4);
-static uint8_t s_w25q64_mutex_storage[W25Q64_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
 static uint8_t s_w25q64_tx_buf[W25Q64_COUNT][W25Q64_XFER_FRAME_SIZE] COMPAT_ALIGNED(32);
 static uint8_t s_w25q64_rx_buf[W25Q64_COUNT][W25Q64_XFER_FRAME_SIZE] COMPAT_ALIGNED(4);
 
 static const char* const kTag = "w25q64";
 
+/**
+ * @brief W25Q64 私有数据池启动初始化
+ */
 pre_execution(160)
 static void w25q64_pool_boot_init(void)
 {
-    osal_pool_init(&s_w25q64_pool_ctrl, s_w25q64_used, W25Q64_COUNT);
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_w25q64_pool_ctrl, s_w25q64_used, W25Q64_COUNT));
 }
 
+/**
+ * @brief 获取 W25Q64 设备私有数据
+ * @param dev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static struct w25q64_device* w25q64_get_drvdata(struct device* dev)
 {
     return (struct w25q64_device*)device_get_priv(dev);
 }
 
+/**
+ * @brief 等待 W25Q64 就绪 (轮询 WIP 位)
+ * @param flash W25Q64 设备私有数据
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_wait_ready(struct w25q64_device* flash, uint32_t timeout_ms)
 {
     uint8_t tx[2] = { W25Q64_SPI_OP_READ_STATUS1, 0x00 };
@@ -86,12 +97,24 @@ static int w25q64_wait_ready(struct w25q64_device* flash, uint32_t timeout_ms)
     return VFS_ERR_BUSY;
 }
 
+/**
+ * @brief 发送写使能命令
+ * @param flash W25Q64 设备私有数据
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_write_enable(struct w25q64_device* flash, uint32_t timeout_ms)
 {
     uint8_t cmd = W25Q64_SPI_OP_WRITE_ENABLE;
     return spi_vfs_transfer(flash->spi_dev, &cmd, NULL, 1U, timeout_ms);
 }
 
+/**
+ * @brief 读取 JEDEC ID
+ * @param flash W25Q64 设备私有数据
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_hw_read_jedec(struct w25q64_device* flash, uint8_t id[W25Q64_JEDEC_ID_LEN],
                              uint32_t timeout_ms)
 {
@@ -107,6 +130,15 @@ static int w25q64_hw_read_jedec(struct w25q64_device* flash, uint8_t id[W25Q64_J
     return VFS_OK;
 }
 
+/**
+ * @brief 从 Flash 读取数据 (分块传输)
+ * @param flash W25Q64 设备私有数据
+ * @param addr Flash 地址
+ * @param data 数据缓冲
+ * @param len 数据长度 (字节)
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_hw_read_data(struct w25q64_device* flash, uint32_t addr,
                             uint8_t* data, size_t len, uint32_t timeout_ms)
 {
@@ -152,6 +184,15 @@ static int w25q64_hw_read_data(struct w25q64_device* flash, uint32_t addr,
     return VFS_OK;
 }
 
+/**
+ * @brief 页编程 (写入一页数据, 不超过 256 字节)
+ * @param flash W25Q64 设备私有数据
+ * @param addr Flash 地址
+ * @param data 数据缓冲
+ * @param len 数据长度 (字节)
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_hw_page_program(struct w25q64_device* flash, uint32_t addr,
                                const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
@@ -182,6 +223,15 @@ static int w25q64_hw_page_program(struct w25q64_device* flash, uint32_t addr,
     return w25q64_wait_ready(flash, timeout_ms);
 }
 
+/**
+ * @brief 写入任意长度数据 (自动按页拆分)
+ * @param flash W25Q64 设备私有数据
+ * @param addr Flash 地址
+ * @param data 数据缓冲
+ * @param len 数据长度 (字节)
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_hw_write_data(struct w25q64_device* flash, uint32_t addr,
                              const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
@@ -210,6 +260,13 @@ static int w25q64_hw_write_data(struct w25q64_device* flash, uint32_t addr,
     return VFS_OK;
 }
 
+/**
+ * @brief 扇区擦除 (4KB)
+ * @param flash W25Q64 设备私有数据
+ * @param addr Flash 地址
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_hw_sector_erase(struct w25q64_device* flash, uint32_t addr, uint32_t timeout_ms)
 {
     uint8_t cmd[4];
@@ -233,6 +290,12 @@ static int w25q64_hw_sector_erase(struct w25q64_device* flash, uint32_t addr, ui
     return w25q64_wait_ready(flash, timeout_ms);
 }
 
+/**
+ * @brief W25Q64 设备打开操作 (引用计数, 首次打开重置 f_pos 并读 JEDEC)
+ * @param dev 设备对象指针
+ * @param arg 命令参数指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_open(struct device* dev, void* arg)
 {
     struct w25q64_device* flash;
@@ -252,7 +315,7 @@ static int w25q64_open(struct device* dev, void* arg)
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
-    first = dev_lc_open_begin(lc, OSAL_LOCK_TIMEOUT_DEFAULT_MS);
+    first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
 
@@ -283,6 +346,11 @@ static int w25q64_open(struct device* dev, void* arg)
     return ret;
 }
 
+/**
+ * @brief W25Q64 设备关闭操作 (引用计数, 末次关闭时关闭下层 SPI)
+ * @param dev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_close(struct device* dev)
 {
     struct w25q64_device* flash;
@@ -300,7 +368,7 @@ static int w25q64_close(struct device* dev)
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
-    last = dev_lc_close_begin(lc, OSAL_LOCK_TIMEOUT_DEFAULT_MS);
+    last = dev_lc_close_begin(lc);
     if (last < 0)
         return last;
 
@@ -311,6 +379,14 @@ static int w25q64_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief W25Q64 设备读操作 (从 f_pos 读取数据)
+ * @param dev 设备对象指针
+ * @param buffer 数据缓冲
+ * @param len 数据长度 (字节)
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_read(struct device* dev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct w25q64_device* flash;
@@ -328,7 +404,7 @@ static int w25q64_read(struct device* dev, void* buffer, size_t len, uint32_t ti
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc, OSAL_LOCK_TIMEOUT_DEFAULT_MS);
+    ret = dev_lc_io_begin(lc);
     if (ret != VFS_OK)
         return ret;
 
@@ -359,6 +435,14 @@ static int w25q64_read(struct device* dev, void* buffer, size_t len, uint32_t ti
     return ret;
 }
 
+/**
+ * @brief W25Q64 设备写操作 (从 f_pos 写入数据)
+ * @param dev 设备对象指针
+ * @param buffer 数据缓冲
+ * @param len 数据长度 (字节)
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_write(struct device* dev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct w25q64_device* flash;
@@ -376,7 +460,7 @@ static int w25q64_write(struct device* dev, const void* buffer, size_t len, uint
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc, OSAL_LOCK_TIMEOUT_DEFAULT_MS);
+    ret = dev_lc_io_begin(lc);
     if (ret != VFS_OK)
         return ret;
 
@@ -407,11 +491,94 @@ static int w25q64_write(struct device* dev, const void* buffer, size_t len, uint
     return ret;
 }
 
+/*===========================================================================================================================================================*/
+/*ioctl 命令映射表*/
+/*===========================================================================================================================================================*/
+typedef int (*w25q64_ioctl_fn_t)(struct w25q64_device* flash, void* arg,size_t arg_len, uint32_t timeout_ms);
+
+struct w25q64_ioctl_map
+{
+    w25q64_ioctl_fn_t handler;
+};
+
+/**
+ * @brief ioctl 命令: SEEK — 设置文件读写位置
+ * @param flash W25Q64 设备私有数据
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int w25q64_cmd_seek(struct w25q64_device* flash, void* arg,
+                            size_t arg_len, uint32_t timeout_ms)
+{
+    const uint32_t* offset = (const uint32_t*)arg;
+
+    (void)timeout_ms;
+    if (!offset || arg_len != sizeof(*offset) || *offset >= W25Q64_FLASH_SIZE)
+        return VFS_ERR_INVAL;
+
+    flash->f_pos = *offset;
+    return VFS_OK;
+}
+
+/**
+ * @brief ioctl 命令: SECTOR_ERASE — 擦除指定扇区
+ * @param flash W25Q64 设备私有数据
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int w25q64_cmd_sector_erase(struct w25q64_device* flash, void* arg,
+                                    size_t arg_len, uint32_t timeout_ms)
+{
+    const uint32_t* addr = (const uint32_t*)arg;
+
+    if (!addr || arg_len != sizeof(*addr))
+        return VFS_ERR_INVAL;
+    return w25q64_hw_sector_erase(flash, *addr, timeout_ms);
+}
+
+/**
+ * @brief ioctl 命令: READ_JEDEC_ID — 读取 JEDEC ID
+ * @param flash W25Q64 设备私有数据
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int w25q64_cmd_read_jedec_id(struct w25q64_device* flash, void* arg,
+                                     size_t arg_len, uint32_t timeout_ms)
+{
+    struct w25q64_jedec_arg* jedec = (struct w25q64_jedec_arg*)arg;
+
+    if (!jedec || arg_len != sizeof(*jedec))
+        return VFS_ERR_INVAL;
+    return w25q64_hw_read_jedec(flash, jedec->id, timeout_ms);
+}
+
+static const struct w25q64_ioctl_map s_w25q64_ioctl_map[W25Q64_CMD_COUNT] = {
+    [W25Q64_CMD_SEEK - W25Q64_CMD_BASE - 1]          = { w25q64_cmd_seek },
+    [W25Q64_CMD_SECTOR_ERASE - W25Q64_CMD_BASE - 1]  = { w25q64_cmd_sector_erase },
+    [W25Q64_CMD_READ_JEDEC_ID - W25Q64_CMD_BASE - 1] = { w25q64_cmd_read_jedec_id },
+};
+
+/**
+ * @brief W25Q64 设备 ioctl 控制 (命令映射表 O(1) 派发)
+ * @param dev 设备对象指针
+ * @param cmd 控制命令
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct w25q64_device* flash;
     struct dev_lifecycle* lc;
-    int ret;
+    int32_t               offset;
+    int                   ret;
 
     if (!dev || !dev->ops)
         return VFS_ERR_INVAL;
@@ -424,46 +591,15 @@ static int w25q64_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, 
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc, OSAL_LOCK_TIMEOUT_DEFAULT_MS);
+    ret = dev_lc_io_begin(lc);
     if (ret != VFS_OK)
         return ret;
 
-    switch (cmd)
-    {
-    case W25Q64_CMD_SEEK:
-    {
-        const uint32_t* offset = (const uint32_t*)arg;
-        if (!offset || arg_len != sizeof(*offset) || *offset >= W25Q64_FLASH_SIZE)
-            ret = VFS_ERR_INVAL;
-        else
-        {
-            flash->f_pos = *offset;
-            ret = VFS_OK;
-        }
-        break;
-    }
-    case W25Q64_CMD_SECTOR_ERASE:
-    {
-        const uint32_t* addr = (const uint32_t*)arg;
-        if (!addr || arg_len != sizeof(*addr))
-            ret = VFS_ERR_INVAL;
-        else
-            ret = w25q64_hw_sector_erase(flash, *addr, timeout_ms);
-        break;
-    }
-    case W25Q64_CMD_READ_JEDEC_ID:
-    {
-        struct w25q64_jedec_arg* jedec = (struct w25q64_jedec_arg*)arg;
-        if (!jedec || arg_len != sizeof(*jedec))
-            ret = VFS_ERR_INVAL;
-        else
-            ret = w25q64_hw_read_jedec(flash, jedec->id, timeout_ms);
-        break;
-    }
-    default:
+    offset = (int32_t)cmd - (int32_t)W25Q64_CMD_BASE;
+    if (offset < 1 || offset > W25Q64_CMD_COUNT || !s_w25q64_ioctl_map[offset - 1].handler)
         ret = VFS_ERR_INVAL;
-        break;
-    }
+    else
+        ret = s_w25q64_ioctl_map[offset - 1].handler(flash, arg, arg_len, timeout_ms);
 
     dev_lc_io_end(lc);
     return ret;
@@ -478,6 +614,11 @@ static const struct file_operations w25q64_fops =
     .ioctl = w25q64_ioctl,
 };
 
+/**
+ * @brief W25Q64 SPI 设备探测: 申请池槽, 获取父 SPI 设备, 绑定 fops
+ * @param dev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_spi_probe(struct device* dev)
 {
     struct w25q64_device* flash;
@@ -501,25 +642,35 @@ static int w25q64_spi_probe(struct device* dev)
     flash->spi_dev = device_get_parent(dev);
     if (!flash->spi_dev)
     {
-        __builtin_memset(flash, 0, sizeof(*flash));
-        osal_pool_release(&s_w25q64_pool_ctrl, pool_idx);
-        return VFS_ERR_NODEV;
+        ret = VFS_ERR_NODEV;
+        goto err_pool;
+    }
+
+    if (device_set_priv(dev, flash) != VFS_OK)
+    {
+        ret = VFS_ERR_IO;
+        goto err_pool;
     }
 
     flash->ops = w25q64_fops;
     dev->ops   = &flash->ops;
 
-    if (device_set_priv(dev, flash) != VFS_OK)
-    {
-        __builtin_memset(flash, 0, sizeof(*flash));
-        osal_pool_release(&s_w25q64_pool_ctrl, pool_idx);
-        return VFS_ERR_IO;
-    }
-
     SYS_LOGI(kTag, "probe OK: pool=%d max_xfer=%u", pool_idx, (unsigned)flash->max_xfer);
     return VFS_OK;
+
+err_pool:
+    dev->ops = NULL;
+    dev_lc_reset(device_lc(dev));
+    __builtin_memset(flash, 0, sizeof(*flash));
+    COMPAT_IGNORE_RESULT(osal_pool_release(&s_w25q64_pool_ctrl, pool_idx));
+    return ret;
 }
 
+/**
+ * @brief W25Q64 SPI 设备移除: 拒新 IO, 排空已有 IO, 释放池槽
+ * @param dev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int w25q64_spi_remove(struct device* dev)
 {
     struct w25q64_device* flash;
@@ -543,10 +694,13 @@ static int w25q64_spi_remove(struct device* dev)
     device_ops_unregister(dev);
 
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    {
+        dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
+    }
 
     __builtin_memset(flash, 0, sizeof(*flash));
-    osal_pool_release(&s_w25q64_pool_ctrl, pool_idx);
+    COMPAT_IGNORE_RESULT(osal_pool_release(&s_w25q64_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;
 }

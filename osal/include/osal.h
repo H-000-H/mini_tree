@@ -18,6 +18,7 @@
 #include "compiler_compat.h"
 #include "printf_output.h"
 #include "osal_tick.h"
+#include "VFS.h"
 
 #ifdef __cplusplus
 extern "C" 
@@ -55,27 +56,55 @@ typedef enum
 
                                                             /*时间 API*/
 /*===========================================================================================================================================================*/
+/**
+ * @brief 获取当前时间
+ * @return 当前时间
+ * @details 获取当前时间时, 使用 osal_time_ms 获取当前时间
+ */
 uint32_t osal_time_ms(void);
+/**
+ * @brief 延迟毫秒
+ * @param ms 毫秒
+ * @return void
+ * @details 延迟毫秒时, 使用 osal_delay_ms 延迟毫秒
+ */
 void osal_delay_ms(uint32_t ms);
+/**
+ * @brief 将毫秒转换为滴答数
+ * @param ms 毫秒
+ * @return 滴答数
+ * @details 将毫秒转换为滴答数时, 使用 osal_ticks_from_ms 转换
+ */
 osal_tick_t osal_ticks_from_ms(uint32_t ms);
-/* timeout_ms → RTOS tick; OSAL_WAIT_FOREVER → 永久等待, 0 → 不等待 */
+/**
+ * @brief 将滴答数转换为毫秒
+ * @param ticks 滴答数
+ * @return 毫秒
+ * @details 将滴答数转换为毫秒时, 使用 ticks_to_ms 转换
+ */
 osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms);
-/*===========================================================================================================================================================*/
-
-                                                            /*内存 API*/
-/*===========================================================================================================================================================*/
+/**
+ * @brief 分配内存
+ * @param count 数量
+ * @param size 大小
+ * @return 内存指针
+ * @details 分配内存时, 使用 calloc 分配内存
+ */
 void* osal_calloc(size_t count, size_t size);
-void osal_free(void* ptr);
-/*===========================================================================================================================================================*/
+/**
+ * @brief 释放内存
+ * @param ptr 内存指针
+ * @return 结果
+ * @details 释放内存时, 使用 free 释放内存
+ */
+int osal_free(void* ptr);
 
-                                                            /*上下文检测*/
-/*===========================================================================================================================================================*/
-/* ── 上下文检测 (平台无关, 架构泄露防火墙) ──
- * IEC 61508 §7.4.3.4: 框架层禁止出现 CPU 架构绑定指令.
- * 调用方仅依赖 osal.h, 实现由 osal_freertos.c 按平台适配:
- *   - FreeRTOS 全平台: xPortInIsrContext()
- *   - ARM 裸机: __get_IPSR()
- *   - 不允许在 board_driver.c 等框架层直接调用 CMSIS 汇编.
+/**
+ * @brief 检查是否在中断上下文
+ * @return 是否在中断上下文
+ * @details 检查是否在中断上下文时, 使用 __get_IPSR 检查
+ * @details 如果返回值为1, 则表示在中断上下文
+ * @details 如果返回值为0, 则表示不在中断上下文
  */
 int osal_in_isr(void);
 /*===========================================================================================================================================================*/
@@ -91,19 +120,20 @@ struct osal_sem;
 /*===========================================================================================================================================================*/
 #define OSAL_SPINLOCK_STORAGE_SIZE  32  /* 足够容纳 struct osal_spinlock (含 portMUX_TYPE) + 对齐 */
 
-void osal_spinlock_init(struct osal_spinlock* lock);
-void osal_spinlock_lock(struct osal_spinlock* lock);
-void osal_spinlock_unlock(struct osal_spinlock* lock);
+int osal_spinlock_init(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
+int osal_spinlock_lock(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
+int osal_spinlock_unlock(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
 /*===========================================================================================================================================================*/
 
-                                                            /*调度器挂起 / 中断禁用*/
+                                                            /*调度器冻结 / 中断冻结 (单向不可恢复)*/
 /*===========================================================================================================================================================*/
-/* ── 调度器挂起 / 中断禁用 ──
+/* ── 调度器冻结 / 中断冻结 ──
  * 用于 safe_state, bootloop 防护等 fail-fast 场景.
+ * 单向操作: 调用后不可恢复, 进入了安全死锁状态.
  * 调用方无需 #ifdef CONFIG_OSAL_*, 三个后端统一实现.
  */
-void osal_sched_suspend(void);   /* 挂起调度器 (FreeRTOS: vTaskSuspendAll) */
-void osal_int_disable(void);     /* 禁用全局中断 (FreeRTOS: portDISABLE_INTERRUPTS) */
+void osal_sched_freeze(void);    /* 冻结调度器 (FreeRTOS: vTaskSuspendAll) */
+void osal_int_freeze(void);      /* 冻结全局中断 (FreeRTOS: portDISABLE_INTERRUPTS) */
 /*===========================================================================================================================================================*/
 
                                                             /*互斥锁 — 类型与存储*/
@@ -179,8 +209,27 @@ int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_
 
                                                             /*互斥锁 — 使用 API*/
 /*===========================================================================================================================================================*/
+/**
+ * @brief 销毁互斥锁
+ * @param mutex 互斥锁指针
+ * @return void
+ * @details 销毁互斥锁时, 使用 osal_mutex_destroy 销毁互斥锁
+ */
 void osal_mutex_destroy(struct osal_mutex* mutex);
-int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;  /* OSAL_WAIT_FOREVER 永久等待 */
+/**
+ * @brief 锁定互斥锁
+ * @param mutex 互斥锁指针
+ * @param timeout_ms 超时时间
+ * @return 结果
+ * @details 锁定互斥锁时, 使用 osal_mutex_lock 锁定互斥锁
+ */
+int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 释放互斥锁
+ * @param mutex 互斥锁指针
+ * @return 结果
+ * @details 释放互斥锁时, 使用 osal_mutex_unlock 释放互斥锁
+ */
 int osal_mutex_unlock(struct osal_mutex* mutex);
 /*===========================================================================================================================================================*/
 
@@ -190,6 +239,12 @@ int osal_mutex_unlock(struct osal_mutex* mutex);
  * _from_isr 系列仅设置 *px_yield_required, 绝不内部 yield.
  * ISR 出口统一调用 osal_yield_from_isr(*px_yield_required).
  * px_yield_required 可为 NULL (不追踪 yield, 由调用方自行保证).
+ */
+/**
+ * @brief 从ISR上下文切换
+ * @param yield_required 是否需要切换
+ * @return void
+ * @details 从ISR上下文切换时, 使用 osal_yield_from_isr 从ISR上下文切换
  */
 void osal_yield_from_isr(bool yield_required);
 /*===========================================================================================================================================================*/
@@ -228,17 +283,47 @@ bool osal_sem_post_from_isr(struct osal_sem* sem, bool* px_yield_required) COMPA
 #define OSAL_POOL_MUX_STORAGE_SIZE 16
 #endif
 
+/**
+ * @brief 槽位池
+ * @param used_slots 已使用槽位指针
+ * @param slot_count 槽位数量
+ * @param mux_storage 临界区锁存储
+ */
 typedef struct osal_pool
 {
-    volatile uint8_t* used_slots;
-    size_t            slot_count;
-    uint8_t           mux_storage[OSAL_POOL_MUX_STORAGE_SIZE];
+    volatile uint8_t* used_slots;/**< 已使用槽位指针 */
+    size_t            slot_count;/**< 槽位数量 */
+    uint8_t           mux_storage[OSAL_POOL_MUX_STORAGE_SIZE];/**< 临界区锁存储ESP平台使用 */
 } osal_pool_t;
 
-int  osal_pool_init(osal_pool_t* pool, volatile uint8_t* buffer, size_t count)
-    COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 初始化槽位池
+ * @param pool 槽位池指针
+ * @param buffer 缓冲区指针
+ * @param count 缓冲区数量
+ * @return 结果
+ */
+int  osal_pool_init(osal_pool_t* pool, volatile uint8_t* buffer, size_t count)COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 申请槽位
+ * @param pool 槽位池指针
+ * @return 结果
+ */
 int  osal_pool_claim(osal_pool_t* pool) COMPAT_WARN_UNUSED_RESULT;
-void osal_pool_release(osal_pool_t* pool, int slot_index);
+/**
+ * @brief 释放槽位
+ * @param pool 槽位池指针   
+ * @param slot_index 槽位索引
+ * @return 结果
+ */
+int osal_pool_release(osal_pool_t* pool, int slot_index) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 检查槽位是否被使用
+ * @param pool 槽位池指针
+ * @param slot_index 槽位索引
+ * @return 是否被使用
+ */
+bool osal_pool_is_used(osal_pool_t* pool, int slot_index);
 /*===========================================================================================================================================================*/
 
                                                             /*任务 API*/
@@ -302,21 +387,24 @@ void osal_panic_interlock(void);
 /* 硬件安全关断 (weak, 默认 trap, 板级可覆盖) */
 void safety_hardware_shutdown(void);
 
-/* ── 板级硬件安全关断 (强符号, 板级必须实现) ──
- * IEC 61508 §7.4.3.4 / IEC 62304 Class C:
- * 链接器强制检查 — 若 board_driver.c 未实现此函数, 链接失败.
- * 职责: portDISABLE_INTERRUPTS + hal_gpio_set_level 拉低执行器 + hal_pwm_force_stop_all
+
+/**
+ * @brief 板级硬件安全关断
+ * @param reason 原因
+ * @return void
+ * @details 板级硬件安全关断时, 使用 system_safety_hardware_shutdown 板级硬件安全关断 必须强制实现
  */
 void system_safety_hardware_shutdown(const char* reason);
 /*===========================================================================================================================================================*/
 
-                                                            /*Panic / Critical Assert 宏*/
-/*===========================================================================================================================================================*/
-/* ── Panic (不可恢复错误, 工业/医疗 fail-fast → safe state) ──
- * 1. printf 输出致命原因
- * 2. 调用 system_safety_hardware_shutdown() — 强符号, 链接期强制检查
- * 3. 驻留死循环, 等待外部硬件看门狗复位
- * 永不返回.
+/**
+ * @brief Panic
+ * @param fmt 格式化字符串
+ * @param ... 可变参数
+ * @return void
+ * @details Panic时, 使用 osal_log_fatal 输出致命原因
+ * @details Panic时, 使用 system_safety_hardware_shutdown 板级硬件安全关断
+ * @details Panic时, 驻留死循环, 等待外部硬件看门狗复位
  */
 #undef OSAL_PANIC
 #define OSAL_PANIC(fmt, ...) do { \
@@ -326,9 +414,15 @@ void system_safety_hardware_shutdown(const char* reason);
     { ; } \
 } while (0)
 
-/* ── 关键断言 (IEC 61508 §7.4.3.4: Fail-Fast) ──
- * 用于 probe/config 阶段的强制契约检查.
- * 如果 DTS 缺少强制属性或硬件配置不匹配, 必须立即停机, 严禁静默降级.
+
+/**
+ * @brief 关键断言
+ * @param cond 条件
+ * @param fmt 格式化字符串
+ * @param ... 可变参数
+ * @return void
+ * @details 关键断言时, 使用 osal_log_critical_assert 输出关键原因
+ * @details 关键断言时, 使用 system_safety_hardware_shutdown 板级硬件安全关断
  */
 #define CRITICAL_ASSERT(cond, fmt, ...) do { \
     if (!(cond)) \

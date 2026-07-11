@@ -13,7 +13,7 @@
 #include "system_wdt.hpp"
 #include "system_scrubber.hpp"
 #include "safe_state.h"
-#include "hal_cpu.h"
+#include "hal_amp.h"
 #include "compiler_compat.h"
 #include "compiler_compat_poison.h"
 
@@ -21,6 +21,9 @@
 #include "device.h"
 #include "driver.h"
 #include "VFS.h"
+#include "interrupt.h"
+
+extern "C" void xScheduler_Poll(void);
 
 /* ── 启动期全局中断控制 (平台抽象) ──
  * 在 Pre_OS_Init 入口关全局中断, 阻断 ISR 抢跑访问未就绪的框架状态.
@@ -42,7 +45,7 @@
 static constexpr const char* kTag = "SysInit";
 
 /* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
-bool g_system_os_initialized = false;
+volatile bool g_system_os_initialized = false;
 
 /* ═══════════════════════════════════════════════════════════════════════════
  *  阶段 1: 预操作系统初始化
@@ -194,4 +197,6 @@ extern "C" void mini_tree_system_loop(void)
     system_wdt_feed();
     system_wdt_feed_rtc();
 #endif
+    interrupt_bottom_half_poll();   /**< 执行下半部队列 */
+    xScheduler_Poll();              /**< 时间片调度器轮询 */
 }

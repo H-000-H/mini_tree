@@ -1,111 +1,204 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/*
- * GPIO HAL 层 — 硬件抽象接口 (跨平台统一头)
- *
- * 设计: 结构体封装, DTSI 直投厂商宏值, HAL 零翻译零查表。
- * - STM32/WCH: gpio-port = <GPIOA_BASE>, gpio-pin = <GPIO_PIN_5>,
- *   gpio-clk  = <LL_AHB1_GRP1_PERIPH_GPIOA> / <RCC_APB2Periph_GPIOA>,
- *   gpio-mode = <LL_GPIO_MODE_OUTPUT> / <GPIO_Mode_Out_PP>,
- *   gpio-pull = <LL_GPIO_PULL_NO>  (WCH 忽略 pull, mode+pull 编码在一起)
- * - ESP32: gpio-port = <0>, gpio-pin = <5>  (SoC GPIO 编号),
- *   gpio-clk  = <0>,  gpio-mode = <GPIO_MODE_OUTPUT>,
- *   gpio-pull = <GPIO_FLOATING>
- * - hal_gpio_obj_t 嵌入 VFS priv, VFS probe 填值, HAL 无池管理
- * - fast-path 实现在各平台 hal_gpio_*.c, 直接刷寄存器/调 ESP-IDF API
- *
- * 头中立化: 本头不暴露任何 vendor 类型, 只用 uintptr_t/int/void*。
- * vendor 头由 hal_gpio_*.c 内部 include, fast-path 实现也在 .c 中。
- */
-#ifndef HAL_GPIO_H
-#define HAL_GPIO_H
-
-#include <stdint.h>
-#include <stdbool.h>
-#include "compiler_compat.h"
-#include "VFS.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-                                                            /*GPIO 电平与模式配置*/
-/*===========================================================================================================================================================*/
-#define HAL_GPIO_HIGH_LEVEL 1
-#define HAL_GPIO_LOW_LEVEL  0
-
-#ifndef HAL_GPIO_OBJ_POOL_SIZE
-#define HAL_GPIO_OBJ_POOL_SIZE 16
-#endif
-
-/* 模式配置: 直接承载厂商宏值 (LL_GPIO_MODE_* / GPIOMode_TypeDef / gpio_mode_t),
- * 拒绝二次翻译。WCH 平台 pull 字段被忽略 (mode+pull 编码在一起)。 */
-struct hal_gpio_mode_cfg
-{
-    uint32_t mode;
-    uint32_t pull;
-};
-/*===========================================================================================================================================================*/
-
-                                                            /*GPIO 核心对象 (嵌入 VFS, HAL 无池管理)*/
-/*===========================================================================================================================================================*/
-/* 纯硬件直投实体, 所有字段由 DTSI 提供厂商宏值, HAL 零计算。
- * - 嵌入 VFS priv 结构体, 由 VFS osal_pool 管理生命周期
- * - HAL 层无池管理, 无 alloc/free, 无 pre_execution
- * - fast-path 实现在 hal_gpio_*.c, 直接解引用对象指针刷寄存器/调 API
- *
- * 跨平台字段说明:
- * - STM32/WCH: port = GPIO_TypeDef* 基地址, pin = GPIO_PIN_x, clk_periph = RCC 时钟
- * - ESP32: port = 0 (无基地址概念), pin = SoC GPIO 编号, clk_periph = 0 (内部处理)
- */
-typedef struct hal_gpio_obj
-{
-    uintptr_t     port;
-    uint16_t      pin;
-    uint32_t      clk_periph;
-    bool          is_used;    /* 运行时激活状态 (VFS probe 置 true) */
-} hal_gpio_obj_t;
-/*===========================================================================================================================================================*/
-
-                                                            /*fast path (实现在 hal_gpio_*.c, 零分支零查表)*/
-/*===========================================================================================================================================================*/
 /**
- * @brief 快路径: 设置 GPIO 输出电平
- * @param obj   GPIO 对象指针
- * @param level 目标电平 (1=高, 0=低)
- * @return 成功返回 VFS_OK, obj 为空返回 VFS_ERR_INVAL
+ * @file        hal_gpio.h
+ * @brief       GPIO HAL 层 — 硬件抽象接口, 硬件直投层
+ * @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ * @note        由于 GPIO 是快速热路径外设所以 GPIO 的初始化与配置应该尽量在硬件直投层完成
+ * @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
+ * @note        获取参数不能直接返回，必须通过指针参数传递
+ * @note        禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
-int hal_gpio_fast_set_level(hal_gpio_obj_t* obj, int level) COMPAT_WARN_UNUSED_RESULT;
+ #ifndef HAL_GPIO_H
+ #define HAL_GPIO_H
+ 
+ #include <stdint.h>
+ #include <stdbool.h>
+ #include "compiler_compat.h"
+ #include "VFS.h"
+ 
+ #ifdef __cplusplus
+ extern "C"
+ {
+ #endif
+ 
+                                                             /*GPIO 电平与模式配置*/
+ /*===========================================================================================================================================================*/
+ #define HAL_GPIO_HIGH_LEVEL 1
+ #define HAL_GPIO_LOW_LEVEL  0
+ 
+ #ifndef HAL_GPIO_DEV_POOL_SIZE
+ #define HAL_GPIO_DEV_POOL_SIZE 16
+ #endif
+ 
+ /**
+  * @brief GPIO 配置
+  * @note 用于配置GPIO的电气特性
+  * @param mode 模式
+  * @param pull 上拉/下拉
+  * @param speed 速度
+  * @param output_type 输出类型
+  * @param af 复用功能
+  */
+ struct hal_gpio_cfg
+ {
+     uint32_t mode;        /**< 模式 */
+     uint32_t pull;        /**< 上拉/下拉 */
+     uint32_t speed;       /**< 速度 */
+     uint32_t output_type; /**< 输出类型 */
+     uint32_t af;          /**< 复用功能 */
+     uint32_t deinit_mode; /**< deinit 时恢复的引脚模式 (0=用安全复位值 LL_GPIO_MODE_ANALOG) */
+     uint32_t deinit_pull; /**< deinit 时恢复的上下拉  (0=用安全复位值 LL_GPIO_PULL_NO) */
+ };
+ /*===========================================================================================================================================================*/
+ 
+ /**
+  * @brief typedef 设备配置
+  * @note  用于上层调用，避免重复定义(仅热路径可以使用该类型冷路径必须struct hal_x_cfg)
+  */
+ typedef struct hal_gpio_cfg hal_gpio_config;
+ 
+ typedef struct
+ {
+     uintptr_t               port;        /**< 端口基地址 */
+     uint16_t                pin;         /**< 引脚编号 */
+     uint32_t                clk_bus;     /**< 时钟总线/RCC位 */
+     hal_gpio_config         cfg;         /**< 配置 */
+     bool                    is_used;     /**< 运行时激活状态 (VFS probe 置 true) */
+ } hal_gpio_dev_t;
+ /*===========================================================================================================================================================*/
+ 
+                                                             /*fast path (实现在 hal_gpio_*.c, 零分支零查表)*/
+ /*===========================================================================================================================================================*/
+ /**
+  * @brief 快路径: 设置 GPIO 输出电平
+  * @param pdev   GPIO 对象指针
+  * @param level 目标电平 (1=高, 0=低)
+  * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+  */
+ int COMPAT_WARN_UNUSED_RESULT hal_gpio_fast_set_level(hal_gpio_dev_t* pdev, int level);
 
 /**
- * @brief 快路径: 读取 GPIO 当前输入电平
- * @param obj       GPIO 对象指针
+ * @brief 快路径: 读取 GPIO 当前输入/输出引脚的实际电平状态
+ * @param pdev       GPIO 对象指针
  * @param level_out 用于回传电平的指针 (1=高, 0=低)
- * @return 成功返回 VFS_OK, obj 或 level_out 为空返回 VFS_ERR_INVAL
+ * @return 成功返回 VFS_OK, pdev 或 level_out 为空返回 VFS_ERR_INVAL
  */
-int hal_gpio_fast_get_level(hal_gpio_obj_t* obj, int *level_out) COMPAT_WARN_UNUSED_RESULT;
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_fast_get_level(hal_gpio_dev_t* pdev, int *level_out);
 
 /**
  * @brief 快路径: 翻转 GPIO 输出电平
- * @param obj GPIO 对象指针
- * @return 成功返回 VFS_OK, obj 为空返回 VFS_ERR_INVAL
+ * @param pdev GPIO 对象指针
+ * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
  */
-int hal_gpio_fast_toggle(hal_gpio_obj_t* obj) COMPAT_WARN_UNUSED_RESULT;
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_fast_toggle(hal_gpio_dev_t* pdev);
 /*===========================================================================================================================================================*/
 
                                                             /*HAL API (基于对象指针)*/
 /*===========================================================================================================================================================*/
-int hal_gpio_init(hal_gpio_obj_t* obj, const struct hal_gpio_mode_cfg *cfg) COMPAT_WARN_UNUSED_RESULT;
-int hal_gpio_deinit(hal_gpio_obj_t* obj) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief GPIO 初始化
+ * @param pdev GPIO 对象指针
+ * @return 成功返回 VFS_OK, pdev 或内部配置为空返回 VFS_ERR_INVAL
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_init(hal_gpio_dev_t* pdev);
 
-/* Raw 原始接口: 直接数字强转物理硬刷, 绝不占用池子内存。
- * STM32/WCH: dts_port_base = GPIO 基地址, dts_pin_mask = GPIO_PIN_x
- * ESP32: dts_port_base = SoC GPIO 编号, dts_pin_mask 忽略 */
-int hal_gpio_write_raw_dts(uint32_t dts_port_base, uint32_t dts_pin_mask, uint8_t level);
-/*===========================================================================================================================================================*/
+/**
+ * @brief GPIO 释放
+ * @param pdev GPIO 对象指针
+ * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_deinit(hal_gpio_dev_t* pdev);
+
+/**
+ * @brief GPIO 设置模式
+ * @param pdev GPIO 对象指针
+ * @param mode 模式宏值 (如 LL_GPIO_MODE_OUTPUT)
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_mode(hal_gpio_dev_t* pdev, uint32_t mode);
+
+/**
+ * @brief GPIO 获取当前模式
+ * @param pdev GPIO 对象指针
+ * @param mode 用于回传当前模式宏值的指针
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_mode(hal_gpio_dev_t* pdev, uint32_t *mode);
+
+/**
+ * @brief GPIO 设置上拉/下拉
+ * @param pdev GPIO 对象指针
+ * @param pull 上拉/下拉宏值 (如 LL_GPIO_PULL_UP)
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_pull(hal_gpio_dev_t* pdev, uint32_t pull);
+
+/**
+ * @brief GPIO 获取当前上拉/下拉配置
+ * @param pdev GPIO 对象指针
+ * @param pull 用于回传上拉/下拉宏值的指针
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_pull(hal_gpio_dev_t* pdev, uint32_t *pull);
+
+/**
+ * @brief GPIO 设置速度
+ * @param pdev GPIO 对象指针
+ * @param speed 速度宏值 (如 LL_GPIO_SPEED_FREQ_HIGH)
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_speed(hal_gpio_dev_t* pdev, uint32_t speed);
+
+/**
+ * @brief GPIO 获取当前速度配置
+ * @param pdev GPIO 对象指针
+ * @param speed 用于回传速度宏值的指针
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_speed(hal_gpio_dev_t* pdev, uint32_t *speed);
+
+/**
+ * @brief GPIO 设置输出类型
+ * @param pdev GPIO 对象指针
+ * @param output_type 输出类型宏值 (如 LL_GPIO_OUTPUT_PUSHPULL)
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_output_type(hal_gpio_dev_t* pdev, uint32_t output_type);
+
+/**
+ * @brief GPIO 获取当前输出类型配置
+ * @param pdev GPIO 对象指针
+ * @param output_type 用于回传输出类型宏值的指针
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_output_type(hal_gpio_dev_t* pdev, uint32_t *output_type);
+
+/**
+ * @brief GPIO 设置复用功能寄存器值(AFR)
+ * @param pdev GPIO 对象指针
+ * @param af 复用功能宏值 (如 LL_GPIO_AF_1)
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_af(hal_gpio_dev_t* pdev, uint32_t af);
+
+/**
+ * @brief GPIO 获取当前引脚的复用功能寄存器值(AFR)
+ * @param pdev GPIO 对象指针
+ * @param af 用于回传复用功能宏值的指针
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_af(hal_gpio_dev_t* pdev, uint32_t *af);
+
+/**
+ * @brief GPIO 设置复用功能并自动将引脚切换为复用模式
+ * @param pdev GPIO 对象指针
+ * @param af 复用功能宏值
+ * @return 成功返回 VFS_OK
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_af_mode(hal_gpio_dev_t* pdev, uint32_t af);
+ /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus
 }
 #endif
-
 #endif /* HAL_GPIO_H */
- 

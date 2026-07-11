@@ -11,6 +11,7 @@
 #include "osal.h"
 #include "hal_storage.h"
 
+#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include "compiler_compat_poison.h"
@@ -24,6 +25,7 @@
 #define PROD_LOG_STORAGE_SLOT  0
 
 struct prod_log_persist
+
 {
     uint16_t head;
     uint32_t seq;
@@ -37,7 +39,7 @@ int production_log_init(void)
 {
     hal_storage_init();
 
-    __builtin_memset(&s_state, 0, sizeof(s_state));
+    COMPAT_MEM_SET(&s_state, 0, sizeof(s_state));
     size_t len = sizeof(s_state);
     hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len);
 

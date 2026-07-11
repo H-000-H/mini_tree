@@ -5,7 +5,7 @@
 
 #include "system_cmd.hpp"
 
-#include <etl/cstring.h>
+#include <etl/string.h>
 #include <etl/char_traits.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════

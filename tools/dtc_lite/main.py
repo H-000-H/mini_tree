@@ -54,7 +54,8 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     compiler = DTSCompiler(dts_path, driver_dirs,
                             extra_inc_dirs=extra_inc_dirs,
-                            extra_defines=extra_defines)
+                            extra_defines=extra_defines,
+                            out_dir=output_dir)
     compiler.compile()
 
     print(f'  devices: {len(compiler.device_list)}')

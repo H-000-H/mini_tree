@@ -22,16 +22,14 @@
  */
 #if defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
 
-__attribute__((always_inline))
-static inline uint32_t bp_critical_enter(void)
+COMPAT_STATIC_INLINE uint32_t bp_critical_enter(void)
 {
     uint32_t primask;
     __asm__ volatile("mrs %0, PRIMASK\n\tcpsid i" : "=r"(primask) :: "memory");
     return primask;
 }
 
-__attribute__((always_inline))
-static inline void bp_critical_exit(uint32_t primask)
+COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask)
 {
     __asm__ volatile("msr PRIMASK, %0" :: "r"(primask) : "memory");
 }
@@ -93,7 +91,7 @@ static inline void bp_critical_exit(uint32_t primask)
 #define BP_ALIGN_UP(n, a)  (((size_t)(n) + (size_t)(a) - 1) & ~((size_t)(a) - 1))
 
 /* 根据对齐要求计算实际 buf_size */
-static inline size_t align_buf_size(size_t size, bp_align_t align)
+COMPAT_STATIC_INLINE size_t align_buf_size(size_t size, bp_align_t align)
 {
     size_t alignment = 1;
     switch (align)
@@ -153,7 +151,7 @@ static void bitmap_free(volatile uint32_t* mask, uint32_t bit)
 struct bp_pool* bp_create(const struct bp_config* config)
 {
     if (!config || !config->name || config->buf_count == 0 ||
-        config->buf_count > BP_MAX_BUFS)
+        config->buf_count > BP_MAX_BUFS || config->buf_size == 0)
     {
         return NULL;
     }
@@ -173,7 +171,7 @@ struct bp_pool* bp_create(const struct bp_config* config)
             osal_free(pool);
             return NULL;
         }
-        __builtin_memset(config->static_mem, 0, config->static_len);
+        COMPAT_MEM_SET(config->static_mem, 0, config->static_len);
         pool->pool_mem     = (uint8_t*)config->static_mem;
         pool->pool_mem_raw = NULL;
         pool->owned        = 0;

@@ -393,8 +393,8 @@ int spi_bus_open(struct device* dev)
         return VFS_OK;
 
     /* client->cfg 已是 hal_spi_device_config, 直接透传给 HAL, 零翻译 */
-    hal_spi_dev_init(&client->hal_dev, (int)(client - s_spi_clients),
-                     &client->host->hal_host, &client->cfg);
+    COMPAT_IGNORE_RESULT(hal_spi_dev_init(&client->hal_dev,
+                     &client->host->hal_host, &client->cfg));
     ret = hal_spi_dev_hw_open(&client->hal_dev);
     if (ret != VFS_OK)
         return ret;
@@ -428,7 +428,7 @@ int spi_bus_close(struct device* dev)
                                                               /* Transfer API */
 /*===========================================================================================================================================================*/
 /**
- * @brief 同步传输 (全双工, 按 host 角色调用 spi_sync 或 spi_slave_sync)
+ * @brief 同步传输 (全双工, 按 host 角色调用 hal_spi_sync 或 hal_spi_slave_sync)
  * @param dev client device
  * @param tx 发送缓冲区 (可 NULL 表示只收)
  * @param rx 接收缓冲区 (可 NULL 表示只发)
@@ -451,9 +451,9 @@ int spi_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx,
 
     role = spi_bus_host_role(dev);
     if (role == SPI_BUS_ROLE_SLAVE)
-        return spi_slave_sync(&client->hal_dev, tx, rx, len, timeout_ms);
+        return hal_spi_slave_sync(&client->hal_dev, tx, rx, len, timeout_ms);
 
-    return spi_sync(&client->hal_dev, tx, rx, len, timeout_ms);
+    return hal_spi_sync(&client->hal_dev, tx, rx, len, timeout_ms);
 }
 
 /*===========================================================================================================================================================*/
@@ -588,7 +588,7 @@ int spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms)
 }
 
 /**
- * @brief slave 模式同步传输 (校验 slave 角色后调用 spi_slave_sync)
+ * @brief slave 模式同步传输 (校验 slave 角色后调用 hal_spi_slave_sync)
  * @param dev client device
  * @param tx 发送缓冲区
  * @param rx 接收缓冲区
@@ -611,11 +611,11 @@ int spi_bus_slave_sync(struct device* dev, const uint8_t* tx, uint8_t* rx,
     if (spi_bus_host_role(dev) != SPI_BUS_ROLE_SLAVE)
         return VFS_ERR_INVAL;
 
-    return spi_slave_sync(&client->hal_dev, tx, rx, len, timeout_ms);
+    return hal_spi_slave_sync(&client->hal_dev, tx, rx, len, timeout_ms);
 }
 
 /**
- * @brief slave 模式排队发送 (转发到 spi_slave_queue_tx)
+ * @brief slave 模式排队发送 (转发到 hal_spi_slave_queue_tx)
  * @param dev client device
  * @param data 发送数据
  * @param len 数据长度
@@ -637,7 +637,7 @@ int spi_bus_slave_queue_tx(struct device* dev, const uint8_t* data, size_t len,
     if (spi_bus_host_role(dev) != SPI_BUS_ROLE_SLAVE)
         return VFS_ERR_INVAL;
 
-    return spi_slave_queue_tx(&client->hal_dev, data, len, timeout_ms);
+    return hal_spi_slave_queue_tx(&client->hal_dev, data, len, timeout_ms);
 }
 
 /**

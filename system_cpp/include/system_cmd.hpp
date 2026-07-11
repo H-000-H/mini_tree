@@ -11,17 +11,17 @@
  */
 #pragma once
 
-#include <cstring>
-#include <cstddef>
-#include <type_traits>
-#include <new>
+#include <etl/string.h>
+#include <etl/type_traits.h>
+#include <etl/placement_new.h>
+#include <etl/utility.h>
+#include <etl/char_traits.h>
 #include "osal.h"
 
 /* 后端选择: bare-metal 不需要 ETL */
 #ifndef CONFIG_OSAL_NULL
 #include <etl/map.h>
 #include <etl/string.h>
-#include <etl/type_traits.h>
 #endif
 #ifndef SYS_CMD_MAX_NAME_LEN
 #define SYS_CMD_MAX_NAME_LEN    16
@@ -75,15 +75,15 @@ class CmdFn
 public:
     CmdFn() : m_vtable(nullptr) {}
 
-    template <typename F, typename = std::enable_if_t<!std::is_same_v<std::decay_t<F>, CmdFn>>>
+    template <typename F, typename = etl::enable_if_t<!etl::is_same_v<etl::decay_t<F>, CmdFn>>>
     CmdFn(F&& f)
-        : m_vtable(&s_vtable<std::decay_t<F>>)
+        : m_vtable(&s_vtable<etl::decay_t<F>>)
     {
-        static_assert(sizeof(std::decay_t<F>) <= sizeof(m_storage.data),
+        static_assert(sizeof(etl::decay_t<F>) <= sizeof(m_storage.data),
                       "Callable object too large for CmdFn storage");
-        static_assert(alignof(std::decay_t<F>) <= alignof(decltype(m_storage.align_)),
+        static_assert(alignof(etl::decay_t<F>) <= alignof(decltype(m_storage.align_)),
                       "Callable object alignment exceeds CmdFn storage");
-        new (m_storage.data) std::decay_t<F>(std::forward<F>(f));
+        new (m_storage.data) etl::decay_t<F>(etl::forward<F>(f));
     }
 
     CmdFn(const CmdFn& other) : m_vtable(other.m_vtable)
@@ -134,8 +134,8 @@ const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::s_vtable = {
 class SystemCmd
 {
 public:
-    static constexpr std::size_t kMaxCmdNameLen = SYS_CMD_MAX_NAME_LEN;
-    static constexpr std::size_t kMaxCommands   = SYS_CMD_MAX_COUNT;
+    static constexpr size_t kMaxCmdNameLen = SYS_CMD_MAX_NAME_LEN;
+    static constexpr size_t kMaxCommands   = SYS_CMD_MAX_COUNT;
 
     using RawHandler = CmdFn<>;
 
@@ -169,9 +169,9 @@ public:
 
     bool unregisterCmd(const char* name);
     bool hasCmd(const char* name) const;
-    std::size_t count() const;
+    size_t count() const;
 
-    bool dispatch(const char* name, const void* arg, std::size_t arg_len,
+    bool dispatch(const char* name, const void* arg, size_t arg_len,
                   void* ctx = nullptr,
                   TypeIdToken expected_args_id = nullptr,
                   TypeIdToken expected_ctx_id = nullptr) const;
@@ -204,7 +204,7 @@ private:
 
     CmdMap m_commands;
     mutable struct osal_spinlock* m_lock;
-    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE];
+    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4);
 #else
     /* ── Bare-metal 后端: 普通数组 + const char* + 无锁 ── */
     struct CmdEntry {
@@ -212,7 +212,7 @@ private:
         HandlerNode node;
     };
     CmdEntry  m_entries[kMaxCommands];
-    std::size_t m_count;
+    size_t m_count;
 #endif
 };
 
@@ -224,22 +224,22 @@ template<typename Args, typename Ctx>
 inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&, Ctx*))
 {
     if (!name || !handler) return false;
-    const std::size_t name_len = std::strlen(name);
+    const size_t name_len = etl::strlen(name);
     if (name_len >= kMaxCmdNameLen) return false;
 
-    static_assert(std::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
-    static_assert(std::is_default_constructible_v<Args>, "Args must be default constructible");
+    static_assert(etl::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
+    static_assert(etl::is_default_constructible_v<Args>, "Args must be default constructible");
 
     HandlerNode node;
     node.args_id = getTypeId<Args>();
     node.ctx_id  = getTypeId<Ctx>();
-    node.wrapper = [handler](const void* raw_arg, std::size_t len, void* raw_ctx) -> bool {
+    node.wrapper = [handler](const void* raw_arg, size_t len, void* raw_ctx) -> bool {
         if (!raw_arg || len < sizeof(Args)) return false;
-        if constexpr (!std::is_same_v<Ctx, void>) {
+        if constexpr (!etl::is_same_v<Ctx, void>) {
             if (raw_ctx == nullptr) return false;
         }
         Args typed_arg;
-        std::memcpy(&typed_arg, raw_arg, sizeof(Args));
+        COMPAT_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
         auto* ctx = static_cast<Ctx*>(raw_ctx);
         return handler(typed_arg, ctx);
     };
@@ -255,8 +255,8 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&
     osal_spinlock_unlock(m_lock);
     return success;
 #else
-    for (std::size_t i = 0; i < m_count; i++) {
-        if (std::strcmp(m_entries[i].name, name) == 0)
+    for (size_t i = 0; i < m_count; i++) {
+        if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
     if (m_count >= kMaxCommands)
@@ -272,20 +272,20 @@ template<typename Args, typename Ctx>
 inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&, const Ctx*))
 {
     if (!name || !handler) return false;
-    const std::size_t name_len = std::strlen(name);
+    const size_t name_len = etl::strlen(name);
     if (name_len >= kMaxCmdNameLen) return false;
 
-    static_assert(std::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
-    static_assert(std::is_default_constructible_v<Args>, "Args must be default constructible");
+    static_assert(etl::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
+    static_assert(etl::is_default_constructible_v<Args>, "Args must be default constructible");
 
     HandlerNode node;
     node.args_id = getTypeId<Args>();
     node.ctx_id  = getTypeId<Ctx>();
-    node.wrapper = [handler](const void* raw_arg, std::size_t len, void* raw_ctx) -> bool {
+    node.wrapper = [handler](const void* raw_arg, size_t len, void* raw_ctx) -> bool {
         if (!raw_arg || len < sizeof(Args)) return false;
         if (raw_ctx == nullptr) return false;
         Args typed_arg;
-        std::memcpy(&typed_arg, raw_arg, sizeof(Args));
+        COMPAT_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
         const auto* ctx = static_cast<const Ctx*>(raw_ctx);
         return handler(typed_arg, ctx);
     };
@@ -301,8 +301,8 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&
     osal_spinlock_unlock(m_lock);
     return success;
 #else
-    for (std::size_t i = 0; i < m_count; i++) {
-        if (std::strcmp(m_entries[i].name, name) == 0)
+    for (size_t i = 0; i < m_count; i++) {
+        if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
     if (m_count >= kMaxCommands)
@@ -318,14 +318,14 @@ template<typename Ctx>
 inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(Ctx*))
 {
     if (!name || !handler) return false;
-    const std::size_t name_len = std::strlen(name);
+    const size_t name_len = etl::strlen(name);
     if (name_len >= kMaxCmdNameLen) return false;
 
     HandlerNode node;
     node.args_id = getTypeId<void>();
     node.ctx_id  = getTypeId<Ctx>();
-    node.wrapper = [handler](const void*, std::size_t, void* raw_ctx) -> bool {
-        if constexpr (!std::is_same_v<Ctx, void>) {
+    node.wrapper = [handler](const void*, size_t, void* raw_ctx) -> bool {
+        if constexpr (!etl::is_same_v<Ctx, void>) {
             if (raw_ctx == nullptr) return false;
         }
         auto* ctx = static_cast<Ctx*>(raw_ctx);
@@ -343,8 +343,8 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(Ctx*))
     osal_spinlock_unlock(m_lock);
     return success;
 #else
-    for (std::size_t i = 0; i < m_count; i++) {
-        if (std::strcmp(m_entries[i].name, name) == 0)
+    for (size_t i = 0; i < m_count; i++) {
+        if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
     if (m_count >= kMaxCommands)

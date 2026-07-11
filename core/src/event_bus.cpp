@@ -16,7 +16,7 @@
  *   在 System_Pre_OS_Init (Phase 1) 完成前, 禁止所有 EventBus 操作.
  *   防止 C++ 全局构造函数在 main() 之前偷跑调用 post/subscribe.
  *   定义位于 system_init.cpp / system_init.c. */
-extern bool g_system_os_initialized;
+extern volatile bool g_system_os_initialized;
 
 static constexpr const char* kTag = "EventBus";
 static constexpr uint32_t kDispatchPrio =
@@ -41,7 +41,7 @@ bool EventBus::init()
         return false;
     }
 
-    if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) != 0
+    if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) != OSAL_OK
         || m_sub_lock == nullptr)
     {
         SYS_LOGE(kTag, "FATAL: mutex create failed");
@@ -71,7 +71,7 @@ bool EventBus::subscribe(uint32_t id_min, uint32_t id_max,
         return false;
     }
 
-    if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != 0)
+    if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
         SYS_LOGE(kTag, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
         return false;
@@ -108,7 +108,7 @@ bool EventBus::post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required
 bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr,
                              bool* px_yield_required)
 {
-    if (m_queue == nullptr)
+    if (m_queue == nullptr || !m_inited)
     {
         return false;
     }
@@ -168,7 +168,7 @@ void EventBus::dispatch_task(void* param)
 
         if (self->m_sub_lock)
         {
-            if (osal_mutex_lock(self->m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != 0)
+            if (osal_mutex_lock(self->m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
             {
                 SYS_LOGE(kTag, "Fatal: EventBus dispatch lock timeout — safe shutdown");
                 enter_safe_state("EventBus mutex deadlock");
@@ -234,10 +234,10 @@ void EventBus::stop()
         osal_task_delete(handle);
     }
 
-    /* 销毁队列，完整逆操作 init() */
+    /* 先标记未初始化，阻止新的 post，再销毁队列 */
+    m_inited = false;
     osal_queue_delete(m_queue);
     m_queue = nullptr;
-    m_inited = false;
 }
 
 void EventBus::seal()

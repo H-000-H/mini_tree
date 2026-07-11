@@ -1,24 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * SPI HAL 层 — 硬件抽象接口 (跨平台统一头)
- *
- * 设计: 硬件直投, DTSI 提供厂商宏值, HAL 零翻译透传给 LL 库/ESP-IDF driver。
- * - STM32: spi-base = <SPI1_BASE>, spi-clk = <LL_APB2_GRP1_PERIPH_SPI1>,
- *   mosi-port = <GPIOA_BASE>, mosi-pin = <GPIO_PIN_7>,
- *   mosi-clk  = <LL_AHB1_GRP1_PERIPH_GPIOA>, mosi-af = <GPIO_AF5_SPI1>
- * - WCH: spi-base = <SPI1_BASE>, spi-clk = <RCC_APB2Periph_SPI1>,
- *   mosi-port = <GPIOA_BASE>, mosi-pin = <GPIO_Pin_7>,
- *   mosi-clk  = <RCC_APB2Periph_GPIOA>, mosi-af = <GPIO_Mode_AF_PP>
- *   (WCH 的 af 字段承载 GPIOMode_TypeDef, mode+af 编码在一起)
- * - ESP32: spi-base = <SPI3_HOST>, spi-clk = <0>,
- *   mosi-port = <0>, mosi-pin = <11>, mosi-clk = <0>, mosi-af = <0>
- *   (ESP32 无 port/clk/af 概念, pin 为 SoC GPIO 编号)
- * - hal_spi_bus_host 嵌入 bus 层 spi_bus_host (非指针), HAL 无池管理
- * - STM32/WCH: slave/async 返回 VFS_ERR_NOTSUPP
- * - ESP32: 支持 async 传输 (spi_device_queue_trans + post_cb ISR callback)
- *
- * 头中立化: 本头不暴露任何 vendor 类型, 只用 uintptr_t/int/void*。
- * vendor 头由 hal_spi_*.c 内部 include。
+/** 
+ * @license: SPDX-License-Identifier: Apache-2.0 
+ * @file: hal_spi.h
+ * @brief: SPI HAL 层 — 硬件抽象接口,硬件直投层
+ * @note 所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ * @note 由于SPI是快速热路径外设所以SPI的初始化与配置应该尽量在硬件直投层完成
+ * @note 文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码 
+ * @note 返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码 
+ * @note 接收的参数必须为指针，并且必须为合法的指针，不能为空指针
+ * @note 禁止使用enum,enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
 #ifndef HAL_SPI_H
 #define HAL_SPI_H
@@ -33,186 +22,275 @@
 extern "C" {
 #endif
 
-#define HAL_SPI_BUS_ROLE_SLAVE  0
-#define HAL_SPI_BUS_ROLE_MASTER 1
+#define HAL_SPI_BUS_ROLE_SLAVE  0 /**< 从机角色 */
+#define HAL_SPI_BUS_ROLE_MASTER 1 /**< 主机角色 */
 
 #ifndef HAL_SPI_MAX_TRANSFER_BYTES
-#define HAL_SPI_MAX_TRANSFER_BYTES  2048
+#define HAL_SPI_MAX_TRANSFER_BYTES  2048 /**< 最大传输字节数 */
 #endif
 
-/* 最大 host 数量 (per-host dummy buffer 防 DMA 踩踏) */
 #ifndef HAL_SPI_HOST_MAX
-#define HAL_SPI_HOST_MAX  4
+#define HAL_SPI_HOST_MAX  4 /**< 最大 host 数量 (per-host dummy buffer 防 DMA 踩踏) */
 #endif
 
-#ifndef HAL_SPI_MAX_XFER
-#define HAL_SPI_MAX_XFER  512U
-#endif
+#define HAL_SPI_MAX_XFER  512U /**< 每个 master device 最大并发 async transfer 数 (ESP32 用) */
+#define HAL_SPI_MAX_ASYNC  4 /**< 每个 master device 最大并发 async transfer 数 (ESP32 用) */
 
-/* 每个 master device 最大并发 async transfer 数 (ESP32 用) */
-#ifndef HAL_SPI_MAX_ASYNC
-#define HAL_SPI_MAX_ASYNC  4
-#endif
-
-/* forward decl */
+/**
+ * @brief SPI 设备对象
+ * @param ctlr SPI 控制器对象指针
+ * @param cfg SPI 设备配置
+ * @param hw_open 设备是否打开
+ */
 struct hal_spi_dev;
-struct bus_dma_chan;
+
+/**
+ * @brief SPI DMA 配置 (硬件直投, 仿 ADC/UART)
+ * @note  纯数据实体: 所有字段由 DTSI 提供厂商宏值, HAL 零计算直接灌入 LL_DMA。
+ *        SPI 全双工需要 TX + RX 两个独立 DMA 流, 各自配置。
+ */
+struct hal_spi_dma_config
+{
+    uint32_t  dma_enable;        /**< DMA 使能: 0=禁用, 1=启用 */
+    uintptr_t dma_handle;        /**< DMA 控制器寄存器基址 (DMA1_BASE / DMA2_BASE) */
+    uint32_t  dma_stream;        /**< DMA 流编号 (LL_DMA_STREAM_0..7) */
+    uint32_t  dma_channel;       /**< DMA 通道编号 (LL_DMA_CHANNEL_0..7) */
+    uint32_t  dma_priority;      /**< DMA 优先级 */
+    uint32_t  dma_memory_size;   /**< DMA 内存数据宽度 */
+    uint32_t  dma_mode;          /**< DMA 模式 (LL_DMA_MODE_NORMAL/CIRCULAR) */
+    uint32_t  dma_periph_inc;    /**< DMA 外设地址递增 (LL_DMA_PERIPH_INCREMENT/NOINCREMENT) */
+    uint32_t  dma_mem_inc;       /**< DMA 内存地址递增 (LL_DMA_MEMORY_INCREMENT/NOINCREMENT) */
+    uint32_t  dma_periph_data_size; /**< DMA 外设数据宽度 (LL_DMA_PDATAALIGN_BYTE/HALFWORD/WORD) */
+    uint32_t  dma_fifo_mode;     /**< DMA FIFO 模式 (LL_DMA_FIFOMODE_ENABLE/DISABLE) */
+    uint32_t  dma_fifo_threshold; /**< DMA FIFO 阈值 (LL_DMA_FIFOTHRESHOLD_1_4/1_2/3_4/FULL) */
+    uint32_t  dma_mem_burst;     /**< DMA 内存突发 (LL_DMA_MBURST_SINGLE/INCR4/INCR8/INCR16) */
+    uint32_t  dma_periph_burst;  /**< DMA 外设突发 (LL_DMA_PBURST_SINGLE/INCR4/INCR8/INCR16) */
+};
 
 /**
  * @brief SPI 传输完成 callback (ISR 上下文)
  * @note  STM32/WCH 不支持 async, 类型签名保持跨平台一致。
- *        ESP32 此 callback 在 DMA done 中断中调用, 严禁阻塞/睡眠/调 transfer。
+ * @param dev SPI 设备对象指针
+ * @param trans 传输数据
+ * @param userdata 用户数据指针
  */
-typedef void (*hal_spi_callback_t)(struct hal_spi_dev* dev,
-                                   const void* trans, void* userdata);
+typedef void (*hal_spi_callback_t)(struct hal_spi_dev* dev,const void* trans, void* userdata);
 
-/*============================================================================*/
-/*                              引脚配置 (硬件直投)                            */
-/*============================================================================*/
-/* 纯数据实体: 所有字段由 DTSI 提供厂商宏值, HAL 零计算直接灌入 LL 库/标准外设库。
- * MOSI/MISO/SCLK 用此结构体 (含 af), CS 仅用 port/pin/clk_periph。
- * - STM32: af = GPIO_AF5_SPI1 等 (LL_GPIO AF 选择)
- * - WCH: af = GPIO_Mode_AF_PP 等 (GPIOMode_TypeDef, mode+af 编码在一起)
- * - ESP32: port=0, clk_periph=0, af=0, pin=SoC GPIO 编号 (无 AF 概念)
+/**
+ * @brief SPI 引脚配置
+ * @param port 端口
+ * @param pin 引脚
+ * @param clk_bus 该引脚所属的外设时钟总线
+ * @param af 复用功能,用于配置引脚的复用功能
+ * @param output_type 引脚输出类型
+ * @param speed 引脚速度
+ * @param mode 引脚模式
+ * @param pull 引脚上拉/下拉
  */
 struct hal_spi_pin_cfg
 {
-    uintptr_t port;
-    uint16_t  pin;
-    uint32_t  clk_periph;
-    uint32_t  af;
+    uintptr_t port;/**< 端口 */
+    uint16_t  pin;/**< 引脚 */
+    uint32_t  clk_bus;/**< 该引脚所属的外设时钟总线 */
+    uint32_t  af;/**< 复用功能 */
+    uint32_t  output_type;/**< 引脚输出类型 */
+    uint32_t  speed;/**< 引脚速度 */
+    uint32_t  mode;/**< 引脚模式 */
+    uint32_t  pull;/**< 引脚上拉/下拉 */
 };
 
-/*============================================================================*/
-/*                              Bus / Device 配置                             */
-/*============================================================================*/
+/**
+ * @brief SPI 总线配置
+ * @param spi SPI 基地址
+ * @param spi_clk_periph 时钟分频器
+ * @param mosi MOSI 引脚配置
+ * @param miso MISO 引脚配置
+ * @param sclk SCLK 引脚配置
+ * @param max_transfer_sz 最大传输字节数
+ * @param dma_tx TX DMA 配置 (硬件直投, 仿 ADC)
+ * @param dma_rx RX DMA 配置 (硬件直投, 仿 ADC)
+ * @param bus_role 总线角色
+ */
 struct hal_spi_bus_config
 {
-    uintptr_t              spi;          /* STM32/WCH: SPI 基地址; ESP32: (uintptr_t)host_id */
-    uint32_t               spi_clk_periph;
-    struct hal_spi_pin_cfg mosi;
-    struct hal_spi_pin_cfg miso;
-    struct hal_spi_pin_cfg sclk;
-    int                    max_transfer_sz;
-    int                    dma_chan;
-    int                    bus_role;
+    uintptr_t               spi;            /**< SPI 基地址 */
+    uint32_t                spi_clk_periph; /**< 时钟分频器 */
+    int32_t                 irqn;           /**< NVIC 中断号 (DTS irqn, -1 = 无中断) */
+    uint32_t                irq_priority;   /**< NVIC 中断优先级 (DTS irq-priority, 0=最高) */
+    uint32_t                it_enable;      /**< 中断模式使能: 0=禁用, 1=启用 DMA TC/NVIC 中断 */
+    struct hal_spi_pin_cfg  mosi;           /**< MOSI 引脚配置 */
+    struct hal_spi_pin_cfg  miso;           /**< MISO 引脚配置 */
+    struct hal_spi_pin_cfg  sclk;           /**< SCLK 引脚配置 */
+    size_t                  max_transfer_sz;/**< 最大传输字节数 */
+    struct hal_spi_dma_config dma_tx;      /**< TX DMA 配置 (dma_enable=0 不使用 DMA) */
+    struct hal_spi_dma_config dma_rx;      /**< RX DMA 配置 (dma_enable=0 不使用 DMA) */
+    int                     bus_role;       /**< 总线角色 */
 };
 
+/**
+ * @brief SPI 设备配置
+ * @param mode 模式
+ * @param clock_speed_hz 时钟速度
+ * @param cs_port CS 引脚端口
+ * @param cs_pin CS 引脚
+ * @param cs_clk_periph CS 引脚时钟分频器
+ */
 struct hal_spi_device_config
 {
-    int             mode;
-    int             clock_speed_hz;
-    /* CS 引脚: 用于配置变更检测 (多设备共线时不打架) */
-    uintptr_t       cs_port;        /* ESP32: 0 */
-    uint16_t        cs_pin;         /* ESP32: SoC GPIO 编号 */
-    uint32_t        cs_clk_periph;  /* ESP32: 0 */
-    int             queue_size;
+    int             mode;               /**< 模式 (CPOL/CPHA: bit1=CPOL, bit0=CPHA) */
+    uint32_t        clock_speed_hz;     /**< 时钟速度 (Hz) */
+    uintptr_t       cs_port;            /**< CS 引脚端口 */
+    uint16_t        cs_pin;             /**< CS 引脚 */
+    uint32_t        cs_clk_periph;      /**< CS 引脚时钟总线 */
+    uint32_t        transfer_direction; /**< 传输方向 (LL_SPI_FULL_DUPLEX/HALF_DUPLEX_RX/TX) */
+    uint32_t        data_width;         /**< 数据宽度 (LL_SPI_DATAWIDTH_8BIT/16BIT) */
+    uint32_t        nss;                /**< NSS 模式 (LL_SPI_NSS_SOFT/HARD) */
+    uint32_t        bit_order;          /**< 位序 (LL_SPI_MSB_FIRST/LSB_FIRST) */
+    uint32_t        crc_calculation;    /**< CRC 计算 (LL_SPI_CRCCALCULATION_ENABLE/DISABLE) */
+    uint32_t        crc_poly;           /**< CRC 多项式 */
+    uint32_t        standard;           /**< 协议标准 (LL_SPI_PROTOCOL_MOTOROLA/TI) */
 };
 
-/*============================================================================*/
-/*                              HAL 对象 (嵌入 bus 层)                         */
-/*============================================================================*/
-/* 纯数据实体, 嵌入 bus 层 spi_bus_host (非指针), HAL 无池管理无 alloc/free。
- * 扁平字段替代旧 hw_priv_storage + hal_spi_*_priv 二级包装。
- *
- * 跨平台字段说明:
- * - spi: STM32/WCH 缓存 cfg.spi (fast path); ESP32 缓存 (uintptr_t)host_id
- * - sync_sem: STM32 DMA 同步信号量; WCH/ESP32 为 NULL
- * - hw_idx: STM32/WCH dummy buffer 索引; ESP32 device HW slot 索引
+/**
+ * @brief SPI 总线主机对象
+ * @param cfg 总线配置
+ * @param active_cfg 当前生效的设备配置
+ * @param spi 缓存 cfg.spi, fast path
+ * @param hw_idx dummy buffer / HW slot 索引
  */
 struct hal_spi_bus_host
 {
-    struct hal_spi_bus_config       cfg;
-    struct hal_spi_device_config    active_cfg;   /* 当前生效的 device 配置 */
-    uintptr_t                       spi;          /* 缓存 cfg.spi, fast path */
-    struct osal_sem*                sync_sem;     /* DMA 同步信号量 (STM32 用, 其他 NULL) */
-    int                             hw_idx;       /* dummy buffer / HW slot 索引 */
-    int                             ref_count;
-    bool                            bus_ready;
-    bool                            hw_inited;
+    struct hal_spi_bus_config       cfg;          /**< 总线配置 */
+    struct hal_spi_device_config    active_cfg;   /**< 当前生效的 device 配置 */
+    uintptr_t                       spi;          /**< 缓存 cfg.spi, fast path */
+    int                             hw_idx;       /**< dummy buffer / HW slot 索引 */
+    int                             ref_count;    /**< 引用计数 */
+    bool                            bus_ready;    /**< 总线是否准备好 */
+    bool                            hw_inited;    /**< 硬件是否初始化 */
 };
-
-struct hal_spi_dev
-{
-    struct hal_spi_bus_host*        ctlr;
-    struct hal_spi_device_config    cfg;
-    int                             pool_idx;
-    int                             hw_open;
-};
-
-typedef struct hal_spi_device_config spi_device_config;
-typedef struct hal_spi_bus_config    spi_bus_config;
-typedef struct hal_spi_bus_host      spi_controller;
-typedef struct hal_spi_dev           spi_device;
-
-/*============================================================================*/
-/*                              Host 管理 API                                 */
-/*============================================================================*/
-/* 对象由 bus 层提供 (嵌入), HAL 不做池管理。hw_idx 为 dummy buffer/HW slot 索引。 */
-int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,
-                          const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
-int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
-
-/*============================================================================*/
-/*                              Device 管理 API                               */
-/*============================================================================*/
-void hal_spi_dev_init(struct hal_spi_dev* dev, int pool_idx,
-                      struct hal_spi_bus_host* host,
-                      const struct hal_spi_device_config* dev_cfg);
-int hal_spi_dev_hw_open(struct hal_spi_dev* dev) COMPAT_WARN_UNUSED_RESULT;
-int hal_spi_dev_hw_close(struct hal_spi_dev* dev) COMPAT_WARN_UNUSED_RESULT;
-
-/*============================================================================*/
-/*                              同步传输 (Master)                             */
-/*============================================================================*/
-int spi_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,
-             size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 /**
- * @brief SPI 同步传输 inline 包装: 转调 spi_sync
- * @param dev        SPI 设备对象指针
- * @param tx         发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
- * @param rx         接收缓冲区 (可为 NULL, 仅丢弃)
- * @param len        传输字节数
+ * @brief SPI 设备对象
+ * @param ctlr 总线控制器对象指针
+ * @param cfg 设备配置
+ * @param hw_open 设备是否打开
+ */
+struct hal_spi_dev
+{
+    struct hal_spi_bus_host*        ctlr;         /**< 总线控制器对象指针 */
+    struct hal_spi_device_config    cfg;          /**< 设备配置 */
+    int                             hw_open;      /**< 设备是否打开 */
+};
+
+
+/**
+ * @brief 初始化 SPI 总线主机
+ * @param host 总线主机对象指针
+ * @param hw_idx dummy buffer / HW slot 索引
+ * @param cfg 总线配置
+ */
+int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief 释放 SPI 总线主机
+ * @param host 总线主机对象指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief 初始化 SPI 设备
+ * @param dev 设备对象指针
+ * @param host 总线控制器对象指针
+ * @param dev_cfg 设备配置
+ */
+int hal_spi_dev_init(struct hal_spi_dev* dev,struct hal_spi_bus_host* host,const struct hal_spi_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief 打开 SPI 设备
+ * @param dev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_dev_hw_open(struct hal_spi_dev* dev) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief 关闭 SPI 设备
+ * @param dev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_dev_hw_close(struct hal_spi_dev* dev) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief SPI 同步传输
+ * @param dev 设备对象指针
+ * @param tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
+ * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
+ * @param len 传输字节数
  * @param timeout_ms 超时 (ms)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 VFS_ERR_TIMEOUT
  */
-static inline int hal_spi_transfer(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,
-                                   size_t len, uint32_t timeout_ms)
-{
-    return spi_sync(dev, tx, rx, len, timeout_ms);
-}
+int hal_spi_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-/*============================================================================*/
-/*                              异步传输 (ESP32 支持, 其他返回 NOTSUPP)        */
-/*============================================================================*/
-int hal_spi_transfer_async(struct hal_spi_dev* dev,
-                           const uint8_t* tx, uint8_t* rx,
-                           size_t len, hal_spi_callback_t cb,
-                           void* userdata);
+/**
+ * @brief SPI 异步传输
+ * @param dev 设备对象指针
+ * @param tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
+ * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
+ * @param len 传输字节数
+ * @param cb 回调函数
+ * @param userdata 用户数据指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_transfer_async(struct hal_spi_dev* dev,const uint8_t* tx, uint8_t* rx,size_t len, hal_spi_callback_t cb,void* userdata) COMPAT_WARN_UNUSED_RESULT;
 
-int hal_spi_transfer_poll(struct hal_spi_dev* dev, uint32_t timeout_ms);
+/**
+ * @brief SPI 异步传输轮询
+ * @param dev 设备对象指针
+ * @param timeout_ms 超时 (ms)
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_transfer_poll(struct hal_spi_dev* dev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-int hal_spi_get_trans_result(struct hal_spi_dev* dev, uint8_t* rx_data, size_t rx_cap,
-                             size_t* trans_len, uint32_t timeout_ms);
+/**
+ * @brief SPI 获取传输结果
+ * @param dev 设备对象指针
+ * @param rx_data 接收缓冲区
+ * @param rx_cap 接收缓冲区容量
+ * @param trans_len 传输字节数
+ * @param timeout_ms 超时 (ms)
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_get_trans_result(struct hal_spi_dev* dev, uint8_t* rx_data, size_t rx_cap,size_t* trans_len, uint32_t timeout_ms);
 
-/*============================================================================*/
-/*                              Slave 传输 (ESP32 支持, 其他返回 NOTSUPP)      */
-/*============================================================================*/
-int spi_slave_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,
-                   size_t len, uint32_t timeout_ms);
+/**
+ * @brief SPI 从机同步传输
+ * @param dev 设备对象指针
+ * @param tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
+ * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
+ * @param len 传输字节数
+ * @param timeout_ms 超时 (ms)
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_slave_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-int spi_slave_queue_tx(struct hal_spi_dev* dev, const uint8_t* data, size_t len,
-                       uint32_t timeout_ms);
+/**
+ * @brief SPI 从机队列传输
+ * @param dev 设备对象指针
+ * @param data 发送缓冲区
+ * @param len 传输字节数
+ * @param timeout_ms 超时 (ms)
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
+int hal_spi_slave_queue_tx(struct hal_spi_dev* dev, const uint8_t* data, size_t len,uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-/*============================================================================*/
-/*                              DMA 强制中止 (panic/reboot 路径)              */
-/*============================================================================*/
-/* 强行中止 SPI 上的 DMA (panic/reboot 全局入口, hal_dma_force_stop 调用)。
- * STM32: 空实现 (STM32 hal_dma_force_stop 直接 abort DMA stream, 不需 SPI 介入);
- * WCH:   中止 SPI1 DMA (WCH DMA 通道由 SPI HAL 管理, 需 SPI 介入);
- * ESP32: 空实现 (ESP32 GDMA 自动管理, 无需介入)。 */
-void hal_spi_dma_abort(void);
+/**
+ * @brief SPI 虚拟中断上半部回调 (ISR 内执行)
+ * @param arg 参数 (hal_spi_dev*)
+ * @param irq_num 虚拟中断号
+ * @return VFS_IRQ_ENTRY_BOTTOM 需要下半部; VFS_IRQ_ENTRY_NOBOTTOM 不需要
+ * @note  清除 TX+ RX DMA TC 标志 + SPI BSY 标志; 下半部由 VFS 层通过 g_spi_bottom_half_work 注册
+ */
+int  hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num);
 
 #ifdef __cplusplus
 }

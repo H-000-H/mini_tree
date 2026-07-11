@@ -43,10 +43,10 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn);
  * 带 fops 的驱动 remove 标准序列 (dev_lifecycle):
  *   dev_lc_remove_start(device_lc(dev));
  *   device_ops_unregister(dev);
- *   dev_lc_remove_drain(device_lc(dev), OSAL_WAIT_FOREVER);  // 持 io_lock 返回
+ *   dev_lc_remove_drain(device_lc(dev), OSAL_WAIT_FOREVER);  // 原子轮询, 无持锁
  *   ... teardown ...
  *   dev_lc_remove_finish(device_lc(dev));
- * probe 阶段: device_lc_bind(dev, io_mutex);  io_mutex 用 osal_mutex_create_static (plain)
+ * probe 阶段: device_lc_bind(dev);
  */
 #define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)        \
     int board_driver_probe_##name(struct device* dev)             \
