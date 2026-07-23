@@ -6,8 +6,8 @@
  *   - Host VFS:   DTS 解析 + uart_bus_host_init (controller driver)
  *   - Client VFS: uart_bus_client_register + fops 挂载 (bus client driver)
  *
- * 生命周期 (dev_lifecycle): open/close 引用计数, io 互斥, remove drain。
- * I/O: read/write 走 uart_bus_read/write; ioctl(TRANSFER) 先 write(tx) 再 read(rx) (半双工模拟全双工)。
+ * 生命周期 (dev_lifecycle): open/close 引用计数, io 门控 (dev_lc_io_*), remove drain。
+ * I/O: read/write 走 uart_bus_*; ioctl(TRANSFER) 走 uart_bus_transfer (先写后读)。
  * Host remove 安全: host_deinit 返回 BUSY 时 remove 拒绝销毁, 防 client 仍 open 时 host UAF。
  *
  * @see bus/uart/uart_bus.h  bus 层接口
@@ -18,7 +18,7 @@
 #include "device.h"
 #include "driver.h"
 #include "dev_lifecycle.h"
-#include "VFS.h"
+#include "status.h"
 #include "dt_config_gen.h"
 #include "osal.h"
 #include "compiler_compat.h"
@@ -29,11 +29,11 @@
 /*===========================================================================================================================================================*/
 /*Host VFS*/
 /*===========================================================================================================================================================*/
-#define UART_VFS_PRIV_COUNT 4
+#define UART_VFS_PRIV_COUNT 6
 
 struct vfs_uart_priv {
-    struct hal_uart_config  cfg;
-    int                     pool_idx;
+    struct hal_uart_config  cfg;      /**< host 配置 (DTSI 直投) */
+    int                     pool_idx; /**< 池索引 */
 };
 
 static struct vfs_uart_priv s_uart_priv_pool[UART_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
@@ -56,8 +56,7 @@ static void vfs_uart_priv_pool_init(void)
  * @param cfg 配置结构指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_uart_priv_parse_dts(struct device* pdev,
-                                   struct hal_uart_config* cfg)
+static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* cfg)
 {
     /* 硬件直投: DTSI 提供厂商宏值, VFS 零翻译填入 hal_uart_config。 device_get_prop_int 取 int*, 指针/uint32 字段用 int temp + (uintptr_t) cast。 */
     int uart_base = 0, uart_clk = 0, uart_baud = 0;
@@ -98,7 +97,16 @@ static int vfs_uart_priv_parse_dts(struct device* pdev,
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode",        &rx_mode));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull",        &rx_pull));
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    {
+        int irqn = -1, irq_priority = 0, it_enable = 0;
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
+        COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+        cfg->irqn         = (int32_t)irqn;
+        cfg->irq_priority = (uint32_t)irq_priority;
+        cfg->it_enable    = (uint32_t)it_enable;
+    }
     cfg->uart            = (uintptr_t)uart_base;
     cfg->uart_clk_periph = (uint32_t)uart_clk;
     cfg->baud_rate       = (uint32_t)uart_baud;
@@ -129,27 +137,31 @@ static int vfs_uart_priv_parse_dts(struct device* pdev,
         .pull        = (uint32_t)rx_pull,
     };
 
-    /** DMA 配置 (硬件直投): dma-cfg = <handle stream channel priority memory_size enable
-     *    direction mode periph_inc mem_inc periph_data_size fifo_mode fifo_threshold mem_burst periph_burst> */
+    /** DMA 短元组 (≥6): <handle stream channel priority memory_size enable>
+     *  长元组 (≥15): 其后接 direction/mode/inc/... (缺省由 HAL 补默认) */
     {
         int dma_arr[15];
-        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, 15) == 15)
+        int n = device_get_prop_int_array(pdev, "dma-cfg", dma_arr, 15);
+        if (n >= 6)
         {
-            cfg->dma_cfg.dma_handle           = (uintptr_t)dma_arr[0];
-            cfg->dma_cfg.dma_stream           = (uint32_t)dma_arr[1];
-            cfg->dma_cfg.dma_channel          = (uint32_t)dma_arr[2];
-            cfg->dma_cfg.dma_priority         = (uint32_t)dma_arr[3];
-            cfg->dma_cfg.dma_memory_size      = (uint32_t)dma_arr[4];
-            cfg->dma_cfg.dma_enable           = (uint32_t)dma_arr[5];
-            cfg->dma_cfg.dma_direction        = (uint32_t)dma_arr[6];
-            cfg->dma_cfg.dma_mode             = (uint32_t)dma_arr[7];
-            cfg->dma_cfg.dma_periph_inc       = (uint32_t)dma_arr[8];
-            cfg->dma_cfg.dma_mem_inc          = (uint32_t)dma_arr[9];
-            cfg->dma_cfg.dma_periph_data_size = (uint32_t)dma_arr[10];
-            cfg->dma_cfg.dma_fifo_mode        = (uint32_t)dma_arr[11];
-            cfg->dma_cfg.dma_fifo_threshold   = (uint32_t)dma_arr[12];
-            cfg->dma_cfg.dma_mem_burst        = (uint32_t)dma_arr[13];
-            cfg->dma_cfg.dma_periph_burst     = (uint32_t)dma_arr[14];
+            cfg->dma_cfg.dma_handle      = (uintptr_t)dma_arr[0];
+            cfg->dma_cfg.dma_stream      = (uint32_t)dma_arr[1];
+            cfg->dma_cfg.dma_channel     = (uint32_t)dma_arr[2];
+            cfg->dma_cfg.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_cfg.dma_memory_size = (uint32_t)dma_arr[4];
+            cfg->dma_cfg.dma_enable      = (uint32_t)dma_arr[5];
+            if (n >= 15)
+            {
+                cfg->dma_cfg.dma_direction        = (uint32_t)dma_arr[6];
+                cfg->dma_cfg.dma_mode             = (uint32_t)dma_arr[7];
+                cfg->dma_cfg.dma_periph_inc       = (uint32_t)dma_arr[8];
+                cfg->dma_cfg.dma_mem_inc          = (uint32_t)dma_arr[9];
+                cfg->dma_cfg.dma_periph_data_size = (uint32_t)dma_arr[10];
+                cfg->dma_cfg.dma_fifo_mode        = (uint32_t)dma_arr[11];
+                cfg->dma_cfg.dma_fifo_threshold   = (uint32_t)dma_arr[12];
+                cfg->dma_cfg.dma_mem_burst        = (uint32_t)dma_arr[13];
+                cfg->dma_cfg.dma_periph_burst     = (uint32_t)dma_arr[14];
+            }
         }
     }
 
@@ -261,10 +273,8 @@ static int vfs_uart_priv_remove(struct device* pdev)
 #define UART_VFS_COUNT 2
 
 struct uart_vfs_client {
-    struct file_operations ops;
-    struct osal_mutex*     io_mutex;
-    uint8_t                mutex_storage[OSAL_MUTEX_STORAGE_SIZE];
-    int                    pool_idx;
+    struct file_operations ops;       /**< VFS 操作表 */
+    int                    pool_idx;  /**< 池索引 */
 };
 
 static struct uart_vfs_client s_uart_vfs_pool[UART_VFS_COUNT];
@@ -346,15 +356,14 @@ static int uart_vfs_close(struct device* pdev)
 }
 
 /**
- * @brief UART Client 设备写操作 (io 互斥, 调用 uart_bus_write)
+ * @brief UART Client 设备写操作 (dev_lc_io 门控, 调用 uart_bus_write)
  * @param pdev 设备对象指针
  * @param buf 数据缓冲
  * @param len 数据长度 (字节)
- * @param timeout_ms 超时 (毫秒)
+ * @param timeout_ms 超时 (毫秒, 0=平台默认)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int uart_vfs_write(struct device* pdev, const void* buf, size_t len,
-                           uint32_t timeout_ms)
+static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int                   ret;
@@ -370,22 +379,21 @@ static int uart_vfs_write(struct device* pdev, const void* buf, size_t len,
     if (ret != VFS_OK)
         return ret;
 
-    ret = uart_bus_write(pdev, (const uint8_t*)buf, len);
+    ret = uart_bus_write(pdev, (const uint8_t*)buf, len, timeout_ms);
 
     dev_lc_io_end(lc);
     return ret;
 }
 
 /**
- * @brief UART Client 设备读操作 (io 互斥, 调用 uart_bus_read)
+ * @brief UART Client 设备读操作 (dev_lc_io 门控, 调用 uart_bus_read)
  * @param pdev 设备对象指针
  * @param buf 数据缓冲
  * @param len 数据长度 (字节)
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @param timeout_ms 超时 (毫秒, 0=平台默认)
+ * @return 成功返回已读字节数, 失败返回负数错误码
  */
-static int uart_vfs_read(struct device* pdev, void* buf, size_t len,
-                          uint32_t timeout_ms)
+static int uart_vfs_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int                   ret;
@@ -401,7 +409,7 @@ static int uart_vfs_read(struct device* pdev, void* buf, size_t len,
     if (ret != VFS_OK)
         return ret;
 
-    ret = uart_bus_read(pdev, (uint8_t*)buf, len);
+    ret = uart_bus_read(pdev, (uint8_t*)buf, len, timeout_ms);
 
     dev_lc_io_end(lc);
     return ret;
@@ -414,7 +422,7 @@ typedef int (*uart_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, u
 
 struct uart_ioctl_map
 {
-    uart_ioctl_fn_t handler;
+    uart_ioctl_fn_t handler;  /**< ioctl 处理函数 */
 };
 
 /**
@@ -428,15 +436,11 @@ struct uart_ioctl_map
 static int uart_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct uart_transfer_arg* t = (const struct uart_transfer_arg*)arg;
-    int ret;
 
-    if (!t || arg_len != sizeof(*t) || !t->tx || !t->rx)
+    if (!t || arg_len != sizeof(*t) || (!t->tx && !t->rx))
         return VFS_ERR_INVAL;
 
-    ret = uart_bus_write(pdev, t->tx, t->tx_len);
-    if (ret == VFS_OK && t->rx_len > 0)
-        ret = uart_bus_read(pdev, t->rx, t->rx_len);
-    return ret;
+    return uart_bus_transfer(pdev, t->tx, t->rx, t->tx_len, t->rx_len, timeout_ms);
 }
 
 static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
@@ -452,14 +456,12 @@ static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg,
-                           size_t arg_len, uint32_t timeout_ms)
+static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t               offset;
     int                   ret;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
@@ -490,8 +492,8 @@ static const struct file_operations uart_vfs_fops = {
 };
 
 /**
- * @brief UART Client 设备探测: 申请池槽/互斥锁, 注册 client, 绑定 fops 与生命周期
- * @param pdev 设备对象指针
+ * @brief UART Client VFS probe: 注册 bus client 并挂载 fops
+ * @param pdev client device 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int uart_vfs_probe(struct device* pdev)
@@ -511,17 +513,10 @@ int uart_vfs_probe(struct device* pdev)
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (osal_mutex_create_static(&priv->io_mutex, priv->mutex_storage,
-                                  sizeof(priv->mutex_storage)) != 0)
-    {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_vfs_pool_ctrl, pool_idx));
-        return VFS_ERR_NOMEM;
-    }
-
     /* UART 无 per-client 配置, client_register 无需 cfg */
     ret = uart_bus_client_register(pdev);
     if (ret != VFS_OK)
-        goto err_mutex;
+        goto err_pool;
 
     priv->ops = uart_vfs_fops;
     pdev->ops  = &priv->ops;
@@ -529,23 +524,23 @@ int uart_vfs_probe(struct device* pdev)
     if (device_set_priv(pdev, priv) != VFS_OK)
     {
         uart_bus_client_unregister(pdev);
-        goto err_mutex;
+        ret = VFS_ERR_IO;
+        goto err_pool;
     }
 
     SYS_LOGI(s_kTag, "probe OK: %s", device_get_name(pdev));
     return VFS_OK;
 
-err_mutex:
+err_pool:
     pdev->ops = NULL;                   /* 切断 fops, 防 UAF */
     dev_lc_reset(device_lc(pdev));       /* 重置生命周期 */
-    osal_mutex_destroy(priv->io_mutex);
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_vfs_pool_ctrl, pool_idx));
     return ret;
 }
 
 /**
- * @brief UART Client 设备移除: 拒新 IO, 排空已有 IO, 注销 client, 释放池槽与互斥锁
- * @param pdev 设备对象指针
+ * @brief UART Client VFS remove: drain 生命周期并注销 bus client
+ * @param pdev client device 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int uart_vfs_remove(struct device* pdev)
@@ -574,7 +569,6 @@ int uart_vfs_remove(struct device* pdev)
     }
 
     uart_bus_client_unregister(pdev);
-    osal_mutex_destroy(priv->io_mutex);
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_vfs_pool_ctrl, pool_idx));
 

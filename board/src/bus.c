@@ -10,7 +10,7 @@
  *@=========================================================================================================================*/
 #include "bus.h"
 #include "device.h"
-#include "VFS.h"
+#include "status.h"
 #include "compiler_compat.h"
 #include "board_devtable.h"
 
@@ -33,16 +33,14 @@ static device_id_t device_to_id(const struct device* dev)
 }
 
 /**
- * @brief 绑定 controller (full, 带 ctlr_ops)
- * @param dev controller device (host)
- * @param type 总线类型 (BUS_TYPE_SPI 等)
- * @param ctlr_ops host 级 ops 表
- * @param hw_ctx host 私有上下文 (struct xxx_bus_host*)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @brief 绑定 device 到总线控制器静态表
+ * @param dev controller device 指针
+ * @param type 总线类型
+ * @param ctlr_ops 控制器操作表
+ * @param hw_ctx 硬件上下文指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int bus_controller_bind_full(struct device* dev, bus_type_t type,
-                             const struct bus_controller_ops* ctlr_ops,
-                             void* hw_ctx)
+int bus_controller_bind_full(struct device* dev, bus_type_t type,const struct bus_controller_ops* ctlr_ops,void* hw_ctx)
 {
     device_id_t id;
 
@@ -61,10 +59,34 @@ int bus_controller_bind_full(struct device* dev, bus_type_t type,
 }
 
 /**
- * @brief 查找 client 所属的 controller
- * @param dev client device
+ * @brief 获取 device 自身绑定的总线控制器
+ * @param dev device 指针
  * @param out 输出 bus_controller 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 VFS_ERR_NODEV
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+int bus_controller_get(const struct device* dev, struct bus_controller** out)
+{
+    device_id_t id;
+
+    if (!out)
+        return VFS_ERR_INVAL;
+    *out = NULL;
+    if (!dev)
+        return VFS_ERR_INVAL;
+
+    id = device_to_id(dev);
+    if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
+        return VFS_ERR_NODEV;
+
+    *out = &s_controllers[id];
+    return VFS_OK;
+}
+
+/**
+ * @brief 获取 device 父节点绑定的总线控制器 (client 查 host)
+ * @param dev client device 指针
+ * @param out 输出 bus_controller 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int bus_controller_of(const struct device* dev, struct bus_controller** out)
 {
@@ -91,8 +113,8 @@ int bus_controller_of(const struct device* dev, struct bus_controller** out)
 }
 
 /**
- * @brief 解绑 controller (清空 s_controllers[device_id], 不检查 ref_count)
- * @param dev controller device (host)
+ * @brief 解绑 device 的总线控制器并清零槽位
+ * @param dev controller device 指针
  */
 void bus_controller_unbind(struct device* dev)
 {
@@ -106,5 +128,81 @@ void bus_controller_unbind(struct device* dev)
         return;
 
     s_controller_used[id] = 0;
-    __builtin_memset(&s_controllers[id], 0, sizeof(s_controllers[id]));
+    COMPAT_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
+}
+
+/*===========================================================================================================================================================*/
+                                                              /* Async callback bridge */
+/*===========================================================================================================================================================*/
+/**
+ * @brief 从异步桥接池申请空闲槽位
+ * @param slots 桥接槽位数组
+ * @param slot_count 槽位数量
+ * @return 成功返回 bridge 指针, 池满返回 NULL
+ */
+struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, size_t slot_count)
+{
+    size_t i;
+
+    if (!slots || slot_count == 0)
+        return NULL;
+
+    for (i = 0; i < slot_count; i++)
+    {
+        if (!slots[i].in_use)
+        {
+            slots[i].in_use = 1;
+            return &slots[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief 绑定异步桥接槽位到用户回调
+ * @param bridge bridge 指针
+ * @param dev 关联 device 指针
+ * @param cb 用户完成回调
+ * @param userdata 回调用户数据
+ */
+void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* dev, bus_async_user_cb_t cb, void* userdata)
+{
+    if (!bridge)
+        return;
+    bridge->dev      = dev;
+    bridge->cb       = cb;
+    bridge->userdata = userdata;
+}
+
+/**
+ * @brief 释放异步桥接槽位
+ * @param bridge bridge 指针
+ */
+void bus_async_bridge_release(struct bus_async_bridge* bridge)
+{
+    if (!bridge)
+        return;
+    bridge->dev      = NULL;
+    bridge->cb       = NULL;
+    bridge->userdata = NULL;
+    bridge->in_use   = 0;
+}
+
+/**
+ * @brief HAL 异步完成回调桥接 → 调用用户 cb 并释放槽位
+ * @param userdata bus_async_bridge 上下文指针
+ * @param trans 传输完成描述符指针
+ */
+void bus_async_bridge_complete(void* userdata, const void* trans)
+{
+    struct bus_async_bridge* bridge = (struct bus_async_bridge*)userdata;
+
+    if (!bridge)
+        return;
+
+    if (bridge->cb)
+        bridge->cb(bridge->dev, trans, bridge->userdata);
+
+    /* ISR 安全: 单字节写释放槽位 */
+    bridge->in_use = 0;
 }

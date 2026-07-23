@@ -36,15 +36,15 @@ typedef enum
 /*===========================================================================================================================================================*/
 struct hal_sdio_config
 {
-    int                 sdio_id;        /* SDIO 控制器编号, 0 = SDIO1 */
-    hal_sdio_bus_width_t bus_width;     /* 总线宽度 */
-    hal_sdio_speed_t    speed;          /* 速度模式 */
-    int                 clk_pin;        /* CLK 引脚 (DTSI 直投, 平台语义: STM32/WCH=port<<16|pin, ESP32=SoC GPIO 编号) */
-    int                 cmd_pin;        /* CMD 引脚 */
-    int                 d0_pin;         /* D0 引脚 */
-    int                 d1_pin;         /* D1 引脚, -1 = 未用 */
-    int                 d2_pin;         /* D2 引脚, -1 = 未用 */
-    int                 d3_pin;         /* D3 引脚, -1 = 未用 */
+    int                 sdio_id;        /**< SDIO 控制器编号, 0 = SDIO1 */
+    hal_sdio_bus_width_t bus_width;     /**< 总线宽度 */
+    hal_sdio_speed_t    speed;          /**< 速度模式 */
+    int                 clk_pin;        /**< CLK 引脚 (DTSI 直投, 平台语义: STM32/WCH=port<<16|pin, ESP32=SoC GPIO 编号) */
+    int                 cmd_pin;        /**< CMD 引脚 */
+    int                 d0_pin;         /**< D0 引脚 */
+    int                 d1_pin;         /**< D1 引脚, -1 = 未用 */
+    int                 d2_pin;         /**< D2 引脚, -1 = 未用 */
+    int                 d3_pin;         /**< D3 引脚, -1 = 未用 */
 };
 /*===========================================================================================================================================================*/
 
@@ -52,9 +52,9 @@ struct hal_sdio_config
 /*===========================================================================================================================================================*/
 struct hal_sdio_info
 {
-    uint32_t    sector_size;    /* 扇区大小(字节), 通常 512 */
-    uint32_t    sector_count;   /* 总扇区数 */
-    uint32_t    card_type;      /* 0 = SD, 1 = MMC, 2 = SDIO */
+    uint32_t    sector_size;    /**< 扇区大小(字节), 通常 512 */
+    uint32_t    sector_count;   /**< 总扇区数 */
+    uint32_t    card_type;      /**< 0 = SD, 1 = MMC, 2 = SDIO */
 };
 /*===========================================================================================================================================================*/
 
@@ -62,12 +62,12 @@ struct hal_sdio_info
 /*===========================================================================================================================================================*/
 struct hal_sdio
 {
-    int (*init)(struct hal_sdio* sdio, const struct hal_sdio_config* cfg);
-    int (*read)(struct hal_sdio* sdio, uint8_t* buf, uint32_t sector, size_t count);
-    int (*write)(struct hal_sdio* sdio, const uint8_t* buf, uint32_t sector, size_t count);
-    int (*get_info)(struct hal_sdio* sdio, struct hal_sdio_info* info);
-    int (*deinit)(struct hal_sdio* sdio);
-    void* _impl;
+    int (*init)(struct hal_sdio* sdio, const struct hal_sdio_config* cfg);  /**< 初始化 */
+    int (*read)(struct hal_sdio* sdio, uint8_t* buf, uint32_t sector, size_t count);  /**< 按扇区读 */
+    int (*write)(struct hal_sdio* sdio, const uint8_t* buf, uint32_t sector, size_t count);  /**< 按扇区写 */
+    int (*get_info)(struct hal_sdio* sdio, struct hal_sdio_info* info);  /**< 查询卡信息 */
+    int (*deinit)(struct hal_sdio* sdio);  /**< 反初始化 */
+    void* _impl;  /**< 平台私有实现指针 */
 };
 
 void hal_sdio_init_struct(struct hal_sdio* sdio);

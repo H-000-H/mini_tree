@@ -16,7 +16,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "compiler_compat.h"
-#include "VFS.h"
+#include "status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,16 +25,21 @@ extern "C" {
 #define HAL_SPI_BUS_ROLE_SLAVE  0 /**< 从机角色 */
 #define HAL_SPI_BUS_ROLE_MASTER 1 /**< 主机角色 */
 
+/** 同步传输路径选择 (0=隐式, 兼容零初始化) */
+#define HAL_SPI_XFER_AUTO  0U /**< 隐式: DMA 可用则 DMA, 否则 poll */
+#define HAL_SPI_XFER_POLL  1U /**< 强制 CPU poll */
+#define HAL_SPI_XFER_DMA   2U /**< 强制 DMA, 不可用则返回 NOTSUPP */
+
 #ifndef HAL_SPI_MAX_TRANSFER_BYTES
-#define HAL_SPI_MAX_TRANSFER_BYTES  2048 /**< 最大传输字节数 */
+#define HAL_SPI_MAX_TRANSFER_BYTES  2048 /**< 历史/平台上限占位; STM32 路径实际以 HAL_SPI_MAX_XFER 为准 */
 #endif
 
 #ifndef HAL_SPI_HOST_MAX
 #define HAL_SPI_HOST_MAX  4 /**< 最大 host 数量 (per-host dummy buffer 防 DMA 踩踏) */
 #endif
 
-#define HAL_SPI_MAX_XFER  512U /**< 每个 master device 最大并发 async transfer 数 (ESP32 用) */
-#define HAL_SPI_MAX_ASYNC  4 /**< 每个 master device 最大并发 async transfer 数 (ESP32 用) */
+#define HAL_SPI_MAX_XFER  512U /**< 单次传输最大字节数 (dummy buffer / len 上限) */
+#define HAL_SPI_MAX_ASYNC  4 /**< 每个 master device 最大并发 async transfer 数 */
 
 /**
  * @brief SPI 设备对象
@@ -102,7 +107,7 @@ struct hal_spi_pin_cfg
 /**
  * @brief SPI 总线配置
  * @param spi SPI 基地址
- * @param spi_clk_periph 时钟分频器
+ * @param spi_clk_periph RCC 外设时钟使能位 (LL_APBx_GRPy_PERIPH_SPIx)
  * @param mosi MOSI 引脚配置
  * @param miso MISO 引脚配置
  * @param sclk SCLK 引脚配置
@@ -114,7 +119,7 @@ struct hal_spi_pin_cfg
 struct hal_spi_bus_config
 {
     uintptr_t               spi;            /**< SPI 基地址 */
-    uint32_t                spi_clk_periph; /**< 时钟分频器 */
+    uint32_t                spi_clk_periph; /**< RCC 外设时钟使能位 (LL_APBx_GRPy_PERIPH_SPIx) */
     int32_t                 irqn;           /**< NVIC 中断号 (DTS irqn, -1 = 无中断) */
     uint32_t                irq_priority;   /**< NVIC 中断优先级 (DTS irq-priority, 0=最高) */
     uint32_t                it_enable;      /**< 中断模式使能: 0=禁用, 1=启用 DMA TC/NVIC 中断 */
@@ -133,7 +138,7 @@ struct hal_spi_bus_config
  * @param clock_speed_hz 时钟速度
  * @param cs_port CS 引脚端口
  * @param cs_pin CS 引脚
- * @param cs_clk_periph CS 引脚时钟分频器
+ * @param cs_clk_periph CS 引脚所属 GPIO 的 RCC 时钟使能位
  */
 struct hal_spi_device_config
 {
@@ -227,9 +232,10 @@ int hal_spi_dev_hw_close(struct hal_spi_dev* dev) COMPAT_WARN_UNUSED_RESULT;
  * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
  * @param len 传输字节数
  * @param timeout_ms 超时 (ms)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 VFS_ERR_TIMEOUT
+ * @param xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int hal_spi_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+int hal_spi_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
 /**
  * @brief SPI 异步传输

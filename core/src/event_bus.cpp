@@ -161,7 +161,7 @@ void EventBus::dispatch_task(void* param)
         }
 
         system_wdt_feed();
-        system_wdt_feed_rtc();
+        system_wdt_feed_iwdg();
 
         Subscriber snapshot[kMaxSubscribers];
         size_t snapshot_count = 0;

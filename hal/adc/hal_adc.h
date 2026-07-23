@@ -18,7 +18,7 @@
  #include <stdint.h>
  #include <stdbool.h>
  #include "compiler_compat.h"
- #include "VFS.h"
+ #include "status.h"
  #include "buffer.h"
 
  #ifdef __cplusplus

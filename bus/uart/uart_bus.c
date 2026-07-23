@@ -3,10 +3,10 @@
  * UART BUS 实现 — UART 总线子系统 bus 层
  *
  * 静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) + s_uart_clients[CLIENT_MAX]
- * 数据流: VFS → uart_bus_open/close/read/write → uart_client_from_device → hal_uart_*
+ * 数据流: VFS → uart_bus_open/close/read/write/transfer → uart_client_from_device → hal_uart_*
  *
  * HAL 直接调用 (无 vtable): host_init→hal_uart_dev_init, register→hw_open,
- *   unregister→hw_close, write/read→hal_uart_write/read
+ *   unregister→hw_close, write/read/transfer→hal_uart_write/read
  *
  * controller_ops 表注册到 bus_controller_bind_full
  * 引用计数: register/unregister 改 ref_count (open/close 只 IO gate); deinit >0 拒绝销毁
@@ -19,60 +19,48 @@
 #include "bus.h"
 #include "device.h"
 #include "driver.h"
-#include "VFS.h"
+#include "status.h"
 #include "compiler_compat.h"
 #include "system_log.h"
+#include "osal.h"
 
-#define UART_BUS_HOST_MAX   4
+#define UART_BUS_HOST_MAX   6  /* 对齐 DTS host-max (USART1..6 / UART4/5) */
 #define UART_BUS_CLIENT_MAX 8
 
+/** @brief UART host 运行时描述符 (静态池, HAL 嵌入 + atomic ref_count) */
 struct uart_bus_host {
-    struct device*             dev;
-    struct hal_uart_bus_host   hal_host;  /* 嵌入, 非 vtable 指针 */
-    atomic_int                 ref_count; /* atomic, 无锁计数 */
-    uint8_t                    in_use;
+    struct device*             dev;       /**< 关联设备 */
+    struct hal_uart_bus_host   hal_host;  /**< 嵌入 HAL host (非 vtable 指针) */
+    COMPAT_ATOMIC_INT           ref_count; /**< atomic 无锁计数 */
 };
 
+/** @brief UART client 运行时描述符 (静态池, 按 client_id 索引) */
 struct uart_bus_client {
-    struct device*        dev;
-    struct uart_bus_host* host;
-    uint8_t               in_use;
+    struct device*        dev;    /**< 关联设备 */
+    struct uart_bus_host* host;   /**< 所属 host */
 };
 
 static struct uart_bus_host   s_uart_hosts[UART_BUS_HOST_MAX];
+static uint8_t                s_uart_host_used[UART_BUS_HOST_MAX];
+static osal_pool_t            s_uart_host_pool_ctrl;
 static struct uart_bus_client s_uart_clients[UART_BUS_CLIENT_MAX];
+static uint8_t                s_uart_client_used[UART_BUS_CLIENT_MAX];
+static osal_pool_t            s_uart_client_pool_ctrl;
 static const char* const      kTag = "uart_bus";
+
+/**
+ * @brief UART Host/Client 池启动初始化
+ */
+pre_execution(150)
+static void uart_bus_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_host_pool_ctrl, s_uart_host_used, UART_BUS_HOST_MAX));
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_client_pool_ctrl, s_uart_client_used, UART_BUS_CLIENT_MAX));
+}
 
 /*===========================================================================================================================================================*/
                                                               /*Host Pool*/
 /*===========================================================================================================================================================*/
-/**
- * @brief 从 host 池中申请一个空闲槽位
- * @return 成功返回槽位索引, 池满返回 -1
- */
-static int uart_host_pool_claim(void)
-{
-    for (int i = 0; i < UART_BUS_HOST_MAX; i++)
-    {
-        if (!s_uart_hosts[i].in_use)
-        {
-            s_uart_hosts[i].in_use = 1;
-            return i;
-        }
-    }
-    return -1;
-}
-
-/**
- * @brief 释放 host 池槽位 (清零描述符)
- * @param idx 待释放的槽位索引
- */
-static void uart_host_pool_release(int idx)
-{
-    if (idx >= 0 && idx < UART_BUS_HOST_MAX)
-        __builtin_memset(&s_uart_hosts[idx], 0, sizeof(s_uart_hosts[idx]));
-}
-
 /**
  * @brief 通过 device 指针查找对应的 uart_bus_host
  * @param dev host device 指针
@@ -82,7 +70,7 @@ static struct uart_bus_host* uart_host_from_device(struct device* dev)
 {
     for (int i = 0; i < UART_BUS_HOST_MAX; i++)
     {
-        if (s_uart_hosts[i].in_use && s_uart_hosts[i].dev == dev)
+        if (osal_pool_is_used(&s_uart_host_pool_ctrl, i) && s_uart_hosts[i].dev == dev)
             return &s_uart_hosts[i];
     }
     return NULL;
@@ -92,33 +80,6 @@ static struct uart_bus_host* uart_host_from_device(struct device* dev)
                                                               /*Client Pool*/
 /*===========================================================================================================================================================*/
 /**
- * @brief 从 client 池中申请一个空闲槽位
- * @return 成功返回槽位索引, 池满返回 -1
- */
-static int uart_client_pool_claim(void)
-{
-    for (int i = 0; i < UART_BUS_CLIENT_MAX; i++)
-    {
-        if (!s_uart_clients[i].in_use)
-        {
-            s_uart_clients[i].in_use = 1;
-            return i;
-        }
-    }
-    return -1;
-}
-
-/**
- * @brief 释放 client 池槽位 (清零描述符)
- * @param idx 待释放的槽位索引
- */
-static void uart_client_pool_release(int idx)
-{
-    if (idx >= 0 && idx < UART_BUS_CLIENT_MAX)
-        __builtin_memset(&s_uart_clients[idx], 0, sizeof(s_uart_clients[idx]));
-}
-
-/**
  * @brief 通过 device 指针查找对应的 uart_bus_client
  * @param dev client device 指针
  * @return 找到返回 client 指针, 未找到返回 NULL
@@ -127,7 +88,7 @@ static struct uart_bus_client* uart_client_from_device(struct device* dev)
 {
     for (int i = 0; i < UART_BUS_CLIENT_MAX; i++)
     {
-        if (s_uart_clients[i].in_use && s_uart_clients[i].dev == dev)
+        if (osal_pool_is_used(&s_uart_client_pool_ctrl, i) && s_uart_clients[i].dev == dev)
             return &s_uart_clients[i];
     }
     return NULL;
@@ -172,28 +133,33 @@ static int uart_host_init_impl(struct device* dev, const void* cfg)
     if (uart_host_from_device(dev))
         return VFS_OK;
 
-    idx = uart_host_pool_claim();
+    idx = osal_pool_claim(&s_uart_host_pool_ctrl);
     if (idx < 0)
         return VFS_ERR_NOMEM;
 
     host = &s_uart_hosts[idx];
+    COMPAT_MEM_SET(host, 0, sizeof(*host));
     host->dev = dev;
-    atomic_init(&host->ref_count, 0);
+    COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     /* HAL dev 嵌入 host, 直接传对象指针, 零翻译透传 config */
-    COMPAT_IGNORE_RESULT(hal_uart_dev_init(&host->hal_host, host_cfg));
-
-    ret = bus_controller_bind_full(dev, BUS_TYPE_UART,
-                                    &s_uart_controller_ops, host);
+    ret = hal_uart_dev_init(&host->hal_host, host_cfg);
     if (ret != VFS_OK)
     {
-        uart_host_pool_release(idx);
+        COMPAT_MEM_SET(host, 0, sizeof(*host));
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_host_pool_ctrl, idx));
         return ret;
     }
 
-    SYS_LOGI(kTag, "host init OK: %s uart=%lu baud=%lu",
-             device_get_name(dev), (unsigned long)host_cfg->uart,
-             (unsigned long)host_cfg->baud_rate);
+    ret = bus_controller_bind_full(dev, BUS_TYPE_UART, &s_uart_controller_ops, host);
+    if (ret != VFS_OK)
+    {
+        COMPAT_MEM_SET(host, 0, sizeof(*host));
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_host_pool_ctrl, idx));
+        return ret;
+    }
+
+    SYS_LOGI(kTag, "host init OK: %s uart=%lu baud=%lu", device_get_name(dev), (unsigned long)host_cfg->uart, (unsigned long)host_cfg->baud_rate);
     return VFS_OK;
 }
 
@@ -205,6 +171,7 @@ static int uart_host_init_impl(struct device* dev, const void* cfg)
 static int uart_host_deinit_impl(struct device* dev)
 {
     struct uart_bus_host* host;
+    int                   idx;
 
     if (!dev)
         return VFS_ERR_INVAL;
@@ -214,7 +181,7 @@ static int uart_host_deinit_impl(struct device* dev)
         return VFS_ERR_NODEV;
 
     /* atomic 检查, BUSY 时不销毁 (对齐 SPI) */
-    if (atomic_load(&host->ref_count) > 0)
+    if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) > 0)
         return VFS_ERR_BUSY;
 
     bus_controller_unbind(dev);
@@ -223,7 +190,9 @@ static int uart_host_deinit_impl(struct device* dev)
     if (host->hal_host.hw_inited)
         COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
 
-    uart_host_pool_release((int)(host - s_uart_hosts));
+    idx = (int)(host - s_uart_hosts);
+    COMPAT_MEM_SET(host, 0, sizeof(*host));
+    COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_host_pool_ctrl, idx));
     return VFS_OK;
 }
 
@@ -239,10 +208,10 @@ static int uart_host_role_impl(struct device* dev)
 }
 
 /**
- * @brief host 初始化公开接口 (转发到 uart_host_init_impl)
- * @param dev controller device (host)
+ * @brief 初始化 UART host 并绑定总线控制器
+ * @param dev host device 指针
  * @param cfg host 配置 (struct hal_uart_config*)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int uart_bus_host_init(struct device* dev, const struct hal_uart_config* cfg)
 {
@@ -250,9 +219,9 @@ int uart_bus_host_init(struct device* dev, const struct hal_uart_config* cfg)
 }
 
 /**
- * @brief host 反初始化公开接口 (转发到 uart_host_deinit_impl)
- * @param dev controller device (host)
- * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+ * @brief 反初始化 UART host 并释放对象池槽位
+ * @param dev host device 指针
+ * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回负数错误码
  */
 int uart_bus_host_deinit(struct device* dev)
 {
@@ -293,11 +262,12 @@ static int uart_client_register_impl(struct device* dev, const void* cfg, void**
     if (!host)
         return VFS_ERR_IO;
 
-    idx = uart_client_pool_claim();
+    idx = osal_pool_claim(&s_uart_client_pool_ctrl);
     if (idx < 0)
         return VFS_ERR_NOMEM;
 
     cli = &s_uart_clients[idx];
+    COMPAT_MEM_SET(cli, 0, sizeof(*cli));
     cli->dev  = dev;
     cli->host = host;
 
@@ -305,11 +275,12 @@ static int uart_client_register_impl(struct device* dev, const void* cfg, void**
     ret = hal_uart_dev_hw_open(&host->hal_host);
     if (ret != VFS_OK)
     {
-        uart_client_pool_release(idx);
+        COMPAT_MEM_SET(cli, 0, sizeof(*cli));
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_client_pool_ctrl, idx));
         return ret;
     }
 
-    atomic_fetch_add(&host->ref_count, 1);  /* 对齐 spi: client_register +1 */
+    (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);  /* 对齐 spi: client_register +1 */
 
     if (out)
         *out = cli;
@@ -324,6 +295,8 @@ static void uart_client_unregister_impl(struct device* dev)
 {
     struct uart_bus_client* cli;
     struct uart_bus_host*   host;
+    int                     prev;
+    int                     idx;
 
     cli = uart_client_from_device(dev);
     if (!cli)
@@ -331,20 +304,23 @@ static void uart_client_unregister_impl(struct device* dev)
 
     host = cli->host;
 
-    /* 显式关闭 UART (对齐 SPI) */
-    if (host && host->hal_host.hw_inited)
-        COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
-
+    /* 多 client 共享同一 UART: 仅最后一个 unregister 时 hw_close */
     if (host)
-        atomic_fetch_sub(&host->ref_count, 1);  /* 对齐 spi: client_unregister -1 */
+    {
+        prev = COMPAT_ATOMIC_FETCH_SUB(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
+        if (prev == 1 && host->hal_host.hw_inited)
+            COMPAT_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
+    }
 
-    uart_client_pool_release((int)(cli - s_uart_clients));
+    idx = (int)(cli - s_uart_clients);
+    COMPAT_MEM_SET(cli, 0, sizeof(*cli));
+    COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_client_pool_ctrl, idx));
 }
 
 /**
- * @brief client 注册公开接口 (转发到 uart_client_register_impl, 无 cfg)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @brief 注册 UART client 并打开硬件 (ref_count +1)
+ * @param dev client device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int uart_bus_client_register(struct device* dev)
 {
@@ -352,8 +328,8 @@ int uart_bus_client_register(struct device* dev)
 }
 
 /**
- * @brief client 注销公开接口 (转发到 uart_client_unregister_impl)
- * @param dev client device
+ * @brief 注销 UART client (末 client 时 hw_close, ref_count -1)
+ * @param dev client device 指针
  */
 void uart_bus_client_unregister(struct device* dev)
 {
@@ -364,9 +340,9 @@ void uart_bus_client_unregister(struct device* dev)
                                                               /*I/O API (VFS 层调用)*/
 /*===========================================================================================================================================================*/
 /**
- * @brief 打开 UART client (仅 IO gate, ref_count 在 register/unregister 维护)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+ * @brief 打开 UART client (IO 门控, ref_count 在 register/unregister 维护)
+ * @param dev client device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int uart_bus_open(struct device* dev)
 {
@@ -377,9 +353,9 @@ int uart_bus_open(struct device* dev)
 }
 
 /**
- * @brief 关闭 UART client (仅 IO gate, 不改 ref_count)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+ * @brief 关闭 UART client (IO 门控, ref_count 在 register/unregister 维护)
+ * @param dev client device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int uart_bus_close(struct device* dev)
 {
@@ -390,37 +366,65 @@ int uart_bus_close(struct device* dev)
 }
 
 /**
- * @brief UART 写数据 (调用 hal_uart_write)
- * @param dev client device
- * @param data 待写入数据
- * @param len 数据长度
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 HAL 错误码
+ * @brief UART 写
+ * @param dev client device 指针
+ * @param data 发送缓冲
+ * @param len 字节数
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int uart_bus_write(struct device* dev,
-                    const uint8_t* data, size_t len)
+int uart_bus_write(struct device* dev, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     struct uart_bus_client* cli = uart_client_from_device(dev);
     struct hal_uart_dev     hal_dev;
     if (!cli || !cli->host || !data || len == 0)
         return VFS_ERR_INVAL;
     hal_dev.ctlr = &cli->host->hal_host;
-    return hal_uart_write(&hal_dev, data, len);
+    return hal_uart_write(&hal_dev, data, len, timeout_ms);
 }
 
 /**
- * @brief UART 读数据 (调用 hal_uart_read)
- * @param dev client device
- * @param data 读取缓冲区
- * @param len 读取长度
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL 或 HAL 错误码
+ * @brief UART 读
+ * @param dev client device 指针
+ * @param data 接收缓冲
+ * @param len 字节数
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回已读字节数或 VFS_OK, 失败返回负数错误码
  */
-int uart_bus_read(struct device* dev,
-                   uint8_t* data, size_t len)
+int uart_bus_read(struct device* dev, uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     struct uart_bus_client* cli = uart_client_from_device(dev);
     struct hal_uart_dev     hal_dev;
     if (!cli || !cli->host || !data || len == 0)
         return VFS_ERR_INVAL;
     hal_dev.ctlr = &cli->host->hal_host;
-    return hal_uart_read(&hal_dev, data, len);
+    return hal_uart_read(&hal_dev, data, len, timeout_ms);
+}
+
+/**
+ * @brief UART 半双工传输 (先写后读)
+ * @param dev client device 指针
+ * @param tx 发送缓冲 (可为 NULL)
+ * @param rx 接收缓冲 (可为 NULL)
+ * @param tx_len 发送字节数
+ * @param rx_len 接收字节数
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+int uart_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t tx_len, size_t rx_len, uint32_t timeout_ms)
+{
+    int ret = VFS_OK;
+
+    if (!dev || (!tx && !rx))
+        return VFS_ERR_INVAL;
+
+    if (tx && tx_len > 0)
+    {
+        ret = uart_bus_write(dev, tx, tx_len, timeout_ms);
+        if (ret != VFS_OK)
+            return ret;
+    }
+    if (rx && rx_len > 0)
+        return uart_bus_read(dev, rx, rx_len, timeout_ms);
+    return ret;
 }

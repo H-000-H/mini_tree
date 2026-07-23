@@ -8,7 +8,7 @@
  * 持锁斩断 ops 防 TOCTOU 竞态 (IEC 61508 §7.4.3.1).
  */
 #include "device.h"
-#include "VFS.h"
+#include "status.h"
 #include "dev_lifecycle.h"
 #include "osal.h"
 
@@ -33,6 +33,12 @@ _Static_assert(OSAL_MUTEX_POOL_SIZE >= DEV_ID_COUNT,
 static struct device s_devices[DEV_ID_COUNT] COMPAT_ALIGNED(4);
 static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
 
+/**
+ * @brief 判断设备状态机是否允许 from→to 迁移
+ * @param from 当前状态
+ * @param to 目标状态
+ * @return 1 允许, 0 禁止
+ */
 static int device_status_can_transit(enum device_status from, enum device_status to)
 {
     if (from == to) return 1;
@@ -64,6 +70,10 @@ static int device_status_can_transit(enum device_status from, enum device_status
     }
 }
 
+/**
+ * @brief 初始化设备树运行时实例表 (device/lock/lifecycle)
+ * @return 有设备返回 VFS_OK, 无设备返回 VFS_ERR_IO
+ */
 int device_tree_init(void)
 {
     for (int i = 0; i < DEV_ID_COUNT; i++)
@@ -109,6 +119,11 @@ int device_tree_init(void)
 
 
 /* ── 运行时设备实例访问 ── */
+/**
+ * @brief 按 device_id 获取运行时 device 实例
+ * @param id 设备 ID
+ * @return 成功返回 device 指针, 非法 id 返回 ERR_PTR
+ */
 struct device* board_dev_get(device_id_t id)
 {
     if ((int)id < 0 || (int)id >= DEV_ID_COUNT)
@@ -116,6 +131,11 @@ struct device* board_dev_get(device_id_t id)
     return &s_devices[id];
 }
 
+/**
+ * @brief 按设备名查找 device
+ * @param name 设备名字符串
+ * @return 成功返回 device 指针, 未找到返回 ERR_PTR
+ */
 struct device* device_find(const char* name)
 {
     device_id_t id;
@@ -128,6 +148,11 @@ struct device* device_find(const char* name)
     return board_dev_get(id);
 }
 
+/**
+ * @brief 按 label 查找 device
+ * @param label 设备 label 字符串
+ * @return 成功返回 device 指针, 未找到返回 ERR_PTR
+ */
 struct device* device_find_by_label(const char* label)
 {
     device_id_t id;
@@ -140,6 +165,12 @@ struct device* device_find_by_label(const char* label)
     return board_dev_get(id);
 }
 
+/**
+ * @brief 解析 phandle 属性并返回关联 device
+ * @param dev 当前 device 指针
+ * @param key phandle 属性键名
+ * @return 成功返回关联 device 指针, 失败返回 ERR_PTR
+ */
 struct device* device_get_phandle_dev(const struct device* dev, const char* key)
 {
     const char* val;
@@ -152,11 +183,21 @@ struct device* device_get_phandle_dev(const struct device* dev, const char* key)
     return device_find_by_label(val);
 }
 
+/**
+ * @brief 按 device_id 查找 device (board_dev_get 别名)
+ * @param id 设备 ID
+ * @return device 指针或 ERR_PTR
+ */
 struct device* device_find_by_id(device_id_t id)
 {
     return board_dev_get(id);
 }
 
+/**
+ * @brief 按设备树路径查找 device
+ * @param path 设备树路径字符串
+ * @return 成功返回 device 指针, 未找到返回 ERR_PTR
+ */
 struct device* device_find_by_path(const char* path)
 {
     if (!path)
@@ -170,6 +211,11 @@ struct device* device_find_by_path(const char* path)
     return (struct device*)ERR_PTR(VFS_ERR_NODEV);
 }
 
+/**
+ * @brief 按 compatible 字符串查找 device
+ * @param compatible compatible 字符串
+ * @return 成功返回 device 指针, 未找到返回 ERR_PTR
+ */
 struct device* device_find_by_compatible(const char* compatible)
 {
     device_id_t id;
@@ -182,6 +228,11 @@ struct device* device_find_by_compatible(const char* compatible)
     return board_dev_get(id);
 }
 
+/**
+ * @brief 获取 device 的父 device (deps[0])
+ * @param dev 当前 device 指针
+ * @return 成功返回父 device 指针, 无父节点返回 ERR_PTR
+ */
 struct device* device_get_parent(const struct device* dev)
 {
     const struct device_node* node;
@@ -194,9 +245,12 @@ struct device* device_get_parent(const struct device* dev)
     return board_dev_get(node->deps[0]);
 }
 
-/* ── safe_parse_int32: MISRA C 2012 Rule 21.6 合规替代 strtol ──
- * 无 errno 依赖, 线程安全, 支持 dec/hex/oct 前缀.
- * 返回 0 成功, -1 非法字符或溢出.
+/**
+ * @brief MISRA C 2012 Rule 21.6 合规替代 strtol 的 int32 解析
+ * @param str 待解析字符串 (支持 dec/hex/oct 前缀, 空格为自然终止符)
+ * @param out 输出解析结果
+ * @return 0 成功, -1 非法字符或溢出
+ * @note 无 errno 依赖, 线程安全
  */
 static int safe_parse_int32(const char* str, int* out)
 {
@@ -252,6 +306,13 @@ static int safe_parse_int32(const char* str, int* out)
 }
 
 /* ── 属性读取（通过 dev->node） ── */
+/**
+ * @brief 读取整型设备树属性
+ * @param dev device 指针
+ * @param key 属性键名
+ * @param val 输出整型值
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_get_prop_int(const struct device* dev, const char* key, int* val)
 {
     if (!dev || !dev->node || !key || !val) return VFS_ERR_INVAL;
@@ -268,6 +329,14 @@ int device_get_prop_int(const struct device* dev, const char* key, int* val)
     return VFS_ERR_INVAL;
 }
 
+/**
+ * @brief 读取整型数组设备树属性 (空格分隔)
+ * @param dev device 指针
+ * @param key 属性键名
+ * @param out_arr 输出整型数组
+ * @param max_len 数组最大容量
+ * @return 成功返回解析元素个数, 失败返回负数错误码
+ */
 int device_get_prop_int_array(const struct device* dev, const char* key, int* out_arr, int max_len)
 {
     if (!dev || !dev->node || !key || !out_arr || max_len <= 0) return VFS_ERR_INVAL;
@@ -309,6 +378,13 @@ int device_get_prop_int_array(const struct device* dev, const char* key, int* ou
     return count;
 }
 
+/**
+ * @brief 读取字符串设备树属性
+ * @param dev device 指针
+ * @param key 属性键名
+ * @param val 输出字符串指针 (指向 node 内存储)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_get_prop_str(const struct device* dev, const char* key, const char** val)
 {
     if (!dev || !dev->node || !key || !val) return VFS_ERR_INVAL;
@@ -324,11 +400,25 @@ int device_get_prop_str(const struct device* dev, const char* key, const char** 
     return VFS_ERR_INVAL;
 }
 
+/**
+ * @brief 读取布尔型设备树属性 (同 get_prop_int)
+ * @param dev device 指针
+ * @param key 属性键名
+ * @param val 输出整型布尔值 (0/1)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_get_prop_bool(const struct device* dev, const char* key, int* val)
 {
     return device_get_prop_int(dev, key, val);
 }
 
+/**
+ * @brief 获取设备 reg 描述符
+ * @param dev device 指针
+ * @param idx reg 索引
+ * @param out 输出 reg 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_get_reg(const struct device* dev, int idx, const struct device_reg** out)
 {
     if (!dev || !dev->node || !out) return VFS_ERR_INVAL;
@@ -338,6 +428,13 @@ int device_get_reg(const struct device* dev, int idx, const struct device_reg** 
     return VFS_OK;
 }
 
+/**
+ * @brief 获取设备 irq 描述符
+ * @param dev device 指针
+ * @param idx irq 索引
+ * @param out 输出 irq 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_get_irq(const struct device* dev, int idx, const struct device_irq** out)
 {
     if (!dev || !dev->node || !out) return VFS_ERR_INVAL;
@@ -347,27 +444,53 @@ int device_get_irq(const struct device* dev, int idx, const struct device_irq** 
     return VFS_OK;
 }
 
+/**
+ * @brief 获取 device 名称
+ * @param dev device 指针
+ * @return 名称字符串, dev 无效返回 NULL
+ */
 const char* device_get_name(const struct device* dev)
 {
     return dev && dev->node ? dev->node->name : NULL;
 }
 
+/**
+ * @brief 获取 device compatible 字符串
+ * @param dev device 指针
+ * @return compatible 字符串, dev 无效返回 NULL
+ */
 const char* device_get_compatible(const struct device* dev)
 {
     return dev && dev->node ? dev->node->compatible : NULL;
 }
 
+/**
+ * @brief 获取 device 当前状态
+ * @param dev device 指针
+ * @return 设备状态枚举, dev 无效返回 DEVICE_STATUS_DISABLED
+ */
 enum device_status device_get_status(const struct device* dev)
 {
     return dev ? dev->status : DEVICE_STATUS_DISABLED;
 }
 
+/**
+ * @brief 获取 device 关键性等级
+ * @param dev device 指针
+ * @return 关键性枚举, dev 无效返回 DEVICE_CRIT_WARNING
+ */
 enum device_criticality device_get_criticality(const struct device* dev)
 {
     if (!dev || !dev->node) return DEVICE_CRIT_WARNING;
     return (enum device_criticality)dev->node->criticality;
 }
 
+/**
+ * @brief 设置 device 状态 (持锁校验状态机迁移)
+ * @param dev device 指针
+ * @param status 目标状态
+ * @return 成功返回 VFS_OK, 非法迁移返回 VFS_ERR_INVAL
+ */
 int device_set_status(struct device* dev, enum device_status status)
 {
     int ret = VFS_OK;
@@ -386,6 +509,12 @@ int device_set_status(struct device* dev, enum device_status status)
     return ret;
 }
 
+/**
+ * @brief 设置 device 私有数据指针
+ * @param dev device 指针
+ * @param priv 私有数据指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ */
 int device_set_priv(struct device* dev, void* priv)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -393,6 +522,11 @@ int device_set_priv(struct device* dev, void* priv)
     return VFS_OK;
 }
 
+/**
+ * @brief 获取 device 私有数据指针
+ * @param dev device 指针
+ * @return 成功返回 priv 指针, 未设置或非法返回 ERR_PTR
+ */
 void* device_get_priv(const struct device* dev)
 {
     if (!dev)
@@ -403,6 +537,10 @@ void* device_get_priv(const struct device* dev)
 }
 
 /* ── 设备遍历 ── */
+/**
+ * @brief 获取第一个 device (按 devtable 顺序)
+ * @return 成功返回 device 指针, 无设备返回 ERR_PTR
+ */
 struct device* device_get_first(void)
 {
     if (board_dev_count() <= 0)
@@ -410,6 +548,11 @@ struct device* device_get_first(void)
     return board_dev_get((device_id_t)0);
 }
 
+/**
+ * @brief 获取下一个 device (devtable 顺序)
+ * @param prev 当前 device 指针
+ * @return 成功返回下一 device 指针, 末尾或非法返回 ERR_PTR
+ */
 struct device* device_get_next(const struct device* prev)
 {
     if (!prev)
@@ -429,6 +572,10 @@ struct device* device_get_next(const struct device* prev)
     return (struct device*)ERR_PTR(VFS_ERR_INVAL);
 }
 
+/**
+ * @brief 获取已注册 device 数量
+ * @return device 数量
+ */
 int device_get_count(void)
 {
     return board_dev_count();
@@ -444,6 +591,12 @@ int device_get_count(void)
  *   - 驱动内部对 dev 自身递归加锁, 递归 mutex 放行
  *
  * device_ops_unregister() 用于 remove 路径清理 priv_data + ops.
+ */
+/**
+ * @brief 打开 device (持锁, PROBED→RUNNING)
+ * @param dev device 指针
+ * @param arg 传递给驱动 open/init 的参数
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int device_open(struct device* dev, void* arg)
 {
@@ -476,6 +629,11 @@ int device_open(struct device* dev, void* arg)
     return ret;
 }
 
+/**
+ * @brief 关闭 device (持锁, RUNNING/SUSPENDED→PROBED)
+ * @param dev device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_close(struct device* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -501,6 +659,14 @@ int device_close(struct device* dev)
     return ret;
 }
 
+/**
+ * @brief 写 device (持锁, 需 RUNNING 且 ops->write)
+ * @param dev device 指针
+ * @param buf 数据缓冲
+ * @param len 字节数
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK 或驱动返回值, 失败返回负数错误码
+ */
 int device_write(struct device* dev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -516,6 +682,14 @@ int device_write(struct device* dev, const void* buf, size_t len, uint32_t timeo
     return ret;
 }
 
+/**
+ * @brief 读 device (持锁, 需 RUNNING 且 ops->read)
+ * @param dev device 指针
+ * @param buf 数据缓冲
+ * @param len 字节数
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回已读字节数或 VFS_OK, 失败返回负数错误码
+ */
 int device_read(struct device* dev, void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -531,6 +705,15 @@ int device_read(struct device* dev, void* buf, size_t len, uint32_t timeout_ms)
     return ret;
 }
 
+/**
+ * @brief ioctl 控制 device (持锁, 需 RUNNING 且 ops->ioctl)
+ * @param dev device 指针
+ * @param cmd 控制命令
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK 或驱动返回值, 失败返回负数错误码
+ */
 int device_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -546,6 +729,11 @@ int device_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_
     return ret;
 }
 
+/**
+ * @brief 挂起 device (RUNNING→SUSPENDED)
+ * @param dev device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_suspend(struct device* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -573,6 +761,11 @@ int device_suspend(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief 恢复 device (SUSPENDED→RUNNING)
+ * @param dev device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_resume(struct device* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -601,6 +794,11 @@ int device_resume(struct device* dev)
 }
 
 /* ── 设备锁（启动期静态创建，运行期仅有限时加锁） ── */
+/**
+ * @brief 获取 device 递归互斥锁
+ * @param dev device 指针
+ * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_BUSY 或 VFS_ERR_INVAL
+ */
 int device_lock(struct device* dev)
 {
     if (!dev) return VFS_ERR_INVAL;
@@ -608,6 +806,11 @@ int device_lock(struct device* dev)
     return osal_mutex_lock(dev->lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) == OSAL_OK ? VFS_OK : VFS_ERR_BUSY;
 }
 
+/**
+ * @brief 释放 device 递归互斥锁
+ * @param dev device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 int device_unlock(struct device* dev)
 {
     if (!dev || !dev->lock) return VFS_ERR_INVAL;
@@ -624,6 +827,10 @@ int device_unlock(struct device* dev)
  * 3. 广播 DeviceRemoved 事件, 通知 UI/异步任务立即释引用
  * 4. 持锁置空 priv_data 与 ops
  * 5. 释放锁
+ */
+/**
+ * @brief 卸载驱动: 标记 REMOVED、广播事件、持锁清空 ops/priv
+ * @param dev device 指针
  */
 void device_ops_unregister(struct device* dev)
 {
@@ -645,6 +852,11 @@ void device_ops_unregister(struct device* dev)
     COMPAT_IGNORE_RESULT(device_unlock(dev));
 }
 
+/**
+ * @brief 获取 device 关联的生命周期状态机
+ * @param dev device 指针
+ * @return 成功返回 dev_lifecycle 指针, 非法返回 ERR_PTR
+ */
 struct dev_lifecycle* device_lc(struct device* dev)
 {
     if (!dev)
@@ -652,6 +864,10 @@ struct dev_lifecycle* device_lc(struct device* dev)
     return &dev->lc;
 }
 
+/**
+ * @brief 初始化并绑定 device 生命周期状态机
+ * @param dev device 指针
+ */
 void device_lc_bind(struct device* dev)
 {
     if (dev)

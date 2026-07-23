@@ -1,0 +1,24 @@
+/* IDE-only stub — real header from tools/genconfig.py at build time.
+ * Mirrors mini_tree/.config (y/int symbols only) so clangd can parse without a build tree.
+ */
+#ifndef KCONFIG_CONFIG_H
+#define KCONFIG_CONFIG_H
+
+#define CONFIG_PLATFORM_ARM_CM4F 1
+#define CONFIG_CPU_CORES 1
+#define CONFIG_OSAL_NULL 1
+#define CONFIG_OSAL_SPINLOCK_IRQ_DISABLE 1
+#define CONFIG_SYS_LOG_USE_PRINTF 1
+#define CONFIG_SYSTEM_CPP 1
+#define CONFIG_ENABLE_WDT 1
+#define CONFIG_ENABLE_FLASH_SCRUBBER 1
+#define CONFIG_EVENT_BUS_QUEUE_LEN 64
+#define CONFIG_EVENT_BUS_MAX_SUBSCRIBERS 24
+#define CONFIG_EVENT_BUS_DISPATCH_STACK 2048
+#define CONFIG_OSAL_MUTEX_POOL_SIZE 48
+#define CONFIG_BOARD_STACK_MONITOR_MAX_TASKS 8
+#define CONFIG_COMPILER_GNU_EXTENSIONS 1
+#define CONFIG_COMPILER_WARN_UNUSED_RESULT 1
+#define CONFIG_BUILD_DISASM 1
+
+#endif /* KCONFIG_CONFIG_H */

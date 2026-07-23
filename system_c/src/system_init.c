@@ -2,7 +2,7 @@
 /*
  * system_init (C 实现) — 两阶段启动流程
  *
- * Phase 1 (Pre-OS): 关中断 → bootloop 检查 → RTC_WDT → 设备树 → EventBus
+ * Phase 1 (Pre-OS): 关中断 → bootloop 检查 → IWDG → 设备树 → EventBus
  * Phase 2 (Start-Tasks): 驱动探测 → TWDT → scrubber → seal EventBus → AMP 副核
  */
 #include "system_init.h"
@@ -11,7 +11,7 @@
 #include "event_bus.h"
 #include "device.h"
 #include "driver.h"
-#include "VFS.h"
+#include "status.h"
 #include "safe_state.h"
 #include "system_wdt.h"
 #include "system_scrubber.h"
@@ -19,6 +19,10 @@
 #include "compiler_compat.h"
 #include "config.h"
 #include "compiler_compat_poison.h"
+#include "interrupt.h"
+#ifdef CONFIG_OSAL_NULL
+#include "xtask.h"
+#endif
 
 /* ── 启动期全局中断控制 ── */
 #if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
@@ -37,6 +41,9 @@ static const char* kTag = "SysInit";
 /* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
 volatile bool g_system_os_initialized = false;
 
+/**
+ * @brief Phase1 Pre-OS 初始化
+ */
 void mini_tree_pre_os_init(void)
 {
     IRQ_DISABLE();  /* 关全局中断 — ISR 不得在框架就绪前触发 */
@@ -49,7 +56,7 @@ void mini_tree_pre_os_init(void)
     }
 
 #ifdef CONFIG_ENABLE_WDT
-    system_wdt_init_rtc(8000);
+    system_wdt_init_iwdg(8000);
 #endif
 
     if (device_tree_init() != VFS_OK)
@@ -71,6 +78,9 @@ void mini_tree_pre_os_init(void)
     SYS_LOGI(kTag, "=== MiniTree Phase 1 complete ===");
 }
 
+/**
+ * @brief Phase2 启动任务
+ */
 void mini_tree_start_tasks(void)
 {
     SYS_LOGI(kTag, "=== MiniTree Phase 2: Start Tasks ===");
@@ -107,18 +117,23 @@ void mini_tree_start_tasks(void)
     SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
 }
 
+/**
+ * @brief 裸机主循环喂狗
+ */
 void mini_tree_system_loop(void)
 {
-    /* 裸机: 喂狗 (EventBus 需在 RTOS 模式下使用) */
 #ifdef CONFIG_ENABLE_WDT
     system_wdt_feed();
-    system_wdt_feed_rtc();
+    system_wdt_feed_iwdg();
+#endif
+#ifdef CONFIG_OSAL_NULL
+    interrupt_bottom_half_poll();
+    xScheduler_Poll();
 #endif
 }
 
-/* ── 初始化完成 — 释放全局中断 ──
- * 在 vTaskStartScheduler() 之前调用. 也可由裸机在首次进入 super-loop 前调用.
- * FreeRTOS 的 vTaskStartScheduler 在首次上下文切换时也会自动使能中断.
+/**
+ * @brief 系统初始化完成, 释放全局中断
  */
 void system_init_complete(void)
 {

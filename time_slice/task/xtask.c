@@ -18,6 +18,9 @@
 xScheduler g_scheduler;
 static struct scheduler_tim_ctx g_sched_tim_ctx;
 
+/**
+ * @brief 时间片调度器早期初始化 (pre_execution 自动调用)
+ */
 pre_execution(160)
 static void xscheduler_early_init(void)
 {
@@ -25,10 +28,7 @@ static void xscheduler_early_init(void)
 }
 
 /**
- * @brief 调度器启动 — 通过 DTS chosen 引用打开调度器 TIM, 注册 VIRQ, 使能 NVIC
- * @note  必须在 board_driver_probe_all() 之后调用 (VFS 设备已就绪)
- * @note  TIM 的 PSC/ARR/CounterMode/DIER 全部由 DTS → HAL 自动完成
- * @note  NVIC 优先级从 DTS nvic-priority 属性读取, irqn 从 DTS irqn 读取
+ * @brief 启动 tick 设备与 VIRQ
  */
 void xscheduler_start(void)
 {
@@ -47,7 +47,6 @@ void xscheduler_start(void)
     g_sched_tim_ctx.tim       = tim;
     g_sched_tim_ctx.scheduler = &g_scheduler;
 
-    /** 先注册 VIRQ 再使能 NVIC: 保证第一次 ISR 进来时 top_half 已就绪 */
     interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &g_sched_tim_ctx);
 
     int irqn = -1;
@@ -57,6 +56,12 @@ void xscheduler_start(void)
     interrupt_hw_enable(irqn, (uint32_t)priority);
 }
 
+/**
+ * @brief 定时器 ISR 上半部
+ * @param arg ctx
+ * @param irq_num 号
+ * @return VFS_IRQ_ENTRY_NOBOTTOM
+ */
 int scheduler_tim_isr_top(void* arg, uint16_t irq_num)
 {
     COMPAT_IGNORE_RESULT(irq_num);
@@ -66,7 +71,16 @@ int scheduler_tim_isr_top(void* arg, uint16_t irq_num)
     return VFS_IRQ_ENTRY_NOBOTTOM;
 }
 
-xTaskHandle_t xTaskCreate(xScheduler* sched, xTask* task, const char* name, void (*cb)(xTask*), unsigned int period_ms)
+/**
+ * @brief 注册周期任务
+ * @param sched 调度器
+ * @param task 任务
+ * @param name 名
+ * @param cb 回调
+ * @param period_ms 周期
+ * @return 句柄
+ */
+xTaskHandle_t xscheduler_task_create(xScheduler* sched, xTask* task, const char* name, void (*cb)(xTask*), unsigned int period_ms)
 {
     if (!sched || !task || !cb) return 0;
 
@@ -81,6 +95,12 @@ xTaskHandle_t xTaskCreate(xScheduler* sched, xTask* task, const char* name, void
     return (xTaskHandle_t)(uintptr_t)task;
 }
 
+/**
+ * @brief 递增 tick
+ * @param sched 调度器
+ * @param ms 毫秒
+ * @return VFS_OK
+ */
 int xScheduler_Tick(xScheduler* sched, unsigned int ms)
 {
     if (!sched) return VFS_ERR_INVAL;
@@ -88,6 +108,11 @@ int xScheduler_Tick(xScheduler* sched, unsigned int ms)
     return VFS_OK;
 }
 
+/**
+ * @brief 运行到期任务
+ * @param sched 调度器
+ * @return VFS_OK
+ */
 int xTaskRun(xScheduler* sched)
 {
     if (!sched) return -1;
@@ -100,7 +125,7 @@ int xTaskRun(xScheduler* sched)
         ListNode* next = current->next;
         struct xTask* task = container_of(current,struct xTask, node);
 
-        if (!COMPAT_ATOMIC_LOAD(&task->is_running, COMPAT_MO_RELAXED))/**<非运行状态才允许进入> */
+        if (!COMPAT_ATOMIC_LOAD(&task->is_running, COMPAT_MO_RELAXED))/**< 非运行状态才允许进入 */
         {
             COMPAT_ATOMIC_STORE(&task->is_running, true, COMPAT_MO_RELAXED);
             uint32_t now = COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED);
@@ -118,8 +143,12 @@ int xTaskRun(xScheduler* sched)
     return VFS_OK;
 }
 
+/**
+ * @brief poll g_scheduler
+ */
 void xScheduler_Poll(void)
 {
     xTaskRun(&g_scheduler);
 }
-#endif
+
+#endif /* CONFIG_OSAL_NULL */

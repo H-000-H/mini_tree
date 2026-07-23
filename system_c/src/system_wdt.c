@@ -1,14 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * system_wdt (C 实现) — 看门狗与栈水位监控
- *
- * RTC_WDT: 独立硬件看门狗, OTA 时可延长超时。
- * TWDT: 任务级看门狗, 超时触发 panic。
- * 栈监控: 注册任务水位阈值, 周期检查 overflow/critical/warn。
+ * system_wdt (C) — IWDG 喂狗与栈水位监控
  */
 #include "system_wdt.h"
 
-#include "hal_wdt.h"
+#include "hal_iwdg.h"
 #include "board_config.h"
 #include "system_cfg.h"
 #include "compiler_compat_poison.h"
@@ -16,56 +12,75 @@
 static const char* kTag = "SysWDT";
 static bool s_initialized = false;
 
-/* ═══════ RTC 硬件看门狗 ═══════ */
+static struct hal_iwdg_dev s_iwdg;
+static bool s_iwdg_active = false;
 
-static bool s_rtc_wdt_active = false;
-static uint32_t s_rtc_normal_timeout_ms = 8000;
-
-bool system_wdt_init_rtc(uint32_t timeout_ms)
+/**
+ * @brief 启动 IWDG
+ * @param timeout_ms 超时
+ * @return true
+ */
+bool system_wdt_init_iwdg(uint32_t timeout_ms)
 {
-    if (s_rtc_wdt_active) return true;
+    struct hal_iwdg_config cfg;
 
-    s_rtc_normal_timeout_ms = timeout_ms;
-    if (!hal_wdt_init_rtc(timeout_ms)) return false;
+    if (s_iwdg_active) return true;
 
-    s_rtc_wdt_active = true;
-    SYS_LOGI(kTag, "RTC_WDT started, timeout=%ums", (unsigned)timeout_ms);
+    cfg.timeout_ms = timeout_ms;
+    cfg.prer = 0xFFFFFFFFU;
+    cfg.rlr = 0xFFFFFFFFU;
+    if (hal_iwdg_init(&s_iwdg, &cfg) != 0) return false;
+    if (hal_iwdg_start(&s_iwdg) != 0) return false;
+
+    s_iwdg_active = true;
+    SYS_LOGI(kTag, "IWDG started, timeout=%ums", (unsigned)timeout_ms);
     return true;
 }
 
-void system_wdt_rtc_set_long_timeout(void)
+/**
+ * @brief 延长 IWDG
+ */
+void system_wdt_iwdg_set_long_timeout(void)
 {
-    if (!s_rtc_wdt_active) return;
-    hal_wdt_rtc_set_long_timeout();
-    SYS_LOGI(kTag, "RTC_WDT extended to 5min for OTA");
+    if (!s_iwdg_active) return;
+    COMPAT_IGNORE_RESULT(hal_iwdg_set_long_timeout(&s_iwdg));
+    SYS_LOGI(kTag, "IWDG extended to hardware max (~32768ms) for OTA");
 }
 
-void system_wdt_rtc_restore_timeout(void)
+/**
+ * @brief 恢复 IWDG 超时
+ */
+void system_wdt_iwdg_restore_timeout(void)
 {
-    if (!s_rtc_wdt_active) return;
-    hal_wdt_rtc_restore_timeout();
-    SYS_LOGI(kTag, "RTC_WDT restored to %ums", (unsigned)s_rtc_normal_timeout_ms);
+    if (!s_iwdg_active) return;
+    COMPAT_IGNORE_RESULT(hal_iwdg_restore_timeout(&s_iwdg));
+    SYS_LOGI(kTag, "IWDG restored to %ums", (unsigned)s_iwdg.normal_timeout_ms);
 }
 
-void system_wdt_feed_rtc(void)
+/**
+ * @brief 喂 IWDG
+ */
+void system_wdt_feed_iwdg(void)
 {
-    if (s_rtc_wdt_active)
-    {
-        hal_wdt_feed_rtc();
-    }
+    if (s_iwdg_active)
+        COMPAT_IGNORE_RESULT(hal_iwdg_feed(&s_iwdg));
 }
-
-/* ═══════ 栈水位监控 ═══════ */
 
 struct StackMonitorEntry
 {
-    osal_task_handle_t task;
-    uint32_t alarm_threshold_bytes;
+    osal_task_handle_t task;              /**< 被监控任务句柄 */
+    uint32_t alarm_threshold_bytes;       /**< 栈剩余报警阈值 (字节) */
 };
 
 static struct StackMonitorEntry s_stack_entries[BOARD_STACK_MONITOR_MAX_TASKS];
 static size_t s_stack_entry_count = 0;
 
+/**
+ * @brief 注册栈监控
+ * @param task 任务
+ * @param alarm_threshold_bytes 阈值
+ * @return true
+ */
 bool system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes)
 {
     if (task == NULL || alarm_threshold_bytes == 0) return false;
@@ -82,6 +97,9 @@ bool system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_t
     return true;
 }
 
+/**
+ * @brief 检查全部栈
+ */
 void system_wdt_stack_check_all(void)
 {
     for (size_t i = 0; i < s_stack_entry_count; i++)
@@ -113,51 +131,43 @@ void system_wdt_stack_check_all(void)
     }
 }
 
-/* ═══════ TWDT 硬件看门狗 ═══════ */
-
+/**
+ * @brief TWDT 占位
+ * @param timeout_ms 忽略
+ * @return true
+ */
 bool system_wdt_init(uint32_t timeout_ms)
 {
+    (void)timeout_ms;
     if (s_initialized) return true;
-
-    if (!hal_wdt_init_twdt(timeout_ms))
-    {
-        SYS_LOGE(kTag, "TWDT init failed");
-        return false;
-    }
-
     s_initialized = true;
-    SYS_LOGI(kTag, "TWDT started, timeout=%ums, panic on timeout", (unsigned)timeout_ms);
+    SYS_LOGI(kTag, "TWDT placeholder started");
     return true;
 }
 
+/**
+ * @brief TWDT 订阅
+ * @param task 任务
+ * @return true
+ */
 bool system_wdt_subscribe(osal_task_handle_t task)
 {
-    if (!s_initialized || task == NULL) return false;
-
-    if (!hal_wdt_subscribe((void*)task))
-    {
-        SYS_LOGW(kTag, "TWDT subscribe failed for task %s", osal_task_get_name(task));
-        return false;
-    }
-    return true;
+    return s_initialized && task != NULL;
 }
 
+/**
+ * @brief TWDT 取消
+ * @param task 任务
+ * @return true
+ */
 bool system_wdt_unsubscribe(osal_task_handle_t task)
 {
-    if (!s_initialized || task == NULL) return false;
-
-    if (!hal_wdt_unsubscribe((void*)task))
-    {
-        SYS_LOGW(kTag, "TWDT unsubscribe failed for task %s", osal_task_get_name(task));
-        return false;
-    }
-    return true;
+    return s_initialized && task != NULL;
 }
 
+/**
+ * @brief TWDT 喂狗
+ */
 void system_wdt_feed(void)
 {
-    if (s_initialized)
-    {
-        hal_wdt_feed_twdt();
-    }
 }

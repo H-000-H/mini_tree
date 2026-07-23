@@ -13,6 +13,11 @@
 #include "compiler_compat.h"
 #include "printf_output.h"
 
+/**
+ * @brief vprintf 输出
+ * @param fmt 格式
+ * @param ... 参数
+ */
 void my_printf_output(const char *fmt, ...)
 {
     va_list args;

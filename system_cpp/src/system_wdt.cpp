@@ -1,65 +1,60 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * system_wdt.cpp — 看门狗与栈监控实现
- *
- * TWDT 与 RTC_WDT 均委托 hal_wdt_* HAL 接口, 自身仅维护 active 标志
- * 栈监控表 s_stack_entries 固定容量 BOARD_STACK_MONITOR_MAX_TASKS
- * check_all 按水印字节分 INFO/WARN/CRITICAL 三级日志, wm=0 视为溢出
+ * system_wdt.cpp — IWDG 喂狗与栈监控
  */
 #include "system_wdt.hpp"
 #include "system_cfg.h"
-#include "hal_wdt.h"
+#include "hal_iwdg.h"
 #include "board_config.h"
 #include "compiler_compat_poison.h"
 
 static constexpr const char* kTag = "SysWDT";
 static bool s_initialized = false;
 
-/* ═══════ RTC 硬件看门狗 (独立于 CPU 总线) ═══════ */
+static struct hal_iwdg_dev s_iwdg;
+static bool s_iwdg_active = false;
 
-static bool s_rtc_wdt_active = false;
-static uint32_t s_rtc_normal_timeout_ms = 8000;
-
-bool system_wdt_init_rtc(uint32_t timeout_ms)
+bool system_wdt_init_iwdg(uint32_t timeout_ms)
 {
-    if (s_rtc_wdt_active) return true;
+    struct hal_iwdg_config cfg;
 
-    s_rtc_normal_timeout_ms = timeout_ms;
-    if (!hal_wdt_init_rtc(timeout_ms)) return false;
+    if (s_iwdg_active) return true;
 
-    s_rtc_wdt_active = true;
-    SYS_LOGI(kTag, "RTC_WDT started, timeout=%ums", (unsigned)timeout_ms);
+    cfg.timeout_ms = timeout_ms;
+    cfg.prer = 0xFFFFFFFFU;
+    cfg.rlr = 0xFFFFFFFFU;
+    if (hal_iwdg_init(&s_iwdg, &cfg) != 0) return false;
+    if (hal_iwdg_start(&s_iwdg) != 0) return false;
+
+    s_iwdg_active = true;
+    SYS_LOGI(kTag, "IWDG started, timeout=%ums", (unsigned)timeout_ms);
     return true;
 }
 
-void system_wdt_rtc_set_long_timeout(void)
+void system_wdt_iwdg_set_long_timeout(void)
 {
-    if (!s_rtc_wdt_active) return;
-    hal_wdt_rtc_set_long_timeout();
-    SYS_LOGI(kTag, "RTC_WDT extended to 5min for OTA");
+    if (!s_iwdg_active) return;
+    COMPAT_IGNORE_RESULT(hal_iwdg_set_long_timeout(&s_iwdg));
+    SYS_LOGI(kTag, "IWDG extended to hardware max (~32768ms) for OTA");
 }
 
-void system_wdt_rtc_restore_timeout(void)
+void system_wdt_iwdg_restore_timeout(void)
 {
-    if (!s_rtc_wdt_active) return;
-    hal_wdt_rtc_restore_timeout();
-    SYS_LOGI(kTag, "RTC_WDT restored to %ums", (unsigned)s_rtc_normal_timeout_ms);
+    if (!s_iwdg_active) return;
+    COMPAT_IGNORE_RESULT(hal_iwdg_restore_timeout(&s_iwdg));
+    SYS_LOGI(kTag, "IWDG restored to %ums", (unsigned)s_iwdg.normal_timeout_ms);
 }
 
-void system_wdt_feed_rtc(void)
+void system_wdt_feed_iwdg(void)
 {
-    if (s_rtc_wdt_active)
-    {
-        hal_wdt_feed_rtc();
-    }
+    if (s_iwdg_active)
+        COMPAT_IGNORE_RESULT(hal_iwdg_feed(&s_iwdg));
 }
-
-/* ═══════ 栈水位监控 ═══════ */
 
 struct StackMonitorEntry
 {
-    osal_task_handle_t task;
-    uint32_t alarm_threshold_bytes;
+    osal_task_handle_t task;              /**< 被监控任务句柄 */
+    uint32_t alarm_threshold_bytes;       /**< 栈剩余报警阈值 (字节) */
 };
 
 static StackMonitorEntry s_stack_entries[BOARD_STACK_MONITOR_MAX_TASKS];
@@ -85,81 +80,52 @@ void system_wdt_stack_check_all(void)
 {
     for (size_t i = 0; i < s_stack_entry_count; i++)
     {
-        const StackMonitorEntry* entry = &s_stack_entries[i];
-        if (entry->task == nullptr) continue;
+        const StackMonitorEntry& entry = s_stack_entries[i];
+        if (entry.task == nullptr) continue;
 
-        uint32_t wm_bytes = osal_task_get_stack_watermark(entry->task);
+        uint32_t wm_bytes = osal_task_get_stack_watermark(entry.task);
 
         if (wm_bytes == 0)
         {
             SYS_LOGE(kTag, "FAIL: task '%s' stack overflowed (wm=0)!",
-                     osal_task_get_name(entry->task));
+                     osal_task_get_name(entry.task));
             continue;
         }
 
-        const char* level = "INFO";
-        if (wm_bytes < entry->alarm_threshold_bytes)
+        if (wm_bytes < entry.alarm_threshold_bytes)
         {
-            level = "CRITICAL";
-            SYS_LOGE(kTag, "STACK %s: '%s' watermark %u bytes < alarm %u",
-                     level, osal_task_get_name(entry->task),
-                     (unsigned)wm_bytes, (unsigned)entry->alarm_threshold_bytes);
+            SYS_LOGE(kTag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u",
+                     osal_task_get_name(entry.task),
+                     (unsigned)wm_bytes, (unsigned)entry.alarm_threshold_bytes);
         }
-        else if (wm_bytes < entry->alarm_threshold_bytes * 2)
+        else if (wm_bytes < entry.alarm_threshold_bytes * 2)
         {
-            level = "WARN";
-            SYS_LOGW(kTag, "STACK %s: '%s' watermark %u bytes (alarm=%u)",
-                     level, osal_task_get_name(entry->task),
-                     (unsigned)wm_bytes, (unsigned)entry->alarm_threshold_bytes);
+            SYS_LOGW(kTag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)",
+                     osal_task_get_name(entry.task),
+                     (unsigned)wm_bytes, (unsigned)entry.alarm_threshold_bytes);
         }
     }
 }
 
-/* ═══════ TWDT 硬件看门狗 ═══════ */
-
 bool system_wdt_init(uint32_t timeout_ms)
 {
+    (void)timeout_ms;
     if (s_initialized) return true;
-
-    if (!hal_wdt_init_twdt(timeout_ms))
-    {
-        SYS_LOGE(kTag, "TWDT init failed");
-        return false;
-    }
-
     s_initialized = true;
-    SYS_LOGI(kTag, "TWDT started, timeout=%ums, panic on timeout", (unsigned)timeout_ms);
+    SYS_LOGI(kTag, "TWDT placeholder started");
     return true;
 }
 
 bool system_wdt_subscribe(osal_task_handle_t task)
 {
-    if (!s_initialized || task == nullptr) return false;
-
-    if (!hal_wdt_subscribe((void*)task))
-    {
-        SYS_LOGW(kTag, "TWDT subscribe failed for task %s", osal_task_get_name(task));
-        return false;
-    }
-    return true;
+    return s_initialized && task != nullptr;
 }
 
 bool system_wdt_unsubscribe(osal_task_handle_t task)
 {
-    if (!s_initialized || task == nullptr) return false;
-
-    if (!hal_wdt_unsubscribe((void*)task))
-    {
-        SYS_LOGW(kTag, "TWDT unsubscribe failed for task %s", osal_task_get_name(task));
-        return false;
-    }
-    return true;
+    return s_initialized && task != nullptr;
 }
 
 void system_wdt_feed(void)
 {
-    if (s_initialized)
-    {
-        hal_wdt_feed_twdt();
-    }
 }

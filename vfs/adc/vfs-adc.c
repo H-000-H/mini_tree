@@ -44,14 +44,14 @@
  
  struct vfs_adc_priv
  {
-     struct file_operations             ops;
-     struct hal_adc_host_cfg            cfg;      
-     struct hal_adc_platform_unique_cfg unique;
-     struct hal_adc_device              adc;
-     hal_adc_channel_config             channels[HAL_ADC_MAX_CHANNELS];
-     hal_adc_multi_config               multi;
-     struct hal_adc_private_cfg         private;
-     int                                pool_idx;
+     struct file_operations             ops;       /**< VFS 操作表 */
+     struct hal_adc_host_cfg            cfg;       /**< host 配置 (DTSI 直投) */
+     struct hal_adc_platform_unique_cfg unique;    /**< 平台特有配置 */
+     struct hal_adc_device              adc;       /**< HAL ADC 设备 */
+     hal_adc_channel_config             channels[HAL_ADC_MAX_CHANNELS]; /**< 通道配置表 */
+     hal_adc_multi_config               multi;     /**< 多通道配置 */
+     struct hal_adc_private_cfg         private;   /**< 私有配置 */
+     int                                pool_idx;  /**< 池索引 */
  };
  
  static struct vfs_adc_priv s_adc_priv_pool[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
@@ -63,6 +63,13 @@
  /* IOCTL 后台控制命令私有实现 */
  /*=======================================================================================================================*/
  
+ /**
+  * @brief ADC 命令: 读取指定通道 ADC 采样值
+  * @param priv ADC 私有数据指针
+  * @param arg vfs_adc_arg_t 参数指针 (channel_id 入, value 出)
+  * @param arg_len 参数长度
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int adc_cmd_get_value(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
  {
      if(!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
@@ -71,6 +78,13 @@
      return hal_adc_read_value(&priv->adc, adc_arg->channel_id, &adc_arg->value);
  }
  
+ /**
+  * @brief ADC 命令: 读取通道采样时间配置
+  * @param priv ADC 私有数据指针
+  * @param arg vfs_adc_arg_t 参数指针
+  * @param arg_len 参数长度
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int adc_cmd_get_channel_sample_time(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
  {
      if(!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
@@ -79,6 +93,13 @@
      return hal_adc_get_channel_sample_time(&priv->adc, adc_arg->channel_index, &adc_arg->sample_time);
  }
  
+ /**
+  * @brief ADC 命令: 按索引读取物理通道 ID
+  * @param priv ADC 私有数据指针
+  * @param arg vfs_adc_arg_t 参数指针
+  * @param arg_len 参数长度
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int adc_cmd_get_channel_id(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
  {
      if(!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
@@ -87,6 +108,13 @@
      return hal_adc_get_channel_id(&priv->adc, adc_arg->channel_index, &adc_arg->channel_id);
  }
  
+ /**
+  * @brief ADC 命令: 读取已配置通道总数
+  * @param priv ADC 私有数据指针
+  * @param arg vfs_adc_arg_t 输出参数指针
+  * @param arg_len 参数长度
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int adc_cmd_get_channel_count(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
  {
      if(!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
@@ -96,7 +124,11 @@
  }
  
  /**
-  * @brief 【修正】：修复 pool_conversation 拼写乌龙，变更为标准的 poll_conversion 
+  * @brief ADC 命令: 轮询等待 ADC 转换完成
+  * @param priv ADC 私有数据指针
+  * @param arg vfs_adc_arg_t 输出参数指针 (done_status)
+  * @param arg_len 参数长度
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
   */
  static int adc_cmd_poll_conversion(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
  {
@@ -107,7 +139,11 @@
  }
  
  /**
-  * @brief 【修正】：将原传入的错误的 channel_index 变更为底层需要的物理 channel_id
+  * @brief ADC 命令: 关闭指定物理通道 (channel_id)
+  * @param priv ADC 私有数据指针
+  * @param arg vfs_adc_arg_t 参数指针
+  * @param arg_len 参数长度
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
   */
  static int adc_cmd_close_channel(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
  {
@@ -135,6 +171,9 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
     [ADC_CMD_READ_VALUE                - ADC_CMD_BASE - 1] = { adc_cmd_get_value },
 };
 
+ /**
+  * @brief ADC VFS 私有数据池启动初始化
+  */
  pre_execution(150)
  static void vfs_adc_priv_pool_init()
  {
@@ -142,7 +181,10 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
  }
  
  /**
-  * @brief 解析 ADC Host DTS 属性
+  * @brief 解析 ADC Host DTS 属性, 填入 hal_adc_host_config
+  * @param pdev 设备对象指针
+  * @param cfg 输出的 HAL 主机配置指针 (通过 container_of 关联 priv)
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
   */
  static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
  {
@@ -274,6 +316,12 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
  /* VFS 标准核心生命周期接口 */
  /*=======================================================================================================================*/
  
+ /**
+  * @brief ADC 设备打开: 引用计数, 首次打开时按配置启动转换 (poll/DMA/DMA+IT)
+  * @param pdev 设备对象指针
+  * @param arg 未使用
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int vfs_adc_open(struct device* pdev, void* arg)
  {
      if(!pdev || !pdev->ops)
@@ -311,6 +359,11 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
      return VFS_OK;
  }
  
+ /**
+  * @brief ADC 设备关闭: 引用计数, 末次关闭时 hal_adc_deinit_all_adcx
+  * @param pdev 设备对象指针
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int vfs_adc_close(struct device* pdev)
  {
      if(!pdev || !pdev->ops)
@@ -335,6 +388,15 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
      return VFS_OK;
  }
  
+ /**
+  * @brief ADC ioctl 派发入口
+  * @param pdev 设备对象指针
+  * @param cmd 控制命令
+  * @param arg 命令参数指针
+  * @param arg_len 参数长度
+  * @param timeout_ms 未使用
+  * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
+  */
  static int vfs_adc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
  {
      struct vfs_adc_priv*   priv;
@@ -382,6 +444,11 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
      .ioctl = vfs_adc_ioctl,
  };
  
+ /**
+  * @brief ADC 设备探测: 解析 DTS, hal 初始化, 注册虚拟中断
+  * @param pdev 设备对象指针
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int vfs_adc_probe(struct device* pdev)
  {
      struct vfs_adc_priv* priv;
@@ -421,10 +488,6 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
          goto err_deinit;
      }
  
-     /**
-      * 注册 ADC 虚拟中断 — 上半部 hal_virtual_adc_irq_callback, 下半部 g_adc_dma_bottom_half_work
-      * arg 传入 &priv->adc, ISR 触发时 dispatch 从 VIRQ 表读取, 无需 ISR 硬编码设备指针
-      */
      interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback,
                                 &g_adc_dma_bottom_half_work, &priv->adc);
 
@@ -448,13 +511,18 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
      pdev->ops = NULL;
      COMPAT_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
  err_deinit:
-     /* 【修正】：解绑设备指针句柄（对齐底层更名为 hal_adc_device_deinit 后的函数） */
+     /* 解绑设备: hal_adc_device_deinit */
      COMPAT_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
  err_pool:
      COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));
      return ret;
  }
  
+ /**
+  * @brief ADC 设备移除: remove_start → 排空 IO → hal 释放 → 归还私有池
+  * @param pdev 设备对象指针
+  * @return 成功返回 VFS_OK, 失败返回负数错误码
+  */
  static int vfs_adc_remove(struct device* pdev)
  {
      if(!pdev || !pdev->ops)

@@ -27,14 +27,18 @@
 struct prod_log_persist
 
 {
-    uint16_t head;
-    uint32_t seq;
-    struct prod_log_entry ring[PROD_LOG_SLOT_COUNT];
+    uint16_t head;                                          /**< 环形缓冲头指针 */
+    uint32_t seq;                                           /**< 全局序列号 */
+    struct prod_log_entry ring[PROD_LOG_SLOT_COUNT];        /**< 日志环形缓冲 */
 };
 
 static struct prod_log_persist s_state;
 static bool s_ready = false;
 
+/**
+ * @brief init 并从 storage 恢复
+ * @return 0
+ */
 int production_log_init(void)
 {
     hal_storage_init();
@@ -47,6 +51,12 @@ int production_log_init(void)
     return 0;
 }
 
+/**
+ * @brief 追加日志并持久化
+ * @param level 级别
+ * @param tag 标签
+ * @param msg 消息
+ */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
     if (!s_ready) return;
@@ -70,6 +80,13 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state));
 }
 
+/**
+ * @brief 格式化追加
+ * @param level 级别
+ * @param tag 标签
+ * @param fmt 格式
+ * @param ... 参数
+ */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
     char msg[PROD_LOG_MSG_LEN];
@@ -80,6 +97,10 @@ void production_log_push_fmt(prod_log_level_t level, const char* tag, const char
     production_log_push(level, tag, msg);
 }
 
+/**
+ * @brief 有效条目数
+ * @return 数量
+ */
 int production_log_count(void)
 {
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
@@ -90,12 +111,21 @@ int production_log_count(void)
     return PROD_LOG_SLOT_COUNT;
 }
 
+/**
+ * @brief 按索引读
+ * @param index 索引
+ * @return 条目或 NULL
+ */
 const struct prod_log_entry* production_log_get(int index)
 {
     if (index < 0 || index >= PROD_LOG_SLOT_COUNT) return NULL;
     return &s_state.ring[index];
 }
 
+/**
+ * @brief dump 到 sink
+ * @param sink 行回调
+ */
 void production_log_dump(void (*sink)(const char* line))
 {
     if (!sink) return;
@@ -127,32 +157,62 @@ void production_log_dump(void (*sink)(const char* line))
 
 #else /* !CONFIG_PRODUCTION_LOG — 空实现 */
 
+/**
+ * @brief CONFIG 关闭时的空 init
+ * @return 0
+ */
 int production_log_init(void)
 {
     return 0;
 }
 
+/**
+ * @brief stub: 忽略日志写入
+ * @param level 级别 (忽略)
+ * @param tag 标签 (忽略)
+ * @param msg 消息 (忽略)
+ */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
     (void)level; (void)tag; (void)msg;
 }
 
+/**
+ * @brief stub: 忽略格式化日志
+ * @param level 级别 (忽略)
+ * @param tag 标签 (忽略)
+ * @param fmt 格式 (忽略)
+ * @param ... 参数 (忽略)
+ */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
     (void)level; (void)tag; (void)fmt;
 }
 
+/**
+ * @brief stub: 无日志条目
+ * @return 0
+ */
 int production_log_count(void)
 {
     return 0;
 }
 
+/**
+ * @brief stub: 无条目可读
+ * @param index 索引 (忽略)
+ * @return NULL
+ */
 const struct prod_log_entry* production_log_get(int index)
 {
     (void)index;
     return NULL;
 }
 
+/**
+ * @brief stub: 输出占位行
+ * @param sink 行回调
+ */
 void production_log_dump(void (*sink)(const char* line))
 {
     if (sink) sink("=== PRODUCTION LOG DUMP (stub) ===");

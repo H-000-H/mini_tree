@@ -22,6 +22,11 @@
 static const char* s_json_buffer = NULL;
 static size_t      s_json_size   = 0;
 
+/**
+ * @brief 绑定工厂默认 JSON 配置源缓冲区 (init 前调用)
+ * @param buffer JSON 缓冲区指针
+ * @param size 缓冲区字节数
+ */
 void config_store_bind_source(const char* buffer, size_t size)
 {
     s_json_buffer = buffer;
@@ -44,16 +49,16 @@ typedef enum
 
 struct cs_entry
 {
-    char     key[32];
-    cs_type_t type;
+    char     key[32];   /**< 配置键名 */
+    cs_type_t type;     /**< 值类型 */
     union
     {
-        int   i;
-        float f;
-        bool  b;
-        char  s[64];
-    } value;
-    bool dirty;
+        int   i;        /**< 整数值 */
+        float f;        /**< 浮点值 */
+        bool  b;        /**< 布尔值 */
+        char  s[64];    /**< 字符串值 */
+    } value;  /**< 配置值 (根据 type 选择成员) */
+    bool dirty;         /**< 是否已修改待写回 */
 };
 
 static struct cs_entry s_entries[MAX_ENTRIES];
@@ -64,6 +69,13 @@ static config_store_write_hook_t s_write_hook = NULL;
 
 /*
  * 软件 CRC32 (多项式 0xEDB88320, 与 esp_rom_crc32_le 兼容)
+ */
+/**
+ * @brief 计算缓冲区 CRC32 校验值
+ * @param crc 初始 CRC 值 (通常为 0)
+ * @param buf 数据缓冲
+ * @param len 字节数
+ * @return 更新后的 CRC32 值
  */
 static uint32_t crc32_le(uint32_t crc, const uint8_t* buf, uint32_t len)
 {
@@ -121,6 +133,11 @@ static uint32_t crc32_le(uint32_t crc, const uint8_t* buf, uint32_t len)
     return crc;
 }
 
+/**
+ * @brief 在 JSON 源缓冲区中查找指定键的值起始位置
+ * @param key 键名字符串
+ * @return 找到返回冒号后首字符指针, 未找到或参数非法返回 NULL
+ */
 static const char* find_json_value(const char* key)
 {
     if (!s_json_buffer || !key) return NULL;
@@ -142,6 +159,11 @@ static const char* find_json_value(const char* key)
     return found + key_len + 3;
 }
 
+/**
+ * @brief 在内存条目表中按键名查找配置项
+ * @param key 键名
+ * @return 找到返回条目指针, 未找到返回 NULL
+ */
 static struct cs_entry* find_entry(const char* key)
 {
     for (int i = 0; i < s_entry_count; i++)
@@ -152,6 +174,12 @@ static struct cs_entry* find_entry(const char* key)
     return NULL;
 }
 
+/**
+ * @brief 向内存条目表追加新配置项
+ * @param key 键名
+ * @param type 值类型
+ * @return 成功返回新条目指针, 表满返回 NULL
+ */
 static struct cs_entry* add_entry(const char* key, cs_type_t type)
 {
     if (s_entry_count >= MAX_ENTRIES) return NULL;
@@ -164,6 +192,10 @@ static struct cs_entry* add_entry(const char* key, cs_type_t type)
     return e;
 }
 
+/**
+ * @brief 从 JSON 源缓冲区解析并加载工厂默认配置
+ * @return true 表示 JSON 源有效且解析完成, false 表示源未绑定或为空
+ */
 static bool load_factory_defaults(void)
 {
     if (!s_json_buffer || s_json_size == 0) return false;
@@ -248,6 +280,13 @@ static bool load_factory_defaults(void)
     return true;
 }
 
+/**
+ * @brief 将内存条目表序列化为二进制 blob
+ * @param buf 输出缓冲
+ * @param buf_size 缓冲容量
+ * @param out_len 输出实际写入长度
+ * @return true 成功, false 缓冲不足或序列化失败
+ */
 static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
 {
     size_t pos = 0;
@@ -302,6 +341,12 @@ static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
     return true;
 }
 
+/**
+ * @brief 从二进制 blob 反序列化并填充内存条目表
+ * @param buf blob 数据 (不含 CRC 头)
+ * @param len blob 长度
+ * @return true 成功, false 格式非法或解析失败
+ */
 static bool blob_deserialize(const uint8_t* buf, size_t len)
 {
     if (len < 2) return false;
@@ -369,6 +414,10 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
     return true;
 }
 
+/**
+ * @brief 读取 A/B 存储槽有效标志
+ * @return 有效标志字节, 存储未就绪时返回 0xFF
+ */
 static uint8_t read_slot_flag(void)
 {
     if (!s_storage_ready) return 0xFF;
@@ -377,12 +426,22 @@ static uint8_t read_slot_flag(void)
     return flag;
 }
 
+/**
+ * @brief 写入 A/B 存储槽有效标志
+ * @param flag 标志值 (FLAG_A_VALID / FLAG_B_VALID)
+ * @return true 成功, false 存储未就绪或写入失败
+ */
 static bool write_slot_flag(uint8_t flag)
 {
     if (!s_storage_ready) return false;
     return hal_storage_write_flag(flag);
 }
 
+/**
+ * @brief 从指定存储槽加载配置，CRC 损坏时回退备用槽或工厂默认
+ * @param slot 槽位编号 (0 或 1)
+ * @return true 加载成功 (含 CRC 失败后回退工厂默认), false 读取失败
+ */
 static bool load_from_storage(uint8_t slot)
 {
     uint8_t buf[BLOB_MAX];
@@ -416,6 +475,11 @@ static bool load_from_storage(uint8_t slot)
     return blob_deserialize(buf + 4, len - 4);
 }
 
+/**
+ * @brief 将当前配置序列化并写入指定存储槽，写入后直读验证
+ * @param slot 槽位编号 (0 或 1)
+ * @return true 写入并验证成功, false 序列化/写入/验证失败
+ */
 static bool save_to_storage(uint8_t slot)
 {
     uint8_t buf[BLOB_MAX];
@@ -438,6 +502,10 @@ static bool save_to_storage(uint8_t slot)
     return true;
 }
 
+/**
+ * @brief 初始化配置存储 (加载工厂默认 + 可选持久化槽)
+ * @return true 初始化成功, false JSON 源无效
+ */
 bool config_store_init(void)
 {
     s_storage_ready = hal_storage_init();
@@ -460,6 +528,12 @@ bool config_store_init(void)
     return true;
 }
 
+/**
+ * @brief 读取布尔配置项
+ * @param key 键名
+ * @param default_value 未找到时的默认值
+ * @return 配置值
+ */
 bool config_store_get_bool(const char* key, bool default_value)
 {
     struct cs_entry* e = find_entry(key);
@@ -474,6 +548,12 @@ bool config_store_get_bool(const char* key, bool default_value)
     return default_value;
 }
 
+/**
+ * @brief 读取整型配置项
+ * @param key 键名
+ * @param default_value 未找到时的默认值
+ * @return 配置值
+ */
 int config_store_get_int(const char* key, int default_value)
 {
     struct cs_entry* e = find_entry(key);
@@ -483,6 +563,12 @@ int config_store_get_int(const char* key, int default_value)
     return value ? atoi(value) : default_value;
 }
 
+/**
+ * @brief 读取浮点配置项
+ * @param key 键名
+ * @param default_value 未找到时的默认值
+ * @return 配置值
+ */
 float config_store_get_float(const char* key, float default_value)
 {
     struct cs_entry* e = find_entry(key);
@@ -492,6 +578,12 @@ float config_store_get_float(const char* key, float default_value)
     return value ? (float)atof(value) : default_value;
 }
 
+/**
+ * @brief 读取字符串配置项
+ * @param key 键名
+ * @param default_value 未找到时的默认值
+ * @return 配置值指针 (指向内部或 JSON 源存储)
+ */
 const char* config_store_get_string(const char* key, const char* default_value)
 {
     struct cs_entry* e = find_entry(key);
@@ -505,6 +597,12 @@ const char* config_store_get_string(const char* key, const char* default_value)
     return first_quote + 1;
 }
 
+/**
+ * @brief 设置布尔配置项 (标记 dirty)
+ * @param key 键名
+ * @param value 配置值
+ * @return true 成功, false 表满或参数非法
+ */
 bool config_store_set_bool(const char* key, bool value)
 {
     struct cs_entry* e = find_entry(key);
@@ -516,6 +614,12 @@ bool config_store_set_bool(const char* key, bool value)
     return true;
 }
 
+/**
+ * @brief 设置整型配置项 (标记 dirty)
+ * @param key 键名
+ * @param value 配置值
+ * @return true 成功, false 表满或参数非法
+ */
 bool config_store_set_int(const char* key, int value)
 {
     struct cs_entry* e = find_entry(key);
@@ -527,6 +631,12 @@ bool config_store_set_int(const char* key, int value)
     return true;
 }
 
+/**
+ * @brief 设置浮点配置项 (标记 dirty)
+ * @param key 键名
+ * @param value 配置值
+ * @return true 成功, false 表满或参数非法
+ */
 bool config_store_set_float(const char* key, float value)
 {
     struct cs_entry* e = find_entry(key);
@@ -538,6 +648,12 @@ bool config_store_set_float(const char* key, float value)
     return true;
 }
 
+/**
+ * @brief 设置字符串配置项 (标记 dirty)
+ * @param key 键名
+ * @param value 配置值
+ * @return true 成功, false 表满或参数非法
+ */
 bool config_store_set_string(const char* key, const char* value)
 {
     struct cs_entry* e = find_entry(key);
@@ -550,11 +666,19 @@ bool config_store_set_string(const char* key, const char* value)
     return true;
 }
 
+/**
+ * @brief 注册持久化写入回调 (commit 优先调用)
+ * @param hook 写入回调, NULL 清除
+ */
 void config_store_register_write_hook(config_store_write_hook_t hook)
 {
     s_write_hook = hook;
 }
 
+/**
+ * @brief 提交 dirty 配置到持久化 (hook 或 A/B slot)
+ * @return true 提交成功, false 序列化/写入失败
+ */
 bool config_store_commit(void)
 {
     uint8_t buf[BLOB_MAX];
@@ -590,6 +714,10 @@ bool config_store_commit(void)
     return true;
 }
 
+/**
+ * @brief 恢复工厂默认配置并擦除持久化
+ * @return true 成功, false 加载工厂默认失败
+ */
 bool config_store_factory_reset(void)
 {
     if (!s_storage_ready)
@@ -610,6 +738,10 @@ bool config_store_factory_reset(void)
     return true;
 }
 
+/**
+ * @brief 查询配置存储健康状态
+ * @return 0 正常, 1 已从备用槽恢复, -1 CRC 损坏已回退工厂默认
+ */
 int config_store_health(void)
 {
     return s_health;

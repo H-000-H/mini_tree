@@ -1,4 +1,4 @@
-# mini_tree Kconfig (STM32F407ZGT6)
+# mini_tree Kconfig
 # Edit mini_tree/.config or run tools/menuconfig.py
 
 menu "mini_tree Configuration"
@@ -160,26 +160,6 @@ config ENABLE_FLASH_SCRUBBER
       Independent of ENABLE_WDT.
 endmenu
 
-menu "HAL GPIO"
-
-choice HAL_GPIO_BACKEND
-    prompt "GPIO driver backend"
-    default HAL_GPIO_STM32
-    help
-      Platform-specific GPIO implementation linked at build time.
-
-config HAL_GPIO_ESP32
-    bool "ESP-IDF gpio driver"
-
-config HAL_GPIO_STM32
-    bool "STM32 register GPIO"
-
-config HAL_GPIO_CH32
-    bool "CH32 GPIO library"
-
-endchoice
-
-endmenu
 
 menu "Runtime Capacity"
 

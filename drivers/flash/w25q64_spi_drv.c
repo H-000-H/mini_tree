@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
  * 该文件实现了 W25Q64 SPI Flash 驱动
- * 通过标准 device API 访问下层的 SPI VFS 驱动
+ * 通过标准 device_ioctl / SPI_CMD_* 访问下层 SPI VFS client
  */
 #include "w25q64_drv.h"
 #include "vfs-spi.h"
 #include "device.h"
 #include "driver.h"
 #include "dev_lifecycle.h"
-#include "VFS.h"
+#include "status.h"
 #include "dt_config_gen.h"
 #include "board_config.h"
 #include "compiler_compat.h"
@@ -19,7 +19,7 @@
 #include <stdint.h>
 #include "compiler_compat_poison.h"
 
-#define W25Q64_COUNT           DTC_GEN_COUNT_HETEROGENEOUS_W25Q64_MASTER
+#define W25Q64_COUNT           DTC_GEN_COUNT_WINBOND_W25Q64
 #define W25Q64_XFER_BUF_SIZE   512U
 #define W25Q64_CMD_ADDR_SIZE   3U
 #define W25Q64_CMD_HDR_SIZE    (1U + W25Q64_CMD_ADDR_SIZE)
@@ -35,11 +35,11 @@
 
 struct w25q64_device
 {
-    struct file_operations ops;
-    struct device*         spi_dev;
-    size_t                 max_xfer;
-    uint32_t               f_pos;
-    uint8_t                jedec_id[W25Q64_JEDEC_ID_LEN];
+    struct file_operations ops;       /**< VFS 操作表 */
+    struct device*         spi_dev;   /**< 关联 SPI 设备 */
+    size_t                 max_xfer;  /**< 单次最大传输字节数 */
+    uint32_t               f_pos;     /**< 当前读写偏移 */
+    uint8_t                jedec_id[W25Q64_JEDEC_ID_LEN]; /**< JEDEC ID 缓存 */
 };
 
 static struct w25q64_device s_w25q64_pool[W25Q64_COUNT] COMPAT_ALIGNED(4);
@@ -49,6 +49,29 @@ static uint8_t s_w25q64_tx_buf[W25Q64_COUNT][W25Q64_XFER_FRAME_SIZE] COMPAT_ALIG
 static uint8_t s_w25q64_rx_buf[W25Q64_COUNT][W25Q64_XFER_FRAME_SIZE] COMPAT_ALIGNED(4);
 
 static const char* const kTag = "w25q64";
+
+/**
+ * @brief 经 SPI client ioctl 做一次全双工传输 (AUTO = 沿用 client xfer_mode)
+ * @param spi SPI client 设备对象指针
+ * @param tx 发送缓冲区 (可 NULL)
+ * @param rx 接收缓冲区 (可 NULL)
+ * @param len 传输字节数
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int w25q64_spi_xfer(struct device* spi, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
+{
+    struct spi_transfer_arg arg;
+
+    if (!spi || len == 0U)
+        return VFS_ERR_INVAL;
+
+    arg.tx        = tx;
+    arg.rx        = rx;
+    arg.len       = len;
+    arg.xfer_mode = SPI_XFER_AUTO;
+    return device_ioctl(spi, SPI_CMD_TRANSFER, &arg, sizeof(arg), timeout_ms);
+}
 
 /**
  * @brief W25Q64 私有数据池启动初始化
@@ -84,7 +107,7 @@ static int w25q64_wait_ready(struct w25q64_device* flash, uint32_t timeout_ms)
 
     while (elapsed <= timeout_ms)
     {
-        if (spi_vfs_transfer(flash->spi_dev, tx, rx, sizeof(tx), 10U) != VFS_OK)
+        if (w25q64_spi_xfer(flash->spi_dev, tx, rx, sizeof(tx), 10U) != VFS_OK)
             return VFS_ERR_IO;
 
         if ((rx[1] & W25Q64_STATUS_WIP) == 0U)
@@ -106,7 +129,7 @@ static int w25q64_wait_ready(struct w25q64_device* flash, uint32_t timeout_ms)
 static int w25q64_write_enable(struct w25q64_device* flash, uint32_t timeout_ms)
 {
     uint8_t cmd = W25Q64_SPI_OP_WRITE_ENABLE;
-    return spi_vfs_transfer(flash->spi_dev, &cmd, NULL, 1U, timeout_ms);
+    return w25q64_spi_xfer(flash->spi_dev, &cmd, NULL, 1U, timeout_ms);
 }
 
 /**
@@ -121,7 +144,7 @@ static int w25q64_hw_read_jedec(struct w25q64_device* flash, uint8_t id[W25Q64_J
     uint8_t tx[4] = { W25Q64_SPI_OP_JEDEC_ID, 0x00, 0x00, 0x00 };
     uint8_t rx[4] = { 0, 0, 0, 0 };
 
-    if (spi_vfs_transfer(flash->spi_dev, tx, rx, sizeof(tx), timeout_ms) != VFS_OK)
+    if (w25q64_spi_xfer(flash->spi_dev, tx, rx, sizeof(tx), timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
 
     id[0] = rx[1];
@@ -173,7 +196,7 @@ static int w25q64_hw_read_data(struct w25q64_device* flash, uint32_t addr,
         tx[3] = (uint8_t)(cur_addr & 0xFFU);
         __builtin_memset(tx + W25Q64_CMD_HDR_SIZE, 0, n);
 
-        if (spi_vfs_transfer(flash->spi_dev, tx, rx, W25Q64_CMD_HDR_SIZE + n,
+        if (w25q64_spi_xfer(flash->spi_dev, tx, rx, W25Q64_CMD_HDR_SIZE + n,
                              timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
 
@@ -216,7 +239,7 @@ static int w25q64_hw_page_program(struct w25q64_device* flash, uint32_t addr,
     if (w25q64_write_enable(flash, timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
 
-    if (spi_vfs_transfer(flash->spi_dev, tx, NULL, W25Q64_CMD_HDR_SIZE + len,
+    if (w25q64_spi_xfer(flash->spi_dev, tx, NULL, W25Q64_CMD_HDR_SIZE + len,
                          timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
 
@@ -284,7 +307,7 @@ static int w25q64_hw_sector_erase(struct w25q64_device* flash, uint32_t addr, ui
     if (w25q64_write_enable(flash, timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
 
-    if (spi_vfs_transfer(flash->spi_dev, cmd, NULL, sizeof(cmd), timeout_ms) != VFS_OK)
+    if (w25q64_spi_xfer(flash->spi_dev, cmd, NULL, sizeof(cmd), timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
 
     return w25q64_wait_ready(flash, timeout_ms);
@@ -498,7 +521,7 @@ typedef int (*w25q64_ioctl_fn_t)(struct w25q64_device* flash, void* arg,size_t a
 
 struct w25q64_ioctl_map
 {
-    w25q64_ioctl_fn_t handler;
+    w25q64_ioctl_fn_t handler;  /**< ioctl 处理函数 */
 };
 
 /**
@@ -509,8 +532,7 @@ struct w25q64_ioctl_map
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int w25q64_cmd_seek(struct w25q64_device* flash, void* arg,
-                            size_t arg_len, uint32_t timeout_ms)
+static int w25q64_cmd_seek(struct w25q64_device* flash, void* arg,size_t arg_len, uint32_t timeout_ms)
 {
     const uint32_t* offset = (const uint32_t*)arg;
 

@@ -1,16 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
  * @file xtask.h
- * @brief 任务结构体定义
- * @note 该文件定义了任务结构体和相关类型，用于在时间片调度系统中管理任务。
+ * @brief 裸机时间片调度器 (仅 CONFIG_OSAL_NULL)
+ * @note 与 FreeRTOS/RT-Thread 互斥; OS 后端勿包含本头文件
  * @note 链表类型:侵入式链表
  */
 #ifndef XTASK_H
 #define XTASK_H
 
+#ifndef CONFIG_OSAL_NULL
+#error "xtask.h is bare-metal only; enable CONFIG_OSAL_NULL or do not include this header"
+#endif
+
 #include "stdint.h"
 #include "compiler_compat.h"
-#include "VFS.h"
+#include "status.h"
 #include "hal_tim.h"
 #ifdef __cplusplus
 extern "C" {
@@ -61,18 +65,18 @@ struct xTask;
 
 typedef struct xTask
 {
-    const char* name;                                   /**<任务名称> */
-    void            (*xTask_cb)(struct xTask* param);   /**<任务回调函数> */
-    COMPAT_ATOMIC_UINT period;                          /**<任务周期> */
-    COMPAT_ATOMIC_UINT next_running;                    /**<下次运行时间> */
-    COMPAT_ATOMIC_BOOL is_running;                      /**<任务是否正在运行> */
-    ListNode        node;                               /**<任务链表节点> */
+    const char* name;                                   /**< 任务名称 */
+    void            (*xTask_cb)(struct xTask* param);   /**< 任务回调函数 */
+    COMPAT_ATOMIC_UINT period;                          /**< 任务周期 */
+    COMPAT_ATOMIC_UINT next_running;                    /**< 下次运行时间 */
+    COMPAT_ATOMIC_BOOL is_running;                      /**< 任务是否正在运行 */
+    ListNode        node;                               /**< 任务链表节点 */
 } xTask;
 
 typedef struct xScheduler
 {
-    COMPAT_ATOMIC_UINT tick_count;   /**<虚拟系统滴答计数器> */
-    ListNode        task_list_head; /**<任务链表头> */
+    COMPAT_ATOMIC_UINT tick_count;   /**< 虚拟系统滴答计数器 */
+    ListNode        task_list_head; /**< 任务链表头 */
 } xScheduler;
 
 extern xScheduler g_scheduler;
@@ -90,7 +94,7 @@ COMPAT_STATIC_INLINE void xSchedulerInit(xScheduler* sched)
  * @brief 创建/注册任务
  * @return 返回任务的句柄（指针地址）
  */
-xTaskHandle_t xTaskCreate(xScheduler* sched, xTask* task, const char* name, void (*cb)(xTask*), unsigned int period_ms);
+xTaskHandle_t xscheduler_task_create(xScheduler* sched, xTask* task, const char* name, void (*cb)(xTask*), unsigned int period_ms);
 
 /**
  * @brief 系统滴答计数器增加

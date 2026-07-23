@@ -22,6 +22,10 @@
  */
 #if defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
 
+/**
+ * @brief 关中断并保存 PRIMASK (ARMv6-M 原子退化路径)
+ * @return 进入临界区前的 PRIMASK
+ */
 COMPAT_STATIC_INLINE uint32_t bp_critical_enter(void)
 {
     uint32_t primask;
@@ -29,6 +33,10 @@ COMPAT_STATIC_INLINE uint32_t bp_critical_enter(void)
     return primask;
 }
 
+/**
+ * @brief 恢复 PRIMASK
+ * @param primask bp_critical_enter 返回的 PRIMASK
+ */
 COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask)
 {
     __asm__ volatile("msr PRIMASK, %0" :: "r"(primask) : "memory");
@@ -90,7 +98,12 @@ COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask)
 #define BP_IS_POW2(n)  ((n) & ((n) - 1))
 #define BP_ALIGN_UP(n, a)  (((size_t)(n) + (size_t)(a) - 1) & ~((size_t)(a) - 1))
 
-/* 根据对齐要求计算实际 buf_size */
+/**
+ * @brief 按对齐要求向上取整缓冲区大小
+ * @param size 原始字节数
+ * @param align 对齐类型 (BP_ALIGN_DMA / BP_ALIGN_CACHE 等)
+ * @return 对齐后的字节数
+ */
 COMPAT_STATIC_INLINE size_t align_buf_size(size_t size, bp_align_t align)
 {
     size_t alignment = 1;
@@ -106,15 +119,15 @@ COMPAT_STATIC_INLINE size_t align_buf_size(size_t size, bp_align_t align)
 /* ── Pool 控制块 ── */
 struct bp_pool
 {
-    const char* name;
-    uint8_t*    pool_mem;       /* 缓冲区内存基址 (32 字节对齐, DMA 安全) */
-    void*       pool_mem_raw;   /* 原始分配地址 (os_free 用) */
-    size_t      buf_size;       /* 对齐后的 buf 大小 */
-    uint32_t    buf_count;      /* buffer 数量 */
-    uint32_t    free_mask;      /* 位图: 1=空闲, 0=已分配 */
-    uint32_t    used;           /* 当前已分配数 */
-    uint32_t    peak;           /* 峰值已分配数 */
-    uint8_t     owned : 1;      /* pool_mem 由本池管理, 需释放 */
+    const char* name;         /**< 调试标识名 */
+    uint8_t*    pool_mem;     /**< 缓冲区内存基址 (32 字节对齐, DMA 安全) */
+    void*       pool_mem_raw; /**< 原始分配地址 (os_free 用) */
+    size_t      buf_size;     /**< 对齐后的 buf 大小 */
+    uint32_t    buf_count;    /**< buffer 数量 */
+    uint32_t    free_mask;    /**< 位图: 1=空闲, 0=已分配 */
+    uint32_t    used;         /**< 当前已分配数 */
+    uint32_t    peak;         /**< 峰值已分配数 */
+    uint8_t     owned : 1;    /**< pool_mem 由本池管理, 需释放 */
 };
 
 _Static_assert(BP_MAX_BUFS <= sizeof(uint32_t) * 8,
@@ -122,7 +135,11 @@ _Static_assert(BP_MAX_BUFS <= sizeof(uint32_t) * 8,
 
 /* ── 位图操作 ── */
 
-/* 原子查找并分配一个空闲位, 返回位索引; BP_MAX_BUFS 表示失败 */
+/**
+ * @brief 原子查找并分配一个空闲位
+ * @param mask 空闲位掩码 (1 表示可用)
+ * @return 分配到的位索引; 无空闲时返回 BP_MAX_BUFS
+ */
 static uint32_t bitmap_alloc(volatile uint32_t* mask)
 {
     uint32_t old, new_mask;
@@ -138,7 +155,11 @@ static uint32_t bitmap_alloc(volatile uint32_t* mask)
     return (uint32_t)bit;
 }
 
-/* 原子释放一个位 */
+/**
+ * @brief 原子释放一个已分配的位
+ * @param mask 空闲位掩码
+ * @param bit 待释放的位索引
+ */
 static void bitmap_free(volatile uint32_t* mask, uint32_t bit)
 {
     BP_OR(mask, 1u << bit);
@@ -148,6 +169,11 @@ static void bitmap_free(volatile uint32_t* mask, uint32_t bit)
  *  公共接口
  * ═══════════════════════════════════════════════════════════════════════ */
 
+/**
+ * @brief 创建位图式定长缓冲区池
+ * @param config 池配置 (名称/块大小/数量/对齐/静态或堆内存)
+ * @return 池指针; 参数无效或分配失败返回 NULL
+ */
 struct bp_pool* bp_create(const struct bp_config* config)
 {
     if (!config || !config->name || config->buf_count == 0 ||
@@ -201,6 +227,11 @@ struct bp_pool* bp_create(const struct bp_config* config)
     return pool;
 }
 
+/**
+ * @brief 分配缓冲区
+ * @param pool 池
+ * @return 指针或 NULL
+ */
 void* bp_alloc(struct bp_pool* pool)
 {
     if (!pool) return NULL;
@@ -220,11 +251,21 @@ void* bp_alloc(struct bp_pool* pool)
     return pool->pool_mem + idx * pool->buf_size;
 }
 
+/**
+ * @brief ISR 分配
+ * @param pool 池
+ * @return 指针或 NULL
+ */
 void* bp_alloc_isr(struct bp_pool* pool)
 {
     return bp_alloc(pool);
 }
 
+/**
+ * @brief 释放缓冲区
+ * @param pool 池
+ * @param buf 指针
+ */
 void bp_free(struct bp_pool* pool, void* buf)
 {
     if (!pool || !buf) return;
@@ -243,21 +284,40 @@ void bp_free(struct bp_pool* pool, void* buf)
     BP_SUB_FETCH(&pool->used, 1);
 }
 
+/**
+ * @brief ISR 释放
+ * @param pool 池
+ * @param buf 指针
+ */
 void bp_free_isr(struct bp_pool* pool, void* buf)
 {
     bp_free(pool, buf);
 }
 
+/**
+ * @brief 当前已用数
+ * @param pool 池
+ * @return 数量
+ */
 uint32_t bp_used(const struct bp_pool* pool)
 {
     return pool ? BP_LOAD(&((struct bp_pool*)pool)->used) : 0;
 }
 
+/**
+ * @brief 峰值
+ * @param pool 池
+ * @return 峰值
+ */
 uint32_t bp_peak(const struct bp_pool* pool)
 {
     return pool ? BP_LOAD(&((struct bp_pool*)pool)->peak) : 0;
 }
 
+/**
+ * @brief 重置峰值
+ * @param pool 池
+ */
 void bp_reset_peak(struct bp_pool* pool)
 {
     if (!pool) return;
@@ -265,6 +325,10 @@ void bp_reset_peak(struct bp_pool* pool)
     BP_STORE(&pool->peak, cur);
 }
 
+/**
+ * @brief 销毁池
+ * @param pool 池
+ */
 void bp_destroy(struct bp_pool* pool)
 {
     if (!pool) return;

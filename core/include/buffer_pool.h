@@ -54,13 +54,13 @@ typedef enum
 
 struct bp_config
 {
-    const char* name;        /* 调试标识名 */
-    size_t      buf_size;    /* 每个 buffer 的数据区大小 */
-    uint32_t    buf_count;   /* buffer 数量 (≤ BP_MAX_BUFS) */
-    bp_align_t  align;       /* 对齐要求 */
-    bool        use_static;  /* true=使用外部静态内存, false=内部 osal_calloc */
-    void*       static_mem;  /* use_static 时, 指向外部内存基址 */
-    size_t      static_len;  /* static_mem 总大小 */
+    const char* name;        /**< 调试标识名 */
+    size_t      buf_size;    /**< 每个 buffer 的数据区大小 */
+    uint32_t    buf_count;   /**< buffer 数量 (≤ BP_MAX_BUFS) */
+    bp_align_t  align;       /**< 对齐要求 */
+    bool        use_static;  /**< true=使用外部静态内存, false=内部 osal_calloc */
+    void*       static_mem;  /**< use_static 时, 指向外部内存基址 */
+    size_t      static_len;  /**< static_mem 总大小 */
 };
 
 struct bp_pool;

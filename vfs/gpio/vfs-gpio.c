@@ -1,7 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file        vfs-gpio.c
+ * @brief       GPIO VFS 实现 — open/close 引用计数 + ioctl 电平读写/翻转
+ * @note        DTS 解析 gpio-port/pin/clk/mode/pull 等; 两层模型无 bus
+ */
 #define VFS_GPIO_IMPL  /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #include "vfs-gpio.h"
-#include "VFS.h"
+#include "status.h"
 #include "board_config.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
@@ -20,11 +25,11 @@ static const char* const s_kTag = "vfs-gpio";
 
 struct vfs_gpio_priv
 {
-    struct file_operations              ops;
-    struct osal_mutex*                  io_mutex;
-    hal_gpio_dev_t                      obj;
-    int                                 default_level;
-    int                                 pool_idx;
+    struct file_operations              ops;          /**< VFS 操作表 */
+    struct osal_mutex*                  io_mutex;     /**< I/O 互斥锁 */
+    hal_gpio_dev_t                      obj;          /**< HAL GPIO 设备对象 */
+    int                                 default_level; /**< 默认电平 */
+    int                                 pool_idx;     /**< 池索引 */
 };
 
 static struct vfs_gpio_priv s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] COMPAT_ALIGNED(4);
@@ -132,6 +137,10 @@ typedef struct {
 
 /**
  * @brief GPIO 命令处理: 翻转电平
+ * @param priv GPIO VFS 私有数据指针
+ * @param arg 命令参数指针 (vfs_gpio_arg)
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int gpio_cmd_toggle(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
 {
@@ -143,6 +152,10 @@ static int gpio_cmd_toggle(struct vfs_gpio_priv* priv, void* arg, size_t arg_len
 
 /**
  * @brief GPIO 命令处理: 设置电平
+ * @param priv GPIO VFS 私有数据指针
+ * @param arg 命令参数指针 (vfs_gpio_arg)
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int gpio_cmd_set_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
 {
@@ -154,6 +167,10 @@ static int gpio_cmd_set_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_
 
 /**
  * @brief GPIO 命令处理: 获取电平 (回写 obj 供快路径复用)
+ * @param priv GPIO VFS 私有数据指针
+ * @param arg 命令参数指针 (vfs_gpio_arg, 输出 level 与 obj)
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int gpio_cmd_get_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
 {

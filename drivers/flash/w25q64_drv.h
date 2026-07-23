@@ -38,7 +38,7 @@ extern "C"
 
 struct w25q64_jedec_arg
 {
-    uint8_t id[W25Q64_JEDEC_ID_LEN];
+    uint8_t id[W25Q64_JEDEC_ID_LEN];  /**< JEDEC ID (3 字节: 厂商/类型/容量) */
 };
 
 COMPAT_STATIC_INLINE int w25q64_jedec_match_w25q64jv(const uint8_t id[W25Q64_JEDEC_ID_LEN])

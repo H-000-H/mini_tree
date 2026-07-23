@@ -32,11 +32,11 @@ typedef enum
 struct prod_log_entry
 
 {
-    uint32_t seq;
-    uint32_t timestamp;
-    uint8_t  level;
-    char     tag[PROD_LOG_TAG_LEN];
-    char     msg[PROD_LOG_MSG_LEN];
+    uint32_t seq;                /**< 序列号 (单调递增) */
+    uint32_t timestamp;          /**< 时间戳 (ms) */
+    uint8_t  level;              /**< 日志级别 (PROD_LOG_*) */
+    char     tag[PROD_LOG_TAG_LEN]; /**< 标签 */
+    char     msg[PROD_LOG_MSG_LEN]; /**< 消息内容 */
 };
 
 int  production_log_init(void);

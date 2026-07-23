@@ -34,8 +34,8 @@ extern "C"
 
 struct Event
 {
-    uint32_t id;            /* 事件 ID (框架级或用户定义) */
-    uintptr_t arg;
+    uint32_t id;            /**< 事件 ID (框架级或用户定义) */
+    uintptr_t arg;          /**< 事件参数 (指针或整数值) */
 };
 
 /* 事件回调类型 */

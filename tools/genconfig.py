@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kconfig → config.h 工业级安全生成器
+"""
 
 用法:
     python genconfig.py <kconfig_path> <output_dir> [--config <path>]

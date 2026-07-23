@@ -37,6 +37,7 @@ extern "C" {
     X(uart)   \
     X(spi)    \
     X(i2c)    \
+    X(i2s)    \
     X(user)
 
 /**< 阶段一：自动生成索引序号 */
@@ -106,11 +107,11 @@ extern struct bottom_half_work g_adc_dma_bottom_half_work;
  */
 struct bottom_half_work
 {
-    bottom_half_fn_t   fn;
-    void*              arg;
-    COMPAT_ATOMIC_BOOL pending;     /**<已在队列或正在执行 */
-    COMPAT_ATOMIC_BOOL executing;   /**<run_pending 内 fn() 执行中 (仅消费者写) */
-    COMPAT_ATOMIC_BOOL rerun;       /**<fn() 执行期间再次 trigger, run_pending 结束后补跑 */
+    bottom_half_fn_t   fn;        /**< 下半部处理函数 */
+    void*              arg;       /**< 处理函数参数 */
+    COMPAT_ATOMIC_BOOL pending;   /**< 已在队列或正在执行 */
+    COMPAT_ATOMIC_BOOL executing; /**< run_pending 内 fn() 执行中 (仅消费者写) */
+    COMPAT_ATOMIC_BOOL rerun;     /**< fn() 执行期间再次 trigger, run_pending 结束后补跑 */
 };
 
 #define BOTTOM_HALF_WORK_INIT(work_fn, work_arg) \
@@ -191,9 +192,9 @@ void bottom_half_run_pending(struct fifo_spsc* fifo);
  */
 struct bottom_half_poller
 {
-    struct fifo_spsc    fifo;
-    Fifo_Data_type      ring[BOTTOM_HALF_QUEUE_DEPTH];
-    volatile bool       pending_drain;     /**<ISR 写, 主循环读 */
+    struct fifo_spsc    fifo;          /**< 工作项 FIFO */
+    Fifo_Data_type      ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
+    volatile bool       pending_drain; /**< ISR 写, 主循环读 */
 };
 
 /**
@@ -235,9 +236,9 @@ void bottom_half_poller_run(struct bottom_half_poller* poller);
  */
 struct bottom_half_task
 {
-    struct fifo_spsc    fifo;
-    Fifo_Data_type      ring[BOTTOM_HALF_QUEUE_DEPTH];
-    struct osal_sem*    sem;
+    struct fifo_spsc    fifo;    /**< 工作项 FIFO */
+    Fifo_Data_type      ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
+    struct osal_sem*    sem;     /**< 二值信号量 (唤醒下半部任务) */
 };
 
 COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task, struct osal_sem* sem)
@@ -304,7 +305,9 @@ COMPAT_STATIC_INLINE int bottom_half_task_start(struct bottom_half_task* task, c
 {
     if (!task)
         return -1;
-    return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME, stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority, bottom_half_task_entry, task);
+    return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME,
+                            stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE,
+                            priority, bottom_half_task_entry, task, 0);
 }
 #endif /* CONFIG_OSAL_NULL */
 

@@ -22,10 +22,10 @@ extern "C"
 struct board_task_config
 
 {
-    const char* name;
-    uint32_t    stack_size;
-    uint32_t    priority;
-    int         core_id;        /* 目标核心, tskNO_AFFINITY = 不固定 */
+    const char* name;       /**< 任务名称 */
+    uint32_t    stack_size; /**< 栈大小 (字节) */
+    uint32_t    priority;   /**< 优先级 (数值越高优先级越高) */
+    int         core_id;    /**< 目标核心, tskNO_AFFINITY = 不固定 */
 };
 
 #ifdef __cplusplus

@@ -16,7 +16,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdatomic.h>
 #include "compiler_compat.h"
 #include "hal_uart.h"
 
@@ -35,9 +34,7 @@ struct device;
  * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  uart_bus_host_init(struct device* dev,
-                        const struct hal_uart_config* cfg)
-    COMPAT_WARN_UNUSED_RESULT;
+int uart_bus_host_init(struct device* dev, const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief UART host 反初始化 (ref_count > 0 时返回 BUSY)
  * @param dev controller device (host)
@@ -78,18 +75,32 @@ int  uart_bus_close(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
  * @param dev client device
  * @param data 待写入数据
  * @param len 数据长度
+ * @param timeout_ms 超时 (ms, 0=平台默认)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  uart_bus_write(struct device* dev,const uint8_t* data, size_t len) COMPAT_WARN_UNUSED_RESULT;
+int uart_bus_write(struct device* dev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 /**
  * @brief UART 读数据
  * @param dev client device
  * @param data 读取缓冲区
  * @param len 读取长度
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @param timeout_ms 超时 (ms, 0=平台默认)
+ * @return 成功返回已读字节数或 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  uart_bus_read(struct device* dev,uint8_t* data, size_t len) COMPAT_WARN_UNUSED_RESULT;
+int uart_bus_read(struct device* dev, uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+
+/**
+ * @brief UART 半双工组合传输 (先写后读)
+ * @param dev client device
+ * @param tx 发送缓冲 (可 NULL 表示只读)
+ * @param rx 接收缓冲 (可 NULL 表示只写)
+ * @param tx_len 发送长度
+ * @param rx_len 接收长度
+ * @param timeout_ms 超时 (ms, 0=平台默认; 写/读各自使用该超时)
+ * @return 成功返回 VFS_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
+ */
+int uart_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t tx_len, size_t rx_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

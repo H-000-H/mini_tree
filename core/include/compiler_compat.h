@@ -130,16 +130,6 @@
 #endif
 
 /**
- * @brief 废弃属性
- * @param msg 废弃提示消息
- */
-#if COMPAT_GNU_EXT_OK
-#define COMPAT_DEPRECATED(msg) __attribute__((deprecated(msg)))
-#else
-#define COMPAT_DEPRECATED(msg)
-#endif
-
-/**
  * @brief 静态断言
  * @param cond 断言条件
  * @param msg  断言消息
@@ -165,7 +155,7 @@
 
 /* ── 编译器内建函数 ─────────────────────────────────────────────────────── */
 
-#include "VFS.h"
+#include "status.h"
 
 /**
  * @brief 触发 CPU 陷阱, 用于不可恢复错误
@@ -264,7 +254,10 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
     X(W25Q64, 0x09) \
     X(TIM,    0x0A) \
     X(ADC,    0x0B) \
-    X(DAC,    0x0C)
+    X(DAC,    0x0C) \
+    X(RTC,    0x0D) \
+    X(IWDG,   0x0E) \
+    X(WWDG,   0x0F)
 
 /**
  * @brief 魔法槽枚举生成器
@@ -545,7 +538,7 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
 #  define COMPAT_ATOMIC_INT         int
 #  define COMPAT_ATOMIC_UINT        uint32_t
 #  define COMPAT_ATOMIC_BOOL        bool
-#  define COMPAT_ATOMIC_INIT(val)   (val)
+#  define COMPAT_ATOMIC_INIT(val)   (val)  /* 声明期初值: COMPAT_ATOMIC_INT x = COMPAT_ATOMIC_INIT(0); */
 
 #  define COMPAT_MO_RELAXED         __ATOMIC_RELAXED
 #  define COMPAT_MO_ACQUIRE         __ATOMIC_ACQUIRE
@@ -557,9 +550,12 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
 #  define COMPAT_ATOMIC_LOAD(p, m)         __atomic_load_n((p), (m))
 #  define COMPAT_ATOMIC_ADD_FETCH(p, v, m) __atomic_add_fetch((p), (v), (m))
 #  define COMPAT_ATOMIC_SUB_FETCH(p, v, m) __atomic_sub_fetch((p), (v), (m))
+#  define COMPAT_ATOMIC_FETCH_ADD(p, v, m) __atomic_fetch_add((p), (v), (m))
+#  define COMPAT_ATOMIC_FETCH_SUB(p, v, m) __atomic_fetch_sub((p), (v), (m))
 #  define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) \
     __atomic_compare_exchange_n((p), (e), (d), 0, (ms), (mf))
 #  define COMPAT_ATOMIC_EXCHANGE(p, v, m)  __atomic_exchange_n((p), (v), (m))
+#  define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)  /* 运行期初值, 等价 C11 atomic_init */
 
 /** @} */
 
@@ -586,11 +582,14 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
 
 #  define COMPAT_ATOMIC_STORE(p, v, m)     std::atomic_store_explicit((p), (v), (m))
 #  define COMPAT_ATOMIC_LOAD(p, m)         std::atomic_load_explicit((p), (m))
-#  define COMPAT_ATOMIC_ADD_FETCH(p, v, m) std::atomic_fetch_add_explicit((p), (v), (m))
-#  define COMPAT_ATOMIC_SUB_FETCH(p, v, m) std::atomic_fetch_sub_explicit((p), (v), (m))
+#  define COMPAT_ATOMIC_ADD_FETCH(p, v, m) (std::atomic_fetch_add_explicit((p), (v), (m)) + (v))
+#  define COMPAT_ATOMIC_SUB_FETCH(p, v, m) (std::atomic_fetch_sub_explicit((p), (v), (m)) - (v))
+#  define COMPAT_ATOMIC_FETCH_ADD(p, v, m) std::atomic_fetch_add_explicit((p), (v), (m))
+#  define COMPAT_ATOMIC_FETCH_SUB(p, v, m) std::atomic_fetch_sub_explicit((p), (v), (m))
 #  define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) \
     std::atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
 #  define COMPAT_ATOMIC_EXCHANGE(p, v, m)  std::atomic_exchange_explicit((p), (v), (m))
+#  define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)
 
 /** @} */
 
@@ -619,9 +618,12 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
 #  define COMPAT_ATOMIC_LOAD(p, m)         atomic_load_explicit((p), (m))
 #  define COMPAT_ATOMIC_ADD_FETCH(p, v, m) (atomic_fetch_add_explicit((p), (v), (m)) + (v))
 #  define COMPAT_ATOMIC_SUB_FETCH(p, v, m) (atomic_fetch_sub_explicit((p), (v), (m)) - (v))
+#  define COMPAT_ATOMIC_FETCH_ADD(p, v, m) atomic_fetch_add_explicit((p), (v), (m))
+#  define COMPAT_ATOMIC_FETCH_SUB(p, v, m) atomic_fetch_sub_explicit((p), (v), (m))
 #  define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) \
     atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
 #  define COMPAT_ATOMIC_EXCHANGE(p, v, m)  atomic_exchange_explicit((p), (v), (m))
+#  define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)
 
 /** @} */
 
@@ -648,10 +650,15 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
 #  define COMPAT_ATOMIC_LOAD(p, m)            (*(p))
 #  define COMPAT_ATOMIC_ADD_FETCH(p, v, m)    (*(p) += (v), *(p))
 #  define COMPAT_ATOMIC_SUB_FETCH(p, v, m)    (*(p) -= (v), *(p))
+#  define COMPAT_ATOMIC_FETCH_ADD(p, v, m) \
+    __extension__({ __typeof__(*(p)) _o = *(p); *(p) += (v); _o; })
+#  define COMPAT_ATOMIC_FETCH_SUB(p, v, m) \
+    __extension__({ __typeof__(*(p)) _o = *(p); *(p) -= (v); _o; })
 #  define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) \
     ((*(p) == *(e)) ? (*(p) = (d), 1) : (*(e) = *(p), 0))
 #  define COMPAT_ATOMIC_EXCHANGE(p, v, m) \
     __extension__({ __typeof__(*(p)) _o = *(p); *(p) = (v); _o; })
+#  define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)
 
 /** @} */
 

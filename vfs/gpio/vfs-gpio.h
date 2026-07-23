@@ -1,8 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*@=========================================================================================================================*
+ * GPIO VFS — 通用 IO 口 VFS 层
+ *
+ * 架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
+ * 职责: file_operations + dev_lifecycle + DTS; ioctl 电平读/写/翻转。
+ * 隔离: 定义 VFS_GPIO_IMPL 可调 hal_gpio_*; 其他文件包含本头时 hal_gpio_* 被 #pragma GCC poison。
+ *
+ * Driver 注册: vfs_gpio / "gpio"
+ * 约束: close 仅释放 lifecycle, 不改变引脚电平/deinit 状态。
+ *
+ * @see hal/gpio/hal_gpio.h
+ *@=========================================================================================================================*/
 #ifndef VFS_GPIO_H
 #define VFS_GPIO_H
 
-#include "VFS.h"
+#include "status.h"
 #include "device.h"
 #include "hal_gpio.h"
 #include <stdint.h>
@@ -19,8 +31,8 @@ extern "C" {
 
 struct vfs_gpio_arg
 {
-    int level;
-    hal_gpio_dev_t* obj;   /* 指向 VFS priv 嵌入的 HAL 对象 */
+    int level;              /**< 电平值 (0=LOW, 1=HIGH) */
+    hal_gpio_dev_t* obj;    /**< 指向 VFS priv 嵌入的 HAL 对象 */
 };
 
 COMPAT_STATIC_INLINE int vfs_gpio_set_level(struct vfs_gpio_arg* vfs_arg)

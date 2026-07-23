@@ -15,7 +15,7 @@
 #define VFS_DAC_H
 
 #include "hal_dac.h"
-#include "VFS.h"
+#include "status.h"
 #include "compiler_compat.h"
 #include <stdint.h>
 

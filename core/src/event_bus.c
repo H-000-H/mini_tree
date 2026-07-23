@@ -38,31 +38,35 @@ extern volatile bool g_system_os_initialized;
 /* ── 内部数据结构 ── */
 struct subscriber
 {
-    uint32_t          id_min;
-    uint32_t          id_max;
-    event_callback_t  callback;
-    void*             user_data;
+    uint32_t          id_min;     /**< 订阅起始事件 ID */
+    uint32_t          id_max;     /**< 订阅结束事件 ID */
+    event_callback_t  callback;   /**< 事件回调函数 */
+    void*             user_data;  /**< 用户私有数据 */
 };
 
 struct event_bus
 {
-    struct subscriber   subscribers[K_MAX_SUBSCRIBERS];
-    size_t              count;
-    bool                inited;
-    bool                is_sealed;
+    struct subscriber   subscribers[K_MAX_SUBSCRIBERS]; /**< 订阅者表 */
+    size_t              count;                          /**< 当前订阅者数量 */
+    bool                inited;                         /**< 是否已初始化 */
+    bool                is_sealed;                      /**< 是否已封禁 (不再接受新订阅) */
 
-    osal_queue_handle_t queue;
-    void*               task;
-    size_t              dropped;
+    osal_queue_handle_t queue;                          /**< 事件队列 */
+    void*               task;                           /**< 分派任务句柄 */
+    size_t              dropped;                        /**< 丢弃事件计数 */
 
-    struct osal_mutex*       sub_lock;
-    uint8_t             sub_lock_storage[OSAL_MUTEX_STORAGE_SIZE];
+    struct osal_mutex*       sub_lock;                  /**< 订阅者表锁 */
+    uint8_t             sub_lock_storage[OSAL_MUTEX_STORAGE_SIZE]; /**< 锁存储 */
 };
 
 /* ── 内部静态单例 ── */
 static struct event_bus s_bus = {0};
 
 /* ── 分派任务 (静态函数, 仅内部使用) ── */
+/**
+ * @brief EventBus 后台分派任务: 从队列取事件并回调匹配订阅者
+ * @param param OSAL 任务入口参数 (未使用)
+ */
 static void event_bus_dispatch_task(void* param)
 {
     (void)param;
@@ -76,7 +80,7 @@ static void event_bus_dispatch_task(void* param)
         }
 
         system_wdt_feed();
-        system_wdt_feed_rtc();
+        system_wdt_feed_iwdg();
 
         /* 快照订阅者表 — 不持锁执行回调, 避免优先级反转锁死 */
         struct subscriber snapshot[K_MAX_SUBSCRIBERS];
@@ -118,6 +122,10 @@ static void event_bus_dispatch_task(void* param)
 
 /* ── 公开 API ── */
 
+/**
+ * @brief 初始化 EventBus
+ * @return true 成功
+ */
 bool event_bus_init(void)
 {
     if (s_bus.inited) return true;
@@ -145,6 +153,14 @@ bool event_bus_init(void)
     return true;
 }
 
+/**
+ * @brief 订阅事件 ID 区间 (封表前可用, 持锁写入订阅表)
+ * @param id_min 最小事件 ID (含)
+ * @param id_max 最大事件 ID (含)
+ * @param callback 匹配时回调
+ * @param user_data 传给 callback 的用户数据
+ * @return true 订阅成功; false 封表/ISR/参数无效/表满/锁超时
+ */
 bool event_bus_subscribe(uint32_t id_min, uint32_t id_max,
                          event_callback_t callback, void* user_data)
 {
@@ -175,6 +191,14 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max,
     return ok;
 }
 
+/**
+ * @brief 事件投递内部实现 (任务态 / ISR 共用)
+ * @param id 事件 ID
+ * @param arg 事件参数
+ * @param from_isr 为 true 时走 ISR 安全入队路径
+ * @param px_yield_required ISR 路径下输出是否需要 yield (可为 NULL)
+ * @return true 入队成功, false 总线未初始化或队列满
+ */
 static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
                                     bool* px_yield_required)
 {
@@ -212,6 +236,12 @@ static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
     return true;
 }
 
+/**
+ * @brief 任务态 post
+ * @param id 事件 ID
+ * @param arg 参数
+ * @return true
+ */
 bool event_bus_post(uint32_t id, uintptr_t arg)
 {
     if (osal_in_isr())
@@ -220,16 +250,30 @@ bool event_bus_post(uint32_t id, uintptr_t arg)
     return event_bus_post_internal(id, arg, false, NULL);
 }
 
+/**
+ * @brief ISR post
+ * @param id 事件 ID
+ * @param arg 参数
+ * @param px_yield_required yield
+ * @return true
+ */
 bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
 {
     return event_bus_post_internal(id, arg, true, px_yield_required);
 }
 
+/**
+ * @brief 丢弃计数
+ * @return 次数
+ */
 size_t event_bus_dropped_count(void)
 {
     return __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED);
 }
 
+/**
+ * @brief 启动 dispatch 任务
+ */
 void event_bus_start(void)
 {
     if (s_bus.task != NULL || s_bus.queue == NULL) return;
@@ -245,6 +289,9 @@ void event_bus_start(void)
     SYS_LOGI(K_TAG, "dispatch task started prio %lu", (unsigned long)K_DISPATCH_PRIO);
 }
 
+/**
+ * @brief 停止并销毁
+ */
 void event_bus_stop(void)
 {
     if (!s_bus.task) return;
@@ -275,6 +322,9 @@ void event_bus_stop(void)
     s_bus.queue = NULL;
 }
 
+/**
+ * @brief 封表
+ */
 void event_bus_seal(void)
 {
     s_bus.is_sealed = true;

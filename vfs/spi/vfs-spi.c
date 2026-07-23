@@ -6,15 +6,15 @@
  *   - Host VFS:   DTS 解析 + spi_bus_host_init (controller driver)
  *   - Client VFS: spi_bus_client_register + fops 挂载 (master+slave 统一, role 分派)
  *
- * 生命周期 (dev_lifecycle): open/close 引用计数, io 互斥, remove drain。
- * I/O 按 role 分派: master=spi_bus_transfer (单工/全双工), slave=spi_bus_slave_sync。
+ * 生命周期 (dev_lifecycle): open/close 引用计数, io 门控 (dev_lc_io_*), remove drain。
+ * I/O 按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync。
  *
  * DTS 三层嵌套 (Linux 风格):
  *   spi@1 (spi-master)                                ← host controller
  *   └── spi-master@0 (heterogeneous,spi-master-client) ← bus client (spi_vfs)
  *       └── w25q64@0 (winbond,w25q64)                 ← leaf device (w25q64_spi)
  *
- *   w25q64_spi_probe: device_get_parent(pdev) → client (有 fops) → spi_vfs_transfer
+ *   w25q64_spi_probe: device_get_parent(pdev) → client (有 fops) → device_ioctl(SPI_CMD_TRANSFER)
  *@=========================================================================================================================*/
 #define SPI_VFS_IMPL
 #include "vfs-spi.h"
@@ -22,7 +22,7 @@
 #include "device.h"
 #include "driver.h"
 #include "dev_lifecycle.h"
-#include "VFS.h"
+#include "status.h"
 #include "dt_config_gen.h"
 #include "osal.h"
 #include "compiler_compat.h"
@@ -38,8 +38,8 @@
 #endif
 
 struct vfs_spi_priv {
-    struct hal_spi_bus_config  cfg;
-    int                        pool_idx;
+    struct hal_spi_bus_config  cfg;       /**< host 总线配置 (DTSI 直投) */
+    int                        pool_idx;  /**< 池索引 */
 };
 
 static struct vfs_spi_priv s_spi_priv_pool[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
@@ -63,7 +63,7 @@ static void vfs_spi_priv_pool_init(void)
  * @param bus_role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_spi_priv_parse_dts(struct device* pdev,struct hal_spi_bus_config* cfg,int bus_role)
+static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config* cfg, int bus_role)
 {
     int spi_base = 0, spi_clk = 0;
     int mosi_port = 0, mosi_pin = 0, mosi_clk = 0, mosi_af = 0;
@@ -104,7 +104,16 @@ static int vfs_spi_priv_parse_dts(struct device* pdev,struct hal_spi_bus_config*
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-mode",        &sclk_mode));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-pull",        &sclk_pull));
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    {
+        int irqn = -1, irq_priority = 0, it_enable = 0;
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
+        COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+        cfg->irqn         = (int32_t)irqn;
+        cfg->irq_priority = (uint32_t)irq_priority;
+        cfg->it_enable    = (uint32_t)it_enable;
+    }
     cfg->spi           = (uintptr_t)spi_base;
     cfg->spi_clk_periph = (uint32_t)spi_clk;
     cfg->mosi = (struct hal_spi_pin_cfg){
@@ -148,44 +157,53 @@ static int vfs_spi_priv_parse_dts(struct device* pdev,struct hal_spi_bus_config*
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
     }
 
-    /** DMA 配置 (硬件直投, 仿 ADC): dma-tx-cfg/dma-rx-cfg
-     *  = <handle stream channel priority memory_size enable
-     *     mode periph_inc mem_inc periph_data_size fifo_mode fifo_threshold mem_burst periph_burst> */
+    /** DMA 短元组 (≥6): <handle stream channel priority memory_size enable>
+     *  长元组 (≥14): 其后接 mode/inc/... (缺省由 HAL 补默认) */
     {
         int dma_arr[14];
-        if (device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14) == 14)
+        int n;
+
+        n = device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14);
+        if (n >= 6)
         {
-            cfg->dma_tx.dma_handle           = (uintptr_t)dma_arr[0];
-            cfg->dma_tx.dma_stream            = (uint32_t)dma_arr[1];
-            cfg->dma_tx.dma_channel           = (uint32_t)dma_arr[2];
-            cfg->dma_tx.dma_priority          = (uint32_t)dma_arr[3];
-            cfg->dma_tx.dma_memory_size       = (uint32_t)dma_arr[4];
-            cfg->dma_tx.dma_enable           = (uint32_t)dma_arr[5];
-            cfg->dma_tx.dma_mode             = (uint32_t)dma_arr[6];
-            cfg->dma_tx.dma_periph_inc        = (uint32_t)dma_arr[7];
-            cfg->dma_tx.dma_mem_inc           = (uint32_t)dma_arr[8];
-            cfg->dma_tx.dma_periph_data_size  = (uint32_t)dma_arr[9];
-            cfg->dma_tx.dma_fifo_mode         = (uint32_t)dma_arr[10];
-            cfg->dma_tx.dma_fifo_threshold    = (uint32_t)dma_arr[11];
-            cfg->dma_tx.dma_mem_burst         = (uint32_t)dma_arr[12];
-            cfg->dma_tx.dma_periph_burst      = (uint32_t)dma_arr[13];
+            cfg->dma_tx.dma_handle      = (uintptr_t)dma_arr[0];
+            cfg->dma_tx.dma_stream      = (uint32_t)dma_arr[1];
+            cfg->dma_tx.dma_channel     = (uint32_t)dma_arr[2];
+            cfg->dma_tx.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_tx.dma_memory_size = (uint32_t)dma_arr[4];
+            cfg->dma_tx.dma_enable      = (uint32_t)dma_arr[5];
+            if (n >= 14)
+            {
+                cfg->dma_tx.dma_mode             = (uint32_t)dma_arr[6];
+                cfg->dma_tx.dma_periph_inc       = (uint32_t)dma_arr[7];
+                cfg->dma_tx.dma_mem_inc          = (uint32_t)dma_arr[8];
+                cfg->dma_tx.dma_periph_data_size = (uint32_t)dma_arr[9];
+                cfg->dma_tx.dma_fifo_mode        = (uint32_t)dma_arr[10];
+                cfg->dma_tx.dma_fifo_threshold   = (uint32_t)dma_arr[11];
+                cfg->dma_tx.dma_mem_burst        = (uint32_t)dma_arr[12];
+                cfg->dma_tx.dma_periph_burst     = (uint32_t)dma_arr[13];
+            }
         }
-        if (device_get_prop_int_array(pdev, "dma-rx-cfg", dma_arr, 14) == 14)
+        n = device_get_prop_int_array(pdev, "dma-rx-cfg", dma_arr, 14);
+        if (n >= 6)
         {
-            cfg->dma_rx.dma_handle           = (uintptr_t)dma_arr[0];
-            cfg->dma_rx.dma_stream            = (uint32_t)dma_arr[1];
-            cfg->dma_rx.dma_channel           = (uint32_t)dma_arr[2];
-            cfg->dma_rx.dma_priority          = (uint32_t)dma_arr[3];
-            cfg->dma_rx.dma_memory_size       = (uint32_t)dma_arr[4];
-            cfg->dma_rx.dma_enable           = (uint32_t)dma_arr[5];
-            cfg->dma_rx.dma_mode             = (uint32_t)dma_arr[6];
-            cfg->dma_rx.dma_periph_inc        = (uint32_t)dma_arr[7];
-            cfg->dma_rx.dma_mem_inc           = (uint32_t)dma_arr[8];
-            cfg->dma_rx.dma_periph_data_size  = (uint32_t)dma_arr[9];
-            cfg->dma_rx.dma_fifo_mode         = (uint32_t)dma_arr[10];
-            cfg->dma_rx.dma_fifo_threshold    = (uint32_t)dma_arr[11];
-            cfg->dma_rx.dma_mem_burst         = (uint32_t)dma_arr[12];
-            cfg->dma_rx.dma_periph_burst      = (uint32_t)dma_arr[13];
+            cfg->dma_rx.dma_handle      = (uintptr_t)dma_arr[0];
+            cfg->dma_rx.dma_stream      = (uint32_t)dma_arr[1];
+            cfg->dma_rx.dma_channel     = (uint32_t)dma_arr[2];
+            cfg->dma_rx.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_rx.dma_memory_size = (uint32_t)dma_arr[4];
+            cfg->dma_rx.dma_enable      = (uint32_t)dma_arr[5];
+            if (n >= 14)
+            {
+                cfg->dma_rx.dma_mode             = (uint32_t)dma_arr[6];
+                cfg->dma_rx.dma_periph_inc       = (uint32_t)dma_arr[7];
+                cfg->dma_rx.dma_mem_inc          = (uint32_t)dma_arr[8];
+                cfg->dma_rx.dma_periph_data_size = (uint32_t)dma_arr[9];
+                cfg->dma_rx.dma_fifo_mode        = (uint32_t)dma_arr[10];
+                cfg->dma_rx.dma_fifo_threshold   = (uint32_t)dma_arr[11];
+                cfg->dma_rx.dma_mem_burst        = (uint32_t)dma_arr[12];
+                cfg->dma_rx.dma_periph_burst     = (uint32_t)dma_arr[13];
+            }
         }
     }
 
@@ -315,22 +333,14 @@ static int vfs_spi_priv_remove(struct device* pdev)
 /*===========================================================================================================================================================*/
 /*Client VFS (master + slave unified)*/
 /*===========================================================================================================================================================*/
-#ifndef DTC_GEN_COUNT_HETEROGENEOUS_FFT_SPI_SLAVE
-#define DTC_GEN_COUNT_HETEROGENEOUS_FFT_SPI_SLAVE 0
-#endif
-
-#define SPI_VFS_MASTER_COUNT 4
-#define SPI_VFS_SLAVE_COUNT  DTC_GEN_COUNT_HETEROGENEOUS_FFT_SPI_SLAVE
-/* SLAVE_COUNT=0 时仍要求数组长度 > 0 (零长数组非标准) */
-#define SPI_VFS_CLIENT_COUNT (SPI_VFS_MASTER_COUNT + (SPI_VFS_SLAVE_COUNT ? SPI_VFS_SLAVE_COUNT : 1))
+#define SPI_VFS_CLIENT_COUNT 4
 
 struct spi_vfs_client {
-    struct file_operations       ops;
-    struct hal_spi_device_config cfg;
-    struct osal_mutex*           io_mutex;
-    uint8_t                      mutex_storage[OSAL_MUTEX_STORAGE_SIZE];
-    int                          role;      /* SPI_BUS_ROLE_MASTER / SLAVE, probe 时设置 */
-    int                          pool_idx;
+    struct file_operations       ops;       /**< VFS 操作表 */
+    struct hal_spi_device_config cfg;       /**< 设备配置 (DTSI 直投) */
+    int                          role;      /**< SPI_BUS_ROLE_MASTER / SLAVE, probe 时设置 */
+    uint32_t                     xfer_mode; /**< SPI_XFER_*; write/read 默认 AUTO, ioctl 可改 */
+    int                          pool_idx;  /**< 池索引 */
 };
 
 static struct spi_vfs_client s_client_pool[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
@@ -417,18 +427,17 @@ static int spi_vfs_close(struct device* pdev)
 }
 
 /*===========================================================================================================================================================*/
-/*write / read (按 role 分派: master=transfer, slave=slave_sync)*/
+/*write / read (master: xfer_mode 默认 AUTO; slave: slave_sync)*/
 /*===========================================================================================================================================================*/
 /**
  * @brief SPI Client 设备写操作 (按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync)
  * @param pdev 设备对象指针
- * @param buffer 数据缓冲
- * @param len 数据长度 (字节)
+ * @param buffer 发送数据缓冲
+ * @param len 数据长度 (字节, 0 直接返回成功)
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_vfs_write(struct device* pdev, const void* buffer,
-                          size_t len, uint32_t timeout_ms)
+static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct spi_vfs_client*  priv;
     struct dev_lifecycle*   lc;
@@ -458,7 +467,7 @@ static int spi_vfs_write(struct device* pdev, const void* buffer,
     }
 
     if (priv->role == SPI_BUS_ROLE_MASTER)
-        ret = spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms);
+        ret = spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
     else
         ret = spi_bus_slave_sync(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms);
 
@@ -469,13 +478,12 @@ static int spi_vfs_write(struct device* pdev, const void* buffer,
 /**
  * @brief SPI Client 设备读操作 (按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync)
  * @param pdev 设备对象指针
- * @param buffer 数据缓冲
- * @param len 数据长度 (字节)
+ * @param buffer 接收数据缓冲
+ * @param len 数据长度 (字节, 0 直接返回成功)
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_vfs_read(struct device* pdev, void* buffer,
-                         size_t len, uint32_t timeout_ms)
+static int spi_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct spi_vfs_client*  priv;
     struct dev_lifecycle*   lc;
@@ -505,7 +513,7 @@ static int spi_vfs_read(struct device* pdev, void* buffer,
     }
 
     if (priv->role == SPI_BUS_ROLE_MASTER)
-        ret = spi_bus_transfer(pdev, NULL, (uint8_t*)buffer, len, timeout_ms);
+        ret = spi_bus_transfer(pdev, NULL, (uint8_t*)buffer, len, timeout_ms, priv->xfer_mode);
     else
         ret = spi_bus_slave_sync(pdev, NULL, (uint8_t*)buffer, len, timeout_ms);
 
@@ -520,7 +528,7 @@ typedef int (*spi_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, ui
 
 struct spi_ioctl_map
 {
-    spi_ioctl_fn_t handler;
+    spi_ioctl_fn_t handler;  /**< ioctl 处理函数 */
 };
 
 /**
@@ -534,15 +542,109 @@ struct spi_ioctl_map
 static int spi_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct spi_transfer_arg* ta = (const struct spi_transfer_arg*)arg;
-    if (!ta || arg_len != sizeof(*ta))
+    struct spi_vfs_client*         priv;
+    uint32_t                       mode;
+
+    if (!pdev || !pdev->ops || !ta || arg_len != sizeof(*ta))
         return VFS_ERR_INVAL;
-    return spi_bus_transfer(pdev, ta->tx, ta->rx, ta->len, timeout_ms);
+
+    priv = container_of(pdev->ops, struct spi_vfs_client, ops);
+    /* arg.xfer_mode==AUTO 时沿用 client 偏好; 非 AUTO 为单次覆盖 */
+    mode = (ta->xfer_mode == SPI_XFER_AUTO) ? priv->xfer_mode : ta->xfer_mode;
+    if (mode > SPI_XFER_DMA)
+        return VFS_ERR_INVAL;
+
+    return spi_bus_transfer(pdev, ta->tx, ta->rx, ta->len, timeout_ms, mode);
 }
 
 /**
- * @brief SPI 命令处理: Slave 发送队列入队
+ * @brief 设置 write/read/默认 transfer 的传输路径偏好
  * @param pdev 设备对象指针
- * @param arg 命令参数指针
+ * @param arg 命令参数指针 (spi_xfer_mode_arg)
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (未使用)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+{
+    const struct spi_xfer_mode_arg* ma = (const struct spi_xfer_mode_arg*)arg;
+    struct spi_vfs_client*          priv;
+
+    COMPAT_IGNORE_RESULT(timeout_ms);
+    if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
+        return VFS_ERR_INVAL;
+    if (ma->xfer_mode > SPI_XFER_DMA)
+        return VFS_ERR_INVAL;
+
+    priv = container_of(pdev->ops, struct spi_vfs_client, ops);
+    priv->xfer_mode = ma->xfer_mode;
+    return VFS_OK;
+}
+
+/**
+ * @brief 查询当前传输路径偏好
+ * @param pdev 设备对象指针
+ * @param arg 命令参数指针 (spi_xfer_mode_arg, 输出 xfer_mode)
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (未使用)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+{
+    struct spi_xfer_mode_arg* ma = (struct spi_xfer_mode_arg*)arg;
+    struct spi_vfs_client*    priv;
+
+    COMPAT_IGNORE_RESULT(timeout_ms);
+    if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
+        return VFS_ERR_INVAL;
+
+    priv = container_of(pdev->ops, struct spi_vfs_client, ops);
+    ma->xfer_mode = priv->xfer_mode;
+    return VFS_OK;
+}
+
+/**
+ * @brief Master 异步提交: 立即返回, 完成经 cb (可能在 ISR)
+ * @param pdev 设备对象指针
+ * @param arg 命令参数指针 (spi_transfer_async_arg)
+ * @param arg_len 参数长度
+ * @param timeout_ms 超时 (未使用)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+{
+    const struct spi_transfer_async_arg* aa = (const struct spi_transfer_async_arg*)arg;
+
+    COMPAT_IGNORE_RESULT(timeout_ms);
+    if (!pdev || !aa || arg_len != sizeof(*aa) || aa->len == 0)
+        return VFS_ERR_INVAL;
+    if (!aa->tx && !aa->rx)
+        return VFS_ERR_INVAL;
+
+    return spi_bus_transfer_async(pdev, aa->tx, aa->rx, aa->len, aa->cb, aa->userdata);
+}
+
+/**
+ * @brief 等待异步传输完成 (timeout_ms 来自 ioctl)
+ * @param pdev 设备对象指针
+ * @param arg 命令参数指针 (未使用)
+ * @param arg_len 参数长度 (未使用)
+ * @param timeout_ms 超时 (毫秒)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int spi_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+{
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
+    if (!pdev)
+        return VFS_ERR_INVAL;
+    return spi_bus_transfer_poll(pdev, timeout_ms);
+}
+
+/**
+ * @brief Slave 发送队列入队
+ * @param pdev 设备对象指针
+ * @param arg 命令参数指针 (spi_queue_arg)
  * @param arg_len 参数长度
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
@@ -556,9 +658,9 @@ static int spi_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
 }
 
 /**
- * @brief SPI 命令处理: 获取 Slave 传输结果
+ * @brief 获取 Slave 传输结果
  * @param pdev 设备对象指针
- * @param arg 命令参数指针
+ * @param arg 命令参数指针 (spi_trans_result_arg)
  * @param arg_len 参数长度
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
@@ -575,6 +677,10 @@ static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
     [SPI_CMD_TRANSFER - SPI_CMD_BASE - 1]         = { spi_cmd_transfer },
     [SPI_CMD_QUEUE_TX - SPI_CMD_BASE - 1]         = { spi_cmd_queue_tx },
     [SPI_CMD_GET_TRANS_RESULT - SPI_CMD_BASE - 1] = { spi_cmd_get_trans_result },
+    [SPI_CMD_SET_XFER_MODE - SPI_CMD_BASE - 1]    = { spi_cmd_set_xfer_mode },
+    [SPI_CMD_GET_XFER_MODE - SPI_CMD_BASE - 1]    = { spi_cmd_get_xfer_mode },
+    [SPI_CMD_TRANSFER_ASYNC - SPI_CMD_BASE - 1]   = { spi_cmd_transfer_async },
+    [SPI_CMD_ASYNC_WAIT - SPI_CMD_BASE - 1]       = { spi_cmd_async_wait },
 };
 
 /**
@@ -586,8 +692,7 @@ static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg,
-                          size_t arg_len, uint32_t timeout_ms)
+static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t               offset;
@@ -623,48 +728,15 @@ static const struct file_operations spi_vfs_fops = {
 };
 
 /*===========================================================================================================================================================*/
-/*便捷 API (上层驱动调用)*/
-/*===========================================================================================================================================================*/
-/**
- * @brief 便捷 SPI 全双工传输 (带锁, 经 device_ioctl 派发)
- * @param pdev 设备对象指针
- * @param tx 发送缓冲
- * @param rx 接收缓冲
- * @param len 数据长度 (字节)
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int spi_vfs_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx,
-                     size_t len, uint32_t timeout_ms)
-{
-    struct spi_transfer_arg arg;
-
-    if (!pdev || len == 0)
-        return VFS_ERR_INVAL;
-
-    arg.tx  = tx;
-    arg.rx  = rx;
-    arg.len = len;
-
-    return device_ioctl(pdev, SPI_CMD_TRANSFER, &arg, sizeof(arg), timeout_ms);
-}
-
-/*===========================================================================================================================================================*/
-/*Client Probe / Remove*/
-/*===========================================================================================================================================================*/
-
-/*===========================================================================================================================================================*/
 /*parse_dts (master/slave 基本相同)*/
 /*===========================================================================================================================================================*/
 /**
  * @brief 解析 SPI Client DTS 属性 (硬件直投值), 填入 hal_spi_device_config
  * @param pdev 设备对象指针
  * @param cfg 配置结构指针
- * @param role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* cfg,
-                              int role)
+static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* cfg)
 {
     int cs_port = 0, cs_pin = 0, cs_clk = 0;
     int mode = 0, freq = 0;
@@ -685,7 +757,9 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
     cfg->mode           = mode;
     cfg->clock_speed_hz = freq;
 
-    /** 扩展字段: DTS 可选, 未定义时取 0 (LL 库默认行为) */
+    /** 扩展字段: DTS 可选, 未定义时取 0。
+     *  transfer_direction/data_width 的 0 即 LL 全双工/8bit;
+     *  nss=0 且有 cs_port 时由 HAL 强制软 NSS。 */
     {
         int transfer_direction = 0, data_width = 0, nss = 0, bit_order = 0;
         int crc_calculation = 0, crc_poly = 0, standard = 0;
@@ -712,7 +786,7 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
 /*spi_vfs_probe (统一 probe: master + slave)*/
 /*===========================================================================================================================================================*/
 /**
- * @brief SPI Client 设备探测: 获取 role, 申请池槽/互斥锁, 解析 DTS, 注册 client, 绑定 fops
+ * @brief SPI Client 设备探测: 获取 role, 申请池槽, 解析 DTS, 注册 client, 绑定 fops
  * @param pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
@@ -740,23 +814,17 @@ static int spi_vfs_probe(struct device* pdev)
 
     priv = &s_client_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx = pool_idx;
+    priv->pool_idx  = pool_idx;
     priv->role      = role;
+    priv->xfer_mode = SPI_XFER_AUTO; /* write/read 默认隐式 */
 
-    if (osal_mutex_create_static(&priv->io_mutex, priv->mutex_storage,
-                                  sizeof(priv->mutex_storage)) != 0)
-    {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
-        return VFS_ERR_NOMEM;
-    }
-
-    ret = spi_vfs_parse_dts(pdev, &priv->cfg, role);
+    ret = spi_vfs_parse_dts(pdev, &priv->cfg);
     if (ret != VFS_OK)
-        goto err_mutex;
+        goto err_pool;
 
     ret = spi_bus_client_register(pdev, &priv->cfg, &bus_cli);
     if (ret != VFS_OK)
-        goto err_mutex;
+        goto err_pool;
 
     priv->ops = spi_vfs_fops;
     pdev->ops  = &priv->ops;
@@ -765,7 +833,7 @@ static int spi_vfs_probe(struct device* pdev)
     {
         spi_bus_client_unregister(pdev);
         ret = VFS_ERR_IO;
-        goto err_mutex;
+        goto err_pool;
     }
 
     SYS_LOGI(s_kClientTag, "probe OK: %s role=%s mode=%d freq=%d",
@@ -774,10 +842,9 @@ static int spi_vfs_probe(struct device* pdev)
              priv->cfg.mode, priv->cfg.clock_speed_hz);
     return VFS_OK;
 
-err_mutex:
+err_pool:
     pdev->ops = NULL;                   /* 切断 fops, 防 UAF */
     dev_lc_reset(device_lc(pdev));       /* 重置生命周期 */
-    osal_mutex_destroy(priv->io_mutex);
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     return ret;
 }
@@ -786,7 +853,7 @@ err_mutex:
 /*spi_vfs_remove (统一 remove: master + slave)*/
 /*===========================================================================================================================================================*/
 /**
- * @brief SPI Client 设备移除: 拒新 IO, 排空已有 IO, 注销 client, 释放池槽与互斥锁
+ * @brief SPI Client 设备移除: 拒新 IO, 排空已有 IO, 注销 client, 释放池槽
  * @param pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
@@ -816,7 +883,6 @@ static int spi_vfs_remove(struct device* pdev)
     }
 
     spi_bus_client_unregister(pdev);
-    osal_mutex_destroy(priv->io_mutex);
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
 
@@ -832,6 +898,6 @@ DRIVER_REGISTER(spi_host_slave, "spi-slave",
                 vfs_spi_priv_probe_slave, vfs_spi_priv_remove)
 DRIVER_REGISTER(spi_vfs_master, "heterogeneous,spi-master-client",
                 spi_vfs_probe, spi_vfs_remove)
-DRIVER_REGISTER(spi_vfs_slave, "heterogeneous,fft-spi-slave",
+DRIVER_REGISTER(spi_vfs_slave, "heterogeneous,spi-slave-client",
                 spi_vfs_probe, spi_vfs_remove)
 /*===========================================================================================================================================================*/

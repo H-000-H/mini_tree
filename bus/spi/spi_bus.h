@@ -17,7 +17,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdatomic.h>
 #include "compiler_compat.h"
 #include "hal_spi.h"
 
@@ -40,9 +39,7 @@ struct spi_bus_client;
  * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_host_init(struct device* dev,
-                       const struct hal_spi_bus_config* cfg)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_host_init(struct device* dev, const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief SPI host 反初始化 (ref_count > 0 时返回 BUSY)
  * @param dev controller device (host)
@@ -66,10 +63,7 @@ int  spi_bus_host_role(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
  * @param out 输出 spi_bus_client 指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_client_register(struct device* dev,
-                             const struct hal_spi_device_config* cfg,
-                             struct spi_bus_client** out)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_client_register(struct device* dev, const struct hal_spi_device_config* cfg, struct spi_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief SPI client 注销 (ref_count -1, 清零槽位)
  * @param dev client device
@@ -95,12 +89,10 @@ int  spi_bus_close(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
  * @param rx 接收缓冲区 (可 NULL)
  * @param len 传输字节数
  * @param timeout_ms 超时 (毫秒)
+ * @param xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_transfer(struct device* dev,
-                      const uint8_t* tx, uint8_t* rx,
-                      size_t len, uint32_t timeout_ms)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief SPI slave 模式同步传输
  * @param dev client device
@@ -110,10 +102,7 @@ int  spi_bus_transfer(struct device* dev,
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_slave_sync(struct device* dev,
-                        const uint8_t* tx, uint8_t* rx,
-                        size_t len, uint32_t timeout_ms)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_slave_sync(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief SPI slave 模式排队发送
  * @param dev client device
@@ -122,10 +111,7 @@ int  spi_bus_slave_sync(struct device* dev,
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_slave_queue_tx(struct device* dev,
-                            const uint8_t* data, size_t len,
-                            uint32_t timeout_ms)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_slave_queue_tx(struct device* dev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief SPI slave 模式获取传输结果
  * @param dev client device
@@ -135,10 +121,7 @@ int  spi_bus_slave_queue_tx(struct device* dev,
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_slave_get_trans_result(struct device* dev,
-                                    uint8_t* rx_data, size_t rx_cap,
-                                    size_t* trans_len, uint32_t timeout_ms)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_slave_get_trans_result(struct device* dev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 /**
  * @brief SPI 异步传输 (master 模式, 回调在 ISR 触发)
@@ -150,21 +133,14 @@ int  spi_bus_slave_get_trans_result(struct device* dev,
  * @param userdata 回调用户数据
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_transfer_async(struct device* dev,
-                            const uint8_t* tx, uint8_t* rx,
-                            size_t len, void (*cb)(struct device* dev,
-                                                   const void* trans,
-                                                   void* userdata),
-                            void* userdata)
-    COMPAT_WARN_UNUSED_RESULT;
+int spi_bus_transfer_async(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t len, void (*cb)(struct device* dev, const void* trans, void* userdata), void* userdata) COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief 轮询等待异步传输完成
  * @param dev client device
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-int  spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms)
-    COMPAT_WARN_UNUSED_RESULT;
+int  spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus
@@ -178,7 +154,9 @@ int  spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms)
 #pragma GCC poison hal_spi_bus_host_init hal_spi_bus_host_deinit
 #pragma GCC poison hal_spi_dev_init hal_spi_dev_hw_open hal_spi_dev_hw_close
 #pragma GCC poison hal_spi_dev_register hal_spi_dev_unregister
-#pragma GCC poison spi_sync spi_slave_sync spi_slave_queue_tx hal_spi_get_trans_result
+#pragma GCC poison spi_sync spi_slave_sync spi_slave_queue_tx
+#pragma GCC poison hal_spi_sync hal_spi_slave_sync hal_spi_slave_queue_tx
+#pragma GCC poison hal_spi_get_trans_result
 #pragma GCC poison hal_spi_transfer_async hal_spi_transfer_poll
 #pragma GCC poison hal_spi_callback_t
 #endif

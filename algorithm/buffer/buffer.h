@@ -34,12 +34,12 @@
   */
  struct fifo_spsc
  {
-     Fifo_Data_type* buf ATTR_ALIGN(32);
-     uint16_t size;
-     uint16_t mask; /**< 掩码值等于 size - 1，用于在最后一步映射物理数组下标 */
+     Fifo_Data_type* buf ATTR_ALIGN(32);  /**< 数据缓冲区 (32 字节对齐) */
+     uint16_t size;                        /**< 缓冲区容量 */
+     uint16_t mask;                        /**< 掩码值等于 size - 1，用于在最后一步映射物理数组下标 */
  
-     ATTR_ALIGN(64) uint16_t w_ptr;
-     ATTR_ALIGN(64) uint16_t r_ptr;
+     ATTR_ALIGN(64) uint16_t w_ptr;        /**< 写指针 (64 字节对齐, 独占缓存行) */
+     ATTR_ALIGN(64) uint16_t r_ptr;        /**< 读指针 (64 字节对齐, 独占缓存行) */
  };
  
  /**
@@ -113,12 +113,12 @@
 typedef uintptr_t Double_Buffer_Data_type;
 struct double_buffer_spsc
 {
-    ATTR_ALIGN(32) Double_Buffer_Data_type* buf1;
-    ATTR_ALIGN(32) Double_Buffer_Data_type* buf2;
-    uint16_t size;
-    uint16_t mask; /**< 掩码值等于 size - 1，用于在最后一步映射物理数组下标 */
-    ATTR_ALIGN(64) uint16_t w_ptr;
-    ATTR_ALIGN(64) uint16_t r_ptr;
+    ATTR_ALIGN(32) Double_Buffer_Data_type* buf1;  /**< 缓冲区 1 (32 字节对齐) */
+    ATTR_ALIGN(32) Double_Buffer_Data_type* buf2;  /**< 缓冲区 2 (32 字节对齐) */
+    uint16_t size;                                  /**< 缓冲区容量 */
+    uint16_t mask;                                  /**< 掩码值等于 size - 1，用于在最后一步映射物理数组下标 */
+    ATTR_ALIGN(64) uint16_t w_ptr;                  /**< 写指针 (64 字节对齐, 独占缓存行) */
+    ATTR_ALIGN(64) uint16_t r_ptr;                  /**< 读指针 (64 字节对齐, 独占缓存行) */
 };
 /**
  * @brief 双缓冲区初始化

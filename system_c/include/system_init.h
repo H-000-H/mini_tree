@@ -2,42 +2,40 @@
 #pragma once
 
 /*
- * mini_tree C 版本系统初始化接口.
+ * mini_tree 系统初始化接口.
  *
- * 用户工程在 main() 中按两段式点火调用:
+ *   mini_tree_pre_os_init();
+ *   board_register_all_drivers();
+ *   mini_tree_start_tasks();
+ * #ifdef CONFIG_OSAL_NULL
+ *   xscheduler_start();
+ *   system_init_complete();
+ *   while (1) { mini_tree_system_loop(); }   // 裸机
+ * #elif defined(CONFIG_OSAL_FREERTOS)
+ *   system_init_complete();
+ *   vTaskStartScheduler();                   // FreeRTOS
+ * #elif defined(CONFIG_OSAL_RTTHREAD)
+ *   system_init_complete();
+ *   rt_system_scheduler_start();             // RT-Thread
+ * #endif
  *
- *   int main(void) {
- *       HAL_Init();
- *       SystemClock_Config();            // 仅保留 Cube 时钟
- *       mini_tree_pre_os_init();         // Phase 1
- *       board_register_all_drivers();
- *       mini_tree_start_tasks();         // Phase 2: DTS probe → hal_if
- *       system_init_complete();
- *   #ifdef CONFIG_OSAL_NULL
- *       while (1) { mini_tree_system_loop(); }
- *   #else
- *       vTaskStartScheduler();
- *   #endif
- *   }
+ * 业务任务请走 osal_task_create / osal_task_create_handle.
  */
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
 void mini_tree_pre_os_init(void);
 void mini_tree_start_tasks(void);
+
+/* 裸机 super-loop 入口; OS 后端由内核调度, 通常不调用 */
 void mini_tree_system_loop(void);
 
-/* ── 初始化完成 — 释放全局中断 ──
- * 在 vTaskStartScheduler() 之前调用.
- * 如果忘记调用不会造成灾难: FreeRTOS 在首次上下文切换时也会自动使能中断.
- */
+/* 初始化完成 — 释放全局中断 (启动调度器 / 进入 while 前调用) */
 void system_init_complete(void);
 
 #ifdef __cplusplus
 }
 #endif
-
-

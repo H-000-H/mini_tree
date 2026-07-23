@@ -28,46 +28,46 @@ extern "C"
 /* ── 编译期属性: dtc-lite 在构建期展开, runtime 只读静态表 ── */
 struct device_property
 {
-    const char* key;
-    const char* value;
+    const char* key;    /**< 属性键名 */
+    const char* value;  /**< 属性值字符串 */
 };
 
 /* ── 设备关键性等级 ── */
 enum device_criticality
 {
-    DEVICE_CRIT_IGNORE = 0,   /* 可无声忽略 */
-    DEVICE_CRIT_WARNING,      /* 失败时记录告警 (默认) */
-    DEVICE_CRIT_FATAL,        /* 失败时触发 OSAL_PANIC 安全停机 */
+    DEVICE_CRIT_IGNORE = 0,   /**< 可无声忽略 */
+    DEVICE_CRIT_WARNING,      /**< 失败时记录告警 (默认) */
+    DEVICE_CRIT_FATAL,        /**< 失败时触发 OSAL_PANIC 安全停机 */
 };
 
 /* ── 设备状态 ── */
 enum device_status
 {
-    DEVICE_STATUS_DISABLED = 0,
-    DEVICE_STATUS_UNINIT,
-    DEVICE_STATUS_READY,
-    DEVICE_STATUS_PROBED,
-    DEVICE_STATUS_RUNNING,
-    DEVICE_STATUS_SUSPENDED,
-    DEVICE_STATUS_ERROR,
-    DEVICE_STATUS_REMOVED,
+    DEVICE_STATUS_DISABLED = 0,  /**< 已禁用 */
+    DEVICE_STATUS_UNINIT,        /**< 未初始化 */
+    DEVICE_STATUS_READY,         /**< 就绪 */
+    DEVICE_STATUS_PROBED,        /**< 已探测 */
+    DEVICE_STATUS_RUNNING,       /**< 运行中 */
+    DEVICE_STATUS_SUSPENDED,     /**< 已挂起 */
+    DEVICE_STATUS_ERROR,         /**< 错误 */
+    DEVICE_STATUS_REMOVED,       /**< 已移除 */
 };
 
 /* ── reg 条目（由 dtc-lite 按 #address-cells / #size-cells 分组） ── */
 struct device_reg
 {
-    const uint32_t* addr;       /* 地址值数组 [#address-cells 个] */
-    const uint32_t* size;       /* 长度值数组 [#size-cells 个] (NULL 若 size-cells == 0) */
-    uint8_t         addr_cells;
-    uint8_t         size_cells;
+    const uint32_t* addr;       /**< 地址值数组 [#address-cells 个] */
+    const uint32_t* size;       /**< 长度值数组 [#size-cells 个] (NULL 若 size-cells == 0) */
+    uint8_t         addr_cells; /**< 地址单元数 */
+    uint8_t         size_cells; /**< 长度单元数 */
 };
 
 /* ── interrupt 条目（由 dtc-lite 按 #interrupt-cells 分组） ── */
 struct device_irq
 {
-    int             irq;        /* 中断号（供 hal_irq_enable 使用） */
-    int             type;       /* 中断类型（GIC SPI=0, PPI=1, 或直接填 flags） */
-    int             flags;      /* 中断标志（IRQ_TYPE_LEVEL_HIGH 等） */
+    int             irq;        /**< 中断号（供 hal_irq_enable 使用） */
+    int             type;       /**< 中断类型（GIC SPI=0, PPI=1, 或直接填 flags） */
+    int             flags;      /**< 中断标志（IRQ_TYPE_LEVEL_HIGH 等） */
 };
 
 /* ── 前向声明 ── */
@@ -77,21 +77,21 @@ struct device;
 /* ── 编译期只读设备树节点 ── */
 struct device_node
 {
-    const char*         name;
-    const char*         label;          /* DTS label (如 pwm_backlight) */
-    const char*         compatible;
-    const char*         path;           /* DTS 全路径 (如 /soc/spi2@0) */
-    const struct device_property* props;
-    const device_id_t*  deps;
-    const struct device_reg* regs;      /* reg 条目表（预分组, NULL 表示无 reg） */
-    const struct device_irq* irqs;      /* interrupt 表（预分组, NULL 表示无 interrupts） */
-    uint8_t             status;         /* 编译期默认状态 */
-    uint8_t             criticality;    /* DEVICE_CRIT_xxx: probe 失败时的系统行为 */
-    uint8_t             flags;          /* DEVICE_FLAG_xxx */
-    uint8_t             prop_count;
-    uint8_t             dep_count;
-    uint8_t             reg_count;      /* reg 条目数 */
-    uint8_t             irq_count;      /* interrupt 条目数 */
+    const char*         name;       /**< 节点名称 */
+    const char*         label;      /**< DTS label (如 pwm_backlight) */
+    const char*         compatible; /**< compatible 字符串 */
+    const char*         path;       /**< DTS 全路径 (如 /soc/spi2@0) */
+    const struct device_property* props;    /**< 属性表 */
+    const device_id_t*  deps;               /**< 依赖设备 ID 表 */
+    const struct device_reg* regs;          /**< reg 条目表（预分组, NULL 表示无 reg） */
+    const struct device_irq* irqs;          /**< interrupt 表（预分组, NULL 表示无 interrupts） */
+    uint8_t             status;             /**< 编译期默认状态 */
+    uint8_t             criticality;        /**< DEVICE_CRIT_xxx: probe 失败时的系统行为 */
+    uint8_t             flags;              /**< DEVICE_FLAG_xxx */
+    uint8_t             prop_count;         /**< 属性数量 */
+    uint8_t             dep_count;          /**< 依赖数量 */
+    uint8_t             reg_count;          /**< reg 条目数 */
+    uint8_t             irq_count;          /**< interrupt 条目数 */
 };
 
 /* 各 compatible 属性契约见 board/docs/devicetree.md */
@@ -103,26 +103,26 @@ struct device_node
 /* ── VFS 操作表 ── */
 struct file_operations
 {
-    int (*init) (struct device* dev);
-    int (*open) (struct device* dev, void* arg);
-    int (*close)(struct device* dev);
-    int (*write)(struct device* dev, const void* buffer, size_t len, uint32_t timeout_ms);
-    int (*read) (struct device* dev, void* buffer, size_t len, uint32_t timeout_ms);
-    int (*ioctl)(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms);
-    int (*suspend)(struct device* dev);
-    int (*resume)(struct device* dev);
+    int (*init)    (struct device* dev);                                                          /**< 设备初始化 */
+    int (*open)    (struct device* dev, void* arg);                                               /**< 打开设备 */
+    int (*close)   (struct device* dev);                                                          /**< 关闭设备 */
+    int (*write)   (struct device* dev, const void* buffer, size_t len, uint32_t timeout_ms);      /**< 写数据 */
+    int (*read)    (struct device* dev, void* buffer, size_t len, uint32_t timeout_ms);            /**< 读数据 */
+    int (*ioctl)   (struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms);  /**< 控制命令 */
+    int (*suspend) (struct device* dev);                                                          /**< 挂起设备 */
+    int (*resume)  (struct device* dev);                                                          /**< 恢复设备 */
 };
 
 /* ── 运行时设备实例 ── */
 struct device
 {
-    const struct device_node* node;       /* 指向编译期节点 */
-    enum device_status        status;     /* 运行时状态 */
-    void*                     priv_data;  /* 驱动私有数据 (VFS 层) */
-    const struct file_operations* ops;    /* 操作函数表 */
-    struct osal_mutex*        lock;       /* per-device 递归锁 (create_static_recursive) */
-    struct dev_lifecycle           lc;         /* 驱动 I/O 生命周期 (probe 时 device_lc_bind) */
-    void*                     platform_data; /* board 层注入的静态数据, probe 前设置 */
+    const struct device_node*       node;           /**< 指向编译期节点 */
+    enum device_status              status;         /**< 运行时状态 */
+    void*                           priv_data;      /**< 驱动私有数据 (VFS 层) */
+    const struct file_operations*   ops;            /**< 操作函数表 */
+    struct osal_mutex*              lock;           /**< per-device 递归锁 (create_static_recursive) */
+    struct dev_lifecycle            lc;             /**< 驱动 I/O 生命周期 (probe 时 device_lc_bind) */
+    void*                           platform_data;  /**< board 层注入的静态数据, probe 前设置 */
 };
 
 /* ── 查找设备 ── */

@@ -4,7 +4,7 @@
  */
 #define DAC_VFS_IMPL  /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #include "vfs-dac.h"
-#include "VFS.h"
+#include "status.h"
 #include "board_config.h"
 #include "buffer.h"
 #include "compiler_compat.h"
@@ -30,13 +30,13 @@ static const char* const s_kTag = "vfs-dac";
 
 struct vfs_dac_priv
 {
-    struct file_operations              ops;
-    struct hal_dac_host_cfg             cfg;
-    struct hal_dac_platform_unique_cfg  unique;
-    struct hal_dac_dev                  dac;
-    struct fifo_spsc                    dma_fifo;                       /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
+    struct file_operations              ops;     /**< VFS 操作表 */
+    struct hal_dac_host_cfg             cfg;     /**< host 配置 (DTSI 直投) */
+    struct hal_dac_platform_unique_cfg  unique;  /**< 平台特有配置 */
+    struct hal_dac_dev                  dac;     /**< HAL DAC 设备 */
+    struct fifo_spsc                    dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
     Fifo_Data_type                      dma_data_buf[DAC_DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 波形数据缓冲区 */
-    int                                 pool_idx;
+    int                                 pool_idx; /**< 池索引 */
 };
 
 static struct vfs_dac_priv  s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
@@ -56,6 +56,13 @@ typedef struct {
 /* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用                                                                                                                */
 /*===========================================================================================================================================================*/
 
+/**
+ * @brief DAC 命令: 写入 DAC 输出值
+ * @param priv DAC 私有数据指针
+ * @param arg vfs_dac_arg 参数指针
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int dac_cmd_write_value(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
@@ -63,6 +70,13 @@ static int dac_cmd_write_value(struct vfs_dac_priv* priv, void* arg, size_t arg_
     return hal_dac_set_value(&priv->dac, ((const vfs_dac_arg*)arg)->value);
 }
 
+/**
+ * @brief DAC 命令: 读取 DAC 当前输出值
+ * @param priv DAC 私有数据指针
+ * @param arg vfs_dac_arg 输出参数指针
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
@@ -70,12 +84,26 @@ static int dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_le
     return hal_dac_get_value(&priv->dac, &((vfs_dac_arg*)arg)->value);
 }
 
+/**
+ * @brief DAC 命令: 偏移校准 (当前未实现)
+ * @param priv 未使用
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 固定返回 VFS_ERR_NOTSUPP
+ */
 static int dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(priv); COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return VFS_ERR_NOTSUPP;
 }
 
+/**
+ * @brief DAC 命令: DMA 模式暂停或恢复输出
+ * @param priv DAC 私有数据指针
+ * @param arg vfs_dac_arg 参数指针 (pause 非 0 暂停)
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
@@ -86,18 +114,39 @@ static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_le
     return hal_dac_resume(&priv->dac);
 }
 
+/**
+ * @brief DAC 命令: 启动 DAC 输出
+ * @param priv DAC 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_dac_start(&priv->dac);
 }
 
+/**
+ * @brief DAC 命令: 强制停止 DAC 输出
+ * @param priv DAC 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_dac_force_stop(&priv->dac);
 }
 
+/**
+ * @brief DAC 命令: 向 DMA 环形缓冲区写入波形数据
+ * @param priv DAC 私有数据指针
+ * @param arg vfs_dac_arg 参数指针 (data/len)
+ * @param arg_len 参数长度
+ * @return 成功返回写入采样数 (int)len, 失败返回负数错误码
+ */
 static int dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
@@ -108,6 +157,13 @@ static int dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, size_t
     return hal_dac_write_dma_buffer(&priv->dac, a->data, a->len);
 }
 
+/**
+ * @brief DAC 命令: 普通模式暂停或恢复输出
+ * @param priv DAC 私有数据指针
+ * @param arg vfs_dac_arg 参数指针 (pause 非 0 暂停)
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int dac_cmd_base_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
@@ -144,7 +200,10 @@ static void vfs_dac_priv_pool_init(void)
 }
 
 /**
- * @brief 解析 DAC Host DTS 属性 (硬件直投值), 填入 hal_dac_host_config
+ * @brief 解析 DAC Host DTS 属性 (硬件直投值), 填入 hal_dac_host_cfg
+ * @param pdev 设备对象指针
+ * @param cfg 输出的 HAL 主机配置指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* cfg)
 {
@@ -255,7 +314,10 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
 }
 
 /**
- * @brief DAC Host VFS 打开操作
+ * @brief DAC 打开: 引用计数, 首次打开时 hal_dac_start
+ * @param pdev 设备对象指针
+ * @param arg 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_open(struct device* pdev, void* arg)
 {
@@ -290,7 +352,9 @@ static int vfs_dac_open(struct device* pdev, void* arg)
 }
 
 /**
- * @brief DAC Host VFS 关闭操作
+ * @brief DAC 关闭: 引用计数, 末次关闭时 hal_dac_force_stop 停止硬件
+ * @param pdev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_close(struct device* pdev)
 {
@@ -318,7 +382,12 @@ static int vfs_dac_close(struct device* pdev)
 }
 
 /**
- * @brief DAC Host VFS 写入操作普通模式
+ * @brief DAC 写: 通过 vfs_dac_arg.value 设置输出
+ * @param pdev 设备对象指针
+ * @param buf vfs_dac_arg 参数指针
+ * @param len 未使用
+ * @param timeout_ms 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
@@ -349,7 +418,12 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
 }
 
 /**
- * @brief DAC Host VFS 读取操作普通模式
+ * @brief DAC 读: 通过 vfs_dac_arg.value 读取当前输出
+ * @param pdev 设备对象指针
+ * @param buf vfs_dac_arg 输出参数指针
+ * @param len 未使用
+ * @param timeout_ms 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
@@ -380,7 +454,13 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
 }
 
 /**
- * @brief DAC Host VFS ioctl 操作
+ * @brief DAC ioctl 派发入口
+ * @param pdev 设备对象指针
+ * @param cmd 控制命令
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @param timeout_ms 未使用
+ * @return 成功返回 VFS_OK 或写入采样数, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
 static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
@@ -422,7 +502,9 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 }
 
 /**
- * @brief DAC Host VFS 挂起操作
+ * @brief DAC 挂起: hal_dac_pause
+ * @param pdev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_suspend(struct device* pdev)
 {
@@ -449,7 +531,9 @@ static int vfs_dac_suspend(struct device* pdev)
 }
 
 /**
- * @brief DAC Host VFS 恢复操作
+ * @brief DAC 恢复: hal_dac_resume
+ * @param pdev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_resume(struct device* pdev)
 {
@@ -490,7 +574,9 @@ static const struct file_operations fops =
 };
 
 /**
- * @brief DAC Host VFS 探测操作
+ * @brief DAC 探测: 解析 DTS, hal 初始化, 注册 fops
+ * @param pdev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_probe(struct device* pdev)
 {
@@ -562,7 +648,9 @@ err_pool:
 }
 
 /**
- * @brief DAC Host VFS 移除操作
+ * @brief DAC 移除: remove_start → 排空 IO → force_stop/close → 归还私有池
+ * @param pdev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_dac_remove(struct device* pdev)
 {

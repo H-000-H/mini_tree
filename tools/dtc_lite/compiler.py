@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+from collections import deque
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .dts_ast import DtsNode, DtsProperty
@@ -49,6 +50,10 @@ class DTSCompiler:
         self._extra_defines: List[str] = extra_defines or []
         # 已用 cpp 提取过宏的头文件集合 (避免对同一头文件重复跑 cpp)
         self._cpp_headers_loaded: Set[str] = set()
+        # ── 拓扑排序 / 依赖图缓存 (compile() 完成后只读, 可安全缓存) ──
+        self._dep_graph: Optional[List[List[int]]] = None
+        self._topo_order: Optional[List[int]] = None
+        self._deps_cache: Optional[List[List[str]]] = None
 
     def _preprocess(self, text: str) -> str:
         base_dir: str = os.path.dirname(os.path.abspath(self.dts_path))
@@ -643,7 +648,7 @@ class DTSCompiler:
         text = self._preprocess(text)
         self.root = parse_dts(text, self.dts_path)
 
-        # 突破：先建立基础映射，再延迟合并，允许无序引用和虚空创生
+        # 先建立基础映射，再延迟合并，允许无序引用和虚空创生
         self._build_label_map(self.root)
         self._merge_overlays()
 
@@ -917,7 +922,23 @@ class DTSCompiler:
                 deps.append(parent_label)
         return deps
 
+    def _get_deps_cached(self, idx: int) -> List[str]:
+        """带缓存的 get_device_deps: 首次调用时一次性为所有设备计算依赖列表,
+        后续直接按索引取, 避免在拓扑排序 / 建图 / 代码生成中反复扫描 props。"""
+        if self._deps_cache is None:
+            self._deps_cache = [self.get_device_deps(dev) for dev in self.device_list]
+        return self._deps_cache[idx]
+
     def topological_sort(self) -> List[int]:
+        """Kahn 算法 (BFS) 拓扑排序, 结果缓存避免重复计算。
+
+        优化点:
+          * 用 collections.deque
+          * 首次计算后缓存 _topo_order 与 _dep_graph, 后续调用直接返回。
+        """
+        if self._topo_order is not None:
+            return self._topo_order
+
         n: int = len(self.device_list)
         name_to_idx: Dict[str, int] = {}
         label_to_idx: Dict[str, int] = {}
@@ -929,8 +950,8 @@ class DTSCompiler:
         graph: List[List[int]] = [[] for _ in range(n)]
         in_degree: List[int] = [0] * n
 
-        for i, dev in enumerate(self.device_list):
-            deps: List[str] = self.get_device_deps(dev)
+        for i in range(n):
+            deps: List[str] = self._get_deps_cached(i)
             dep_indices: Set[int] = set()
             for dep_label in deps:
                 if dep_label in label_to_idx:
@@ -939,11 +960,14 @@ class DTSCompiler:
                 graph[di].append(i)
                 in_degree[i] += 1
 
-        queue: List[int] = [i for i in range(n) if in_degree[i] == 0]
+        # 缓存邻接表供 _build_dep_graph / compute_cascade_tables 复用
+        self._dep_graph = graph
+
+        queue: deque[int] = deque(i for i in range(n) if in_degree[i] == 0)
         result: List[int] = []
 
         while queue:
-            node: int = queue.pop(0)
+            node: int = queue.popleft()  
             result.append(node)
             for neighbor in graph[node]:
                 in_degree[neighbor] -= 1
@@ -955,26 +979,14 @@ class DTSCompiler:
             raise RuntimeError(
                 f"Circular dependency detected among devices: {cycle_nodes}"
             )
+        self._topo_order = result
         return result
 
     def _build_dep_graph(self) -> Tuple[List[List[int]], Dict[int, int]]:
-        n: int = len(self.device_list)
-        label_to_idx: Dict[str, int] = {}
-        for i, dev in enumerate(self.device_list):
-            if dev.label:
-                label_to_idx[dev.label] = i
-
-        graph: List[List[int]] = [[] for _ in range(n)]
-        for i, dev in enumerate(self.device_list):
-            deps: List[str] = self.get_device_deps(dev)
-            dep_set: Set[int] = set()
-            for dep_label in deps:
-                if dep_label in label_to_idx:
-                    dep_set.add(label_to_idx[dep_label])
-            for di in dep_set:
-                graph[di].append(i)
-
-        order: List[int] = self.topological_sort()
+        """返回 (邻接表, 拓扑序号映射)。直接复用 topological_sort() 的缓存,
+        不再重复建图与排序。"""
+        order: List[int] = self.topological_sort()  # 命中缓存则 O(1)
+        graph: List[List[int]] = self._dep_graph   # topological_sort 已缓存
         order_idx: Dict[int, int] = {dev: pos for pos, dev in enumerate(order)}
         return graph, order_idx
 
@@ -987,23 +999,30 @@ class DTSCompiler:
         return children
 
     def compute_cascade_tables(self) -> Dict[int, List[int]]:
+        """传递闭包 (级联依赖表)。
+
+        优化: 按逆拓扑序做 DP —— 子节点先于父节点处理, 每个节点的 cascade
+        等于其直接子节点 + 各子节点 cascade 的并集。每条边只被展开一次,
+        避免原来对每个节点独立 DFS 的 O(n·(n+e)) 开销。"""
         graph, order_idx = self._build_dep_graph()
         n: int = len(self.device_list)
+        order: List[int] = self.topological_sort()
+
+        cascade_sets: List[Optional[Set[int]]] = [None] * n
+        # 逆拓扑序: 保证 graph[node] 里的子节点已被处理
+        for node in reversed(order):
+            visited: Set[int] = set()
+            for child in graph[node]:
+                visited.add(child)
+                child_cascade: Optional[Set[int]] = cascade_sets[child]
+                if child_cascade:
+                    visited.update(child_cascade)
+            cascade_sets[node] = visited
 
         cascade: Dict[int, List[int]] = {}
         for i in range(n):
-            visited: Set[int] = set()
-            stack: List[int] = list(graph[i])
-            while stack:
-                child: int = stack.pop()
-                if child in visited:
-                    continue
-                visited.add(child)
-                for grandchild in graph[child]:
-                    if grandchild not in visited:
-                        stack.append(grandchild)
-            sorted_visited: List[int] = sorted(visited, key=lambda x: order_idx.get(x, x))
-            if sorted_visited:
-                cascade[i] = sorted_visited
+            s: Optional[Set[int]] = cascade_sets[i]
+            if s:
+                cascade[i] = sorted(s, key=lambda x: order_idx.get(x, x))
         return cascade
 

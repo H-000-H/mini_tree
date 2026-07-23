@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 
-#include "VFS.h"
+#include "status.h"
 #include "compiler_compat.h"
 
 #ifdef __cplusplus
@@ -24,17 +24,17 @@ extern "C"
 
 typedef enum dev_lc_state
 {
-    DEV_LC_UNINITIALIZED = 0,
-    DEV_LC_LIVE,
-    DEV_LC_REMOVING,
-    DEV_LC_DEAD,
+    DEV_LC_UNINITIALIZED = 0,  /**< 未初始化 */
+    DEV_LC_LIVE,               /**< 运行中 */
+    DEV_LC_REMOVING,           /**< 正在移除 */
+    DEV_LC_DEAD,               /**< 已死亡 */
 } dev_lc_state_t;
 
 struct dev_lifecycle
 {
-    COMPAT_ATOMIC_INT opens;
-    COMPAT_ATOMIC_INT io_active;
-    COMPAT_ATOMIC_INT state;
+    COMPAT_ATOMIC_INT opens;       /**< 当前打开计数 (-1 = teardown 锁定) */
+    COMPAT_ATOMIC_INT io_active;   /**< 当前 I/O 活跃计数 (-1 = teardown 锁定) */
+    COMPAT_ATOMIC_INT state;       /**< 状态机 (dev_lc_state_t) */
 };
 
 void dev_lc_init(struct dev_lifecycle* lc);

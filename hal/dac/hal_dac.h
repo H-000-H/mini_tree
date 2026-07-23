@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "compiler_compat.h"
-#include "VFS.h"
+#include "status.h"
 #include "buffer.h"
 #ifdef __cplusplus
 extern "C"
@@ -45,7 +45,7 @@ extern "C"
 
 /**
  * @brief DAC 配置
- * @param channel 通道号, 0 = DAC1
+ * @param channel 通道选择 (LL_DAC_CHANNEL_1 / LL_DAC_CHANNEL_2)
  * @param align 数据对齐模式
  * @param output_buf 输出缓冲: 0 = 不缓冲, 1 = 缓冲
  * @param use_dma DMA 模式: 0 = 软件写入, 1 = DMA 自动输出
@@ -55,7 +55,7 @@ typedef struct hal_dac_cfg
     uint32_t    it_enable;                  /**< DAC 中断模式使能标志 */
     int32_t     irqn;                       /**< NVIC 中断号 (DTS irqn, -1 = 无中断) */
     uint32_t    irq_priority;               /**< NVIC 中断优先级 (DTS irq-priority, 0=最高) */
-    uint32_t    channel;                    /**< 通道号, 0 = DAC1 */
+    uint32_t    channel;                    /**< 通道选择 (LL_DAC_CHANNEL_1 / LL_DAC_CHANNEL_2) */
     uint32_t    trigger_source;             /**< 触发源 */
     uint32_t    data_align;                 /**< 数据对齐模式 */
     uint32_t    output_buf;                 /**< 输出缓冲: 0 = 不缓冲, 1 = 缓冲 */

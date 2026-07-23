@@ -24,6 +24,10 @@
  */
 static volatile uint32_t s_panic_counter = 0;
 
+/**
+ * @brief bootloop 检查
+ * @return true 可启动
+ */
 bool safe_state_check_bootloop(void)
 {
     if (s_panic_counter >= BOOTLOOP_THRESHOLD)
@@ -35,18 +39,17 @@ bool safe_state_check_bootloop(void)
     return true;
 }
 
+/**
+ * @brief 清零计数
+ */
 void safe_state_clear_bootloop(void)
 {
     s_panic_counter = 0;
 }
 
-/*
- * enter_safe_state — 不可恢复的安全状态
- *
- * 顺序:
- *   1. 平台硬件闭锁: 停外设, 亮故障灯, 蜂鸣器
- *   2. 挂起调度器 + 关中断
- *   3. 死循环 (外设由硬件自主维持)
+/**
+ * @brief 进入不可恢复的安全状态 (硬件闭锁 → 冻结调度 → 关中断 → 死循环)
+ * @param reason 触发原因描述 (当前忽略, 预留日志)
  */
 void enter_safe_state(const char* reason)
 {
@@ -65,8 +68,8 @@ void enter_safe_state(const char* reason)
     }
 }
 
-/*
- * NMI 紧急标记: 委托平台实现 (IRAM 安全)
+/**
+ * @brief NMI 紧急标记 (委托平台 IRAM 安全实现)
  */
 void safe_state_nmi_emergency_stamp(void)
 {

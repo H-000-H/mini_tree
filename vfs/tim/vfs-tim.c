@@ -22,11 +22,11 @@
 
 struct vfs_tim_priv
 {
-    struct file_operations              ops;
-    struct hal_tim_host_config          cfg;
-    hal_tim_platform_unique_config      unique;
-    struct hal_tim_device               tim;
-    int                                 pool_idx;
+    struct file_operations              ops;      /**< VFS 操作表 */
+    struct hal_tim_host_config          cfg;      /**< host 配置 (DTSI 直投) */
+    hal_tim_platform_unique_config      unique;   /**< 平台特有配置 */
+    struct hal_tim_device               tim;      /**< HAL TIM 设备 */
+    int                                 pool_idx; /**< 池索引 */
 };
 
 static struct vfs_tim_priv          s_tim_priv_pool[TIM_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
@@ -34,6 +34,11 @@ static uint8_t                      s_tim_priv_used[TIM_VFS_PRIV_COUNT] COMPAT_A
 static osal_pool_t                  s_tim_priv_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const            s_kTag = "vfs-tim-host";
 
+/**
+ * @brief 获取 TIM VFS 设备关联的 HAL 定时器句柄
+ * @param dev TIM device 指针
+ * @return 成功返回 hal_tim_device 指针, 失败返回 NULL
+ */
 hal_tim_device* vfs_tim_get_hal_dev(struct device* dev)
 {
     if (!dev)
@@ -46,13 +51,10 @@ hal_tim_device* vfs_tim_get_hal_dev(struct device* dev)
 
 /**
  * @brief TIM Ioctl 命令处理函数指针类型
- * @param       priv 私有数据指针
- * @param       arg 参数指针
- * @param       arg_len 参数长度
- * @param       timeout_ms 超时时间
- * @details     该函数用于处理TIM Ioctl命令,根据命令类型调用相应的处理函数
- * @note        此处用函数回调的原因是TIM 的ioctl命令处理函数比较复杂,需要根据命令类型调用相应的处理函数若用switch语句则会导致代码冗长且难以维护,故用函数回调的方式来处理TIM Ioctl命令
- * @return      成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @param priv TIM 私有数据指针
+ * @param arg 命令参数指针
+ * @param arg_len 参数长度
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 typedef int (*tim_cmd_handler_t)(struct vfs_tim_priv *priv, void *arg, size_t arg_len);
 
@@ -64,24 +66,52 @@ typedef struct {
 /* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用                                                                                                                */
 /*===========================================================================================================================================================*/
 
+/**
+ * @brief TIM 命令: 强制停止定时器
+ * @param priv TIM 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_tim_force_stop(&priv->tim);
 }
 
+/**
+ * @brief TIM 命令: 暂停定时器计数 (base_stop)
+ * @param priv TIM 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_tim_base_stop(&priv->tim);
 }
 
+/**
+ * @brief TIM 命令: 恢复定时器计数 (base_start)
+ * @param priv TIM 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_resume(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_tim_base_start(&priv->tim);
 }
 
+/**
+ * @brief TIM 命令: 读取当前计数值
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -89,6 +119,13 @@ static int tim_cmd_get_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_
     return hal_tim_get_counter(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 设置当前计数值
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 设定值指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_set_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -96,6 +133,13 @@ static int tim_cmd_set_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_
     return hal_tim_set_counter(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 更新 PWM 通道占空比 (ARR/CCR)
+ * @param priv TIM 私有数据指针
+ * @param arg vfs_tim_arg 参数指针
+ * @param arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(struct vfs_tim_arg))
@@ -104,6 +148,13 @@ static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_l
     return hal_tim_pwm_update(&priv->tim, a->channel, a->arr, a->ccr);
 }
 
+/**
+ * @brief TIM 命令: 读取输入捕获值
+ * @param priv TIM 私有数据指针
+ * @param arg vfs_tim_arg 参数指针 (channel 入, value 出)
+ * @param arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(struct vfs_tim_arg))
@@ -112,6 +163,13 @@ static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_
     return hal_tim_get_capture_value(&priv->tim, a->channel, &a->value);
 }
 
+/**
+ * @brief TIM 命令: 读取编码器计数值
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_encoder(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -119,6 +177,13 @@ static int tim_cmd_get_encoder(struct vfs_tim_priv* priv, void* arg, size_t arg_
     return hal_tim_get_encoder_value(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 读取霍尔传感器计数值
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_hall(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -126,6 +191,13 @@ static int tim_cmd_get_hall(struct vfs_tim_priv* priv, void* arg, size_t arg_len
     return hal_tim_get_hall_value(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 设置自动重装载值 (ARR)
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 设定值指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_set_autoreload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -133,6 +205,13 @@ static int tim_cmd_set_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
     return hal_tim_set_autoreload(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 读取自动重装载值 (ARR)
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -140,6 +219,13 @@ static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
     return hal_tim_get_autoreload(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 设置预分频系数
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 设定值指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_set_prescaler(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -147,6 +233,13 @@ static int tim_cmd_set_prescaler(struct vfs_tim_priv* priv, void* arg, size_t ar
     return hal_tim_set_prescaler(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 读取预分频系数
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_prescaler(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -154,6 +247,13 @@ static int tim_cmd_get_prescaler(struct vfs_tim_priv* priv, void* arg, size_t ar
     return hal_tim_get_prescaler(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 设置时钟分频
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 设定值指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_set_clock_division(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -161,6 +261,13 @@ static int tim_cmd_set_clock_division(struct vfs_tim_priv* priv, void* arg, size
     return hal_tim_set_clock_division(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 读取时钟分频
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_clock_division(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -168,6 +275,13 @@ static int tim_cmd_get_clock_division(struct vfs_tim_priv* priv, void* arg, size
     return hal_tim_get_clock_division(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 设置计数模式
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 设定值指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_set_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -175,6 +289,13 @@ static int tim_cmd_set_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
     return hal_tim_set_counter_mode(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 读取计数模式
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 输出缓冲区指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -182,18 +303,39 @@ static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
     return hal_tim_get_counter_mode(&priv->tim, (uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 启用 ARR 预装载
+ * @param priv TIM 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_tim_enable_arr_preload(&priv->tim);
 }
 
+/**
+ * @brief TIM 命令: 禁用 ARR 预装载
+ * @param priv TIM 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_disable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_tim_disable_arr_preload(&priv->tim);
 }
 
+/**
+ * @brief TIM 命令: 配置定时器中断掩码
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 中断掩码指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_set_interrupt(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -201,6 +343,13 @@ static int tim_cmd_set_interrupt(struct vfs_tim_priv* priv, void* arg, size_t ar
     return hal_tim_interrupt_config(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 启动编码器模式
+ * @param priv TIM 私有数据指针
+ * @param arg uint32_t 编码器参数指针
+ * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if(!arg || arg_len < sizeof(uint32_t))
@@ -208,12 +357,26 @@ static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t ar
     return hal_tim_encoder_start(&priv->tim, *(const uint32_t*)arg);
 }
 
+/**
+ * @brief TIM 命令: 启动霍尔传感器模式
+ * @param priv TIM 私有数据指针
+ * @param arg 未使用
+ * @param arg_len 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
     return hal_tim_hall_start(&priv->tim);
 }
 
+/**
+ * @brief TIM 命令: 按 cfg.mode 启动定时器 (encoder 需 arg 为 uint32_t; hall/default 忽略 arg)
+ * @param priv TIM 私有数据指针
+ * @param arg encoder 模式下为 uint32_t 参数指针; 其他模式未使用
+ * @param arg_len 参数长度 (encoder 模式需 >= sizeof(uint32_t))
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int tim_cmd_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
@@ -274,9 +437,9 @@ static void vfs_tim_priv_pool_init()
 /**
  * @brief   解析 TIM Host DTS 属性 (硬件直投值), 填入 hal_tim_host_config
  * @note    unique不在此处解析因为unique属于特殊变量在probe解析
- * @param   dev 设备对象指针
+ * @param   pdev 设备对象指针
  * @param   cfg 输出的 HAL 总线配置结构
- * @return  成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @return  成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_config* cfg)
 {
@@ -490,10 +653,10 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
 }
 
 /**
- * @brief TIM Client 设备打开操作
+ * @brief TIM Client 打开: 引用计数, 首次打开时调用 hal_tim_open
  * @param pdev 设备对象指针
- * @param arg 参数
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @param arg 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_open(struct device*pdev,void*arg)
 {
@@ -527,9 +690,9 @@ static int vfs_tim_open(struct device*pdev,void*arg)
 }
 
 /**
- * @brief TIM Client 设备关闭操作 (引用计数, 末次关闭时调用 hal_tim_close)
+ * @brief TIM Client 关闭: 引用计数, 末次关闭时调用 hal_tim_close
  * @param pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_IO
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_close(struct device*pdev)
 {
@@ -556,13 +719,13 @@ static int vfs_tim_close(struct device*pdev)
 }
 
 /**
- * @brief TIM Client 设备 Ioctl 操作 操作特殊mode的命令
+ * @brief TIM Client ioctl: 命令映射表派发
  * @param pdev 设备对象指针
- * @param cmd 命令
- * @param arg 参数
+ * @param cmd 控制命令
+ * @param arg 命令参数指针
  * @param arg_len 参数长度
- * @param timeout_ms 超时时间
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @param timeout_ms 未使用
+ * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
 static int vfs_tim_ioctl(struct device*pdev,int cmd,void*arg,size_t arg_len,uint32_t timeout_ms)
 {
@@ -583,7 +746,7 @@ static int vfs_tim_ioctl(struct device*pdev,int cmd,void*arg,size_t arg_len,uint
     priv = container_of(pdev->ops,struct vfs_tim_priv,ops);
     tim_cmd_handler_t handler = NULL;
 
-    /**<提取出低8位数据,因为命令格式固定为x宏且每个命令长度为256所以直接提取低8位可以直接作为index且第一个命令就是从0x01开始>*/
+    /**< 提取出低8位数据,因为命令格式固定为x宏且每个命令长度为256所以直接提取低8位可以直接作为index且第一个命令就是从0x01开始 */
     int32_t offset           = (int32_t)cmd - (int32_t)TIM_CMD_BASE;
     if(offset < 1 || offset > TIM_CMD_COUNT)
     {
@@ -603,12 +766,12 @@ static int vfs_tim_ioctl(struct device*pdev,int cmd,void*arg,size_t arg_len,uint
 }
 
 /**
- * @brief TIM Client 设备读操作,为了语义明确,读操作只读取当前计数值,不读取其他状态
+ * @brief TIM Client 读: 仅读取当前计数值到 buf
  * @param pdev 设备对象指针
- * @param buf 缓冲区
- * @param len 长度
- * @param timeout_ms 超时时间
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @param buf uint32_t 输出缓冲区指针
+ * @param len 未使用
+ * @param timeout_ms 未使用
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_Base_read(struct device*pdev,void*buf,size_t len,uint32_t timeout_ms)
 {
@@ -634,12 +797,12 @@ static int vfs_tim_Base_read(struct device*pdev,void*buf,size_t len,uint32_t tim
 }
 
 /**
- * @brief TIM Client 设备写操作,为了语义明确,写操作只写入当前计数值,不写入其他状态
+ * @brief TIM Client 写: 仅设置计数值 (buf 为 vfs_tim_arg, 使用 value 字段)
  * @param pdev 设备对象指针
- * @param buf 缓冲区
- * @param len 长度
- * @param timeout_ms 超时时间
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @param buf vfs_tim_arg 参数指针
+ * @param len 未使用
+ * @param timeout_ms 未使用
+ * @return 固定返回 VFS_OK (不传播 hal_tim_set_counter 错误)
  */
 static int vfs_tim_Base_write(struct device*pdev,const void*buf,size_t len,uint32_t timeout_ms)
 {
@@ -666,9 +829,9 @@ static int vfs_tim_Base_write(struct device*pdev,const void*buf,size_t len,uint3
 }
 
 /**
- * @brief TIM Client 设备挂起操作,挂起操作只挂起定时器,不挂起其他状态
+ * @brief TIM Client 挂起: 调用 hal_tim_base_stop 暂停计数
  * @param pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @return 成功返回 VFS_OK, IO 门控失败返回 VFS_ERR_IO, 其他失败返回负数错误码
  */
 static int vfs_tim_Base_suspend(struct device*pdev)
 {
@@ -697,9 +860,9 @@ static int vfs_tim_Base_suspend(struct device*pdev)
 }
 
 /**
- * @brief TIM Client 设备恢复操作,恢复操作只恢复定时器,不恢复其他状态,如果定时器已经恢复,则返回VFS_ERR_ALREADY_DONE
+ * @brief TIM Client 恢复: 调用 hal_tim_base_start 恢复计数
  * @param pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @return 固定返回 VFS_OK (不传播 hal_tim_base_start 错误)
  */
 static int vfs_tim_Base_resume(struct device*pdev)
 {
@@ -742,9 +905,9 @@ static const struct file_operations fops=
 
 
 /**
- * @brief TIM Client 设备探测操作 (初始化定时器, 解析 DTS, 设置文件操作)
+ * @brief TIM 设备探测: 解析 DTS, hal_tim_device_init, 注册 fops
  * @param pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL, VFS_ERR_NOMEM, VFS_ERR_IO
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_probe(struct device*pdev)
 {
@@ -817,6 +980,11 @@ err_pool:
     return ret;
 }
 
+/**
+ * @brief TIM 设备移除: remove_start → 排空 IO → hal 释放 → 归还私有池
+ * @param pdev 设备对象指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int vfs_tim_remove(struct device*pdev)
 {
     struct vfs_tim_priv*        priv;

@@ -2,7 +2,7 @@
 /*
  * system_init.cpp — MiniTree 两阶段系统初始化实现
  *
- * Phase 1 Pre_OS_Init: 关中断 → bootloop 保护 → RTC_WDT → 设备树 → EventBus
+ * Phase 1 Pre_OS_Init: 关中断 → bootloop 保护 → IWDG → 设备树 → EventBus
  * Phase 2 Start_Tasks: 驱动探测 → TWDT → scrubber → 清 bootloop → seal EventBus
  * 全局中断由 system_init_complete() 释放, g_system_os_initialized 守护 SIOF
  */
@@ -20,10 +20,12 @@
 #include "event_bus.h"
 #include "device.h"
 #include "driver.h"
-#include "VFS.h"
+#include "status.h"
 #include "interrupt.h"
 
+#ifdef CONFIG_OSAL_NULL
 extern "C" void xScheduler_Poll(void);
+#endif
 
 /* ── 启动期全局中断控制 (平台抽象) ──
  * 在 Pre_OS_Init 入口关全局中断, 阻断 ISR 抢跑访问未就绪的框架状态.
@@ -73,7 +75,7 @@ void MiniTree::System_Pre_OS_Init(void)
 
     /* RTC 硬件看门狗: 独立时钟, 在 CPU 总线停滞时仍存活 */
 #ifdef CONFIG_ENABLE_WDT
-    system_wdt_init_rtc(8000);
+    system_wdt_init_iwdg(8000);
 #endif
 
     /* 设备树初始化 (编译时生成的节点表) */
@@ -161,21 +163,14 @@ void MiniTree::System_Start_Tasks(void)
 
     /*
      * ─── 用户任务创建钩子点 ───
-     * 用户工程在此处创建自身的任务:
-     *
-     *   MiniTree::System_Start_Tasks();
-     *   xTaskCreate(my_app_task, "app", 2048, NULL, 1, NULL);
-     *   vTaskStartScheduler();
+     * 在 System_Start_Tasks() 之后、启动调度器之前:
+     *   osal_task_create_handle(...);   // 统一走 OSAL, 勿直接调内核 API
      */
 
     SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
 }
 
-/* ── 初始化完成 — 释放全局中断 ──
- * 在 vTaskStartScheduler() 之前调用, 允许 ISR 开始响应.
- * FreeRTOS 的 vTaskStartScheduler 在首次上下文切换时也会自动使能中断,
- * 所以即使忘记调用此函数, 系统启动后中断仍能正常工作.
- */
+/* ── 初始化完成 — 释放全局中断 (进入裸机 while / OS 调度器启动前) ── */
 extern "C" void system_init_complete(void)
 {
     IRQ_ENABLE();
@@ -195,8 +190,10 @@ extern "C" void mini_tree_system_loop(void)
 {
 #ifdef CONFIG_ENABLE_WDT
     system_wdt_feed();
-    system_wdt_feed_rtc();
+    system_wdt_feed_iwdg();
 #endif
     interrupt_bottom_half_poll();   /**< 执行下半部队列 */
+#ifdef CONFIG_OSAL_NULL
     xScheduler_Poll();              /**< 时间片调度器轮询 */
+#endif
 }

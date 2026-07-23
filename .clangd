@@ -1,120 +1,53 @@
+# mini_tree 中间件通用 clangd（Linux / Windows）
+# - include 路径放在根目录 compile_flags.txt（其目录 = 编译 cwd，相对 -I 才正确）
+# - 禁止在子目录再放 compile_flags.txt（会覆盖根配置，且相对路径常失效）
+# - 生成头用 ide/stubs；ETL 用 ide/third_party/etl（可 symlink 到本地 ETL 源）
+# - 勿在本文件用相对 -I：fallback 的 cwd 是源文件所在目录，-Icore/include 会找错
+# - 有 compile_commands.json 时优先用之；本文件只做 Merge（Remove / 语言切换）
+# 用法：打开 mini_tree 根目录；改完后命令面板执行 Clangd: Restart language server
+
 CompileFlags:
-  CompilationDatabase: ../build/Debug
+  Remove:
+    - --target=*
+    - -mcpu=*
+    - -mfpu=*
+    - -mfloat-abi=*
+    - -fdata-sections
+    - -ffunction-sections
 
 Diagnostics:
   UnusedIncludes: None
+  Suppress:
+    - drive_mode_mismatch
 
 ---
+# 头文件当 C header 解析（跳转 / 补全）
 If:
-  PathMatch: .*mini_tree[/\\].*\.(c|S)$
+  PathMatch: .*\.(h|H)$
 CompileFlags:
-  CompilationDatabase: ../build/Debug
+  Add:
+    - -x
+    - c-header
 
 ---
+# C++ 源
 If:
-  PathMatch: .*mini_tree[/\\].*\.cpp$
+  PathMatch: .*\.(cpp|cxx|cc|hpp|hxx)$
 CompileFlags:
-  CompilationDatabase: ../build/Debug
+  Add:
+    - -std=gnu++17
+    - -x
+    - c++
 
 ---
+# DTS/DTSI：当 C 解析以便 #include / 宏跳转（语法噪声压掉）
+# include 路径已在 compile_flags.txt；此处只改语言模式
 If:
-  PathMatch: .*[/\\]hal[/\\].*\.h$
+  PathMatch: .*\.dtsi?$
 CompileFlags:
-  CompilationDatabase: None
   Add:
     - -std=gnu17
     - -x
-    - c-header
-    - -I.
-    - -I../../core/include
-    - -I../../board/include
-    - -I../../algorithm/buffer
-    - -I../../osal/include
-
----
-If:
-  PathMatch: .*[/\\]board[/\\]include[/\\].*\.h$
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -std=gnu17
-    - -x
-    - c-header
-    - -I.
-    - -I../../core/include
-    - -I../../osal/include
-
----
-If:
-  PathMatch: .*[/\\]core[/\\]include[/\\].*\.h$
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -std=gnu17
-    - -x
-    - c-header
-    - -I.
-    - -I../../board/include
-    - -I../../osal/include
-
----
-If:
-  PathMatch: .*[/\\]osal[/\\].*\.h$
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -std=gnu17
-    - -x
-    - c-header
-    - -I.
-    - -I../../core/include
-
----
-If:
-  PathMatch: .*[/\\]vfs[/\\].*\.h$
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -std=gnu17
-    - -x
-    - c-header
-    - -I.
-    - -I../../board/include
-    - -I../../core/include
-    - -I../../osal/include
-    - -I../../hal/gpio
-    - -I../../hal/tim
-    - -I../../hal/adc
-    - -I../../hal/dac
-    - -I../../bus/spi
-    - -I../../bus/uart
-
----
-If:
-  PathMatch: .*[/\\]bus[/\\].*\.h$
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -std=gnu17
-    - -x
-    - c-header
-    - -I.
-    - -I../../core/include
-    - -I../../board/include
-    - -I../../osal/include
-    - -I../../hal/gpio
-    - -I../../hal/spi
-    - -I../../hal/uart
-
----
-If:
-  PathMatch: .*[/\\]interrupt[/\\].*\.h$
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -std=gnu17
-    - -x
-    - c-header
-    - -I.
-    - -I../../core/include
-    - -I../../board/include
+    - c
+Diagnostics:
+  Suppress: "*"

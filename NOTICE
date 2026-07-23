@@ -1,0 +1,26 @@
+mini_tree
+Copyright 2024-2026 The mini_tree Authors
+
+This product includes software developed for the mini_tree embedded
+middleware project. The primary license is Apache License 2.0; see LICENSE.
+
+This distribution also includes third-party components under their own
+licenses. See the paths below (and any LICENSE / NOTICE files therein):
+
+  - FreeRTOS Kernel (MIT)
+      Location: lib/freeRTOS/
+      Copyright (C) Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  - RT-Thread (Apache-2.0)
+      Location: lib/rtthread/
+
+  - TinyUSB (MIT)
+      Location: lib/tinyusb/
+      Copyright (c) 2012-2026, Ha Thach (tinyusb.org)
+      See also: lib/tinyusb/LICENSE and nested third-party licenses under
+      lib/tinyusb/ (e.g. SEGGER RTT, board/BSP components).
+
+Optional / external (not vendored in this tree by default):
+
+  - Embedded Template Library (ETL) — typically MIT; obtain separately and
+    point cmake/etl.cmake or ide/third_party/etl at a local checkout.

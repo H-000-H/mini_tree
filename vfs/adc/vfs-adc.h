@@ -6,7 +6,7 @@
  #define __VFS_ADC_H__
  
  #include "hal_adc.h"
- #include "VFS.h"
+ #include "status.h"
  #include "compiler_compat.h"
  
  #ifdef __cplusplus
@@ -15,12 +15,12 @@
  
  struct vfs_adc_arg_t 
  {
-     uint32_t channel_id;
-     uint32_t done_status;
-     uint32_t channel_count;
-     uint32_t sample_time;
-     uint32_t channel_index;
-     uint16_t value;
+     uint32_t channel_id;      /**< 通道 ID */
+     uint32_t done_status;     /**< 转换完成状态 */
+     uint32_t channel_count;   /**< 通道总数 */
+     uint32_t sample_time;     /**< 采样时间 (LL_ADC_SAMPLINGTIME_*) */
+     uint32_t channel_index;   /**< 通道索引 */
+     uint16_t value;           /**< ADC 采样值 */
  }; 
  typedef struct vfs_adc_arg_t vfs_adc_arg;
  

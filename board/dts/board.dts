@@ -1,0 +1,17 @@
+/dts-v1/;
+
+/*
+ * mini_tree 中间件默认板级 DTS（平台无关占位）
+ *
+ * 真实 SoC/板级设备树由平台工程覆盖:
+ *   -DCMAKE_BOARD_DTS=...  或  set(BOARD_DTS ... CACHE FILEPATH ...)
+ *   -DCMAKE_BOARD_DTSI_DIR=...
+ *
+ * 本文件仅保证 dtc-lite 在无板级覆盖时可生成最小 board_* / dt_config_gen.h。
+ */
+/ {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	model = "mini_tree generic";
+	compatible = "mini_tree,generic";
+};

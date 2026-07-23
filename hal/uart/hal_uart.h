@@ -13,7 +13,7 @@
  * - ESP32: uart-base = <UART_NUM_1>, uart-clk = <0>,
  *   tx-port = <0>, tx-pin = <43>, tx-clk = <0>, tx-af = <0>
  *   (ESP32 无 port/clk/af 概念, pin 为 SoC GPIO 编号)
- * - hal_uart_dev 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理, 无 vtable
+ * - hal_uart_bus_host 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理, 无 vtable
  * - HAL 层不分配数据缓冲区, tx/rx 指针由调用者提供
  *
  * 头中立化: 本头不暴露任何 vendor 类型, 只用 uintptr_t/int/void*。
@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "compiler_compat.h"
-#include "VFS.h"
+#include "status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,14 +73,14 @@ struct hal_uart_dma_config
  */
 struct hal_uart_pin_cfg
 {
-    uintptr_t port;
-    uint16_t  pin;
-    uint32_t  clk_bus;
-    uint32_t  af;
-    uint32_t  output_type;
-    uint32_t  speed;
-    uint32_t  mode;
-    uint32_t  pull;
+    uintptr_t port;              /**< GPIOx_BASE */
+    uint16_t  pin;               /**< GPIO_PIN_x */
+    uint32_t  clk_bus;           /**< LL_AHBx_GRPy_PERIPH_GPIOx */
+    uint32_t  af;                /**< GPIO_AFx_UARTy */
+    uint32_t  output_type;       /**< LL_GPIO_OUTPUT_* */
+    uint32_t  speed;             /**< LL_GPIO_SPEED_* */
+    uint32_t  mode;              /**< LL_GPIO_MODE_* */
+    uint32_t  pull;              /**< LL_GPIO_PULL_* */
 };
 
 /*============================================================================*/
@@ -88,56 +88,53 @@ struct hal_uart_pin_cfg
 /*============================================================================*/
 struct hal_uart_config
 {
-    uintptr_t                 uart;          /* STM32/WCH: 基地址; ESP32: (uintptr_t)uart_host */
-    uint32_t                  uart_clk_periph;
+    uintptr_t                 uart;            /**< STM32/WCH: 基地址; ESP32: (uintptr_t)uart_host */
+    uint32_t                  uart_clk_periph; /**< LL_APBx_GRPy_PERIPH_UARTy */
     int32_t                   irqn;            /**< NVIC 中断号 (DTS irqn, -1 = 无中断) */
     uint32_t                  irq_priority;    /**< NVIC 中断优先级 (DTS irq-priority, 0=最高) */
     uint32_t                  it_enable;       /**< 中断模式使能: 0=禁用, 1=启用 DMA TC/NVIC 中断 */
-    uint32_t                  baud_rate;
-    uint32_t                  data_width;
-    uint32_t                  parity;
-    uint32_t                  stop_bits;
-    uint32_t                  direction;     /**< 传输方向 (LL_USART_DIRECTION_TX_RX/RX/TX) */
-    uint32_t                  hw_control;    /**< 硬件流控 (LL_USART_HWCONTROL_NONE/RTS/CTS/RTS_CTS) */
-    uint32_t                  oversampling;  /**< 过采样 (LL_USART_OVERSAMPLING_16/8) */
-    struct hal_uart_pin_cfg   tx;
-    struct hal_uart_pin_cfg   rx;
-    struct hal_uart_dma_config dma_cfg;     /**< DMA 配置 (dma_enable=0 时不使用 DMA) */
+    uint32_t                  baud_rate;       /**< 波特率 (如 115200) */
+    uint32_t                  data_width;      /**< 数据位宽 (LL_USART_DATAWIDTH_*) */
+    uint32_t                  parity;          /**< 校验位 (LL_USART_PARITY_*) */
+    uint32_t                  stop_bits;       /**< 停止位 (LL_USART_STOPBITS_*) */
+    uint32_t                  direction;       /**< 传输方向 (LL_USART_DIRECTION_TX_RX/RX/TX) */
+    uint32_t                  hw_control;      /**< 硬件流控 (LL_USART_HWCONTROL_NONE/RTS/CTS/RTS_CTS) */
+    uint32_t                  oversampling;    /**< 过采样 (LL_USART_OVERSAMPLING_16/8) */
+    struct hal_uart_pin_cfg   tx;              /**< TX 引脚配置 */
+    struct hal_uart_pin_cfg   rx;              /**< RX 引脚配置 */
+    struct hal_uart_dma_config dma_cfg;        /**< DMA 配置 (dma_enable=0 时不使用 DMA) */
 };
 
 /*============================================================================*/
-/*                              HAL 对象 (嵌入 bus 层)                         */
+/*                              Host / Device 对象                            */
 /*============================================================================*/
-/* hal_uart_bus_host: 纯数据实体, 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理无 alloc/free。
- * hal_uart_dev: 轻量级 client 句柄, 持有 bus_host 指针 + hw_open 状态。
- *
+/*
+ * hal_uart_bus_host 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理, 无 vtable。
  * 跨平台字段说明:
  * - uart: STM32/WCH 缓存 cfg.uart (fast path); ESP32 缓存 (uintptr_t)uart_host
  * - uart_queue: ESP32 FreeRTOS QueueHandle_t (头中立用 void*); STM32/WCH 为 NULL
  */
 struct hal_uart_bus_host
 {
-    struct hal_uart_config   cfg;
-    uintptr_t                uart;          /* 缓存 cfg.uart, fast path */
-    void*                    uart_queue;    /* ESP32 FreeRTOS QueueHandle_t; 其他 NULL */
-    volatile uint8_t         status;
-    bool                     hw_inited;
+    struct hal_uart_config   cfg;           /**< UART 配置 (DTSI 直投) */
+    uintptr_t                uart;          /**< 缓存 cfg.uart, fast path */
+    void*                    uart_queue;    /**< ESP32 FreeRTOS QueueHandle_t; 其他 NULL */
+    volatile uint8_t         status;        /**< 运行状态 */
+    bool                     hw_inited;     /**< 硬件已初始化 */
 };
 
 /**
- * @brief HAL UART 设备句柄 不需要和其他 HAL 对象共享所以只要2个字段
- * @note 轻量级, 持有 bus_host 指针 + hw_open 状态
+ * @brief HAL UART 设备句柄 (轻量: bus_host 指针 + hw_open)
  */
 struct hal_uart_dev
 {
-    struct hal_uart_bus_host* ctlr;
-    int                       hw_open;
+    struct hal_uart_bus_host* ctlr;    /**< 所属 host */
+    int                       hw_open; /**< 硬件打开计数 */
 };
 
 /*============================================================================*/
 /*                              Device 管理 API                               */
 /*============================================================================*/
-/* 对象由 bus 层提供 (嵌入), HAL 不做池管理。 */
 int  hal_uart_dev_init(struct hal_uart_bus_host* host,const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 int  hal_uart_dev_hw_open(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 int  hal_uart_dev_hw_close(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
@@ -145,8 +142,8 @@ int  hal_uart_dev_hw_close(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RE
 /*============================================================================*/
 /*                              同步传输                                       */
 /*============================================================================*/
-int  hal_uart_write(struct hal_uart_dev* dev, const uint8_t* data, size_t len)COMPAT_WARN_UNUSED_RESULT;
-int  hal_uart_read(struct hal_uart_dev* dev, uint8_t* data, size_t len)COMPAT_WARN_UNUSED_RESULT;
+int hal_uart_write(struct hal_uart_dev* dev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+int hal_uart_read(struct hal_uart_dev* dev, uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 /*============================================================================*/
 /*                              DMA 传输 (STM32/WCH 支持, ESP32 返回 NOTSUPP)  */

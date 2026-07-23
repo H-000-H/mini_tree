@@ -9,7 +9,7 @@
  */
 #include "config.h"
 #include "driver.h"
-#include "VFS.h"
+#include "status.h"
 #include "osal.h"
 #include "hal_platform_safety.h"
 #include "hal_amp.h"
@@ -37,8 +37,8 @@ static volatile int s_shutdown_entered = 0;
 
 struct safety_pin
 {
-    int pin;
-    int safe_level;
+    int pin;           /**< GPIO 引脚编号 */
+    int safe_level;    /**< 安全停机时的目标电平 */
 };
 
 static struct safety_pin g_safety_pins[BOARD_MAX_SAFETY_PINS];
@@ -47,6 +47,11 @@ static int          g_safety_pin_count;
 static safety_shutdown_fn_t g_safety_cbs[BOARD_SAFETY_MAX_CALLBACKS];
 static int                  g_safety_cb_count;
 
+/**
+ * @brief 注册安全停机 GPIO 引脚及安全电平
+ * @param pin GPIO 引脚编号
+ * @param safe_level 安全态电平 (0/1)
+ */
 void board_safety_add_pin(int pin, int safe_level)
 {
     if (g_safety_pin_count < BOARD_MAX_SAFETY_PINS)
@@ -57,6 +62,10 @@ void board_safety_add_pin(int pin, int safe_level)
     }
 }
 
+/**
+ * @brief 注册安全停机回调 (probe 前调用)
+ * @param fn 停机回调函数, NULL 忽略
+ */
 void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 {
     if (fn && g_safety_cb_count < BOARD_SAFETY_MAX_CALLBACKS)
@@ -66,6 +75,11 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 }
 
 /* ── 安全硬件伪驱动: 读取 DTS pin_N / safe_level_N 列表 ── */
+/**
+ * @brief 从 DTS 属性注册安全停机 GPIO 引脚
+ * @param dev 安全硬件 device 指针
+ * @return 成功返回 VFS_OK
+ */
 static int board_safety_hw_probe(struct device* dev)
 {
     int pin;
@@ -85,6 +99,11 @@ static int board_safety_hw_probe(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief 清除已注册的安全停机引脚与回调
+ * @param dev device 指针 (未使用)
+ * @return 成功返回 VFS_OK
+ */
 static int board_safety_hw_remove(struct device* dev)
 {
     (void)dev;
@@ -98,11 +117,20 @@ DRIVER_REGISTER(board_safety_hw, "board,safety-hw",
 
 #else /* !CONFIG_SAFETY_SHUTDOWN */
 
+/**
+ * @brief 注册安全停机 GPIO 引脚 (CONFIG_SAFETY_SHUTDOWN 未启用时为 no-op)
+ * @param pin GPIO 引脚编号
+ * @param safe_level 安全态电平
+ */
 void board_safety_add_pin(int pin, int safe_level)
 {
     (void)pin; (void)safe_level;
 }
 
+/**
+ * @brief 注册安全停机回调 (CONFIG_SAFETY_SHUTDOWN 未启用时为 no-op)
+ * @param fn 停机回调函数
+ */
 void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 {
     (void)fn;
@@ -110,6 +138,11 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 
 #endif /* CONFIG_SAFETY_SHUTDOWN */
 
+/**
+ * @brief 检查设备依赖是否不可用或已出错
+ * @param dev 待检查 device 指针
+ * @return 1 表示存在缺失/ERROR/REMOVED 依赖, 0 表示依赖均可用
+ */
 static int device_dependency_not_ready(const struct device* dev)
 {
     if (!dev || !dev->node || !dev->node->deps) return 0;
@@ -133,6 +166,11 @@ static int device_dependency_not_ready(const struct device* dev)
     return 0;
 }
 
+/**
+ * @brief 检查设备依赖是否尚未 probe 完成
+ * @param dev 待检查 device 指针
+ * @return 1 表示存在缺失或未 PROBED/RUNNING/SUSPENDED 的依赖, 0 表示依赖均已就绪
+ */
 static int device_dependency_pending(const struct device* dev)
 {
     if (!dev || !dev->node || !dev->node->deps) return 0;
@@ -157,6 +195,11 @@ static int device_dependency_pending(const struct device* dev)
     return 0;
 }
 
+/**
+ * @brief 按设备 criticality 分级处理 probe 失败
+ * @param dev probe 失败的 device 指针
+ * @param id 设备 ID (未使用, 保留供扩展)
+ */
 static void handle_probe_failure(struct device* dev, device_id_t id)
 {
     enum device_criticality crit = device_get_criticality(dev);
@@ -176,6 +219,10 @@ static void handle_probe_failure(struct device* dev, device_id_t id)
     }
 }
 
+/**
+ * @brief 级联禁用依赖失败设备的所有子设备
+ * @param failed_id probe 失败的设备 ID
+ */
 static void disable_dependents(device_id_t failed_id)
 {
     int count = 0;
@@ -194,6 +241,10 @@ static void disable_dependents(device_id_t failed_id)
     }
 }
 
+/**
+ * @brief 系统安全硬件停机 (回调/PWM/GPIO/CPU 紧急停机)
+ * @param reason 停机原因字符串 (可为 NULL)
+ */
 void system_safety_hardware_shutdown(const char* reason)
 {
     if (__sync_val_compare_and_swap(&s_shutdown_entered, 0, 1) != 0)
@@ -233,10 +284,17 @@ void system_safety_hardware_shutdown(const char* reason)
     { ; }
 }
 
+/**
+ * @brief 注册所有板级驱动 (当前由 DRIVER_REGISTER 宏静态注册, 此处为空)
+ */
 void board_register_all_drivers(void)
 {
 }
 
+/**
+ * @brief 按 probe 顺序探测所有设备 (最多 3 趟 deferred)
+ * @return probe 失败设备数量
+ */
 int board_driver_probe_all(void)
 {
 #ifdef CONFIG_PRODUCTION_LOG
@@ -360,6 +418,10 @@ int board_driver_probe_all(void)
     return fail;
 }
 
+/**
+ * @brief 按逆 probe 顺序卸载所有设备
+ * @return 成功返回 VFS_OK
+ */
 int board_driver_remove_all(void)
 {
     DRV_LOGI(kTag, "removing all devices (reverse probe order) ...");

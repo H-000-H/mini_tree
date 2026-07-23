@@ -18,7 +18,7 @@
  #include <stdint.h>
  #include <stdbool.h>
  #include "compiler_compat.h"
- #include "VFS.h"
+ #include "status.h"
  #include <dt-bindings/tim/tim-parameter.h>
  
  #ifdef __cplusplus
@@ -85,7 +85,7 @@
  struct hal_tim_base_cfg
  {
      uint32_t  prescaler;          /**< 预分频器值 (PSC) */
-     uint32_t  counter_mode;       /**< 计数模式。0: 向上计数, 1: 向下计数, 2: 中央对齐 */
+     uint32_t  counter_mode;       /**< 计数模式 (LL_TIM_COUNTERMODE_* 直投) */
      uint32_t  autoreload;         /**< 自动重装载值 (ARR) */
      uint32_t  clock_division;     /**< 时钟分频因子 (用于死区/滤波器采样) */
      uint32_t  repetition_counter; /**< 重复计数器值 (RCR，仅高级定时器有效) */
@@ -115,10 +115,10 @@
   */
  struct hal_input_capture_cfg 
  {
-     uint32_t polarity;          /**< 捕获触发边沿。0: 上升沿, 1: 下降沿, 2: 双边沿 */
+     uint32_t polarity;          /**< 捕获触发边沿 (LL_TIM_IC_POLARITY_* 直投) */
      uint32_t filter;            /**< 输入数字滤波器配置 */
      uint32_t prescaler;         /**< 输入分频器 */
-     uint32_t active_input;      /**< 输入源映射。0: 直连通道, 1: 交叉通道 */
+     uint32_t active_input;      /**< 输入源映射 (LL_TIM_ACTIVEINPUT_* 直投) */
  };
  
  /**
@@ -128,12 +128,12 @@
  {
      uint32_t mode;              /**< 编码器计数模式：看A相、看B相，还是双沿计数（1/2/4倍频） */
      uint32_t period;            /**< 计数自动重装载值（ARR） */
-     /**<A相配置*/
+     /**< A相配置 */
      uint32_t ic1_active_input;  /**< A相输入源 */
      uint32_t ic1_polarity;      /**< A相极性 */
      uint32_t ic1_filter;        /**< A相滤波 */
      uint32_t ic1_prescaler;     /**< A相分频器 */
-     /**<B相配置*/
+     /**< B相配置 */
      uint32_t ic2_active_input;  /**< B相输入源 */
      uint32_t ic2_polarity;      /**< B相极性 */
      uint32_t ic2_filter;        /**< B相滤波 */
@@ -169,14 +169,14 @@
   */
  struct hal_bdtr_cfg
  {
-     uint32_t automatic_output;
-     uint32_t break_state;
-     uint32_t break_polarity;
-     uint32_t break_filter;
-     uint32_t ossi_state;
-     uint32_t ossr_state;
-     uint32_t dead_time;        /**< 死区时间 (单位: 硬件时钟周期数) */
-     uint32_t lock_level;
+     uint32_t automatic_output;  /**< 自动输出使能 (LL_TIM_AUTOMATICOUTPUT_ENABLE/DISABLE) */
+     uint32_t break_state;       /**< 刹车使能 (LL_TIM_BREAK_ENABLE/DISABLE) */
+     uint32_t break_polarity;    /**< 刹车极性 (LL_TIM_BREAK_POLARITY_HIGH/LOW) */
+     uint32_t break_filter;      /**< 刹车输入滤波器 */
+     uint32_t ossi_state;        /**< 空闲状态 OSSI (LL_TIM_OSSI_ENABLE/DISABLE) */
+     uint32_t ossr_state;        /**< 运行状态 OSSR (LL_TIM_OSSR_ENABLE/DISABLE) */
+     uint32_t dead_time;         /**< 死区 DTG 编码 (直灌 BDTR, 非纯时钟周期数) */
+     uint32_t lock_level;        /**< 锁级别 (LL_TIM_LOCKLEVEL_OFF/1/2/3) */
  };
  
  /*===========================================================================================================================================================*/

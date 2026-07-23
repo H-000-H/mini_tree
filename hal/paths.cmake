@@ -9,4 +9,10 @@ set(HAL_INCLUDE_DIRS
     "${_HAL_ROOT}/analog"
     "${_HAL_ROOT}/storage"
     "${_HAL_ROOT}/system"
+    "${_HAL_ROOT}/rtc"
+    "${_HAL_ROOT}/i2s"
+    "${_HAL_ROOT}/iwdg"
+    "${_HAL_ROOT}/wwdg"
+    "${_HAL_ROOT}/can"
+    "${_HAL_ROOT}/usb"
 )

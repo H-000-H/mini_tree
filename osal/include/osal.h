@@ -18,7 +18,7 @@
 #include "compiler_compat.h"
 #include "printf_output.h"
 #include "osal_tick.h"
-#include "VFS.h"
+#include "status.h"
 
 #ifdef __cplusplus
 extern "C" 
@@ -299,11 +299,11 @@ typedef struct osal_pool
 /**
  * @brief 初始化槽位池
  * @param pool 槽位池指针
- * @param buffer 缓冲区指针
- * @param count 缓冲区数量
+ * @param used_slots 已使用槽位指针
+ * @param slot_count 槽位数量
  * @return 结果
  */
-int  osal_pool_init(osal_pool_t* pool, volatile uint8_t* buffer, size_t count)COMPAT_WARN_UNUSED_RESULT;
+int  osal_pool_init(osal_pool_t* pool, volatile uint8_t* used_slots, size_t slot_count)COMPAT_WARN_UNUSED_RESULT;
 /**
  * @brief 申请槽位
  * @param pool 槽位池指针

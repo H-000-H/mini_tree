@@ -26,6 +26,13 @@ static const uint32_t kScrubberStack = 2048;
 static osal_task_handle_t s_handle = NULL;
 static volatile bool s_running = false;
 
+/**
+ * @brief 增量更新 CRC32 校验值
+ * @param crc 当前 CRC 值
+ * @param data 数据缓冲
+ * @param len 字节数
+ * @return 更新后的 CRC32 值
+ */
 static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
 {
     static const uint32_t kTable[256] =
@@ -82,6 +89,10 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
     return crc;
 }
 
+/**
+ * @brief Flash 巡检后台任务，分块扫描 app 分区 CRC
+ * @param param 任务参数 (未使用)
+ */
 static void scrubber_task(void* param)
 {
     (void)param;
@@ -117,7 +128,7 @@ static void scrubber_task(void* param)
 
     while (s_running)
     {
-        system_wdt_feed_rtc();
+        system_wdt_feed_iwdg();
 
         if (offset < total_size)
         {
@@ -154,11 +165,19 @@ static void scrubber_task(void* param)
     osal_task_self_delete();
 }
 
+/**
+ * @brief scrubber init
+ * @return true
+ */
 bool system_scrubber_init(void)
 {
     return true;
 }
 
+/**
+ * @brief 启动 CRC 巡检任务
+ * @return true
+ */
 bool system_scrubber_start(void)
 {
     if (s_running) return true;
@@ -177,6 +196,10 @@ bool system_scrubber_start(void)
     return true;
 }
 
+/**
+ * @brief 是否运行
+ * @return true
+ */
 bool system_scrubber_is_running(void)
 {
     return s_running;

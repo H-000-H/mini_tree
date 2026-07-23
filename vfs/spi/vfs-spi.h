@@ -10,7 +10,7 @@
  *   - spi_host_master: "spi-master" (host controller)
  *   - spi_host_slave:  "spi-slave" (slave host controller)
  *   - spi_vfs_master:  "heterogeneous,spi-master-client" (bus client)
- *   - spi_vfs_slave:   "heterogeneous,fft-spi-slave" (slave client)
+ *   - spi_vfs_slave:   "heterogeneous,spi-slave-client" (bus client)
  *
  * @see bus/spi/spi_bus.h  bus 层接口
  * @see bus/bus.h          通用总线框架
@@ -33,16 +33,43 @@ extern "C" {
  *  @{
  */
 #define SPI_CMD_BASE             COMPAT_MAGIC(SPI)
-#define SPI_CMD_TRANSFER         SPI_CMD_BASE + 0x01  /**< Master 全双工传输 */
+#define SPI_CMD_TRANSFER         SPI_CMD_BASE + 0x01  /**< Master 同步全双工 (arg.xfer_mode 可选路径) */
 #define SPI_CMD_QUEUE_TX         SPI_CMD_BASE + 0x02  /**< Slave: 入队发送 */
 #define SPI_CMD_GET_TRANS_RESULT SPI_CMD_BASE + 0x03  /**< Slave: 取传输结果 */
-#define SPI_CMD_COUNT            3                     /**< 命令映射表大小 */
+#define SPI_CMD_SET_XFER_MODE    SPI_CMD_BASE + 0x04  /**< 设置后续 write/read/transfer 的 xfer_mode */
+#define SPI_CMD_GET_XFER_MODE    SPI_CMD_BASE + 0x05  /**< 查询当前 xfer_mode */
+#define SPI_CMD_TRANSFER_ASYNC   SPI_CMD_BASE + 0x06  /**< Master 异步提交 (完成走 cb, 非阻塞) */
+#define SPI_CMD_ASYNC_WAIT       SPI_CMD_BASE + 0x07  /**< 等待异步传输完成 (timeout_ms) */
+#define SPI_CMD_COUNT            7                     /**< 命令映射表大小 */
 
-/** @brief 全双工传输参数 */
+/** 与 HAL_SPI_XFER_* 同值, VFS/业务侧使用 (仅同步路径) */
+#define SPI_XFER_AUTO  0U /**< 隐式: DMA 可用则 DMA, 否则 poll (write/read 默认) */
+#define SPI_XFER_POLL  1U /**< 强制 poll */
+#define SPI_XFER_DMA   2U /**< 强制 DMA, 不可用返回 NOTSUPP */
+
+/** @brief 异步完成回调 (可能在 ISR 上下文) */
+typedef void (*spi_async_cb_t)(struct device* dev, const void* trans, void* userdata);
+
+/** @brief 全双工同步传输参数 */
 struct spi_transfer_arg {
-    const uint8_t* tx;     /**< 发送缓冲, NULL 表示只收 */
-    uint8_t*       rx;     /**< 接收缓冲, NULL 表示只发 */
-    size_t         len;    /**< 传输字节数 */
+    const uint8_t* tx;         /**< 发送缓冲, NULL 表示只收 */
+    uint8_t*       rx;         /**< 接收缓冲, NULL 表示只发 */
+    size_t         len;        /**< 传输字节数 */
+    uint32_t       xfer_mode;  /**< SPI_XFER_AUTO/POLL/DMA; AUTO 时用 client 当前偏好 */
+};
+
+/** @brief 异步传输参数 (提交即返回; 完成经 cb) */
+struct spi_transfer_async_arg {
+    const uint8_t* tx;         /**< 发送缓冲, NULL 表示只收 */
+    uint8_t*       rx;         /**< 接收缓冲, NULL 表示只发 */
+    size_t         len;        /**< 传输字节数 */
+    spi_async_cb_t cb;         /**< 完成回调; NULL 为 fire-and-forget (平台相关) */
+    void*          userdata;   /**< 回传给 cb */
+};
+
+/** @brief 设置/查询同步传输路径 */
+struct spi_xfer_mode_arg {
+    uint32_t xfer_mode;        /**< SPI_XFER_AUTO / POLL / DMA */
 };
 
 /** @brief Slave 队列发送参数 */
@@ -60,30 +87,12 @@ struct spi_trans_result_arg {
 /** @} */
 /*===========================================================================================================================================================*/
 
-                                                            /*便捷 API (上层驱动调用)*/
-/*===========================================================================================================================================================*/
-/**
- * @brief 便捷 SPI 传输 (带锁)
- * @param dev  SPI 设备
- * @param tx   发送缓冲
- * @param rx   接收缓冲
- * @param len  传输长度
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回传输字节数, 失败返回 VFS_ERR_*
- */
-int spi_vfs_transfer(struct device* dev,
-                     const uint8_t* tx, uint8_t* rx,
-                     size_t len, uint32_t timeout_ms)
-    COMPAT_WARN_UNUSED_RESULT;
-
-/*===========================================================================================================================================================*/
-
 #ifdef __cplusplus
 }
 #endif
 
 #ifndef SPI_VFS_IMPL
-/* 禁止 VFS 层外部直接调用 spi_bus 层任何符号 — 强制走 spi_vfs API */
+/* 禁止 VFS 层外部直接调用 spi_bus — 上层经 device_write/read/ioctl */
 #pragma GCC poison spi_bus_host_init spi_bus_host_deinit spi_bus_host_role
 #pragma GCC poison spi_bus_client_register spi_bus_client_unregister
 #pragma GCC poison spi_bus_open spi_bus_close spi_bus_transfer

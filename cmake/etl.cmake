@@ -6,7 +6,8 @@ endif()
 set(MINI_TREE_ETL_VERSION "20.41.1" CACHE STRING "ETL release tag")
 
 set(_etl_local_candidates
-    "${CMAKE_CURRENT_LIST_DIR}/../../../platform/Espressif/esp32s3/managed_components/marcel-cd__etlcpp/etl"
+    "${CMAKE_CURRENT_LIST_DIR}/../../../../Espressif/esp32s3/managed_components/marcel-cd__etlcpp/etl"
+    "${CMAKE_CURRENT_LIST_DIR}/../../../ESP32-S3/managed_components/marcel-cd__etlcpp/etl"
     "${CMAKE_CURRENT_LIST_DIR}/../../third_party/etl"
 )
 set(_etl_source_dir "")

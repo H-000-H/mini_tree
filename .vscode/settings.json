@@ -1,0 +1,12 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "files.associations": {
+    "*.dts": "c",
+    "*.dtsi": "c"
+  },
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy=false",
+    "--header-insertion=never"
+  ]
+}

@@ -41,11 +41,12 @@
 template <size_t StorageSz = SYS_CMD_WRAPPER_FN_SZ>
 class CmdFn
 {
+    /** @brief 虚函数表 — 类型擦除后的操作入口 */
     struct Vtable
     {
-        bool (*invoke)(void* self, const void* arg, size_t len, void* ctx);
-        void (*copy  )(void* dst, const void* src);
-        void (*destroy)(void* self);
+        bool (*invoke)(void* self, const void* arg, size_t len, void* ctx);  /**< 调用包装的可调用对象 */
+        void (*copy  )(void* dst, const void* src);                          /**< 拷贝构造 */
+        void (*destroy)(void* self);                                         /**< 析构销毁 */
     };
 
     template <typename F>
@@ -66,8 +67,8 @@ class CmdFn
         static_cast<F*>(self)->~F();
     }
 
-    const Vtable* m_vtable;
-    union Storage { char data[StorageSz - sizeof(const Vtable*)]; max_align_t align_; } m_storage;
+    const Vtable* m_vtable;   /**< 当前存储对象的虚表指针 (nullptr = 空) */
+    union Storage { char data[StorageSz - sizeof(const Vtable*)]; max_align_t align_; } m_storage;  /**< SBO 内联存储区 */
 
     static_assert(StorageSz > sizeof(const Vtable*),
                   "StorageSz must be larger than pointer size");
@@ -131,57 +132,70 @@ const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::s_vtable = {
 /* ═══════════════════════════════════════════════════════════════════════
  * SystemCmd — 平台无关 API
  * ═══════════════════════════════════════════════════════════════════════ */
+/**
+ * @brief 系统命令分发器 — 单例模式, 双后端 (OS / Bare-metal)
+ *
+ * 支持注册/注销/分发命令, 带轻量级 RTTI 类型安全校验
+ */
 class SystemCmd
 {
 public:
-    static constexpr size_t kMaxCmdNameLen = SYS_CMD_MAX_NAME_LEN;
-    static constexpr size_t kMaxCommands   = SYS_CMD_MAX_COUNT;
+    static constexpr size_t kMaxCmdNameLen = SYS_CMD_MAX_NAME_LEN;  /**< 命令名最大长度 (含 '\0') */
+    static constexpr size_t kMaxCommands   = SYS_CMD_MAX_COUNT;     /**< 最大注册命令数 */
 
-    using RawHandler = CmdFn<>;
+    using RawHandler = CmdFn<>;  /**< 类型擦除后的命令处理函数包装器 */
 
     // 轻量级 RTTI 替代方案的类型令牌
-    using TypeIdToken = const void*;
+    using TypeIdToken = const void*;  /**< 类型标识令牌 (每个类型唯一地址) */
     template<typename T>
     static TypeIdToken getTypeId() {
         static const char type_marker = 0;
         return static_cast<TypeIdToken>(&type_marker);
     }
 
+    /** @brief 命令处理节点 — 存储包装器及参数/上下文类型信息 */
     struct HandlerNode {
-        RawHandler  wrapper;
-        TypeIdToken args_id;
-        TypeIdToken ctx_id;
+        RawHandler  wrapper;   /**< 类型擦除后的处理函数 */
+        TypeIdToken args_id;   /**< 参数类型令牌 (用于分发时校验) */
+        TypeIdToken ctx_id;    /**< 上下文类型令牌 (用于分发时校验) */
     };
 
     /* ── 后端无关的公共 API ── */
-    static SystemCmd& getInstance();
+    static SystemCmd& getInstance();  /**< 获取单例引用 */
 
+    /** @brief 注册命令: handler(const Args&, Ctx*) */
     template<typename Args, typename Ctx = void>
     bool registerCmd(const char* name, bool (*handler)(const Args&, Ctx*));
 
+    /** @brief 注册命令: handler(const Args&, const Ctx*) */
     template<typename Args, typename Ctx>
     bool registerCmd(const char* name, bool (*handler)(const Args&, const Ctx*));
 
+    /** @brief 注册命令: handler(Ctx*), 无参数 */
     template<typename Ctx = void>
     bool registerCmd(const char* name, bool (*handler)(Ctx*));
 
+    /** @brief 注册命令: handler(), 无参数无上下文 */
     bool registerCmd(const char* name, bool (*handler)());
 
-    bool unregisterCmd(const char* name);
-    bool hasCmd(const char* name) const;
-    size_t count() const;
+    bool unregisterCmd(const char* name);  /**< 注销已注册命令 */
+    bool hasCmd(const char* name) const;   /**< 查询命令是否已注册 */
+    size_t count() const;                  /**< 当前已注册命令数 */
 
+    /** @brief 原始分发 (无类型校验, 内部使用) */
     bool dispatch(const char* name, const void* arg, size_t arg_len,
                   void* ctx = nullptr,
                   TypeIdToken expected_args_id = nullptr,
                   TypeIdToken expected_ctx_id = nullptr) const;
 
+    /** @brief 类型安全分发 (带参数 + 上下文) */
     template<typename Args, typename Ctx = void>
     bool dispatchSecure(const char* name, const Args& arg, Ctx* ctx = nullptr) const {
         return dispatch(name, &arg, sizeof(Args), ctx,
                         getTypeId<Args>(), getTypeId<Ctx>());
     }
 
+    /** @brief 类型安全分发 (无参数, 仅上下文) */
     template<typename Ctx = void>
     bool dispatchSecure(const char* name, Ctx* ctx = nullptr) const {
         return dispatch(name, nullptr, 0, ctx,
@@ -189,30 +203,31 @@ public:
     }
 
 private:
-    SystemCmd();
+    SystemCmd();                              /**< 私有构造 (单例) */
     ~SystemCmd() = default;
-    SystemCmd(const SystemCmd&) = delete;
-    SystemCmd& operator=(const SystemCmd&) = delete;
+    SystemCmd(const SystemCmd&) = delete;     /**< 禁止拷贝 */
+    SystemCmd& operator=(const SystemCmd&) = delete;  /**< 禁止赋值 */
 
     /* ════════════════════════════════════════════════════════════════════
      *  后端存储
      * ════════════════════════════════════════════════════════════════════ */
 #ifndef CONFIG_OSAL_NULL
     /* ── OS 后端: etl::map + spinlock ── */
-    using CmdString = etl::string<kMaxCmdNameLen>;
-    using CmdMap    = etl::map<CmdString, HandlerNode, kMaxCommands>;
+    using CmdString = etl::string<kMaxCmdNameLen>;  /**< 命令名存储类型 */
+    using CmdMap    = etl::map<CmdString, HandlerNode, kMaxCommands>;  /**< 命令映射表 */
 
-    CmdMap m_commands;
-    mutable struct osal_spinlock* m_lock;
-    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4);
+    CmdMap m_commands;          /**< 命令名 → 处理节点 映射 */
+    mutable struct osal_spinlock* m_lock;  /**< 自旋锁指针 (保护并发访问) */
+    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4);  /**< 自旋锁存储区 */
 #else
     /* ── Bare-metal 后端: 普通数组 + const char* + 无锁 ── */
+    /** @brief 命令条目 (bare-metal 后端) */
     struct CmdEntry {
-        const char* name;        // 命令名 (必须指向静态字符串)
-        HandlerNode node;
+        const char* name;        /**< 命令名 (必须指向静态字符串) */
+        HandlerNode node;        /**< 处理节点 */
     };
-    CmdEntry  m_entries[kMaxCommands];
-    size_t m_count;
+    CmdEntry  m_entries[kMaxCommands];  /**< 命令数组 */
+    size_t m_count;                     /**< 当前已注册命令数 */
 #endif
 };
 

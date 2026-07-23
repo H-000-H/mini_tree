@@ -50,9 +50,9 @@ extern "C"{
 #define TIM_CMD_COUNT                   23
 struct tim_start_arg 
 {
-    uint32_t frequency;
-    uint32_t prescaler;
-    uint32_t period;
+    uint32_t frequency;   /**< 目标频率 (Hz) */
+    uint32_t prescaler;   /**< 预分频值 */
+    uint32_t period;      /**< 周期 (ARR) */
 };
 
 /*===========================================================================================================================================================*/

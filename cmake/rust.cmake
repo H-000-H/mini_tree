@@ -34,7 +34,7 @@ function(mini_tree_add_rust_crate CRATE_NAME CRATE_DIR)
         COMMAND "${CMAKE_COMMAND}" -E env
                 "CARGO_TARGET_DIR=${_cargo_target_dir}"
                 "${CARGO_EXECUTABLE}" build
-                --manifest-path "${CRATE_DIR}/Cargo.toml"
+                --manifest-path "${_manifest}"
                 --target "${_rust_target}"
                 ${_cargo_profile_args}
         DEPENDS ${_rust_sources}

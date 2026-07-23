@@ -3,7 +3,7 @@
  * system_scrubber.cpp — Flash 位腐烂巡检任务实现
  *
  * 内置 256 项 CRC32 查表, 按 SYSTEM_SCRUBBER_CHUNK_BYTES 分块读取 app 分区
- * 优先级取后端最低 (FreeRTOS=1, RT-Thread=30), 喂 RTC_WDT 后再 delay
+ * 优先级取后端最低 (FreeRTOS=1, RT-Thread=30), 喂 IWDG 后再 delay
  * CRC 与 SYSTEM_SCRUBBER_CRC_BASELINE 失配即 enter_safe_state, 永不返回
  */
 #include "system_scrubber.hpp"
@@ -118,7 +118,7 @@ static void scrubber_task(void* param)
 
     while (s_running)
     {
-        system_wdt_feed_rtc();
+        system_wdt_feed_iwdg();
 
         if (offset < total_size)
         {

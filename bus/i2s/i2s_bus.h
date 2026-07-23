@@ -1,0 +1,78 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*@=========================================================================================================================*
+ * I2S BUS — I2S 总线子系统 bus 层
+ *
+ * 架构: VFS → [Bus (本文件)] → HAL; hal_i2s_bus_host 嵌入 i2s_bus_host
+ * 职责: host/client 池 + ref_count + open/close/transfer; sync/poll/DMA + circular + irq_mode/async。
+ * open: 若 it_enable, 注册 VIRQ(i2s, hw_idx) + NVIC (对齐 ADC probe; 不进 ioctl)。
+ *
+ * 隔离: 未定义 I2S_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_i2s_*;
+ *   允许 config 类型供 VFS 填充, 强制走 i2s_bus API。
+ *
+ * @see bus/bus.h  通用总线框架
+ * @see hal/i2s/hal_i2s.h
+ *@=========================================================================================================================*/
+#ifndef I2S_BUS_H
+#define I2S_BUS_H
+
+#include <stdint.h>
+#include <stddef.h>
+#include "compiler_compat.h"
+#include "hal_i2s.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct device;
+struct i2s_bus_client;
+
+#define I2S_BUS_ROLE_MASTER HAL_I2S_BUS_ROLE_MASTER
+#define I2S_BUS_ROLE_SLAVE  HAL_I2S_BUS_ROLE_SLAVE
+
+/**
+ * @brief I2S host 初始化
+ * @param dev controller device (host)
+ * @param cfg host 配置 (VFS 填充 DTSI 值)
+ * @return VFS_OK 或 VFS_ERR_*
+ */
+int i2s_bus_host_init(struct device* dev, const struct hal_i2s_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_host_deinit(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_host_role(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_client_register(struct device* dev, const struct hal_i2s_device_config* cfg, struct i2s_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+void i2s_bus_client_unregister(struct device* dev);
+int i2s_bus_open(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_close(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 同步传输 (samples 为 16-bit 采样数)
+ */
+int i2s_bus_transfer(struct device* dev, const uint16_t* tx, uint16_t* rx, size_t samples, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+/** @brief 异步传输 — 参数存档占位; DMA+IT 后续补 */
+int i2s_bus_transfer_async(struct device* dev, const uint16_t* tx, uint16_t* rx, size_t samples, void (*cb)(struct device*, const void*, void*), void* userdata) COMPAT_WARN_UNUSED_RESULT;
+/** @brief 轮询异步完成 — 占位 */
+int i2s_bus_transfer_poll(struct device* dev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+
+int i2s_bus_set_dma_irq_mode(struct device* dev, uint32_t irq_mode) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_get_dma_irq_mode(struct device* dev, uint32_t* irq_mode) COMPAT_WARN_UNUSED_RESULT;
+
+int i2s_bus_dma_circ_start(struct device* dev, int tx_enable, int rx_enable) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_dma_circ_stop(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_dma_circ_write(struct device* dev, const uint16_t* data, uint32_t samples) COMPAT_WARN_UNUSED_RESULT;
+int i2s_bus_dma_circ_read(struct device* dev, uint16_t* data, uint32_t samples) COMPAT_WARN_UNUSED_RESULT;
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifndef I2S_BUS_IMPL
+#pragma GCC poison hal_i2s_bus_host_init hal_i2s_bus_host_deinit
+#pragma GCC poison hal_i2s_dev_init hal_i2s_dev_deinit
+#pragma GCC poison hal_i2s_dev_hw_open hal_i2s_dev_hw_close
+#pragma GCC poison hal_i2s_sync hal_i2s_transfer_async hal_i2s_transfer_poll
+#pragma GCC poison hal_i2s_set_dma_irq_mode hal_i2s_get_dma_irq_mode
+#pragma GCC poison hal_i2s_dma_circ_start hal_i2s_dma_circ_stop
+#pragma GCC poison hal_i2s_dma_circ_write hal_i2s_dma_circ_read
+#endif
+
+
+#endif

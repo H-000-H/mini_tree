@@ -38,20 +38,23 @@ bool hal_storage_erase_all(void);
 #define STORAGE_IOC_ERASE_SECTOR   0x21  /* 物理擦除指定扇区 */
 #define STORAGE_IOC_WRITE_PROTECT  0x22  /* 开启/关闭硬件写保护 */
 
+/** @brief 存储介质几何参数 (扇区大小 + 总数) */
 struct storage_geometry
 {
-    uint32_t sector_size;       /* 扇区大小 (字节, 如 4096) */
-    uint32_t sector_count;      /* 总扇区数 */
+    uint32_t sector_size;       /**< 扇区大小 (字节, 如 4096) */
+    uint32_t sector_count;      /**< 总扇区数 */
 };
 
+/** @brief 扇区擦除参数 (ioctl ERASE_SECTOR) */
 struct storage_erase_arg
 {
-    uint32_t sector;            /* 目标扇区号 */
+    uint32_t sector;            /**< 目标扇区号 */
 };
 
+/** @brief 写保护开关参数 (ioctl WRITE_PROTECT) */
 struct storage_wp_arg
 {
-    bool enable;                /* true = 开启写保护, false = 关闭 */
+    bool enable;                /**< true = 开启写保护, false = 关闭 */
 };
 /*===========================================================================================================================================================*/
 
