@@ -15,7 +15,7 @@
 
 | 你想… | 去看 |
 | :--- | :--- |
-| 5 分钟搞清是什么、文档地图 | 下文「适用场景 / 文档索引」或 [docs/README.md](docs/README.md) |
+| 5 分钟搞清是什么、文档地图 | 下文「适用场景 / 文档索引」或 [docs/README.md](docs/README.md) · [docs/overview.html](docs/overview.html) |
 | 动手接入 | [docs/getting_started.md](docs/getting_started.md) |
 | 弄懂分层与启动 | [docs/architecture.md](docs/architecture.md) · [docs/usage.md](docs/usage.md) |
 | 移植一块板 | [docs/porting_guide.md](docs/porting_guide.md) · [docs/driver_guide.md](docs/driver_guide.md) |
@@ -75,6 +75,7 @@ Application  ──device_* / ioctl──►  board/  ──DRIVER_REGISTER─�
 | 文档 | 内容 |
 | :--- | :--- |
 | [docs/usage.md](docs/usage.md) | 术语表 + 阅读路线 |
+| [docs/overview.html](docs/overview.html) | 视觉总览（磨玻璃 / 架构动画 / 章节跳转） |
 | [docs/getting_started.md](docs/getting_started.md) | 依赖、配置、CMake 集成、点火时序 |
 | [docs/faq.md](docs/faq.md) | 常见问题 |
 
