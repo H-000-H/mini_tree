@@ -2,7 +2,7 @@
 
 > 平台无关嵌入式中间件 — Linux 风格设备树 · 编译期 probe · 弱符号 HAL · 虚拟中断。  
 > **本仓库不绑定厂商 SDK**；板级 `DTS/DTSI` 与 `hal_*_<soc>.c` 由平台工程提供。  
-> **生态走积木型链接**：核心保持瘦，GUI / 网络 / 存储 / OTA 等开源库按需链入，详见 [docs/ecosystem.md](docs/ecosystem.md)。
+> **生态走积木型链接**：核心保持瘦；`lib/` 为**开源积木**（按需链入，不含商业闭源授权库），详见 [docs/ecosystem.md](docs/ecosystem.md)。
 
 | 项目 | 说明 |
 | :--- | :--- |

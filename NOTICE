@@ -4,8 +4,10 @@ Copyright 2024-2026 The mini_tree Authors
 This product includes software developed for the mini_tree embedded
 middleware project. The primary license is Apache License 2.0; see LICENSE.
 
-This distribution also includes third-party components under their own
-licenses. See the paths below (and any LICENSE / NOTICE files therein):
+This distribution also includes third-party open-source components under
+their own licenses (vendored under lib/). See LICENSE / NOTICE / README
+files in each path below. mini_tree's ecosystem policy is to vendor
+open-source building blocks only — not commercial closed-source stacks.
 
   - FreeRTOS Kernel (MIT)
       Location: lib/freeRTOS/
@@ -17,10 +19,62 @@ licenses. See the paths below (and any LICENSE / NOTICE files therein):
   - TinyUSB (MIT)
       Location: lib/tinyusb/
       Copyright (c) 2012-2026, Ha Thach (tinyusb.org)
-      See also: lib/tinyusb/LICENSE and nested third-party licenses under
-      lib/tinyusb/ (e.g. SEGGER RTT, board/BSP components).
+      See also nested licenses under lib/tinyusb/.
 
-Optional / external (not vendored in this tree by default):
+  - lwIP (BSD-style)
+      Location: lib/lwip/
 
-  - Embedded Template Library (ETL) — typically MIT; obtain separately and
-    point cmake/etl.cmake or ide/third_party/etl at a local checkout.
+  - Embedded Template Library / ETL (MIT)
+      Location: lib/etl/
+
+  - cJSON (MIT)
+      Location: lib/cJSON/
+
+  - littlefs (BSD-3-Clause)
+      Location: lib/littlefs/
+
+  - EasyFlash (MIT)
+      Location: lib/EasyFlash/
+
+  - FlashDB (Apache-2.0)
+      Location: lib/FlashDB/
+
+  - SFUD (MIT)
+      Location: lib/SFUD/
+
+  - EasyLogger (MIT)
+      Location: lib/EasyLogger/
+
+  - MultiButton (MIT)
+      Location: lib/MultiButton/
+
+  - FatFs (ChaN's license)
+      Location: lib/FatFs/
+      Upstream: http://elm-chan.org/fsw/ff/ (mirror abbrev/fatfs)
+
+  - MCUBoot (Apache-2.0)
+      Location: lib/mcuboot/
+
+  - LVGL (MIT)
+      Location: lib/lvgl/
+
+  - u8g2 (BSD-2-Clause)
+      Location: lib/u8g2/
+
+  - Mbed TLS (Apache-2.0 OR GPL-2.0)
+      Location: lib/mbedtls/
+      Including nested TF-PSA-Crypto / framework as vendored by upstream.
+
+  - nanopb (Zlib)
+      Location: lib/nanopb/
+
+  - coreMQTT (MIT)
+      Location: lib/coreMQTT/
+
+  - libmodbus (LGPL-2.1-or-later)
+      Location: lib/libmodbus/
+
+  - CMSIS-DSP (Apache-2.0)
+      Location: lib/CMSIS-DSP/
+
+Catalog and acknowledgements: docs/ecosystem.md
