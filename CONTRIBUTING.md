@@ -14,7 +14,7 @@
 1. **不向中间件公共头引入厂商 SDK 依赖**（OSAL 后端 `#if` 路径除外）。  
 2. 新外设顺序：**HAL 头 + weak .c →（可选）bus → vfs → `DRIVER_REGISTER` → 文档/契约**。  
 3. 错误码统一 `status.h`；对外 API 禁止 `void` 成功/失败。  
-4. 文档与代码同 PR：至少更新 [docs/file_index.md](docs/file_index.md) 或对应 `docs/*`。  
+4. 文档与代码同 PR：至少更新 [docs/file_index.md](docs/file_index.md) 或对应 `docs/*`；新开源积木更新 [docs/ecosystem.md](docs/ecosystem.md) + [NOTICE](NOTICE)。  
 5. 遵守 [docs/fast_path.md](docs/fast_path.md) 与分层 poison。  
 
 ---
@@ -49,10 +49,11 @@ pip install lark
 
 ## 文档规格
 
-见 [README.md](README.md)「文档写作约定」与 [docs/README.md](docs/README.md)。
+新专题进 `docs/`；规格与目录见 [docs/README.md](docs/README.md)。  
+新增开源积木须同步 [docs/ecosystem.md](docs/ecosystem.md) 与 [NOTICE](NOTICE)。
 
 ---
 
 ## 相关文档
 
-- [docs/roadmap.md](docs/roadmap.md) · [docs/todolist.md](docs/todolist.md) · [docs/design_decisions.md](docs/design_decisions.md)
+- [docs/roadmap.md](docs/roadmap.md) · [docs/todolist.md](docs/todolist.md) · [docs/design_decisions.md](docs/design_decisions.md) · [docs/ecosystem.md](docs/ecosystem.md)

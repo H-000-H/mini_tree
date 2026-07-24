@@ -1,22 +1,14 @@
-# LVGL — vendored under lib/lvgl (v9.5.0).
-# Not built until mini_tree_link_lvgl(); board must provide lv_conf.h.
+# LVGL — local lib/lvgl or FetchContent (v9.5.0). Built on mini_tree_link_lvgl().
+include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
+
 if(DEFINED MINI_TREE_LVGL_CMAKE_LOADED)
     return()
 endif()
 set(MINI_TREE_LVGL_CMAKE_LOADED ON)
 
-set(MINI_TREE_LVGL_VERSION "9.5.0" CACHE STRING "LVGL release version")
-set(MINI_TREE_LVGL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lvgl" CACHE PATH "LVGL source root")
+set(MINI_TREE_LVGL_VERSION "v9.5.0" CACHE STRING "LVGL git tag")
+message(STATUS "mini_tree LVGL: ${MINI_TREE_LVGL_VERSION} (local-or-fetch on link)")
 
-if(NOT EXISTS "${MINI_TREE_LVGL_DIR}/lvgl.h")
-    message(STATUS "mini_tree LVGL: not found under ${MINI_TREE_LVGL_DIR} — skip")
-    return()
-endif()
-
-message(STATUS "mini_tree LVGL: ${MINI_TREE_LVGL_VERSION} @ ${MINI_TREE_LVGL_DIR} (link via mini_tree_link_lvgl)")
-
-# mini_tree_link_lvgl(<target> <port_dir>)
-# port_dir must contain lv_conf.h (display/indev flush callbacks stay in app/port).
 function(mini_tree_link_lvgl target)
     if(${ARGC} LESS 2)
         message(FATAL_ERROR "mini_tree_link_lvgl(<target> <port_dir>)")
@@ -27,10 +19,17 @@ function(mini_tree_link_lvgl target)
     endif()
 
     if(NOT TARGET lvgl)
+        mini_tree_dep_get(_lvgl_dir
+            NAME lvgl
+            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lvgl"
+            MARKER "lvgl.h"
+            GIT_REPOSITORY https://github.com/lvgl/lvgl
+            GIT_TAG ${MINI_TREE_LVGL_VERSION}
+        )
         set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "Build LVGL demos" FORCE)
         set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "Build LVGL examples" FORCE)
         set(LV_BUILD_CONF_DIR "${_port}" CACHE PATH "Directory containing lv_conf.h" FORCE)
-        add_subdirectory("${MINI_TREE_LVGL_DIR}" "${CMAKE_BINARY_DIR}/mini_tree_lvgl" EXCLUDE_FROM_ALL)
+        add_subdirectory("${_lvgl_dir}" "${CMAKE_BINARY_DIR}/mini_tree_lvgl" EXCLUDE_FROM_ALL)
     endif()
 
     target_link_libraries(${target} PUBLIC lvgl)

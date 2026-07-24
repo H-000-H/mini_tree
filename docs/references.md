@@ -6,7 +6,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 选型 / 移植 / 想理解「为什么长这样」的人 |
-| **相关** | [design_decisions.md](design_decisions.md) · [architecture.md](architecture.md) |
+| **相关** | [design_decisions.md](design_decisions.md) · [architecture.md](architecture.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -60,7 +60,7 @@
 
 | 项目 | 建议落点 | 说明 |
 | :--- | :--- | :--- |
-| [LVGL](https://lvgl.io/) | 应用层以上 | 嵌入式 UI；经 OSAL 任务 + 本仓设备 I/O 取数，不 `#include` `hal_*`。 |
+| [LVGL](https://lvgl.io/) | 应用层以上 | 嵌入式 UI；经 OSAL 任务 + 本仓设备 I/O 取数，不 `#include` `hal_*`。产品侧按需 `mini_tree_link_lvgl`（见 [ecosystem.md](ecosystem.md)），**不进入** board→vfs→bus→hal 契约。 |
 | [Qt](https://www.qt.io/) | 应用层以上（多在 MPU / 大资源） | 富 UI / 工具链；与 MCU 侧 mini_tree 通过协议或远端服务解耦，而非链进同一固件分层。 |
 
 语言偏好（应用层 C++/Rust）见 [design_decisions.md](design_decisions.md)。
@@ -75,11 +75,11 @@
 | 应用 I/O | Linux fd / ESP VFS fd / RTT `rt_device` | `device_*` + `file_operations` |
 | 南向 HAL | 厂商库直调或厚封装 | 中立头 + weak `.c`，平台覆盖 |
 | 调度 | FreeRTOS / RTT / Zephyr / 裸机 | OSAL 三后端（无 Zephyr） |
-| UI | LVGL / Qt / 无 | **不在中间件内**；属应用层 |
+| UI | LVGL / Qt / 无 | **不在中间件核心契约内**；LVGL 可作为开源积木按需链接（[ecosystem.md](ecosystem.md)） |
 
 ---
 
 ## 相关文档
 
-- [design_decisions.md](design_decisions.md) · [architecture.md](architecture.md) · [service_spec.md](service_spec.md)  
+- [design_decisions.md](design_decisions.md) · [architecture.md](architecture.md) · [service_spec.md](service_spec.md) · [ecosystem.md](ecosystem.md)  
 - [osal_switching.md](osal_switching.md) · [porting_guide.md](porting_guide.md)

@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **读者** | 平台/应用工程师 |
 | **前置** | CMake、基本 C；有一块目标板或至少能链出固件 |
-| **相关** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [README.md](../tools/README.md) |
+| **相关** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools/README.md](../tools/README.md) |
 
 ---
 
@@ -106,7 +106,8 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | `BOARD_DTSI_DIR` | `PATH` | dtsi 搜索目录 |
 | `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏 |
 | `VENDOR_DEFINES` | `STRING` | 额外 `-D`（少用） |
-| ETL（`cmake/etl.cmake`） | — | `SYSTEM_CPP` 时本地路径或 FetchContent |
+| ETL（`cmake/etl.cmake`） | — | **默认进库**：源码 `lib/etl`；根 CMake 始终 link（缺失时 Fetch 兜底） |
+| 其它开源积木 | — | `mini_tree_link_*`；默认 Fetch，见 [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | 可选；见 `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | 启用后可对目标加反汇编 post-build（`cmake/disasm.cmake`） |
 
@@ -116,9 +117,10 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 
 1. 跑 `genconfig.py`  
 2. 跑 `dtc-lite`（扫描 vfs/bus/drivers 中的 `DRIVER_REGISTER`）  
-3. 按 `.config` 挑选 OSAL / SYSTEM 源文件并链接 `lib/` 中对应部分  
+3. 按 `.config` 挑选 OSAL / SYSTEM 源；按 Kconfig 链入 `lib/` 中的内核（及 TinyUSB 等基础设施）  
+4. 可选积木由产品侧 `mini_tree_link_*` 点亮（首次可能联网 Fetch）  
 
-语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)。
+语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)；积木清单见 [ecosystem.md](ecosystem.md)。
 
 ### 4.2 ESP-IDF？
 
@@ -182,7 +184,7 @@ system_init_complete();
 // 再启动调度器
 ```
 
-阶段含义见 [ARCHITECTURE.md §3](architecture.md#3-启动时序两段式点火)。
+阶段含义见 [architecture.md §3](architecture.md#3-启动时序两段式点火)。
 
 ---
 
@@ -190,10 +192,10 @@ system_init_complete();
 
 1. 用编辑器打开 **mini_tree 仓库根**（不要只开子文件夹）。  
 2. 确认存在根目录 `compile_flags.txt`，**删除**任何子目录里的 `compile_flags.txt`。  
-3. 需要 ETL 时配置 `ide/third_party/etl`。  
+3. ETL 头：已在 `lib/etl`；clangd 用根 `compile_flags.txt`（含 `-Ilib/etl/include`）即可。  
 4. 命令面板：`Clangd: Restart language server`。  
 
-无真机构建时，靠 `ide/stubs/` 里的 `config.h`、`board_nodes.h` 等占位头消除红线。
+无真机构建时，靠 `ide/stubs/` 里的 `config.h`、`board_nodes.h` 等占位头消除红线。积木策略见 [ecosystem.md](ecosystem.md)。
 
 ---
 
@@ -210,5 +212,5 @@ system_init_complete();
 ## 相关文档
 
 - [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)  
-- [osal_switching.md](osal_switching.md) · [faq.md](faq.md)  
-- [README.md](../tools/README.md)
+- [osal_switching.md](osal_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)  
+- [tools/README.md](../tools/README.md)

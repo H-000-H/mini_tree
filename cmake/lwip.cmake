@@ -1,4 +1,4 @@
-# lwIP — vendored under lib/lwip (STABLE-2_2_1_RELEASE / 2.2.1).
+# lwIP — 基础设施，vendored under lib/lwip (STABLE-2_2_1_RELEASE / 2.2.1).
 # Not linked by default: board must provide lwipopts.h (+ arch/cc.h, sys_arch…).
 if(TARGET mini_tree_lwip)
     return()

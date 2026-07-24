@@ -1,36 +1,21 @@
-# ETL (Embedded Template Library) — header-only, no heap STL in upper layers.
+# ETL — 上层 C++ 基础设施（无堆容器/字符串等），vendored 在 lib/etl。
+# 根 CMake 默认 link 进 mini_tree。缺失时 Fetch 兜底。
+include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
+
 if(TARGET etl::etl)
     return()
 endif()
 
 set(MINI_TREE_ETL_VERSION "20.48.1" CACHE STRING "ETL release tag")
 
-set(_etl_local_candidates
-    "${CMAKE_CURRENT_LIST_DIR}/../lib/etl"
-    "${CMAKE_CURRENT_LIST_DIR}/../../../../Espressif/esp32s3/managed_components/marcel-cd__etlcpp/etl"
-    "${CMAKE_CURRENT_LIST_DIR}/../../../ESP32-S3/managed_components/marcel-cd__etlcpp/etl"
-    "${CMAKE_CURRENT_LIST_DIR}/../../third_party/etl"
+mini_tree_dep_get(_etl_source_dir
+    NAME etl
+    LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/etl"
+    MARKER "include/etl/vector.h"
+    GIT_REPOSITORY https://github.com/ETLCPP/etl
+    GIT_TAG ${MINI_TREE_ETL_VERSION}
 )
-set(_etl_source_dir "")
-foreach(_candidate IN LISTS _etl_local_candidates)
-    if(EXISTS "${_candidate}/include/etl/vector.h")
-        set(_etl_source_dir "${_candidate}")
-        break()
-    endif()
-endforeach()
-
-if(_etl_source_dir)
-    message(STATUS "mini_tree ETL: local ${_etl_source_dir}")
-    add_subdirectory("${_etl_source_dir}" "${CMAKE_BINARY_DIR}/mini_tree_etl" EXCLUDE_FROM_ALL)
-else()
-    include(FetchContent)
-    FetchContent_Declare(
-        mini_tree_etl
-        GIT_REPOSITORY https://github.com/ETLCPP/etl
-        GIT_TAG        ${MINI_TREE_ETL_VERSION}
-    )
-    FetchContent_MakeAvailable(mini_tree_etl)
-endif()
+add_subdirectory("${_etl_source_dir}" "${CMAKE_BINARY_DIR}/mini_tree_etl" EXCLUDE_FROM_ALL)
 
 function(mini_tree_link_etl target)
     if(NOT TARGET etl::etl)

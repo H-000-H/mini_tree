@@ -7,7 +7,7 @@
 | :--- | :--- |
 | **读者** | 写业务任务 / 驱动下半部的人 |
 | **前置** | [getting_started.md](getting_started.md) 点火 · [service_spec.md](service_spec.md) |
-| **相关** | [fast_path.md](fast_path.md) · [amp.md](amp.md) |
+| **相关** | [fast_path.md](fast_path.md) · [amp.md](amp.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -90,12 +90,12 @@ Kconfig **二选一**：编入 `system_c/` 或 `system_cpp/`。
 | 阶段 2 | `mini_tree_start_tasks()` | `MiniTree::System_Start_Tasks()` |
 | 收尾 | `system_init_complete()`（两侧共用 C） | 同左 |
 | 裸机 loop | `mini_tree_system_loop()` | 同左（C API） |
-| 依赖 | 更少 | 可接 ETL 等；根 CMake 常加 `-fno-rtti` / `-fno-exceptions` |
+| 依赖 | 更少 | **ETL 默认进库**（上层 C++ 基础；配置期解析）；根 CMake 常加 `-fno-rtti` / `-fno-exceptions` |
 
 **如何选：**
 
 - 固件整体偏 C、工具链无例外 → `SYSTEM_C`。  
-- 已有 C++ 业务 / 要用 `event_bus.hpp`、ETL → `SYSTEM_CPP`（仓库默认 `.config` 常见为此）。  
+- 已有 C++ 业务 / 要用 `event_bus.hpp`、ETL 头 → `SYSTEM_CPP`（仓库默认 `.config` 常见为此）。ETL 为上层 C++ 基础且默认进 `mini_tree`，见 [ecosystem.md](ecosystem.md)。
 - 南向 HAL/VFS **仍是 C ABI**；换 SYSTEM 不改变外设栈语言。
 
 ---
@@ -126,4 +126,4 @@ Kconfig **二选一**：编入 `system_c/` 或 `system_cpp/`。
 ## 相关文档
 
 - [architecture.md](architecture.md) · [getting_started.md](getting_started.md) · [fast_path.md](fast_path.md)  
-- [amp.md](amp.md) · [peripherals.md](peripherals.md)
+- [amp.md](amp.md) · [peripherals.md](peripherals.md) · [ecosystem.md](ecosystem.md)

@@ -36,6 +36,8 @@
 | **OSAL** | 操作系统抽象三后端 | `osal/` |
 | **VIRQ** | 虚拟中断号 + 上/下半部 | `interrupt/` |
 | **status / VFS_ERR_*** | 统一错误码 | `core/include/status.h` |
+| **积木** | 可选开源能力块（GUI/网络/FS…） | [ecosystem.md](ecosystem.md)；`mini_tree_link_*` |
+| **vendor / Fetch** | 基础设施进 `lib/`；其余默认构建时拉取 | [ecosystem.md](ecosystem.md) §0 |
 | **两段式点火** | pre-os → start-tasks → complete → 调度 | `system_init.h` / `.hpp` |
 
 ---
@@ -54,8 +56,9 @@
 
 1. [getting_started.md](getting_started.md) § 点火时序  
 2. [service_spec.md](service_spec.md) — 允许/禁止依赖  
-3. [fast_path.md](fast_path.md) — ISR / GPIO 红线  
-4. [architecture.md](architecture.md) § 数据流  
+3. [ecosystem.md](ecosystem.md) — 需要 GUI/网络/FS 时选积木  
+4. [fast_path.md](fast_path.md) — ISR / GPIO 红线  
+5. [architecture.md](architecture.md) § 数据流  
 
 ### 路径 C — 改中间件本身
 
@@ -71,24 +74,26 @@
 | :--- | :--- | :---: |
 | `docs/` | 专题文档（入口见 [README.md](README.md)） | 否 |
 | `board` / `vfs` / `bus` / `hal` | 设备模型与外设栈 | HAL 实现 **否**（仅 weak） |
-| `core` / `osal` / `interrupt` / `system_*` | 运行时基础设施 | OSAL 后端可选依赖 `lib/` |
+| `core` / `osal` / `interrupt` / `system_*` | 运行时基础设施 | OSAL 后端可选依赖 `lib/` 内核 |
 | `tools` | dtc-lite、genconfig | 否 |
 | `ide/stubs` | 无构建时的 clangd 占位头 | 否 |
-| `lib/` | FreeRTOS / RT-Thread / TinyUSB | 第三方源码，按 Kconfig 裁剪 |
+| `lib/` | 基础设施（OS / USB / lwIP / cJSON / ETL）；其余默认 Fetch | 开源积木，见 [ecosystem.md](ecosystem.md) |
 
 ---
 
 ## 4. 专题文档地图
 
-与 [README.md](../README.md) 索引一致，按主题分组：
+精简地图如下；完整目录见 [docs/README.md](README.md)。
 
 | 分组 | 文档 |
 | :--- | :--- |
 | 上手 | [getting_started](getting_started.md) · [faq](faq.md) · [keil_integration](keil_integration.md) |
+| 生态 | [ecosystem](ecosystem.md)（积木 / Fetch） · [architecture](architecture.md) |
 | 移植 | [porting_guide](porting_guide.md) · [esp_idf_cmake](esp_idf_cmake.md) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
-| 编码 | [service_spec](service_spec.md) · [peripherals](peripherals.md) · [runtime_services](runtime_services.md) · [can_hook](can_hook.md) · [fast_path](fast_path.md) |
+| 编码 | [service_spec](service_spec.md) · [peripherals](peripherals.md) · [runtime_services](runtime_services.md) · [can_hook](can_hook.md) · [fast_path](fast_path.md) · [api_compatibility](api_compatibility.md) |
 | 诊断 | [debug_monitor](debug_monitor.md) · [problem_summary](problem_summary.md) |
-| 选型 | [design_decisions](design_decisions.md)（偏好） · [references](references.md) |
+| 选型 | [design_decisions](design_decisions.md) · [references](references.md) |
+| 索引 | [file_index](file_index.md) · [roadmap](roadmap.md) · [todolist](todolist.md) |
 | 工具 | [tools/README](../tools/README.md) |
 
 ---

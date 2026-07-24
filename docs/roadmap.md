@@ -19,6 +19,7 @@
 | ✓ | clangd 无 SDK 可解析（stubs + compile_flags） |
 | ✓ | 文档树：根惯例文件 + `docs/` 专题（无 examples / board Wiki） |
 | ✓ | USB / 外设 ioctl / AMP / can_hook / 运行时服务等缺口文档 |
+| ✓ | 开源积木：基础设施 vendor / 其余 Fetch（`ecosystem.md` + `dep_fetch`） |
 | → | 与平台工程 DTS/API 持续同步 |
 | → | CI：占位 DTS 下仅编译 smoke |
 | → | dt-bindings / 契约测试加强 |
@@ -43,4 +44,4 @@
 
 ## 相关文档
 
-- [todolist.md](todolist.md) · [architecture.md](architecture.md) · [README.md](README.md)
+- [todolist.md](todolist.md) · [architecture.md](architecture.md) · [ecosystem.md](ecosystem.md) · [README.md](README.md)

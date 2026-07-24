@@ -5,7 +5,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 定位启动 / probe / I/O 问题的人 |
-| **相关** | [faq.md](faq.md) · [problem_summary.md](problem_summary.md) · [README.md](../tools/README.md) |
+| **相关** | [faq.md](faq.md) · [problem_summary.md](problem_summary.md) · [tools/README.md](../tools/README.md) |
 
 ---
 
@@ -86,4 +86,4 @@ IDE 无构建时用 `ide/stubs/*` 对齐符号名，但 **ID 数量是占位**�
 ## 相关文档
 
 - [faq.md](faq.md) · [porting_guide.md](porting_guide.md)  
-- [../ARCHITECTURE.md](architecture.md)
+- [architecture.md](architecture.md)

@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **读者** | 需要改中间件或做深度移植的工程师 |
 | **前置** | 已读 [usage.md](usage.md) 术语表 |
-| **相关** | [design_decisions.md](design_decisions.md) · [file_index.md](file_index.md) · [driver_guide.md](driver_guide.md) |
+| **相关** | [design_decisions.md](design_decisions.md) · [file_index.md](file_index.md) · [driver_guide.md](driver_guide.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -85,7 +85,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `time_slice/` | 裸机协作式调度 | `xtask`（仅 `OSAL_NULL`） |
 | `drivers/flash/` | 示例外置 Flash 驱动 | W25Q64 |
 | `can_hook/` | CAN 钩子扩展 | — |
-| `lib/` | 可选第三方内核/USB | 按 Kconfig |
+| `lib/` + `cmake/*.cmake` | 基础设施在 `lib/`；其余 Fetch 或本地覆盖 | OSAL/Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
 
 ### 2.1 外设覆盖（当前）
 
@@ -205,6 +205,6 @@ CMake 关键缓存变量：`BOARD_DTS`、`BOARD_DTSI_DIR`、`VENDOR_INC_DIRS`、
 
 ## 相关文档
 
-- [usage.md](usage.md) · [getting_started.md](getting_started.md)  
+- [usage.md](usage.md) · [getting_started.md](getting_started.md) · [ecosystem.md](ecosystem.md)  
 - [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)  
 - [design_decisions.md](design_decisions.md) · [api_compatibility.md](api_compatibility.md)

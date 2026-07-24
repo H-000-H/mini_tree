@@ -88,5 +88,5 @@ IRQ
 
 ## 相关文档
 
-- [service_spec.md](service_spec.md) · [../ARCHITECTURE.md](architecture.md)  
+- [service_spec.md](service_spec.md) · [architecture.md](architecture.md)  
 - [debug_monitor.md](debug_monitor.md)

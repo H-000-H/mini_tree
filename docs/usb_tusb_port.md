@@ -7,7 +7,7 @@
 | :--- | :--- |
 | **读者** | 做 USB 移植的板级工程师 |
 | **前置** | [porting_guide.md](porting_guide.md) · [peripherals.md](peripherals.md) |
-| **相关** | [driver_guide.md](driver_guide.md) · TinyUSB 在 `lib/tinyusb` |
+| **相关** | [driver_guide.md](driver_guide.md) · TinyUSB 在 `lib/tinyusb` · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -118,5 +118,5 @@ VFS ioctl：`USB_CMD_SET_XFER_MODE` / `GET_XFER_MODE`（见 [peripherals.md](per
 
 ## 相关文档
 
-- [porting_guide.md](porting_guide.md) · [peripherals.md](peripherals.md) · [architecture.md](architecture.md)  
+- [porting_guide.md](porting_guide.md) · [peripherals.md](peripherals.md) · [architecture.md](architecture.md) · [ecosystem.md](ecosystem.md)  
 - [faq.md](faq.md) · [todolist.md](todolist.md)

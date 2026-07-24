@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **读者** | 写平台 dtsi / 写 VFS 驱动的人 |
 | **前置** | [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) |
-| **相关** | [README.md](../tools/README.md) · [architecture.md](architecture.md) |
+| **相关** | [tools/README.md](../tools/README.md) · [architecture.md](architecture.md) |
 
 ---
 
@@ -167,5 +167,5 @@ Probe 成功路径记得 `device_lc_bind(dev)`。
 ## 相关文档
 
 - [usb_tusb_port.md](usb_tusb_port.md) · [peripherals.md](peripherals.md) · [amp.md](amp.md)  
-- [README.md](../tools/README.md)  
+- [tools/README.md](../tools/README.md)  
 - [service_spec.md](service_spec.md) · [faq.md](faq.md)

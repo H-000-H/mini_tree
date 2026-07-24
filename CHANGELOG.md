@@ -12,17 +12,20 @@
 - Bus/VFS 覆盖 gpio/spi/uart/i2c/i2s/can/usb/adc/dac/tim/rtc/iwdg/wwdg 等  
 - USB 经 TinyUSB + 板级 `usb_tusb_port` 约定  
 - clangd：`compile_flags.txt` + `ide/stubs`；禁止子目录覆盖  
+- ETL 明确为 **上层 C++ 基础**：源码在 `lib/etl`，根 CMake 默认进 `mini_tree`  
+- 开源积木：**基础设施进仓**（OS / USB / lwIP / cJSON / ETL）；**其余全部 FetchContent**（`cmake/dep_fetch.cmake`）  
 
 ### 文档
 
-- 专题文档统一放到 `docs/`（小写文件名）；根目录仅保留 `README` / `CHANGELOG` / `CONTRIBUTING`  
+- 新增 [docs/ecosystem.md](docs/ecosystem.md)：积木型生态、Fetch 策略与致谢  
+- 专题文档对齐 hybrid 依赖：去掉过时 `ide/third_party/etl`；交叉链接 ecosystem；刷新 `overview.html`  
+- 根 [README.md](README.md) 中文改版（简介 / 特性 / 快速开始）  
+- 专题文档统一放到 `docs/`；根目录仅保留 `README` / `CHANGELOG` / `CONTRIBUTING`  
 - 新增 [docs/README.md](docs/README.md) 作为文档目录页  
 - 原根目录 `NOTICE.md` → [docs/design_decisions.md](docs/design_decisions.md)；新增 Apache 惯例 [NOTICE](NOTICE)  
-- 补充作者偏好取舍与 [docs/references.md](docs/references.md)（ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt 等对照）  
+- 补充 [docs/references.md](docs/references.md) 与作者偏好取舍  
 - 补缺口专题：USB / 外设 / AMP / can_hook / 运行时服务；ESP-IDF CMake 见 [esp_idf_cmake](docs/esp_idf_cmake.md)  
-- 作者偏好补充：不推荐 Keil 作主 IDE（跳转/C++/AI 弱）；推荐 Cursor / VS Code / CLion / Qoder  
-- 统一文档规格：摘要 / 读者 / 目录 / 正文 / 相关链接  
-- 无 `examples/`、无 `board/docs` Wiki  
+- 不推荐 Keil 作主 IDE；推荐 Cursor / VS Code / CLion / Qoder  
 
 ### 仓库卫生
 

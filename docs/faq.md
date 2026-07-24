@@ -5,7 +5,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 所有使用者 |
-| **相关** | [getting_started.md](getting_started.md) · [problem_summary.md](problem_summary.md) · [osal_switching.md](osal_switching.md) |
+| **相关** | [getting_started.md](getting_started.md) · [problem_summary.md](problem_summary.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -27,7 +27,9 @@
 
 ### ETL / `etl/string.h` not found
 
-配置 `ide/third_party/etl` → 本地 ETL 源，或关闭不需要的 C++ 翻译单元。
+ETL 是 **上层 C++ 基础库**，源码在 `lib/etl`，配置时默认链入 `mini_tree`。  
+
+若 IDE 仍报 `etl/string.h` not found：确认 `lib/etl/include` 存在，或刷新 `compile_commands.json` / 根 `compile_flags.txt`（已含 `-Ilib/etl/include`）。详见 [ecosystem.md](ecosystem.md)。
 
 ### 能不能用 Keil 当主 IDE？
 
@@ -86,4 +88,4 @@
 ## 相关文档
 
 - [debug_monitor.md](debug_monitor.md) · [porting_guide.md](porting_guide.md)  
-- [../USAGE.md](usage.md)
+- [usage.md](usage.md) · [ecosystem.md](ecosystem.md)

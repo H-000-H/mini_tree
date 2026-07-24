@@ -8,7 +8,7 @@
 | :--- | :--- |
 | **读者** | 把本 shelf 接到 ESP-IDF 工程的人 |
 | **前置** | [getting_started.md](getting_started.md)（通用 CMake） |
-| **相关** | [porting_guide.md](porting_guide.md) · [design_decisions.md](design_decisions.md) |
+| **相关** | [porting_guide.md](porting_guide.md) · [design_decisions.md](design_decisions.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -127,7 +127,7 @@ OSAL / SYSTEM 仍读组件目录 `.config` 中的 `CONFIG_OSAL_*=y` / `CONFIG_SY
 ## 6. 依赖与 ETL
 
 - ESP 驱动：写在 `idf_component_register(... REQUIRES …)`。  
-- ETL：参考工程用 `idf_component.yml` 拉 `marcel-cd/etlcpp`（或等价），**不要**再把 `managed_components` 塞进 `EXTRA_COMPONENT_DIRS`。  
+- ETL：参考工程用 `idf_component.yml` 拉 `marcel-cd/etlcpp`（或等价），**不要**再把 `managed_components` 塞进 `EXTRA_COMPONENT_DIRS`。通用 CMake 仓则用 `cmake/etl.cmake`（本地 `lib/etl` 或 Fetch），见 [ecosystem.md](ecosystem.md)。  
 - FreeRTOS：ESP-IDF 自带；OSAL 选 `CONFIG_OSAL_FREERTOS` 时对接 IDF 内核，**勿再嵌一份** `lib/freeRTOS` 进组件（与 [design_decisions.md](design_decisions.md) 一致）。
 
 ---
@@ -158,5 +158,5 @@ OSAL / SYSTEM 仍读组件目录 `.config` 中的 `CONFIG_OSAL_*=y` / `CONFIG_SY
 
 ## 相关文档
 
-- [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) · [osal_switching.md](osal_switching.md)  
+- [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)  
 - [references.md](references.md)（ESP-IDF VFS 心智对照）

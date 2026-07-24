@@ -1,4 +1,4 @@
-# =============================================
+﻿# =============================================
 # 参考 Heterogeneous-Multicore 根 .gitignore（ST 板工程共用），
 # 按中间件 shelf（本仓独立构建 / clangd）裁剪与补充。
 # =============================================
@@ -90,6 +90,30 @@ Thumbs.db
 # ---------------------------------------------
 ide/third_party/etl
 ide/third_party/etl/
+
+# ---------------------------------------------
+# 可选开源积木：默认 FetchContent，勿提交进 git
+# 基础设施保留 vendor：cJSON / lwIP / ETL / freeRTOS / rtthread / tinyusb
+# 若需离线，可手动 clone 到对应路径（cmake 会优先用本地）
+# ---------------------------------------------
+lib/lvgl/
+lib/u8g2/
+lib/mbedtls/
+lib/CMSIS-DSP/
+lib/FlashDB/
+lib/SFUD/
+lib/EasyFlash/
+lib/EasyLogger/
+lib/FreeModbus/
+lib/littlefs/
+lib/MultiButton/
+lib/FatFs/
+lib/mcuboot/
+lib/nanopb/
+lib/coreMQTT/
+lib/coreHTTP/
+lib/miniz/
+lib/libmodbus/
 
 # 本地 Agent 入口（不入库；vendored 子树内 AGENTS.md 不受影响）
 /AGENTS.md

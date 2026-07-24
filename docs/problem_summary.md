@@ -83,4 +83,4 @@ DEV_ID_COUNT:
 ## 相关文档
 
 - [faq.md](faq.md) · [debug_monitor.md](debug_monitor.md)  
-- [../DESIGN_DECISIONS.md](design_decisions.md)
+- [design_decisions.md](design_decisions.md)

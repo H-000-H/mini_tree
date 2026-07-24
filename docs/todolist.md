@@ -14,6 +14,7 @@
 - [ ] `ide/stubs` 与真实 genconfig/dtc 输出的定期同步脚本  
 - [ ] 文档内锚点链接的 CI 检查（可选）  
 - [x] USB / 外设 ioctl / AMP / can_hook / EventBus 等缺口文档（见 `docs/*`）  
+- [x] 开源积木文档与 hybrid Fetch 策略对齐（基础设施 vendor；其余 Fetch）  
 
 ---
 

@@ -3,6 +3,7 @@
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/dep_fetch.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/etl.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/lwip.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/cjson.cmake")
@@ -21,6 +22,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/cmake/coremqtt.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/libmodbus.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/mbedtls.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/cmsis_dsp.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/corehttp.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/miniz.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/freemodbus.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/hal/paths.cmake")
 
 set(KCONFIG_DOT "${CMAKE_CURRENT_LIST_DIR}/.config")
@@ -340,6 +344,7 @@ target_link_libraries(mini_tree PUBLIC lib)
 # TinyUSB：板级自行链接 DCD / CFG_TUSB_MCU，中间件不绑 MCU
 
 target_compile_options(mini_tree PRIVATE -Wno-unused-value)
+# 上层 C++ 基础：ETL 默认进 mini_tree（SYSTEM_CPP / event_bus 等依赖）
 mini_tree_link_etl(mini_tree)
 add_custom_target(mini_tree_gen DEPENDS "${KCONFIG_OUT}" ${GEN_SRCS} ${GEN_HDRS} "${SCRUBBER_CRC_HDR}")
 add_dependencies(mini_tree mini_tree_gen)

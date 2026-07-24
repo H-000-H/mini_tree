@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **读者** | 板级 / BSP 工程师 |
 | **前置** | [getting_started.md](getting_started.md) |
-| **相关** | [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [architecture.md](architecture.md) |
+| **相关** | [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [architecture.md](architecture.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -124,6 +124,6 @@
 
 ## 相关文档
 
-- [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md)  
+- [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)  
 - [faq.md](faq.md) · [problem_summary.md](problem_summary.md)  
-- [../ARCHITECTURE.md](architecture.md)
+- [architecture.md](architecture.md)

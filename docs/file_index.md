@@ -1,6 +1,6 @@
 # 文件索引
 
-> 中间件源码导航（不含 `lib/**`、`ide/third_party/**`）。路径相对仓库根。
+> 中间件源码导航（不含 `lib/**` 积木树）。路径相对仓库根。可选积木可能仅在 Fetch 缓存中，见 [ecosystem.md](ecosystem.md)。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -48,7 +48,7 @@
 
 ## hal / vfs / bus
 
-外设矩阵见 [ARCHITECTURE.md §2.1](architecture.md#21-外设覆盖当前)。
+外设矩阵见 [architecture.md §2.1](architecture.md#21-外设覆盖当前)。
 
 命名约定：
 
@@ -90,7 +90,7 @@
 | `drivers/flash/` | W25Q64 示例驱动 |
 | `can_hook/` | CAN 协议超集钩子（见 [can_hook.md](can_hook.md)） |
 | `algorithm/buffer/` | 环形/双缓冲 |
-| `cmake/*.cmake` | etl、disasm、rust |
+| `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` |
 
 ---
 
@@ -98,11 +98,11 @@
 
 ```bash
 find . -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
-  ! -path './lib/*' ! -path './ide/third_party/*' | sort
+  ! -path './lib/*' ! -path './build/*' | sort
 ```
 
 ---
 
 ## 相关文档
 
-- [architecture.md](architecture.md) · [driver_guide.md](driver_guide.md)
+- [architecture.md](architecture.md) · [driver_guide.md](driver_guide.md) · [ecosystem.md](ecosystem.md)

@@ -1,4 +1,4 @@
-# cJSON — vendored under lib/cJSON (v1.7.19). Not linked by default.
+# cJSON — 基础设施，vendored under lib/cJSON (v1.7.19). Not linked by default.
 if(TARGET mini_tree_cjson)
     return()
 endif()

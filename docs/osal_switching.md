@@ -97,4 +97,4 @@
 ## 相关文档
 
 - [getting_started.md](getting_started.md) · [service_spec.md](service_spec.md)  
-- [../DESIGN_DECISIONS.md](design_decisions.md)
+- [design_decisions.md](design_decisions.md)

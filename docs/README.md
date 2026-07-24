@@ -75,10 +75,24 @@
 | [roadmap.md](roadmap.md) | 路线图 |
 | [todolist.md](todolist.md) | 待办 |
 
-工具链说明见 [README.md](../tools/README.md)。贡献规约见 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+工具链说明见 [tools/README.md](../tools/README.md)。贡献规约见 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+
+---
+
+## 文档写作约定
+
+每篇专题尽量包含：
+
+1. **标题 + 一句话摘要**  
+2. **读者 / 前置知识**  
+3. **目录**（长文）  
+4. **正文**（表格与可复制命令优先）  
+5. **相关文档**（文末链接）  
+
+路径与符号一律用反引号；错误码写 `VFS_ERR_*` 全名。新文档放到 `docs/`；根目录仅保留 `README` / `CHANGELOG` / `CONTRIBUTING` 与法律文件。
 
 ---
 
 ## 相关文档
 
-- [README.md](../README.md) · [CHANGELOG.md](../CHANGELOG.md)
+- [README.md](../README.md) · [CHANGELOG.md](../CHANGELOG.md) · [ecosystem.md](ecosystem.md)

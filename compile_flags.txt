@@ -1,6 +1,7 @@
 # clangd / clang 无 compile_commands.json 时的兜底编译标志
 # 本文件所在目录 = 编译工作目录，因此 -I 相对 mini_tree 根有效
 # 注意：不要在子目录再放 compile_flags.txt，否则会覆盖本文件且路径易失效
+# 可选 Fetch 积木头路径需用 compile_commands.json（构建后）或本地 lib/<Name>
 -std=gnu17
 -DCONFIG_OSAL_NULL=1
 -DCONFIG_SYS_LOG_USE_PRINTF=1
@@ -11,22 +12,7 @@
 -Ilib/etl/include
 -Ilib/lwip/src/include
 -Ilib/cJSON
--Ilib/littlefs
--Ilib/EasyFlash/easyflash/inc
--Ilib/MultiButton
--Ilib/FatFs/source
--Ilib/mcuboot/boot/bootutil/include
--Ilib/lvgl
--Ilib/u8g2/csrc
--Ilib/FlashDB/inc
--Ilib/FlashDB/port/fal/inc
--Ilib/SFUD/sfud/inc
--Ilib/EasyLogger/easylogger/inc
--Ilib/mbedtls/include
--Ilib/nanopb
--Ilib/coreMQTT/source/include
--Ilib/libmodbus/src
--Ilib/CMSIS-DSP/Include
+-Ilib/tinyusb/src
 -Icore/include
 -Iboard/include
 -Iboard

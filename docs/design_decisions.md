@@ -6,7 +6,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 需要理解「为什么这样分层」的人 |
-| **相关** | [architecture.md](architecture.md) · [references.md](references.md) · [CHANGELOG.md](../CHANGELOG.md) · [NOTICE](../NOTICE) |
+| **相关** | [architecture.md](architecture.md) · [references.md](references.md) · [ecosystem.md](ecosystem.md) · [CHANGELOG.md](../CHANGELOG.md) · [NOTICE](../NOTICE) |
 
 ---
 
@@ -96,5 +96,5 @@
 
 ## 相关文档
 
-- [architecture.md](architecture.md) · [roadmap.md](roadmap.md) · [api_compatibility.md](api_compatibility.md)  
+- [architecture.md](architecture.md) · [roadmap.md](roadmap.md) · [api_compatibility.md](api_compatibility.md) · [ecosystem.md](ecosystem.md)  
 - [references.md](references.md) · [osal_switching.md](osal_switching.md) · [keil_integration.md](keil_integration.md)

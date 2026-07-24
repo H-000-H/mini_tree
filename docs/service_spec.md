@@ -102,4 +102,4 @@ return ret;
 ## 相关文档
 
 - [fast_path.md](fast_path.md) · [osal_switching.md](osal_switching.md)  
-- [../ARCHITECTURE.md](architecture.md)
+- [architecture.md](architecture.md)
