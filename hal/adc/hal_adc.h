@@ -76,14 +76,14 @@
  /**
   * @brief ADC 通道配置结构体
   */
- typedef struct hal_adc_channel_cfg
- {
-     uint32_t channel_id;   /**< 硬件通道号 */
-     uint32_t rank;         /**< 序列排队次序 */
-     uint32_t sample_time;  /**< 硬件采样周期时间 */
-     uint32_t diff_mode;    /**< 单端/差分输入选择 */
-     uint32_t attenuation;  /**< 衰减器配置 */
- } hal_adc_channel_config;
+typedef struct hal_adc_channel_cfg
+{
+    uint32_t channel_id;   /**< 硬件通道号 */
+    uint32_t rank;         /**< 序列排队次序 */
+    uint32_t sample_time;  /**< 硬件采样周期时间 */
+    uint32_t diff_mode;    /**< 单端/差分输入选择 */
+    uint32_t attenuation;  /**< 衰减器配置 */
+} hal_adc_channel_config;
 
  /*===========================================================================================================================================================*/
  /* 多模式与 DMA 配置                                                                                                                                        */
@@ -92,65 +92,65 @@
  /**
   * @brief ADC 多实例联动公共配置
   */
- typedef struct hal_adc_multi_cfg
- {
-     uint32_t multimode;      /**< 多模式选择 */
-     uint32_t common_clock;   /**< 全局公共时钟分频源 */
-     uint32_t multi_dma;      /**< 多模式下的多路全局 DMA 传输控制 */
-     uint32_t sampling_delay; /**< 交替/交叉采样模式下的交错延迟周期数 */
- } hal_adc_multi_config;
+typedef struct hal_adc_multi_cfg
+{
+    uint32_t multimode;      /**< 多模式选择 */
+    uint32_t common_clock;   /**< 全局公共时钟分频源 */
+    uint32_t multi_dma;      /**< 多模式下的多路全局 DMA 传输控制 */
+    uint32_t sampling_delay; /**< 交替/交叉采样模式下的交错延迟周期数 */
+} hal_adc_multi_config;
 
  /**
   * @brief DMA 配置
   */
- typedef struct hal_adc_dma_cfg
- {
-    uint32_t  dma_it_enable;        /**< DMA 中断模式使能标志 */
-    uint32_t  dma_enable;           /**< DMA 模式使能标志 */
-    uintptr_t dma_handle;           /**< DMA 寄存器基地址或系统原生硬句柄 */
-    uint32_t  dma_stream;           /**< DMA 流选择 */
-    uint32_t  dma_channel;          /**< DMA 通道选择 */
-    uint32_t  dma_priority;         /**< DMA 优先级选择 */
-    uint32_t  dma_memory_size;      /**< DMA 内存大小选择 */
-    uint32_t  dma_direction;        /**< DMA 传输方向 (外设→内存 / 内存→外设) */
-    uint32_t  dma_mode;             /**< DMA 传输模式 (正常 / 循环) */
-    uint32_t  dma_periph_inc;       /**< DMA 外设地址自增模式 */
-    uint32_t  dma_mem_inc;          /**< DMA 内存地址自增模式 */
-    uint32_t  dma_periph_data_size; /**< DMA 外设端数据宽度 */
-    uint32_t  dma_fifo_mode;        /**< DMA FIFO 模式控制 */
-    uint32_t  dma_fifo_threshold;   /**< DMA FIFO 阈值 */
-    uint32_t  dma_mem_burst;        /**< DMA 内存突发传输大小 */
-    uint32_t  dma_periph_burst;     /**< DMA 外设突发传输大小 */
- } hal_adc_dma_config;
+typedef struct hal_adc_dma_cfg
+{
+   uint32_t  dma_it_enable;        /**< DMA 中断模式使能标志 */
+   uint32_t  dma_enable;           /**< DMA 模式使能标志 */
+   uintptr_t dma_handle;           /**< DMA 寄存器基地址或系统原生硬句柄 */
+   uint32_t  dma_stream;           /**< DMA 流选择 */
+   uint32_t  dma_channel;          /**< DMA 通道选择 */
+   uint32_t  dma_priority;         /**< DMA 优先级选择 */
+   uint32_t  dma_memory_size;      /**< DMA 内存大小选择 */
+   uint32_t  dma_direction;        /**< DMA 传输方向 (外设→内存 / 内存→外设) */
+   uint32_t  dma_mode;             /**< DMA 传输模式 (正常 / 循环) */
+   uint32_t  dma_periph_inc;       /**< DMA 外设地址自增模式 */
+   uint32_t  dma_mem_inc;          /**< DMA 内存地址自增模式 */
+   uint32_t  dma_periph_data_size; /**< DMA 外设端数据宽度 */
+   uint32_t  dma_fifo_mode;        /**< DMA FIFO 模式控制 */
+   uint32_t  dma_fifo_threshold;   /**< DMA FIFO 阈值 */
+   uint32_t  dma_mem_burst;        /**< DMA 内存突发传输大小 */
+   uint32_t  dma_periph_burst;     /**< DMA 外设突发传输大小 */
+} hal_adc_dma_config;
 
  /*===========================================================================================================================================================*/
  /* ADC 核心运行参数配置                                                                                                                                      */
  /*===========================================================================================================================================================*/
 
- /**
-  * @brief ADC 寄存器级核心运行属性配置
-  */
- typedef struct hal_adc_cfg
- {
-    /**软件直射配置*/
-     int32_t  channel_num;         /**< 动态维护的有效通道数量 */
-     int32_t  adc_clk_bus;         /**< ADC 外设所属的总线时钟 */
-     int32_t  internal_ch_enable;  /**< 内部特殊通道供电开关使能 */
-     /**硬件直射配置*/
-     int32_t  resolution;          /**< 分辨率设置 */
-     int32_t  align;               /**< 数据对齐模式 */
-     int32_t  EOC_flag;            /**< 转换结束标志触发逻辑 */
-     int32_t  sequencer_mode;      /**< 扫描/序列器模式使能控制 */
-     int32_t  continuous_mode;     /**< 连续转换模式控制 */
-     int32_t  TriggerSource;       /**< 触发大类选择 */
-     int32_t  trigger_src;         /**< 具体硬件触发源物理映射 ID */
-     int32_t  SequencerLength;     /**< 序列器硬件长度寄存器掩码 */
-     int32_t  SequencerDiscont;    /**< 序列器间断/间歇转换模式控制 */
-     int32_t  dma_mode;            /**< DMA 数据搬运模式选择 */
-     int32_t  output_buf;          /**< 输出缓冲使能开关 */
-     uint32_t internal_ch_select;  /**< 内部通道选择位掩码 (替代 LL_ADC_PATH_INTERNAL_*) */
-     uint32_t dma_reg_mode;        /**< DMA 规则组数据寄存器模式 (替代 LL_ADC_DMA_REG_REGULAR_DATA) */
-     uint32_t sw_trigger;          /**< 软件触发源选择 (替代 LL_ADC_REG_TRIG_SOFTWARE) */
+/**
+ * @brief ADC 寄存器级核心运行属性配置
+ */
+typedef struct hal_adc_cfg
+{
+   /**软件直射配置*/
+    int32_t  channel_num;         /**< 动态维护的有效通道数量 */
+    int32_t  adc_clk_bus;         /**< ADC 外设所属的总线时钟 */
+    int32_t  internal_ch_enable;  /**< 内部特殊通道供电开关使能 */
+    /*--------------------------------硬件直射配置--------------------------------*/
+    int32_t  resolution;          /**< 分辨率设置 */
+    int32_t  align;               /**< 数据对齐模式 */
+    int32_t  EOC_flag;            /**< 转换结束标志触发逻辑 */
+    int32_t  sequencer_mode;      /**< 扫描/序列器模式使能控制 */
+    int32_t  continuous_mode;     /**< 连续转换模式控制 */
+    int32_t  TriggerSource;       /**< 触发大类选择 */
+    int32_t  trigger_src;         /**< 具体硬件触发源物理映射 ID */
+    int32_t  SequencerLength;     /**< 序列器硬件长度寄存器掩码 */
+    int32_t  SequencerDiscont;    /**< 序列器间断/间歇转换模式控制 */
+    int32_t  dma_mode;            /**< DMA 数据搬运模式选择 */
+    int32_t  output_buf;          /**< 输出缓冲使能开关 */
+    uint32_t internal_ch_select;  /**< 内部通道选择位掩码 (替代 LL_ADC_PATH_INTERNAL_*) */
+    uint32_t dma_reg_mode;        /**< DMA 规则组数据寄存器模式 (替代 LL_ADC_DMA_REG_REGULAR_DATA) */
+    uint32_t sw_trigger;          /**< 软件触发源选择 (替代 LL_ADC_REG_TRIG_SOFTWARE) */
  } hal_adc_config;
 
  /*===========================================================================================================================================================*/

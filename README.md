@@ -1,13 +1,15 @@
 # mini_tree: Pure Generic & Architecture-Isolated Embedded Middleware
 
 > 平台无关嵌入式中间件 — Linux 风格设备树 · 编译期 probe · 弱符号 HAL · 虚拟中断。  
-> **本仓库不绑定厂商 SDK**；板级 `DTS/DTSI` 与 `hal_*_<soc>.c` 由平台工程提供。
+> **本仓库不绑定厂商 SDK**；板级 `DTS/DTSI` 与 `hal_*_<soc>.c` 由平台工程提供。  
+> **生态走积木型链接**：核心保持瘦，GUI / 网络 / 存储 / OTA 等开源库按需链入，详见 [docs/ecosystem.md](docs/ecosystem.md)。
 
 | 项目 | 说明 |
 | :--- | :--- |
 | 许可证 | [Apache-2.0](LICENSE)（见各文件 SPDX；第三方见 [`NOTICE`](NOTICE) / `lib/`） |
 | 构建 | CMake 静态库 `mini_tree` |
 | IDE | 打开**仓库根** + clangd（`compile_flags.txt` / `ide/stubs`） |
+| 开源积木 | [`lib/`](lib/) + [`cmake/*.cmake`](cmake/) · [清单与接入说明](docs/ecosystem.md) |
 
 ---
 
@@ -18,6 +20,7 @@
 | 5 分钟搞清是什么、文档地图 | 下文「适用场景 / 文档索引」或 [docs/README.md](docs/README.md) · [docs/overview.html](docs/overview.html) |
 | 动手接入 | [docs/getting_started.md](docs/getting_started.md) |
 | 弄懂分层与启动 | [docs/architecture.md](docs/architecture.md) · [docs/usage.md](docs/usage.md) |
+| 看积木生态 / 已接哪些库 | [docs/ecosystem.md](docs/ecosystem.md) |
 | 移植一块板 | [docs/porting_guide.md](docs/porting_guide.md) · [docs/driver_guide.md](docs/driver_guide.md) |
 | 写业务代码 | [docs/service_spec.md](docs/service_spec.md) · [docs/peripherals.md](docs/peripherals.md) · [docs/fast_path.md](docs/fast_path.md) |
 | 查符号 / 文件 | [docs/file_index.md](docs/file_index.md) |
@@ -37,12 +40,32 @@
 
 ## 集成内核 / 可选依赖
 
+> **积木型链接**：下列库默认不编进固件；按产品需要用 Kconfig 或 `mini_tree_link_*` 接入。  
+> 设计说明与分类清单见 **[docs/ecosystem.md](docs/ecosystem.md)**。
+
 | 组件 | 路径 | 版本 | 何时编入 |
 | :--- | :--- | :--- | :--- |
 | FreeRTOS | `lib/freeRTOS` | Kernel V11.3.0 | `CONFIG_OSAL_FREERTOS` |
 | RT-Thread | `lib/rtthread` | v5.3.0 | `CONFIG_OSAL_RTTHREAD` |
 | TinyUSB | `lib/tinyusb` | 随仓库附带 | USB 场景；板级 `usb_tusb_port` |
-| ETL | `cmake/etl.cmake` | 拉取/本地 | `SYSTEM_CPP` 等 C++ 路径 |
+| lwIP | `lib/lwip` + `cmake/lwip.cmake` | 2.2.1 | 网络场景；板级提供 `lwipopts.h` |
+| ETL | `lib/etl` + `cmake/etl.cmake` | 20.48.1 | `SYSTEM_CPP` 等 C++ 路径 |
+| cJSON | `lib/cJSON` + `cmake/cjson.cmake` | 1.7.19 | JSON 解析 |
+| littlefs | `lib/littlefs` + `cmake/littlefs.cmake` | 2.11.3 | Flash 文件系统 |
+| EasyFlash | `lib/EasyFlash` + `cmake/easyflash.cmake` | master (post-4.1) | Flash KV/ENV；板级 `ef_cfg.h`/`ef_port.c` |
+| MultiButton | `lib/MultiButton` + `cmake/multibutton.cmake` | 1.1.1 | 按键状态机 |
+| FatFs | `lib/FatFs` + `cmake/fatfs.cmake` | R0.16 | FAT/exFAT；板级 `ffconf.h`/`diskio` |
+| MCUBoot | `lib/mcuboot` + `cmake/mcuboot.cmake` | 2.4.0 | Bootloader / 镜像升级；板级 `mcuboot_config.h` |
+| LVGL | `lib/lvgl` + `cmake/lvgl.cmake` | 9.5.0 | 彩色 GUI；板级 `lv_conf.h` + flush/indev |
+| u8g2 | `lib/u8g2` + `cmake/u8g2.cmake` | 2.37.1 | 单色/OLED（常走 I2C）；板级 byte/gpio 回调 |
+| FlashDB | `lib/FlashDB` + `cmake/flashdb.cmake` | 2.2.0 | KV/TSDB；板级 `fdb_cfg.h` |
+| SFUD | `lib/SFUD` + `cmake/sfud.cmake` | 1.1.0 | SPI Flash 统一驱动；板级 `sfud_cfg.h` |
+| EasyLogger | `lib/EasyLogger` + `cmake/easylogger.cmake` | 2.2.0 | 日志；板级 `elog_cfg.h` |
+| mbedtls | `lib/mbedtls` + `cmake/mbedtls.cmake` | 4.2.0 | TLS/密码学；板级 `mbedtls_config.h` |
+| nanopb | `lib/nanopb` + `cmake/nanopb.cmake` | 0.4.9.1 | Protobuf |
+| coreMQTT | `lib/coreMQTT` + `cmake/coremqtt.cmake` | 5.0.2 | MQTT；板级 `core_mqtt_config.h` |
+| libmodbus | `lib/libmodbus` + `cmake/libmodbus.cmake` | 3.2.0 | Modbus；需 POSIX 类端口 `config.h` |
+| CMSIS-DSP | `lib/CMSIS-DSP` + `cmake/cmsis_dsp.cmake` | 1.17.1 | DSP；MCU 需设 `CMSISCORE` |
 | 裸机调度 | `time_slice/task` | — | `CONFIG_OSAL_NULL` |
 
 ---

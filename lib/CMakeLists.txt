@@ -7,6 +7,7 @@
 #   CONFIG_OSAL_NULL      → 不编内核
 #
 # TinyUSB: 可移植协议栈（不含 DCD；板级自行加 CFG_TUSB_MCU / dcd）
+# 可选第三方（lwIP/cJSON/.../FlashDB/SFUD/...）见 cmake/*.cmake，不默认链进固件
 # ==============================================================================
 
 get_filename_component(MINI_TREE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
@@ -75,6 +76,22 @@ if(EXISTS "${TINYUSB_SRC_DIR}/tusb.c")
 else()
     message(STATUS "TinyUSB not present under lib/tinyusb — skip")
 endif()
+
+# ── lwIP（协议栈源码树；目标由 cmake/lwip.cmake 创建，不默认链进固件）──
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/lwip/src/include/lwip/init.h")
+    message(STATUS "lwIP present under lib/lwip (link via cmake/lwip.cmake)")
+else()
+    message(STATUS "lwIP not present under lib/lwip — skip")
+endif()
+
+# ── 其它可选第三方（目标由对应 cmake/*.cmake 创建，不默认链进固件）──
+foreach(_lib_name IN ITEMS
+        cJSON littlefs EasyFlash MultiButton FatFs mcuboot lvgl u8g2
+        FlashDB SFUD EasyLogger nanopb coreMQTT libmodbus mbedtls CMSIS-DSP)
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/${_lib_name}")
+        message(STATUS "${_lib_name} present under lib/${_lib_name}")
+    endif()
+endforeach()
 
 add_library(lib INTERFACE)
 if(OSAL_BACKEND STREQUAL "FREERTOS")

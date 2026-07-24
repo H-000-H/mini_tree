@@ -14,6 +14,7 @@
 | 角色 | 建议顺序 |
 | :--- | :--- |
 | 第一次接入 | [overview.html](overview.html)（全文合集）→ [getting_started.md](getting_started.md) → [usage.md](usage.md) → [faq.md](faq.md) |
+| 选开源积木 / 扩生态 | [ecosystem.md](ecosystem.md) |
 | 平台移植 | [porting_guide.md](porting_guide.md) → [esp_idf_cmake.md](esp_idf_cmake.md)（若 ESP）→ [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
 | 写应用 | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
 | 查设计动机 | [design_decisions.md](design_decisions.md) · [references.md](references.md) · [architecture.md](architecture.md) |
@@ -37,6 +38,7 @@
 | 文档 | 说明 |
 | :--- | :--- |
 | [architecture.md](architecture.md) | 分层与数据流 |
+| [ecosystem.md](ecosystem.md) | 积木型链接：已接入开源库清单与扩展方式 |
 | [design_decisions.md](design_decisions.md) | 仍生效的设计决策与作者偏好 |
 | [references.md](references.md) | 外部对照：ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |
 | [porting_guide.md](porting_guide.md) | 平台移植清单 |
