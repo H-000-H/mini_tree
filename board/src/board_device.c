@@ -451,7 +451,9 @@ int device_get_irq(const struct device* dev, int idx, const struct device_irq** 
  */
 const char* device_get_name(const struct device* dev)
 {
-    return dev && dev->node ? dev->node->name : NULL;
+    if (IS_ERR_OR_NULL(dev) || !dev->node)
+        return NULL;
+    return dev->node->name;
 }
 
 /**
@@ -461,7 +463,9 @@ const char* device_get_name(const struct device* dev)
  */
 const char* device_get_compatible(const struct device* dev)
 {
-    return dev && dev->node ? dev->node->compatible : NULL;
+    if (IS_ERR_OR_NULL(dev) || !dev->node)
+        return NULL;
+    return dev->node->compatible;
 }
 
 /**
@@ -471,7 +475,9 @@ const char* device_get_compatible(const struct device* dev)
  */
 enum device_status device_get_status(const struct device* dev)
 {
-    return dev ? dev->status : DEVICE_STATUS_DISABLED;
+    if (IS_ERR_OR_NULL(dev))
+        return DEVICE_STATUS_DISABLED;
+    return dev->status;
 }
 
 /**
@@ -481,7 +487,7 @@ enum device_status device_get_status(const struct device* dev)
  */
 enum device_criticality device_get_criticality(const struct device* dev)
 {
-    if (!dev || !dev->node) return DEVICE_CRIT_WARNING;
+    if (IS_ERR_OR_NULL(dev) || !dev->node) return DEVICE_CRIT_WARNING;
     return (enum device_criticality)dev->node->criticality;
 }
 

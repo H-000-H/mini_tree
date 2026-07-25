@@ -5,6 +5,8 @@
 
 #include "system_cmd.hpp"
 
+#include "compiler_compat.h"
+
 #include <etl/string.h>
 #include <etl/char_traits.h>
 
@@ -15,7 +17,7 @@ SystemCmd::SystemCmd()
 #ifndef CONFIG_OSAL_NULL
 {
     m_lock = reinterpret_cast<struct osal_spinlock*>(m_lock_storage);
-    osal_spinlock_init(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_init(m_lock));
 }
 #else
     : m_count(0)
@@ -50,13 +52,13 @@ bool SystemCmd::registerCmd(const char* name, bool (*handler)())
 
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
-    osal_spinlock_lock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     if (m_commands.full() || m_commands.contains(cmd)) {
-        osal_spinlock_unlock(m_lock);
+        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return false;
     }
     bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
-    osal_spinlock_unlock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return success;
 #else
     for (size_t i = 0; i < m_count; i++) {
@@ -80,15 +82,15 @@ bool SystemCmd::unregisterCmd(const char* name)
     if (!name) return false;
 
 #ifndef CONFIG_OSAL_NULL
-    osal_spinlock_lock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     auto it = m_commands.find(key);
     if (it == m_commands.end()) {
-        osal_spinlock_unlock(m_lock);
+        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return false;
     }
     m_commands.erase(it);
-    osal_spinlock_unlock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return true;
 #else
     for (size_t i = 0; i < m_count; i++) {
@@ -112,16 +114,16 @@ bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len,
     if (!name) return false;
 
 #ifndef CONFIG_OSAL_NULL
-    osal_spinlock_lock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     auto it = m_commands.find(key);
     if (it == m_commands.end()) {
-        osal_spinlock_unlock(m_lock);
+        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return false;
     }
     /* 拷贝 HandlerNode 后再解锁, 避免 erase 导致悬垂引用 */
     HandlerNode node = it->second;
-    osal_spinlock_unlock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
 
     if (expected_args_id && node.args_id != expected_args_id)
         return false;
@@ -151,10 +153,10 @@ bool SystemCmd::hasCmd(const char* name) const
     if (!name) return false;
 
 #ifndef CONFIG_OSAL_NULL
-    osal_spinlock_lock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     bool found = m_commands.find(key) != m_commands.end();
-    osal_spinlock_unlock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return found;
 #else
     for (size_t i = 0; i < m_count; i++) {
@@ -168,9 +170,9 @@ bool SystemCmd::hasCmd(const char* name) const
 size_t SystemCmd::count() const
 {
 #ifndef CONFIG_OSAL_NULL
-    osal_spinlock_lock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     size_t sz = m_commands.size();
-    osal_spinlock_unlock(m_lock);
+    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return sz;
 #else
     return m_count;

@@ -77,4 +77,9 @@ COMPAT_STATIC_INLINE bool IS_ERR(const void* ptr)
     return (uintptr_t)ptr >= ERR_BASE;
 }
 
+COMPAT_STATIC_INLINE bool IS_ERR_OR_NULL(const void* ptr)
+{
+    return (ptr == NULL) || IS_ERR(ptr);
+}
+
 #endif /* STATUS_H */

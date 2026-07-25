@@ -145,12 +145,12 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
  */
 static int device_dependency_not_ready(const struct device* dev)
 {
-    if (!dev || !dev->node || !dev->node->deps) return 0;
+    if (IS_ERR_OR_NULL(dev) || !dev->node || !dev->node->deps) return 0;
 
     for (int i = 0; i < dev->node->dep_count; i++)
     {
         struct device* dep = board_dev_get(dev->node->deps[i]);
-        if (!dep) return 1;
+        if (IS_ERR_OR_NULL(dep)) return 1;
 
         /* DIRECT 设备不参与 VFS 生命周期, 视为始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
@@ -173,12 +173,12 @@ static int device_dependency_not_ready(const struct device* dev)
  */
 static int device_dependency_pending(const struct device* dev)
 {
-    if (!dev || !dev->node || !dev->node->deps) return 0;
+    if (IS_ERR_OR_NULL(dev) || !dev->node || !dev->node->deps) return 0;
 
     for (int i = 0; i < dev->node->dep_count; i++)
     {
         struct device* dep = board_dev_get(dev->node->deps[i]);
-        if (!dep) return 1;
+        if (IS_ERR_OR_NULL(dep)) return 1;
 
         /* DIRECT 设备始终就绪 */
         if (dep->node && (dep->node->flags & DEVICE_FLAG_DIRECT))
@@ -232,7 +232,7 @@ static void disable_dependents(device_id_t failed_id)
     for (int i = 0; i < count; i++)
     {
         struct device* child = board_dev_get(list[i]);
-        if (!child) continue;
+        if (IS_ERR_OR_NULL(child)) continue;
         enum device_status st = device_get_status(child);
         if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED) continue;
         COMPAT_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
@@ -292,8 +292,25 @@ void board_register_all_drivers(void)
 }
 
 /**
+ * @brief 按索引取 probe 顺序中的 device_id (独立函数, 返回值走 a2)
+ */
+static device_id_t board_probe_order_at(int index)
+{
+    const device_id_t* order = board_probe_order();
+    int count = board_probe_order_count();
+    if (!order || index < 0 || index >= count)
+        return (device_id_t)DEV_ID_COUNT;
+    return order[index];
+}
+
+/**
  * @brief 按 probe 顺序探测所有设备 (最多 3 趟 deferred)
  * @return probe 失败设备数量
+ *
+ * @note Xtensa windowed ABI: call8 被调方写 a10-a15 即覆盖调用方 a2-a7.
+ *       循环状态必须落在栈上 (volatile), 否则 handle_probe_failure 等
+ *       日志路径会打坏 count/i/order, 表现为只 probe 第一个设备后提前结束.
+ *       ARM 上同为防御性对齐, 避免跨板行为分叉.
  */
 int board_driver_probe_all(void)
 {
@@ -302,24 +319,24 @@ int board_driver_probe_all(void)
 #endif
 
     DRV_LOGI(kTag, "probing all devices from compile-time DTS table ...");
-    uint8_t ok = 0, fail = 0;
+    volatile uint8_t ok = 0;
+    volatile uint8_t fail = 0;
+    volatile int count = board_probe_order_count();
+    volatile int deferred_prev = 0;
 
-    const device_id_t* order = board_probe_order();
-    int count = board_probe_order_count();
-
-    int deferred_prev = 0;
-
-    for (int pass = 0; pass < 3; pass++)
+    for (volatile int pass = 0; pass < 3; pass++)
     {
-        int deferred = 0;
+        volatile int deferred = 0;
 
-        for (int i = 0; i < count; i++)
+        for (volatile int i = 0; i < count; i++)
         {
-            device_id_t id = order[i];
+            device_id_t id = board_probe_order_at(i);
             struct device* dev = board_dev_get(id);
             probe_fn_t probe = board_probe_get_fn(id);
 
-            if (!dev || device_get_status(dev) == DEVICE_STATUS_DISABLED)
+            if ((int)id < 0 || (int)id >= board_dev_count())
+                continue;
+            if (IS_ERR_OR_NULL(dev) || device_get_status(dev) == DEVICE_STATUS_DISABLED)
                 continue;
             /* DIRECT 设备不经过 VFS probe, 跳过 */
             if (dev->node && (dev->node->flags & DEVICE_FLAG_DIRECT))
@@ -347,10 +364,20 @@ int board_driver_probe_all(void)
 
             if (!probe)
             {
+                const char* name = device_get_name(dev);
+                /* 板级根节点等无名容器: 无驱动属预期, 静默禁用 */
+                if (!name || !name[0])
+                {
+                    COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
+                    continue;
+                }
                 DRV_LOGW(kTag, "no generated probe for '%s' (compat=%s)",
-                         device_get_name(dev), device_get_compatible(dev));
+                         name, device_get_compatible(dev));
                 COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
-                goto probe_fail;
+                handle_probe_failure(dev, id);
+                disable_dependents(id);
+                fail++;
+                continue;
             }
 
             DRV_LOGI(kTag, "probing '%s' (%s) ...",
@@ -366,7 +393,10 @@ int board_driver_probe_all(void)
                 {
                     COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
                     DRV_LOGE(kTag, "device_open FAILED: %s (ret=%d)", device_get_name(dev), open_ret);
-                    goto probe_fail;
+                    handle_probe_failure(dev, id);
+                    disable_dependents(id);
+                    fail++;
+                    continue;
                 }
                 ok++;
             }
@@ -380,25 +410,23 @@ int board_driver_probe_all(void)
             {
                 COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
                 DRV_LOGE(kTag, "probe FAILED: %s (ret=%d)", device_get_name(dev), ret);
-                goto probe_fail;
+                handle_probe_failure(dev, id);
+                disable_dependents(id);
+                fail++;
             }
-            continue;
-
-        probe_fail:
-            handle_probe_failure(dev, id);
-            disable_dependents(id);
-            fail++;
         }
 
         if (deferred == 0) break;
         if (deferred == deferred_prev)
         {
             DRV_LOGE(kTag, "EPROBE_DEFER stall: %d devices stuck after %d passes",
-                     deferred, pass + 1);
-            for (int i = 0; i < count; i++)
+                     (int)deferred, (int)pass + 1);
+            for (volatile int i = 0; i < count; i++)
             {
-                struct device* dev = board_dev_get(order[i]);
-                if (dev && device_get_status(dev) != DEVICE_STATUS_PROBED &&
+                device_id_t id = board_probe_order_at(i);
+                struct device* dev = board_dev_get(id);
+                if (!IS_ERR_OR_NULL(dev) &&
+                    device_get_status(dev) != DEVICE_STATUS_PROBED &&
                     device_get_status(dev) != DEVICE_STATUS_RUNNING &&
                     device_dependency_pending(dev))
                 {
@@ -411,11 +439,11 @@ int board_driver_probe_all(void)
             break;
         }
         deferred_prev = deferred;
-        DRV_LOGI(kTag, "pass %d: %d deferred, retrying ...", pass + 1, deferred);
+        DRV_LOGI(kTag, "pass %d: %d deferred, retrying ...", (int)pass + 1, (int)deferred);
     }
 
-    DRV_LOGI(kTag, "probe complete: %d ok, %d fail", ok, fail);
-    return fail;
+    DRV_LOGI(kTag, "probe complete: %d ok, %d fail", (int)ok, (int)fail);
+    return (int)fail;
 }
 
 /**
@@ -426,15 +454,14 @@ int board_driver_remove_all(void)
 {
     DRV_LOGI(kTag, "removing all devices (reverse probe order) ...");
 
-    const device_id_t* order = board_probe_order();
     int count = board_probe_order_count();
 
     for (int i = count - 1; i >= 0; i--)
     {
-        device_id_t id = order[i];
+        device_id_t id = board_probe_order()[i];
         struct device* dev = board_dev_get(id);
 
-        if (!dev)
+        if (IS_ERR_OR_NULL(dev))
             continue;
 
         enum device_status status = device_get_status(dev);

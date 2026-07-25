@@ -474,10 +474,12 @@ class CGenerator:
                     p_fn, r_fn = self.compiler.driver_map[compat]
                     if p_fn not in probe_extern_seen:
                         probe_extern_seen.add(p_fn)
-                        probe_externs.append(f'extern int __attribute__((weak)) {p_fn}(struct device* dev);')
+                        # 强引用: DTS 匹配到的 DRIVER_REGISTER 必须在最终链接中有定义,
+                        # 否则 ld 报 undefined reference (驱动缺失即链接失败).
+                        probe_externs.append(f'extern int {p_fn}(struct device* dev);')
                     if r_fn not in remove_extern_seen:
                         remove_extern_seen.add(r_fn)
-                        remove_externs.append(f'extern int __attribute__((weak)) {r_fn}(struct device* dev);')
+                        remove_externs.append(f'extern int {r_fn}(struct device* dev);')
                     probe_array.append(f'    [DEV_ID_{snake}] = {p_fn},')
                     remove_array.append(f'    [DEV_ID_{snake}] = {r_fn},')
                 elif is_platform_node(i):

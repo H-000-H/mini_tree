@@ -1,6 +1,11 @@
 # mini_tree (generic CMake build for non-ESP-IDF projects)
 # 目录/源文件布局对齐 ESP32-S3/components/mini_tree 基准
 
+if(ESP_PLATFORM)
+    include("${CMAKE_CURRENT_LIST_DIR}/cmake/esp_idf.cmake")
+    return()
+endif()
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/dep_fetch.cmake")

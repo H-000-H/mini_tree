@@ -322,6 +322,20 @@ int osal_pool_release(osal_pool_t* pool, int slot_index)
 }
 
 /**
+ * @brief 查询槽占用
+ * @param pool 池
+ * @param slot_index 索引
+ * @return true 已占用
+ */
+bool osal_pool_is_used(osal_pool_t* pool, int slot_index)
+{
+    if (!pool || !pool->used_slots || slot_index < 0 ||
+        (size_t)slot_index >= pool->slot_count)
+        return false;
+    return pool->used_slots[slot_index] != 0U;
+}
+
+/**
  * @brief 静态互斥锁池
  * @param s_mutex_pool 互斥锁池结构体指针
  * @param s_mutex_used 互斥锁使用情况指针
@@ -832,6 +846,18 @@ COMPAT_STATIC_INLINE uint32_t osal_stack_words(uint32_t stack_bytes)
 }
 
 /**
+ * @brief 钳位到 FreeRTOS 合法优先级 [0, configMAX_PRIORITIES)
+ */
+COMPAT_STATIC_INLINE UBaseType_t osal_clamp_task_priority(uint32_t priority)
+{
+    if (priority >= (uint32_t)configMAX_PRIORITIES)
+    {
+        return (UBaseType_t)(configMAX_PRIORITIES - 1U);
+    }
+    return (UBaseType_t)priority;
+}
+
+/**
  * @brief xTaskCreate
  * @param name 名
  * @param stack_size 栈字节
@@ -854,7 +880,8 @@ int osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, os
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param, priority, &handle);
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param,
+                                 osal_clamp_task_priority(priority), &handle);
     return (ret == pdPASS) ? OSAL_OK : OSAL_ERR_NOMEM;
 }
 
@@ -883,7 +910,8 @@ int osal_task_create_handle(const char* name, uint32_t stack_size,uint32_t prior
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param, priority, &handle);
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param,
+                                 osal_clamp_task_priority(priority), &handle);
     if (ret != pdPASS) 
         return OSAL_ERR_NOMEM;
     *out_handle = (osal_task_handle_t)handle;
