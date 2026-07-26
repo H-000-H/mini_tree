@@ -154,7 +154,7 @@ Application  ──device_* / ioctl──►  board/  ──DRIVER_REGISTER─�
 | 写应用 | [docs/service_spec.md](docs/service_spec.md) · [docs/peripherals.md](docs/peripherals.md) |
 | 查文件 | [docs/file_index.md](docs/file_index.md) |
 | 常见问题 | [docs/faq.md](docs/faq.md) |
-
+| 应用层建议 | [app/app_must_pre_view.cpp](app/app_must_pre_view.cpp) |
 工具链：[tools/README.md](tools/README.md)。完整索引：[docs/README.md](docs/README.md)。
 
 ---
