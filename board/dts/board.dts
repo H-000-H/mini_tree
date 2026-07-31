@@ -1,41 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
- * 中间件默认占位 BOARD_DTS
- *
- * 正式板请在平台工程维护自己的 .dts，并用 CACHE 覆盖：
- *   set(BOARD_DTS      "…/my_board.dts" CACHE FILEPATH "" FORCE)
- *   set(BOARD_DTSI_DIR "…/dtsi" CACHE PATH "" FORCE)
- *
- * 本文件仅演示：#include 通用示例 dtsi + /chosen + &label 覆盖。
+ * mini_tree 默认占位 DTS — 无真实外设。
+ * 板级工程请用 BOARD_DTS 指向平台 dts（ESP: components/board_esp32s3/dts/）。
  */
-
 /dts-v1/;
 
-#include "example-soc.dtsi"
-
-/chosen {
-	tick-rate = <1000>;
-	heap-size = <32768>;
-};
-
 / {
+	compatible = "mini-tree,placeholder";
 	#address-cells = <1>;
 	#size-cells = <0>;
-
-	model = "mini_tree generic placeholder";
-	compatible = "mini-tree,placeholder", "example,generic-soc";
-};
-
-/* 示例：打开一颗 GPIO、一路 UART（具体脚位由平台 dtsi/overlay 决定） */
-&gpios_pin {
-	gpio-pin = <0>;
-	status = "okay";
-};
-
-&uart0 {
-	status = "okay";
-};
-
-&uart0_client {
-	status = "okay";
 };

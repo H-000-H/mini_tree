@@ -46,18 +46,22 @@
 参考：`Heterogeneous-Multicore/platform/Espressif/esp32s3/CMakeLists.txt`
 
 ```cmake
-# components/mini_tree + components/hal_esp32s3 + components/driver_ws2812 自动扫描
-# 产品驱动已并入 mini_tree/drivers；仅 ws2812 保留独立组件（厂商 RMT 例外）
+# components/mini_tree + hal_* + 可选 driver_ws2812 自动扫描
+# 板级注入：components/board_port.cmake（DTS / 芯片 dtc -I/-D）
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(esp32s3)
+project(my_esp_board)
 ```
 
-| 组件 | 路径 | 说明 |
+| 组件 / 文件 | 路径 | 说明 |
 | :--- | :--- | :--- |
-| `mini_tree` | `components/mini_tree/` | 中间件 + `drivers/*` 产品驱动 |
-| `hal_esp32s3` | `components/hal_esp32s3/` | ESP HAL 强符号 |
-| `driver_ws2812` | `components/driver_ws2812/` | **唯一**允许 `esp_driver_rmt` + `led_strip` 的产品驱动 |
-| `app` | `components/app/` | `REQUIRES mini_tree` + `driver_ws2812` |
+| `mini_tree` | `components/mini_tree/` | **纯架构**中间件 + `drivers/*`；无 SoC 硬编码 |
+| `board_port.cmake` | `components/board_port.cmake` | 板级注入：`BOARD_DTS` / `BOARD_DTSI_DIR` / 芯片 `-I/-D` / 树外扫描 |
+| `board_<soc>` | `components/board_<soc>/` | 板级 `dts/` + `dtsi/`（**非** IDF 组件，仅数据） |
+| `hal_<soc>` | `components/hal_<soc>/` | HAL 强符号 |
+| `driver_ws2812` | `components/driver_ws2812/` | **可选**；唯一允许厂商 RMT/`led_strip` 的产品驱动 |
+| `app` | `components/app/` | `REQUIRES mini_tree`（+ 可选 `driver_ws2812`） |
+
+**一份 mini 配多 MCU**：同一份 `mini_tree`（symlink / 子模块 / 拷贝）可挂在多个板工程下；每个工程自带 `board_port.cmake` + `board_*` + `hal_*`。也可设 `MINI_TREE_BOARD_PORT` 指向任意注入文件。
 
 **不要**再设 `EXTRA_COMPONENT_DIRS` 指向旧的 `components/driver/`（已废弃）。
 
@@ -132,10 +136,13 @@ ESP 构建下生成的 `config.h` 常为占位；业务 `CONFIG_*` 以 `sdkconfi
 
 | 项 | ESP 参考做法 |
 | :--- | :--- |
-| `BOARD_DTS` | `board/dts/board.dts`（可再 `#include` / overlay 板级 dts） |
+| `BOARD_DTS` | 由 `board_port.cmake` 注入（例：`board_esp32s3/dts/board.dts`）；中间件默认仅为占位 |
 | 生成目录 | `${CMAKE_BINARY_DIR}/generated/{kconfig,board,scrubber}/mini_tree` |
-| dtc-lite | 扫 vfs/bus + **全部** `drivers/*/src`；ESP 常不注入 `VENDOR_INC_DIRS` |
-| HAL | 板级 `hal_esp32s3`；shelf 内仍为 weak 占位 |
+| dtc-lite | 扫 vfs/bus + **全部** `drivers/*/src`；`-I mini_tree/board` 解析 `dt-bindings/`；芯片头/宏走 `MINI_TREE_DTC_EXTRA_ARGS` |
+| HAL | 板级 `hal_<soc>`；shelf 内仍为 weak 占位 |
+
+**勿**把板级 `dtsi/` 放进 dtc `-I`：会被当成厂商头走 cpp 抽宏而不内联，结果只剩根节点（`devices: 1`）。dtsi 靠 `BOARD_DTS` 所在 `board_dir` 自动解析。  
+**勿**在 `cmake/esp_idf.cmake` 写死某一 `IDF_TARGET` 的 `soc/<chip>/include`。
 
 公共头规则不变：**产品驱动禁止** `#include` 厂商 SDK（`driver_ws2812` 除外）。
 

@@ -28,25 +28,25 @@
 
 | 路径 | 说明 |
 | :--- | :--- |
-| `board/dts/board.dts` | 根 / 占位 + 板级 overlay |
-| `board/dtsi/` | 仅保留通用示例 `example-soc.dtsi`；正式 SoC 片段放平台工程 |
+| `board/dts/board.dts` | **占位**根节点（无外设）；板级用 `BOARD_DTS` 覆盖 |
+| `board/dtsi/` | 空；留给平台覆盖 `BOARD_DTSI_DIR` |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | 通用 `#define`，供 dtsi `#include <dt-bindings/...>` |
 | `drivers/<chip>/{include,src}` | 产品驱动；CMake/`dtc-lite` GLOB 扫描 |
 
 ### 平台工程（推荐）
 
 ```text
-board/dts/<board>.dts              # 入口：#include 头、/ { }、&label 覆盖、status
-board/dtsi/<soc>.dtsi              # SoC：cpus / soc simple-bus
-board/dtsi/<soc>-gpio.dtsi         # 外设片段
-board/dtsi/<soc>-spi.dtsi
-board/dtsi/<soc>-product-drivers.dtsi
+# ESP 参考：components/board_esp32s3/
+dts/board.dts                      # BOARD_DTS 入口
+dtsi/<soc>.dtsi                    # SoC / 总线 / 产品片段
+dtsi/<soc>-product-drivers.dtsi
 …
-drivers/<chip>/src/*.c             # DRIVER_REGISTER 扫描目录
+# HAL 强符号：components/hal_esp32s3/
+# 例外驱动：components/driver_ws2812/
 ```
 
 CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `VENDOR_DEFINES`。  
-产品驱动路径详见 [esp_idf_cmake.md §4](esp_idf_cmake.md#4-产品驱动路径glob)。
+产品驱动与 ESP 接线见 [esp_idf_cmake.md](esp_idf_cmake.md)。
 
 ---
 

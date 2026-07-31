@@ -10,6 +10,8 @@
 
 - 产品驱动迁入 `drivers/<chip>/{include,src}`（GLOB 编入 `mini_tree`）；**不再**使用独立 `components/driver_*`（除 ws2812）
 - 删除旧示例 `drivers/flash`（`winbond,w25q64`）；SPI NOR 统一走 `drivers/w25qxx`（`winbond,w25qxx`）
+- **板级 DTS/DTSI 外置**：经 `board_port.cmake` 注入；中间件仅保留占位 `board/dts/board.dts` 与通用 `dt-bindings/`
+- **一份 mini 配多 MCU**：中间件不硬编码 `board_*` / `IDF_TARGET`；每板自带 `board_port` + `board_*` + `hal_*`
 - ESP 板工程：`components/driver_ws2812` 为唯一允许厂商 RMT/`led_strip` 的例外；`app` 仅 `REQUIRES mini_tree` + `driver_ws2812`
 - CMake：`file(GLOB drivers/*/src/*.c)` + `drivers/*/include|src` 进 `INCLUDE_DIRS` / dtc-lite 扫描（`CMakeLists.txt`、`cmake/esp_idf.cmake`、`board/CMakeLists.txt`）
 - `compile_flags.txt` 补齐全部产品驱动 `-Idrivers/*/include`（及含头的 `src/`）

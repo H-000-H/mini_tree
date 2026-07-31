@@ -32,6 +32,20 @@
 3. `board_driver_probe_all` 对关键外设返回成功或可接受的 WARNING。  
 4. 业务只通过 `device_*` 访问硬件。  
 
+### 一份 mini 配多 MCU（已支持）
+
+中间件（shelf / `mini_tree`）保持 **纯架构**：占位 DTS、weak HAL、通用 `dt-bindings`、VFS/bus/drivers。  
+每个板工程自带：
+
+| 板侧 | 作用 |
+| :--- | :--- |
+| `board_port.cmake`（或 `MINI_TREE_BOARD_PORT`） | 注入 `BOARD_DTS` / `BOARD_DTSI_DIR` / 芯片 dtc `-I/-D` / 树外扫描 |
+| `board_<soc>/{dts,dtsi}` | 真实设备树（**不进**中间件） |
+| `hal_<soc>/` | HAL 强符号 |
+| （可选）`driver_ws2812` 等厂商例外 | 不进通用 drivers |
+
+同一物理 `mini_tree` 可用 symlink/子模块挂到多块板；**按板分别构建**（每板一份 `build/` + 生成表），不是单次链接塞多套 SoC。
+
 ---
 
 ## 2. 步骤总览

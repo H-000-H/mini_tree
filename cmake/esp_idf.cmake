@@ -1,10 +1,11 @@
 # ESP-IDF 组件入口（由根 CMakeLists.txt 在 ESP_PLATFORM 时 include）
 # 全部用 MINI_TREE_DIR 绝对路径，避免 include 后相对路径落到 cmake/ 下。
 #
-# 板级可在 idf_component 之前设置（可选）:
+# 板级可在 idf_component 之前设置（推荐经 ../board_port.cmake / MINI_TREE_BOARD_PORT）:
+#   BOARD_DTS / BOARD_DTSI_DIR     — 板级设备树（默认占位）
 #   MINI_TREE_DTC_EXTRA_SCAN_DIRS  — 额外 DRIVER_REGISTER 扫描目录列表
 #   MINI_TREE_DTC_EXTRA_DEPENDS    — dtc-lite 额外 DEPENDS 文件列表
-#   MINI_TREE_DTC_EXTRA_ARGS       — 额外 -I/-D（已含 IDF_PATH 下常用头时可不设）
+#   MINI_TREE_DTC_EXTRA_ARGS       — 芯片专用 -I/-D（勿把 SoC 路径写死进本文件）
 
 get_filename_component(MINI_TREE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
@@ -118,8 +119,10 @@ set(KCONFIG_GEN_DIR     "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
 set(SCRUBBER_GEN_DIR    "${CMAKE_BINARY_DIR}/generated/scrubber/mini_tree")
 set(KCONFIG_OUT         "${KCONFIG_GEN_DIR}/config.h")
 set(SCRUBBER_CRC_HDR    "${SCRUBBER_GEN_DIR}/system_scrubber_crc_gen.h")
-set(BOARD_DTS           "${MINI_TREE_DIR}/board/dts/board.dts")
-set(BOARD_DTSI_DIR      "${MINI_TREE_DIR}/board/dtsi")
+# 板级可覆盖 BOARD_DTS；未设则用中间件占位
+if(NOT DEFINED BOARD_DTS OR BOARD_DTS STREQUAL "")
+    set(BOARD_DTS "${MINI_TREE_DIR}/board/dts/board.dts")
+endif()
 set(DTC_LITE            "${MINI_TREE_DIR}/tools/dtc-lite.py")
 
 set(GEN_SRCS
@@ -137,17 +140,16 @@ file(MAKE_DIRECTORY "${GENERATED_BOARD_DIR}")
 file(MAKE_DIRECTORY "${KCONFIG_GEN_DIR}")
 file(MAKE_DIRECTORY "${SCRUBBER_GEN_DIR}")
 
+# 仅挂跨芯片通用 IDF 头；芯片专用路径/宏由板级 MINI_TREE_DTC_EXTRA_ARGS 注入
 set(DTC_LITE_ARGS "")
 if(DEFINED ENV{IDF_PATH})
     set(_IDF "$ENV{IDF_PATH}")
     foreach(d
         "${_IDF}/components/esp_hal_gpio/include"
-        "${_IDF}/components/esp_hal_gpio/esp32s3/include"
         "${_IDF}/components/esp_hal_uart/include"
         "${_IDF}/components/esp_hal_gpspi/include"
         "${_IDF}/components/esp_hal_i2c/include"
         "${_IDF}/components/soc/include"
-        "${_IDF}/components/soc/esp32s3/include"
         "${_IDF}/components/esp_common/include"
         "${_IDF}/components/esp_hw_support/include"
         "${_IDF}/components/hal/platform_port/include"
@@ -156,7 +158,6 @@ if(DEFINED ENV{IDF_PATH})
             list(APPEND DTC_LITE_ARGS "-I${d}")
         endif()
     endforeach()
-    list(APPEND DTC_LITE_ARGS "-DCONFIG_IDF_TARGET_ESP32S3=1" "-DIDF_TARGET_ESP32S3=1")
 endif()
 if(DEFINED MINI_TREE_DTC_EXTRA_ARGS)
     list(APPEND DTC_LITE_ARGS ${MINI_TREE_DTC_EXTRA_ARGS})
@@ -182,17 +183,20 @@ if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
 endif()
 list(REMOVE_DUPLICATES _DTC_SCAN_DIRS)
 
-# dtc-lite DEPENDS：BOARD_DTSI_DIR 下存在的 .dtsi + 可选板级额外依赖
+# dtc-lite DEPENDS：BOARD_DTS + 板级 dtsi（若设 BOARD_DTSI_DIR）+ 可选 SoC 片段
 set(_DTC_DEPENDS
     "${DTC_LITE}"
     "${MINI_TREE_DIR}/tools/dtc_lite/generator.py"
     "${BOARD_DTS}"
 )
-file(GLOB _BOARD_DTSI_FILES "${BOARD_DTSI_DIR}/*.dtsi")
-list(APPEND _DTC_DEPENDS ${_BOARD_DTSI_FILES})
+if(DEFINED BOARD_DTSI_DIR AND IS_DIRECTORY "${BOARD_DTSI_DIR}")
+    file(GLOB _BOARD_DTSI_FILES "${BOARD_DTSI_DIR}/*.dtsi")
+    list(APPEND _DTC_DEPENDS ${_BOARD_DTSI_FILES})
+endif()
 if(DEFINED MINI_TREE_DTC_EXTRA_DEPENDS)
     list(APPEND _DTC_DEPENDS ${MINI_TREE_DTC_EXTRA_DEPENDS})
 endif()
+list(REMOVE_DUPLICATES _DTC_DEPENDS)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 

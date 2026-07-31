@@ -2,23 +2,41 @@
 # 目录/源文件布局对齐 ESP32-S3/components/mini_tree 基准
 
 if(ESP_PLATFORM)
-    # 产品驱动已在 mini_tree/drivers/*/；仅树外 ws2812（厂商 RMT 例外）扩展扫描
+    # 纯架构：不硬编码某一 MCU。板级通过下列之一注入 BOARD_DTS / dtc -I/-D / 树外扫描：
+    #   1) MINI_TREE_BOARD_PORT（绝对路径）
+    #   2) 同级 ../board_port.cmake（本 ESP 板工程默认）
     # 注意: component_get_requirements 为 script 模式，不可用 CONFIGURE_DEPENDS
+    if(DEFINED MINI_TREE_BOARD_PORT AND EXISTS "${MINI_TREE_BOARD_PORT}")
+        include("${MINI_TREE_BOARD_PORT}")
+    elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../board_port.cmake")
+        include("${CMAKE_CURRENT_LIST_DIR}/../board_port.cmake")
+    endif()
+
+    # 产品驱动在 mini_tree/drivers/*/（中间件内，与 MCU 无关）
     file(GLOB MINI_TREE_PRODUCT_DRV_SRC_DIRS
         LIST_DIRECTORIES true
         "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src")
     file(GLOB MINI_TREE_PRODUCT_DRV_SRCS
         "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src/*.c")
-    file(GLOB MINI_TREE_BOARD_DTSI
-        "${CMAKE_CURRENT_LIST_DIR}/board/dtsi/*.dtsi")
+    if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
+        list(APPEND MINI_TREE_DTC_EXTRA_SCAN_DIRS ${MINI_TREE_PRODUCT_DRV_SRC_DIRS})
+    else()
+        set(MINI_TREE_DTC_EXTRA_SCAN_DIRS ${MINI_TREE_PRODUCT_DRV_SRC_DIRS})
+    endif()
+    if(DEFINED MINI_TREE_DTC_EXTRA_DEPENDS)
+        list(APPEND MINI_TREE_DTC_EXTRA_DEPENDS ${MINI_TREE_PRODUCT_DRV_SRCS})
+    else()
+        set(MINI_TREE_DTC_EXTRA_DEPENDS ${MINI_TREE_PRODUCT_DRV_SRCS})
+    endif()
 
-    set(MINI_TREE_DTC_EXTRA_SCAN_DIRS
-        ${MINI_TREE_PRODUCT_DRV_SRC_DIRS}
-        "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src")
-    set(MINI_TREE_DTC_EXTRA_DEPENDS
-        ${MINI_TREE_BOARD_DTSI}
-        ${MINI_TREE_PRODUCT_DRV_SRCS}
-        "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src/ws2812_drv.c")
+    # 未注入时：占位 DTS + 仅 dt-bindings -I（可编过，无板级节点）
+    if(NOT DEFINED BOARD_DTS OR BOARD_DTS STREQUAL "")
+        set(BOARD_DTS "${CMAKE_CURRENT_LIST_DIR}/board/dts/board.dts")
+    endif()
+    if(NOT DEFINED MINI_TREE_DTC_EXTRA_ARGS)
+        set(MINI_TREE_DTC_EXTRA_ARGS "-I${CMAKE_CURRENT_LIST_DIR}/board")
+    endif()
+
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/esp_idf.cmake")
     return()
 endif()

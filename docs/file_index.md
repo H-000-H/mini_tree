@@ -40,9 +40,9 @@
 | `src/dev_lifecycle.c` | lifecycle 实现 |
 | `src/config_store.c` | 配置存储 |
 | `src/task_config.c` · `task_utils.c` | 任务辅助 |
-| `dts/board.dts` | 默认占位 DTS（板级可 overlay） |
-| `dtsi/` | 通用示例 `example-soc.dtsi`（正式板级 dtsi 在平台仓） |
-| `dt-bindings/` | gpio/spi/uart/tim 参数宏 |
+| `dts/board.dts` | **占位** DTS（无外设）；板级设 `BOARD_DTS` |
+| `dtsi/` | 空目录（平台 `BOARD_DTSI_DIR`）；ESP 板树在 `board_esp32s3/dtsi/` |
+| `dt-bindings/` | gpio/spi/uart/tim 参数宏（中间件通用） |
 
 ---
 
