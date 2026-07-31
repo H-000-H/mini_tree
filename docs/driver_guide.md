@@ -29,7 +29,7 @@
 | 路径 | 说明 |
 | :--- | :--- |
 | `board/dts/board.dts` | 根 / 占位 + 板级 overlay |
-| `board/dtsi/` | SoC / 产品片段（ESP 参考 `esp32s3-*.dtsi`） |
+| `board/dtsi/` | 仅保留通用示例 `example-soc.dtsi`；正式 SoC 片段放平台工程 |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | 通用 `#define`，供 dtsi `#include <dt-bindings/...>` |
 | `drivers/<chip>/{include,src}` | 产品驱动；CMake/`dtc-lite` GLOB 扫描 |
 

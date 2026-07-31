@@ -1,8 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-&spi2_master_client {
-	nrf24_0: nrf24@6 {
-		compatible = "nordic,nrf24l01";
-		reg = <6>;
-		status = "disabled";
-	};
-};

@@ -1,23 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
- * ESP32-S3-DevKitC-1 — 默认 BOARD_DTS
+ * 中间件默认占位 BOARD_DTS
+ *
+ * 正式板请在平台工程维护自己的 .dts，并用 CACHE 覆盖：
+ *   set(BOARD_DTS      "…/my_board.dts" CACHE FILEPATH "" FORCE)
+ *   set(BOARD_DTSI_DIR "…/dtsi" CACHE PATH "" FORCE)
+ *
+ * 本文件仅演示：#include 通用示例 dtsi + /chosen + &label 覆盖。
  */
 
 /dts-v1/;
 
-#include "esp32s3.dtsi"
-#include "esp32s3-gpio.dtsi"
-#include "esp32s3-board-gpios.dtsi"
-#include "esp32s3-uart.dtsi"
-#include "esp32s3-spi.dtsi"
-#include "esp32s3-i2c.dtsi"
-#include "esp32s3-can.dtsi"
-#include "esp32s3-tim.dtsi"
-#include "esp32s3-adc.dtsi"
-#include "esp32s3-ws2812.dtsi"
-#include "esp32s3-st7789.dtsi"
-#include "esp32s3-max98357a.dtsi"
-#include "esp32s3-product-drivers.dtsi"
+#include "example-soc.dtsi"
 
 /chosen {
 	tick-rate = <1000>;
@@ -28,46 +22,20 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	model = "Espressif ESP32-S3-DevKitC-1";
-	compatible = "espressif,esp32-s3-devkitc-1", "espressif,esp32s3";
+	model = "mini_tree generic placeholder";
+	compatible = "mini-tree,placeholder", "example,generic-soc";
 };
 
+/* 示例：打开一颗 GPIO、一路 UART（具体脚位由平台 dtsi/overlay 决定） */
 &gpios_pin {
 	gpio-pin = <0>;
 	status = "okay";
 };
 
-&uart1 {
+&uart0 {
 	status = "okay";
 };
 
-&uart1_client {
-	status = "okay";
-};
-
-&spi1 {
-	status = "okay";
-	max-trans-buffer = <2048>;
-};
-
-&spi1_slave_client {
-	status = "okay";
-};
-
-&spi2 {
-	status = "disabled";
-	max-trans-buffer = <2048>;
-};
-
-&spi2_master_client {
-	status = "disabled";
-};
-
-&w25qxx_0 {
-	status = "disabled";
-};
-
-&ws2812_rgb {
-	gpio-pin = <48>;
+&uart0_client {
 	status = "okay";
 };

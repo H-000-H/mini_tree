@@ -41,7 +41,7 @@
 | `src/config_store.c` | 配置存储 |
 | `src/task_config.c` · `task_utils.c` | 任务辅助 |
 | `dts/board.dts` | 默认占位 DTS（板级可 overlay） |
-| `dtsi/` | SoC / 产品片段（ESP 参考含 `esp32s3-*.dtsi`） |
+| `dtsi/` | 通用示例 `example-soc.dtsi`（正式板级 dtsi 在平台仓） |
 | `dt-bindings/` | gpio/spi/uart/tim 参数宏 |
 
 ---

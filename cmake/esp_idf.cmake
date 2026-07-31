@@ -119,6 +119,7 @@ set(SCRUBBER_GEN_DIR    "${CMAKE_BINARY_DIR}/generated/scrubber/mini_tree")
 set(KCONFIG_OUT         "${KCONFIG_GEN_DIR}/config.h")
 set(SCRUBBER_CRC_HDR    "${SCRUBBER_GEN_DIR}/system_scrubber_crc_gen.h")
 set(BOARD_DTS           "${MINI_TREE_DIR}/board/dts/board.dts")
+set(BOARD_DTSI_DIR      "${MINI_TREE_DIR}/board/dtsi")
 set(DTC_LITE            "${MINI_TREE_DIR}/tools/dtc-lite.py")
 
 set(GEN_SRCS
@@ -181,24 +182,14 @@ if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
 endif()
 list(REMOVE_DUPLICATES _DTC_SCAN_DIRS)
 
-# dtc-lite DEPENDS：存在的板级 dtsi 才加入，避免中间件缺板文件时 configure 失败
+# dtc-lite DEPENDS：BOARD_DTSI_DIR 下存在的 .dtsi + 可选板级额外依赖
 set(_DTC_DEPENDS
     "${DTC_LITE}"
     "${MINI_TREE_DIR}/tools/dtc_lite/generator.py"
     "${BOARD_DTS}"
 )
-foreach(_dtsi
-    "${MINI_TREE_DIR}/board/dtsi/esp32s3.dtsi"
-    "${MINI_TREE_DIR}/board/dtsi/esp32s3-gpio.dtsi"
-    "${MINI_TREE_DIR}/board/dtsi/esp32s3-uart.dtsi"
-    "${MINI_TREE_DIR}/board/dtsi/esp32s3-spi.dtsi"
-    "${MINI_TREE_DIR}/board/dtsi/esp32s3-i2c.dtsi"
-    "${MINI_TREE_DIR}/board/dtsi/esp32s3-can.dtsi"
-)
-    if(EXISTS "${_dtsi}")
-        list(APPEND _DTC_DEPENDS "${_dtsi}")
-    endif()
-endforeach()
+file(GLOB _BOARD_DTSI_FILES "${BOARD_DTSI_DIR}/*.dtsi")
+list(APPEND _DTC_DEPENDS ${_BOARD_DTSI_FILES})
 if(DEFINED MINI_TREE_DTC_EXTRA_DEPENDS)
     list(APPEND _DTC_DEPENDS ${MINI_TREE_DTC_EXTRA_DEPENDS})
 endif()

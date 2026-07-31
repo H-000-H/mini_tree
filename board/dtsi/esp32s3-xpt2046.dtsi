@@ -1,8 +1,0 @@
-&spi2_master_client {
-	xpt2046_0: xpt2046@2 {
-		compatible = "ti,xpt2046";
-		reg = <2>;
-		irq-gpio = <&gpio_touch_irq>;
-		status = "disabled";
-	};
-};

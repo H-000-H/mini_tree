@@ -1,5 +1,9 @@
 # ESP32-S3 — Code Wiki
 
+> **注意（shelf）：** 本仓 `board/dtsi/` 已清空 SoC 专用片段，仅保留通用示例
+> [`example-soc.dtsi`](../dtsi/example-soc.dtsi)。下文路径中的 `esp32s3-*.dtsi` /
+> `esp32-s3-devkitc-1.dts` 指**平台工程**中的正式文件，不再位于本中间件默认树。
+
 > 适用仓库: `Heterogeneous-Multicore-project/ESP32-S3`
 > 平台: ESP32-S3-DevKitC-1 + ESP-IDF v5.x
 > 框架: `mini_tree`（Linux 风格设备树 + 编译期 probe 表 + 平台 HAL）
