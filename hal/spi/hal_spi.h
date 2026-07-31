@@ -145,7 +145,7 @@ struct hal_spi_device_config
     int             mode;               /**< 模式 (CPOL/CPHA: bit1=CPOL, bit0=CPHA) */
     uint32_t        clock_speed_hz;     /**< 时钟速度 (Hz) */
     uintptr_t       cs_port;            /**< CS 引脚端口 */
-    uint16_t        cs_pin;             /**< CS 引脚 */
+    int32_t         cs_pin;             /**< CS 引脚; -1 = 无硬件 CS (spics 禁用) */
     uint32_t        cs_clk_periph;      /**< CS 引脚时钟总线 */
     uint32_t        transfer_direction; /**< 传输方向 (LL_SPI_FULL_DUPLEX/HALF_DUPLEX_RX/TX) */
     uint32_t        data_width;         /**< 数据宽度 (LL_SPI_DATAWIDTH_8BIT/16BIT) */

@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+### 产品驱动与布局
+
+- 产品驱动迁入 `drivers/<chip>/{include,src}`（GLOB 编入 `mini_tree`）；**不再**使用独立 `components/driver_*`（除 ws2812）
+- 删除旧示例 `drivers/flash`（`winbond,w25q64`）；SPI NOR 统一走 `drivers/w25qxx`（`winbond,w25qxx`）
+- ESP 板工程：`components/driver_ws2812` 为唯一允许厂商 RMT/`led_strip` 的例外；`app` 仅 `REQUIRES mini_tree` + `driver_ws2812`
+- CMake：`file(GLOB drivers/*/src/*.c)` + `drivers/*/include|src` 进 `INCLUDE_DIRS` / dtc-lite 扫描（`CMakeLists.txt`、`cmake/esp_idf.cmake`、`board/CMakeLists.txt`）
+- `compile_flags.txt` 补齐全部产品驱动 `-Idrivers/*/include`（及含头的 `src/`）
+
 ### 架构与代码
 
 - HAL 全面 weak 空实现；默认 `board/dts/board.dts` 为通用占位  
@@ -17,6 +25,7 @@
 
 ### 文档
 
+- 刷新 [esp_idf_cmake.md](docs/esp_idf_cmake.md) / [driver_guide.md](docs/driver_guide.md) / [file_index.md](docs/file_index.md)：产品驱动目录、ws2812 例外、与 ESP 板同步说明  
 - 新增 [docs/ecosystem.md](docs/ecosystem.md)：积木型生态、Fetch 策略与致谢  
 - 专题文档对齐 hybrid 依赖：去掉过时 `ide/third_party/etl`；交叉链接 ecosystem；刷新 `overview.html`  
 - 根 [README.md](README.md) 中文改版（简介 / 特性 / 快速开始）  

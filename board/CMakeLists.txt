@@ -32,7 +32,12 @@ set(GENERATED_BOARD_HDRS
 )
 
 # 平台 dtsi 可选: 存在则加入 DEPENDS, 不存在也不挡中间件默认 board.dts
-file(GLOB BOARD_DTSI_FILES CONFIGURE_DEPENDS "${BOARD_DTSI_DIR}/*.dtsi")
+file(GLOB BOARD_DTSI_FILES "${BOARD_DTSI_DIR}/*.dtsi")
+# 产品驱动：drivers/<name>/{include,src}（与根 CMake / esp_idf.cmake GLOB 一致）
+file(GLOB BOARD_PRODUCT_DRV_SRC_DIRS LIST_DIRECTORIES true
+    "${CMAKE_CURRENT_SOURCE_DIR}/../drivers/*/src")
+file(GLOB BOARD_PRODUCT_DRV_SRCS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../drivers/*/src/*.c")
 
 add_custom_command(
     OUTPUT  ${GENERATED_BOARD_SRCS} ${GENERATED_BOARD_HDRS}
@@ -57,10 +62,11 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/iwdg"
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/wwdg"
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/i2s"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../drivers/flash"
+            ${BOARD_PRODUCT_DRV_SRC_DIRS}
     DEPENDS
         "${BOARD_DTS}"
         ${BOARD_DTSI_FILES}
+        ${BOARD_PRODUCT_DRV_SRCS}
         "${CMAKE_CURRENT_SOURCE_DIR}/dt-bindings/spi/spi-parameter.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/dt-bindings/uart/uart-parameter.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/dt-bindings/tim/tim-parameter.h"

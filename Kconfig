@@ -181,7 +181,7 @@ config EVENT_BUS_DISPATCH_STACK
 config OSAL_MUTEX_POOL_SIZE
     int "OSAL static mutex pool size"
     default 24
-    range 4 64
+    range 4 256
 
 config BOARD_STACK_MONITOR_MAX_TASKS
     int "Stack monitor max registered tasks"

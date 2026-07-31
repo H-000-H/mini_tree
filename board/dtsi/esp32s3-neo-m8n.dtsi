@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+&uart1_client {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	neo_m8n_0: gps@0 {
+		compatible = "u-blox,neo-m8n";
+		reg = <0>;
+		status = "disabled";
+	};
+};

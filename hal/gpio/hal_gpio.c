@@ -112,3 +112,15 @@ COMPAT_WEAK int hal_gpio_set_af_mode(hal_gpio_dev_t* pdev, uint32_t af)
     (void)af;
     return VFS_ERR_NOTSUPP;
 }
+
+COMPAT_WEAK int hal_gpio_irq_enable(hal_gpio_dev_t* pdev)
+{
+    (void)pdev;
+    return VFS_ERR_NOTSUPP;
+}
+
+COMPAT_WEAK int hal_gpio_irq_disable(hal_gpio_dev_t* pdev)
+{
+    (void)pdev;
+    return VFS_ERR_NOTSUPP;
+}

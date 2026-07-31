@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1 {
+	bh1750_i2c: i2c-master@35 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x23>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "disabled";
+
+		bh1750_0: bh1750@0 {
+			compatible = "rohm,bh1750";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

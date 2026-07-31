@@ -70,6 +70,11 @@ uint32_t osal_time_ms(void);
  */
 void osal_delay_ms(uint32_t ms);
 /**
+ * @brief 忙等微秒（1-Wire / bitbang 等短时序；ISR 中可用）
+ * @param us 微秒
+ */
+void osal_delay_us(uint32_t us);
+/**
  * @brief 将毫秒转换为滴答数
  * @param ms 毫秒
  * @return 滴答数

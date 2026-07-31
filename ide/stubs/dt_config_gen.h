@@ -5,7 +5,7 @@
 #define DT_CONFIG_GEN_H
 
 #define DTC_GEN_COUNT_HETEROGENEOUS_GPIOS  1
-#define DTC_GEN_COUNT_WINBOND_W25Q64       1
+#define DTC_GEN_COUNT_WINBOND_W25QXX       1
 #define DTC_GEN_COUNT_CAN_HOST             2
 #define DTC_GEN_COUNT_UART                 1
 #define DTC_GEN_COUNT_SPI_MASTER           1
@@ -15,6 +15,13 @@
 #define DTC_GEN_COUNT_DAC                  1
 #define DTC_GEN_COUNT_TIM                  2
 #define DTC_GEN_COUNT_USB_OTG_HOST         1
+#define DTC_GEN_COUNT_WORLDSEMI_WS2812     1
+#define DTC_GEN_COUNT_SITRONIX_ST7789      1
+#define DTC_GEN_COUNT_SITRONIX_ST7789_NOCS 1
+#define DTC_GEN_COUNT_MAXIM_MAX98357A      1
+#define DTC_GEN_COUNT_GPIO_KEYS            1
+#define DTC_GEN_COUNT_GL5528_PHOTORESISTOR 1
+#define DTC_GEN_COUNT_GENERIC_PWM_BACKLIGHT 1
 
 #define DTC_GEN_CPU_CLOCK_HZ               168000000
 #define DTC_GEN_TICK_RATE_HZ               1000

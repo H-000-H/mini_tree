@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c0 {
+	aht20_i2c: aht20-i2c@56 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x38>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "disabled";
+
+		aht20_0: aht20@0 {
+			compatible = "aosong,aht20";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

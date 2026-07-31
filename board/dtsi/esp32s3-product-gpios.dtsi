@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: Apache-2.0
+/* 产品驱动共用 GPIO phandle（默认 disabled） */
+
+#include <hal/gpio_types.h>
+#include <dt-bindings/gpio/gpio-parameter.h>
+
+/ {
+	board_product_gpios {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		gpio_touch_irq: gpios-touch-irq@18 {
+			compatible = "heterogeneous,gpios";
+			reg = <18>;
+			gpio-port = <0>; gpio-pin = <18>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_INPUT>; gpio-pull = <GPIO_PULLUP_ONLY>;
+			gpio-intr = <GPIO_INTR_NEGEDGE>;
+			status = "disabled";
+		};
+
+		gpio_epaper_dc: gpios-epaper-dc@4 {
+			compatible = "heterogeneous,gpios";
+			reg = <4>;
+			gpio-port = <0>; gpio-pin = <4>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_epaper_rst: gpios-epaper-rst@5 {
+			compatible = "heterogeneous,gpios";
+			reg = <5>;
+			gpio-port = <0>; gpio-pin = <5>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_epaper_busy: gpios-epaper-busy@6 {
+			compatible = "heterogeneous,gpios";
+			reg = <6>;
+			gpio-port = <0>; gpio-pin = <6>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_INPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_rs485_de: gpios-rs485-de@21 {
+			compatible = "heterogeneous,gpios";
+			reg = <21>;
+			gpio-port = <0>; gpio-pin = <21>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_motor_a1: gpios-motor-a1@38 { compatible = "heterogeneous,gpios"; reg = <38>;
+			gpio-port = <0>; gpio-pin = <38>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>; status = "disabled"; };
+		gpio_motor_a2: gpios-motor-a2@39 { compatible = "heterogeneous,gpios"; reg = <39>;
+			gpio-port = <0>; gpio-pin = <39>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>; status = "disabled"; };
+		gpio_motor_b1: gpios-motor-b1@40 { compatible = "heterogeneous,gpios"; reg = <40>;
+			gpio-port = <0>; gpio-pin = <40>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>; status = "disabled"; };
+		gpio_motor_b2: gpios-motor-b2@41 { compatible = "heterogeneous,gpios"; reg = <41>;
+			gpio-port = <0>; gpio-pin = <41>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>; status = "disabled"; };
+
+		gpio_buzzer: gpios-buzzer@42 {
+			compatible = "heterogeneous,gpios";
+			reg = <42>;
+			gpio-port = <0>; gpio-pin = <42>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_relay: gpios-relay@45 {
+			compatible = "heterogeneous,gpios";
+			reg = <45>;
+			gpio-port = <0>; gpio-pin = <45>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_ds18b20: gpios-ds18b20@47 {
+			compatible = "heterogeneous,gpios";
+			reg = <47>;
+			gpio-port = <0>; gpio-pin = <47>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT_OD>; gpio-pull = <GPIO_PULLUP_ONLY>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+
+		gpio_can_stb: gpios-can-stb@46 {
+			compatible = "heterogeneous,gpios";
+			reg = <46>;
+			gpio-port = <0>; gpio-pin = <46>; gpio-clk = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>; gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			status = "disabled";
+		};
+	};
+};

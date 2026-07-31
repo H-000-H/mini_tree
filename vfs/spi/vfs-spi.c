@@ -12,9 +12,9 @@
  * DTS 三层嵌套 (Linux 风格):
  *   spi@1 (spi-master)                                ← host controller
  *   └── spi-master@0 (heterogeneous,spi-master-client) ← bus client (spi_vfs)
- *       └── w25q64@0 (winbond,w25q64)                 ← leaf device (w25q64_spi)
+ *       └── w25qxx@5 (winbond,w25qxx)                 ← leaf device (w25qxx)
  *
- *   w25q64_spi_probe: device_get_parent(pdev) → client (有 fops) → device_ioctl(SPI_CMD_TRANSFER)
+ *   w25qxx_probe: device_get_parent(pdev) → client (有 fops) → device_ioctl(SPI_CMD_TRANSFER)
  *@=========================================================================================================================*/
 #define SPI_VFS_IMPL
 #include "vfs-spi.h"
@@ -752,7 +752,7 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
     cfg->cs_port        = (uintptr_t)cs_port;
-    cfg->cs_pin         = (uint16_t)cs_pin;
+    cfg->cs_pin         = (int32_t)cs_pin; /* 允许 -1: 无硬件 CS */
     cfg->cs_clk_periph  = (uint32_t)cs_clk;
     cfg->mode           = mode;
     cfg->clock_speed_hz = freq;

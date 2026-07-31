@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1 {
+	bmp280_i2c: bmp280-i2c@119 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x77>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "disabled";
+
+		bmp280_0: bmp280@0 {
+			compatible = "bosch,bmp280";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

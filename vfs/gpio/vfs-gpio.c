@@ -14,6 +14,7 @@
 #include "driver.h"
 #include "dt_config_gen.h"
 #include "hal_gpio.h"
+#include "interrupt.h"
 #include "osal.h"
 #include "system_log.h"
 
@@ -90,6 +91,14 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
                 return ret;
             }
         }
+        /* 硬件中断 → VIRQ(gpio,*)；业务上下半部由产品驱动 register */
+        ret = hal_gpio_irq_enable(&priv->obj);
+        if (ret != VFS_OK)
+        {
+            COMPAT_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
+            dev_lc_open_abort(lc);
+            return ret;
+        }
     }
 
     dev_lc_open_end(lc);
@@ -120,7 +129,10 @@ static int vfs_gpio_close(struct device* pdev)
         return last;
 
     if (last)
+    {
+        COMPAT_IGNORE_RESULT(hal_gpio_irq_disable(&priv->obj));
         COMPAT_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
+    }
 
     dev_lc_close_end(lc);
     return VFS_OK;
@@ -159,9 +171,10 @@ static int gpio_cmd_toggle(struct vfs_gpio_priv* priv, void* arg, size_t arg_len
  */
 static int gpio_cmd_set_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
 {
-    const struct vfs_gpio_arg* vfs_arg = (const struct vfs_gpio_arg*)arg;
+    struct vfs_gpio_arg* vfs_arg = (struct vfs_gpio_arg*)arg;
     if (!vfs_arg || arg_len != sizeof(*vfs_arg))
         return VFS_ERR_INVAL;
+    vfs_arg->obj = &priv->obj;
     return hal_gpio_fast_set_level(&priv->obj, vfs_arg->level);
 }
 
@@ -261,8 +274,9 @@ static int vfs_gpio_probe(struct device* pdev)
     struct vfs_gpio_priv* priv;
     int port_val = 0, pin_val = 0, clk_val = 0;
     int mode_val = 0, pull_val = 0, speed_val = 0;
-    int otype_val = 0, af_val = 0, default_level = 0;
+    int otype_val = 0, af_val = 0, intr_val = 0, default_level = 0;
     int deinit_mode_val = 0, deinit_pull_val = 0;
+    int virq_idx = 0;
     int pool_idx;
     int ret;
 
@@ -293,18 +307,29 @@ static int vfs_gpio_probe(struct device* pdev)
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-speed", &speed_val));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-otype", &otype_val));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-af", &af_val));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-intr", &intr_val));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-deinit-mode", &deinit_mode_val));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-deinit-pull", &deinit_pull_val));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "virq-idx", &virq_idx));
+
+    if (intr_val != 0 && (virq_idx < 0 || virq_idx >= (int)VIRTUAL_IRQ_BLOCK_SIZE))
+    {
+        SYS_LOGE(s_kTag, "gpio-intr set but virq-idx invalid (%d)", virq_idx);
+        ret = VFS_ERR_INVAL;
+        goto err_pool;
+    }
 
     priv->obj.port             = (uintptr_t)port_val;
     priv->obj.pin              = (uint16_t)pin_val;
-    priv->obj.clk_bus      = (uint32_t)clk_val;
+    priv->obj.clk_bus          = (uint32_t)clk_val;
+    priv->obj.virq_idx         = (uint8_t)virq_idx;
     priv->obj.is_used          = true;
     priv->obj.cfg.mode         = (uint32_t)mode_val;
     priv->obj.cfg.pull         = (uint32_t)pull_val;
     priv->obj.cfg.speed        = (uint32_t)speed_val;
     priv->obj.cfg.output_type  = (uint32_t)otype_val;
     priv->obj.cfg.af           = (uint32_t)af_val;
+    priv->obj.cfg.intr         = (uint32_t)intr_val;
     priv->obj.cfg.deinit_mode  = (uint32_t)deinit_mode_val;
     priv->obj.cfg.deinit_pull  = (uint32_t)deinit_pull_val;
 

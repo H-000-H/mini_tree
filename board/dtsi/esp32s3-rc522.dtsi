@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+&spi2_master_client {
+	rc522_0: rc522@7 {
+		compatible = "nxp,rc522";
+		reg = <7>;
+		status = "disabled";
+	};
+};

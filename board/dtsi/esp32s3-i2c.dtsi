@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * ESP32-S3 I2C host + client 占位（默认 disabled，HAL 后续补齐）
+ */
+
+#include "esp32s3.dtsi"
+
+&soc {
+	i2c_cap: i2c-cap {
+		compatible = "i2c-platform-cap";
+		mini-tree,platform;
+		host-max = <2>;
+		max-xfer = <512>;
+	};
+
+	i2c1: i2c@0 {
+		compatible = "i2c-master";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		i2c-base = <0>;
+		i2c-clk  = <0>;
+
+		scl-port = <0>;
+		scl-pin  = <8>;
+		scl-clk  = <0>;
+		scl-af   = <0>;
+
+		sda-port = <0>;
+		sda-pin  = <9>;
+		sda-clk  = <0>;
+		sda-af   = <0>;
+
+		status = "disabled";
+	};
+};

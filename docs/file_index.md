@@ -40,8 +40,8 @@
 | `src/dev_lifecycle.c` | lifecycle 实现 |
 | `src/config_store.c` | 配置存储 |
 | `src/task_config.c` · `task_utils.c` | 任务辅助 |
-| `dts/board.dts` | 默认占位 DTS |
-| `dtsi/` | 平台覆盖目录（空） |
+| `dts/board.dts` | 默认占位 DTS（板级可 overlay） |
+| `dtsi/` | SoC / 产品片段（ESP 参考含 `esp32s3-*.dtsi`） |
 | `dt-bindings/` | gpio/spi/uart/tim 参数宏 |
 
 ---
@@ -87,7 +87,7 @@
 | `tools/genconfig.py` | Kconfig → `config.h` |
 | `tools/system_scrubber_crc_stub.h` | CRC 占位 |
 | `ide/stubs/` | clangd 生成头占位 |
-| `drivers/flash/` | W25Q64 示例驱动 |
+| `drivers/<chip>/` | 产品驱动（`include/` + `src/`）；例 `w25qxx`、`st7789`、`ssd1306`…；**无**旧 `drivers/flash` |
 | `can_hook/` | CAN 协议超集钩子（见 [can_hook.md](can_hook.md)） |
 | `algorithm/buffer/` | 环形/双缓冲 |
 | `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` |

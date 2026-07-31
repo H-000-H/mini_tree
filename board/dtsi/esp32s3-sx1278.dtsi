@@ -1,0 +1,7 @@
+&spi2_master_client {
+	sx1278_0: sx1278@3 {
+		compatible = "semtech,sx1278";
+		reg = <3>;
+		status = "disabled";
+	};
+};

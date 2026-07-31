@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+&uart1 {
+	uart1_a7670: uart-client@4 {
+		compatible = "uart-client";
+		reg = <4>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+
+		a7670_0: a7670@0 {
+			compatible = "simcom,a7670";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

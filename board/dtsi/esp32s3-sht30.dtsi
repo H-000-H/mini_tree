@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1 {
+	sht30_i2c: i2c-master@68 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x44>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "disabled";
+
+		sht30_0: sht30@0 {
+			compatible = "sensirion,sht30";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

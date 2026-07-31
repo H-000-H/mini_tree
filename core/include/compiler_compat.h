@@ -257,7 +257,48 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
     X(DAC,    0x0C) \
     X(RTC,    0x0D) \
     X(IWDG,   0x0E) \
-    X(WWDG,   0x0F)
+    X(WWDG,   0x0F) \
+    X(WS2812,    0x10) \
+    X(ST7789,    0x11) \
+    X(MAX98357A, 0x12) \
+    X(GPIOKEY,   0x13) \
+    X(LIGHT,     0x14) \
+    X(PWMBL,     0x15) \
+    X(SHT30,        0x16) \
+    X(MPU6050,      0x17) \
+    X(AT24C02,      0x18) \
+    X(SSD1306,      0x19) \
+    X(BH1750,       0x1A) \
+    X(BME280,       0x1B) \
+    X(FT5X06,       0x1C) \
+    X(XPT2046,      0x1D) \
+    X(SX1278,       0x1E) \
+    X(EPAPER,       0x1F) \
+    X(NEO_M8N,      0x20) \
+    X(AIR780E,      0x21) \
+    X(HC05,         0x22) \
+    X(RS485_MODBUS, 0x23) \
+    X(DRV8833,      0x24) \
+    X(SG90,         0x25) \
+    X(BUZZER,       0x26) \
+    X(RELAY,        0x27) \
+    X(DS18B20,      0x28) \
+    X(SN65HVD230,   0x29) \
+    X(W25QXX,       0x2A) \
+    X(AHT20,       0x2B) \
+    X(SHT40,       0x2C) \
+    X(BMP280,      0x2D) \
+    X(VL53L0X,     0x2E) \
+    X(PCF8574,     0x2F) \
+    X(ADS1115,     0x30) \
+    X(INA219,      0x31) \
+    X(SH1106,      0x32) \
+    X(NRF24L01,    0x33) \
+    X(RC522,       0x34) \
+    X(MAX7219,     0x35) \
+    X(A7670,       0x36) \
+    X(PN532,       0x37) \
+    X(DFPLAYER,    0x38)
 
 /**
  * @brief 魔法槽枚举生成器

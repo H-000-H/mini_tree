@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * 板级产品 GPIO 节点（每脚一个 heterogeneous,gpios）
+ * 默认 disabled；board.dts 按硬件覆盖引脚并 status = "okay"
+ */
+
+#include <hal/gpio_types.h>
+#include <dt-bindings/gpio/gpio-parameter.h>
+
+/ {
+	board_gpios {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		gpio_amp_sdn: gpios-amp-sdn@10 {
+			compatible = "heterogeneous,gpios";
+			reg = <10>;
+			gpio-port = <0>;
+			gpio-pin  = <10>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>;
+			gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			default-level = <0>;
+			status = "disabled";
+		};
+
+		gpio_lcd_dc: gpios-lcd-dc@6 {
+			compatible = "heterogeneous,gpios";
+			reg = <6>;
+			gpio-port = <0>;
+			gpio-pin  = <6>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>;
+			gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			default-level = <0>;
+			status = "disabled";
+		};
+
+		gpio_lcd_rst: gpios-lcd-rst@7 {
+			compatible = "heterogeneous,gpios";
+			reg = <7>;
+			gpio-port = <0>;
+			gpio-pin  = <7>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_OUTPUT>;
+			gpio-pull = <GPIO_FLOATING>;
+			gpio-intr = <GPIO_INTR_DISABLE>;
+			default-level = <1>;
+			status = "disabled";
+		};
+
+		gpio_key_next: gpios-key-next@16 {
+			compatible = "heterogeneous,gpios";
+			reg = <16>;
+			gpio-port = <0>;
+			gpio-pin  = <16>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_INPUT>;
+			gpio-pull = <GPIO_PULLUP_ONLY>;
+			gpio-intr = <GPIO_INTR_ANYEDGE>;
+			virq-idx = <0>; /* VIRQ(gpio, 0) */
+			status = "disabled";
+		};
+
+		gpio_key_prev: gpios-key-prev@17 {
+			compatible = "heterogeneous,gpios";
+			reg = <17>;
+			gpio-port = <0>;
+			gpio-pin  = <17>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_INPUT>;
+			gpio-pull = <GPIO_PULLUP_ONLY>;
+			gpio-intr = <GPIO_INTR_ANYEDGE>;
+			virq-idx = <1>;
+			status = "disabled";
+		};
+
+		gpio_key_enter: gpios-key-enter@3 {
+			compatible = "heterogeneous,gpios";
+			reg = <3>;
+			gpio-port = <0>;
+			gpio-pin  = <3>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_INPUT>;
+			gpio-pull = <GPIO_PULLUP_ONLY>;
+			gpio-intr = <GPIO_INTR_ANYEDGE>;
+			virq-idx = <2>;
+			status = "disabled";
+		};
+
+		gpio_key_esc: gpios-key-esc@46 {
+			compatible = "heterogeneous,gpios";
+			reg = <46>;
+			gpio-port = <0>;
+			gpio-pin  = <46>;
+			gpio-clk  = <0>;
+			gpio-mode = <GPIO_MODE_INPUT>;
+			gpio-pull = <GPIO_PULLUP_ONLY>;
+			gpio-intr = <GPIO_INTR_ANYEDGE>;
+			virq-idx = <3>;
+			status = "disabled";
+		};
+	};
+};

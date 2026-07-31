@@ -375,6 +375,28 @@ void osal_delay_ms(uint32_t ms)
 }
 
 /**
+ * @brief 忙等微秒（不让出调度；1-Wire 等短时序）
+ */
+void osal_delay_us(uint32_t us)
+{
+    if (us == 0U)
+        return;
+#ifdef ESP_PLATFORM
+    /* 厂商 ROM 忙等锁在 OSAL，不进 product driver */
+    extern void esp_rom_delay_us(uint32_t us);
+    esp_rom_delay_us(us);
+#else
+    /* 粗略忙等：按 configTICK_RATE_HZ 不可靠，用 CPU 时钟周期近似 */
+    {
+        uint32_t cycles = us * (configCPU_CLOCK_HZ / 1000000U);
+        volatile uint32_t i;
+        for (i = 0; i < cycles; i++)
+            (void)i;
+    }
+#endif
+}
+
+/**
  * @brief pdMS_TO_TICKS
  * @param ms 毫秒
  * @return tick
@@ -880,8 +902,7 @@ int osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, os
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param,
-                                 osal_clamp_task_priority(priority), &handle);
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param,osal_clamp_task_priority(priority), &handle);
     return (ret == pdPASS) ? OSAL_OK : OSAL_ERR_NOMEM;
 }
 

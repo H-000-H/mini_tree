@@ -1,0 +1,55 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * @file ssd1306_regs.h
+ * @brief SSD1306 面板寄存器 / 几何 / I2C 控制字节
+ */
+#ifndef SSD1306_REGS_H
+#define SSD1306_REGS_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define SSD1306_WIDTH           128
+#define SSD1306_HEIGHT          64
+#define SSD1306_PAGES           8
+#define SSD1306_FB_SIZE         (SSD1306_WIDTH * SSD1306_PAGES)
+
+#define SSD1306_I2C_CTRL_CMD    0x00U
+#define SSD1306_I2C_CTRL_DATA   0x40U
+
+#define SSD1306_REG_DISPLAY_OFF 0xAEU
+#define SSD1306_REG_DISPLAY_ON  0xAFU
+#define SSD1306_REG_SET_CONTRAST 0x81U
+#define SSD1306_REG_SET_PAGE    0xB0U
+#define SSD1306_REG_SET_COL_LO  0x00U
+#define SSD1306_REG_SET_COL_HI  0x10U
+#define SSD1306_REG_CHARGE_PUMP 0x8DU
+#define SSD1306_REG_MEM_MODE    0x20U
+#define SSD1306_REG_CLK_DIV     0xD5U
+#define SSD1306_REG_MUX_RATIO   0xA8U
+#define SSD1306_REG_DISP_OFFSET 0xD3U
+#define SSD1306_REG_START_LINE  0x40U
+#define SSD1306_REG_SEG_REMAP   0xA1U
+#define SSD1306_REG_COM_SCAN_DEC 0xC8U
+#define SSD1306_REG_COM_PINS    0xDAU
+#define SSD1306_REG_PRECHARGE   0xD9U
+#define SSD1306_REG_VCOM_DETECT 0xDBU
+#define SSD1306_REG_ENTIRE_ON   0xA4U
+#define SSD1306_REG_NORMAL_DISP 0xA6U
+
+#define SSD1306_VAL_CLK_DIV     0x80U
+#define SSD1306_VAL_MUX_63      0x3FU
+#define SSD1306_VAL_OFFSET_0    0x00U
+#define SSD1306_VAL_CHARGE_ON   0x14U
+#define SSD1306_VAL_HORIZ_ADDR  0x00U
+#define SSD1306_VAL_COM_PINS    0x12U
+#define SSD1306_VAL_CONTRAST    0xCFU
+#define SSD1306_VAL_PRECHARGE   0xF1U
+#define SSD1306_VAL_VCOM        0x40U
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SSD1306_REGS_H */

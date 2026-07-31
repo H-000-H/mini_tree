@@ -1,0 +1,4 @@
+## 不拉 marcel-cd/etlcpp：使用本树 lib/etl（header-only）
+dependencies:
+  idf:
+    version: '>=5.0.0'

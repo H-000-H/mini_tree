@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * Espressif ESP32-S3-DevKitC-1（与 board.dts 同内容）
+ */
+
+/dts-v1/;
+
+#include "esp32s3.dtsi"
+#include "esp32s3-gpio.dtsi"
+#include "esp32s3-uart.dtsi"
+#include "esp32s3-spi.dtsi"
+#include "esp32s3-ws2812.dtsi"
+
+/chosen {
+	tick-rate = <1000>;
+	heap-size = <32768>;
+};
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	model = "Espressif ESP32-S3-DevKitC-1";
+	compatible = "espressif,esp32-s3-devkitc-1", "espressif,esp32s3";
+};
+
+&gpios_pin {
+	gpio-pin = <0>;
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart1_client {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+	max-trans-buffer = <2048>;
+};
+
+&spi1_slave_client {
+	status = "okay";
+};
+
+&spi2 {
+	status = "disabled";
+	max-trans-buffer = <2048>; /* ST7789 块刷；纯 flash 可改回 512 */
+};
+
+&spi2_master_client {
+	status = "disabled";
+};
+
+&w25qxx_0 {
+	status = "disabled";
+};
+
+&ws2812_rgb {
+	gpio-pin = <48>;
+	status = "okay";
+};

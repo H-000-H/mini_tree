@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1_master_client {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg = <0x50>;
+	clock-frequency = <100000>;
+	status = "disabled";
+
+	at24c02_0: eeprom@0 {
+		compatible = "atmel,at24c02";
+		reg = <0>;
+		status = "disabled";
+	};
+};

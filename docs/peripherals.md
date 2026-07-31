@@ -156,7 +156,7 @@
 
 | 驱动 | compatible | 说明 |
 | :--- | :--- | :--- |
-| W25Q64 SPI Flash | `winbond,w25q64` | `drivers/flash/`；挂在 SPI client 下 |
+| W25Qxx SPI Flash | `winbond,w25qxx` | `drivers/w25qxx/`；挂在 SPI client 下 |
 | 板级 safety | `board,safety-hw` | probe 期注册 shutdown；配合 `safe_state` / `hal_platform_safety` |
 
 ---

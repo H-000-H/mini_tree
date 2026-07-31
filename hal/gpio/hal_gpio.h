@@ -26,19 +26,20 @@
  #define HAL_GPIO_HIGH_LEVEL 1
  #define HAL_GPIO_LOW_LEVEL  0
  
- #ifndef HAL_GPIO_DEV_POOL_SIZE
- #define HAL_GPIO_DEV_POOL_SIZE 16
- #endif
- 
- /**
-  * @brief GPIO 配置
-  * @note 用于配置GPIO的电气特性
-  * @param mode 模式
-  * @param pull 上拉/下拉
-  * @param speed 速度
-  * @param output_type 输出类型
-  * @param af 复用功能
-  */
+#ifndef HAL_GPIO_DEV_POOL_SIZE
+#define HAL_GPIO_DEV_POOL_SIZE 32
+#endif
+
+/**
+ * @brief GPIO 配置
+ * @note 用于配置GPIO的电气特性
+ * @param mode 模式
+ * @param pull 上拉/下拉
+ * @param speed 速度
+ * @param output_type 输出类型
+ * @param af 复用功能
+ * @param intr 中断触发类型（DTS gpio-intr 直投）
+ */
  struct hal_gpio_cfg
  {
      uint32_t mode;        /**< 模式 */
@@ -46,6 +47,7 @@
      uint32_t speed;       /**< 速度 */
      uint32_t output_type; /**< 输出类型 */
      uint32_t af;          /**< 复用功能 */
+     uint32_t intr;        /**< 中断类型 */
      uint32_t deinit_mode; /**< deinit 时恢复的引脚模式 (0=用安全复位值 LL_GPIO_MODE_ANALOG) */
      uint32_t deinit_pull; /**< deinit 时恢复的上下拉  (0=用安全复位值 LL_GPIO_PULL_NO) */
  };
@@ -62,6 +64,7 @@
      uintptr_t               port;        /**< 端口基地址 */
      uint16_t                pin;         /**< 引脚编号 */
      uint32_t                clk_bus;     /**< 时钟总线/RCC位 */
+     uint8_t                 virq_idx;    /**< VIRQ(gpio, idx) 槽位 (DTS virq-idx, < BLOCK_SIZE) */
      hal_gpio_config         cfg;         /**< 配置 */
      bool                    is_used;     /**< 运行时激活状态 (VFS probe 置 true) */
  } hal_gpio_dev_t;
@@ -196,6 +199,17 @@ int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_af(hal_gpio_dev_t* pdev, uint32_t *af
  * @return 成功返回 VFS_OK
  */
 int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_af_mode(hal_gpio_dev_t* pdev, uint32_t af);
+
+/**
+ * @brief 使能硬件 GPIO 中断 → 仅 interrupt_virtual_dispatch(VIRQ(gpio, virq_idx))
+ * @note  产品驱动用 interrupt_virtual_register 挂上下半部；禁止直挂业务 ISR
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_irq_enable(hal_gpio_dev_t* pdev);
+
+/**
+ * @brief 关闭该脚硬件 GPIO 中断路由
+ */
+int COMPAT_WARN_UNUSED_RESULT hal_gpio_irq_disable(hal_gpio_dev_t* pdev);
  /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus

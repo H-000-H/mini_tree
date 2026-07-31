@@ -255,6 +255,22 @@ void osal_delay_ms(uint32_t ms)
     rt_thread_mdelay(ms);
 }
 
+void osal_delay_us(uint32_t us)
+{
+    if (us == 0U)
+        return;
+    /* RT-Thread 常见 BSP 提供 rt_hw_us_delay；无则退化为忙等 */
+#ifdef RT_USING_HW_USDELAY
+    rt_hw_us_delay(us);
+#else
+    {
+        volatile uint32_t n = us * 8U;
+        while (n-- > 0U)
+            ;
+    }
+#endif
+}
+
 /**
  * @brief rt_tick_from_millisecond
  * @param ms 毫秒

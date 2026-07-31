@@ -310,7 +310,6 @@ static device_id_t board_probe_order_at(int index)
  * @note Xtensa windowed ABI: call8 被调方写 a10-a15 即覆盖调用方 a2-a7.
  *       循环状态必须落在栈上 (volatile), 否则 handle_probe_failure 等
  *       日志路径会打坏 count/i/order, 表现为只 probe 第一个设备后提前结束.
- *       ARM 上同为防御性对齐, 避免跨板行为分叉.
  */
 int board_driver_probe_all(void)
 {

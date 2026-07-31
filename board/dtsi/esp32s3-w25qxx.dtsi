@@ -1,0 +1,8 @@
+&spi2_master_client {
+	w25qxx_0: w25qxx@5 {
+		compatible = "winbond,w25qxx";
+		reg = <5>;
+		max-trans-buffer = <512>;
+		status = "disabled";
+	};
+};

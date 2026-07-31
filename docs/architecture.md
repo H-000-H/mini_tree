@@ -83,7 +83,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `interrupt/` | VIRQ、上/下半部 | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | 启动、WDT、scrubber、safe_state | `mini_tree_pre_os_init` |
 | `time_slice/` | 裸机协作式调度 | `xtask`（仅 `OSAL_NULL`） |
-| `drivers/flash/` | 示例外置 Flash 驱动 | W25Q64 |
+| `drivers/<chip>/` | 产品驱动（GLOB）；Flash 用 `w25qxx` | `DRIVER_REGISTER` / ioctl |
 | `can_hook/` | CAN 钩子扩展 | — |
 | `lib/` + `cmake/*.cmake` | 基础设施在 `lib/`；其余 Fetch 或本地覆盖 | OSAL/Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
 

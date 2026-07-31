@@ -1,14 +1,14 @@
 # ESP-IDF CMake 特殊集成
 
 > 相对本仓根目录「通用 CMake」（`add_subdirectory` + `add_library(mini_tree STATIC)`），  
-> ESP32 走 **IDF 组件** 路径。参考实现：异构仓库  
-> `platform/Espressif/esp32s3/`（组件常在 `components/components/mini_tree`）。
+> ESP32 走 **IDF 组件** 路径。参考实现：  
+> `platform/Espressif/esp32s3/`（`components/mini_tree` + 可选 `components/driver_ws2812`）。
 
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 把本 shelf 接到 ESP-IDF 工程的人 |
 | **前置** | [getting_started.md](getting_started.md)（通用 CMake） |
-| **相关** | [porting_guide.md](porting_guide.md) · [design_decisions.md](design_decisions.md) · [ecosystem.md](ecosystem.md) |
+| **相关** | [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md) · [design_decisions.md](design_decisions.md) |
 
 ---
 
@@ -17,11 +17,12 @@
 1. [和通用 CMake 的区别](#1-和通用-cmake-的区别)
 2. [工程怎么挂上组件](#2-工程怎么挂上组件)
 3. [组件内 CMake 要点](#3-组件内-cmake-要点)
-4. [Kconfig 双轨](#4-kconfig-双轨)
-5. [DTS / 生成物 / HAL](#5-dts--生成物--hal)
-6. [依赖与 ETL](#6-依赖与-etl)
-7. [从本 shelf 同步到 ESP 工程](#7-从本-shelf-同步到-esp-工程)
-8. [验收清单](#8-验收清单)
+4. [产品驱动路径（GLOB）](#4-产品驱动路径glob)
+5. [Kconfig 双轨](#5-kconfig-双轨)
+6. [DTS / 生成物 / HAL](#6-dts--生成物--hal)
+7. [依赖与 ETL](#7-依赖与-etl)
+8. [与 ESP 板工程同步](#8-与-esp-板工程同步)
+9. [验收清单](#9-验收清单)
 
 ---
 
@@ -29,134 +30,151 @@
 
 | 项 | 本仓通用（ST / 裸工程等） | ESP-IDF |
 | :--- | :--- | :--- |
-| 接入 | `add_subdirectory(mini_tree)` | `EXTRA_COMPONENT_DIRS` + **组件** |
+| 接入 | `add_subdirectory(mini_tree)` | `components/mini_tree` 自动扫描；`ESP_PLATFORM` 时走 `cmake/esp_idf.cmake` |
 | 目标 | `add_library(mini_tree STATIC)` | `idf_component_register(...)` |
 | 引用生成物 | `target_* (mini_tree …)` | `target_* (${COMPONENT_LIB} …)` |
-| 路径 | `CMAKE_CURRENT_LIST_DIR` | **必须**用 `CMAKE_CURRENT_LIST_DIR`（IDF 两阶段；勿依赖 requirements 阶段的 `SOURCE_DIR`） |
-| 厂商头 | `VENDOR_INC_DIRS` / `VENDOR_DEFINES` 给 dtc | 通常 **不用**；HAL 编进组件，`REQUIRES` ESP 驱动 |
-| HAL | 本仓 weak；板级强符号另链 | 组件内 `hal_*_esp32*.c` 等强符号 |
-| Kconfig | 仅 `.config` + `genconfig.py` | 组件 `Kconfig` 进 `idf.py menuconfig`，**另**保留 `.config`→`config.h` |
+| 路径 | `CMAKE_CURRENT_LIST_DIR` | **必须**用 `CMAKE_CURRENT_LIST_DIR` / `MINI_TREE_DIR`（IDF 两阶段；勿依赖 requirements 阶段的 `SOURCE_DIR`）；`file(GLOB …)` **不要**加 `CONFIGURE_DEPENDS`（requirements 为 script 模式） |
+| 厂商头 | `VENDOR_INC_DIRS` / `VENDOR_DEFINES` 给 dtc | 通常 **不用**；板级 HAL 在 `hal_esp32s3`，`REQUIRES` ESP 驱动 |
+| HAL | 本仓 weak；板级强符号另链 | 板级 `hal_*_esp32*.c` 强符号 |
+| Kconfig | 仅 `.config` + `genconfig.py` | 组件 `Kconfig` 进 `idf.py menuconfig`；ESP 下 `config.h` 常为空壳，真值走 `sdkconfig.h` |
 | 链接脚本 | 板级 `-T` / `error_symbols.ld` | `target_linker_script(${COMPONENT_LIB} INTERFACE error_symbols.ld)` |
-
-本仓根 `CMakeLists.txt` 开头已写明：目录布局对齐 ESP 组件基准，但**构建入口是通用静态库**，不是 `idf_component_register`。
 
 ---
 
 ## 2. 工程怎么挂上组件
 
-在 **ESP 工程根** `CMakeLists.txt`、调用 `include($ENV{IDF_PATH}/tools/cmake/project.cmake)` **之前**：
+参考：`Heterogeneous-Multicore/platform/Espressif/esp32s3/CMakeLists.txt`
 
 ```cmake
-set(EXTRA_COMPONENT_DIRS
-    "${CMAKE_SOURCE_DIR}/components/components/app"
-    "${CMAKE_SOURCE_DIR}/components/components/mini_tree")
-# 不要把 managed_components 再写进 EXTRA_COMPONENT_DIRS（会重复）
-
+# components/mini_tree + components/hal_esp32s3 + components/driver_ws2812 自动扫描
+# 产品驱动已并入 mini_tree/drivers；仅 ws2812 保留独立组件（厂商 RMT 例外）
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(esp32s3)
 ```
 
-参考路径（平台仓）：
+| 组件 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| `mini_tree` | `components/mini_tree/` | 中间件 + `drivers/*` 产品驱动 |
+| `hal_esp32s3` | `components/hal_esp32s3/` | ESP HAL 强符号 |
+| `driver_ws2812` | `components/driver_ws2812/` | **唯一**允许 `esp_driver_rmt` + `led_strip` 的产品驱动 |
+| `app` | `components/app/` | `REQUIRES mini_tree` + `driver_ws2812` |
 
-- 工程根：`Heterogeneous-Multicore/platform/Espressif/esp32s3/CMakeLists.txt`
-- 组件：`…/esp32s3/components/components/mini_tree/`（注意双层 `components/`）
+**不要**再设 `EXTRA_COMPONENT_DIRS` 指向旧的 `components/driver/`（已废弃）。
 
-依赖链常见为：`main` `REQUIRES app` → `app` `REQUIRES mini_tree`。
+依赖链：`app` → `mini_tree`（+ 可选 `driver_ws2812`）。
 
 ---
 
 ## 3. 组件内 CMake 要点
 
-组件根 `CMakeLists.txt` 使用：
+`ESP_PLATFORM` 时根 `CMakeLists.txt` 设置 dtc 扩展后 `include(cmake/esp_idf.cmake)`：
 
 ```cmake
 idf_component_register(
     SRCS
-        ${OSAL_SRCS}
-        ${HAL_SRCS}
-        # … vfs/bus/core/system/GEN_SRCS …
+        ${OSAL_SRCS} ${HAL_SRCS} ${BOARD_SRCS} ${CORE_SRCS}
+        ${DRIVER_SRCS}   # 含 GLOB：drivers/*/src/*.c + vfs/bus
+        ${SYSTEM_SRCS} ${GEN_SRCS}
     INCLUDE_DIRS
-        "."
+        "${MINI_TREE_DIR}"
+        "${MINI_TREE_DIR}/board/include"
+        # … vfs/bus/hal …
+        ${_PRODUCT_DRV_INC_DIRS}   # drivers/*/include
+        ${_PRODUCT_DRV_SRC_DIRS}   # drivers/*/src（如 st7789 头在 src）
         "${GENERATED_BOARD_DIR}"
-        # … 与通用仓类似的 include 列表 …
-        ${HAL_INCLUDE_DIRS}
+        …
     REQUIRES
-        esp_driver_rmt
-        esp_driver_gpio
-        esp_driver_spi
-        esp_driver_uart
-        esp_driver_gptimer
-        etlcpp   # 若工程用 component manager 拉 ETL
+        freertos
+        esp_driver_gpio esp_driver_spi esp_driver_uart
+        esp_driver_i2c esp_driver_twai
 )
 ```
 
-其后对 **`${COMPONENT_LIB}`** 挂：
-
-- `add_dependencies`：`kconfig_gen` / `board_dts_gen` / scrubber 等  
-- `target_compile_definitions`：`CONFIG_OSAL_*` 等  
-- `target_linker_script(... error_symbols.ld)`  
-
-OSAL / SYSTEM 仍读组件目录 `.config` 中的 `CONFIG_OSAL_*=y` / `CONFIG_SYSTEM_*=y`（与通用仓同一套路）。
+其后对 **`${COMPONENT_LIB}`** 挂 gen 依赖、`CONFIG_OSAL_*`、`error_symbols.ld`。
 
 ---
 
-## 4. Kconfig 双轨
+## 4. 产品驱动路径（GLOB）
+
+统一布局：
+
+```text
+mini_tree/drivers/<chip>/
+├── include/     # 对外头（ioctl / regs / bridge）
+└── src/         # *.c；可含私有 .h
+```
+
+| 构建入口 | 源文件 | Include | dtc-lite 扫描 |
+| :--- | :--- | :--- | :--- |
+| `cmake/esp_idf.cmake` | `drivers/*/src/*.c` | `drivers/*/include` + `drivers/*/src` | `_PRODUCT_DRV_SRC_DIRS` |
+| 根 `CMakeLists.txt`（非 ESP） | 同上 | 同上 | 同上 |
+| `board/CMakeLists.txt`（独立 board 库） | — | — | `../drivers/*/src` |
+| `compile_flags.txt` | — | 全部 `-Idrivers/*/include`（及含头的 `src`） | — |
+
+树外例外：`components/driver_ws2812/src` 仅通过 `MINI_TREE_DTC_EXTRA_SCAN_DIRS` / `EXTRA_DEPENDS` 扫入 dtc；源文件仍编在 `driver_ws2812` 组件（`WHOLE_ARCHIVE`）。
+
+旧 `drivers/flash`（`winbond,w25q64`）已删除；Flash 用 `drivers/w25qxx`（`winbond,w25qxx`）。
+
+---
+
+## 5. Kconfig 双轨
 
 | 轨道 | 作用 |
 | :--- | :--- |
 | 组件根 `Kconfig` | 出现在 `idf.py menuconfig` → Component config → mini_tree |
-| 组件 `.config` + `tools/genconfig.py` | 生成 `build/generated/kconfig/mini_tree/config.h`，供 C 源 `#include "config.h"` |
+| 组件 `.config` | 非 ESP / 选源文件时用；**同步到 shelf 时默认不覆盖**板级 `.config` |
 
-两边选项应对齐；改完后重配/重编。不要只改 `sdkconfig` 却忘了组件 `.config`（若 CMake 仍以 `.config` 选源文件）。
+ESP 构建下生成的 `config.h` 常为占位；业务 `CONFIG_*` 以 `sdkconfig.h` 为准。
 
 ---
 
-## 5. DTS / 生成物 / HAL
+## 6. DTS / 生成物 / HAL
 
 | 项 | ESP 参考做法 |
 | :--- | :--- |
-| `BOARD_DTS` | 常写死板级文件，例如 `board/dts/esp32-s3-devkitc-1.dts`（相对组件目录） |
-| 生成目录 | `${CMAKE_BINARY_DIR}/generated/{kconfig,board,scrubber}/mini_tree`（与通用仓同构） |
-| dtc-lite | 仍扫 vfs/bus/drivers；ESP 路径通常**不**循环注入 `VENDOR_INC_DIRS` |
-| HAL | `hal_gpio_esp32.c`、`hal_*_esp32s3.c` 等进 `SRCS`；中间件 shelf 仍只带 weak 占位 |
+| `BOARD_DTS` | `board/dts/board.dts`（可再 `#include` / overlay 板级 dts） |
+| 生成目录 | `${CMAKE_BINARY_DIR}/generated/{kconfig,board,scrubber}/mini_tree` |
+| dtc-lite | 扫 vfs/bus + **全部** `drivers/*/src`；ESP 常不注入 `VENDOR_INC_DIRS` |
+| HAL | 板级 `hal_esp32s3`；shelf 内仍为 weak 占位 |
 
-公共头规则不变：**不** `#include` 厂商驱动头进 vfs/bus 公共 API。
+公共头规则不变：**产品驱动禁止** `#include` 厂商 SDK（`driver_ws2812` 除外）。
 
 ---
 
-## 6. 依赖与 ETL
+## 7. 依赖与 ETL
 
 - ESP 驱动：写在 `idf_component_register(... REQUIRES …)`。  
-- ETL：参考工程用 `idf_component.yml` 拉 `marcel-cd/etlcpp`（或等价），**不要**再把 `managed_components` 塞进 `EXTRA_COMPONENT_DIRS`。通用 CMake 仓则用 `cmake/etl.cmake`（本地 `lib/etl` 或 Fetch），见 [ecosystem.md](ecosystem.md)。  
-- FreeRTOS：ESP-IDF 自带；OSAL 选 `CONFIG_OSAL_FREERTOS` 时对接 IDF 内核，**勿再嵌一份** `lib/freeRTOS` 进组件（与 [design_decisions.md](design_decisions.md) 一致）。
+- ETL：`idf_component.yml` / Fetch / 本地 `lib/etl`；**不要**把 `managed_components` 塞进 `EXTRA_COMPONENT_DIRS`。  
+- FreeRTOS：IDF 自带；`CONFIG_OSAL_FREERTOS` 对接 IDF 内核，勿再嵌 `lib/freeRTOS`。
 
 ---
 
-## 7. 从本 shelf 同步到 ESP 工程
+## 8. 与 ESP 板工程同步
 
-本仓库是 **中间件 shelf**（通用 CMake）。ESP 工程里的 `components/.../mini_tree` 是带板级 HAL/DTS 的**工作副本**。
+本仓库（shelf：`/home/ning/project/shelf/mini_tree` 或平台仓内副本）与  
+`platform/Espressif/esp32s3/components/mini_tree` 应对齐。
 
-建议流程：
+建议：
 
-1. 在 shelf 改通用层（vfs/bus/hal 头、tools、docs）。  
-2. 同步/拷贝到 ESP 组件树（或 submodule / 脚本），保留 ESP 侧 `CMakeLists.txt`（`idf_component_register`）、板级 `hal_*_esp*.c`、板级 dts。  
-3. 在 ESP 工程 `idf.py build` 验证。  
+1. 在 **ESP 板工程**完成产品驱动 / DTS / CMake 验收（`idf.py build`）。  
+2. **内容同步到 shelf**（`rsync` 添加/覆盖，**不要** `--delete` 掉 shelf 独有如 `board/docs`；**排除** `.git` / `.config`）。  
+3. 反向：shelf 改通用层后再拷回板工程时，保留板级 `hal_esp32s3`、根工程 `CMakeLists.txt`、`driver_ws2812`。
 
-不要把 ESP 的 `idf_component_register` 整文件直接覆盖本仓根 `CMakeLists.txt`。
+不要把 ESP 的 `idf_component_register` 整文件覆盖本仓「非 ESP」根 `CMakeLists.txt` 逻辑（两入口靠 `if(ESP_PLATFORM)` 分支共存）。
 
 ---
 
-## 8. 验收清单
+## 9. 验收清单
 
-- [ ] 根工程 `EXTRA_COMPONENT_DIRS` 含 mini_tree，且未重复登记 managed_components  
-- [ ] `idf.py build` 能生成 `config.h` 与 `board_nodes.h` 等  
-- [ ] app `REQUIRES mini_tree`，业务只走 `device_*`  
+- [ ] 无过时 `EXTRA_COMPONENT_DIRS=…/components/driver`  
+- [ ] `idf.py build` 生成 `board_probe.c` / `dt_config_gen.h`，产品驱动 `DRIVER_REGISTER` 均已匹配  
+- [ ] `app` `REQUIRES mini_tree`（+ 需要时 `driver_ws2812`）  
+- [ ] `drivers/flash` 不存在；Flash 节点为 `winbond,w25qxx`  
 - [ ] OSAL 与 IDF FreeRTOS 一致，无双内核  
-- [ ] menuconfig 与组件 `.config` / `config.h` 不互相矛盾  
 
 ---
 
 ## 相关文档
 
-- [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)  
+- [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)  
 - [references.md](references.md)（ESP-IDF VFS 心智对照）

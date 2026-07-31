@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+&uart1 {
+	uart1_dfp: uart-client@6 {
+		compatible = "uart-client";
+		reg = <6>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+
+		dfplayer_0: dfplayer@0 {
+			compatible = "dfrobot,dfplayer";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

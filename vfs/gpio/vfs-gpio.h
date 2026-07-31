@@ -4,12 +4,11 @@
  *
  * 架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
  * 职责: file_operations + dev_lifecycle + DTS; ioctl 电平读/写/翻转。
- * 隔离: 定义 VFS_GPIO_IMPL 可调 hal_gpio_*; 其他文件包含本头时 hal_gpio_* 被 #pragma GCC poison。
- *
- * Driver 注册: vfs_gpio / "gpio"
- * 约束: close 仅释放 lifecycle, 不改变引脚电平/deinit 状态。
+ * 中断: open 时若 gpio-intr 非 disable，HAL 路由到 VIRQ(gpio, virq-idx)；
+ *       业务上下半部由产品驱动 interrupt_virtual_register，不经本层 ioctl。
  *
  * @see hal/gpio/hal_gpio.h
+ * @see interrupt/interrupt.h
  *@=========================================================================================================================*/
 #ifndef VFS_GPIO_H
 #define VFS_GPIO_H
@@ -79,6 +78,7 @@ COMPAT_STATIC_INLINE int vfs_gpio_toggle(struct vfs_gpio_arg* vfs_arg)
 #pragma GCC poison hal_gpio_set_speed hal_gpio_get_speed
 #pragma GCC poison hal_gpio_set_output_type hal_gpio_get_output_type
 #pragma GCC poison hal_gpio_set_af hal_gpio_get_af hal_gpio_set_af_mode
+#pragma GCC poison hal_gpio_irq_enable hal_gpio_irq_disable
 #endif
 
 #endif /* VFS_GPIO_H */

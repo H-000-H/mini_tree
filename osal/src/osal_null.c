@@ -459,6 +459,14 @@ void osal_delay_ms(uint32_t ms)
      }
  }
 
+void osal_delay_us(uint32_t us)
+{
+    /* 裸机无可靠 us 时钟时做短忙等；精度依赖编译器与主频 */
+    volatile uint32_t n = us * 8U;
+    while (n-- > 0U)
+        ;
+}
+
 /**
  * @brief 裸机 tick 与 ms 1:1
  * @param ms 毫秒

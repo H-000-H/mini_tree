@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c0 {
+	sh1106_i2c: sh1106-i2c@60 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x3c>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <400000>;
+		status = "disabled";
+
+		sh1106_0: sh1106@0 {
+			compatible = "sinowealth,sh1106";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

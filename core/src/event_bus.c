@@ -27,8 +27,7 @@ extern volatile bool g_system_os_initialized;
 #define K_MAX_SUBSCRIBERS   CONFIG_EVENT_BUS_MAX_SUBSCRIBERS
 
 #if defined(CONFIG_OSAL_FREERTOS)
-/* FreeRTOS: 0=最低; 实际合法上限由 osal_clamp_task_priority 钳位.
- * 取 24 作为跨板安全默认 (ESP-IDF MAX=25 → 合法 0..24; ST 常见 MAX=32 亦合法). */
+/* FreeRTOS: 0=最低, configMAX_PRIORITIES-1=最高；ESP-IDF 默认 MAX=24 → 合法 0..24 */
 #  define K_DISPATCH_PRIO   24
 #else
 #  define K_DISPATCH_PRIO   1    /* RT-Thread: 0=最高, 数值越小越高 */

@@ -1,7 +1,9 @@
 # ESP-IDF 集成说明与近期修复
 
-本文记录从 ESP32-S3 板级验证回灌到中间件的**纯修复**，以及 ESP 路径的特殊性与依赖策略建议。  
-**不包含**板级外设驱动（如 WS2812）；树外驱动由板级组件自行提供。
+本文记录从 ESP32-S3 板级验证回灌到中间件的**纯修复**，以及 ESP 路径的特殊性与依赖策略建议。
+
+产品驱动默认在 **`mini_tree/drivers/<chip>/`**（编进 `mini_tree` 组件）。  
+**唯一**树外例外：`components/driver_ws2812`（厂商 RMT / `led_strip`）。详见 [esp_idf_cmake.md](../docs/esp_idf_cmake.md)。
 
 入口：`CMakeLists.txt` 在 `ESP_PLATFORM` 时 `include(cmake/esp_idf.cmake)` 后 `return()`。
 
@@ -44,17 +46,16 @@ GENERATED_BOARD_DIR  →  SCRUBBER_GEN_DIR  →  ide/stubs  →  KCONFIG_GEN_DIR
 
 ### 2.2 强引用与静态库 / 跨组件驱动
 
-- **同组件**（驱动源在 `libmini_tree.a` 内）：强引用即可从同一 `.a` 抽出 `.o`。
-- **树外组件**（独立 `libdriver_xxx.a`）：仅强引用仍可能因链接扫描顺序失败。板级应对该组件使用 IDF `WHOLE_ARCHIVE`，或等价手段保证 `board_driver_probe_*` 进最终 ELF。  
-  中间件**不**为具体板级驱动写死 `-u` / `WHOLE_ARCHIVE`。
+- **同组件**（`drivers/*/src/*.c` 在 `libmini_tree.a` 内）：`board_probe` 强引用即可从同一 `.a` 抽出 `.o`。
+- **树外组件**（当前仅 `driver_ws2812`）：对该组件使用 IDF `WHOLE_ARCHIVE`，保证 `board_driver_probe_*` 进最终 ELF。
 
-板级扩展 dtc-lite 扫描示例（在板级 CMake、`idf_component_register` 之前）：
+板级扩展 dtc-lite（仅树外驱动需要；产品驱动已由 GLOB 扫入）：
 
 ```cmake
 set(MINI_TREE_DTC_EXTRA_SCAN_DIRS
-    "${CMAKE_CURRENT_LIST_DIR}/../driver_xxx/src")
+    "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src")
 set(MINI_TREE_DTC_EXTRA_DEPENDS
-    "${CMAKE_CURRENT_LIST_DIR}/../driver_xxx/src/xxx_drv.c")
+    "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src/ws2812_drv.c")
 ```
 
 ### 2.3 OSAL / 优先级

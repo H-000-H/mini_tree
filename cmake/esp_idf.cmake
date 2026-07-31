@@ -86,15 +86,28 @@ set(CORE_SRCS
     "${MINI_TREE_DIR}/core/src/printf_output.c"
 )
 
-# 默认只拉常用总线/VFS；板级外设驱动用 MINI_TREE_DTC_EXTRA_SCAN_DIRS 扩展扫描，
-# 并用 WHOLE_ARCHIVE / 同库强引用保证 DRIVER_REGISTER 进最终镜像。
+# 总线/VFS + mini_tree/drivers/*/ 产品驱动（ws2812 仍在树外独立组件）
+file(GLOB _PRODUCT_DRV_SRCS
+    "${MINI_TREE_DIR}/drivers/*/src/*.c")
+file(GLOB _PRODUCT_DRV_INC_DIRS LIST_DIRECTORIES true
+    "${MINI_TREE_DIR}/drivers/*/include")
+file(GLOB _PRODUCT_DRV_SRC_DIRS LIST_DIRECTORIES true
+    "${MINI_TREE_DIR}/drivers/*/src")
+
 set(DRIVER_SRCS
-    "${MINI_TREE_DIR}/drivers/flash/w25q64_spi_drv.c"
+    ${_PRODUCT_DRV_SRCS}
     "${MINI_TREE_DIR}/vfs/gpio/vfs-gpio.c"
+    "${MINI_TREE_DIR}/vfs/tim/vfs-tim.c"
+    "${MINI_TREE_DIR}/vfs/adc/vfs-adc.c"
     "${MINI_TREE_DIR}/bus/spi/spi_bus.c"
     "${MINI_TREE_DIR}/bus/uart/uart_bus.c"
+    "${MINI_TREE_DIR}/bus/i2c/i2c_bus.c"
+    "${MINI_TREE_DIR}/bus/can/can_bus.c"
     "${MINI_TREE_DIR}/vfs/spi/vfs-spi.c"
     "${MINI_TREE_DIR}/vfs/uart/vfs-uart.c"
+    "${MINI_TREE_DIR}/vfs/i2c/vfs-i2c.c"
+    "${MINI_TREE_DIR}/vfs/can/vfs-can.c"
+    "${MINI_TREE_DIR}/can_hook/can_hook.c"
     "${MINI_TREE_DIR}/algorithm/buffer/circle_fifo_buffer.c"
     "${MINI_TREE_DIR}/algorithm/buffer/double_buffer.c"
     "${MINI_TREE_DIR}/interrupt/interrupt.c"
@@ -131,6 +144,7 @@ if(DEFINED ENV{IDF_PATH})
         "${_IDF}/components/esp_hal_gpio/esp32s3/include"
         "${_IDF}/components/esp_hal_uart/include"
         "${_IDF}/components/esp_hal_gpspi/include"
+        "${_IDF}/components/esp_hal_i2c/include"
         "${_IDF}/components/soc/include"
         "${_IDF}/components/soc/esp32s3/include"
         "${_IDF}/components/esp_common/include"
@@ -147,18 +161,25 @@ if(DEFINED MINI_TREE_DTC_EXTRA_ARGS)
     list(APPEND DTC_LITE_ARGS ${MINI_TREE_DTC_EXTRA_ARGS})
 endif()
 
-# 默认 DRIVER_REGISTER 扫描目录（仅中间件内）
+# 默认 DRIVER_REGISTER 扫描目录（中间件 + drivers/*/src；树外用 EXTRA）
 set(_DTC_SCAN_DIRS
-    "${MINI_TREE_DIR}/drivers/flash"
+    ${_PRODUCT_DRV_SRC_DIRS}
     "${MINI_TREE_DIR}/vfs/spi"
     "${MINI_TREE_DIR}/vfs/gpio"
+    "${MINI_TREE_DIR}/vfs/tim"
+    "${MINI_TREE_DIR}/vfs/adc"
     "${MINI_TREE_DIR}/vfs/uart"
+    "${MINI_TREE_DIR}/vfs/i2c"
+    "${MINI_TREE_DIR}/vfs/can"
     "${MINI_TREE_DIR}/bus/spi"
     "${MINI_TREE_DIR}/bus/uart"
+    "${MINI_TREE_DIR}/bus/i2c"
+    "${MINI_TREE_DIR}/bus/can"
 )
 if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
     list(APPEND _DTC_SCAN_DIRS ${MINI_TREE_DTC_EXTRA_SCAN_DIRS})
 endif()
+list(REMOVE_DUPLICATES _DTC_SCAN_DIRS)
 
 # dtc-lite DEPENDS：存在的板级 dtsi 才加入，避免中间件缺板文件时 configure 失败
 set(_DTC_DEPENDS
@@ -171,6 +192,8 @@ foreach(_dtsi
     "${MINI_TREE_DIR}/board/dtsi/esp32s3-gpio.dtsi"
     "${MINI_TREE_DIR}/board/dtsi/esp32s3-uart.dtsi"
     "${MINI_TREE_DIR}/board/dtsi/esp32s3-spi.dtsi"
+    "${MINI_TREE_DIR}/board/dtsi/esp32s3-i2c.dtsi"
+    "${MINI_TREE_DIR}/board/dtsi/esp32s3-can.dtsi"
 )
     if(EXISTS "${_dtsi}")
         list(APPEND _DTC_DEPENDS "${_dtsi}")
@@ -207,14 +230,26 @@ idf_component_register(
         "${MINI_TREE_DIR}/system_cpp/include"
         "${MINI_TREE_DIR}/algorithm/buffer"
         "${MINI_TREE_DIR}/interrupt"
-        "${MINI_TREE_DIR}/drivers/flash"
+        ${_PRODUCT_DRV_INC_DIRS}
+        ${_PRODUCT_DRV_SRC_DIRS}
         "${MINI_TREE_DIR}/vfs/gpio"
+        "${MINI_TREE_DIR}/vfs/tim"
+        "${MINI_TREE_DIR}/vfs/adc"
         "${MINI_TREE_DIR}/vfs/uart"
         "${MINI_TREE_DIR}/vfs/spi"
+        "${MINI_TREE_DIR}/vfs/i2c"
+        "${MINI_TREE_DIR}/vfs/can"
+        "${MINI_TREE_DIR}/can_hook"
         "${MINI_TREE_DIR}/bus/spi"
         "${MINI_TREE_DIR}/bus/uart"
+        "${MINI_TREE_DIR}/bus/i2c"
+        "${MINI_TREE_DIR}/bus/can"
         "${MINI_TREE_DIR}/hal/spi"
         "${MINI_TREE_DIR}/hal/uart"
+        "${MINI_TREE_DIR}/hal/i2c"
+        "${MINI_TREE_DIR}/hal/can"
+        "${MINI_TREE_DIR}/hal/tim"
+        "${MINI_TREE_DIR}/hal/adc"
         ${HAL_INCLUDE_DIRS}
         ${_ETL_INC}
         # 生成 board_* 必须先于 ide/stubs (stubs/board_nodes.h 的 DEV_ID_COUNT=1
@@ -229,6 +264,8 @@ idf_component_register(
         esp_driver_gpio
         esp_driver_spi
         esp_driver_uart
+        esp_driver_i2c
+        esp_driver_twai
 )
 
 # ESP-IDF: CONFIG_* 已由 sdkconfig.h 注入。再生成一份完整 config.h 会 -Werror=redefined。

@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+/ {
+	can_transceiver {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		sn65_0: can-phy@0 {
+			compatible = "ti,sn65hvd230";
+			reg = <0>;
+			stb-gpio = <&gpio_can_stb>;
+			status = "disabled";
+		};
+	};
+};

@@ -119,7 +119,7 @@ Kconfig **二选一**：编入 `system_c/` 或 `system_cpp/`。
 | `hal_platform_safety_*` | 进 `safe_state` 时关功率级等 |
 | `board,safety-hw` | DTS 节点；probe 注册 shutdown |
 
-无 VFS 节点时由系统模块直接调 HAL；有 Flash 文件系统需求时再用 `winbond,w25q64` 等驱动。
+无 VFS 节点时由系统模块直接调 HAL；有 Flash 文件系统需求时再用 `winbond,w25qxx` 等驱动。
 
 ---
 

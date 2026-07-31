@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1 {
+	pcf8574_i2c: pcf8574-i2c@32 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x20>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "disabled";
+
+		pcf8574_0: pcf8574@0 {
+			compatible = "nxp,pcf8574";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

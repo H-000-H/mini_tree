@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * ESP32-S3 TWAI (CAN) — host + client
+ *
+ * ESP 适配约定（与 STM32 字段复用）:
+ *   can-base     = 控制器索引 (0)
+ *   prescaler    = 比特率 Hz（如 500000）
+ *   mode         = 0 normal / 1 loopback / 2 listen-only
+ *   sjw/bs1/bs2  = 采样点相关可选（0=默认）
+ *   tx/rx-pin    = SoC GPIO；port/clk/af 填 0
+ */
+
+#include "esp32s3.dtsi"
+
+&soc {
+	can_cap: can-cap {
+		compatible = "can-platform-cap";
+		mini-tree,platform;
+		host-max = <1>;
+		max-xfer = <8>;
+	};
+
+	can0: can@0 {
+		compatible = "can-host";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		can-base = <0>;
+		can-clk  = <0>;
+
+		/* ESP: bitrate Hz */
+		prescaler = <500000>;
+		mode      = <0>;
+		sjw       = <0>;
+		bs1       = <875>;
+		bs2       = <0>;
+
+		tx-port = <0>;
+		tx-pin  = <4>;
+		tx-clk  = <0>;
+		tx-af   = <0>;
+
+		rx-port = <0>;
+		rx-pin  = <5>;
+		rx-clk  = <0>;
+		rx-af   = <0>;
+
+		status = "disabled";
+
+		can0_client: can-client@0 {
+			compatible = "heterogeneous,can-client";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

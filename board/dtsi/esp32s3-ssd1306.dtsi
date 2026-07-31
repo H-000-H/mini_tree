@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1 {
+	ssd1306_i2c: i2c-master@60 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x3c>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <400000>;
+		status = "disabled";
+
+		ssd1306_0: oled@0 {
+			compatible = "solomon,ssd1306";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};

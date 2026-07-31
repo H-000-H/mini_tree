@@ -28,9 +28,10 @@
 
 | 路径 | 说明 |
 | :--- | :--- |
-| `board/dts/board.dts` | **占位**根节点，保证无板级覆盖时也能跑 dtc-lite |
-| `board/dtsi/` | 空目录；留给平台 |
+| `board/dts/board.dts` | 根 / 占位 + 板级 overlay |
+| `board/dtsi/` | SoC / 产品片段（ESP 参考 `esp32s3-*.dtsi`） |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | 通用 `#define`，供 dtsi `#include <dt-bindings/...>` |
+| `drivers/<chip>/{include,src}` | 产品驱动；CMake/`dtc-lite` GLOB 扫描 |
 
 ### 平台工程（推荐）
 
@@ -39,10 +40,13 @@ board/dts/<board>.dts              # 入口：#include 头、/ { }、&label 覆�
 board/dtsi/<soc>.dtsi              # SoC：cpus / soc simple-bus
 board/dtsi/<soc>-gpio.dtsi         # 外设片段
 board/dtsi/<soc>-spi.dtsi
+board/dtsi/<soc>-product-drivers.dtsi
 …
+drivers/<chip>/src/*.c             # DRIVER_REGISTER 扫描目录
 ```
 
-CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `VENDOR_DEFINES`。
+CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `VENDOR_DEFINES`。  
+产品驱动路径详见 [esp_idf_cmake.md §4](esp_idf_cmake.md#4-产品驱动路径glob)。
 
 ---
 
@@ -50,7 +54,7 @@ CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `
 
 ```bash
 python3 tools/dtc-lite.py <board.dts> <out_dir> \
-  vfs/spi vfs/uart … drivers/flash …
+  vfs/spi vfs/uart … drivers/w25qxx …
 ```
 
 根 `CMakeLists.txt` 已传入本仓库相关 vfs/bus/drivers 目录。
@@ -106,11 +110,14 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 | `vfs/can` | host + client |
 | `vfs/usb` | `usb-otg-host`、`heterogeneous,usb-cdc-acm/ecm`、`heterogeneous,usb-hid` |
 | `vfs/gpio` · `adc` · `dac` · `tim` · `rtc` · `iwdg` · `wwdg` | 各外设 compatible |
-| `drivers/flash` | W25Q64 |
+| `drivers/<chip>/` | 产品驱动（GLOB）；例：`winbond,w25qxx`、`sitronix,st7789`、`solomon,ssd1306` … |
 | `board` | `board,safety-hw` |
+| 树外 `driver_ws2812` | `worldsemi,ws2812`（唯一厂商 RMT 例外） |
 
+产品驱动目录约定：`drivers/<chip>/{include,src}`。CMake / dtc-lite 用 `drivers/*/src` 扫描，**勿**再维护逐文件列表。  
 以源码中 `DRIVER_REGISTER` 行为准；增删驱动后需重跑 dtc-lite。  
-**ioctl / 读写语义汇总**见 [peripherals.md](peripherals.md)。
+**ioctl / 读写语义汇总**见 [peripherals.md](peripherals.md)。  
+ESP 接线细节见 [esp_idf_cmake.md](esp_idf_cmake.md)。
 
 ---
 

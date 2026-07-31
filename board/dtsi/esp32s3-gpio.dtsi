@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * 厂商宏直接 #include <hal/gpio_types.h>（经 VENDOR_INC_DIRS / dtc-lite -I）
+ */
+
+#include "esp32s3.dtsi"
+#include <hal/gpio_types.h>
+#include <dt-bindings/gpio/gpio-parameter.h>
+
+&soc {
+	gpio: gpio@0 {
+		compatible = "esp32,gpio";
+		reg = <0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		status = "disabled";
+	};
+
+	gpios_pin: gpios-pin@0 {
+		compatible = "heterogeneous,gpios";
+		reg = <0>;
+		gpio-port = <0>;
+		gpio-pin  = <0>;
+		gpio-clk  = <0>;
+		gpio-mode = <GPIO_MODE_OUTPUT>;
+		gpio-pull = <GPIO_FLOATING>;
+		gpio-intr = <DTS_GPIO_DEFAULT_INTR>;
+		default-level = <DTS_GPIO_DEFAULT_LEVEL>;
+		status = "disabled";
+	};
+};

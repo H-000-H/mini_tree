@@ -2,6 +2,23 @@
 # 目录/源文件布局对齐 ESP32-S3/components/mini_tree 基准
 
 if(ESP_PLATFORM)
+    # 产品驱动已在 mini_tree/drivers/*/；仅树外 ws2812（厂商 RMT 例外）扩展扫描
+    # 注意: component_get_requirements 为 script 模式，不可用 CONFIGURE_DEPENDS
+    file(GLOB MINI_TREE_PRODUCT_DRV_SRC_DIRS
+        LIST_DIRECTORIES true
+        "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src")
+    file(GLOB MINI_TREE_PRODUCT_DRV_SRCS
+        "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src/*.c")
+    file(GLOB MINI_TREE_BOARD_DTSI
+        "${CMAKE_CURRENT_LIST_DIR}/board/dtsi/*.dtsi")
+
+    set(MINI_TREE_DTC_EXTRA_SCAN_DIRS
+        ${MINI_TREE_PRODUCT_DRV_SRC_DIRS}
+        "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src")
+    set(MINI_TREE_DTC_EXTRA_DEPENDS
+        ${MINI_TREE_BOARD_DTSI}
+        ${MINI_TREE_PRODUCT_DRV_SRCS}
+        "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src/ws2812_drv.c")
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/esp_idf.cmake")
     return()
 endif()
@@ -92,8 +109,15 @@ else()
 endif()
 
 
+file(GLOB _PRODUCT_DRV_SRCS_REL
+    "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src/*.c")
+file(GLOB _PRODUCT_DRV_INC_DIRS LIST_DIRECTORIES true
+    "${CMAKE_CURRENT_LIST_DIR}/drivers/*/include")
+file(GLOB _PRODUCT_DRV_SRC_DIRS LIST_DIRECTORIES true
+    "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src")
+
 set(DRIVER_SRCS
-    "drivers/flash/w25q64_spi_drv.c"
+    ${_PRODUCT_DRV_SRCS_REL}
     "vfs/gpio/vfs-gpio.c"
     "bus/spi/spi_bus.c"
     "bus/uart/uart_bus.c"
@@ -166,7 +190,7 @@ add_custom_command(
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${GENERATED_BOARD_DIR}"
     COMMAND "${Python3_EXECUTABLE}" "${DTC_LITE}" "${BOARD_DTS}" "${GENERATED_BOARD_DIR}"
             ${DTC_LITE_ARGS}
-            "${CMAKE_CURRENT_LIST_DIR}/drivers/flash"
+            ${_PRODUCT_DRV_SRC_DIRS}
             "${CMAKE_CURRENT_LIST_DIR}/vfs/spi"
             "${CMAKE_CURRENT_LIST_DIR}/vfs/gpio"
             "${CMAKE_CURRENT_LIST_DIR}/vfs/uart"
@@ -199,7 +223,7 @@ add_custom_command(
         "${BOARD_DT_BINDINGS_DIR}/uart/uart-parameter.h"
         "${BOARD_DT_BINDINGS_DIR}/tim/tim-parameter.h"
         "${BOARD_DT_BINDINGS_DIR}/gpio/gpio-parameter.h"
-        "${CMAKE_CURRENT_LIST_DIR}/drivers/flash/w25q64_spi_drv.c"
+        ${_PRODUCT_DRV_SRCS_REL}
         "${CMAKE_CURRENT_LIST_DIR}/vfs/spi/vfs-spi.c"
         "${CMAKE_CURRENT_LIST_DIR}/vfs/uart/vfs-uart.c"
         "${CMAKE_CURRENT_LIST_DIR}/vfs/i2c/vfs-i2c.c"
@@ -315,7 +339,8 @@ target_include_directories(mini_tree
         "${CMAKE_CURRENT_LIST_DIR}/osal/include"
         "${CMAKE_CURRENT_LIST_DIR}/system_c/include"
         "${CMAKE_CURRENT_LIST_DIR}/system_cpp/include"
-        "${CMAKE_CURRENT_LIST_DIR}/drivers/flash"
+        ${_PRODUCT_DRV_INC_DIRS}
+        ${_PRODUCT_DRV_SRC_DIRS}
         "${CMAKE_CURRENT_LIST_DIR}/vfs/gpio"
         "${CMAKE_CURRENT_LIST_DIR}/vfs/uart"
         "${CMAKE_CURRENT_LIST_DIR}/vfs/adc"

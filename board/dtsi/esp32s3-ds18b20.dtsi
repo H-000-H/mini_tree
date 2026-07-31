@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+/ {
+	onewire {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ds18b20_0: temp@0 {
+			compatible = "maxim,ds18b20";
+			reg = <0>;
+			data-gpio = <&gpio_ds18b20>;
+			status = "disabled";
+		};
+	};
+};

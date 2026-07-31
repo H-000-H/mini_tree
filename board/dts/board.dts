@@ -1,17 +1,73 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * ESP32-S3-DevKitC-1 — 默认 BOARD_DTS
+ */
+
 /dts-v1/;
 
-/*
- * mini_tree 中间件默认板级 DTS（平台无关占位）
- *
- * 真实 SoC/板级设备树由平台工程覆盖:
- *   -DCMAKE_BOARD_DTS=...  或  set(BOARD_DTS ... CACHE FILEPATH ...)
- *   -DCMAKE_BOARD_DTSI_DIR=...
- *
- * 本文件仅保证 dtc-lite 在无板级覆盖时可生成最小 board_* / dt_config_gen.h。
- */
+#include "esp32s3.dtsi"
+#include "esp32s3-gpio.dtsi"
+#include "esp32s3-board-gpios.dtsi"
+#include "esp32s3-uart.dtsi"
+#include "esp32s3-spi.dtsi"
+#include "esp32s3-i2c.dtsi"
+#include "esp32s3-can.dtsi"
+#include "esp32s3-tim.dtsi"
+#include "esp32s3-adc.dtsi"
+#include "esp32s3-ws2812.dtsi"
+#include "esp32s3-st7789.dtsi"
+#include "esp32s3-max98357a.dtsi"
+#include "esp32s3-product-drivers.dtsi"
+
+/chosen {
+	tick-rate = <1000>;
+	heap-size = <32768>;
+};
+
 / {
 	#address-cells = <1>;
 	#size-cells = <0>;
-	model = "mini_tree generic";
-	compatible = "mini_tree,generic";
+
+	model = "Espressif ESP32-S3-DevKitC-1";
+	compatible = "espressif,esp32-s3-devkitc-1", "espressif,esp32s3";
+};
+
+&gpios_pin {
+	gpio-pin = <0>;
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart1_client {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+	max-trans-buffer = <2048>;
+};
+
+&spi1_slave_client {
+	status = "okay";
+};
+
+&spi2 {
+	status = "disabled";
+	max-trans-buffer = <2048>;
+};
+
+&spi2_master_client {
+	status = "disabled";
+};
+
+&w25qxx_0 {
+	status = "disabled";
+};
+
+&ws2812_rgb {
+	gpio-pin = <48>;
+	status = "okay";
 };

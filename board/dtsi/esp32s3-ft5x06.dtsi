@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+&i2c1 {
+	ft5x06_i2c: i2c-master@56 {
+		compatible = "heterogeneous,i2c-master-client";
+		reg = <0x38>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <400000>;
+		status = "disabled";
+
+		ft5x06_0: touch@0 {
+			compatible = "focaltech,ft5x06";
+			reg = <0>;
+			status = "disabled";
+		};
+	};
+};
