@@ -39,7 +39,7 @@ struct vfs_uart_priv {
 static struct vfs_uart_priv s_uart_priv_pool[UART_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static uint8_t              s_uart_priv_used[UART_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t          s_uart_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const    s_kHostTag = "uart_host_vfs";
+static const char* const    k_host_tag = "uart_host_vfs";
 
 /**
  * @brief UART Host VFS 私有数据池启动初始化
@@ -192,7 +192,7 @@ static int vfs_uart_priv_probe(struct device* pdev)
 
     if (vfs_uart_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
     {
-        SYS_LOGE(s_kHostTag, "dts parse failed: %s", device_get_name(pdev));
+        SYS_LOGE(k_host_tag, "dts parse failed: %s", device_get_name(pdev));
         ret = VFS_ERR_INVAL;
         goto err_pool;
     }
@@ -207,7 +207,7 @@ static int vfs_uart_priv_probe(struct device* pdev)
         goto err_bus;
     }
 
-    SYS_LOGI(s_kHostTag, "probe OK: %s baud=%lu",
+    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu",
              device_get_name(pdev), (unsigned long)priv->cfg.baud_rate);
     return VFS_OK;
 
@@ -255,7 +255,7 @@ static int vfs_uart_priv_remove(struct device* pdev)
     ret = uart_bus_host_deinit(pdev);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(s_kHostTag, "host_deinit failed: %s", device_get_name(pdev));
+        SYS_LOGE(k_host_tag, "host_deinit failed: %s", device_get_name(pdev));
         dev_lc_remove_finish(lc);
         return ret;
     }
@@ -280,7 +280,7 @@ struct uart_vfs_client {
 static struct uart_vfs_client s_uart_vfs_pool[UART_VFS_COUNT];
 static uint8_t                s_uart_vfs_used[UART_VFS_COUNT];
 static osal_pool_t            s_uart_vfs_pool_ctrl;
-static const char* const      s_kTag = "uart_vfs";
+static const char* const      k_tag = "uart_vfs";
 
 /**
  * @brief UART Client VFS 私有数据池启动初始化
@@ -528,7 +528,7 @@ int uart_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(s_kTag, "probe OK: %s", device_get_name(pdev));
+    SYS_LOGI(k_tag, "probe OK: %s", device_get_name(pdev));
     return VFS_OK;
 
 err_pool:

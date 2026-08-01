@@ -40,7 +40,7 @@ struct a7670_device
 static struct a7670_device s_a7670_pool[A7670_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_a7670_used[A7670_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_a7670_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "a7670";
+static const char* const k_tag = "a7670";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -277,7 +277,7 @@ static int a7670_probe(struct device* dev)
     }
     d->ops = a7670_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

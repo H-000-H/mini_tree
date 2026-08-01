@@ -57,7 +57,7 @@
  static struct vfs_adc_priv s_adc_priv_pool[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
  static uint8_t             s_adc_priv_used[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
  static osal_pool_t         s_adc_priv_pool_ctrl COMPAT_ALIGNED(4);
- static const char* const   s_kTag = "vfs-adc-host";
+ static const char* const   k_tag = "vfs-adc-host";
  
  /*=======================================================================================================================*/
  /* IOCTL 后台控制命令私有实现 */
@@ -468,7 +468,7 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
  
      if(vfs_adc_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
      {
-         SYS_LOGE(s_kTag, "dts parse failed: %s", device_get_name(pdev));
+         SYS_LOGE(k_tag, "dts parse failed: %s", device_get_name(pdev));
          ret = VFS_ERR_INVAL;
          goto err_pool;
      }
@@ -476,7 +476,7 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
      ret = hal_adc_device_init(&priv->adc, &priv->unique, &priv->cfg);
      if(ret != VFS_OK)
      {
-         SYS_LOGE(s_kTag, "hal_adc_device_init failed: %s", device_get_name(pdev));
+         SYS_LOGE(k_tag, "hal_adc_device_init failed: %s", device_get_name(pdev));
          goto err_pool;
      }
  
@@ -484,7 +484,7 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
      ret = hal_adc_init(&priv->adc);
      if(ret != VFS_OK)
      {
-         SYS_LOGE(s_kTag, "hal_adc_init hardware failed: %s", device_get_name(pdev));
+         SYS_LOGE(k_tag, "hal_adc_init hardware failed: %s", device_get_name(pdev));
          goto err_deinit;
      }
  
@@ -504,7 +504,7 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
          goto err_hardware_deinit;
      }
  
-     SYS_LOGI(s_kTag, "probe OK %s", device_get_name(pdev));
+     SYS_LOGI(k_tag, "probe OK %s", device_get_name(pdev));
      return VFS_OK;
  
  err_hardware_deinit:

@@ -16,7 +16,7 @@
  * @param buf 缓冲
  * @param size 容量
  */
-void fifo_init(struct fifo_spsc* handle, Fifo_Data_type* buf, uint16_t size)
+void fifo_init(struct fifo_spsc* handle, fifo_data_type* buf, uint16_t size)
 {
     /**< 防御性空指针与 2的幂次方 拦截 */
     if (!handle || !buf || size == 0 || (size & (size - 1)) != 0)
@@ -36,7 +36,7 @@ void fifo_init(struct fifo_spsc* handle, Fifo_Data_type* buf, uint16_t size)
  * @param data 数据
  * @return true
  */
-bool fifo_write_data(struct fifo_spsc* handle, Fifo_Data_type data)
+bool fifo_write_data(struct fifo_spsc* handle, fifo_data_type data)
 {
     uint16_t r = FIFO_LOAD_ACQUIRE(handle->r_ptr);
     uint16_t w = FIFO_LOAD_RELAXED(handle->w_ptr);
@@ -59,7 +59,7 @@ bool fifo_write_data(struct fifo_spsc* handle, Fifo_Data_type data)
  * @param len 长度
  * @return 写入数
  */
-uint16_t fifo_write_block(struct fifo_spsc* handle, const Fifo_Data_type* p_data, uint16_t len)
+uint16_t fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data, uint16_t len)
 {
     if (!handle || !p_data || len == 0) return 0;
 
@@ -77,12 +77,12 @@ uint16_t fifo_write_block(struct fifo_spsc* handle, const Fifo_Data_type* p_data
     
     if (space_to_end >= len)
     {
-        __builtin_memcpy(&handle->buf[w_idx], p_data, len * sizeof(Fifo_Data_type));
+        __builtin_memcpy(&handle->buf[w_idx], p_data, len * sizeof(fifo_data_type));
     }
     else
     {
-        __builtin_memcpy(&handle->buf[w_idx], p_data, space_to_end * sizeof(Fifo_Data_type));
-        __builtin_memcpy(&handle->buf[0], p_data + space_to_end, (len - space_to_end) * sizeof(Fifo_Data_type));
+        __builtin_memcpy(&handle->buf[w_idx], p_data, space_to_end * sizeof(fifo_data_type));
+        __builtin_memcpy(&handle->buf[0], p_data + space_to_end, (len - space_to_end) * sizeof(fifo_data_type));
     }
     
     FIFO_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + len));
@@ -95,7 +95,7 @@ uint16_t fifo_write_block(struct fifo_spsc* handle, const Fifo_Data_type* p_data
  * @param p_data 输出
  * @return true
  */
-bool fifo_read_data(struct fifo_spsc* handle, Fifo_Data_type* p_data)
+bool fifo_read_data(struct fifo_spsc* handle, fifo_data_type* p_data)
 {
     if (!handle || !p_data) return false;
 
@@ -115,7 +115,7 @@ bool fifo_read_data(struct fifo_spsc* handle, Fifo_Data_type* p_data)
  * @param len 长度
  * @return 读出数
  */
-uint16_t fifo_read_block(struct fifo_spsc* handle, Fifo_Data_type* p_data, uint16_t len)
+uint16_t fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint16_t len)
 {
     if (!handle || !p_data || len == 0) return 0;
 
@@ -131,12 +131,12 @@ uint16_t fifo_read_block(struct fifo_spsc* handle, Fifo_Data_type* p_data, uint1
     
     if (space_to_end >= len)
     {
-        __builtin_memcpy(p_data, &handle->buf[r_idx], len * sizeof(Fifo_Data_type));
+        __builtin_memcpy(p_data, &handle->buf[r_idx], len * sizeof(fifo_data_type));
     }
     else
     {
-        __builtin_memcpy(p_data, &handle->buf[r_idx], space_to_end * sizeof(Fifo_Data_type));
-        __builtin_memcpy(p_data + space_to_end, &handle->buf[0], (len - space_to_end) * sizeof(Fifo_Data_type));
+        __builtin_memcpy(p_data, &handle->buf[r_idx], space_to_end * sizeof(fifo_data_type));
+        __builtin_memcpy(p_data + space_to_end, &handle->buf[0], (len - space_to_end) * sizeof(fifo_data_type));
     }
     
     FIFO_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + len));

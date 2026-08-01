@@ -15,6 +15,15 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
+# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）。
+# 启用时需板级 usb_tusb_port glue（docs/usb_tusb_port.md），并自行 REQUIRE esp_tinyusb 等。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
+if(CONFIG_USB_OFF)
+    set(MINI_TREE_USB OFF)
+else()
+    set(MINI_TREE_USB ON)
+endif()
+
 include("${MINI_TREE_DIR}/hal/paths.cmake")
 # paths.cmake 可能列出尚未建目录的 HAL 子路径；IDF 要求 INCLUDE_DIRS 必须存在
 set(_HAL_INC_EXISTING "")
@@ -35,7 +44,6 @@ set(HAL_SRCS
     "${MINI_TREE_DIR}/hal/uart/hal_uart.c"
     "${MINI_TREE_DIR}/hal/i2c/hal_i2c.c"
     "${MINI_TREE_DIR}/hal/can/hal_can.c"
-    "${MINI_TREE_DIR}/hal/usb/hal_usb.c"
     "${MINI_TREE_DIR}/hal/rtc/hal_rtc.c"
     "${MINI_TREE_DIR}/hal/i2s/hal_i2s.c"
     "${MINI_TREE_DIR}/hal/iwdg/hal_iwdg.c"
@@ -50,6 +58,10 @@ set(HAL_SRCS
     "${MINI_TREE_DIR}/hal/system/hal_sdio.c"
     "${MINI_TREE_DIR}/hal/hal_if_dummy.c"
 )
+
+if(MINI_TREE_USB)
+    list(APPEND HAL_SRCS "${MINI_TREE_DIR}/hal/usb/hal_usb.c")
+endif()
 
 if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
     set(SYSTEM_SRCS
@@ -113,6 +125,12 @@ set(DRIVER_SRCS
     "${MINI_TREE_DIR}/algorithm/buffer/double_buffer.c"
     "${MINI_TREE_DIR}/interrupt/interrupt.c"
 )
+
+if(MINI_TREE_USB)
+    list(APPEND DRIVER_SRCS
+        "${MINI_TREE_DIR}/bus/usb/usb_bus.c"
+        "${MINI_TREE_DIR}/vfs/usb/vfs-usb.c")
+endif()
 
 set(GENERATED_BOARD_DIR "${CMAKE_BINARY_DIR}/generated/board/mini_tree")
 set(KCONFIG_GEN_DIR     "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
@@ -181,6 +199,11 @@ set(_DTC_SCAN_DIRS
 if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
     list(APPEND _DTC_SCAN_DIRS ${MINI_TREE_DTC_EXTRA_SCAN_DIRS})
 endif()
+if(MINI_TREE_USB)
+    list(APPEND _DTC_SCAN_DIRS
+        "${MINI_TREE_DIR}/bus/usb"
+        "${MINI_TREE_DIR}/vfs/usb")
+endif()
 list(REMOVE_DUPLICATES _DTC_SCAN_DIRS)
 
 # dtc-lite DEPENDS：BOARD_DTS + 板级 dtsi（若设 BOARD_DTSI_DIR）+ 可选 SoC 片段
@@ -196,9 +219,23 @@ endif()
 if(DEFINED MINI_TREE_DTC_EXTRA_DEPENDS)
     list(APPEND _DTC_DEPENDS ${MINI_TREE_DTC_EXTRA_DEPENDS})
 endif()
+if(MINI_TREE_USB)
+    list(APPEND _DTC_DEPENDS
+        "${MINI_TREE_DIR}/bus/usb/usb_bus.c"
+        "${MINI_TREE_DIR}/vfs/usb/vfs-usb.c")
+endif()
 list(REMOVE_DUPLICATES _DTC_DEPENDS)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# USB 裁剪：include 目录同样按 .config 门控
+set(USB_INC_DIRS "")
+if(MINI_TREE_USB)
+    list(APPEND USB_INC_DIRS
+        "${MINI_TREE_DIR}/hal/usb"
+        "${MINI_TREE_DIR}/bus/usb"
+        "${MINI_TREE_DIR}/vfs/usb")
+endif()
 
 # ETL：优先板级 FetchContent / managed；若本地 lib/etl 存在则加入 include（兑底）
 set(_ETL_INC "")
@@ -246,6 +283,7 @@ idf_component_register(
         "${MINI_TREE_DIR}/hal/tim"
         "${MINI_TREE_DIR}/hal/adc"
         ${HAL_INCLUDE_DIRS}
+        ${USB_INC_DIRS}
         ${_ETL_INC}
         # 生成 board_* 必须先于 ide/stubs (stubs/board_nodes.h 的 DEV_ID_COUNT=1
         # 会盖住 dtc-lite 真表). 但 stubs/config.h 须先于空壳 KCONFIG_GEN

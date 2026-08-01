@@ -36,7 +36,7 @@
 #define IRQ_ENABLE()   do {} while (0)
 #endif
 
-static const char* kTag = "SysInit";
+static const char* k_tag = "SysInit";
 
 /* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
 volatile bool g_system_os_initialized = false;
@@ -47,11 +47,11 @@ volatile bool g_system_os_initialized = false;
 void mini_tree_pre_os_init(void)
 {
     IRQ_DISABLE();  /* 关全局中断 — ISR 不得在框架就绪前触发 */
-    SYS_LOGI(kTag, "=== MiniTree Phase 1: Pre-OS Init ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 1: Pre-OS Init ===");
 
     if (!safe_state_check_bootloop())
     {
-        SYS_LOGE(kTag, "bootloop protection triggered — system halted");
+        SYS_LOGE(k_tag, "bootloop protection triggered — system halted");
         return;
     }
 
@@ -61,12 +61,12 @@ void mini_tree_pre_os_init(void)
 
     if (device_tree_init() != VFS_OK)
     {
-        SYS_LOGW(kTag, "device_tree_init failed (non-fatal)");
+        SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
     }
 
     if (!event_bus_init())
     {
-        SYS_LOGE(kTag, "EventBus init failed — entering safe state");
+        SYS_LOGE(k_tag, "EventBus init failed — entering safe state");
         enter_safe_state("EventBus init failed");
         return;
     }
@@ -75,7 +75,7 @@ void mini_tree_pre_os_init(void)
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
     g_system_os_initialized = true;
 
-    SYS_LOGI(kTag, "=== MiniTree Phase 1 complete ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 1 complete ===");
 }
 
 /**
@@ -83,14 +83,14 @@ void mini_tree_pre_os_init(void)
  */
 void mini_tree_start_tasks(void)
 {
-    SYS_LOGI(kTag, "=== MiniTree Phase 2: Start Tasks ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 2: Start Tasks ===");
 
     event_bus_start();
 
     int probe_fail = board_driver_probe_all();
     if (probe_fail != 0)
     {
-        SYS_LOGW(kTag, "board_driver_probe_all: %d device(s) failed", probe_fail);
+        SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
     }
 
 #ifdef CONFIG_ENABLE_WDT
@@ -114,7 +114,7 @@ void mini_tree_start_tasks(void)
     hal_cpu_secondary_startup();
 #endif
 
-    SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 2 complete ===");
 }
 
 /**

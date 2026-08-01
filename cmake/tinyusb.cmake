@@ -17,8 +17,14 @@ mini_tree_dep_get(_tinyusb_source_dir
 )
 
 set(TINYUSB_SRC_DIR "${_tinyusb_source_dir}/src")
-include("${TINYUSB_SRC_DIR}/CMakeLists.txt")
-tinyusb_sources_get(TINYUSB_CORE_SRCS)
+if(EXISTS "${TINYUSB_SRC_DIR}/CMakeLists.txt")
+    include("${TINYUSB_SRC_DIR}/CMakeLists.txt")
+    tinyusb_sources_get(TINYUSB_CORE_SRCS)
+else()
+    # 离线/未提供场景: TinyUSB 未本地拉取时置空核心源（mini_tree 静态库默认不链接 tinyusb）
+    message(STATUS "mini_tree TinyUSB: src/CMakeLists.txt missing — core sources empty (offline)")
+    set(TINYUSB_CORE_SRCS "")
+endif()
 add_library(tinyusb INTERFACE)
 target_sources(tinyusb INTERFACE ${TINYUSB_CORE_SRCS})
 target_include_directories(tinyusb INTERFACE "${TINYUSB_SRC_DIR}")

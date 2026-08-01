@@ -132,6 +132,18 @@ config SYSTEM_CPP
 endchoice
 endmenu
 
+menu "Components"
+
+config USB
+    bool "USB bus/VFS (TinyUSB)"
+    default y
+    help
+      USB host/client 总线与 VFS（bus/usb + vfs/usb + hal/usb）。
+      启用时板级必须提供 usb_tusb_port 粘合层（docs/usb_tusb_port.md）
+      并自行链接 TinyUSB DCD；置 "not set" 时整条 USB 通路与
+      TinyUSB 均不编入（CMake 按 .config 裁剪，缺省视为启用）。
+endmenu
+
 menu "Board Features"
 
 config PRODUCTION_LOG

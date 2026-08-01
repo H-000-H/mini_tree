@@ -13,12 +13,12 @@
 #include "compiler_compat_poison.h"
 
 /* SIOF (Static Initialization Order Fiasco) 防御:
- *   在 System_Pre_OS_Init (Phase 1) 完成前, 禁止所有 EventBus 操作.
+ *   在 system_pre_os_init (Phase 1) 完成前, 禁止所有 EventBus 操作.
  *   防止 C++ 全局构造函数在 main() 之前偷跑调用 post/subscribe.
  *   定义位于 system_init.cpp / system_init.c. */
 extern volatile bool g_system_os_initialized;
 
-static constexpr const char* kTag = "EventBus";
+static constexpr const char* k_tag = "EventBus";
 static constexpr uint32_t kDispatchPrio =
 #if defined(CONFIG_OSAL_FREERTOS)
     30;  /* FreeRTOS: 0=最低, 31=最高 */
@@ -34,28 +34,28 @@ bool EventBus::init()
 {
     if (m_inited) return true;
 
-    m_queue = osal_queue_create(kQueueLen, sizeof(Event));
+    m_queue = osal_queue_create(k_queue_len, sizeof(event));
     if (m_queue == nullptr)
     {
-        SYS_LOGE(kTag, "FATAL: osal_queue_create failed — event bus unusable");
+        SYS_LOGE(k_tag, "FATAL: osal_queue_create failed — event bus unusable");
         return false;
     }
 
     if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) != OSAL_OK
         || m_sub_lock == nullptr)
     {
-        SYS_LOGE(kTag, "FATAL: mutex create failed");
+        SYS_LOGE(k_tag, "FATAL: mutex create failed");
         osal_queue_delete(m_queue);
         m_queue = nullptr;
         return false;
     }
 
     m_inited = true;
-    SYS_LOGI(kTag, "event bus initialized, queue=%u slots", (unsigned)kQueueLen);
+    SYS_LOGI(k_tag, "event bus initialized, queue=%u slots", (unsigned)k_queue_len);
     return true;
 }
 
-EventBus& EventBus::getInstance()
+EventBus& EventBus::get_instance()
 {
     static EventBus bus;
     return bus;
@@ -73,12 +73,12 @@ bool EventBus::subscribe(uint32_t id_min, uint32_t id_max,
 
     if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
-        SYS_LOGE(kTag, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
+        SYS_LOGE(k_tag, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
         return false;
     }
 
     bool ok = false;
-    if (m_count < kMaxSubscribers)
+    if (m_count < k_max_subscribers)
     {
         m_subscribers[m_count].id_min = id_min;
         m_subscribers[m_count].id_max = id_max;
@@ -118,7 +118,7 @@ bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr,
         return false;
     }
 
-    const Event event = {id, arg};
+    const event event = {id, arg};
     bool ok;
 
     if (from_isr)
@@ -134,7 +134,7 @@ bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr,
             size_t cur = __atomic_load_n(&m_dropped, __ATOMIC_RELAXED);
             if ((cur % 8) == 0 && cur != 0)
             {
-                SYS_LOGW(kTag, "event queue full, dropped=%u", (unsigned)cur);
+                SYS_LOGW(k_tag, "event queue full, dropped=%u", (unsigned)cur);
             }
         }
         return false;
@@ -151,7 +151,7 @@ void EventBus::dispatch_task(void* param)
 {
     if (!param) return;
     EventBus* self = static_cast<EventBus*>(param);
-    Event event;
+    event event;
 
     while (osal_queue_receive(self->m_queue, &event, OSAL_WAIT_FOREVER))
     {
@@ -163,14 +163,14 @@ void EventBus::dispatch_task(void* param)
         system_wdt_feed();
         system_wdt_feed_iwdg();
 
-        Subscriber snapshot[kMaxSubscribers];
+        subscriber snapshot[k_max_subscribers];
         size_t snapshot_count = 0;
 
         if (self->m_sub_lock)
         {
             if (osal_mutex_lock(self->m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
             {
-                SYS_LOGE(kTag, "Fatal: EventBus dispatch lock timeout — safe shutdown");
+                SYS_LOGE(k_tag, "Fatal: EventBus dispatch lock timeout — safe shutdown");
                 enter_safe_state("EventBus mutex deadlock");
                 break;
             }
@@ -187,7 +187,7 @@ void EventBus::dispatch_task(void* param)
 
         for (size_t i = 0; i < snapshot_count; i++)
         {
-            Subscriber& sub = snapshot[i];
+            subscriber& sub = snapshot[i];
             if (sub.callback != nullptr &&
                 event.id >= sub.id_min && event.id <= sub.id_max)
             {
@@ -196,7 +196,7 @@ void EventBus::dispatch_task(void* param)
         }
     }
 
-    SYS_LOGI(kTag, "dispatch task exiting");
+    SYS_LOGI(k_tag, "dispatch task exiting");
     osal_task_self_delete();
 }
 
@@ -207,7 +207,7 @@ void EventBus::start()
     osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio,
                             dispatch_task, this, 0, &m_task);
     system_wdt_subscribe(m_task);
-    SYS_LOGI(kTag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
+    SYS_LOGI(k_tag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
 }
 
 void EventBus::stop()
@@ -218,7 +218,7 @@ void EventBus::stop()
     m_task = nullptr;
 
     /* 向队列发空事件唤醒 dispatch 线程 */
-    Event dummy = {EVENT_SYS_FAULT, 0};
+    event dummy = {EVENT_SYS_FAULT, 0};
     osal_queue_send(m_queue, &dummy, 0);
 
     uint32_t waited = 0;
@@ -230,7 +230,7 @@ void EventBus::stop()
 
     if (osal_task_is_running(handle))
     {
-        SYS_LOGW(kTag, "dispatch task did not exit, force deleting");
+        SYS_LOGW(k_tag, "dispatch task did not exit, force deleting");
         osal_task_delete(handle);
     }
 
@@ -248,26 +248,26 @@ void EventBus::seal()
 /* ── C 接口 (extern "C") ── */
 extern "C" bool event_bus_init(void)
 {
-    return EventBus::getInstance().init();
+    return EventBus::get_instance().init();
 }
 
 extern "C" bool event_bus_post(uint32_t id, uintptr_t arg)
 {
-    return EventBus::getInstance().post(id, arg);
+    return EventBus::get_instance().post(id, arg);
 }
 
 extern "C" bool event_bus_post_from_isr(uint32_t id, uintptr_t arg,
                                         bool* px_yield_required)
 {
-    return EventBus::getInstance().post_from_isr(id, arg, px_yield_required);
+    return EventBus::get_instance().post_from_isr(id, arg, px_yield_required);
 }
 
 extern "C" void event_bus_start(void)
 {
-    EventBus::getInstance().start();
+    EventBus::get_instance().start();
 }
 
 extern "C" void event_bus_seal(void)
 {
-    EventBus::getInstance().seal();
+    EventBus::get_instance().seal();
 }

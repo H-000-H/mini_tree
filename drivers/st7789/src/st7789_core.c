@@ -66,7 +66,7 @@ static uint8_t              s_st7789_used[ST7789_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t          s_st7789_pool_ctrl COMPAT_ALIGNED(4);
 static uint8_t s_st7789_block_buf[ST7789_COUNT][ST7789_BLOCK_BUF_SIZE] COMPAT_ALIGNED(4);
 
-static const char* const kTag = "st7789";
+static const char* const k_tag = "st7789";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -790,7 +790,7 @@ int st7789_probe_common(struct device* dev, int require_nocs)
         if (device_get_prop_int(lcd->spi_dev, "cs-pin", &parent_cs) != VFS_OK ||
             parent_cs >= 0)
         {
-            SYS_LOGE(kTag, "nocs requires parent cs-pin < 0");
+            SYS_LOGE(k_tag, "nocs requires parent cs-pin < 0");
             ret = VFS_ERR_INVAL;
             goto err_pool;
         }
@@ -833,7 +833,7 @@ int st7789_probe_common(struct device* dev, int require_nocs)
     lcd->ops = st7789_fops;
     dev->ops = &lcd->ops;
 
-    SYS_LOGI(kTag, "probe OK: pool=%d %dx%d dc=%s bl=%s nocs=%d",
+    SYS_LOGI(k_tag, "probe OK: pool=%d %dx%d dc=%s bl=%s nocs=%d",
              pool_idx, width, height, device_get_name(dc_dev),
              bl_tim_dev ? device_get_name(bl_tim_dev) : "none", require_nocs);
     return VFS_OK;

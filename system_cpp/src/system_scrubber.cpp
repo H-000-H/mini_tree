@@ -16,7 +16,7 @@
 #include "osal.h"
 #include "compiler_compat_poison.h"
 
-static constexpr const char* kTag = "Scrubber";
+static constexpr const char* k_tag = "Scrubber";
 static constexpr uint32_t kScrubberPrio =
 #if defined(CONFIG_OSAL_FREERTOS)
     1;   /* FreeRTOS: 0=最低, 31=最高 — 后台巡检, 最低优先级 */
@@ -30,7 +30,7 @@ static volatile bool s_running = false;
 
 static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
 {
-    static const uint32_t kTable[256] = {
+    static const uint32_t k_table[256] = {
         0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
         0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
         0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
@@ -78,7 +78,7 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
 
     for (size_t i = 0; i < len; i++)
     {
-        crc = kTable[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+        crc = k_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
     }
     return crc;
 }
@@ -86,7 +86,7 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
 static void scrubber_task(void* param)
 {
     (void)param;
-    SYS_LOGI(kTag, "scrubber task started, chunk=%u bytes, interval=%ums",
+    SYS_LOGI(k_tag, "scrubber task started, chunk=%u bytes, interval=%ums",
              (unsigned)SYSTEM_SCRUBBER_CHUNK_BYTES, (unsigned)SYSTEM_SCRUBBER_INTERVAL_MS);
 
     const uint32_t base_addr = hal_flash_get_app_addr();
@@ -94,7 +94,7 @@ static void scrubber_task(void* param)
 
     if (base_addr == 0 || total_size == 0)
     {
-        SYS_LOGE(kTag, "cannot locate app partition — scrubber aborted");
+        SYS_LOGE(k_tag, "cannot locate app partition — scrubber aborted");
         osal_task_self_delete();
         return;
     }
@@ -103,13 +103,13 @@ static void scrubber_task(void* param)
 
     if (baseline_crc == 0)
     {
-        SYS_LOGW(kTag, "CRC baseline not set (0x%08X) — scrubber inactive, run post_build_crc.py",
+        SYS_LOGW(k_tag, "CRC baseline not set (0x%08X) — scrubber inactive, run post_build_crc.py",
                  (unsigned)baseline_crc);
         osal_task_self_delete();
         return;
     }
 
-    SYS_LOGI(kTag, "app partition: addr=0x%08X size=%u bytes, baseline=0x%08X",
+    SYS_LOGI(k_tag, "app partition: addr=0x%08X size=%u bytes, baseline=0x%08X",
              (unsigned)base_addr, (unsigned)total_size, (unsigned)baseline_crc);
 
     uint32_t offset = 0;
@@ -137,12 +137,12 @@ static void scrubber_task(void* param)
 
             if (crc != baseline_crc)
             {
-                SYS_LOGE(kTag, "FLASH CORRUPTION: crc=0x%08X != baseline=0x%08X",
+                SYS_LOGE(k_tag, "FLASH CORRUPTION: crc=0x%08X != baseline=0x%08X",
                          (unsigned)crc, (unsigned)baseline_crc);
                 enter_safe_state("Flash bit-rot detected — firmware corruption");
             }
 
-            SYS_LOGI(kTag, "scrub pass complete, crc=0x%08X OK", (unsigned)crc);
+            SYS_LOGI(k_tag, "scrub pass complete, crc=0x%08X OK", (unsigned)crc);
 
             offset = 0;
             crc = 0xFFFFFFFF;
@@ -151,7 +151,7 @@ static void scrubber_task(void* param)
         osal_delay_ms(SYSTEM_SCRUBBER_INTERVAL_MS);
     }
 
-    SYS_LOGI(kTag, "scrubber task exiting");
+    SYS_LOGI(k_tag, "scrubber task exiting");
     osal_task_self_delete();
 }
 
@@ -169,12 +169,12 @@ bool system_scrubber_start(void)
                                        scrubber_task, nullptr, 0, &s_handle);
     if (ret != 0)
     {
-        SYS_LOGE(kTag, "failed to create scrubber task");
+        SYS_LOGE(k_tag, "failed to create scrubber task");
         s_running = false;
         return false;
     }
 
-    SYS_LOGI(kTag, "scrubber task created, prio=%u", (unsigned)kScrubberPrio);
+    SYS_LOGI(k_tag, "scrubber task created, prio=%u", (unsigned)kScrubberPrio);
     return true;
 }
 

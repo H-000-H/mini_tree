@@ -13,7 +13,7 @@
  * @param buf2 缓冲2
  * @param size 容量
  */
-void double_buffer_init(struct double_buffer_spsc* handle, Double_Buffer_Data_type* buf1, Double_Buffer_Data_type* buf2, uint16_t size)
+void double_buffer_init(struct double_buffer_spsc* handle, double_buffer_data_type* buf1, double_buffer_data_type* buf2, uint16_t size)
 {
     if (!handle || !buf1 || !buf2 || size == 0)
         return;

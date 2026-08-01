@@ -848,9 +848,9 @@ void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer,StackType
 /**
  * @brief FreeRTOS 栈溢出钩子 (configCHECK_FOR_STACK_OVERFLOW=2 时必需)
  */
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char* pcTaskName)
+void vApplicationStackOverflowHook(TaskHandle_t x_task, char* pcTaskName)
 {
-    (void)xTask;
+    (void)x_task;
     (void)pcTaskName;
     taskDISABLE_INTERRUPTS();
     for (;;) {}

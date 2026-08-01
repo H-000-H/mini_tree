@@ -32,7 +32,7 @@ struct vfs_tim_priv
 static struct vfs_tim_priv          s_tim_priv_pool[TIM_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static uint8_t                      s_tim_priv_used[TIM_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t                  s_tim_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const            s_kTag = "vfs-tim-host";
+static const char* const            k_tag = "vfs-tim-host";
 
 /**
  * @brief 获取 TIM VFS 设备关联的 HAL 定时器句柄
@@ -493,7 +493,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             {
                 snprintf(k,sizeof(k),fmt[j],i);
                 if(device_get_prop_int(pdev,k,dst[j])!=VFS_OK)
-                    osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                    osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
             }
             snprintf(k,sizeof(k),"oc%d-pin",i);
             if(device_get_prop_int_array(pdev,k,pin_arr,VFS_TIM_PIN_FIELD_COUNT)==VFS_TIM_PIN_FIELD_COUNT){
@@ -501,7 +501,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 p->af=(uint32_t)pin_arr[3]; p->output_type=(uint32_t)pin_arr[4]; p->speed=(uint32_t)pin_arr[5];
                 p->mode=(uint32_t)pin_arr[6]; p->pull=(uint32_t)pin_arr[7];
             } else
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
         }
         break;
     }
@@ -530,7 +530,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             {
                 snprintf(k,sizeof(k),fmt[j],i);
                 if(device_get_prop_int(pdev,k,dst[j])!=VFS_OK)
-                    osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                    osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
             }
             snprintf(k,sizeof(k),"ic%d-pin",i);
             if(device_get_prop_int_array(pdev,k,pin_arr,VFS_TIM_PIN_FIELD_COUNT)==VFS_TIM_PIN_FIELD_COUNT){
@@ -538,7 +538,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 p->af=(uint32_t)pin_arr[3]; p->output_type=(uint32_t)pin_arr[4]; p->speed=(uint32_t)pin_arr[5];
                 p->mode=(uint32_t)pin_arr[6]; p->pull=(uint32_t)pin_arr[7];
             } else
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
         }
         break;
     }
@@ -560,7 +560,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
         };
         for(int j=0;j<(int)(sizeof(cfg_keys)/sizeof(cfg_keys[0]));j++)
             if(device_get_prop_int(pdev,cfg_keys[j],cfg_dst[j])!=VFS_OK)
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",cfg_keys[j]);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",cfg_keys[j]);
 
         static const char* const ch_fmt[] = {
             "encoder-ch%d-channel-id","encoder-ch%d-chn-mode","encoder-ch%d-chn-polarity",
@@ -580,7 +580,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             {
                 snprintf(k,sizeof(k),ch_fmt[j],i);
                 if(device_get_prop_int(pdev,k,dst[j])!=VFS_OK)
-                    osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                    osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
             }
             snprintf(k,sizeof(k),"encoder-ch%d-pin",i);
             if(device_get_prop_int_array(pdev,k,pin_arr,VFS_TIM_PIN_FIELD_COUNT)==VFS_TIM_PIN_FIELD_COUNT){
@@ -588,7 +588,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 p->af=(uint32_t)pin_arr[3]; p->output_type=(uint32_t)pin_arr[4]; p->speed=(uint32_t)pin_arr[5];
                 p->mode=(uint32_t)pin_arr[6]; p->pull=(uint32_t)pin_arr[7];
             } else
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
         }
         break;
     }
@@ -610,7 +610,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
         };
         for(int j=0;j<(int)(sizeof(keys)/sizeof(keys[0]));j++)
             if(device_get_prop_int(pdev,keys[j],dst[j])!=VFS_OK)
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",keys[j]);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",keys[j]);
         for(int i=0;i<HAL_HALL_TIM_MAX_CHANNELS;i++)
         {
             char k[VFS_TIM_KEY_MAX];
@@ -622,7 +622,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 p->af=(uint32_t)pin_arr[3]; p->output_type=(uint32_t)pin_arr[4]; p->speed=(uint32_t)pin_arr[5];
                 p->mode=(uint32_t)pin_arr[6]; p->pull=(uint32_t)pin_arr[7];
             } else
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",k);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",k);
         }
         break;
     }
@@ -646,7 +646,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
         };
         for(int j=0;j<(int)(sizeof(keys)/sizeof(keys[0]));j++)
             if(device_get_prop_int(pdev,keys[j],dst[j])!=VFS_OK)
-                osal_log(OSAL_LOG_WARN,s_kTag,"missing DTS prop %s\n",keys[j]);
+                osal_log(OSAL_LOG_WARN,k_tag,"missing DTS prop %s\n",keys[j]);
     }
 
     return VFS_OK;
@@ -773,7 +773,7 @@ static int vfs_tim_ioctl(struct device*pdev,int cmd,void*arg,size_t arg_len,uint
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_tim_Base_read(struct device*pdev,void*buf,size_t len,uint32_t timeout_ms)
+static int vfs_tim_base_read(struct device*pdev,void*buf,size_t len,uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
@@ -804,7 +804,7 @@ static int vfs_tim_Base_read(struct device*pdev,void*buf,size_t len,uint32_t tim
  * @param timeout_ms 未使用
  * @return 固定返回 VFS_OK (不传播 hal_tim_set_counter 错误)
  */
-static int vfs_tim_Base_write(struct device*pdev,const void*buf,size_t len,uint32_t timeout_ms)
+static int vfs_tim_base_write(struct device*pdev,const void*buf,size_t len,uint32_t timeout_ms)
 {
     if(!pdev||!pdev->ops)
         return VFS_ERR_INVAL;
@@ -833,7 +833,7 @@ static int vfs_tim_Base_write(struct device*pdev,const void*buf,size_t len,uint3
  * @param pdev 设备对象指针
  * @return 成功返回 VFS_OK, IO 门控失败返回 VFS_ERR_IO, 其他失败返回负数错误码
  */
-static int vfs_tim_Base_suspend(struct device*pdev)
+static int vfs_tim_base_suspend(struct device*pdev)
 {
     if(!pdev||!pdev->ops)
         return VFS_ERR_INVAL;
@@ -864,7 +864,7 @@ static int vfs_tim_Base_suspend(struct device*pdev)
  * @param pdev 设备对象指针
  * @return 固定返回 VFS_OK (不传播 hal_tim_base_start 错误)
  */
-static int vfs_tim_Base_resume(struct device*pdev)
+static int vfs_tim_base_resume(struct device*pdev)
 {
     if(!pdev||!pdev->ops)
         return VFS_ERR_INVAL;
@@ -897,10 +897,10 @@ static const struct file_operations fops=
     .close              = vfs_tim_close,
     .open               = vfs_tim_open,
     .ioctl              = vfs_tim_ioctl,
-    .read               = vfs_tim_Base_read,
-    .write              = vfs_tim_Base_write,
-    .suspend            = vfs_tim_Base_suspend,
-    .resume             = vfs_tim_Base_resume,
+    .read               = vfs_tim_base_read,
+    .write              = vfs_tim_base_write,
+    .suspend            = vfs_tim_base_suspend,
+    .resume             = vfs_tim_base_resume,
 };
 
 
@@ -928,7 +928,7 @@ static int vfs_tim_probe(struct device*pdev)
 
     if(vfs_tim_priv_parse_dts(pdev,&priv->cfg)!=VFS_OK)
     {
-        SYS_LOGE(s_kTag,"dts parse failed: %s",device_get_name(pdev));
+        SYS_LOGE(k_tag,"dts parse failed: %s",device_get_name(pdev));
         ret = VFS_ERR_INVAL;
         goto err_pool;
     }
@@ -940,7 +940,7 @@ static int vfs_tim_probe(struct device*pdev)
         int int_mask    = 0;
         if(device_get_prop_int(pdev,"hw-instance",&hw_instance)!=VFS_OK)
         {
-            SYS_LOGE(s_kTag,"missing hw-instance: %s",device_get_name(pdev));
+            SYS_LOGE(k_tag,"missing hw-instance: %s",device_get_name(pdev));
             ret = VFS_ERR_INVAL;
             goto err_pool;
         }
@@ -956,7 +956,7 @@ static int vfs_tim_probe(struct device*pdev)
     ret = hal_tim_device_init(&priv->tim, &priv->unique, &priv->cfg);
     if(ret!=VFS_OK)
     {
-        SYS_LOGE(s_kTag,"hal_tim_device_init failed: %s",device_get_name(pdev));
+        SYS_LOGE(k_tag,"hal_tim_device_init failed: %s",device_get_name(pdev));
         goto err_pool;
     }
 
@@ -969,7 +969,7 @@ static int vfs_tim_probe(struct device*pdev)
         goto err_deinit;
     }
 
-    SYS_LOGI(s_kTag,"probe OK %s",device_get_name(pdev));
+    SYS_LOGI(k_tag,"probe OK %s",device_get_name(pdev));
     return VFS_OK;
 
 err_deinit:

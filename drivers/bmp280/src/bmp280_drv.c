@@ -54,7 +54,7 @@ struct bmp280_device
 static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_bmp280_used[BMP280_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_bmp280_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "bmp280";
+static const char* const k_tag = "bmp280";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -396,7 +396,7 @@ static int bmp280_probe(struct device* dev)
     }
     d->ops = bmp280_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

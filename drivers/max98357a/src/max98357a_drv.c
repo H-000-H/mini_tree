@@ -43,7 +43,7 @@ static struct max98357a_device s_max98357a_pool[MAX98357A_COUNT] COMPAT_ALIGNED(
 static uint8_t                 s_max98357a_used[MAX98357A_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t             s_max98357a_pool_ctrl COMPAT_ALIGNED(4);
 
-static const char* const kTag = "max98357a";
+static const char* const k_tag = "max98357a";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -335,7 +335,7 @@ static int max98357a_probe(struct device* dev)
     amp->ops = max98357a_fops;
     dev->ops = &amp->ops;
 
-    SYS_LOGI(kTag, "probe OK: pool=%d sdn=%s active=%d",
+    SYS_LOGI(k_tag, "probe OK: pool=%d sdn=%s active=%d",
              pool_idx, device_get_name(sdn_dev), amp->active_level);
     return VFS_OK;
 

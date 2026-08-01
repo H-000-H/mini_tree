@@ -130,6 +130,11 @@ mini_tree/drivers/<chip>/
 
 ESP 构建下生成的 `config.h` 常为占位；业务 `CONFIG_*` 以 `sdkconfig.h` 为准。
 
+`cmake/esp_idf.cmake` 与通用 CMake 一样按 `.config` 软编码：`CONFIG_USB` 未显式
+`# ... is not set` 时编入 `bus/usb`、`vfs/usb`、`hal/usb`（板级需 usb_tusb_port glue 并
+自行 REQUIRE `esp_tinyusb`）；裁剪则全部不编入。ESP 板若暂无 glue，.config 应保持
+`# CONFIG_USB is not set`。
+
 ---
 
 ## 6. DTS / 生成物 / HAL

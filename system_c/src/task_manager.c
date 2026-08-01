@@ -11,7 +11,7 @@
 #include "system_wdt.h"
 #include "compiler_compat_poison.h"
 
-static const char* kTag = "TaskManager";
+static const char* k_tag = "TaskManager";
 
 /**
  * @brief 按 board_task_config 创建 OSAL 任务并自动订阅 TWDT
@@ -25,7 +25,7 @@ osal_task_handle_t task_manager_create(const struct board_task_config* config,
 {
     if (entry == NULL || config == NULL)
     {
-        if (config) SYS_LOGE(kTag, "task entry is null: %s", config->name);
+        if (config) SYS_LOGE(k_tag, "task entry is null: %s", config->name);
         return NULL;
     }
 
@@ -34,7 +34,7 @@ osal_task_handle_t task_manager_create(const struct board_task_config* config,
                                        entry, param, config->core_id, &handle);
     if (ret != 0)
     {
-        SYS_LOGE(kTag, "failed to create task: %s", config->name);
+        SYS_LOGE(k_tag, "failed to create task: %s", config->name);
         return NULL;
     }
 

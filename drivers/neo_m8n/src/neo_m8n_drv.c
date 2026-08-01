@@ -40,7 +40,7 @@ struct neo_m8n_device
 static struct neo_m8n_device s_neo_m8n_pool[NEO_M8N_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_neo_m8n_used[NEO_M8N_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_neo_m8n_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "neo_m8n";
+static const char* const k_tag = "neo_m8n";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -265,7 +265,7 @@ static int neo_m8n_probe(struct device* dev)
     }
     d->ops = neo_m8n_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

@@ -25,6 +25,21 @@
 - ETL 明确为 **上层 C++ 基础**：源码在 `lib/etl`，根 CMake 默认进 `mini_tree`  
 - 开源积木：**基础设施进仓**（OS / USB / lwIP / cJSON / ETL）；**其余全部 FetchContent**（`cmake/dep_fetch.cmake`）  
 
+### 代码风格与命名
+
+- 新增 `.clang-format`：Allman 大括号、单语句 if/for/while 去大括号、4 空格缩进、100 列、指针靠左
+- 新增分层 `.clang-tidy`（readability-identifier-naming）：根 = 内核区（app 以下非 cpp，全小写无前缀）；`app/` 与 `system_cpp/` = Google 区（类型 PascalCase + s_/g_/k_ 前缀）；宏全大写（container_of / likely / IS_ERR / COMPAT_* / `__XXX_H__` 头文件卫士例外）
+- 新增 `.clang-format-ignore`：格式化排除 `lib/`
+- 命名统一（clang-tidy 全量扫描清零）：`kTag`→`k_tag`、`struct Event/Subscriber`→`event/subscriber`、`namespace MiniTree`→`mini_tree`、`System_Pre_OS_Init`→`system_pre_os_init`、`xTask/xScheduler/ListNode`→`x_task/x_scheduler/list_node`、`Fifo_Data_type`→`fifo_data_type`、C++ 侧 `getInstance/registerCmd/kMaxCmdNameLen`→小写 等
+- `tools/gen_compile_db.py`：补头文件条目与 include 目录（clang-tidy / clangd 可对头文件单独检查）
+
+### 构建修复（通用 CMake 路径，最小构建实测通过）
+
+- `core/include/status.h`：补 `#include <stddef.h>`（`NULL` 未声明）
+- `vfs/gpio/vfs-gpio.c`：`DTC_GEN_COUNT_HETEROGENEOUS_GPIOS` 补 `#ifndef` 保护
+- `time_slice/task/xtask.c`：`CHOSEN_SCHEDULER_TIM` 补 `#ifndef` 保护
+- `cmake/tinyusb.cmake`：本地未提供 `src/CMakeLists.txt` 时 TinyUSB 核心源置空（离线不报错，详见 [docs/ecosystem.md](docs/ecosystem.md)）
+
 ### 文档
 
 - 刷新 [esp_idf_cmake.md](docs/esp_idf_cmake.md) / [driver_guide.md](docs/driver_guide.md) / [file_index.md](docs/file_index.md)：产品驱动目录、ws2812 例外、与 ESP 板同步说明  

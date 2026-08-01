@@ -38,7 +38,7 @@ struct sn65hvd230_device
 static struct sn65hvd230_device s_sn65hvd230_pool[SN65HVD230_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_sn65hvd230_used[SN65HVD230_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sn65hvd230_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "sn65hvd230";
+static const char* const k_tag = "sn65hvd230";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -234,7 +234,7 @@ static int sn65hvd230_probe(struct device* dev)
     }
     d->ops = sn65hvd230_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

@@ -41,7 +41,7 @@ static struct i2s_bus_host s_hosts[I2S_BUS_HOST_MAX];
 static uint8_t s_host_used[I2S_BUS_HOST_MAX];
 static osal_pool_t s_host_pool;
 static struct i2s_bus_client s_clients[DEV_ID_COUNT];
-static const char* kTag = "i2s_bus";
+static const char* k_tag = "i2s_bus";
 
 /**
  * @brief 初始化 I2S 总线 host 对象池
@@ -124,7 +124,7 @@ static int i2s_host_init_impl(struct device* pdev, const void* cfg)
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
         return ret;
     }
-    SYS_LOGI(kTag, "host init OK: %s", device_get_name(pdev));
+    SYS_LOGI(k_tag, "host init OK: %s", device_get_name(pdev));
     return VFS_OK;
 }
 

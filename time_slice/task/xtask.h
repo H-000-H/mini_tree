@@ -20,21 +20,21 @@
 extern "C" {
 #endif
 
-typedef uint32_t xTaskHandle_t;
+typedef uint32_t x_task_handle_t;
 
 /**
  * @brief 链表节点结构体
  */
-typedef struct ListNode 
+typedef struct list_node 
 {
-    struct ListNode* next;
-    struct ListNode* prev;
-} ListNode;
+    struct list_node* next;
+    struct list_node* prev;
+} list_node;
 
 /**
  * @brief 初始化链表节点
  */
-COMPAT_STATIC_INLINE int list_init(ListNode* node) 
+COMPAT_STATIC_INLINE int list_init(list_node* node) 
 {
     node->next = node;
     node->prev = node;
@@ -44,7 +44,7 @@ COMPAT_STATIC_INLINE int list_init(ListNode* node)
 /**
  * @brief 在两个已知节点之间插入一个新节点
  */
-COMPAT_STATIC_INLINE int list_add(ListNode* new_node, ListNode* next, ListNode* pre) 
+COMPAT_STATIC_INLINE int list_add(list_node* new_node, list_node* next, list_node* pre) 
 {
     next->prev          = new_node;
     new_node->prev      = pre;
@@ -56,35 +56,35 @@ COMPAT_STATIC_INLINE int list_add(ListNode* new_node, ListNode* next, ListNode* 
 /**
  * @brief 尾插结点也就是头结点前驱
  */
-COMPAT_STATIC_INLINE int list_add_tail(ListNode* new_node, ListNode* head)
+COMPAT_STATIC_INLINE int list_add_tail(list_node* new_node, list_node* head)
 {
     return list_add(new_node, head, head->prev);
 }
 
-struct xTask;
+struct x_task;
 
-typedef struct xTask
+typedef struct x_task
 {
     const char* name;                                   /**< 任务名称 */
-    void            (*xTask_cb)(struct xTask* param);   /**< 任务回调函数 */
+    void            (*xTask_cb)(struct x_task* param);   /**< 任务回调函数 */
     COMPAT_ATOMIC_UINT period;                          /**< 任务周期 */
     COMPAT_ATOMIC_UINT next_running;                    /**< 下次运行时间 */
     COMPAT_ATOMIC_BOOL is_running;                      /**< 任务是否正在运行 */
-    ListNode        node;                               /**< 任务链表节点 */
-} xTask;
+    list_node        node;                               /**< 任务链表节点 */
+} x_task;
 
-typedef struct xScheduler
+typedef struct x_scheduler
 {
     COMPAT_ATOMIC_UINT tick_count;   /**< 虚拟系统滴答计数器 */
-    ListNode        task_list_head; /**< 任务链表头 */
-} xScheduler;
+    list_node        task_list_head; /**< 任务链表头 */
+} x_scheduler;
 
-extern xScheduler g_scheduler;
+extern x_scheduler g_scheduler;
 
 /**
  * @brief 初始化调度器
  */
-COMPAT_STATIC_INLINE void xSchedulerInit(xScheduler* sched)
+COMPAT_STATIC_INLINE void x_scheduler_init(x_scheduler* sched)
 {
     COMPAT_ATOMIC_STORE(&sched->tick_count, 0, COMPAT_MO_RELAXED);
     list_init(&sched->task_list_head);
@@ -94,24 +94,24 @@ COMPAT_STATIC_INLINE void xSchedulerInit(xScheduler* sched)
  * @brief 创建/注册任务
  * @return 返回任务的句柄（指针地址）
  */
-xTaskHandle_t xscheduler_task_create(xScheduler* sched, xTask* task, const char* name, void (*cb)(xTask*), unsigned int period_ms);
+x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms);
 
 /**
  * @brief 系统滴答计数器增加
  * @return VFS_OK 成功; VFS_ERR_INVAL 非法参数
  */
-int xScheduler_Tick(xScheduler* sched, unsigned int ms);
+int x_scheduler_tick(x_scheduler* sched, unsigned int ms);
 
 /**
  * @brief 调度器核心轮询逻辑
  * @return VFS_OK 成功; -1 非法参数
  */
-int xTaskRun(xScheduler* sched);
+int x_task_run(x_scheduler* sched);
 
 /**
  * @brief 轮询全局调度器（主循环调用）
  */
-void xScheduler_Poll(void);
+void x_scheduler_poll(void);
 
 /**
  * @brief 启动调度器 — 通过 VFS 打开 chosen TIM, 注册 VIRQ, 使能 NVIC
@@ -126,7 +126,7 @@ void xscheduler_start(void);
 struct scheduler_tim_ctx
 {
     hal_tim_device* tim;        /**< TIM 设备 (用于清 update flag) */
-    xScheduler*    scheduler;  /**< 调度器实例 (用于 tick) */
+    x_scheduler*    scheduler;  /**< 调度器实例 (用于 tick) */
 };
 
 /**

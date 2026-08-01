@@ -21,7 +21,7 @@ struct vfs_iwdg_priv {
 static struct vfs_iwdg_priv s_priv;
 static uint8_t s_used;
 static osal_pool_t s_pool;
-static const char* kTag = "vfs_iwdg";
+static const char* k_tag = "vfs_iwdg";
 
 /**
  * @brief IWDG VFS 私有数据池启动初始化
@@ -149,7 +149,7 @@ static int vfs_iwdg_probe(struct device* pdev)
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_pool, idx));
         return VFS_ERR_IO;
     }
-    SYS_LOGI(kTag, "probe OK");
+    SYS_LOGI(k_tag, "probe OK");
     return VFS_OK;
 }
 

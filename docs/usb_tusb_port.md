@@ -1,7 +1,7 @@
 # USB TinyUSB 板级契约（`usb_tusb_port`）
 
 > 平台必须提供的 TinyUSB 粘合层：符号、生命周期、与 `bus/usb` 的调用关系。  
-> 中间件**不**内嵌具体 MCU 的 TinyUSB port；IDE 占位见 `ide/stubs/usb_tusb_port.h`。
+> 契约头在中间件（`bus/usb/usb_tusb_port.h`），平台树**只实现符号**，无需复制头。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -41,7 +41,7 @@
 
 ## 2. 必须实现的 API
 
-头文件名：`usb_tusb_port.h`（平台树常见路径：`board/tusb/` 或等价；需在 include 路径中）。
+头文件由中间件提供：`bus/usb/usb_tusb_port.h`（已在 `bus/usb` include 路径）。板级**只实现符号**；不要在平台树另放同名头，避免双份漂移。
 
 | 符号 | 语义 |
 | :--- | :--- |
@@ -57,7 +57,8 @@
 | `bool usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len)` | 发 HID report |
 
 未用到的 class 可做成「恒失败 / 空实现」，但**符号必须存在**（`bus/usb` 会链接）。  
-ECM 等若走其它辅助符号，以当前 `bus/usb/usb_bus.c` 为准；扩展时保持「port 薄、bus 厚」。
+ECM 网络帧数据面 `usb_net_frame_push_tx/pop_rx` 同属契约头，板级实现（如 `usb_net_cb.c`）。
+扩展时保持「port 薄、bus 厚」。
 
 ---
 
@@ -82,9 +83,9 @@ ECM 等若走其它辅助符号，以当前 `bus/usb/usb_bus.c` 为准；扩展�
 
 | 交付 | 说明 |
 | :--- | :--- |
-| `usb_tusb_port.h` + `.c`（或 `.cpp`） | 实现上表 API |
+| `usb_tusb_port.c`（或 `.cpp`） | 实现上表 API（契约头在中间件 `bus/usb/`，**勿另放同名头**） |
 | TinyUSB 板级文件 | `dcd_*.c`、`usb_descriptors.c` 等（按 TinyUSB 惯例） |
-| CMake | 把头路径加入固件目标；链 TinyUSB 源或 `lib/tinyusb` 子集 |
+| CMake | 链 TinyUSB 源或 `lib/tinyusb` 子集 |
 | `hal_usb_*` 强符号 | 时钟、GPIO、PHY、IRQ 号等基建 |
 
 中间件侧：`lib/tinyusb` 可选编入；**port 与描述符仍属平台**。

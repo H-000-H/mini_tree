@@ -28,24 +28,24 @@ SystemCmd::SystemCmd()
 /* ═══════════════════════════════════════════════════════════════════════════
  *  Singleton
  * ═══════════════════════════════════════════════════════════════════════════ */
-SystemCmd& SystemCmd::getInstance()
+SystemCmd& SystemCmd::get_instance()
 {
     static SystemCmd instance;
     return instance;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- *  registerCmd — 无参数版
+ *  register_cmd — 无参数版
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::registerCmd(const char* name, bool (*handler)())
+bool SystemCmd::register_cmd(const char* name, bool (*handler)())
 {
     if (!name || !handler) return false;
     const size_t name_len = etl::strlen(name);
-    if (name_len >= kMaxCmdNameLen) return false;
+    if (name_len >= k_max_cmd_name_len) return false;
 
     HandlerNode node;
-    node.args_id = getTypeId<void>();
-    node.ctx_id  = getTypeId<void>();
+    node.args_id = get_type_id<void>();
+    node.ctx_id  = get_type_id<void>();
     node.wrapper = [handler](const void*, size_t, void*) -> bool {
         return handler();
     };
@@ -65,7 +65,7 @@ bool SystemCmd::registerCmd(const char* name, bool (*handler)())
         if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
-    if (m_count >= kMaxCommands)
+    if (m_count >= k_max_commands)
         return false;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
@@ -77,7 +77,7 @@ bool SystemCmd::registerCmd(const char* name, bool (*handler)())
 /* ═══════════════════════════════════════════════════════════════════════════
  *  注销命令
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::unregisterCmd(const char* name)
+bool SystemCmd::unregister_cmd(const char* name)
 {
     if (!name) return false;
 
@@ -148,7 +148,7 @@ bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len,
 /* ═══════════════════════════════════════════════════════════════════════════
  *  查询 / 计数
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::hasCmd(const char* name) const
+bool SystemCmd::has_cmd(const char* name) const
 {
     if (!name) return false;
 

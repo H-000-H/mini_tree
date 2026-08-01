@@ -44,7 +44,7 @@ static struct can_bus_host s_can_hosts[CAN_BUS_HOST_MAX];
 static uint8_t s_can_host_used[CAN_BUS_HOST_MAX];
 static osal_pool_t s_can_host_pool_ctrl;
 static struct can_bus_client s_can_clients[DEV_ID_COUNT];
-static const char* const kTag = "can_bus";
+static const char* const k_tag = "can_bus";
 
 /**
  * @brief CAN Host 池启动初始化
@@ -190,7 +190,7 @@ static int can_host_deinit_impl(struct device* pdev)
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
-        SYS_LOGW(kTag, "host deinit busy: ref_count=%d",
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
                  COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return VFS_ERR_BUSY;
     }

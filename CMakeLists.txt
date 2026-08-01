@@ -47,7 +47,6 @@ include("${CMAKE_CURRENT_LIST_DIR}/cmake/dep_fetch.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/etl.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/lwip.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/cjson.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/cmake/tinyusb.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/littlefs.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/easyflash.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/multibutton.cmake")
@@ -74,6 +73,17 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
+# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
+if(CONFIG_USB_OFF)
+    set(MINI_TREE_USB OFF)
+else()
+    set(MINI_TREE_USB ON)
+endif()
+if(MINI_TREE_USB)
+    include("${CMAKE_CURRENT_LIST_DIR}/cmake/tinyusb.cmake")
+endif()
+
 # HAL 全部为 weak 空实现，板级强符号覆盖；中间件不绑任何厂商 SDK
 set(HAL_SRCS
     "hal/gpio/hal_gpio.c"
@@ -81,7 +91,6 @@ set(HAL_SRCS
     "hal/uart/hal_uart.c"
     "hal/i2c/hal_i2c.c"
     "hal/can/hal_can.c"
-    "hal/usb/hal_usb.c"
     "hal/rtc/hal_rtc.c"
     "hal/i2s/hal_i2s.c"
     "hal/iwdg/hal_iwdg.c"
@@ -96,6 +105,10 @@ set(HAL_SRCS
     "hal/system/hal_sdio.c"
     "hal/hal_if_dummy.c"
 )
+
+if(MINI_TREE_USB)
+    list(APPEND HAL_SRCS "hal/usb/hal_usb.c")
+endif()
 
 if(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_FREERTOS=y")
     set(OSAL_SRCS "osal/src/osal_freertos.c")
@@ -142,7 +155,6 @@ set(DRIVER_SRCS
     "bus/uart/uart_bus.c"
     "bus/i2c/i2c_bus.c"
     "bus/can/can_bus.c"
-    "bus/usb/usb_bus.c"
     "bus/i2s/i2s_bus.c"
     "can_hook/can_hook.c"
     "vfs/spi/vfs-spi.c"
@@ -151,6 +163,10 @@ set(DRIVER_SRCS
     "vfs/iwdg/vfs-iwdg.c"
     "vfs/wwdg/vfs-wwdg.c"
 )
+
+if(MINI_TREE_USB)
+    list(APPEND DRIVER_SRCS "bus/usb/usb_bus.c")
+endif()
 
 set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
 set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
@@ -204,6 +220,27 @@ foreach(d ${VENDOR_DEFINES})
     list(APPEND DTC_LITE_ARGS "-D${d}")
 endforeach()
 
+# USB 裁剪：关闭时不扫 bus/usb、vfs/usb 的 DRIVER_REGISTER，也不挂其 DEPENDS
+set(USB_DTC_SCAN_DIRS "")
+set(USB_DTC_DEPENDS "")
+set(USB_LIB_SRCS "")
+set(USB_INC_DIRS "")
+if(MINI_TREE_USB)
+    list(APPEND USB_DTC_SCAN_DIRS
+        "${CMAKE_CURRENT_LIST_DIR}/bus/usb"
+        "${CMAKE_CURRENT_LIST_DIR}/vfs/usb")
+    list(APPEND USB_DTC_DEPENDS
+        "${CMAKE_CURRENT_LIST_DIR}/bus/usb/usb_bus.c"
+        "${CMAKE_CURRENT_LIST_DIR}/vfs/usb/vfs-usb.c")
+    list(APPEND USB_LIB_SRCS
+        vfs/usb/vfs-usb.h
+        vfs/usb/vfs-usb.c)
+    list(APPEND USB_INC_DIRS
+        "${CMAKE_CURRENT_LIST_DIR}/hal/usb"
+        "${CMAKE_CURRENT_LIST_DIR}/bus/usb"
+        "${CMAKE_CURRENT_LIST_DIR}/vfs/usb")
+endif()
+
 add_custom_command(
     OUTPUT  ${GEN_SRCS} ${GEN_HDRS}
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${GENERATED_BOARD_DIR}"
@@ -221,10 +258,9 @@ add_custom_command(
             "${CMAKE_CURRENT_LIST_DIR}/bus/uart"
             "${CMAKE_CURRENT_LIST_DIR}/bus/i2c"
             "${CMAKE_CURRENT_LIST_DIR}/bus/can"
-            "${CMAKE_CURRENT_LIST_DIR}/bus/usb"
+            ${USB_DTC_SCAN_DIRS}
             "${CMAKE_CURRENT_LIST_DIR}/bus/i2s"
             "${CMAKE_CURRENT_LIST_DIR}/vfs/can"
-            "${CMAKE_CURRENT_LIST_DIR}/vfs/usb"
             "${CMAKE_CURRENT_LIST_DIR}/vfs/rtc"
             "${CMAKE_CURRENT_LIST_DIR}/vfs/iwdg"
             "${CMAKE_CURRENT_LIST_DIR}/vfs/wwdg"
@@ -254,9 +290,8 @@ add_custom_command(
         "${CMAKE_CURRENT_LIST_DIR}/bus/uart/uart_bus.c"
         "${CMAKE_CURRENT_LIST_DIR}/bus/i2c/i2c_bus.c"
         "${CMAKE_CURRENT_LIST_DIR}/bus/can/can_bus.c"
-        "${CMAKE_CURRENT_LIST_DIR}/bus/usb/usb_bus.c"
+        ${USB_DTC_DEPENDS}
         "${CMAKE_CURRENT_LIST_DIR}/vfs/can/vfs-can.c"
-        "${CMAKE_CURRENT_LIST_DIR}/vfs/usb/vfs-usb.c"
     COMMENT "Running dtc-lite on ${BOARD_DTS}"
     VERBATIM
 )
@@ -296,8 +331,7 @@ add_library(mini_tree STATIC
     vfs/adc/vfs-adc.c
     vfs/rtc/vfs-rtc.h
     vfs/rtc/vfs-rtc.c
-    vfs/usb/vfs-usb.h
-    vfs/usb/vfs-usb.c
+    ${USB_LIB_SRCS}
     vfs/i2s/vfs-i2s.c
     vfs/i2s/vfs-i2s.h
     algorithm/buffer/double_buffer.c
@@ -321,7 +355,6 @@ target_include_directories(mini_tree PUBLIC
     "${CMAKE_CURRENT_LIST_DIR}/hal/uart"
     "${CMAKE_CURRENT_LIST_DIR}/hal/i2c"
     "${CMAKE_CURRENT_LIST_DIR}/hal/can"
-    "${CMAKE_CURRENT_LIST_DIR}/hal/usb"
     "${CMAKE_CURRENT_LIST_DIR}/hal/rtc"
     "${CMAKE_CURRENT_LIST_DIR}/hal/i2s"
     "${CMAKE_CURRENT_LIST_DIR}/hal/iwdg"
@@ -330,13 +363,12 @@ target_include_directories(mini_tree PUBLIC
     "${CMAKE_CURRENT_LIST_DIR}/bus/uart"
     "${CMAKE_CURRENT_LIST_DIR}/bus/i2c"
     "${CMAKE_CURRENT_LIST_DIR}/bus/can"
-    "${CMAKE_CURRENT_LIST_DIR}/bus/usb"
     "${CMAKE_CURRENT_LIST_DIR}/bus/i2s"
     "${CMAKE_CURRENT_LIST_DIR}/vfs/spi"
     "${CMAKE_CURRENT_LIST_DIR}/vfs/uart"
     "${CMAKE_CURRENT_LIST_DIR}/vfs/i2c"
     "${CMAKE_CURRENT_LIST_DIR}/vfs/can"
-    "${CMAKE_CURRENT_LIST_DIR}/vfs/usb"
+    ${USB_INC_DIRS}
     "${CMAKE_CURRENT_LIST_DIR}/can_hook"
     "${CMAKE_CURRENT_LIST_DIR}/vfs/rtc"
     "${CMAKE_CURRENT_LIST_DIR}/vfs/i2s"

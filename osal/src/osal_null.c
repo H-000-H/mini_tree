@@ -36,17 +36,17 @@
 #ifndef OSAL_NULL_QUEUE_BUF_SZ
 #define OSAL_NULL_QUEUE_BUF_SZ  4096
 #endif
-#define OSAL_NULL_QUEUE_ELEM_COUNT  (OSAL_NULL_QUEUE_BUF_SZ / sizeof(Fifo_Data_type))
+#define OSAL_NULL_QUEUE_ELEM_COUNT  (OSAL_NULL_QUEUE_BUF_SZ / sizeof(fifo_data_type))
 
 /**
  * @brief 队列内部结构 — 复用 buffer.h 的 fifo_spsc 无锁环形 FIFO
  * @details 每个队列静态内嵌一个 fifo_spsc + 元素缓冲区, item_size 按
- * @details sizeof(Fifo_Data_type) 向下对齐, 多元素项用 fifo_write_block / fifo_read_block 原子读写
+ * @details sizeof(fifo_data_type) 向下对齐, 多元素项用 fifo_write_block / fifo_read_block 原子读写
  */
 struct osal_queue_obj
 {
     struct fifo_spsc    fifo;/**<队列*/
-    Fifo_Data_type      buf[OSAL_NULL_QUEUE_ELEM_COUNT] COMPAT_ALIGNED(32);/**<队列缓冲区*/
+    fifo_data_type      buf[OSAL_NULL_QUEUE_ELEM_COUNT] COMPAT_ALIGNED(32);/**<队列缓冲区*/
     size_t              elements_per_item;/**<每个队列元素包含的元素个数*/
 };
 
@@ -1079,7 +1079,7 @@ void osal_yield_from_isr(bool yield_required)
 /**
  * @brief 池化 SPSC FIFO 队列
  * @param queue_len 深度(2^n)
- * @param item_size 字节(Fifo_Data_type 倍数)
+ * @param item_size 字节(fifo_data_type 倍数)
  * @return 句柄或 NULL
  */
 osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
@@ -1090,11 +1090,11 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
     if ((queue_len & (queue_len - 1)) != 0)
         COMPAT_TRAP();
 
-    /**< item_size 必须是 sizeof(Fifo_Data_type) 的整数倍, 否则无法直接 cast 做块读写 */
-    if (item_size % sizeof(Fifo_Data_type) != 0)
+    /**< item_size 必须是 sizeof(fifo_data_type) 的整数倍, 否则无法直接 cast 做块读写 */
+    if (item_size % sizeof(fifo_data_type) != 0)
         return NULL;
 
-    size_t elements_per_item = item_size / sizeof(Fifo_Data_type);/**< 计算出一个消息 item 占用了多少个 FIFO 基础单元 */
+    size_t elements_per_item = item_size / sizeof(fifo_data_type);/**< 计算出一个消息 item 占用了多少个 FIFO 基础单元 */
     size_t total_elements    = queue_len * elements_per_item;/**< 计算总元素个数,因为底层fifo就没有%和//所以这里必须2的整数倍 */
 
     if ((total_elements & (total_elements - 1)) != 0)/**< 判断总元素个数是否为2的整数倍 */
@@ -1144,7 +1144,7 @@ static bool queue_send_internal(osal_queue_handle_t queue, const void* item)
     if ((uint16_t)(q->fifo.size - fifo_get_count(&q->fifo)) < epi)
         return false;
 
-    return fifo_write_block(&q->fifo, (const Fifo_Data_type*)item, epi) == epi;
+    return fifo_write_block(&q->fifo, (const fifo_data_type*)item, epi) == epi;
 }
 
 /**
@@ -1215,7 +1215,7 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
     if (fifo_get_count(&q->fifo) < epi) 
         return false;
 
-    return fifo_read_block(&q->fifo, (Fifo_Data_type*)item, epi) == epi;
+    return fifo_read_block(&q->fifo, (fifo_data_type*)item, epi) == epi;
 }
 
 /**
@@ -1240,7 +1240,7 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item,
     if (fifo_get_count(&q->fifo) < epi) 
         return false;
 
-    return fifo_read_block(&q->fifo, (Fifo_Data_type*)item, epi) == epi;
+    return fifo_read_block(&q->fifo, (fifo_data_type*)item, epi) == epi;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

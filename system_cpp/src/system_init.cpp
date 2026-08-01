@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * system_init.cpp — MiniTree 两阶段系统初始化实现
+ * system_init.cpp — mini_tree 两阶段系统初始化实现
  *
  * Phase 1 Pre_OS_Init: 关中断 → bootloop 保护 → IWDG → 设备树 → EventBus
  * Phase 2 Start_Tasks: 驱动探测 → TWDT → scrubber → 清 bootloop → seal EventBus
@@ -44,7 +44,7 @@ extern "C" void xScheduler_Poll(void);
 #define IRQ_ENABLE()   do {} while (0)
 #endif
 
-static constexpr const char* kTag = "SysInit";
+static constexpr const char* k_tag = "SysInit";
 
 /* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
 volatile bool g_system_os_initialized = false;
@@ -61,15 +61,15 @@ volatile bool g_system_os_initialized = false;
  *  不创建任务、启动服务或探测驱动 —
  *  这些属于阶段 2, 在用户注册其 HAL 之后进行.
  * ═══════════════════════════════════════════════════════════════════════════ */
-void MiniTree::System_Pre_OS_Init(void)
+void mini_tree::system_pre_os_init(void)
 {
     IRQ_DISABLE();  /* 关全局中断 — ISR 不得在框架就绪前触发 */
-    SYS_LOGI(kTag, "=== MiniTree Phase 1: Pre-OS Init ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 1: Pre-OS Init ===");
 
     /* 启动循环保护: >= 5 次连续崩溃 → 永久安全锁死 */
     if (!safe_state_check_bootloop())
     {
-        SYS_LOGE(kTag, "bootloop protection triggered — system halted");
+        SYS_LOGE(k_tag, "bootloop protection triggered — system halted");
         return;
     }
 
@@ -81,13 +81,13 @@ void MiniTree::System_Pre_OS_Init(void)
     /* 设备树初始化 (编译时生成的节点表) */
     if (device_tree_init() != VFS_OK)
     {
-        SYS_LOGW(kTag, "device_tree_init failed (non-fatal)");
+        SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
     }
 
     /* 事件总线两阶段初始化 (SIOF 防御) */
     if (!event_bus_init())
     {
-        SYS_LOGE(kTag, "EventBus init failed — entering safe state");
+        SYS_LOGE(k_tag, "EventBus init failed — entering safe state");
         enter_safe_state("EventBus init failed");
         return;
     }
@@ -99,16 +99,16 @@ void MiniTree::System_Pre_OS_Init(void)
     /*
      * ─── 用户服务初始化钩子点 ───
      * 用户工程应在此处调用自身的服务 init(),
-     * 在 MiniTree::System_Pre_OS_Init() 之后且
-     * MiniTree::System_Start_Tasks() 之前。示例:
+     * 在 mini_tree::system_pre_os_init() 之后且
+     * mini_tree::system_start_tasks() 之前。示例:
      *
-     *   MiniTree::System_Pre_OS_Init();
+     *   mini_tree::system_pre_os_init();
      *   MyApp::AudioService::getInstance().init();
      *   MyApp::UiService::getInstance().init();
-     *   MiniTree::System_Start_Tasks();
+     *   mini_tree::system_start_tasks();
      */
 
-    SYS_LOGI(kTag, "=== MiniTree Phase 1 complete ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 1 complete ===");
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -121,12 +121,12 @@ void MiniTree::System_Pre_OS_Init(void)
  *    - Flash 位腐烂巡检启动
  *    - 启动循环计数器清除
  *
- *  用户工程在 MiniTree::System_Start_Tasks() 之后、
+ *  用户工程在 mini_tree::system_start_tasks() 之后、
  *  vTaskStartScheduler() 之前创建自身的业务任务 (UI、云、音频等).
  * ═══════════════════════════════════════════════════════════════════════════ */
-void MiniTree::System_Start_Tasks(void)
+void mini_tree::system_start_tasks(void)
 {
-    SYS_LOGI(kTag, "=== MiniTree Phase 2: Start Tasks ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 2: Start Tasks ===");
 
     event_bus_start();
 
@@ -134,7 +134,7 @@ void MiniTree::System_Start_Tasks(void)
     int probe_fail = board_driver_probe_all();
     if (probe_fail != 0)
     {
-        SYS_LOGW(kTag, "board_driver_probe_all: %d device(s) failed", probe_fail);
+        SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
     }
 
     /* TWDT 初始化 */
@@ -163,11 +163,11 @@ void MiniTree::System_Start_Tasks(void)
 
     /*
      * ─── 用户任务创建钩子点 ───
-     * 在 System_Start_Tasks() 之后、启动调度器之前:
+     * 在 system_start_tasks() 之后、启动调度器之前:
      *   osal_task_create_handle(...);   // 统一走 OSAL, 勿直接调内核 API
      */
 
-    SYS_LOGI(kTag, "=== MiniTree Phase 2 complete ===");
+    SYS_LOGI(k_tag, "=== mini_tree Phase 2 complete ===");
 }
 
 /* ── 初始化完成 — 释放全局中断 (进入裸机 while / OS 调度器启动前) ── */
@@ -178,12 +178,12 @@ extern "C" void system_init_complete(void)
 
 extern "C" void mini_tree_pre_os_init(void)
 {
-    MiniTree::System_Pre_OS_Init();
+    mini_tree::system_pre_os_init();
 }
 
 extern "C" void mini_tree_start_tasks(void)
 {
-    MiniTree::System_Start_Tasks();
+    mini_tree::system_start_tasks();
 }
 
 extern "C" void mini_tree_system_loop(void)

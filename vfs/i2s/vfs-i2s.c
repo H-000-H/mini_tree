@@ -29,7 +29,7 @@ struct vfs_i2s_host_priv
 {
     struct hal_i2s_bus_config cfg;   /**< host 总线配置 (DTSI 直投) */
     struct fifo_spsc circ_fifo;      /**< circular 环缓 */
-    Fifo_Data_type circ_buf[I2S_CIRC_FIFO_SIZE] COMPAT_ALIGNED(32); /**< 环缓数据区 */
+    fifo_data_type circ_buf[I2S_CIRC_FIFO_SIZE] COMPAT_ALIGNED(32); /**< 环缓数据区 */
     int pool_idx;                    /**< 池索引 */
 };
 
@@ -50,8 +50,8 @@ static osal_pool_t s_host_pool_ctrl;
 static struct vfs_i2s_client s_client_pool[I2S_CLIENT_POOL];
 static uint8_t s_client_used[I2S_CLIENT_POOL];
 static osal_pool_t s_client_pool_ctrl;
-static const char* kHost = "i2s_host";
-static const char* kCli = "i2s_vfs";
+static const char* k_host = "i2s_host";
+static const char* k_cli = "i2s_vfs";
 
 /**
  * @brief Host/Client 私有池启动初始化
@@ -246,7 +246,7 @@ static int host_probe(struct device* pdev, uint32_t role)
         goto err;
     }
 
-    SYS_LOGI(kHost, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev),
+    SYS_LOGI(k_host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev),
              (unsigned)priv->cfg.dma_tx.dma_enable, (unsigned)priv->cfg.dma_rx.dma_enable,
              (unsigned)priv->cfg.it_enable);
     return VFS_OK;
@@ -748,7 +748,7 @@ static int client_probe(struct device* pdev)
         goto err;
     }
 
-    SYS_LOGI(kCli, "probe OK %s", device_get_name(pdev));
+    SYS_LOGI(k_cli, "probe OK %s", device_get_name(pdev));
     return VFS_OK;
 
 err:

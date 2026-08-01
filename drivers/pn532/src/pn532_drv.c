@@ -40,7 +40,7 @@ struct pn532_device
 static struct pn532_device s_pn532_pool[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_pn532_used[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_pn532_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "pn532";
+static const char* const k_tag = "pn532";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -282,7 +282,7 @@ static int pn532_probe(struct device* dev)
     }
     d->ops = pn532_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

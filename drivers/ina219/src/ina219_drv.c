@@ -40,7 +40,7 @@ struct ina219_device
 static struct ina219_device s_ina219_pool[INA219_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_ina219_used[INA219_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_ina219_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "ina219";
+static const char* const k_tag = "ina219";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -291,7 +291,7 @@ static int ina219_probe(struct device* dev)
     }
     d->ops = ina219_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

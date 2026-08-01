@@ -26,7 +26,7 @@
 #define VFS_DAC_PIN_FIELD_COUNT 8
 #define VFS_DAC_DMA_FIELD_COUNT 7
 
-static const char* const s_kTag = "vfs-dac";
+static const char* const k_tag = "vfs-dac";
 
 struct vfs_dac_priv
 {
@@ -35,7 +35,7 @@ struct vfs_dac_priv
     struct hal_dac_platform_unique_cfg  unique;  /**< 平台特有配置 */
     struct hal_dac_dev                  dac;     /**< HAL DAC 设备 */
     struct fifo_spsc                    dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
-    Fifo_Data_type                      dma_data_buf[DAC_DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 波形数据缓冲区 */
+    fifo_data_type                      dma_data_buf[DAC_DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 波形数据缓冲区 */
     int                                 pool_idx; /**< 池索引 */
 };
 
@@ -598,7 +598,7 @@ static int vfs_dac_probe(struct device* pdev)
 
     if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
     {
-        SYS_LOGE(s_kTag, "dts parse failed: %s", device_get_name(pdev));
+        SYS_LOGE(k_tag, "dts parse failed: %s", device_get_name(pdev));
         ret = VFS_ERR_INVAL;
         goto err_pool;
     }
@@ -615,14 +615,14 @@ static int vfs_dac_probe(struct device* pdev)
     ret = hal_dac_device_init(&priv->dac, &priv->cfg, &priv->unique);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(s_kTag, "hal_dac_device_init failed: %s", device_get_name(pdev));
+        SYS_LOGE(k_tag, "hal_dac_device_init failed: %s", device_get_name(pdev));
         goto err_pool;
     }
 
     ret = hal_dac_init(&priv->dac);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(s_kTag, "hal_dac_init failed: %s", device_get_name(pdev));
+        SYS_LOGE(k_tag, "hal_dac_init failed: %s", device_get_name(pdev));
         goto err_deinit;
     }
 
@@ -635,7 +635,7 @@ static int vfs_dac_probe(struct device* pdev)
         goto err_deinit;
     }
 
-    SYS_LOGI(s_kTag, "probe OK %s", device_get_name(pdev));
+    SYS_LOGI(k_tag, "probe OK %s", device_get_name(pdev));
     return VFS_OK;
 
 err_deinit:

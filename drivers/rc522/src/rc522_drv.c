@@ -41,7 +41,7 @@ struct rc522_device
 static struct rc522_device s_rc522_pool[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_rc522_used[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_rc522_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "rc522";
+static const char* const k_tag = "rc522";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -464,7 +464,7 @@ static int rc522_probe(struct device* dev)
     }
     d->ops = rc522_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

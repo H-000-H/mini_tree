@@ -40,7 +40,7 @@ struct sht40_device
 static struct sht40_device s_sht40_pool[SHT40_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_sht40_used[SHT40_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sht40_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "sht40";
+static const char* const k_tag = "sht40";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -278,7 +278,7 @@ static int sht40_probe(struct device* dev)
     }
     d->ops = sht40_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

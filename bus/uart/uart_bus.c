@@ -46,7 +46,7 @@ static osal_pool_t            s_uart_host_pool_ctrl;
 static struct uart_bus_client s_uart_clients[UART_BUS_CLIENT_MAX];
 static uint8_t                s_uart_client_used[UART_BUS_CLIENT_MAX];
 static osal_pool_t            s_uart_client_pool_ctrl;
-static const char* const      kTag = "uart_bus";
+static const char* const      k_tag = "uart_bus";
 
 /**
  * @brief UART Host/Client 池启动初始化
@@ -159,7 +159,7 @@ static int uart_host_init_impl(struct device* dev, const void* cfg)
         return ret;
     }
 
-    SYS_LOGI(kTag, "host init OK: %s uart=%lu baud=%lu", device_get_name(dev), (unsigned long)host_cfg->uart, (unsigned long)host_cfg->baud_rate);
+    SYS_LOGI(k_tag, "host init OK: %s uart=%lu baud=%lu", device_get_name(dev), (unsigned long)host_cfg->uart, (unsigned long)host_cfg->baud_rate);
     return VFS_OK;
 }
 

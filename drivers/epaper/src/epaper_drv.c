@@ -47,7 +47,7 @@ struct epaper_device
 static struct epaper_device s_epaper_pool[EPAPER_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_epaper_used[EPAPER_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_epaper_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "epaper";
+static const char* const k_tag = "epaper";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -338,7 +338,7 @@ static int epaper_probe(struct device* dev)
     }
     d->ops = epaper_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

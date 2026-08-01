@@ -27,8 +27,8 @@ extern "C"
  */
 struct osal_periodic_task_wrap 
 {
-    void (*orig_callback)(xTask*); /**< 原始的回调函数(xTask*) */
-    xTask* x_task;           /**< 对应的任务控制块指针 */
+    void (*orig_callback)(x_task*); /**< 原始的回调函数(x_task*) */
+    x_task* x_task;           /**< 对应的任务控制块指针 */
     uint32_t period_ms;      /**< 周期时间 */
 };
 /**

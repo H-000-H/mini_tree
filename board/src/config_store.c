@@ -79,7 +79,7 @@ static config_store_write_hook_t s_write_hook = NULL;
  */
 static uint32_t crc32_le(uint32_t crc, const uint8_t* buf, uint32_t len)
 {
-    static const uint32_t kTable[256] =
+    static const uint32_t k_table[256] =
     {
         0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
         0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
@@ -128,7 +128,7 @@ static uint32_t crc32_le(uint32_t crc, const uint8_t* buf, uint32_t len)
 
     for (uint32_t i = 0; i < len; i++)
     {
-        crc = kTable[(crc ^ buf[i]) & 0xFF] ^ (crc >> 8);
+        crc = k_table[(crc ^ buf[i]) & 0xFF] ^ (crc >> 8);
     }
     return crc;
 }

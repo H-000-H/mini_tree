@@ -17,6 +17,7 @@
 | 选开源积木 / 扩生态 | [ecosystem.md](ecosystem.md) |
 | 平台移植 | [porting_guide.md](porting_guide.md) → [esp_idf_cmake.md](esp_idf_cmake.md)（若 ESP）→ [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
 | 写应用 | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
+| 写代码 / 查命名 | [coding_style.md](coding_style.md)（语言规范：app 以下强规定 / app 层建议） |
 | 查设计动机 | [design_decisions.md](design_decisions.md) · [references.md](references.md) · [architecture.md](architecture.md) |
 | 查文件 | [file_index.md](file_index.md) |
 | 合规 / 许可证 | [../NOTICE](../NOTICE)（第三方清单与合规提示）· [../LICENSE](../LICENSE)（Apache-2.0 全文）· [ecosystem.md](ecosystem.md) §6（致谢） |
@@ -54,6 +55,7 @@
 
 | 文档 | 说明 |
 | :--- | :--- |
+| [coding_style.md](coding_style.md) | 语言规范：命名与格式（app 以下强规定 / app 层建议） |
 | [service_spec.md](service_spec.md) | 应用层允许/禁止 |
 | [runtime_services.md](runtime_services.md) | EventBus / VIRQ / SYSTEM_C·CPP / 缓冲 |
 | [can_hook.md](can_hook.md) | CAN 协议超集钩子 |

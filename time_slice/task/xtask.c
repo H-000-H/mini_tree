@@ -15,7 +15,12 @@
 #include "board_devtable.h"
 #include "vfs-tim.h"
 
-xScheduler g_scheduler;
+/* 占位/无 chosen 板: 调度器 tick 设备缺省为无效 id, xscheduler_start() 直接返回 */
+#ifndef CHOSEN_SCHEDULER_TIM
+#define CHOSEN_SCHEDULER_TIM ((device_id_t)0)
+#endif
+
+x_scheduler g_scheduler;
 static struct scheduler_tim_ctx g_sched_tim_ctx;
 
 /**
@@ -24,7 +29,7 @@ static struct scheduler_tim_ctx g_sched_tim_ctx;
 pre_execution(160)
 static void xscheduler_early_init(void)
 {
-    xSchedulerInit(&g_scheduler);
+    x_scheduler_init(&g_scheduler);
 }
 
 /**
@@ -67,7 +72,7 @@ int scheduler_tim_isr_top(void* arg, uint16_t irq_num)
     COMPAT_IGNORE_RESULT(irq_num);
     struct scheduler_tim_ctx* ctx = (struct scheduler_tim_ctx*)arg;
     if (ctx && hal_tim_clear_update_flag(ctx->tim) == VFS_OK)
-        xScheduler_Tick(ctx->scheduler, 1);
+        x_scheduler_tick(ctx->scheduler, 1);
     return VFS_IRQ_ENTRY_NOBOTTOM;
 }
 
@@ -80,7 +85,7 @@ int scheduler_tim_isr_top(void* arg, uint16_t irq_num)
  * @param period_ms 周期
  * @return 句柄
  */
-xTaskHandle_t xscheduler_task_create(xScheduler* sched, xTask* task, const char* name, void (*cb)(xTask*), unsigned int period_ms)
+x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms)
 {
     if (!sched || !task || !cb) return 0;
 
@@ -92,7 +97,7 @@ xTaskHandle_t xscheduler_task_create(xScheduler* sched, xTask* task, const char*
 
     list_add_tail(&task->node, &sched->task_list_head);
 
-    return (xTaskHandle_t)(uintptr_t)task;
+    return (x_task_handle_t)(uintptr_t)task;
 }
 
 /**
@@ -101,7 +106,7 @@ xTaskHandle_t xscheduler_task_create(xScheduler* sched, xTask* task, const char*
  * @param ms 毫秒
  * @return VFS_OK
  */
-int xScheduler_Tick(xScheduler* sched, unsigned int ms)
+int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 {
     if (!sched) return VFS_ERR_INVAL;
     COMPAT_ATOMIC_ADD_FETCH(&sched->tick_count, ms, COMPAT_MO_RELAXED);
@@ -113,17 +118,17 @@ int xScheduler_Tick(xScheduler* sched, unsigned int ms)
  * @param sched 调度器
  * @return VFS_OK
  */
-int xTaskRun(xScheduler* sched)
+int x_task_run(x_scheduler* sched)
 {
     if (!sched) return -1;
 
-    ListNode* head = &sched->task_list_head;
-    ListNode* current = head->next;
+    list_node* head = &sched->task_list_head;
+    list_node* current = head->next;
 
     while (current != head)
     {
-        ListNode* next = current->next;
-        struct xTask* task = container_of(current,struct xTask, node);
+        list_node* next = current->next;
+        struct x_task* task = container_of(current,struct x_task, node);
 
         if (!COMPAT_ATOMIC_LOAD(&task->is_running, COMPAT_MO_RELAXED))/**< 非运行状态才允许进入 */
         {
@@ -146,9 +151,9 @@ int xTaskRun(xScheduler* sched)
 /**
  * @brief poll g_scheduler
  */
-void xScheduler_Poll(void)
+void x_scheduler_poll(void)
 {
-    xTaskRun(&g_scheduler);
+    x_task_run(&g_scheduler);
 }
 
 #endif /* CONFIG_OSAL_NULL */

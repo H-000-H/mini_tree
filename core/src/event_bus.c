@@ -17,7 +17,7 @@
 #include "compiler_compat_poison.h"
 
 /* SIOF (Static Initialization Order Fiasco) 防御:
- *   在 System_Pre_OS_Init (Phase 1) 完成前, 禁止所有 EventBus 操作.
+ *   在 system_pre_os_init (Phase 1) 完成前, 禁止所有 EventBus 操作.
  *   防止 C++ 全局构造函数在 main() 之前偷跑调用 post/subscribe.
  *   定义位于 system_init.c / system_init.cpp. */
 extern volatile bool g_system_os_initialized;
@@ -71,7 +71,7 @@ static struct event_bus s_bus = {0};
 static void event_bus_dispatch_task(void* param)
 {
     (void)param;
-    struct Event event;
+    struct event event;
 
     while (osal_queue_receive(s_bus.queue, &event, OSAL_WAIT_FOREVER))
     {
@@ -131,7 +131,7 @@ bool event_bus_init(void)
 {
     if (s_bus.inited) return true;
 
-    s_bus.queue = osal_queue_create(K_QUEUE_LEN, sizeof(struct Event));
+    s_bus.queue = osal_queue_create(K_QUEUE_LEN, sizeof(struct event));
     if (s_bus.queue == NULL)
     {
         SYS_LOGE(K_TAG, "FATAL: osal_queue_create failed — event bus unusable");
@@ -213,7 +213,7 @@ static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
         return false;
     }
 
-    const struct Event event = {id, arg};
+    const struct event event = {id, arg};
     bool ok;
 
     if (from_isr)
@@ -301,7 +301,7 @@ void event_bus_stop(void)
     s_bus.task = NULL;
 
     /* 向队列发空事件唤醒 dispatch 线程 */
-    const struct Event dummy = {EVENT_SYS_FAULT, 0};
+    const struct event dummy = {EVENT_SYS_FAULT, 0};
     COMPAT_IGNORE_RESULT(osal_queue_send(s_bus.queue, &dummy, 0));
 
     uint32_t waited = 0;

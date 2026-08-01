@@ -39,7 +39,7 @@ struct w25qxx_device
 static struct w25qxx_device s_w25qxx_pool[W25QXX_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_w25qxx_used[W25QXX_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_w25qxx_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "w25qxx";
+static const char* const k_tag = "w25qxx";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -246,7 +246,7 @@ static int w25qxx_probe(struct device* dev)
     }
     d->ops = w25qxx_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

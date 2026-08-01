@@ -45,7 +45,7 @@ struct vfs_spi_priv {
 static struct vfs_spi_priv s_spi_priv_pool[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_spi_priv_used[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_spi_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   s_kHostTag = "spi_vfs_host";
+static const char* const   k_host_tag = "spi_vfs_host";
 
 /**
  * @brief SPI Host VFS 私有数据池启动初始化
@@ -249,7 +249,7 @@ static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(s_kHostTag, "probe OK: %s role=%s",
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s",
              device_get_name(pdev),
              bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
     return VFS_OK;
@@ -318,7 +318,7 @@ static int vfs_spi_priv_remove(struct device* pdev)
     ret = spi_bus_host_deinit(pdev);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(s_kHostTag, "host remove busy: %s (ret=%d) — keeping resources",
+        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d) — keeping resources",
                  device_get_name(pdev), ret);
         dev_lc_remove_finish(lc);
         return ret;
@@ -346,7 +346,7 @@ struct spi_vfs_client {
 static struct spi_vfs_client s_client_pool[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static uint8_t              s_client_used[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t          s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const    s_kClientTag = "spi_vfs_client";
+static const char* const    k_client_tag = "spi_vfs_client";
 
 /**
  * @brief SPI Client VFS 私有数据池启动初始化
@@ -804,7 +804,7 @@ static int spi_vfs_probe(struct device* pdev)
     role = spi_bus_host_role(pdev);
     if (role != SPI_BUS_ROLE_MASTER && role != SPI_BUS_ROLE_SLAVE)
     {
-        SYS_LOGE(s_kClientTag, "invalid SPI role: %s", device_get_name(pdev));
+        SYS_LOGE(k_client_tag, "invalid SPI role: %s", device_get_name(pdev));
         return VFS_ERR_INVAL;
     }
 
@@ -836,7 +836,7 @@ static int spi_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(s_kClientTag, "probe OK: %s role=%s mode=%d freq=%d",
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d",
              device_get_name(pdev),
              role == SPI_BUS_ROLE_MASTER ? "master" : "slave",
              priv->cfg.mode, priv->cfg.clock_speed_hz);

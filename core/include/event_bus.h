@@ -32,14 +32,14 @@ extern "C"
  */
 #define EVENT_USER_BASE  0x1000u
 
-struct Event
+struct event
 {
     uint32_t id;            /**< 事件 ID (框架级或用户定义) */
     uintptr_t arg;          /**< 事件参数 (指针或整数值) */
 };
 
 /* 事件回调类型 */
-typedef void (*event_callback_t)(const struct Event* event, void* user_data);
+typedef void (*event_callback_t)(const struct event* event, void* user_data);
 
 /* ── EventBus C API ── */
 bool event_bus_init(void) COMPAT_WARN_UNUSED_RESULT;

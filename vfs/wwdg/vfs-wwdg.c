@@ -18,7 +18,7 @@ struct vfs_wwdg_priv {
     struct hal_wwdg_dev wwdg;     /**< HAL WWDG 设备 */
 };
 static struct vfs_wwdg_priv s_priv;
-static const char* kTag = "vfs_wwdg";
+static const char* k_tag = "vfs_wwdg";
 
 /**
  * @brief WWDG 打开: 引用计数, 首次打开时调用 hal_wwdg_start 启动窗口看门狗
@@ -115,7 +115,7 @@ static int vfs_wwdg_probe(struct device* pdev)
     pdev->ops = &s_priv.ops;
     device_lc_bind(pdev);
     if (device_set_priv(pdev, &s_priv) != VFS_OK) return VFS_ERR_IO;
-    SYS_LOGI(kTag, "probe OK");
+    SYS_LOGI(k_tag, "probe OK");
     return VFS_OK;
 }
 

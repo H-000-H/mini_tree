@@ -49,7 +49,7 @@ static struct spi_bus_host s_spi_hosts[SPI_BUS_HOST_MAX];
 static uint8_t             s_spi_host_used[SPI_BUS_HOST_MAX];
 static osal_pool_t         s_spi_host_pool_ctrl;
 static struct spi_bus_client s_spi_clients[DEV_ID_COUNT];
-static const char* const     kTag = "spi_bus";
+static const char* const     k_tag = "spi_bus";
 
 /**
  * @brief SPI Host 池启动初始化
@@ -159,7 +159,7 @@ static int spi_host_init_impl(struct device* dev, const void* cfg)
         return ret;
     }
 
-    SYS_LOGI(kTag, "host init OK: %s role=%s spi=0x%lx", device_get_name(dev), host_cfg->bus_role == HAL_SPI_BUS_ROLE_SLAVE ? "slave" : "master", (unsigned long)host_cfg->spi);
+    SYS_LOGI(k_tag, "host init OK: %s role=%s spi=0x%lx", device_get_name(dev), host_cfg->bus_role == HAL_SPI_BUS_ROLE_SLAVE ? "slave" : "master", (unsigned long)host_cfg->spi);
     return VFS_OK;
 }
 
@@ -195,7 +195,7 @@ static int spi_host_deinit_impl(struct device* dev)
     /* atomic load: 无锁检查 ref_count, ISR/任务安全 */
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) > 0)
     {
-        SYS_LOGW(kTag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return VFS_ERR_BUSY;
     }
 

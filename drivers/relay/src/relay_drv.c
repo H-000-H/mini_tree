@@ -38,7 +38,7 @@ struct relay_device
 static struct relay_device s_relay_pool[RELAY_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_relay_used[RELAY_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_relay_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "relay";
+static const char* const k_tag = "relay";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -242,7 +242,7 @@ static int relay_probe(struct device* dev)
     }
     d->ops = relay_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

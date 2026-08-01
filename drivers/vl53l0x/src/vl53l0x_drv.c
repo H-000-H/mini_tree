@@ -41,7 +41,7 @@ struct vl53l0x_device
 static struct vl53l0x_device s_vl53l0x_pool[VL53L0X_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_vl53l0x_used[VL53L0X_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_vl53l0x_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "vl53l0x";
+static const char* const k_tag = "vl53l0x";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -152,7 +152,7 @@ static int vl53l0x_hw_create(struct vl53l0x_device* d)
         goto fail;
     if (model != 0xEE)
     {
-        SYS_LOGE(kTag, "bad model id 0x%02x", model);
+        SYS_LOGE(k_tag, "bad model id 0x%02x", model);
         r = VFS_ERR_NODEV;
         goto fail;
     }
@@ -403,7 +403,7 @@ static int vl53l0x_probe(struct device* dev)
     }
     d->ops = vl53l0x_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

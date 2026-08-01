@@ -34,7 +34,7 @@ struct vfs_i2c_priv {
 static struct vfs_i2c_priv s_i2c_priv_pool[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_i2c_priv_used[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_i2c_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   s_kHostTag = "i2c_vfs_host";
+static const char* const   k_host_tag = "i2c_vfs_host";
 
 /**
  * @brief I2C Host 私有数据池启动初始化
@@ -188,7 +188,7 @@ static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(s_kHostTag, "probe OK: %s role=%s",
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s",
              device_get_name(pdev),
              bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
     return VFS_OK;
@@ -256,7 +256,7 @@ static int vfs_i2c_priv_remove(struct device* pdev)
     ret = i2c_bus_host_deinit(pdev);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(s_kHostTag, "host remove busy: %s (ret=%d)", device_get_name(pdev), ret);
+        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d)", device_get_name(pdev), ret);
         dev_lc_remove_finish(lc);
         return ret;
     }
@@ -284,7 +284,7 @@ struct i2c_vfs_client {
 static struct i2c_vfs_client s_client_pool[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static uint8_t               s_client_used[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t           s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const     s_kClientTag = "i2c_vfs_client";
+static const char* const     k_client_tag = "i2c_vfs_client";
 
 /**
  * @brief I2C Client 私有数据池启动初始化
@@ -661,7 +661,7 @@ static int i2c_vfs_probe(struct device* pdev)
     role = i2c_bus_host_role(pdev);
     if (role != I2C_BUS_ROLE_MASTER && role != I2C_BUS_ROLE_SLAVE)
     {
-        SYS_LOGE(s_kClientTag, "invalid I2C role: %s", device_get_name(pdev));
+        SYS_LOGE(k_client_tag, "invalid I2C role: %s", device_get_name(pdev));
         return VFS_ERR_INVAL;
     }
 
@@ -693,7 +693,7 @@ static int i2c_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(s_kClientTag, "probe OK: %s role=%s addr=0x%x freq=%u",
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u",
              device_get_name(pdev),
              role == I2C_BUS_ROLE_MASTER ? "master" : "slave",
              (unsigned)priv->cfg.address, (unsigned)priv->cfg.clock_speed_hz);

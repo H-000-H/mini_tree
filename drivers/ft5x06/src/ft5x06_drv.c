@@ -39,7 +39,7 @@ struct ft5x06_device
 static struct ft5x06_device s_ft5x06_pool[FT5X06_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_ft5x06_used[FT5X06_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_ft5x06_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "ft5x06";
+static const char* const k_tag = "ft5x06";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -254,7 +254,7 @@ static int ft5x06_probe(struct device* dev)
     }
     d->ops = ft5x06_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

@@ -143,7 +143,7 @@ COMPAT_STATIC_INLINE bool bottom_half_submit_rerun(struct fifo_spsc* fifo, struc
     if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
         return true;
 
-    if (fifo_write_data(fifo, (Fifo_Data_type)(uintptr_t)work))
+    if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work))
         return true;
 
     COMPAT_ATOMIC_STORE(&work->pending, false, COMPAT_MO_RELEASE);
@@ -171,7 +171,7 @@ COMPAT_STATIC_INLINE bool bottom_half_submit_from_isr(struct fifo_spsc* fifo, st
         return true;
     }
 
-    if (!fifo_write_data(fifo, (Fifo_Data_type)(uintptr_t)work))
+    if (!fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work))
     {
         COMPAT_ATOMIC_STORE(&work->pending, false, COMPAT_MO_RELEASE);
         return false;
@@ -193,7 +193,7 @@ void bottom_half_run_pending(struct fifo_spsc* fifo);
 struct bottom_half_poller
 {
     struct fifo_spsc    fifo;          /**< 工作项 FIFO */
-    Fifo_Data_type      ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
+    fifo_data_type      ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
     volatile bool       pending_drain; /**< ISR 写, 主循环读 */
 };
 
@@ -237,7 +237,7 @@ void bottom_half_poller_run(struct bottom_half_poller* poller);
 struct bottom_half_task
 {
     struct fifo_spsc    fifo;    /**< 工作项 FIFO */
-    Fifo_Data_type      ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
+    fifo_data_type      ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
     struct osal_sem*    sem;     /**< 二值信号量 (唤醒下半部任务) */
 };
 

@@ -39,7 +39,7 @@ struct sg90_device
 static struct sg90_device s_sg90_pool[SG90_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_sg90_used[SG90_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sg90_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "sg90";
+static const char* const k_tag = "sg90";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -233,7 +233,7 @@ static int sg90_probe(struct device* dev)
     }
     d->ops = sg90_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

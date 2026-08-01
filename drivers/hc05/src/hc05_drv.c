@@ -39,7 +39,7 @@ struct hc05_device
 static struct hc05_device s_hc05_pool[HC05_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_hc05_used[HC05_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_hc05_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "hc05";
+static const char* const k_tag = "hc05";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -245,7 +245,7 @@ static int hc05_probe(struct device* dev)
     }
     d->ops = hc05_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

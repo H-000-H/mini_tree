@@ -78,7 +78,7 @@ public:
 
     template <typename F, typename = etl::enable_if_t<!etl::is_same_v<etl::decay_t<F>, CmdFn>>>
     CmdFn(F&& f)
-        : m_vtable(&s_vtable<etl::decay_t<F>>)
+        : m_vtable(&k_vtable<etl::decay_t<F>>)
     {
         static_assert(sizeof(etl::decay_t<F>) <= sizeof(m_storage.data),
                       "Callable object too large for CmdFn storage");
@@ -118,12 +118,12 @@ public:
 
 private:
     template <typename F>
-    static const Vtable s_vtable;
+    static const Vtable k_vtable;
 };
 
 template <size_t StorageSz>
 template <typename F>
-const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::s_vtable = {
+const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::k_vtable = {
     &CmdFn<StorageSz>::template invoke_fn<F>,
     &CmdFn<StorageSz>::template copy_fn<F>,
     &CmdFn<StorageSz>::template destroy_fn<F>
@@ -140,17 +140,17 @@ const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::s_vtable = {
 class SystemCmd
 {
 public:
-    static constexpr size_t kMaxCmdNameLen = SYS_CMD_MAX_NAME_LEN;  /**< 命令名最大长度 (含 '\0') */
-    static constexpr size_t kMaxCommands   = SYS_CMD_MAX_COUNT;     /**< 最大注册命令数 */
+    static constexpr size_t k_max_cmd_name_len = SYS_CMD_MAX_NAME_LEN;  /**< 命令名最大长度 (含 '\0') */
+    static constexpr size_t k_max_commands   = SYS_CMD_MAX_COUNT;     /**< 最大注册命令数 */
 
     using RawHandler = CmdFn<>;  /**< 类型擦除后的命令处理函数包装器 */
 
     // 轻量级 RTTI 替代方案的类型令牌
     using TypeIdToken = const void*;  /**< 类型标识令牌 (每个类型唯一地址) */
     template<typename T>
-    static TypeIdToken getTypeId() {
-        static const char type_marker = 0;
-        return static_cast<TypeIdToken>(&type_marker);
+    static TypeIdToken get_type_id() {
+        static const char k_type_marker = 0;
+        return static_cast<TypeIdToken>(&k_type_marker);
     }
 
     /** @brief 命令处理节点 — 存储包装器及参数/上下文类型信息 */
@@ -161,25 +161,25 @@ public:
     };
 
     /* ── 后端无关的公共 API ── */
-    static SystemCmd& getInstance();  /**< 获取单例引用 */
+    static SystemCmd& get_instance();  /**< 获取单例引用 */
 
     /** @brief 注册命令: handler(const Args&, Ctx*) */
     template<typename Args, typename Ctx = void>
-    bool registerCmd(const char* name, bool (*handler)(const Args&, Ctx*));
+    bool register_cmd(const char* name, bool (*handler)(const Args&, Ctx*));
 
     /** @brief 注册命令: handler(const Args&, const Ctx*) */
     template<typename Args, typename Ctx>
-    bool registerCmd(const char* name, bool (*handler)(const Args&, const Ctx*));
+    bool register_cmd(const char* name, bool (*handler)(const Args&, const Ctx*));
 
     /** @brief 注册命令: handler(Ctx*), 无参数 */
     template<typename Ctx = void>
-    bool registerCmd(const char* name, bool (*handler)(Ctx*));
+    bool register_cmd(const char* name, bool (*handler)(Ctx*));
 
     /** @brief 注册命令: handler(), 无参数无上下文 */
-    bool registerCmd(const char* name, bool (*handler)());
+    bool register_cmd(const char* name, bool (*handler)());
 
-    bool unregisterCmd(const char* name);  /**< 注销已注册命令 */
-    bool hasCmd(const char* name) const;   /**< 查询命令是否已注册 */
+    bool unregister_cmd(const char* name);  /**< 注销已注册命令 */
+    bool has_cmd(const char* name) const;   /**< 查询命令是否已注册 */
     size_t count() const;                  /**< 当前已注册命令数 */
 
     /** @brief 原始分发 (无类型校验, 内部使用) */
@@ -190,16 +190,16 @@ public:
 
     /** @brief 类型安全分发 (带参数 + 上下文) */
     template<typename Args, typename Ctx = void>
-    bool dispatchSecure(const char* name, const Args& arg, Ctx* ctx = nullptr) const {
+    bool dispatch_secure(const char* name, const Args& arg, Ctx* ctx = nullptr) const {
         return dispatch(name, &arg, sizeof(Args), ctx,
-                        getTypeId<Args>(), getTypeId<Ctx>());
+                        get_type_id<Args>(), get_type_id<Ctx>());
     }
 
     /** @brief 类型安全分发 (无参数, 仅上下文) */
     template<typename Ctx = void>
-    bool dispatchSecure(const char* name, Ctx* ctx = nullptr) const {
+    bool dispatch_secure(const char* name, Ctx* ctx = nullptr) const {
         return dispatch(name, nullptr, 0, ctx,
-                        getTypeId<void>(), getTypeId<Ctx>());
+                        get_type_id<void>(), get_type_id<Ctx>());
     }
 
 private:
@@ -213,8 +213,8 @@ private:
      * ════════════════════════════════════════════════════════════════════ */
 #ifndef CONFIG_OSAL_NULL
     /* ── OS 后端: etl::map + spinlock ── */
-    using CmdString = etl::string<kMaxCmdNameLen>;  /**< 命令名存储类型 */
-    using CmdMap    = etl::map<CmdString, HandlerNode, kMaxCommands>;  /**< 命令映射表 */
+    using CmdString = etl::string<k_max_cmd_name_len>;  /**< 命令名存储类型 */
+    using CmdMap    = etl::map<CmdString, HandlerNode, k_max_commands>;  /**< 命令映射表 */
 
     CmdMap m_commands;          /**< 命令名 → 处理节点 映射 */
     mutable struct osal_spinlock* m_lock;  /**< 自旋锁指针 (保护并发访问) */
@@ -226,28 +226,28 @@ private:
         const char* name;        /**< 命令名 (必须指向静态字符串) */
         HandlerNode node;        /**< 处理节点 */
     };
-    CmdEntry  m_entries[kMaxCommands];  /**< 命令数组 */
+    CmdEntry  m_entries[k_max_commands];  /**< 命令数组 */
     size_t m_count;                     /**< 当前已注册命令数 */
 #endif
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
- *  registerCmd 模板实现 — 双后端条件分支
+ *  register_cmd 模板实现 — 双后端条件分支
  * ═══════════════════════════════════════════════════════════════════════ */
 
 template<typename Args, typename Ctx>
-inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&, Ctx*))
+inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, Ctx*))
 {
     if (!name || !handler) return false;
     const size_t name_len = etl::strlen(name);
-    if (name_len >= kMaxCmdNameLen) return false;
+    if (name_len >= k_max_cmd_name_len) return false;
 
     static_assert(etl::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
     static_assert(etl::is_default_constructible_v<Args>, "Args must be default constructible");
 
     HandlerNode node;
-    node.args_id = getTypeId<Args>();
-    node.ctx_id  = getTypeId<Ctx>();
+    node.args_id = get_type_id<Args>();
+    node.ctx_id  = get_type_id<Ctx>();
     node.wrapper = [handler](const void* raw_arg, size_t len, void* raw_ctx) -> bool {
         if (!raw_arg || len < sizeof(Args)) return false;
         if constexpr (!etl::is_same_v<Ctx, void>) {
@@ -274,7 +274,7 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&
         if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
-    if (m_count >= kMaxCommands)
+    if (m_count >= k_max_commands)
         return false;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
@@ -284,18 +284,18 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&
 }
 
 template<typename Args, typename Ctx>
-inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&, const Ctx*))
+inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, const Ctx*))
 {
     if (!name || !handler) return false;
     const size_t name_len = etl::strlen(name);
-    if (name_len >= kMaxCmdNameLen) return false;
+    if (name_len >= k_max_cmd_name_len) return false;
 
     static_assert(etl::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
     static_assert(etl::is_default_constructible_v<Args>, "Args must be default constructible");
 
     HandlerNode node;
-    node.args_id = getTypeId<Args>();
-    node.ctx_id  = getTypeId<Ctx>();
+    node.args_id = get_type_id<Args>();
+    node.ctx_id  = get_type_id<Ctx>();
     node.wrapper = [handler](const void* raw_arg, size_t len, void* raw_ctx) -> bool {
         if (!raw_arg || len < sizeof(Args)) return false;
         if (raw_ctx == nullptr) return false;
@@ -320,7 +320,7 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&
         if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
-    if (m_count >= kMaxCommands)
+    if (m_count >= k_max_commands)
         return false;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
@@ -330,15 +330,15 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(const Args&
 }
 
 template<typename Ctx>
-inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(Ctx*))
+inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(Ctx*))
 {
     if (!name || !handler) return false;
     const size_t name_len = etl::strlen(name);
-    if (name_len >= kMaxCmdNameLen) return false;
+    if (name_len >= k_max_cmd_name_len) return false;
 
     HandlerNode node;
-    node.args_id = getTypeId<void>();
-    node.ctx_id  = getTypeId<Ctx>();
+    node.args_id = get_type_id<void>();
+    node.ctx_id  = get_type_id<Ctx>();
     node.wrapper = [handler](const void*, size_t, void* raw_ctx) -> bool {
         if constexpr (!etl::is_same_v<Ctx, void>) {
             if (raw_ctx == nullptr) return false;
@@ -362,7 +362,7 @@ inline bool SystemCmd::registerCmd(const char* name, bool (*handler)(Ctx*))
         if (strcmp(m_entries[i].name, name) == 0)
             return false;
     }
-    if (m_count >= kMaxCommands)
+    if (m_count >= k_max_commands)
         return false;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;

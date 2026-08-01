@@ -41,7 +41,7 @@ struct ds18b20_device
 static struct ds18b20_device s_ds18b20_pool[DS18B20_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_ds18b20_used[DS18B20_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_ds18b20_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "ds18b20";
+static const char* const k_tag = "ds18b20";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -360,7 +360,7 @@ static int ds18b20_probe(struct device* dev)
     }
     d->ops = ds18b20_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

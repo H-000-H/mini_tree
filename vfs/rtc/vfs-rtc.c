@@ -26,7 +26,7 @@ struct vfs_rtc_priv
 static struct vfs_rtc_priv s_pool[RTC_VFS_POOL] COMPAT_ALIGNED(4);
 static uint8_t             s_used[RTC_VFS_POOL] COMPAT_ALIGNED(4);
 static osal_pool_t         s_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   kTag = "vfs_rtc";
+static const char* const   k_tag = "vfs_rtc";
 
 /**
  * @brief RTC VFS 私有数据池启动初始化
@@ -319,7 +319,7 @@ static int vfs_rtc_probe(struct device* pdev)
         ret = VFS_ERR_IO;
         goto err_hal;
     }
-    SYS_LOGI(kTag, "probe OK: %s", device_get_name(pdev));
+    SYS_LOGI(k_tag, "probe OK: %s", device_get_name(pdev));
     return VFS_OK;
 err_hal:
     COMPAT_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));

@@ -39,7 +39,7 @@ struct bh1750_device
 static struct bh1750_device s_bh1750_pool[BH1750_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_bh1750_used[BH1750_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_bh1750_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "bh1750";
+static const char* const k_tag = "bh1750";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -254,7 +254,7 @@ static int bh1750_probe(struct device* dev)
     }
     d->ops = bh1750_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

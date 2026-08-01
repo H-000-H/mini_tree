@@ -20,9 +20,12 @@
 
 #include <stdint.h>
 
+#ifndef DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
+#define DTC_GEN_COUNT_HETEROGENEOUS_GPIOS 1
+#endif
 #define VFS_GPIO_PIN_COUNT DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
 
-static const char* const s_kTag = "vfs-gpio";
+static const char* const k_tag = "vfs-gpio";
 
 struct vfs_gpio_priv
 {
@@ -286,7 +289,7 @@ static int vfs_gpio_probe(struct device* pdev)
     pool_idx = osal_pool_claim(&s_gpio_priv_pool_ctrl);
     if (pool_idx < 0)
     {
-        SYS_LOGE(s_kTag, "Failed to claim gpio pool");
+        SYS_LOGE(k_tag, "Failed to claim gpio pool");
         return VFS_ERR_NOMEM;
     }
 
@@ -314,7 +317,7 @@ static int vfs_gpio_probe(struct device* pdev)
 
     if (intr_val != 0 && (virq_idx < 0 || virq_idx >= (int)VIRTUAL_IRQ_BLOCK_SIZE))
     {
-        SYS_LOGE(s_kTag, "gpio-intr set but virq-idx invalid (%d)", virq_idx);
+        SYS_LOGE(k_tag, "gpio-intr set but virq-idx invalid (%d)", virq_idx);
         ret = VFS_ERR_INVAL;
         goto err_pool;
     }
@@ -353,7 +356,7 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_mutex;
     }
 
-    SYS_LOGI(s_kTag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d",
+    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d",
              (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
     return VFS_OK;
 
@@ -394,7 +397,7 @@ static int vfs_gpio_remove(struct device* pdev)
 
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
     {
-        SYS_LOGE(s_kTag, "remove drain failed");
+        SYS_LOGE(k_tag, "remove drain failed");
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }

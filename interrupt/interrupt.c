@@ -69,7 +69,7 @@ void bottom_half_run_pending(struct fifo_spsc* fifo)
     if (!fifo || bottom_half_in_isr())
         return;
 
-    Fifo_Data_type elem;
+    fifo_data_type elem;
     while (fifo_read_data(fifo, &elem))
     {
         struct bottom_half_work* work = (struct bottom_half_work*)(uintptr_t)elem;

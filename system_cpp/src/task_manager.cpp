@@ -13,13 +13,13 @@
 #include "system_wdt.hpp"
 #include "compiler_compat_poison.h"
 
-static constexpr const char* kTag = "TaskManager";
+static constexpr const char* k_tag = "TaskManager";
 
 osal_task_handle_t TaskManager::create(const struct board_task_config& config, TaskEntry entry, void* param)
 {
     if (entry == nullptr)
     {
-        SYS_LOGE(kTag, "task entry is null: %s", config.name);
+        SYS_LOGE(k_tag, "task entry is null: %s", config.name);
         return nullptr;
     }
 
@@ -28,7 +28,7 @@ osal_task_handle_t TaskManager::create(const struct board_task_config& config, T
                                        entry, param, config.core_id, &handle);
     if (ret != 0)
     {
-        SYS_LOGE(kTag, "failed to create task: %s", config.name);
+        SYS_LOGE(k_tag, "failed to create task: %s", config.name);
         return nullptr;
     }
 

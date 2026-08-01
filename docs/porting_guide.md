@@ -93,9 +93,12 @@
 完整契约（API 表、生命周期、验收）见 **[usb_tusb_port.md](usb_tusb_port.md)**。摘要：
 
 - 协议栈在 `lib/tinyusb`；板级粘合头 **不要** 同时暴露 TinyUSB osal 与 mini_tree osal 冲突符号。  
-- 平台实现 `usb_tusb_port.h` 中全部 `usb_tusb_*`；`bus/usb` 只经此调用。  
-- IDE 占位：`ide/stubs/usb_tusb_port.h`。  
+- 契约头在中间件 `bus/usb/usb_tusb_port.h`（含 ECM 帧回调）；平台实现全部符号，`bus/usb` 只经此调用。  
 - 外设 compatible / ioctl：[peripherals.md](peripherals.md)。  
+
+**可裁剪（软编码）**：USB 通路由 `mini_tree/.config` 的 `CONFIG_USB` 控制（缺省启用；置
+`# CONFIG_USB is not set` 则 `bus/usb`、`vfs/usb`、`hal/usb`、TinyUSB 拉取与 dtc-lite 扫描全部不编入）。
+裁剪后板级无需提供 `usb_tusb_port`；IDE 解析不受影响（`compile_flags.txt` + `ide/stubs` 与构建解耦）。
 
 ---
 

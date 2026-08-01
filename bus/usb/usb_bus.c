@@ -42,7 +42,7 @@ static uint8_t               s_usb_host_used[USB_BUS_HOST_MAX];
 static osal_pool_t           s_usb_host_pool_ctrl;
 static struct usb_bus_client s_usb_clients[DEV_ID_COUNT];
 static struct usb_bus_host*  s_irq_host;
-static const char* const     kTag = "usb_bus";
+static const char* const     k_tag = "usb_bus";
 
 pre_execution(150)
 static void usb_bus_pool_init(void)
@@ -128,7 +128,7 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
         goto fail_pool;
     }
 
-    SYS_LOGI(kTag, "host init OK rhport=%u", (unsigned)host->rhport);
+    SYS_LOGI(k_tag, "host init OK rhport=%u", (unsigned)host->rhport);
     return VFS_OK;
 
 fail_pool:
@@ -360,9 +360,6 @@ int usb_bus_cdc_read(struct device* dev, void* buf, size_t len,
     return (int)done;
 }
 
-extern int usb_net_frame_push_tx(const void* frame, size_t len);
-extern int usb_net_frame_pop_rx(void* frame, size_t len);
-
 int usb_bus_ecm_write(struct device* dev, const void* frame, size_t len,
                       uint32_t timeout_ms, uint32_t xfer_mode)
 {
@@ -427,10 +424,4 @@ int usb_bus_hid_write(struct device* dev, const void* report, size_t len,
     if (!usb_tusb_hid_report(0, report, (uint16_t)len))
         return VFS_ERR_IO;
     return (int)len;
-}
-
-void usb_otg_fs_irq_handler(void)
-{
-    if (s_irq_host)
-        usb_tusb_int_handler(s_irq_host->rhport);
 }

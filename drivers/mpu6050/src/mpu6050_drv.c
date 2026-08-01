@@ -39,7 +39,7 @@ struct mpu6050_device
 static struct mpu6050_device s_mpu6050_pool[MPU6050_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_mpu6050_used[MPU6050_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_mpu6050_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "mpu6050";
+static const char* const k_tag = "mpu6050";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -255,7 +255,7 @@ static int mpu6050_probe(struct device* dev)
     }
     d->ops = mpu6050_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

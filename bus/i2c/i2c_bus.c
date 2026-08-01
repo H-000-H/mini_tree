@@ -45,7 +45,7 @@ static struct i2c_bus_host s_i2c_hosts[I2C_BUS_HOST_MAX];
 static uint8_t s_i2c_host_used[I2C_BUS_HOST_MAX];
 static osal_pool_t s_i2c_host_pool_ctrl;
 static struct i2c_bus_client s_i2c_clients[DEV_ID_COUNT];
-static const char* const kTag = "i2c_bus";
+static const char* const k_tag = "i2c_bus";
 
 /**
  * @brief I2C Host 池启动初始化
@@ -192,7 +192,7 @@ static int i2c_host_deinit_impl(struct device* pdev)
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
-        SYS_LOGW(kTag, "host deinit busy: ref_count=%d",
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
                  COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return VFS_ERR_BUSY;
     }

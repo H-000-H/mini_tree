@@ -40,7 +40,7 @@ struct drv8833_device
 static struct drv8833_device s_drv8833_pool[DRV8833_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_drv8833_used[DRV8833_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_drv8833_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "drv8833";
+static const char* const k_tag = "drv8833";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -246,7 +246,7 @@ static int drv8833_probe(struct device* dev)
     }
     d->ops = drv8833_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

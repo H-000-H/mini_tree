@@ -12,6 +12,16 @@
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../.config" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
+if(CONFIG_USB_OFF)
+    set(USB_DTC_SCAN_DIRS "")
+else()
+    set(USB_DTC_SCAN_DIRS
+        "${CMAKE_CURRENT_SOURCE_DIR}/../bus/usb"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/usb")
+endif()
+
 set(BOARD_DTS             "${CMAKE_CURRENT_SOURCE_DIR}/dts/board.dts" CACHE FILEPATH "板级 DTS (各平台覆盖)")
 set(BOARD_DTSI_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/dtsi" CACHE PATH "板级 dtsi (各平台覆盖)")
 set(DTC_LITE              "${PROJECT_SOURCE_DIR}/tools/dtc-lite.py")
@@ -54,10 +64,9 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/../bus/uart"
             "${CMAKE_CURRENT_SOURCE_DIR}/../bus/i2c"
             "${CMAKE_CURRENT_SOURCE_DIR}/../bus/can"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../bus/usb"
+            ${USB_DTC_SCAN_DIRS}
             "${CMAKE_CURRENT_SOURCE_DIR}/../bus/i2s"
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/can"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/usb"
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/rtc"
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/iwdg"
             "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/wwdg"

@@ -37,7 +37,7 @@ struct vfs_can_priv {
 static struct vfs_can_priv s_can_priv_pool[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_can_priv_used[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_can_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   s_kHostTag = "can_vfs_host";
+static const char* const   k_host_tag = "can_vfs_host";
 
 /**
  * @brief CAN Host 私有数据池启动初始化
@@ -183,7 +183,7 @@ static int vfs_can_priv_probe(struct device* pdev)
         goto err_bus;
     }
 
-    SYS_LOGI(s_kHostTag, "probe OK: %s", device_get_name(pdev));
+    SYS_LOGI(k_host_tag, "probe OK: %s", device_get_name(pdev));
     return VFS_OK;
 
 err_bus:
@@ -229,7 +229,7 @@ static int vfs_can_priv_remove(struct device* pdev)
     ret = can_bus_host_deinit(pdev);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(s_kHostTag, "host remove busy: %s (ret=%d)", device_get_name(pdev), ret);
+        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d)", device_get_name(pdev), ret);
         dev_lc_remove_finish(lc);
         return ret;
     }
@@ -254,7 +254,7 @@ struct can_vfs_client {
 static struct can_vfs_client s_client_pool[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static uint8_t               s_client_used[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t           s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const     s_kClientTag = "can_vfs_client";
+static const char* const     k_client_tag = "can_vfs_client";
 
 /**
  * @brief CAN Client 私有数据池启动初始化
@@ -584,7 +584,7 @@ static int can_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(s_kClientTag, "probe OK: %s", device_get_name(pdev));
+    SYS_LOGI(k_client_tag, "probe OK: %s", device_get_name(pdev));
     return VFS_OK;
 
 err_pool:

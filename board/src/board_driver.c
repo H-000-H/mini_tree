@@ -22,7 +22,7 @@
 #include <string.h>
 #include "compiler_compat_poison.h"
 
-static const char* kTag = "board_drv";
+static const char* k_tag = "board_drv";
 
 
 static volatile int s_shutdown_entered = 0;
@@ -95,7 +95,7 @@ static int board_safety_hw_probe(struct device* dev)
         board_safety_add_pin(pin, safe_level);
         idx++;
     }
-    DRV_LOGI(kTag, "safety-hw: %d shutdown pins registered", g_safety_pin_count);
+    DRV_LOGI(k_tag, "safety-hw: %d shutdown pins registered", g_safety_pin_count);
     return VFS_OK;
 }
 
@@ -206,7 +206,7 @@ static void handle_probe_failure(struct device* dev, device_id_t id)
     switch (crit)
     {
     case DEVICE_CRIT_FATAL:
-        DRV_LOGE(kTag, "FATAL: '%s' probe failed — initiating safe shutdown",
+        DRV_LOGE(k_tag, "FATAL: '%s' probe failed — initiating safe shutdown",
                  device_get_name(dev));
         OSAL_PANIC("FATAL device '%s' probe failed", device_get_name(dev));
         break;
@@ -214,7 +214,7 @@ static void handle_probe_failure(struct device* dev, device_id_t id)
         break;
     case DEVICE_CRIT_WARNING:
     default:
-        DRV_LOGW(kTag, "non-fatal probe failure for '%s'", device_get_name(dev));
+        DRV_LOGW(k_tag, "non-fatal probe failure for '%s'", device_get_name(dev));
         break;
     }
 }
@@ -236,7 +236,7 @@ static void disable_dependents(device_id_t failed_id)
         enum device_status st = device_get_status(child);
         if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED) continue;
         COMPAT_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
-        DRV_LOGW(kTag, "cascade: '%s' disabled (dependency '%s' failed)",
+        DRV_LOGW(k_tag, "cascade: '%s' disabled (dependency '%s' failed)",
                  device_get_name(child), device_get_name(board_dev_get(failed_id)));
     }
 }
@@ -317,7 +317,7 @@ int board_driver_probe_all(void)
     production_log_init();
 #endif
 
-    DRV_LOGI(kTag, "probing all devices from compile-time DTS table ...");
+    DRV_LOGI(k_tag, "probing all devices from compile-time DTS table ...");
     volatile uint8_t ok = 0;
     volatile uint8_t fail = 0;
     volatile int count = board_probe_order_count();
@@ -340,7 +340,7 @@ int board_driver_probe_all(void)
             /* DIRECT 设备不经过 VFS probe, 跳过 */
             if (dev->node && (dev->node->flags & DEVICE_FLAG_DIRECT))
             {
-                DRV_LOGV(kTag, "skip probe: '%s' (direct)", device_get_name(dev));
+                DRV_LOGV(k_tag, "skip probe: '%s' (direct)", device_get_name(dev));
                 continue;
             }
             if (device_get_status(dev) == DEVICE_STATUS_PROBED ||
@@ -356,7 +356,7 @@ int board_driver_probe_all(void)
                 }
                 COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
                 fail++;
-                DRV_LOGW(kTag, "skip '%s': dependency permanently unavailable",
+                DRV_LOGW(k_tag, "skip '%s': dependency permanently unavailable",
                          device_get_name(dev));
                 continue;
             }
@@ -370,7 +370,7 @@ int board_driver_probe_all(void)
                     COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
                     continue;
                 }
-                DRV_LOGW(kTag, "no generated probe for '%s' (compat=%s)",
+                DRV_LOGW(k_tag, "no generated probe for '%s' (compat=%s)",
                          name, device_get_compatible(dev));
                 COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
                 handle_probe_failure(dev, id);
@@ -379,7 +379,7 @@ int board_driver_probe_all(void)
                 continue;
             }
 
-            DRV_LOGI(kTag, "probing '%s' (%s) ...",
+            DRV_LOGI(k_tag, "probing '%s' (%s) ...",
                      device_get_name(dev), device_get_compatible(dev));
             int ret = probe(dev);
             if (ret == VFS_OK)
@@ -391,7 +391,7 @@ int board_driver_probe_all(void)
                 if (open_ret != VFS_OK)
                 {
                     COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
-                    DRV_LOGE(kTag, "device_open FAILED: %s (ret=%d)", device_get_name(dev), open_ret);
+                    DRV_LOGE(k_tag, "device_open FAILED: %s (ret=%d)", device_get_name(dev), open_ret);
                     handle_probe_failure(dev, id);
                     disable_dependents(id);
                     fail++;
@@ -401,14 +401,14 @@ int board_driver_probe_all(void)
             }
             else if (ret == VFS_ERR_DEFER)
             {
-                DRV_LOGI(kTag, "DEFER '%s': phandle dependency not yet probed",
+                DRV_LOGI(k_tag, "DEFER '%s': phandle dependency not yet probed",
                          device_get_name(dev));
                 deferred++;
             }
             else
             {
                 COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
-                DRV_LOGE(kTag, "probe FAILED: %s (ret=%d)", device_get_name(dev), ret);
+                DRV_LOGE(k_tag, "probe FAILED: %s (ret=%d)", device_get_name(dev), ret);
                 handle_probe_failure(dev, id);
                 disable_dependents(id);
                 fail++;
@@ -418,7 +418,7 @@ int board_driver_probe_all(void)
         if (deferred == 0) break;
         if (deferred == deferred_prev)
         {
-            DRV_LOGE(kTag, "EPROBE_DEFER stall: %d devices stuck after %d passes",
+            DRV_LOGE(k_tag, "EPROBE_DEFER stall: %d devices stuck after %d passes",
                      (int)deferred, (int)pass + 1);
             for (volatile int i = 0; i < count; i++)
             {
@@ -431,17 +431,17 @@ int board_driver_probe_all(void)
                 {
                     COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_DISABLED));
                     fail++;
-                    DRV_LOGE(kTag, "DEFER stall: '%s' permanently disabled",
+                    DRV_LOGE(k_tag, "DEFER stall: '%s' permanently disabled",
                              device_get_name(dev));
                 }
             }
             break;
         }
         deferred_prev = deferred;
-        DRV_LOGI(kTag, "pass %d: %d deferred, retrying ...", (int)pass + 1, (int)deferred);
+        DRV_LOGI(k_tag, "pass %d: %d deferred, retrying ...", (int)pass + 1, (int)deferred);
     }
 
-    DRV_LOGI(kTag, "probe complete: %d ok, %d fail", (int)ok, (int)fail);
+    DRV_LOGI(k_tag, "probe complete: %d ok, %d fail", (int)ok, (int)fail);
     return (int)fail;
 }
 
@@ -451,7 +451,7 @@ int board_driver_probe_all(void)
  */
 int board_driver_remove_all(void)
 {
-    DRV_LOGI(kTag, "removing all devices (reverse probe order) ...");
+    DRV_LOGI(k_tag, "removing all devices (reverse probe order) ...");
 
     int count = board_probe_order_count();
 
@@ -477,7 +477,7 @@ int board_driver_remove_all(void)
             int ret = remove_fn(dev);
             if (ret != VFS_OK)
             {
-                DRV_LOGE(kTag, "remove FAILED: %s (ret=%d) — keeping ERROR state",
+                DRV_LOGE(k_tag, "remove FAILED: %s (ret=%d) — keeping ERROR state",
                          device_get_name(dev), ret);
                 COMPAT_IGNORE_RESULT(device_set_status(dev, DEVICE_STATUS_ERROR));
                 continue;

@@ -11,6 +11,13 @@
     本脚本在 mini_tree 根生成 compile_commands.json（距离源文件更近），
     clangd 优先使用它，无需父项目 configure 即可获得完整索引。
 
+覆盖范围：
+    _SCAN_DIRS 下的 C/C++ 源文件（.c/.cpp/.cc/.cxx）与头文件（.h/.hh/.hpp/.hxx）。
+    头文件条目按 .clangd 约定分语言解析：
+        .h/.hh   → C 头（-x c-header, -std=gnu17）
+        .hpp/.hxx → C++ 头（-x c++, -std=gnu++17）
+    这样 clang-tidy 对头文件单独检查时也能拿到正确的编译参数。
+
 幂等：重复执行结果一致；--clean 可移除生成物。
 """
 from __future__ import annotations
@@ -24,13 +31,13 @@ _ROOT = Path(__file__).resolve().parent.parent
 _FLAGS_FILE = _ROOT / "compile_flags.txt"
 _OUTPUT = _ROOT / "compile_commands.json"
 
-# 需要索引的源文件目录（递归扫描 .c / .cpp）
+# 需要索引的目录（递归扫描源文件与头文件; src 与 include 均覆盖）
 _SCAN_DIRS = [
-    "core/src",
-    "board/src",
-    "osal/src",
-    "system_c/src",
-    "system_cpp/src",
+    "core",
+    "board",
+    "osal",
+    "system_c",
+    "system_cpp",
     "hal",
     "bus",
     "vfs",
@@ -41,7 +48,16 @@ _SCAN_DIRS = [
     "time_slice",
 ]
 
-_EXTENSIONS = {".c", ".cpp", ".cc", ".cxx"}
+_SOURCE_EXTENSIONS = {".c", ".cpp", ".cc", ".cxx"}
+_HEADER_EXTENSIONS = {".h", ".hh", ".hpp", ".hxx"}
+
+# 头文件 → (clang 语言参数, 标准)，与 .clangd 的语言切换规则一致
+_HEADER_LANG = {
+    ".h": ("c-header", "gnu17"),
+    ".hh": ("c-header", "gnu17"),
+    ".hpp": ("c++", "gnu++17"),
+    ".hxx": ("c++", "gnu++17"),
+}
 
 
 def _read_flags() -> list[str]:
@@ -57,29 +73,47 @@ def _read_flags() -> list[str]:
     return flags
 
 
-def _collect_sources() -> list[Path]:
-    """扫描 _SCAN_DIRS 下所有 C/C++ 源文件。"""
+def _collect_files() -> tuple[list[Path], list[Path]]:
+    """扫描 _SCAN_DIRS 下的源文件与头文件，返回 (sources, headers)。"""
     sources: list[Path] = []
+    headers: list[Path] = []
     for d in _SCAN_DIRS:
         base = _ROOT / d
         if not base.is_dir():
             continue
         for f in sorted(base.rglob("*")):
-            if f.suffix in _EXTENSIONS and f.is_file():
+            if not f.is_file():
+                continue
+            if f.suffix in _SOURCE_EXTENSIONS:
                 sources.append(f)
-    return sources
+            elif f.suffix in _HEADER_EXTENSIONS:
+                headers.append(f)
+    return sources, headers
 
 
-def _build_entries(flags: list[str], sources: list[Path]) -> list[dict]:
-    """为每个源文件生成 compile_commands.json 条目。"""
+def _build_entries(flags: list[str], sources: list[Path], headers: list[Path]) -> list[dict]:
+    """为每个源文件 / 头文件生成 compile_commands.json 条目。"""
     entries: list[dict] = []
     root_str = str(_ROOT)
+
+    # 源文件：直接使用 compile_flags.txt 的参数（-std=gnu17 等）
     for src in sources:
         entries.append({
             "directory": root_str,
             "file": str(src),
             "arguments": ["clang"] + flags + ["-c", str(src)],
         })
+
+    # 头文件：去掉 -std 后按扩展名指定语言，避免与源文件的 -std 冲突
+    no_std_flags = [f for f in flags if not f.startswith("-std")]
+    for hdr in headers:
+        lang, std = _HEADER_LANG[hdr.suffix]
+        entries.append({
+            "directory": root_str,
+            "file": str(hdr),
+            "arguments": ["clang"] + no_std_flags + ["-x", lang, "-std=" + std, "-c", str(hdr)],
+        })
+
     return entries
 
 
@@ -107,14 +141,14 @@ def main() -> None:
         return
 
     flags = _read_flags()
-    sources = _collect_sources()
+    sources, headers = _collect_files()
     if not sources:
         print("警告：未扫描到任何源文件", file=sys.stderr)
 
-    entries = _build_entries(flags, sources)
+    entries = _build_entries(flags, sources, headers)
     content = json.dumps(entries, indent=2, ensure_ascii=False) + "\n"
     _atomic_write(_OUTPUT, content)
-    print(f"已生成 {_OUTPUT}（{len(entries)} 条目）")
+    print(f"已生成 {_OUTPUT}（{len(entries)} 条目: {len(sources)} 源 + {len(headers)} 头）")
 
 
 if __name__ == "__main__":

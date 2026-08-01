@@ -3,7 +3,7 @@
 > mini_tree 中间件本体提供设备模型、VFS/Bus/HAL、OSAL 与运行时服务；**不把所有能力塞进核心**。  
 > 能力扩展走 **积木型链接**：需要什么能力，就按需链入对应开源库，用板级 port 补齐配置与硬件胶水。
 >
-> **`lib/` 只保留基础设施**（两个 OS、TinyUSB、lwIP、cJSON、ETL）。其余开源积木默认 **FetchContent 按需拉取**（本地 `lib/<Name>` 仍优先）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
+> **`lib/` 只保留 vendor**（两个 OS + ETL）；TinyUSB / lwIP / cJSON 及其余开源积木默认 **FetchContent 拉取**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -16,12 +16,15 @@
 
 | 策略 | 做法 | 组件 |
 | :--- | :--- | :--- |
-| **基础设施（进 git）** | 源码在 `lib/` | **FreeRTOS**、**RT-Thread**、**TinyUSB**、**lwIP**、**cJSON**、**ETL** |
-| **可选积木（Fetch）** | 默认不进 git；`mini_tree_link_*` 时拉取；也可手动 clone 到 `lib/<Name>` 离线 | littlefs、FatFs、MultiButton、MCUBoot、nanopb、coreMQTT、coreHTTP、miniz、libmodbus、LVGL、u8g2、mbedtls、CMSIS-DSP、FlashDB、SFUD、EasyFlash、EasyLogger、FreeModbus… |
+| **vendor（进 git）** | 源码在 `lib/` | **FreeRTOS**、**RT-Thread**、**ETL** |
+| **配置期 Fetch** | 未本地提供时 configure 阶段拉取；本地 `lib/<Name>` 优先 | **TinyUSB**、**lwIP**、**cJSON** |
+| **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | littlefs、FatFs、MultiButton、MCUBoot、nanopb、coreMQTT、coreHTTP、miniz、libmodbus、LVGL、u8g2、mbedtls、CMSIS-DSP、FlashDB、SFUD、EasyFlash、EasyLogger、FreeModbus… |
 | **C++ 基础（默认进库）** | ETL 在 `lib/etl`；根 CMake **始终** `mini_tree_link_etl(mini_tree)` | 上层 C++ / `SYSTEM_CPP` 基座 |
 
 实现：`cmake/dep_fetch.cmake` 的 `mini_tree_dep_get()`（本地标记文件存在则用本地，否则 `FetchContent`）。  
 可选积木路径已写入根 [`.gitignore`](../.gitignore)。
+
+> **变更**：`cmake/tinyusb.cmake` 对「本地未提供 `src/CMakeLists.txt`」的离线场景容错——TinyUSB 核心源置空而不报错（`mini_tree` 静态库默认不链接 tinyusb，仅板级 USB port 需要）。
 
 ---
 
@@ -30,7 +33,7 @@
 | 原则 | 含义 |
 | :--- | :--- |
 | **开源积木** | 均为开源项目；商用前请复核各库 `LICENSE`（如 libmodbus 为 LGPL） |
-| **基础设施进仓 / 其余 Fetch** | 控体积；OS/USB/网络/JSON/C++ 基座常驻，其它首次链接需联网或预置本地 |
+| **基础设施 vendor / 其余 Fetch** | 控体积；OS/ETL 常驻，USB/网络/JSON 配置期拉取，其它首次链接需联网或预置本地 |
 | **核心保持瘦** | 中间件不绑定厂商 SDK，也不强制带齐 GUI / TLS / 文件系统 |
 | **按需链接** | 可选积木默认不编进固件；调用 `mini_tree_link_*`（或 OSAL Kconfig）时才进入镜像 |
 | **ETL 默认进库** | **不是可选积木**：上层 C++ 基础，源码在 `lib/etl`，根 CMake 默认链入 `mini_tree` |
@@ -76,8 +79,8 @@
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| TinyUSB | `lib/tinyusb` | 随仓 | USB 设备/主机栈 | 板级 `usb_tusb_port` |
-| lwIP | `lib/lwip` | 2.2.1 | TCP/IP | `mini_tree_link_lwip` + `lwipopts.h` |
+| TinyUSB | Fetch / `lib/tinyusb` | 0.21.0 | USB 设备/主机栈 | 板级 `usb_tusb_port` |
+| lwIP | Fetch / `lib/lwip` | 2.2.1 | TCP/IP | `mini_tree_link_lwip` + `lwipopts.h` |
 | coreMQTT | Fetch / `lib/coreMQTT` | v5.0.2 | MQTT 客户端 | `mini_tree_link_coremqtt` + `core_mqtt_config.h` |
 | coreHTTP | Fetch / `lib/coreHTTP` | v3.1.3 | HTTP 客户端 | `mini_tree_link_corehttp` + `core_http_config.h` |
 | libmodbus | Fetch / `lib/libmodbus` | v3.1.10 | Modbus RTU/TCP | `mini_tree_link_libmodbus`（宜 POSIX/RTOS） |
@@ -107,7 +110,7 @@
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| cJSON | `lib/cJSON` | 1.7.19 | JSON | `mini_tree_link_cjson` |
+| cJSON | Fetch / `lib/cJSON` | 1.7.19 | JSON | `mini_tree_link_cjson` |
 | ETL | `lib/etl` | 20.48.1 | **上层 C++ 基础** | **默认进库** |
 | nanopb | Fetch / `lib/nanopb` | 0.4.9.1 | Protobuf | `mini_tree_link_nanopb` |
 | EasyLogger | Fetch / `lib/EasyLogger` | 2.2.0 | 日志 | `mini_tree_link_easylogger` |

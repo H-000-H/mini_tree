@@ -51,7 +51,7 @@
      bool                dma_it_enable;                                         /**< DMA 中断模式使能标志 */
      uint16_t            dma_raw_data_buf[DMA_BUFFER_SIZE]COMPAT_ALIGNED(32);   /**< DMA 原始采样缓冲区 */
      struct fifo_spsc    dma_buffer_handle;                                     /**< DMA 中断 FIFO 句柄 */
-     Fifo_Data_type      dma_data_buf[DMA_BUFFER_SIZE]COMPAT_ALIGNED(32);       /**< DMA 中断 FIFO 数据缓冲区 */
+     fifo_data_type      dma_data_buf[DMA_BUFFER_SIZE]COMPAT_ALIGNED(32);       /**< DMA 中断 FIFO 数据缓冲区 */
  };
 
  /*===========================================================================================================================================================*/

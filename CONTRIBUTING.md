@@ -17,6 +17,7 @@
 4. 新建源文件首行必须携带 `/* SPDX-License-Identifier: Apache-2.0 */`（C）或 `/** SPDX-License-Identifier: Apache-2.0 ...`（头文件 Doxygen 块）。  
 5. 文档与代码同 PR：至少更新 [docs/file_index.md](docs/file_index.md) 或对应 `docs/*`；新开源积木更新 [docs/ecosystem.md](docs/ecosystem.md) + [NOTICE](NOTICE)（含版本、版权人、许可证）。  
 6. 遵守 [docs/fast_path.md](docs/fast_path.md) 与分层 poison。  
+7. **语言规范**：app 以下为强规定、app 层为建议，详见 [docs/coding_style.md](docs/coding_style.md)（命名由 `.clang-tidy` 强制，格式由 `.clang-format` 强制）。  
 
 ---
 

@@ -22,11 +22,11 @@
 #include "etl/numeric.h"
 #include "etl/tuple.h"
 #include "etl/utility.h"
-namespace CPP_Limitstion_Recommendations 
+namespace cpp_limitation_recommendations 
 {
 /*===============================================================================================================================================================================================*/
-    const etl::string<100> preview_str= "该文档的存在只是作者建议基于嵌入式的条件下对cpp的限制性建议,不要将该文件链接与cmake接入实际的项目里面";
-    const etl::string<100> file_write_limits_str = "该文件不允许使用非隔离分隔符进行文件的写入,请使用etl/stl标准库容器或者cpp正常语法进行文件的写入";
+    const etl::string<100> k_preview_str= "该文档的存在只是作者建议基于嵌入式的条件下对cpp的限制性建议,不要将该文件链接与cmake接入实际的项目里面";
+    const etl::string<100> k_file_write_limits_str = "该文件不允许使用非隔离分隔符进行文件的写入,请使用etl/stl标准库容器或者cpp正常语法进行文件的写入";
 /*===============================================================================================================================================================================================*/
 
 etl::optional<etl::string<100>> get_recommend_grammer_str1(etl::string<100> recommend_grammer_str)
@@ -39,7 +39,7 @@ etl::optional<etl::string<100>> get_recommend_grammer_str1(etl::string<100> reco
 }
 
 /*===============================================================================================================================================================================================*/
-    const etl::vector<etl::string<200>, 20> recommend_grammer_str = {
+    const etl::vector<etl::string<200>, 20> k_recommend_grammer_str = {
         "1.etl::vector | 例:etl::vector<int,16> v; v.push_back(1); for(auto x:v){} | 优势:定容无堆、随机访问O(1)、替代std::vector",
         "2.etl::map | 例:etl::map<int,int,8> m; m.insert({1,10}); auto it=m.find(1); | 优势:有序键值、定容查找、无堆分配",
         "3.etl::set | 例:etl::set<int,8> s; s.insert(3); bool ok=s.contains(3); | 优势:有序去重集合、定容、适合枚举/标志集合",
@@ -79,7 +79,7 @@ etl::optional<etl::string<100>> get_recommend_grammer_str2(etl::string<100> reco
 
 /*===============================================================================================================================================================================================*/
     /* first=条目, second=原因；分档: 推荐 / 少用 / 非必要 / 禁止(+仓规) */
-    const etl::array<etl::pair<etl::string<128>, etl::string<128>>, 41> limit_or_banned_str = {{
+    const etl::array<etl::pair<etl::string<128>, etl::string<128>>, 41> k_limit_or_banned_str = {{
 /*===============================================================================================================================================================================================*/
         {"推荐用constexpr声明常量",
          "原因:编译期求值、少占可变RAM、配置错误更早暴露"},
@@ -177,6 +177,6 @@ etl::optional<etl::string<100>> get_recommend_grammer_str2(etl::string<100> reco
         return etl::nullopt;
     }
 /*===============================================================================================================================================================================================*/
-    const etl::string<100> language_selection_recommend_str = "个人是比较推荐上层使用cpp而不是c的因为c在业务层暴露的问题和麻烦远大于cpp语言本身的问题 而且cpp写业务层有大量隐性优势(不细说)";
+    const etl::string<100> k_language_selection_recommend_str = "个人是比较推荐上层使用cpp而不是c的因为c在业务层暴露的问题和麻烦远大于cpp语言本身的问题 而且cpp写业务层有大量隐性优势(不细说)";
 /*===============================================================================================================================================================================================*/
-} // namespace CPP_Limitstion_Recommendations
+} // namespace cpp_limitation_recommendations

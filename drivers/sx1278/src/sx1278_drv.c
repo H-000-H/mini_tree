@@ -40,7 +40,7 @@ struct sx1278_device
 static struct sx1278_device s_sx1278_pool[SX1278_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_sx1278_used[SX1278_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sx1278_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "sx1278";
+static const char* const k_tag = "sx1278";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -302,7 +302,7 @@ static int sx1278_probe(struct device* dev)
     }
     d->ops = sx1278_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

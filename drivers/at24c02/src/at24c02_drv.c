@@ -39,7 +39,7 @@ struct at24c02_device
 static struct at24c02_device s_at24c02_pool[AT24C02_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_at24c02_used[AT24C02_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_at24c02_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "at24c02";
+static const char* const k_tag = "at24c02";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -276,7 +276,7 @@ static int at24c02_probe(struct device* dev)
     }
     d->ops = at24c02_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;

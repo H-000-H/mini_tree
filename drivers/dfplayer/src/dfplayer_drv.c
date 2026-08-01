@@ -41,7 +41,7 @@ struct dfplayer_device
 static struct dfplayer_device s_dfplayer_pool[DFPLAYER_POOL_COUNT] COMPAT_ALIGNED(4);
 static uint8_t             s_dfplayer_used[DFPLAYER_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_dfplayer_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const kTag = "dfplayer";
+static const char* const k_tag = "dfplayer";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
@@ -292,7 +292,7 @@ static int dfplayer_probe(struct device* dev)
     }
     d->ops = dfplayer_fops;
     dev->ops = &d->ops;
-    SYS_LOGI(kTag, "probe OK pool=%d", pool_idx);
+    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
     dev->ops = NULL;
