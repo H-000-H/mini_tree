@@ -1,4 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file relay_drv.c
+ * @brief 继电器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
+ *
+ * 静态池: s_relay_pool[RELAY_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令见 relay_drv.h。
+ */
 #include "relay_drv.h"
 #include "vfs-gpio.h"
 #include "device.h"
@@ -18,13 +25,14 @@
 #endif
 #define RELAY_POOL_COUNT  DTC_GEN_COUNT_GPIO_RELAY
 
+/** @brief 继电器驱动实例（嵌入 fops 与 GPIO 句柄） */
 struct relay_device
 {
-    struct file_operations ops;
-    struct device* gdev;
-    struct vfs_gpio_arg gpio;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* gdev;             /**< GPIO 设备（phandle: relay-gpio） */
+    struct vfs_gpio_arg gpio;        /**< GPIO 操作参数 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct relay_device s_relay_pool[RELAY_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,18 +40,29 @@ static uint8_t             s_relay_used[RELAY_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_relay_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "relay";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void relay_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_relay_pool_ctrl, s_relay_used, RELAY_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct relay_device* relay_get_drvdata(struct device* dev)
 {
     return (struct relay_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 打开 GPIO 设备并绑定参数（失败回滚关闭）
+ */
 static int relay_gpio_on(struct relay_device* d, struct device* g, struct vfs_gpio_arg* a)
 {
     int r = device_open(g, NULL);
@@ -54,6 +73,10 @@ static int relay_gpio_on(struct relay_device* d, struct device* g, struct vfs_gp
 }
 
 
+/**
+ * @brief 首次 open 时打开 GPIO 并绑定参数
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int relay_hw_create(struct relay_device* d)
 {
     if (!d)
@@ -64,6 +87,9 @@ static int relay_hw_create(struct relay_device* d)
     d->hw_ready = 1; return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 GPIO 设备）
+ */
 static void relay_hw_destroy(struct relay_device* d)
 {
     if (!d || !d->hw_ready)
@@ -74,6 +100,9 @@ static void relay_hw_destroy(struct relay_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int relay_open(struct device* dev, void* arg)
 {
     struct relay_device* d;
@@ -105,6 +134,9 @@ static int relay_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int relay_close(struct device* dev)
 {
     struct relay_device* d;
@@ -127,10 +159,16 @@ static int relay_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*relay_ioctl_fn_t)(struct relay_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct relay_ioctl_map { relay_ioctl_fn_t handler; };
 
 
+/**
+ * @brief RELAY_CMD_SET 实现：GPIO 电平控制吸合/断开
+ */
 static int relay_cmd(struct relay_device* d, void* arg, size_t len, uint32_t ms)
 {
     COMPAT_IGNORE_RESULT(ms);
@@ -144,6 +182,9 @@ static const struct relay_ioctl_map s_relay_map[RELAY_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int relay_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct relay_device* d;
@@ -177,6 +218,9 @@ static const struct file_operations relay_fops =
     .ioctl = relay_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定 relay-gpio 并挂 fops
+ */
 static int relay_probe(struct device* dev)
 {
     struct relay_device* d;
@@ -207,6 +251,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int relay_remove(struct device* dev)
 {
     struct relay_device* d;

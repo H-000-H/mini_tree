@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file ina219_drv.c
+ * @brief INA219 电流/功率监测驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_ina219_pool[INA219_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与采样结构见 ina219_drv.h。
+ *
+ * 数据流: VFS ioctl → ina219_cmd_read → device_read/write(I2C) → HAL
+ */
 #include "ina219_drv.h"
 #include "vfs-i2c.h"
 
@@ -19,12 +28,13 @@
 #endif
 #define INA219_POOL_COUNT  DTC_GEN_COUNT_TI_INA219
 
+/** @brief INA219 驱动实例（嵌入 fops） */
 struct ina219_device
 {
-    struct file_operations ops;
-    struct device*         i2c_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         i2c_dev;  /**< 所属 I2C client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct ina219_device s_ina219_pool[INA219_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,24 +42,40 @@ static uint8_t             s_ina219_used[INA219_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_ina219_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "ina219";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void ina219_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_ina219_pool_ctrl, s_ina219_used, INA219_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct ina219_device* ina219_get_drvdata(struct device* dev)
 {
     return (struct ina219_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 向 I2C 总线写数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int ina219_i2c_wr(struct ina219_device* d, const uint8_t* tx, size_t len, uint32_t to)
 {
     if (!d || !d->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
     return device_write(d->i2c_dev, tx, len, to);
 }
+/**
+ * @brief 从 I2C 总线读数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int ina219_i2c_rd(struct ina219_device* d, uint8_t* rx, size_t len, uint32_t to)
 {
     if (!d || !d->i2c_dev || !rx || len == 0U)
@@ -58,6 +84,10 @@ static int ina219_i2c_rd(struct ina219_device* d, uint8_t* rx, size_t len, uint3
 }
 
 
+/**
+ * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int ina219_hw_create(struct ina219_device* d)
 {
     int r;
@@ -73,6 +103,9 @@ static int ina219_hw_create(struct ina219_device* d)
     return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 I2C client）
+ */
 static void ina219_hw_destroy(struct ina219_device* d)
 {
     if (!d || !d->hw_ready)
@@ -83,6 +116,9 @@ static void ina219_hw_destroy(struct ina219_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int ina219_open(struct device* dev, void* arg)
 {
     struct ina219_device* d;
@@ -114,6 +150,9 @@ static int ina219_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int ina219_close(struct device* dev)
 {
     struct ina219_device* d;
@@ -136,10 +175,17 @@ static int ina219_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*ina219_ioctl_fn_t)(struct ina219_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct ina219_ioctl_map { ina219_ioctl_fn_t handler; };
 
 
+/**
+ * @brief 读 16bit 大端寄存器
+ * @param out 输出寄存器值
+ */
 static int ina219_rd16(struct ina219_device* d, uint8_t reg, int16_t* out, uint32_t to)
 {
     uint8_t raw[2];
@@ -152,6 +198,9 @@ static int ina219_rd16(struct ina219_device* d, uint8_t reg, int16_t* out, uint3
     *out = (int16_t)((raw[0] << 8) | raw[1]);
     return VFS_OK;
 }
+/**
+ * @brief INA219_CMD_READ_POWER 实现：读总线电压/电流/功率寄存器并换算
+ */
 static int ina219_cmd_read(struct ina219_device* d, void* arg, size_t len, uint32_t to)
 {
     struct ina219_sample* o = (struct ina219_sample*)arg;
@@ -179,6 +228,9 @@ static const struct ina219_ioctl_map s_ina219_map[INA219_CMD_COUNT] = {
     [INA219_CMD_READ_POWER - INA219_CMD_BASE - 1] = { ina219_cmd_read },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int ina219_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct ina219_device* d;
@@ -211,6 +263,9 @@ static const struct file_operations ina219_fops = {
     .ioctl = ina219_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 I2C 设备并挂 fops
+ */
 static int ina219_probe(struct device* dev)
 {
     struct ina219_device* d;
@@ -245,6 +300,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int ina219_remove(struct device* dev)
 {
     struct ina219_device* d;

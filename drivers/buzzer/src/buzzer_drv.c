@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file buzzer_drv.c
+ * @brief 蜂鸣器驱动实现 — 挂在 TIM（PWM）或 GPIO 下的 VFS 设备驱动
+ *
+ * 静态池: s_buzzer_pool[BUZZER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令见 buzzer_drv.h。
+ *
+ * 两种后端：phandle pwm（TIM 快路径）或 beep-gpio（GPIO 电平）
+ */
 #include "buzzer_drv.h"
 #include "vfs-tim.h"
 #include "vfs-gpio.h"
@@ -19,16 +28,17 @@
 #endif
 #define BUZZER_POOL_COUNT  DTC_GEN_COUNT_GPIO_BUZZER_PASSIVE
 
+/** @brief 蜂鸣器驱动实例（嵌入 fops 与双后端句柄） */
 struct buzzer_device
 {
-    struct file_operations ops;
-    struct device* tim_dev;
-    struct device* gpio_dev;
-    struct vfs_tim_arg tim;
-    struct vfs_gpio_arg gpio;
-    int use_tim;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* tim_dev;          /**< PWM TIM 设备（phandle: pwm，可选） */
+    struct device* gpio_dev;         /**< 电平 GPIO 设备（phandle: beep-gpio，可选） */
+    struct vfs_tim_arg tim;          /**< PWM 参数（快路径） */
+    struct vfs_gpio_arg gpio;        /**< GPIO 参数 */
+    int use_tim;                     /**< 后端选择：1=TIM PWM，0=GPIO */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct buzzer_device s_buzzer_pool[BUZZER_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -36,12 +46,20 @@ static uint8_t             s_buzzer_used[BUZZER_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_buzzer_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "buzzer";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void buzzer_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_buzzer_pool_ctrl, s_buzzer_used, BUZZER_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct buzzer_device* buzzer_get_drvdata(struct device* dev)
 {
     return (struct buzzer_device*)device_get_priv(dev);
@@ -49,6 +67,10 @@ static struct buzzer_device* buzzer_get_drvdata(struct device* dev)
 
 
 
+/**
+ * @brief 首次 open 时打开对应后端（TIM 或 GPIO）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int buzzer_hw_create(struct buzzer_device* d)
 {
     if (!d)
@@ -66,6 +88,9 @@ static int buzzer_hw_create(struct buzzer_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭全部后端设备）
+ */
 static void buzzer_hw_destroy(struct buzzer_device* d)
 {
     if (!d || !d->hw_ready)
@@ -76,6 +101,9 @@ static void buzzer_hw_destroy(struct buzzer_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int buzzer_open(struct device* dev, void* arg)
 {
     struct buzzer_device* d;
@@ -107,6 +135,9 @@ static int buzzer_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int buzzer_close(struct device* dev)
 {
     struct buzzer_device* d;
@@ -129,10 +160,16 @@ static int buzzer_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*buzzer_ioctl_fn_t)(struct buzzer_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct buzzer_ioctl_map { buzzer_ioctl_fn_t handler; };
 
 
+/**
+ * @brief BUZZER_CMD_BEEP 实现：PWM 占空比或 GPIO 电平控制，可带时长
+ */
 static int buzzer_cmd_beep(struct buzzer_device* d, void* arg, size_t len, uint32_t ms)
 {
     int on; uint32_t dur;
@@ -159,6 +196,9 @@ static const struct buzzer_ioctl_map s_buzzer_map[BUZZER_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int buzzer_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct buzzer_device* d;
@@ -192,6 +232,9 @@ static const struct file_operations buzzer_fops =
     .ioctl = buzzer_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定 pwm/beep-gpio 并挂 fops
+ */
 static int buzzer_probe(struct device* dev)
 {
     struct buzzer_device* d;
@@ -226,6 +269,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int buzzer_remove(struct device* dev)
 {
     struct buzzer_device* d;

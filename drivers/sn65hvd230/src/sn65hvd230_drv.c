@@ -1,4 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file sn65hvd230_drv.c
+ * @brief SN65HVD230 CAN 收发器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
+ *
+ * 静态池: s_sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令见 sn65hvd230_drv.h。
+ */
 #include "sn65hvd230_drv.h"
 #include "vfs-gpio.h"
 #include "device.h"
@@ -18,13 +25,14 @@
 #endif
 #define SN65HVD230_POOL_COUNT  DTC_GEN_COUNT_TI_SN65HVD230
 
+/** @brief SN65HVD230 驱动实例（嵌入 fops 与 GPIO 句柄） */
 struct sn65hvd230_device
 {
-    struct file_operations ops;
-    struct device* gdev;
-    struct vfs_gpio_arg gpio;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* gdev;             /**< 待机控制 GPIO 设备 */
+    struct vfs_gpio_arg gpio;        /**< GPIO 操作参数 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct sn65hvd230_device s_sn65hvd230_pool[SN65HVD230_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,6 +40,9 @@ static uint8_t             s_sn65hvd230_used[SN65HVD230_POOL_COUNT] COMPAT_ALIGN
 static osal_pool_t         s_sn65hvd230_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "sn65hvd230";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void sn65hvd230_pool_boot_init(void)
 {
@@ -44,6 +55,9 @@ static struct sn65hvd230_device* sn65hvd230_get_drvdata(struct device* dev)
 }
 
 
+/**
+ * @brief 打开 GPIO 设备并绑定参数（失败回滚关闭）
+ */
 static int sn65hvd230_gpio_on(struct sn65hvd230_device* d, struct device* g, struct vfs_gpio_arg* a)
 {
     int r = device_open(g, NULL);
@@ -54,6 +68,10 @@ static int sn65hvd230_gpio_on(struct sn65hvd230_device* d, struct device* g, str
 }
 
 
+/**
+ * @brief 首次 open 时打开 GPIO 并绑定参数
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int sn65hvd230_hw_create(struct sn65hvd230_device* d)
 {
     if (!d)
@@ -64,6 +82,9 @@ static int sn65hvd230_hw_create(struct sn65hvd230_device* d)
     d->hw_ready = 1; return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 GPIO 设备）
+ */
 static void sn65hvd230_hw_destroy(struct sn65hvd230_device* d)
 {
     if (!d || !d->hw_ready)
@@ -74,6 +95,9 @@ static void sn65hvd230_hw_destroy(struct sn65hvd230_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int sn65hvd230_open(struct device* dev, void* arg)
 {
     struct sn65hvd230_device* d;
@@ -105,6 +129,9 @@ static int sn65hvd230_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int sn65hvd230_close(struct device* dev)
 {
     struct sn65hvd230_device* d;
@@ -131,6 +158,9 @@ typedef int (*sn65hvd230_ioctl_fn_t)(struct sn65hvd230_device* d, void* arg, siz
 struct sn65hvd230_ioctl_map { sn65hvd230_ioctl_fn_t handler; };
 
 
+/**
+ * @brief SN65HVD230_CMD_SET_STANDBY 实现：待机/正常模式切换
+ */
 static int sn65hvd230_cmd(struct sn65hvd230_device* d, void* arg, size_t len, uint32_t ms)
 {
     COMPAT_IGNORE_RESULT(ms);
@@ -144,6 +174,9 @@ static const struct sn65hvd230_ioctl_map s_sn65hvd230_map[SN65HVD230_CMD_COUNT] 
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int sn65hvd230_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct sn65hvd230_device* d;
@@ -177,6 +210,9 @@ static const struct file_operations sn65hvd230_fops =
     .ioctl = sn65hvd230_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定待机 GPIO 并挂 fops
+ */
 static int sn65hvd230_probe(struct device* dev)
 {
     struct sn65hvd230_device* d;
@@ -207,6 +243,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int sn65hvd230_remove(struct device* dev)
 {
     struct sn65hvd230_device* d;

@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/*
- * MAX98357A 驱动 — SDN 经 vfs-gpio（禁止厂商 SDK）
+/**
+ * @file max98357a_drv.c
+ * @brief MAX98357A 功放驱动实现 — SDN 经 vfs-gpio（禁止厂商 SDK）
+ *
+ * 静态池: s_max98357a_pool[MAX98357A_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令见 max98357a_drv.h。
+ *
+ * PCM 走 I2S 总线，本驱动仅控 SDN 引脚；支持挂起/恢复回调。
  */
 #include "max98357a_drv.h"
 #include "vfs-gpio.h"
@@ -23,13 +29,14 @@
 
 #define MAX98357A_COUNT  DTC_GEN_COUNT_MAXIM_MAX98357A
 
+/** @brief MAX98357A 驱动实例（嵌入 fops 与 SDN 引脚） */
 struct max98357a_device
 {
-    struct file_operations ops;
-    struct device*         sdn_dev;
-    struct vfs_gpio_arg    sdn_gpio;
-    int                    active_level;
-    int                    hw_ready;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         sdn_dev;  /**< SDN 引脚 GPIO 设备（phandle: sdn-gpio） */
+    struct vfs_gpio_arg    sdn_gpio; /**< SDN 引脚操作参数 */
+    int                    active_level; /**< 使能有效电平（DTS active-level） */
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct max98357a_device s_max98357a_pool[MAX98357A_COUNT] COMPAT_ALIGNED(4);
@@ -38,6 +45,9 @@ static osal_pool_t             s_max98357a_pool_ctrl COMPAT_ALIGNED(4);
 
 static const char* const kTag = "max98357a";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void max98357a_pool_boot_init(void)
 {
@@ -45,11 +55,19 @@ static void max98357a_pool_boot_init(void)
                                          MAX98357A_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct max98357a_device* max98357a_get_drvdata(struct device* dev)
 {
     return (struct max98357a_device*)device_get_priv(dev);
 }
 
+/**
+ * @brief 设置 SDN 电平（按有效极性换算）
+ */
 static int max98357a_set_level(struct max98357a_device* amp, int enable)
 {
     if (!amp || !amp->sdn_gpio.obj)
@@ -58,6 +76,10 @@ static int max98357a_set_level(struct max98357a_device* amp, int enable)
     return vfs_gpio_set_level(&amp->sdn_gpio);
 }
 
+/**
+ * @brief 首次 open 时打开 SDN GPIO 并默认使能功放
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int max98357a_hw_create(struct max98357a_device* amp)
 {
     int ret;
@@ -91,6 +113,9 @@ static int max98357a_hw_create(struct max98357a_device* amp)
     return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 SDN GPIO，功放下电）
+ */
 static void max98357a_hw_destroy(struct max98357a_device* amp)
 {
     if (!amp || !amp->hw_ready)
@@ -102,6 +127,9 @@ static void max98357a_hw_destroy(struct max98357a_device* amp)
     amp->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int max98357a_open(struct device* dev, void* arg)
 {
     struct max98357a_device* amp;
@@ -140,6 +168,9 @@ static int max98357a_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int max98357a_close(struct device* dev)
 {
     struct max98357a_device* amp;
@@ -168,6 +199,9 @@ static int max98357a_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief MAX98357A_CMD_SET_ENABLE 实现：功放使能/关闭
+ */
 static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(timeout_ms);
@@ -178,6 +212,9 @@ static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, siz
     return max98357a_set_level(amp, *(int*)arg);
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*max98357a_ioctl_fn_t)(struct max98357a_device* amp, void* arg, size_t arg_len, uint32_t timeout_ms);
 
 struct max98357a_ioctl_map
@@ -190,6 +227,9 @@ static const struct max98357a_ioctl_map s_max98357a_ioctl_map[MAX98357A_CMD_COUN
     [MAX98357A_CMD_SET_ENABLE - MAX98357A_CMD_BASE - 1] = { max98357a_cmd_set_enable },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int max98357a_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct max98357a_device* amp;
@@ -223,6 +263,9 @@ static int max98357a_ioctl(struct device* dev, int cmd, void* arg, size_t arg_le
     return ret;
 }
 
+/**
+ * @brief fops.suspend：关功放（静音）
+ */
 static int max98357a_suspend(struct device* dev)
 {
     struct max98357a_device* amp = max98357a_get_drvdata(dev);
@@ -232,6 +275,9 @@ static int max98357a_suspend(struct device* dev)
     return max98357a_set_level(amp, 0);
 }
 
+/**
+ * @brief fops.resume：恢复功放使能
+ */
 static int max98357a_resume(struct device* dev)
 {
     struct max98357a_device* amp = max98357a_get_drvdata(dev);
@@ -250,6 +296,9 @@ static const struct file_operations max98357a_fops =
     .resume  = max98357a_resume,
 };
 
+/**
+ * @brief probe：claim 池项、绑定 sdn-gpio 与 active-level 并挂 fops
+ */
 static int max98357a_probe(struct device* dev)
 {
     struct max98357a_device* amp;
@@ -297,6 +346,9 @@ err_pool:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int max98357a_remove(struct device* dev)
 {
     struct max98357a_device* amp;

@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file ds18b20_drv.c
+ * @brief DS18B20 单总线温度传感器驱动实现 — 挂在 GPIO 单总线（OW）下的 VFS 设备驱动
+ *
+ * 静态池: s_ds18b20_pool[DS18B20_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令见 ds18b20_drv.h，单总线命令定义见 ds18b20_regs.h。
+ *
+ * 数据流: VFS ioctl → ds18b20_cmd_temp → GPIO 位时序（vfs_gpio_*）→ HAL
+ */
 #include "ds18b20_drv.h"
 #include "ds18b20_regs.h"
 #include "vfs-gpio.h"
@@ -19,13 +28,14 @@
 #endif
 #define DS18B20_POOL_COUNT  DTC_GEN_COUNT_MAXIM_DS18B20
 
+/** @brief DS18B20 驱动实例（嵌入 fops 与 GPIO 操作参数） */
 struct ds18b20_device
 {
-    struct file_operations ops;
-    struct device* data_dev;
-    struct vfs_gpio_arg data_gpio;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* data_dev;         /**< data 引脚所属 GPIO 设备（phandle: data-gpio） */
+    struct vfs_gpio_arg data_gpio;   /**< GPIO 操作参数（引脚号 + 电平） */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct ds18b20_device s_ds18b20_pool[DS18B20_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -33,23 +43,38 @@ static uint8_t             s_ds18b20_used[DS18B20_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_ds18b20_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "ds18b20";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void ds18b20_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_ds18b20_pool_ctrl, s_ds18b20_used, DS18B20_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct ds18b20_device* ds18b20_get_drvdata(struct device* dev)
 {
     return (struct ds18b20_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 微秒延时（OSAL 转发）
+ */
 static void ds18b20_delay_us(uint32_t us)
 {
     osal_delay_us(us);
 }
 
+/**
+ * @brief 单总线复位脉冲：拉低 480us 后释放，检测存在脉冲
+ * @return VFS_OK（检测到应答）或 VFS_ERR_IO（无应答）
+ */
 static int ds18b20_reset(struct ds18b20_device* d)
 {
     int present;
@@ -69,6 +94,9 @@ static int ds18b20_reset(struct ds18b20_device* d)
     return present ? VFS_OK : VFS_ERR_IO;
 }
 
+/**
+ * @brief 写 1bit（写 1：短拉低；写 0：长拉低）
+ */
 static int ds18b20_write_bit(struct ds18b20_device* d, int bit)
 {
     d->data_gpio.level = 0;
@@ -82,6 +110,10 @@ static int ds18b20_write_bit(struct ds18b20_device* d, int bit)
     return VFS_OK;
 }
 
+/**
+ * @brief 读 1bit（拉低 3us 后释放，采样电平）
+ * @param bit 输出读到的位
+ */
 static int ds18b20_read_bit(struct ds18b20_device* d, int* bit)
 {
     d->data_gpio.level = 0;
@@ -99,6 +131,9 @@ static int ds18b20_read_bit(struct ds18b20_device* d, int* bit)
     return VFS_OK;
 }
 
+/**
+ * @brief 写 1B（LSB 先行）
+ */
 static int ds18b20_write_byte(struct ds18b20_device* d, uint8_t v)
 {
     int i;
@@ -111,6 +146,10 @@ static int ds18b20_write_byte(struct ds18b20_device* d, uint8_t v)
     return VFS_OK;
 }
 
+/**
+ * @brief 读 1B（LSB 先行）
+ * @param v 输出读到的字节
+ */
 static int ds18b20_read_byte(struct ds18b20_device* d, uint8_t* v)
 {
     int i;
@@ -128,6 +167,10 @@ static int ds18b20_read_byte(struct ds18b20_device* d, uint8_t* v)
 }
 
 
+/**
+ * @brief 首次 open 时打开 GPIO 设备并查询默认电平（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int ds18b20_hw_create(struct ds18b20_device* d)
 {
     if (!d)
@@ -141,6 +184,9 @@ static int ds18b20_hw_create(struct ds18b20_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭 GPIO 设备）
+ */
 static void ds18b20_hw_destroy(struct ds18b20_device* d)
 {
     if (!d || !d->hw_ready)
@@ -150,6 +196,9 @@ static void ds18b20_hw_destroy(struct ds18b20_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int ds18b20_open(struct device* dev, void* arg)
 {
     struct ds18b20_device* d;
@@ -181,6 +230,9 @@ static int ds18b20_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int ds18b20_close(struct device* dev)
 {
     struct ds18b20_device* d;
@@ -203,10 +255,16 @@ static int ds18b20_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct ds18b20_ioctl_map { ds18b20_ioctl_fn_t handler; };
 
 
+/**
+ * @brief DS18B20_CMD_READ_TEMP 实现：复位 → 转换（750ms）→ 读暂存器换算温度
+ */
 static int ds18b20_cmd_temp(struct ds18b20_device* d, void* arg, size_t len, uint32_t ms)
 {
     uint8_t lo = 0;
@@ -242,6 +300,9 @@ static const struct ds18b20_ioctl_map s_ds18b20_map[DS18B20_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int ds18b20_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct ds18b20_device* d;
@@ -275,6 +336,9 @@ static const struct file_operations ds18b20_fops =
     .ioctl = ds18b20_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定 data-gpio 设备并挂 fops
+ */
 static int ds18b20_probe(struct device* dev)
 {
     struct ds18b20_device* d;
@@ -305,6 +369,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int ds18b20_remove(struct device* dev)
 {
     struct ds18b20_device* d;

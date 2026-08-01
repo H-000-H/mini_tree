@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file pn532_drv.c
+ * @brief PN532 NFC 模块驱动实现 — 挂在 UART（HSU）总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 pn532_drv.h。
+ *
+ * 数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
+ */
 #include "pn532_drv.h"
 #include "vfs-uart.h"
 
@@ -19,12 +28,13 @@
 #endif
 #define PN532_POOL_COUNT  DTC_GEN_COUNT_NXP_PN532_HSU
 
+/** @brief PN532 驱动实例（嵌入 fops） */
 struct pn532_device
 {
-    struct file_operations ops;
-    struct device*         uart_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         uart_dev; /**< 所属 UART client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct pn532_device s_pn532_pool[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,24 +42,40 @@ static uint8_t             s_pn532_used[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_pn532_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "pn532";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void pn532_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_pn532_pool_ctrl, s_pn532_used, PN532_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct pn532_device* pn532_get_drvdata(struct device* dev)
 {
     return (struct pn532_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 向 UART 总线写数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int pn532_uart_wr(struct pn532_device* d, const uint8_t* tx, size_t len, uint32_t to)
 {
     if (!d || !d->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
     return device_write(d->uart_dev, tx, len, to);
 }
+/**
+ * @brief 从 UART 总线读数据
+ * @return 读取字节数或 VFS_ERR_*
+ */
 static int pn532_uart_rd(struct pn532_device* d, uint8_t* rx, size_t len, uint32_t to)
 {
     if (!d || !d->uart_dev || !rx || len == 0U)
@@ -58,6 +84,10 @@ static int pn532_uart_rd(struct pn532_device* d, uint8_t* rx, size_t len, uint32
 }
 
 
+/**
+ * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int pn532_hw_create(struct pn532_device* d)
 {
     int r;
@@ -73,6 +103,9 @@ static int pn532_hw_create(struct pn532_device* d)
     return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 UART client）
+ */
 static void pn532_hw_destroy(struct pn532_device* d)
 {
     if (!d || !d->hw_ready)
@@ -83,6 +116,9 @@ static void pn532_hw_destroy(struct pn532_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int pn532_open(struct device* dev, void* arg)
 {
     struct pn532_device* d;
@@ -114,6 +150,9 @@ static int pn532_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int pn532_close(struct device* dev)
 {
     struct pn532_device* d;
@@ -136,10 +175,16 @@ static int pn532_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*pn532_ioctl_fn_t)(struct pn532_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct pn532_ioctl_map { pn532_ioctl_fn_t handler; };
 
 
+/**
+ * @brief PN532_CMD_GET_FIRMWARE 实现：HSU 唤醒 + GetFirmwareVersion 帧解析
+ */
 static int pn532_cmd_fw(struct pn532_device* d, void* arg, size_t len, uint32_t to)
 {
     /* HSU wake + GetFirmwareVersion 帧 */
@@ -174,6 +219,9 @@ static const struct pn532_ioctl_map s_pn532_map[PN532_CMD_COUNT] = {
     [PN532_CMD_GET_FIRMWARE - PN532_CMD_BASE - 1] = { pn532_cmd_fw },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int pn532_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct pn532_device* d;
@@ -206,6 +254,9 @@ static const struct file_operations pn532_fops = {
     .ioctl = pn532_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 UART 设备并挂 fops
+ */
 static int pn532_probe(struct device* dev)
 {
     struct pn532_device* d;
@@ -240,6 +291,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int pn532_remove(struct device* dev)
 {
     struct pn532_device* d;

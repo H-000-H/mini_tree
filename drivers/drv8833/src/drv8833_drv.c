@@ -1,4 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file drv8833_drv.c
+ * @brief DRV8833 双路电机驱动实现 — 挂在 GPIO（AIN1/2、BIN1/2）下的 VFS 设备驱动
+ *
+ * 静态池: s_drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 drv8833_drv.h。
+ */
 #include "drv8833_drv.h"
 #include "vfs-gpio.h"
 #include "device.h"
@@ -18,15 +25,16 @@
 #endif
 #define DRV8833_POOL_COUNT  DTC_GEN_COUNT_TI_DRV8833
 
+/** @brief DRV8833 驱动实例（嵌入 fops 与两路 H 桥输入引脚） */
 struct drv8833_device
 {
     struct file_operations ops;
-    struct device* ain1_dev; struct device* ain2_dev;
-    struct device* bin1_dev; struct device* bin2_dev;
-    struct vfs_gpio_arg ain1; struct vfs_gpio_arg ain2;
-    struct vfs_gpio_arg bin1; struct vfs_gpio_arg bin2;
+    struct device* ain1_dev; struct device* ain2_dev;   /**< A 路输入引脚 GPIO 设备 */
+    struct device* bin1_dev; struct device* bin2_dev;   /**< B 路输入引脚 GPIO 设备 */
+    struct vfs_gpio_arg ain1; struct vfs_gpio_arg ain2; /**< A 路输入引脚参数 */
+    struct vfs_gpio_arg bin1; struct vfs_gpio_arg bin2; /**< B 路输入引脚参数 */
 
-    int                    hw_ready;
+    int                    hw_ready;                    /**< 硬件已初始化标志 */
 };
 
 static struct drv8833_device s_drv8833_pool[DRV8833_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -34,12 +42,20 @@ static uint8_t             s_drv8833_used[DRV8833_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_drv8833_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "drv8833";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void drv8833_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct drv8833_device* drv8833_get_drvdata(struct device* dev)
 {
     return (struct drv8833_device*)device_get_priv(dev);
@@ -47,6 +63,10 @@ static struct drv8833_device* drv8833_get_drvdata(struct device* dev)
 
 
 
+/**
+ * @brief 首次 open 时打开四路输入 GPIO 并绑定参数
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int drv8833_hw_create(struct drv8833_device* d)
 {
     if (!d)
@@ -62,6 +82,9 @@ static int drv8833_hw_create(struct drv8833_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭全部 GPIO 设备）
+ */
 static void drv8833_hw_destroy(struct drv8833_device* d)
 {
     if (!d || !d->hw_ready)
@@ -74,6 +97,9 @@ static void drv8833_hw_destroy(struct drv8833_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int drv8833_open(struct device* dev, void* arg)
 {
     struct drv8833_device* d;
@@ -105,6 +131,9 @@ static int drv8833_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int drv8833_close(struct device* dev)
 {
     struct drv8833_device* d;
@@ -131,8 +160,14 @@ typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* d, void* arg, size_t ar
 struct drv8833_ioctl_map { drv8833_ioctl_fn_t handler; };
 
 
+/**
+ * @brief 设置单引脚电平（写 GPIO）
+ */
 static void drv8833_apply(struct vfs_gpio_arg* a, int v)
 { a->level = v?1:0; COMPAT_IGNORE_RESULT(vfs_gpio_set_level(a)); }
+/**
+ * @brief DRV8833_CMD_SET_MOTOR 实现：按方向差分驱动两路输入
+ */
 static int drv8833_cmd_motor(struct drv8833_device* d, void* arg, size_t len, uint32_t ms)
 {
     struct drv8833_motor* m=(struct drv8833_motor*)arg;
@@ -147,6 +182,9 @@ static const struct drv8833_ioctl_map s_drv8833_map[DRV8833_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int drv8833_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct drv8833_device* d;
@@ -180,6 +218,9 @@ static const struct file_operations drv8833_fops =
     .ioctl = drv8833_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定四路输入 GPIO 并挂 fops
+ */
 static int drv8833_probe(struct device* dev)
 {
     struct drv8833_device* d;
@@ -214,6 +255,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int drv8833_remove(struct device* dev)
 {
     struct drv8833_device* d;

@@ -5,7 +5,7 @@
 -DETL_NO_STL
 -I.
 -Iide/stubs
--Iide/third_party/etl/include
+-Ilib/etl/include
 -Icore/include
 -Iboard/include
 -Iboard

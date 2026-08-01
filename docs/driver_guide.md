@@ -12,13 +12,21 @@
 
 ## 目录
 
-1. [文件布局](#1-文件布局)
-2. [dtc-lite 流水线](#2-dtc-lite-流水线)
-3. [DRIVER_REGISTER](#3-driver_register)
-4. [当前仓库已注册驱动（扫描结果）](#4-当前仓库已注册驱动扫描结果)
-5. [compatible 与属性](#5-compatible-与属性)
-6. [运行期 API](#6-运行期-api)
-7. [Remove 生命周期](#7-remove-生命周期)
+- [设备树与驱动](#设备树与驱动)
+  - [目录](#目录)
+  - [1. 文件布局](#1-文件布局)
+    - [中间件（本仓库）](#中间件本仓库)
+    - [平台工程（推荐）](#平台工程推荐)
+  - [2. dtc-lite 流水线](#2-dtc-lite-流水线)
+  - [3. DRIVER\_REGISTER](#3-driver_register)
+  - [4. 当前仓库已注册驱动（扫描结果）](#4-当前仓库已注册驱动扫描结果)
+  - [5. compatible 与属性](#5-compatible-与属性)
+    - [5.1 命名习惯](#51-命名习惯)
+    - [5.2 属性直投](#52-属性直投)
+    - [5.3 status / criticality / deps](#53-status--criticality--deps)
+  - [6. 运行期 API](#6-运行期-api)
+  - [7. Remove 生命周期](#7-remove-生命周期)
+  - [相关文档](#相关文档)
 
 ---
 
@@ -167,7 +175,7 @@ ESP 接线细节见 [esp_idf_cmake.md](esp_idf_cmake.md)。
 4. 释放硬件 / bus  
 5. `dev_lc_remove_finish(...)`  
 
-Probe 成功路径记得 `device_lc_bind(dev)`。
+Probe 成功路径：`drivers/` 目录产品驱动无需手动调用 `device_lc_bind(dev)`（框架 `device_tree_init` 已统一绑定）；VFS 层驱动（`vfs/`）因池重置需显式再绑定。
 
 ---
 

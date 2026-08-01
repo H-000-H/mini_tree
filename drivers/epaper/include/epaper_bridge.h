@@ -14,6 +14,14 @@
 extern "C" {
 #endif
 
+/**
+ * @brief 刷入整帧位图（LVGL flush / 自绘缓冲用）
+ * @param dev 电子纸 device
+ * @param data 位图缓冲
+ * @param len 位图长度
+ * @param timeout_ms 超时（ms）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int epaper_flush_bitmap(struct device* dev, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     struct epaper_bitmap a = { .data = data, .len = len };
@@ -22,6 +30,11 @@ COMPAT_STATIC_INLINE int epaper_flush_bitmap(struct device* dev, const uint8_t* 
     return device_ioctl(dev, EPAPER_CMD_DRAW_BITMAP, &a, sizeof(a), timeout_ms);
 }
 
+/**
+ * @brief 获取面板信息（宽/高/bpp）
+ * @param info 输出面板信息
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int epaper_get_info(struct device* dev, struct epaper_info* info)
 {
     if (!dev || !info)

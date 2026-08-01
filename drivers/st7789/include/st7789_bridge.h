@@ -23,6 +23,14 @@
 extern "C" {
 #endif
 
+/**
+ * @brief LVGL 区域刷新（lv_area_t 含端点坐标）
+ * @param dev ST7789 device
+ * @param x1/y1/x2/y2 区域（含端点）
+ * @param color_map RGB565 打包缓冲
+ * @param timeout_ms 超时（ms）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int st7789_lvgl_flush(struct device* dev, int16_t x1, int16_t y1, int16_t x2, int16_t y2, const void* color_map, uint32_t timeout_ms)
 {
     struct st7789_flush_area_arg a;
@@ -37,6 +45,11 @@ COMPAT_STATIC_INLINE int st7789_lvgl_flush(struct device* dev, int16_t x1, int16
     return device_ioctl(dev, ST7789_CMD_FLUSH_AREA, &a, sizeof(a), timeout_ms);
 }
 
+/**
+ * @brief 获取面板信息
+ * @param info 输出面板信息
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int st7789_get_info(struct device* dev, struct st7789_info_arg* info)
 {
     if (!dev || !info)
@@ -44,6 +57,11 @@ COMPAT_STATIC_INLINE int st7789_get_info(struct device* dev, struct st7789_info_
     return device_ioctl(dev, ST7789_CMD_GET_INFO, info, sizeof(*info), 0);
 }
 
+/**
+ * @brief 设置背光亮度
+ * @param brightness 亮度 0..255
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int st7789_set_backlight(struct device* dev, uint8_t brightness)
 {
     struct st7789_backlight_arg a = { .brightness = brightness };

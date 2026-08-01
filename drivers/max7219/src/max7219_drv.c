@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file max7219_drv.c
+ * @brief MAX7219 LED 点阵驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_max7219_pool[MAX7219_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 max7219_drv.h，寄存器定义见 max7219_regs.h。
+ *
+ * 数据流: VFS ioctl → max7219_cmd_* → SPI transfer（vfs-spi）→ HAL
+ */
 #include "max7219_drv.h"
 #include "vfs-spi.h"
 
@@ -19,12 +28,13 @@
 #endif
 #define MAX7219_POOL_COUNT  DTC_GEN_COUNT_MAXIM_MAX7219
 
+/** @brief MAX7219 驱动实例（嵌入 fops） */
 struct max7219_device
 {
-    struct file_operations ops;
-    struct device*         spi_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         spi_dev;  /**< 所属 SPI client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct max7219_device s_max7219_pool[MAX7219_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,18 +42,30 @@ static uint8_t             s_max7219_used[MAX7219_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_max7219_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "max7219";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void max7219_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_max7219_pool_ctrl, s_max7219_used, MAX7219_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct max7219_device* max7219_get_drvdata(struct device* dev)
 {
     return (struct max7219_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief SPI 全双工传输（AUTO 模式）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int max7219_spi_xfer(struct max7219_device* d, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t to)
 {
     struct spi_transfer_arg arg;
@@ -57,6 +79,10 @@ static int max7219_spi_xfer(struct max7219_device* d, const uint8_t* tx, uint8_t
 }
 
 
+/**
+ * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int max7219_hw_create(struct max7219_device* d)
 {
     int r;
@@ -72,6 +98,9 @@ static int max7219_hw_create(struct max7219_device* d)
     return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 SPI client）
+ */
 static void max7219_hw_destroy(struct max7219_device* d)
 {
     if (!d || !d->hw_ready)
@@ -82,6 +111,9 @@ static void max7219_hw_destroy(struct max7219_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int max7219_open(struct device* dev, void* arg)
 {
     struct max7219_device* d;
@@ -113,6 +145,9 @@ static int max7219_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int max7219_close(struct device* dev)
 {
     struct max7219_device* d;
@@ -135,15 +170,24 @@ static int max7219_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*max7219_ioctl_fn_t)(struct max7219_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct max7219_ioctl_map { max7219_ioctl_fn_t handler; };
 
 
+/**
+ * @brief 写寄存器（addr + data 一次传输）
+ */
 static int max7219_wr(struct max7219_device* d, uint8_t addr, uint8_t data, uint32_t to)
 {
     uint8_t tx[2] = {addr, data};
     return max7219_spi_xfer(d, tx, NULL, 2, to);
 }
+/**
+ * @brief MAX7219_CMD_INIT 实现：退出关断 + 全扫描 + 亮度/解码/测试配置
+ */
 static int max7219_cmd_init(struct max7219_device* d, void* arg, size_t len, uint32_t to)
 {
     int r;
@@ -165,6 +209,9 @@ static int max7219_cmd_init(struct max7219_device* d, void* arg, size_t len, uin
         return r;
     return max7219_wr(d, MAX7219_REG_DISPLAY_TEST, 0x00, to);
 }
+/**
+ * @brief MAX7219_CMD_SET_DIGIT 实现：写单个位
+ */
 static int max7219_cmd_digit(struct max7219_device* d, void* arg, size_t len, uint32_t to)
 {
     struct max7219_digit* a = (struct max7219_digit*)arg;
@@ -173,6 +220,9 @@ static int max7219_cmd_digit(struct max7219_device* d, void* arg, size_t len, ui
         return VFS_ERR_INVAL;
     return max7219_wr(d, a->digit, a->value, to);
 }
+/**
+ * @brief MAX7219_CMD_CLEAR 实现：全部位清零
+ */
 static int max7219_cmd_clear(struct max7219_device* d, void* arg, size_t len, uint32_t to)
 {
     int i;
@@ -188,6 +238,9 @@ static int max7219_cmd_clear(struct max7219_device* d, void* arg, size_t len, ui
     }
     return VFS_OK;
 }
+/**
+ * @brief MAX7219_CMD_FLUSH_FB 实现：整帧逐位写入
+ */
 static int max7219_cmd_flush_fb(struct max7219_device* d, void* arg, size_t len, uint32_t to)
 {
     struct max7219_fb* a = (struct max7219_fb*)arg;
@@ -211,6 +264,9 @@ static const struct max7219_ioctl_map s_max7219_map[MAX7219_CMD_COUNT] = {
     [MAX7219_CMD_FLUSH_FB - MAX7219_CMD_BASE - 1] = { max7219_cmd_flush_fb },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int max7219_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct max7219_device* d;
@@ -243,6 +299,9 @@ static const struct file_operations max7219_fops = {
     .ioctl = max7219_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 SPI 设备并挂 fops
+ */
 static int max7219_probe(struct device* dev)
 {
     struct max7219_device* d;
@@ -277,6 +336,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int max7219_remove(struct device* dev)
 {
     struct max7219_device* d;

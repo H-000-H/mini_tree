@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file sx1278_drv.c
+ * @brief SX1278 LoRa 模块驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_sx1278_pool[SX1278_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 sx1278_drv.h。
+ *
+ * 数据流: VFS ioctl → sx1278_cmd_* → SPI transfer（vfs-spi）→ HAL
+ */
 #include "sx1278_drv.h"
 #include "vfs-spi.h"
 #include "device.h"
@@ -18,13 +27,14 @@
 #endif
 #define SX1278_POOL_COUNT  DTC_GEN_COUNT_SEMTECH_SX1278
 
+/** @brief SX1278 驱动实例（嵌入 fops 与操作模式状态） */
 struct sx1278_device
 {
-    struct file_operations ops;
-    struct device* spi_dev;
-    uint8_t opmode;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* spi_dev;          /**< 所属 SPI client 设备 */
+    uint8_t opmode;                  /**< 当前工作模式（OPMODE 寄存器缓存） */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct sx1278_device s_sx1278_pool[SX1278_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,18 +42,30 @@ static uint8_t             s_sx1278_used[SX1278_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sx1278_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "sx1278";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void sx1278_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_sx1278_pool_ctrl, s_sx1278_used, SX1278_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct sx1278_device* sx1278_get_drvdata(struct device* dev)
 {
     return (struct sx1278_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief SPI 全双工传输（AUTO 模式）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int sx1278_spi_xfer(struct sx1278_device* d, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t to)
 {
     struct spi_transfer_arg arg;
@@ -57,6 +79,10 @@ static int sx1278_spi_xfer(struct sx1278_device* d, const uint8_t* tx, uint8_t* 
 }
 
 
+/**
+ * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int sx1278_hw_create(struct sx1278_device* d)
 {
     if (!d)
@@ -68,6 +94,9 @@ static int sx1278_hw_create(struct sx1278_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭 SPI client）
+ */
 static void sx1278_hw_destroy(struct sx1278_device* d)
 {
     if (!d || !d->hw_ready)
@@ -77,6 +106,9 @@ static void sx1278_hw_destroy(struct sx1278_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int sx1278_open(struct device* dev, void* arg)
 {
     struct sx1278_device* d;
@@ -108,6 +140,9 @@ static int sx1278_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int sx1278_close(struct device* dev)
 {
     struct sx1278_device* d;
@@ -130,14 +165,23 @@ static int sx1278_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*sx1278_ioctl_fn_t)(struct sx1278_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct sx1278_ioctl_map { sx1278_ioctl_fn_t handler; };
 
 
+/**
+ * @brief 写寄存器（写标志位 + 地址 + 值）
+ */
 static int sx1278_wr_reg(struct sx1278_device* d, uint8_t reg, uint8_t val, uint32_t to)
 {
     uint8_t tx[2]={(uint8_t)(reg|0x80U), val}; return sx1278_spi_xfer(d, tx, NULL, 2, to);
 }
+/**
+ * @brief SX1278_CMD_RESET 实现：复位到睡眠模式
+ */
 static int sx1278_cmd_reset(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(len);
@@ -146,6 +190,9 @@ static int sx1278_cmd_reset(struct sx1278_device* d, void* arg, size_t len, uint
     d->opmode = 0;
     return VFS_OK;
 }
+/**
+ * @brief SX1278_CMD_SET_FREQ 实现：按 Frf 公式换算并写频点寄存器
+ */
 static int sx1278_cmd_freq(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
 {
     uint32_t hz; uint8_t frf[3]; uint64_t f;
@@ -155,6 +202,9 @@ static int sx1278_cmd_freq(struct sx1278_device* d, void* arg, size_t len, uint3
     { uint8_t tx[4]={0x06|0x80U, frf[0], frf[1], frf[2]}; if(sx1278_spi_xfer(d, tx, NULL, 4, to)!=VFS_OK) return VFS_ERR_IO; }
     return VFS_OK;
 }
+/**
+ * @brief SX1278_CMD_SEND 实现：切 TX 模式并写 FIFO 载荷（截断至 255B）
+ */
 static int sx1278_cmd_send(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sx1278_payload* pl=(struct sx1278_payload*)arg;
@@ -164,6 +214,9 @@ static int sx1278_cmd_send(struct sx1278_device* d, void* arg, size_t len, uint3
       if(sx1278_spi_xfer(d, tx, NULL, n+1U, to)!=VFS_OK) return VFS_ERR_IO; }
     return VFS_OK;
 }
+/**
+ * @brief SX1278_CMD_RECV 实现：读取 FIFO 首字节（简化单字节接收）
+ */
 static int sx1278_cmd_recv(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sx1278_payload* pl = (struct sx1278_payload*)arg;
@@ -189,6 +242,9 @@ static const struct sx1278_ioctl_map s_sx1278_map[SX1278_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int sx1278_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct sx1278_device* d;
@@ -222,6 +278,9 @@ static const struct file_operations sx1278_fops =
     .ioctl = sx1278_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 SPI 设备并挂 fops
+ */
 static int sx1278_probe(struct device* dev)
 {
     struct sx1278_device* d;
@@ -252,6 +311,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int sx1278_remove(struct device* dev)
 {
     struct sx1278_device* d;

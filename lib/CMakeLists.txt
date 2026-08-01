@@ -1,8 +1,8 @@
 # ==============================================================================
-# lib — OSAL 条件内核（仅保留 RTOS）
+# lib — OSAL 条件内核 + 基础设施
 # ==============================================================================
-# 保留 vendor：freeRTOS / rtthread（按 Kconfig 选择）
-# 其余基础设施（tinyusb / lwIP / cJSON / ETL）均通过 cmake/*.cmake FetchContent 按需拉取
+# 保留 vendor：freeRTOS / rtthread（按 Kconfig）· ETL（仅 include + cmake）
+# 其余基础设施（tinyusb / lwIP / cJSON）通过 cmake/*.cmake FetchContent 按需拉取
 # ==============================================================================
 
 get_filename_component(MINI_TREE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
@@ -67,7 +67,7 @@ foreach(_rtos IN ITEMS freeRTOS rtthread)
         message(STATUS "RTOS ${_rtos}: MISSING under lib/${_rtos}")
     endif()
 endforeach()
-message(STATUS "Infra bricks (tinyusb/lwIP/cJSON/ETL): FetchContent via cmake/*.cmake")
+message(STATUS "Infra bricks (tinyusb/lwIP/cJSON): FetchContent via cmake/*.cmake; ETL vendored")
 
 add_library(lib INTERFACE)
 if(OSAL_BACKEND STREQUAL "FREERTOS")

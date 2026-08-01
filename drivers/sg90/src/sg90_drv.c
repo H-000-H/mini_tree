@@ -1,4 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file sg90_drv.c
+ * @brief SG90 舵机驱动实现 — 挂在 TIM（PWM）下的 VFS 设备驱动
+ *
+ * 静态池: s_sg90_pool[SG90_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令见 sg90_drv.h。
+ */
 #include "sg90_drv.h"
 #include "vfs-tim.h"
 #include "device.h"
@@ -18,14 +25,15 @@
 #endif
 #define SG90_POOL_COUNT  DTC_GEN_COUNT_TOWERPRO_SG90
 
+/** @brief SG90 驱动实例（嵌入 fops 与 PWM 参数） */
 struct sg90_device
 {
-    struct file_operations ops;
-    struct device* tim_dev;
-    struct vfs_tim_arg tim;
-    uint32_t ch;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* tim_dev;          /**< PWM TIM 设备 */
+    struct vfs_tim_arg tim;          /**< PWM 参数（快路径） */
+    uint32_t ch;                     /**< PWM 通道 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct sg90_device s_sg90_pool[SG90_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -33,6 +41,9 @@ static uint8_t             s_sg90_used[SG90_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sg90_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "sg90";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void sg90_pool_boot_init(void)
 {
@@ -46,6 +57,10 @@ static struct sg90_device* sg90_get_drvdata(struct device* dev)
 
 
 
+/**
+ * @brief 首次 open 时打开 TIM 并下发初始 PWM
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int sg90_hw_create(struct sg90_device* d)
 {
     if (!d)
@@ -59,6 +74,9 @@ static int sg90_hw_create(struct sg90_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭 TIM 设备）
+ */
 static void sg90_hw_destroy(struct sg90_device* d)
 {
     if (!d || !d->hw_ready)
@@ -68,6 +86,9 @@ static void sg90_hw_destroy(struct sg90_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int sg90_open(struct device* dev, void* arg)
 {
     struct sg90_device* d;
@@ -99,6 +120,9 @@ static int sg90_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int sg90_close(struct device* dev)
 {
     struct sg90_device* d;
@@ -125,6 +149,9 @@ typedef int (*sg90_ioctl_fn_t)(struct sg90_device* d, void* arg, size_t arg_len,
 struct sg90_ioctl_map { sg90_ioctl_fn_t handler; };
 
 
+/**
+ * @brief SG90_CMD_SET_ANGLE 实现：角度映射占空比并经 TIM 快路径下发
+ */
 static int sg90_cmd_angle(struct sg90_device* d, void* arg, size_t len, uint32_t ms)
 {
     int deg;
@@ -139,6 +166,9 @@ static const struct sg90_ioctl_map s_sg90_map[SG90_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int sg90_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct sg90_device* d;
@@ -172,6 +202,9 @@ static const struct file_operations sg90_fops =
     .ioctl = sg90_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 TIM 设备并挂 fops
+ */
 static int sg90_probe(struct device* dev)
 {
     struct sg90_device* d;
@@ -209,6 +242,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int sg90_remove(struct device* dev)
 {
     struct sg90_device* d;

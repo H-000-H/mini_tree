@@ -1,4 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file epaper_drv.c
+ * @brief 电子纸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 epaper_drv.h。
+ *
+ * 引脚: DC/RST/BUSY 均为 GPIO（phandle: dc-gpio / reset-gpio / busy-gpio）；
+ * 数据流: VFS ioctl → epaper_cmd_* → SPI transfer（vfs-spi）→ HAL
+ */
 #include "epaper_drv.h"
 #include "vfs-spi.h"
 #include "vfs-gpio.h"
@@ -19,18 +29,19 @@
 #endif
 #define EPAPER_POOL_COUNT  DTC_GEN_COUNT_GOODDISPLAY_EPAPER
 
+/** @brief 电子纸驱动实例（嵌入 fops 与全部引脚） */
 struct epaper_device
 {
-    struct file_operations ops;
-    struct device* spi_dev;
-    struct device* dc_dev;
-    struct device* rst_dev;
-    struct device* busy_dev;
-    struct vfs_gpio_arg dc_gpio;
-    struct vfs_gpio_arg rst_gpio;
-    struct vfs_gpio_arg busy_gpio;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* spi_dev;          /**< 所属 SPI client 设备 */
+    struct device* dc_dev;           /**< DC 引脚 GPIO 设备 */
+    struct device* rst_dev;          /**< RST 引脚 GPIO 设备 */
+    struct device* busy_dev;         /**< BUSY 引脚 GPIO 设备 */
+    struct vfs_gpio_arg dc_gpio;     /**< DC 引脚操作参数 */
+    struct vfs_gpio_arg rst_gpio;    /**< RST 引脚操作参数 */
+    struct vfs_gpio_arg busy_gpio;   /**< BUSY 引脚操作参数 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct epaper_device s_epaper_pool[EPAPER_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -38,18 +49,30 @@ static uint8_t             s_epaper_used[EPAPER_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_epaper_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "epaper";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void epaper_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct epaper_device* epaper_get_drvdata(struct device* dev)
 {
     return (struct epaper_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief SPI 全双工传输（AUTO 模式）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int epaper_spi_xfer(struct epaper_device* d, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t to)
 {
     struct spi_transfer_arg arg;
@@ -62,11 +85,18 @@ static int epaper_spi_xfer(struct epaper_device* d, const uint8_t* tx, uint8_t* 
     return device_ioctl(d->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), to);
 }
 
+/**
+ * @brief 设置 DC 引脚（命令/数据选择）
+ */
 static int epaper_dc(struct epaper_device* d, int data)
 {
     d->dc_gpio.level = data ? 1 : 0;
     return vfs_gpio_set_level(&d->dc_gpio);
 }
+/**
+ * @brief 等待 BUSY 释放（低电平表示空闲）
+ * @return VFS_OK 或 VFS_ERR_BUSY（超时）
+ */
 static int epaper_wait_busy(struct epaper_device* d, uint32_t to)
 {
     uint32_t e=0; int r;
@@ -80,6 +110,10 @@ static int epaper_wait_busy(struct epaper_device* d, uint32_t to)
 }
 
 
+/**
+ * @brief 首次 open 时打开 SPI/DC/RST/BUSY 并绑定 GPIO 参数
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int epaper_hw_create(struct epaper_device* d)
 {
     if (!d)
@@ -102,6 +136,9 @@ static int epaper_hw_create(struct epaper_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭全部设备）
+ */
 static void epaper_hw_destroy(struct epaper_device* d)
 {
     if (!d || !d->hw_ready)
@@ -114,6 +151,9 @@ static void epaper_hw_destroy(struct epaper_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int epaper_open(struct device* dev, void* arg)
 {
     struct epaper_device* d;
@@ -145,6 +185,9 @@ static int epaper_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int epaper_close(struct device* dev)
 {
     struct epaper_device* d;
@@ -167,10 +210,16 @@ static int epaper_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*epaper_ioctl_fn_t)(struct epaper_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct epaper_ioctl_map { epaper_ioctl_fn_t handler; };
 
 
+/**
+ * @brief EPAPER_CMD_INIT 实现：复位脉冲 + 等待 BUSY
+ */
 static int epaper_cmd_init(struct epaper_device* d, void* arg, size_t len, uint32_t ms)
 {
     COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(len);
@@ -180,6 +229,9 @@ static int epaper_cmd_init(struct epaper_device* d, void* arg, size_t len, uint3
     osal_delay_ms(EPAPER_RESET_HOLD_MS);
     return epaper_wait_busy(d, ms ? ms : 500U);
 }
+/**
+ * @brief EPAPER_CMD_CLEAR 实现：写空白帧并等待刷新完成
+ */
 static int epaper_cmd_clear(struct epaper_device* d, void* arg, size_t len, uint32_t ms)
 {
     uint8_t z=0x00;
@@ -187,6 +239,9 @@ static int epaper_cmd_clear(struct epaper_device* d, void* arg, size_t len, uint
     epaper_dc(d, 1); epaper_spi_xfer(d, &z, NULL, 1, ms);
     return epaper_wait_busy(d, ms ? ms : EPAPER_BUSY_TIMEOUT_MS);
 }
+/**
+ * @brief EPAPER_CMD_DRAW_BITMAP 实现：写整帧位图并等待刷新完成
+ */
 static int epaper_cmd_draw(struct epaper_device* d, void* arg, size_t len, uint32_t ms)
 {
     struct epaper_bitmap* bm = (struct epaper_bitmap*)arg;
@@ -195,6 +250,9 @@ static int epaper_cmd_draw(struct epaper_device* d, void* arg, size_t len, uint3
     if (epaper_spi_xfer(d, bm->data, NULL, bm->len, ms)!=VFS_OK) return VFS_ERR_IO;
     return epaper_wait_busy(d, ms ? ms : EPAPER_BUSY_TIMEOUT_MS);
 }
+/**
+ * @brief EPAPER_CMD_GET_INFO 实现：返回默认几何
+ */
 static int epaper_cmd_get_info(struct epaper_device* d, void* arg, size_t len, uint32_t ms)
 {
     struct epaper_info* info = (struct epaper_info*)arg;
@@ -215,6 +273,9 @@ static const struct epaper_ioctl_map s_epaper_map[EPAPER_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int epaper_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct epaper_device* d;
@@ -248,6 +309,9 @@ static const struct file_operations epaper_fops =
     .ioctl = epaper_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定 SPI/DC/RST/BUSY 并挂 fops
+ */
 static int epaper_probe(struct device* dev)
 {
     struct epaper_device* d;
@@ -283,6 +347,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int epaper_remove(struct device* dev)
 {
     struct epaper_device* d;

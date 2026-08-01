@@ -99,7 +99,6 @@ ide/third_party/etl/
 lib/tinyusb/
 lib/lwip/
 lib/cJSON/
-lib/etl/
 lib/lvgl/
 lib/u8g2/
 lib/mbedtls/

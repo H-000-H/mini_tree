@@ -14,6 +14,13 @@
 extern "C" {
 #endif
 
+/**
+ * @brief 读取坐标/按压状态（LVGL indev read_cb 用）
+ * @param dev XPT2046 device
+ * @param out 输出坐标结果
+ * @param timeout_ms 超时（ms）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int xpt2046_lvgl_read(struct device* dev, struct xpt2046_xy* out, uint32_t timeout_ms)
 {
     if (!dev || !out)

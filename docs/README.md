@@ -19,6 +19,7 @@
 | 写应用 | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
 | 查设计动机 | [design_decisions.md](design_decisions.md) · [references.md](references.md) · [architecture.md](architecture.md) |
 | 查文件 | [file_index.md](file_index.md) |
+| 合规 / 许可证 | [../NOTICE](../NOTICE)（第三方清单与合规提示）· [../LICENSE](../LICENSE)（Apache-2.0 全文）· [ecosystem.md](ecosystem.md) §6（致谢） |
 
 ---
 

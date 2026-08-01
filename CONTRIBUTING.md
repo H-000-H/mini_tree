@@ -14,8 +14,9 @@
 1. **不向中间件公共头引入厂商 SDK 依赖**（OSAL 后端 `#if` 路径除外）。  
 2. 新外设顺序：**HAL 头 + weak .c →（可选）bus → vfs → `DRIVER_REGISTER` → 文档/契约**。  
 3. 错误码统一 `status.h`；对外 API 禁止 `void` 成功/失败。  
-4. 文档与代码同 PR：至少更新 [docs/file_index.md](docs/file_index.md) 或对应 `docs/*`；新开源积木更新 [docs/ecosystem.md](docs/ecosystem.md) + [NOTICE](NOTICE)。  
-5. 遵守 [docs/fast_path.md](docs/fast_path.md) 与分层 poison。  
+4. 新建源文件首行必须携带 `/* SPDX-License-Identifier: Apache-2.0 */`（C）或 `/** SPDX-License-Identifier: Apache-2.0 ...`（头文件 Doxygen 块）。  
+5. 文档与代码同 PR：至少更新 [docs/file_index.md](docs/file_index.md) 或对应 `docs/*`；新开源积木更新 [docs/ecosystem.md](docs/ecosystem.md) + [NOTICE](NOTICE)（含版本、版权人、许可证）。  
+6. 遵守 [docs/fast_path.md](docs/fast_path.md) 与分层 poison。  
 
 ---
 

@@ -14,6 +14,13 @@
 extern "C" {
 #endif
 
+/**
+ * @brief 读取触摸点（LVGL indev read_cb 用）
+ * @param dev FT5x06 device
+ * @param out 输出触摸结果
+ * @param timeout_ms 超时（ms）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 COMPAT_STATIC_INLINE int ft5x06_lvgl_read(struct device* dev, struct ft5x06_touch* out, uint32_t timeout_ms)
 {
     if (!dev || !out)

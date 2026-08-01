@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * @file st7789_core.h
+ * @brief ST7789 有 CS / 无 CS 两个入口共用的公共 probe/remove
+ */
 #ifndef ST7789_CORE_H
 #define ST7789_CORE_H
 

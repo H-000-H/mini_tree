@@ -157,6 +157,7 @@
 | 驱动 | compatible | 说明 |
 | :--- | :--- | :--- |
 | W25Qxx SPI Flash | `winbond,w25qxx` | `drivers/w25qxx/`；挂在 SPI client 下 |
+| RS485 Modbus RTU | `modbus,rtu-rs485` | `drivers/rs485_modbus/`；挂在 UART client 下；ioctl：`READ_HOLDING`（03 读保持寄存器）、`WRITE_SINGLE`（06 写单寄存器）；响应含 CRC16 校验 |
 | 板级 safety | `board,safety-hw` | probe 期注册 shutdown；配合 `safe_state` / `hal_platform_safety` |
 
 ---

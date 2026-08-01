@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file air780e_drv.c
+ * @brief Air780E 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 air780e_drv.h。
+ *
+ * 数据流: VFS ioctl → air780e_cmd_send/recv → device_read/write(UART) → HAL
+ */
 #include "air780e_drv.h"
 #include "vfs-uart.h"
 #include "device.h"
@@ -18,12 +27,13 @@
 #endif
 #define AIR780E_POOL_COUNT  DTC_GEN_COUNT_AIR780E_4G
 
+/** @brief Air780E 驱动实例（嵌入 fops） */
 struct air780e_device
 {
-    struct file_operations ops;
-    struct device* uart_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* uart_dev;         /**< 所属 UART client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct air780e_device s_air780e_pool[AIR780E_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -31,18 +41,30 @@ static uint8_t             s_air780e_used[AIR780E_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_air780e_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "air780e";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void air780e_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_air780e_pool_ctrl, s_air780e_used, AIR780E_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct air780e_device* air780e_get_drvdata(struct device* dev)
 {
     return (struct air780e_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief UART 双向传输（UART_CMD_TRANSFER）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int air780e_uart_xchg(struct air780e_device* d, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t to)
 {
     struct uart_transfer_arg arg;
@@ -56,6 +78,10 @@ static int air780e_uart_xchg(struct air780e_device* d, const uint8_t* tx, size_t
 }
 
 
+/**
+ * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int air780e_hw_create(struct air780e_device* d)
 {
     if (!d)
@@ -67,6 +93,9 @@ static int air780e_hw_create(struct air780e_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭 UART client）
+ */
 static void air780e_hw_destroy(struct air780e_device* d)
 {
     if (!d || !d->hw_ready)
@@ -76,6 +105,9 @@ static void air780e_hw_destroy(struct air780e_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int air780e_open(struct device* dev, void* arg)
 {
     struct air780e_device* d;
@@ -107,6 +139,9 @@ static int air780e_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int air780e_close(struct device* dev)
 {
     struct air780e_device* d;
@@ -129,16 +164,25 @@ static int air780e_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*air780e_ioctl_fn_t)(struct air780e_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct air780e_ioctl_map { air780e_ioctl_fn_t handler; };
 
 
+/**
+ * @brief AIR780E_CMD_AT_SEND 实现：UART 发送 AT 命令
+ */
 static int air780e_cmd_send(struct air780e_device* d, void* arg, size_t len, uint32_t to)
 {
     struct air780e_at* a=(struct air780e_at*)arg;
     if(!d->hw_ready||!a||len!=sizeof(*a)||!a->tx||!a->tx_len) return VFS_ERR_INVAL;
     return device_write(d->uart_dev, a->tx, a->tx_len, to);
 }
+/**
+ * @brief AIR780E_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
+ */
 static int air780e_cmd_recv(struct air780e_device* d, void* arg, size_t len, uint32_t to)
 {
     struct air780e_at* a = (struct air780e_at*)arg;
@@ -158,6 +202,9 @@ static const struct air780e_ioctl_map s_air780e_map[AIR780E_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int air780e_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct air780e_device* d;
@@ -191,6 +238,9 @@ static const struct file_operations air780e_fops =
     .ioctl = air780e_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 UART 设备并挂 fops
+ */
 static int air780e_probe(struct device* dev)
 {
     struct air780e_device* d;
@@ -221,6 +271,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int air780e_remove(struct device* dev)
 {
     struct air780e_device* d;

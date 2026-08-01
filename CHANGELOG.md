@@ -37,6 +37,13 @@
 - 补充 [docs/references.md](docs/references.md) 与作者偏好取舍  
 - 补缺口专题：USB / 外设 / AMP / can_hook / 运行时服务；ESP-IDF CMake 见 [esp_idf_cmake](docs/esp_idf_cmake.md)  
 - 不推荐 Keil 作主 IDE；推荐 Cursor / VS Code / CLion / Qoder  
+- [NOTICE](NOTICE) 全面重写：补全各组件版本号、版权人、SPDX 标识、合规提示（LGPL/双许可/ChaN）  
+- [LICENSE](LICENSE) APPENDIX 填充实际版权行  
+- [README.md](README.md) 许可证节增加商用合规要点（libmodbus LGPL / Mbed TLS 双许可 / FatFs）  
+- [CONTRIBUTING.md](CONTRIBUTING.md) 新增 SPDX 头规范与 NOTICE 同步要求  
+- [docs/README.md](docs/README.md) 导航表新增「合规 / 许可证」入口  
+- [docs/peripherals.md](docs/peripherals.md) §5 新增 RS485 Modbus RTU 驱动条目  
+- [docs/driver_guide.md](docs/driver_guide.md) §7 修正 `device_lc_bind` 说明（产品驱动由框架统一绑定）  
 
 ### 仓库卫生
 

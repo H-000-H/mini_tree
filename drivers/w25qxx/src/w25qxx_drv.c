@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file w25qxx_drv.c
+ * @brief W25Qxx SPI NOR Flash 驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_w25qxx_pool[W25QXX_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 w25qxx_drv.h。
+ *
+ * 数据流: VFS ioctl → w25qxx_cmd_jedec → SPI transfer（vfs-spi）→ HAL
+ */
 #include "w25qxx_drv.h"
 #include "vfs-spi.h"
 #include "device.h"
@@ -18,12 +27,13 @@
 #endif
 #define W25QXX_POOL_COUNT  DTC_GEN_COUNT_WINBOND_W25QXX
 
+/** @brief W25Qxx 驱动实例（嵌入 fops） */
 struct w25qxx_device
 {
-    struct file_operations ops;
-    struct device* spi_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device* spi_dev;          /**< 所属 SPI client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct w25qxx_device s_w25qxx_pool[W25QXX_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -31,18 +41,30 @@ static uint8_t             s_w25qxx_used[W25QXX_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_w25qxx_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "w25qxx";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void w25qxx_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_w25qxx_pool_ctrl, s_w25qxx_used, W25QXX_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct w25qxx_device* w25qxx_get_drvdata(struct device* dev)
 {
     return (struct w25qxx_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief SPI 全双工传输（AUTO 模式）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int w25qxx_spi_xfer(struct w25qxx_device* d, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t to)
 {
     struct spi_transfer_arg arg;
@@ -56,6 +78,10 @@ static int w25qxx_spi_xfer(struct w25qxx_device* d, const uint8_t* tx, uint8_t* 
 }
 
 
+/**
+ * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int w25qxx_hw_create(struct w25qxx_device* d)
 {
     if (!d)
@@ -67,6 +93,9 @@ static int w25qxx_hw_create(struct w25qxx_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭 SPI client）
+ */
 static void w25qxx_hw_destroy(struct w25qxx_device* d)
 {
     if (!d || !d->hw_ready)
@@ -76,6 +105,9 @@ static void w25qxx_hw_destroy(struct w25qxx_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int w25qxx_open(struct device* dev, void* arg)
 {
     struct w25qxx_device* d;
@@ -107,6 +139,9 @@ static int w25qxx_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int w25qxx_close(struct device* dev)
 {
     struct w25qxx_device* d;
@@ -129,10 +164,16 @@ static int w25qxx_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*w25qxx_ioctl_fn_t)(struct w25qxx_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct w25qxx_ioctl_map { w25qxx_ioctl_fn_t handler; };
 
 
+/**
+ * @brief W25QXX_CMD_READ_JEDEC_ID 实现：发 0x9F 读 3B 厂商 ID
+ */
 static int w25qxx_cmd_jedec(struct w25qxx_device* d, void* arg, size_t len, uint32_t to)
 {
     uint8_t tx[4]={0x9F, 0, 0, 0}, rx[4]={0}; struct w25qxx_jedec* j=(struct w25qxx_jedec*)arg;
@@ -145,6 +186,9 @@ static const struct w25qxx_ioctl_map s_w25qxx_map[W25QXX_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int w25qxx_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct w25qxx_device* d;
@@ -178,6 +222,9 @@ static const struct file_operations w25qxx_fops =
     .ioctl = w25qxx_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 SPI 设备并挂 fops
+ */
 static int w25qxx_probe(struct device* dev)
 {
     struct w25qxx_device* d;
@@ -208,6 +255,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int w25qxx_remove(struct device* dev)
 {
     struct w25qxx_device* d;

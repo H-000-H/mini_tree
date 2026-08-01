@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file a7670_drv.c
+ * @brief A7670 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_a7670_pool[A7670_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 a7670_drv.h。
+ *
+ * 数据流: VFS ioctl → a7670_cmd_send/recv → device_read/write(UART) → HAL
+ */
 #include "a7670_drv.h"
 #include "vfs-uart.h"
 
@@ -19,12 +28,13 @@
 #endif
 #define A7670_POOL_COUNT  DTC_GEN_COUNT_SIMCOM_A7670
 
+/** @brief A7670 驱动实例（嵌入 fops） */
 struct a7670_device
 {
-    struct file_operations ops;
-    struct device*         uart_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         uart_dev; /**< 所属 UART client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct a7670_device s_a7670_pool[A7670_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,24 +42,40 @@ static uint8_t             s_a7670_used[A7670_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_a7670_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "a7670";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void a7670_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_a7670_pool_ctrl, s_a7670_used, A7670_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct a7670_device* a7670_get_drvdata(struct device* dev)
 {
     return (struct a7670_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 向 UART 总线写数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int a7670_uart_wr(struct a7670_device* d, const uint8_t* tx, size_t len, uint32_t to)
 {
     if (!d || !d->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
     return device_write(d->uart_dev, tx, len, to);
 }
+/**
+ * @brief 从 UART 总线读数据
+ * @return 读取字节数或 VFS_ERR_*
+ */
 static int a7670_uart_rd(struct a7670_device* d, uint8_t* rx, size_t len, uint32_t to)
 {
     if (!d || !d->uart_dev || !rx || len == 0U)
@@ -58,6 +84,10 @@ static int a7670_uart_rd(struct a7670_device* d, uint8_t* rx, size_t len, uint32
 }
 
 
+/**
+ * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int a7670_hw_create(struct a7670_device* d)
 {
     int r;
@@ -73,6 +103,9 @@ static int a7670_hw_create(struct a7670_device* d)
     return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 UART client）
+ */
 static void a7670_hw_destroy(struct a7670_device* d)
 {
     if (!d || !d->hw_ready)
@@ -83,6 +116,9 @@ static void a7670_hw_destroy(struct a7670_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int a7670_open(struct device* dev, void* arg)
 {
     struct a7670_device* d;
@@ -114,6 +150,9 @@ static int a7670_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int a7670_close(struct device* dev)
 {
     struct a7670_device* d;
@@ -136,10 +175,16 @@ static int a7670_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*a7670_ioctl_fn_t)(struct a7670_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct a7670_ioctl_map { a7670_ioctl_fn_t handler; };
 
 
+/**
+ * @brief A7670_CMD_AT_SEND 实现：UART 发送 AT 命令
+ */
 static int a7670_cmd_send(struct a7670_device* d, void* arg, size_t len, uint32_t to)
 {
     struct a7670_at_buf* a = (struct a7670_at_buf*)arg;
@@ -147,6 +192,9 @@ static int a7670_cmd_send(struct a7670_device* d, void* arg, size_t len, uint32_
         return VFS_ERR_INVAL;
     return a7670_uart_wr(d, a->tx, a->tx_len, to);
 }
+/**
+ * @brief A7670_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
+ */
 static int a7670_cmd_recv(struct a7670_device* d, void* arg, size_t len, uint32_t to)
 {
     struct a7670_at_buf* a = (struct a7670_at_buf*)arg;
@@ -166,6 +214,9 @@ static const struct a7670_ioctl_map s_a7670_map[A7670_CMD_COUNT] = {
     [A7670_CMD_AT_RECV - A7670_CMD_BASE - 1] = { a7670_cmd_recv },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int a7670_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct a7670_device* d;
@@ -198,6 +249,9 @@ static const struct file_operations a7670_fops = {
     .ioctl = a7670_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 UART 设备并挂 fops
+ */
 static int a7670_probe(struct device* dev)
 {
     struct a7670_device* d;
@@ -232,6 +286,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int a7670_remove(struct device* dev)
 {
     struct a7670_device* d;

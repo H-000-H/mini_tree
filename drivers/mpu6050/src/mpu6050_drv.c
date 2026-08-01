@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file mpu6050_drv.c
+ * @brief MPU6050 六轴 IMU 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与采样结构见 mpu6050_drv.h。
+ *
+ * 数据流: VFS ioctl → mpu6050_cmd_read → device_read/write(I2C) → HAL
+ */
 #include "mpu6050_drv.h"
 #include "vfs-i2c.h"
 #include "device.h"
@@ -18,12 +27,13 @@
 #endif
 #define MPU6050_POOL_COUNT  DTC_GEN_COUNT_INVENSENSE_MPU6050
 
+/** @brief MPU6050 驱动实例（嵌入 fops） */
 struct mpu6050_device
 {
-    struct file_operations ops;
-    struct device*         i2c_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         i2c_dev;  /**< 所属 I2C client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct mpu6050_device s_mpu6050_pool[MPU6050_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -31,18 +41,30 @@ static uint8_t             s_mpu6050_used[MPU6050_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_mpu6050_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "mpu6050";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void mpu6050_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_mpu6050_pool_ctrl, s_mpu6050_used, MPU6050_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct mpu6050_device* mpu6050_get_drvdata(struct device* dev)
 {
     return (struct mpu6050_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 向 I2C 总线写数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int mpu6050_i2c_wr(struct mpu6050_device* d, const uint8_t* tx, size_t len, uint32_t to)
 {
     if (!d || !d->i2c_dev || !tx || len == 0U)
@@ -50,6 +72,10 @@ static int mpu6050_i2c_wr(struct mpu6050_device* d, const uint8_t* tx, size_t le
     return device_write(d->i2c_dev, tx, len, to);
 }
 
+/**
+ * @brief 从 I2C 总线读数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int mpu6050_i2c_rd(struct mpu6050_device* d, uint8_t* rx, size_t len, uint32_t to)
 {
     if (!d || !d->i2c_dev || !rx || len == 0U)
@@ -58,6 +84,10 @@ static int mpu6050_i2c_rd(struct mpu6050_device* d, uint8_t* rx, size_t len, uin
 }
 
 
+/**
+ * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int mpu6050_hw_create(struct mpu6050_device* d)
 {
     if (!d)
@@ -69,6 +99,9 @@ static int mpu6050_hw_create(struct mpu6050_device* d)
 
 }
 
+/**
+ * @brief 释放硬件资源（关闭 I2C client）
+ */
 static void mpu6050_hw_destroy(struct mpu6050_device* d)
 {
     if (!d || !d->hw_ready)
@@ -78,6 +111,9 @@ static void mpu6050_hw_destroy(struct mpu6050_device* d)
 
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int mpu6050_open(struct device* dev, void* arg)
 {
     struct mpu6050_device* d;
@@ -109,6 +145,9 @@ static int mpu6050_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int mpu6050_close(struct device* dev)
 {
     struct mpu6050_device* d;
@@ -131,10 +170,16 @@ static int mpu6050_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct mpu6050_ioctl_map { mpu6050_ioctl_fn_t handler; };
 
 
+/**
+ * @brief MPU6050_CMD_READ_ACCEL_GYRO 实现：自 0x3B 起连续读 14B 六轴原始值
+ */
 static int mpu6050_cmd_read(struct mpu6050_device* d, void* arg, size_t len, uint32_t to)
 {
     const uint8_t reg=0x3B; uint8_t raw[14]; struct mpu6050_sample* o=(struct mpu6050_sample*)arg; int r;
@@ -150,6 +195,9 @@ static const struct mpu6050_ioctl_map s_mpu6050_map[MPU6050_CMD_COUNT] = {
 };
 
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int mpu6050_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct mpu6050_device* d;
@@ -183,6 +231,9 @@ static const struct file_operations mpu6050_fops =
     .ioctl = mpu6050_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 I2C 设备并挂 fops
+ */
 static int mpu6050_probe(struct device* dev)
 {
     struct mpu6050_device* d;
@@ -213,6 +264,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int mpu6050_remove(struct device* dev)
 {
     struct mpu6050_device* d;

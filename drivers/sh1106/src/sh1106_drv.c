@@ -1,4 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * @file sh1106_drv.c
+ * @brief SH1106 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *
+ * 静态池: s_sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * ioctl 命令与参数结构见 sh1106_drv.h，寄存器定义见 sh1106_regs.h。
+ *
+ * 数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
+ */
 #include "sh1106_drv.h"
 #include "vfs-i2c.h"
 
@@ -19,12 +28,13 @@
 #endif
 #define SH1106_POOL_COUNT  DTC_GEN_COUNT_SINOWEALTH_SH1106
 
+/** @brief SH1106 驱动实例（嵌入 fops） */
 struct sh1106_device
 {
-    struct file_operations ops;
-    struct device*         i2c_dev;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         i2c_dev;  /**< 所属 I2C client 设备 */
 
-    int                    hw_ready;
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct sh1106_device s_sh1106_pool[SH1106_POOL_COUNT] COMPAT_ALIGNED(4);
@@ -32,18 +42,30 @@ static uint8_t             s_sh1106_used[SH1106_POOL_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t         s_sh1106_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const kTag = "sh1106";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void sh1106_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_sh1106_pool_ctrl, s_sh1106_used, SH1106_POOL_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct sh1106_device* sh1106_get_drvdata(struct device* dev)
 {
     return (struct sh1106_device*)device_get_priv(dev);
 }
 
 
+/**
+ * @brief 向 I2C 总线写数据
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int sh1106_i2c_wr(struct sh1106_device* d, const uint8_t* tx, size_t len, uint32_t to)
 {
     if (!d || !d->i2c_dev || !tx || len == 0U)
@@ -52,6 +74,10 @@ static int sh1106_i2c_wr(struct sh1106_device* d, const uint8_t* tx, size_t len,
 }
 
 
+/**
+ * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
+ * @return VFS_OK 或 VFS_ERR_*
+ */
 static int sh1106_hw_create(struct sh1106_device* d)
 {
     int r;
@@ -67,6 +93,9 @@ static int sh1106_hw_create(struct sh1106_device* d)
     return VFS_OK;
 }
 
+/**
+ * @brief 释放硬件资源（关闭 I2C client）
+ */
 static void sh1106_hw_destroy(struct sh1106_device* d)
 {
     if (!d || !d->hw_ready)
@@ -77,6 +106,9 @@ static void sh1106_hw_destroy(struct sh1106_device* d)
     d->hw_ready = 0;
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用初始化硬件
+ */
 static int sh1106_open(struct device* dev, void* arg)
 {
     struct sh1106_device* d;
@@ -108,6 +140,9 @@ static int sh1106_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用释放硬件
+ */
 static int sh1106_close(struct device* dev)
 {
     struct sh1106_device* d;
@@ -130,16 +165,25 @@ static int sh1106_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*sh1106_ioctl_fn_t)(struct sh1106_device* d, void* arg, size_t arg_len, uint32_t ms);
 struct sh1106_ioctl_map { sh1106_ioctl_fn_t handler; };
 
 
+/**
+ * @brief 写 1B 命令/数据（ctrl 字节 + 值）
+ */
 static int sh1106_cmd_byte(struct sh1106_device* d, uint8_t ctrl, uint8_t v, uint32_t to)
 {
     uint8_t buf[2] = {ctrl, v};
     return sh1106_i2c_wr(d, buf, 2, to);
 }
 
+/**
+ * @brief 定位到指定页（页 + 列地址命令序列，含列偏移）
+ */
 static int sh1106_set_page_col(struct sh1106_device* d, uint8_t page, uint32_t to)
 {
     uint8_t col = SH1106_COL_OFFSET;
@@ -154,6 +198,9 @@ int r = sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | 
                            (uint8_t)(SH1106_REG_SET_COL_HI | ((col >> 4) & 0x0FU)), to);
 }
 
+/**
+ * @brief SH1106_CMD_INIT 实现：下发完整初始化命令序列
+ */
 static int sh1106_cmd_init(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     static const uint8_t seq[] = {
@@ -186,6 +233,9 @@ static int sh1106_cmd_init(struct sh1106_device* d, void* arg, size_t len, uint3
     return VFS_OK;
 }
 
+/**
+ * @brief SH1106_CMD_FILL 实现：逐页填充 0x00/0xFF
+ */
 static int sh1106_cmd_fill(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     uint8_t v;
@@ -211,6 +261,9 @@ static int sh1106_cmd_fill(struct sh1106_device* d, void* arg, size_t len, uint3
     return VFS_OK;
 }
 
+/**
+ * @brief SH1106_CMD_GET_INFO 实现：返回面板几何
+ */
 static int sh1106_cmd_get_info(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sh1106_info* info = (struct sh1106_info*)arg;
@@ -226,6 +279,9 @@ static int sh1106_cmd_get_info(struct sh1106_device* d, void* arg, size_t len, u
     return VFS_OK;
 }
 
+/**
+ * @brief SH1106_CMD_WRITE_CMD 实现：写单条命令
+ */
 static int sh1106_cmd_write_cmd(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sh1106_byte* a = (struct sh1106_byte*)arg;
@@ -234,6 +290,9 @@ static int sh1106_cmd_write_cmd(struct sh1106_device* d, void* arg, size_t len, 
     return sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD, a->value, to ? to : 100U);
 }
 
+/**
+ * @brief SH1106_CMD_WRITE_DATA 实现：按 64B 分块写显示数据
+ */
 static int sh1106_cmd_write_data(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sh1106_data* a = (struct sh1106_data*)arg;
@@ -256,6 +315,9 @@ static int sh1106_cmd_write_data(struct sh1106_device* d, void* arg, size_t len,
     return VFS_OK;
 }
 
+/**
+ * @brief SH1106_CMD_FLUSH_FB 实现：逐页定位并刷写整帧
+ */
 static int sh1106_cmd_flush_fb(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sh1106_fb* a = (struct sh1106_fb*)arg;
@@ -276,6 +338,9 @@ static int sh1106_cmd_flush_fb(struct sh1106_device* d, void* arg, size_t len, u
     return VFS_OK;
 }
 
+/**
+ * @brief SH1106_CMD_SET_CONTRAST 实现：设置对比度
+ */
 static int sh1106_cmd_set_contrast(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     struct sh1106_contrast* a = (struct sh1106_contrast*)arg;
@@ -297,6 +362,9 @@ static const struct sh1106_ioctl_map s_sh1106_map[SH1106_CMD_COUNT] = {
     [SH1106_CMD_SET_CONTRAST - SH1106_CMD_BASE - 1] = { sh1106_cmd_set_contrast },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int sh1106_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct sh1106_device* d;
@@ -329,6 +397,9 @@ static const struct file_operations sh1106_fops = {
     .ioctl = sh1106_ioctl,
 };
 
+/**
+ * @brief probe：claim 池项、绑定父 I2C 设备并挂 fops
+ */
 static int sh1106_probe(struct device* dev)
 {
     struct sh1106_device* d;
@@ -363,6 +434,9 @@ err:
     return ret;
 }
 
+/**
+ * @brief remove：排空在途 io、释放硬件并归还池项
+ */
 static int sh1106_remove(struct device* dev)
 {
     struct sh1106_device* d;

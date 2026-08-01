@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/*
- * ST7789 公共核心 — 有 CS / 无 CS 共用
+/**
+ * @file st7789_core.c
+ * @brief ST7789 公共核心 — 有 CS / 无 CS 两个入口共用（probe/remove/ioctl 全量实现）
  *
  * SPI: device_get_parent → SPI_CMD_TRANSFER / device_write。
  * DC/RST: vfs-gpio；背光: vfs-tim（LEDC 后端）。禁止厂商 SDK。
+ *
+ * 静态池: s_st7789_pool[ST7789_COUNT]（有 CS + 无 CS 两路 DTS 节点数量之和）
  */
 #include "st7789_drv.h"
 #include "st7789_core.h"
@@ -34,27 +37,28 @@
 #define ST7789_COUNT \
     (DTC_GEN_COUNT_SITRONIX_ST7789 + DTC_GEN_COUNT_SITRONIX_ST7789_NOCS)
 
+/** @brief ST7789 驱动实例（嵌入 fops 与全部引脚/时序状态） */
 struct st7789_device
 {
-    struct file_operations ops;
-    struct device*         spi_dev;
-    struct device*         dc_dev;
-    struct device*         rst_dev;
-    struct device*         bl_tim_dev;
-    struct vfs_gpio_arg    dc_gpio;
-    struct vfs_gpio_arg    rst_gpio;
-    struct vfs_tim_arg     bl_tim;
-    uint32_t               bl_arr;
-    uint32_t               bl_channel;
-    int                    bl_active_high;
-    int                    width;
-    int                    height;
-    uint8_t                madctl;
-    uint8_t                invert;
-    uint8_t                bl_brightness;
-    int                    pins_ready;
-    size_t                 spi_chunk;
-    uint8_t*               block_buf;
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         spi_dev;  /**< 所属 SPI client 设备 */
+    struct device*         dc_dev;   /**< DC 引脚 GPIO 设备（phandle: dc-gpio） */
+    struct device*         rst_dev;  /**< RST 引脚 GPIO 设备（phandle: reset-gpio，可选） */
+    struct device*         bl_tim_dev;   /**< 背光 TIM 设备（phandle: backlight，可选） */
+    struct vfs_gpio_arg    dc_gpio;  /**< DC 引脚操作参数 */
+    struct vfs_gpio_arg    rst_gpio; /**< RST 引脚操作参数 */
+    struct vfs_tim_arg     bl_tim;   /**< 背光 PWM 参数（快路径） */
+    uint32_t               bl_arr;   /**< 背光 PWM ARR（自动装载值） */
+    uint32_t               bl_channel;  /**< 背光 PWM 通道 */
+    int                    bl_active_high; /**< 背光高电平有效（否则反转） */
+    int                    width;    /**< 面板宽（像素） */
+    int                    height;   /**< 面板高（像素） */
+    uint8_t                madctl;   /**< MADCTL 旋转/镜像控制（DTS 直投） */
+    uint8_t                invert;   /**< 颜色反转使能 */
+    uint8_t                bl_brightness; /**< 当前背光亮度 0..255 */
+    int                    pins_ready;    /**< 引脚已绑定且 SPI 已打开 */
+    size_t                 spi_chunk;     /**< 单次 SPI 传输上限 */
+    uint8_t*               block_buf;     /**< 分块填充/传输缓冲（静态池） */
 };
 
 static struct st7789_device s_st7789_pool[ST7789_COUNT] COMPAT_ALIGNED(4);
@@ -64,17 +68,28 @@ static uint8_t s_st7789_block_buf[ST7789_COUNT][ST7789_BLOCK_BUF_SIZE] COMPAT_AL
 
 static const char* const kTag = "st7789";
 
+/**
+ * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ */
 pre_execution(160)
 static void st7789_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_st7789_pool_ctrl, s_st7789_used, ST7789_COUNT));
 }
 
+/**
+ * @brief 取驱动私有数据
+ * @param dev device 指针
+ * @return 驱动实例指针，无效时 ERR_PTR
+ */
 static struct st7789_device* st7789_get_drvdata(struct device* dev)
 {
     return (struct st7789_device*)device_get_priv(dev);
 }
 
+/**
+ * @brief 设置 GPIO 输出电平（obj 为 NULL 时跳过）
+ */
 static int st7789_gpio_out(struct vfs_gpio_arg* ga, int level)
 {
     if (!ga || !ga->obj)
@@ -83,6 +98,9 @@ static int st7789_gpio_out(struct vfs_gpio_arg* ga, int level)
     return vfs_gpio_set_level(ga);
 }
 
+/**
+ * @brief 打开 GPIO 设备并绑定参数（绑定失败自动回滚关闭）
+ */
 static int st7789_bind_gpio(struct device* gdev, struct vfs_gpio_arg* ga)
 {
     int ret;
@@ -101,6 +119,9 @@ static int st7789_bind_gpio(struct device* gdev, struct vfs_gpio_arg* ga)
     return ret;
 }
 
+/**
+ * @brief SPI 分块写入（受 spi_chunk 限制，自动切块）
+ */
 static int st7789_spi_write(struct st7789_device* lcd, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     size_t offset = 0;
@@ -124,6 +145,9 @@ static int st7789_spi_write(struct st7789_device* lcd, const uint8_t* data, size
     return VFS_OK;
 }
 
+/**
+ * @brief 写命令（DC=0 + SPI 写 1B）
+ */
 static int st7789_write_cmd(struct st7789_device* lcd, uint8_t cmd, uint32_t timeout_ms)
 {
     int ret = st7789_gpio_out(&lcd->dc_gpio, 0);
@@ -132,6 +156,9 @@ static int st7789_write_cmd(struct st7789_device* lcd, uint8_t cmd, uint32_t tim
     return st7789_spi_write(lcd, &cmd, 1U, timeout_ms);
 }
 
+/**
+ * @brief 写数据（DC=1 + SPI 写）
+ */
 static int st7789_write_data(struct st7789_device* lcd, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     int ret = st7789_gpio_out(&lcd->dc_gpio, 1);
@@ -140,6 +167,10 @@ static int st7789_write_data(struct st7789_device* lcd, const uint8_t* data, siz
     return st7789_spi_write(lcd, data, len, timeout_ms);
 }
 
+/**
+ * @brief 矩形裁剪到面板边界（越界部分裁掉）
+ * @return VFS_OK（裁剪后仍有有效区域）或 VFS_ERR_INVAL（完全越界）
+ */
 static int st7789_clip_rect(const struct st7789_device* lcd, int* x, int* y, int* w, int* h)
 {
     if (!lcd || !x || !y || !w || !h || *w <= 0 || *h <= 0)
@@ -164,6 +195,9 @@ static int st7789_clip_rect(const struct st7789_device* lcd, int* x, int* y, int
     return (*w > 0 && *h > 0) ? VFS_OK : VFS_ERR_INVAL;
 }
 
+/**
+ * @brief 设置 GRAM 写入窗口（CASET/RASET）
+ */
 static int st7789_set_window(struct st7789_device* lcd, int x, int y, int w, int h, uint32_t timeout_ms)
 {
     uint16_t x0 = (uint16_t)x;
@@ -193,6 +227,9 @@ static int st7789_set_window(struct st7789_device* lcd, int x, int y, int w, int
 }
 
 /* 对齐 esp_lcd_panel_st7789: SLPOUT / MADCTL / COLMOD / RAMCTRL */
+/**
+ * @brief 面板初始化序列：复位 → SLPOUT → MADCTL/COLMOD/RAMCTRL → 显示开
+ */
 static int st7789_hw_init(struct st7789_device* lcd, uint32_t timeout_ms)
 {
     uint8_t madctl  = lcd->madctl;
@@ -259,6 +296,9 @@ static int st7789_hw_init(struct st7789_device* lcd, uint32_t timeout_ms)
     return VFS_OK;
 }
 
+/**
+ * @brief 应用背光亮度（PWM 占空比换算，支持低电平有效反转）
+ */
 static int st7789_apply_backlight(struct st7789_device* lcd, uint8_t brightness)
 {
     uint32_t ccr;
@@ -279,6 +319,9 @@ static int st7789_apply_backlight(struct st7789_device* lcd, uint8_t brightness)
     return VFS_OK;
 }
 
+/**
+ * @brief 矩形填充：裁剪 → 开窗 → 分块流式写 GRAM
+ */
 static int st7789_do_fill_rect(struct st7789_device* lcd, int x, int y, int w, int h, uint16_t color, uint32_t timeout_ms)
 {
     uint8_t hi;
@@ -332,6 +375,9 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int x, int y, int w, i
     return VFS_OK;
 }
 
+/**
+ * @brief 位图绘制：开窗后一次写入 RGB565 数据（须完全在屏内）
+ */
 static int st7789_do_draw_bitmap(struct st7789_device* lcd, int x, int y, int w, int h, const uint8_t* data, uint32_t timeout_ms)
 {
     size_t pixels;
@@ -358,6 +404,9 @@ static int st7789_do_draw_bitmap(struct st7789_device* lcd, int x, int y, int w,
     return st7789_spi_write(lcd, data, pixels * 2U, timeout_ms);
 }
 
+/**
+ * @brief fops.open：引用计数打开，首次调用绑定 DC/RST/背光引脚并初始化面板
+ */
 static int st7789_open(struct device* dev, void* arg)
 {
     struct st7789_device* lcd;
@@ -475,6 +524,9 @@ static int st7789_open(struct device* dev, void* arg)
     return VFS_OK;
 }
 
+/**
+ * @brief fops.close：引用计数关闭，末次调用熄屏/灭背光并释放全部引脚
+ */
 static int st7789_close(struct device* dev)
 {
     struct st7789_device* lcd;
@@ -518,6 +570,9 @@ static int st7789_close(struct device* dev)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
+ */
 typedef int (*st7789_ioctl_fn_t)(struct st7789_device* lcd, void* arg,
                                  size_t arg_len, uint32_t timeout_ms);
 
@@ -526,6 +581,9 @@ struct st7789_ioctl_map
     st7789_ioctl_fn_t handler;
 };
 
+/**
+ * @brief ST7789_CMD_FILL_RECT 实现
+ */
 static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct st7789_fill_rect_arg* a = (const struct st7789_fill_rect_arg*)arg;
@@ -535,6 +593,9 @@ static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg
     return st7789_do_fill_rect(lcd, a->x, a->y, a->w, a->h, a->color, timeout_ms);
 }
 
+/**
+ * @brief ST7789_CMD_FILL_SCREEN 实现
+ */
 static int st7789_cmd_fill_screen(struct st7789_device* lcd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct st7789_fill_screen_arg* a =
@@ -546,6 +607,9 @@ static int st7789_cmd_fill_screen(struct st7789_device* lcd, void* arg, size_t a
                                timeout_ms);
 }
 
+/**
+ * @brief ST7789_CMD_DRAW_BITMAP 实现
+ */
 static int st7789_cmd_draw_bitmap(struct st7789_device* lcd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct st7789_draw_bitmap_arg* a =
@@ -556,6 +620,9 @@ static int st7789_cmd_draw_bitmap(struct st7789_device* lcd, void* arg, size_t a
     return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
 }
 
+/**
+ * @brief ST7789_CMD_SET_BACKLIGHT 实现
+ */
 static int st7789_cmd_set_backlight(struct st7789_device* lcd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct st7789_backlight_arg* a =
@@ -567,6 +634,9 @@ static int st7789_cmd_set_backlight(struct st7789_device* lcd, void* arg, size_t
     return st7789_apply_backlight(lcd, a->brightness);
 }
 
+/**
+ * @brief ST7789_CMD_GET_INFO 实现
+ */
 static int st7789_cmd_get_info(struct st7789_device* lcd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct st7789_info_arg* a = (struct st7789_info_arg*)arg;
@@ -580,6 +650,9 @@ static int st7789_cmd_get_info(struct st7789_device* lcd, void* arg, size_t arg_
     return VFS_OK;
 }
 
+/**
+ * @brief ST7789_CMD_FLUSH_AREA 实现：LVGL 区域坐标 → 位图绘制
+ */
 static int st7789_cmd_flush_area(struct st7789_device* lcd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct st7789_flush_area_arg* a =
@@ -607,6 +680,9 @@ static const struct st7789_ioctl_map s_st7789_ioctl_map[ST7789_CMD_COUNT] =
     [ST7789_CMD_FLUSH_AREA - ST7789_CMD_BASE - 1]    = { st7789_cmd_flush_area },
 };
 
+/**
+ * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
+ */
 static int st7789_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct st7789_device* lcd;
@@ -651,6 +727,10 @@ static const struct file_operations st7789_fops =
     .ioctl = st7789_ioctl,
 };
 
+/**
+ * @brief 公共 probe：解析 DTS 属性、claim 池项、绑定引脚/背光并挂 fops
+ * @param require_nocs 非 0 时断言父 SPI client cs-pin < 0
+ */
 int st7789_probe_common(struct device* dev, int require_nocs)
 {
     struct st7789_device* lcd;
@@ -765,6 +845,9 @@ err_pool:
     return ret;
 }
 
+/**
+ * @brief 公共 remove：排空在途 io、灭背光并归还池项
+ */
 int st7789_remove_common(struct device* dev)
 {
     struct st7789_device* lcd;

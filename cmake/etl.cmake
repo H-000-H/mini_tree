@@ -1,5 +1,5 @@
 # ETL — 上层 C++ 基础设施（无堆容器/字符串等）。
-# 本地 lib/etl 优先，缺失时 FetchContent 自动拉取。根 CMake 默认 link 进 mini_tree。
+# 已 vendor 在 lib/etl（仅 include + cmake，无 test/docs）；缺失时 FetchContent 兖底。
 include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
 
 if(TARGET etl::etl)
