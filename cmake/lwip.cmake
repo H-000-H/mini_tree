@@ -1,18 +1,22 @@
-# lwIP — 基础设施，vendored under lib/lwip (STABLE-2_2_1_RELEASE / 2.2.1).
+# lwIP — 基础设施。本地 lib/lwip 优先，缺失时 FetchContent 自动拉取。
 # Not linked by default: board must provide lwipopts.h (+ arch/cc.h, sys_arch…).
+include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
+
 if(TARGET mini_tree_lwip)
     return()
 endif()
 
-set(MINI_TREE_LWIP_VERSION "2.2.1" CACHE STRING "lwIP release version")
-set(MINI_TREE_LWIP_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lwip" CACHE PATH "lwIP source root")
+set(MINI_TREE_LWIP_VERSION "STABLE-2_2_1_RELEASE" CACHE STRING "lwIP git tag")
 
-if(NOT EXISTS "${MINI_TREE_LWIP_DIR}/src/include/lwip/init.h")
-    message(STATUS "mini_tree lwIP: not found under ${MINI_TREE_LWIP_DIR} — skip")
-    return()
-endif()
+mini_tree_dep_get(_lwip_source_dir
+    NAME lwip
+    LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lwip"
+    MARKER "src/include/lwip/init.h"
+    GIT_REPOSITORY https://github.com/lwip-tcpip/lwip
+    GIT_TAG ${MINI_TREE_LWIP_VERSION}
+)
 
-set(LWIP_DIR "${MINI_TREE_LWIP_DIR}")
+set(LWIP_DIR "${_lwip_source_dir}")
 
 # Default stack (no PPP / 6LoWPAN / apps) — suitable for Ethernet / USB-RNDIS / etc.
 set(_mini_tree_lwip_SRCS
@@ -72,7 +76,7 @@ target_sources(mini_tree_lwip INTERFACE ${_mini_tree_lwip_SRCS})
 target_include_directories(mini_tree_lwip INTERFACE
     "${LWIP_DIR}/src/include"
 )
-message(STATUS "mini_tree lwIP: ${MINI_TREE_LWIP_VERSION} @ ${MINI_TREE_LWIP_DIR}")
+message(STATUS "mini_tree lwIP: ${MINI_TREE_LWIP_VERSION} @ ${LWIP_DIR}")
 
 # Link lwIP into a target. Pass directory that contains lwipopts.h (and arch/).
 # Example: mini_tree_link_lwip(my_fw "${CMAKE_CURRENT_SOURCE_DIR}/port")

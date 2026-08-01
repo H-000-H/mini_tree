@@ -1,9 +1,8 @@
 # ==============================================================================
-# lib — 基础设施第三方（进 git）+ OSAL 条件内核
+# lib — OSAL 条件内核（仅保留 RTOS）
 # ==============================================================================
-# 保留 vendor：
-#   freeRTOS / rtthread（按 Kconfig）· tinyusb · lwIP · cJSON · etl
-# 其余积木默认 FetchContent，见 cmake/*.cmake（本地 lib/<Name> 可覆盖）
+# 保留 vendor：freeRTOS / rtthread（按 Kconfig 选择）
+# 其余基础设施（tinyusb / lwIP / cJSON / ETL）均通过 cmake/*.cmake FetchContent 按需拉取
 # ==============================================================================
 
 get_filename_component(MINI_TREE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
@@ -60,28 +59,15 @@ if(OSAL_BACKEND STREQUAL "RTTHREAD")
     add_subdirectory(rtthread)
 endif()
 
-# ── TinyUSB（通用核心，不绑 MCU；不默认链进固件）──
-set(TINYUSB_ROOT "${CMAKE_CURRENT_LIST_DIR}/tinyusb")
-set(TINYUSB_SRC_DIR "${TINYUSB_ROOT}/src")
-if(EXISTS "${TINYUSB_SRC_DIR}/tusb.c")
-    include("${TINYUSB_SRC_DIR}/CMakeLists.txt")
-    tinyusb_sources_get(TINYUSB_CORE_SRCS)
-    add_library(tinyusb INTERFACE)
-    target_sources(tinyusb INTERFACE ${TINYUSB_CORE_SRCS})
-    target_include_directories(tinyusb INTERFACE "${TINYUSB_SRC_DIR}")
-else()
-    message(STATUS "TinyUSB not present under lib/tinyusb — skip")
-endif()
-
-# ── 基础设施源码树状态 ──
-foreach(_infra IN ITEMS freeRTOS rtthread tinyusb lwip cJSON etl)
-    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/${_infra}")
-        message(STATUS "infra ${_infra}: present under lib/${_infra}")
+# ── RTOS 源码树状态 ──
+foreach(_rtos IN ITEMS freeRTOS rtthread)
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/${_rtos}")
+        message(STATUS "RTOS ${_rtos}: present under lib/${_rtos}")
     else()
-        message(STATUS "infra ${_infra}: MISSING under lib/${_infra}")
+        message(STATUS "RTOS ${_rtos}: MISSING under lib/${_rtos}")
     endif()
 endforeach()
-message(STATUS "Optional bricks: FetchContent on mini_tree_link_* (local lib/<Name> override OK)")
+message(STATUS "Infra bricks (tinyusb/lwIP/cJSON/ETL): FetchContent via cmake/*.cmake")
 
 add_library(lib INTERFACE)
 if(OSAL_BACKEND STREQUAL "FREERTOS")

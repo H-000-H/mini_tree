@@ -47,6 +47,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/cmake/dep_fetch.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/etl.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/lwip.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/cjson.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/tinyusb.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/littlefs.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/easyflash.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/multibutton.cmake")
@@ -385,11 +386,9 @@ if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
     )
 endif()
 
-# 第三方库：FreeRTOS / RT-Thread（按 .config）+ TinyUSB
+# 第三方库：FreeRTOS / RT-Thread（按 .config）
 add_subdirectory(lib)
 target_link_libraries(mini_tree PUBLIC lib)
-
-# TinyUSB：板级自行链接 DCD / CFG_TUSB_MCU，中间件不绑 MCU
 
 target_compile_options(mini_tree PRIVATE -Wno-unused-value)
 # 上层 C++ 基础：ETL 默认进 mini_tree（SYSTEM_CPP / event_bus 等依赖）

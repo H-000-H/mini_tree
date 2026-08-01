@@ -92,10 +92,14 @@ ide/third_party/etl
 ide/third_party/etl/
 
 # ---------------------------------------------
-# 可选开源积木：默认 FetchContent，勿提交进 git
-# 基础设施保留 vendor：cJSON / lwIP / ETL / freeRTOS / rtthread / tinyusb
+# 开源积木：默认 FetchContent，勿提交进 git
+# lib/ 仅保留 vendor：freeRTOS / rtthread
 # 若需离线，可手动 clone 到对应路径（cmake 会优先用本地）
 # ---------------------------------------------
+lib/tinyusb/
+lib/lwip/
+lib/cJSON/
+lib/etl/
 lib/lvgl/
 lib/u8g2/
 lib/mbedtls/

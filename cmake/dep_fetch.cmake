@@ -1,5 +1,5 @@
 # mini_tree_dep_get — local lib/<name> first, else FetchContent download.
-# Optional bricks use this; infrastructure (OS/USB/lwIP/cJSON/ETL) stays vendored.
+# lib/ 仅保留 RTOS（freeRTOS / rtthread），其余基础设施均通过本函数按需拉取。
 include_guard(GLOBAL)
 include(FetchContent)
 

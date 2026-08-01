@@ -200,7 +200,7 @@ list(REMOVE_DUPLICATES _DTC_DEPENDS)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-# ETL：优先板级 FetchContent / managed；若仍 vendored 于 lib/etl 则加入 include
+# ETL：优先板级 FetchContent / managed；若本地 lib/etl 存在则加入 include（兑底）
 set(_ETL_INC "")
 if(IS_DIRECTORY "${MINI_TREE_DIR}/lib/etl/include")
     set(_ETL_INC "${MINI_TREE_DIR}/lib/etl/include")

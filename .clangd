@@ -1,7 +1,7 @@
 # mini_tree 中间件通用 clangd（Linux / Windows）
 # - include 路径放在根目录 compile_flags.txt（其目录 = 编译 cwd，相对 -I 才正确）
 # - 禁止在子目录再放 compile_flags.txt（会覆盖根配置，且相对路径常失效）
-# - 生成头用 ide/stubs；ETL 用 ide/third_party/etl（可 symlink 到本地 ETL 源）
+# - 生成头用 ide/stubs；ETL 用 ide/third_party/etl（clone 到该目录即可，已 gitignore）
 # - 勿在本文件用相对 -I：fallback 的 cwd 是源文件所在目录，-Icore/include 会找错
 # - 有 compile_commands.json 时优先用之；本文件只做 Merge（Remove / 语言切换）
 # 用法：打开 mini_tree 根目录；改完后命令面板执行 Clangd: Restart language server
@@ -25,15 +25,20 @@ Diagnostics:
 If:
   PathMatch: .*\.(h|H)$
 CompileFlags:
+  Remove:
+    - -std=*
   Add:
     - -x
     - c-header
+    - -std=gnu17
 
 ---
 # C++ 源
 If:
   PathMatch: .*\.(cpp|cxx|cc|hpp|hxx)$
 CompileFlags:
+  Remove:
+    - -std=*
   Add:
     - -std=gnu++17
     - -x
