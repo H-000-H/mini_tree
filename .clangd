@@ -5,6 +5,8 @@
 # - 勿在本文件用相对 -I：fallback 的 cwd 是源文件所在目录，-Icore/include 会找错
 # - 有 compile_commands.json 时优先用之；本文件只做 Merge（Remove / 语言切换）
 # 用法：打开 mini_tree 根目录；改完后命令面板执行 Clangd: Restart language server
+# 子模块场景：父项目 compile_commands.json 会覆盖本库 compile_flags.txt，
+#   执行 python3 tools/gen_compile_db.py 在本库根生成 compile_commands.json 即可解决。
 
 CompileFlags:
   Remove:

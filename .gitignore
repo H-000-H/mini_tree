@@ -122,3 +122,6 @@ lib/libmodbus/
 # 本地 Agent 入口（不入库；vendored 子树内 AGENTS.md 不受影响）
 /AGENTS.md
 /CLAUDE.md
+
+# IDE 索引生成物（含绝对路径，由 tools/gen_compile_db.py 生成）
+/compile_commands.json
