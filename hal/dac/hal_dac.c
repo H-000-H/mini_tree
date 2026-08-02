@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Weak empty HAL stub — board overrides. */
-#include "compiler_compat.h"
-#include "status.h"
 #include "hal_dac.h"
 
-COMPAT_WEAK int hal_dac_device_init(hal_dac_device* pdev, hal_dac_host_config* host_cfg, hal_dac_platform_unique_config* unique_cfg)
+#include "compiler_compat.h"
+#include "status.h"
+
+COMPAT_WEAK int hal_dac_device_init(hal_dac_device* pdev, hal_dac_host_config* host_cfg,
+                                    hal_dac_platform_unique_config* unique_cfg)
 {
     (void)pdev;
     (void)host_cfg;

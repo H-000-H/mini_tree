@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Weak empty HAL stub — board overrides. */
+#include "hal_iwdg.h"
+
 #include "compiler_compat.h"
 #include "status.h"
-#include "hal_iwdg.h"
 
 COMPAT_WEAK int hal_iwdg_init(struct hal_iwdg_dev* pdev, const struct hal_iwdg_config* cfg)
 {

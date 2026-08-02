@@ -9,13 +9,14 @@
  *@=========================================================================================================================*/
 #define I2C_VFS_IMPL
 #include "vfs-i2c.h"
-#include "i2c_bus.h"
+
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
+#include "i2c_bus.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
 
 /*===========================================================================================================================================================*/
@@ -26,23 +27,24 @@
 #endif
 
 /** @brief I2C Host 私有数据 (静态池, 存 host 配置 + 池索引) */
-struct vfs_i2c_priv {
-    struct hal_i2c_bus_config cfg;       /**< host 总线配置 (DTSI 直投) */
-    int                       pool_idx;  /**< 池索引 */
+struct vfs_i2c_priv
+{
+    struct hal_i2c_bus_config cfg; /**< host 总线配置 (DTSI 直投) */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_i2c_priv s_i2c_priv_pool[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_i2c_priv_used[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_i2c_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   k_host_tag = "i2c_vfs_host";
+static uint8_t s_i2c_priv_used[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_i2c_priv_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_host_tag = "i2c_vfs_host";
 
 /**
  * @brief I2C Host 私有数据池启动初始化
  */
-pre_execution(150)
-static void vfs_i2c_priv_pool_init(void)
+pre_execution(150) static void vfs_i2c_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
 }
 
 /**
@@ -60,26 +62,26 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
     int scl_output_type = 0, scl_speed = 0, scl_mode = 0, scl_pull = 0;
     int sda_output_type = 0, sda_speed = 0, sda_mode = 0, sda_pull = 0;
 
-    if (device_get_prop_int(pdev, "i2c-base",  &i2c_base)  != VFS_OK ||
-        device_get_prop_int(pdev, "i2c-clk",   &i2c_clk)   != VFS_OK ||
-        device_get_prop_int(pdev, "scl-port",  &scl_port)  != VFS_OK ||
-        device_get_prop_int(pdev, "scl-pin",   &scl_pin)   != VFS_OK ||
-        device_get_prop_int(pdev, "scl-clk",   &scl_clk)   != VFS_OK ||
-        device_get_prop_int(pdev, "scl-af",    &scl_af)    != VFS_OK ||
-        device_get_prop_int(pdev, "sda-port",  &sda_port)  != VFS_OK ||
-        device_get_prop_int(pdev, "sda-pin",   &sda_pin)   != VFS_OK ||
-        device_get_prop_int(pdev, "sda-clk",   &sda_clk)   != VFS_OK ||
-        device_get_prop_int(pdev, "sda-af",    &sda_af)    != VFS_OK)
+    if (device_get_prop_int(pdev, "i2c-base", &i2c_base) != VFS_OK ||
+        device_get_prop_int(pdev, "i2c-clk", &i2c_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "scl-port", &scl_port) != VFS_OK ||
+        device_get_prop_int(pdev, "scl-pin", &scl_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "scl-clk", &scl_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "scl-af", &scl_af) != VFS_OK ||
+        device_get_prop_int(pdev, "sda-port", &sda_port) != VFS_OK ||
+        device_get_prop_int(pdev, "sda-pin", &sda_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "sda-clk", &sda_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "sda-af", &sda_af) != VFS_OK)
         return VFS_ERR_INVAL;
 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-output-type", &scl_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-speed",       &scl_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-mode",        &scl_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-pull",        &scl_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-speed", &scl_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-mode", &scl_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-pull", &scl_pull));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-output-type", &sda_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-speed",       &sda_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-mode",        &sda_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-pull",        &sda_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-speed", &sda_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-mode", &sda_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-pull", &sda_pull));
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
     {
@@ -88,34 +90,34 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "i2c-mode", &mode));
-        cfg->irqn         = (int32_t)irqn;
+        cfg->irqn = (int32_t)irqn;
         cfg->irq_priority = (uint32_t)irq_priority;
-        cfg->it_enable    = (uint32_t)it_enable;
-        cfg->mode         = (uint32_t)mode;
+        cfg->it_enable = (uint32_t)it_enable;
+        cfg->mode = (uint32_t)mode;
     }
 
-    cfg->i2c            = (uintptr_t)i2c_base;
+    cfg->i2c = (uintptr_t)i2c_base;
     cfg->i2c_clk_periph = (uint32_t)i2c_clk;
-    cfg->bus_role       = (uint32_t)bus_role;
+    cfg->bus_role = (uint32_t)bus_role;
     cfg->scl = (struct hal_i2c_pin_cfg){
-        .port        = (uintptr_t)scl_port,
-        .pin         = (uint16_t)scl_pin,
-        .clk_bus     = (uint32_t)scl_clk,
-        .af          = (uint32_t)scl_af,
+        .port = (uintptr_t)scl_port,
+        .pin = (uint16_t)scl_pin,
+        .clk_bus = (uint32_t)scl_clk,
+        .af = (uint32_t)scl_af,
         .output_type = (uint32_t)scl_output_type,
-        .speed       = (uint32_t)scl_speed,
-        .mode        = (uint32_t)scl_mode,
-        .pull        = (uint32_t)scl_pull,
+        .speed = (uint32_t)scl_speed,
+        .mode = (uint32_t)scl_mode,
+        .pull = (uint32_t)scl_pull,
     };
     cfg->sda = (struct hal_i2c_pin_cfg){
-        .port        = (uintptr_t)sda_port,
-        .pin         = (uint16_t)sda_pin,
-        .clk_bus     = (uint32_t)sda_clk,
-        .af          = (uint32_t)sda_af,
+        .port = (uintptr_t)sda_port,
+        .pin = (uint16_t)sda_pin,
+        .clk_bus = (uint32_t)sda_clk,
+        .af = (uint32_t)sda_af,
         .output_type = (uint32_t)sda_output_type,
-        .speed       = (uint32_t)sda_speed,
-        .mode        = (uint32_t)sda_mode,
-        .pull        = (uint32_t)sda_pull,
+        .speed = (uint32_t)sda_speed,
+        .mode = (uint32_t)sda_mode,
+        .pull = (uint32_t)sda_pull,
     };
 
     {
@@ -129,22 +131,22 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
         n = device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14);
         if (n >= 6)
         {
-            cfg->dma_tx.dma_handle      = (uintptr_t)dma_arr[0];
-            cfg->dma_tx.dma_stream      = (uint32_t)dma_arr[1];
-            cfg->dma_tx.dma_channel     = (uint32_t)dma_arr[2];
-            cfg->dma_tx.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_tx.dma_handle = (uintptr_t)dma_arr[0];
+            cfg->dma_tx.dma_stream = (uint32_t)dma_arr[1];
+            cfg->dma_tx.dma_channel = (uint32_t)dma_arr[2];
+            cfg->dma_tx.dma_priority = (uint32_t)dma_arr[3];
             cfg->dma_tx.dma_memory_size = (uint32_t)dma_arr[4];
-            cfg->dma_tx.dma_enable      = (uint32_t)dma_arr[5];
+            cfg->dma_tx.dma_enable = (uint32_t)dma_arr[5];
         }
         n = device_get_prop_int_array(pdev, "dma-rx-cfg", dma_arr, 14);
         if (n >= 6)
         {
-            cfg->dma_rx.dma_handle      = (uintptr_t)dma_arr[0];
-            cfg->dma_rx.dma_stream      = (uint32_t)dma_arr[1];
-            cfg->dma_rx.dma_channel     = (uint32_t)dma_arr[2];
-            cfg->dma_rx.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_rx.dma_handle = (uintptr_t)dma_arr[0];
+            cfg->dma_rx.dma_stream = (uint32_t)dma_arr[1];
+            cfg->dma_rx.dma_channel = (uint32_t)dma_arr[2];
+            cfg->dma_rx.dma_priority = (uint32_t)dma_arr[3];
             cfg->dma_rx.dma_memory_size = (uint32_t)dma_arr[4];
-            cfg->dma_rx.dma_enable      = (uint32_t)dma_arr[5];
+            cfg->dma_rx.dma_enable = (uint32_t)dma_arr[5];
         }
     }
 
@@ -160,8 +162,8 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
 static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
 {
     struct vfs_i2c_priv* priv;
-    int                  pool_idx;
-    int                  ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -188,8 +190,7 @@ static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s role=%s",
-             device_get_name(pdev),
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
              bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
     return VFS_OK;
 
@@ -227,10 +228,10 @@ static int vfs_i2c_priv_probe_slave(struct device* pdev)
  */
 static int vfs_i2c_priv_remove(struct device* pdev)
 {
-    struct vfs_i2c_priv*  priv;
+    struct vfs_i2c_priv* priv;
     struct dev_lifecycle* lc;
-    int                   pool_idx;
-    int                   ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -273,24 +274,24 @@ static int vfs_i2c_priv_remove(struct device* pdev)
 #define I2C_VFS_CLIENT_COUNT 4
 
 /** @brief I2C Client 运行时对象 (静态池, 含 fops + 设备配置 + 传输模式) */
-struct i2c_vfs_client {
-    struct file_operations       ops;       /**< VFS 操作表 */
-    struct hal_i2c_device_config cfg;       /**< 设备配置 (DTSI 直投) */
-    int                          role;      /**< 角色 (MASTER/SLAVE) */
-    uint32_t                     xfer_mode; /**< I2C_XFER_*; write/read 默认 AUTO */
-    int                          pool_idx;  /**< 池索引 */
+struct i2c_vfs_client
+{
+    struct file_operations ops; /**< VFS 操作表 */
+    struct hal_i2c_device_config cfg; /**< 设备配置 (DTSI 直投) */
+    int role; /**< 角色 (MASTER/SLAVE) */
+    uint32_t xfer_mode; /**< I2C_XFER_*; write/read 默认 AUTO */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct i2c_vfs_client s_client_pool[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t               s_client_used[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t           s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const     k_client_tag = "i2c_vfs_client";
+static uint8_t s_client_used[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_client_tag = "i2c_vfs_client";
 
 /**
  * @brief I2C Client 私有数据池启动初始化
  */
-pre_execution(160)
-static void i2c_vfs_client_pool_init(void)
+pre_execution(160) static void i2c_vfs_client_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
 }
@@ -304,8 +305,8 @@ static void i2c_vfs_client_pool_init(void)
 static int i2c_vfs_open(struct device* pdev, void* arg)
 {
     struct dev_lifecycle* lc;
-    int                   first;
-    int                   ret;
+    int first;
+    int ret;
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -339,7 +340,7 @@ static int i2c_vfs_open(struct device* pdev, void* arg)
 static int i2c_vfs_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int                   last;
+    int last;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -369,14 +370,14 @@ static int i2c_vfs_close(struct device* pdev)
 static int i2c_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct i2c_vfs_client* priv;
-    struct dev_lifecycle*  lc;
-    int                    ret;
+    struct dev_lifecycle* lc;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct i2c_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -415,14 +416,14 @@ static int i2c_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
 static int i2c_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct i2c_vfs_client* priv;
-    struct dev_lifecycle*  lc;
-    int                    ret;
+    struct dev_lifecycle* lc;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct i2c_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -453,8 +454,9 @@ static int i2c_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t 
 typedef int (*i2c_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms);
 
 /** @brief I2C ioctl 派发表项 (函数指针包装) */
-struct i2c_ioctl_map {
-    i2c_ioctl_fn_t handler;  /**< ioctl 处理函数 */
+struct i2c_ioctl_map
+{
+    i2c_ioctl_fn_t handler; /**< ioctl 处理函数 */
 };
 
 /**
@@ -468,8 +470,8 @@ struct i2c_ioctl_map {
 static int i2c_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct i2c_transfer_arg* ta = (const struct i2c_transfer_arg*)arg;
-    struct i2c_vfs_client*         priv;
-    uint32_t                       mode;
+    struct i2c_vfs_client* priv;
+    uint32_t mode;
 
     if (!pdev || !pdev->ops || !ta || arg_len != sizeof(*ta) || ta->len == 0)
         return VFS_ERR_INVAL;
@@ -492,10 +494,11 @@ static int i2c_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     const struct i2c_xfer_mode_arg* ma = (const struct i2c_xfer_mode_arg*)arg;
-    struct i2c_vfs_client*          priv;
+    struct i2c_vfs_client* priv;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
@@ -516,10 +519,11 @@ static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     struct i2c_xfer_mode_arg* ma = (struct i2c_xfer_mode_arg*)arg;
-    struct i2c_vfs_client*    priv;
+    struct i2c_vfs_client* priv;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
@@ -554,7 +558,8 @@ static int i2c_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 未实现或失败返回负数错误码
  */
-static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     const struct i2c_trans_result_arg* tra = (const struct i2c_trans_result_arg*)arg;
     if (!tra || arg_len != sizeof(*tra))
@@ -563,11 +568,11 @@ static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_l
 }
 
 static const struct i2c_ioctl_map s_i2c_ioctl_map[I2C_CMD_COUNT] = {
-    [I2C_CMD_TRANSFER - I2C_CMD_BASE - 1]         = { i2c_cmd_transfer },
-    [I2C_CMD_QUEUE_TX - I2C_CMD_BASE - 1]         = { i2c_cmd_queue_tx },
-    [I2C_CMD_GET_TRANS_RESULT - I2C_CMD_BASE - 1] = { i2c_cmd_get_trans_result },
-    [I2C_CMD_SET_XFER_MODE - I2C_CMD_BASE - 1]    = { i2c_cmd_set_xfer_mode },
-    [I2C_CMD_GET_XFER_MODE - I2C_CMD_BASE - 1]    = { i2c_cmd_get_xfer_mode },
+    [I2C_CMD_TRANSFER - I2C_CMD_BASE - 1] = {i2c_cmd_transfer},
+    [I2C_CMD_QUEUE_TX - I2C_CMD_BASE - 1] = {i2c_cmd_queue_tx},
+    [I2C_CMD_GET_TRANS_RESULT - I2C_CMD_BASE - 1] = {i2c_cmd_get_trans_result},
+    [I2C_CMD_SET_XFER_MODE - I2C_CMD_BASE - 1] = {i2c_cmd_set_xfer_mode},
+    [I2C_CMD_GET_XFER_MODE - I2C_CMD_BASE - 1] = {i2c_cmd_get_xfer_mode},
 };
 
 /**
@@ -579,11 +584,12 @@ static const struct i2c_ioctl_map s_i2c_ioctl_map[I2C_CMD_COUNT] = {
  * @param timeout_ms 超时 (毫秒, 部分命令透传)
  * @return 成功返回 VFS_OK 或实际传输字节数, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
-static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int32_t               offset;
-    int                   ret;
+    int32_t offset;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -607,10 +613,10 @@ static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 }
 
 static const struct file_operations i2c_vfs_fops = {
-    .open  = i2c_vfs_open,
+    .open = i2c_vfs_open,
     .close = i2c_vfs_close,
     .write = i2c_vfs_write,
-    .read  = i2c_vfs_read,
+    .read = i2c_vfs_read,
     .ioctl = i2c_vfs_ioctl,
 };
 
@@ -636,9 +642,9 @@ static int i2c_vfs_parse_dts(struct device* pdev, struct hal_i2c_device_config* 
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
     cfg->clock_speed_hz = (uint32_t)(clock_speed > 0 ? clock_speed : 100000);
-    cfg->address        = (uint32_t)address;
-    cfg->own_address    = (uint32_t)address;
-    cfg->ack_enable     = (uint32_t)ack_enable;
+    cfg->address = (uint32_t)address;
+    cfg->own_address = (uint32_t)address;
+    cfg->ack_enable = (uint32_t)ack_enable;
     return VFS_OK;
 }
 
@@ -651,9 +657,9 @@ static int i2c_vfs_probe(struct device* pdev)
 {
     struct i2c_vfs_client* priv;
     struct i2c_bus_client* bus_cli;
-    int                    role;
-    int                    pool_idx;
-    int                    ret;
+    int role;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -671,8 +677,8 @@ static int i2c_vfs_probe(struct device* pdev)
 
     priv = &s_client_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx  = pool_idx;
-    priv->role      = role;
+    priv->pool_idx = pool_idx;
+    priv->role = role;
     priv->xfer_mode = I2C_XFER_AUTO;
 
     ret = i2c_vfs_parse_dts(pdev, &priv->cfg);
@@ -693,10 +699,9 @@ static int i2c_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u",
-             device_get_name(pdev),
-             role == I2C_BUS_ROLE_MASTER ? "master" : "slave",
-             (unsigned)priv->cfg.address, (unsigned)priv->cfg.clock_speed_hz);
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev),
+             role == I2C_BUS_ROLE_MASTER ? "master" : "slave", (unsigned)priv->cfg.address,
+             (unsigned)priv->cfg.clock_speed_hz);
     return VFS_OK;
 
 err_pool:
@@ -714,14 +719,14 @@ err_pool:
 static int i2c_vfs_remove(struct device* pdev)
 {
     struct i2c_vfs_client* priv;
-    struct dev_lifecycle*  lc;
-    int                    pool_idx;
+    struct dev_lifecycle* lc;
+    int pool_idx;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct i2c_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -742,11 +747,7 @@ static int i2c_vfs_remove(struct device* pdev)
     return VFS_OK;
 }
 
-DRIVER_REGISTER(i2c_host_master, "i2c-master",
-                vfs_i2c_priv_probe_master, vfs_i2c_priv_remove)
-DRIVER_REGISTER(i2c_host_slave, "i2c-slave",
-                vfs_i2c_priv_probe_slave, vfs_i2c_priv_remove)
-DRIVER_REGISTER(i2c_vfs_master, "heterogeneous,i2c-master-client",
-                i2c_vfs_probe, i2c_vfs_remove)
-DRIVER_REGISTER(i2c_vfs_slave, "heterogeneous,i2c-slave-client",
-                i2c_vfs_probe, i2c_vfs_remove)
+DRIVER_REGISTER(i2c_host_master, "i2c-master", vfs_i2c_priv_probe_master, vfs_i2c_priv_remove)
+DRIVER_REGISTER(i2c_host_slave, "i2c-slave", vfs_i2c_priv_probe_slave, vfs_i2c_priv_remove)
+DRIVER_REGISTER(i2c_vfs_master, "heterogeneous,i2c-master-client", i2c_vfs_probe, i2c_vfs_remove)
+DRIVER_REGISTER(i2c_vfs_slave, "heterogeneous,i2c-slave-client", i2c_vfs_probe, i2c_vfs_remove)

@@ -5,17 +5,19 @@
  */
 #define WWDG_VFS_IMPL
 #include "vfs-wwdg.h"
+
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
 
-struct vfs_wwdg_priv {
-    struct file_operations ops;   /**< VFS 操作表 */
-    struct hal_wwdg_dev wwdg;     /**< HAL WWDG 设备 */
+struct vfs_wwdg_priv
+{
+    struct file_operations ops; /**< VFS 操作表 */
+    struct hal_wwdg_dev wwdg; /**< HAL WWDG 设备 */
 };
 static struct vfs_wwdg_priv s_priv;
 static const char* k_tag = "vfs_wwdg";
@@ -32,18 +34,24 @@ static int vfs_wwdg_open(struct device* pdev, void* arg)
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
-    if (!pdev || !pdev->ops) return VFS_ERR_INVAL;
+    if (!pdev || !pdev->ops)
+        return VFS_ERR_INVAL;
     priv = container_of(pdev->ops, struct vfs_wwdg_priv, ops);
     lc = device_lc(pdev);
-    if (IS_ERR(lc)) return PTR_ERR(lc);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
     first = dev_lc_open_begin(lc);
-    if (first < 0) return first;
+    if (first < 0)
+        return first;
     ret = VFS_OK;
-    if (first == 1) {
+    if (first == 1)
+    {
         ret = hal_wwdg_start(&priv->wwdg);
-        if (ret != VFS_OK) dev_lc_open_abort(lc);
+        if (ret != VFS_OK)
+            dev_lc_open_abort(lc);
     }
-    if (ret == VFS_OK) dev_lc_open_end(lc);
+    if (ret == VFS_OK)
+        dev_lc_open_end(lc);
     return ret;
 }
 
@@ -56,11 +64,14 @@ static int vfs_wwdg_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
     int last;
-    if (!pdev || !pdev->ops) return VFS_ERR_INVAL;
+    if (!pdev || !pdev->ops)
+        return VFS_ERR_INVAL;
     lc = device_lc(pdev);
-    if (IS_ERR(lc)) return PTR_ERR(lc);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
     last = dev_lc_close_begin(lc);
-    if (last < 0) return last;
+    if (last < 0)
+        return last;
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -79,20 +90,27 @@ static int vfs_wwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     struct vfs_wwdg_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
-    COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len); COMPAT_IGNORE_RESULT(to);
-    if (!pdev || !pdev->ops) return VFS_ERR_INVAL;
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(to);
+    if (!pdev || !pdev->ops)
+        return VFS_ERR_INVAL;
     priv = container_of(pdev->ops, struct vfs_wwdg_priv, ops);
     lc = device_lc(pdev);
-    if (IS_ERR(lc)) return PTR_ERR(lc);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK) return ret;
+    if (ret != VFS_OK)
+        return ret;
     ret = (cmd == WWDG_CMD_FEED) ? hal_wwdg_feed(&priv->wwdg) : VFS_ERR_INVAL;
     dev_lc_io_end(lc);
     return ret;
 }
 
 static const struct file_operations s_fops = {
-    .open = vfs_wwdg_open, .close = vfs_wwdg_close, .ioctl = vfs_wwdg_ioctl,
+    .open = vfs_wwdg_open,
+    .close = vfs_wwdg_close,
+    .ioctl = vfs_wwdg_ioctl,
 };
 
 /**
@@ -102,19 +120,27 @@ static const struct file_operations s_fops = {
  */
 static int vfs_wwdg_probe(struct device* pdev)
 {
-    struct hal_wwdg_config cfg = { .window = 0x50, .counter = 0x7F, .prescaler = 1, .ewi_enable = 0 };
+    struct hal_wwdg_config cfg = {.window = 0x50, .counter = 0x7F, .prescaler = 1, .ewi_enable = 0};
     int v, ret;
-    if (!pdev) return VFS_ERR_INVAL;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "window", &v)); if (v) cfg.window = (uint32_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "counter", &v)); if (v) cfg.counter = (uint32_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &v)); cfg.prescaler = (uint32_t)v;
+    if (!pdev)
+        return VFS_ERR_INVAL;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "window", &v));
+    if (v)
+        cfg.window = (uint32_t)v;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "counter", &v));
+    if (v)
+        cfg.counter = (uint32_t)v;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &v));
+    cfg.prescaler = (uint32_t)v;
     COMPAT_MEM_SET(&s_priv, 0, sizeof(s_priv));
     ret = hal_wwdg_init(&s_priv.wwdg, &cfg);
-    if (ret != VFS_OK) return ret;
+    if (ret != VFS_OK)
+        return ret;
     s_priv.ops = s_fops;
     pdev->ops = &s_priv.ops;
     device_lc_bind(pdev);
-    if (device_set_priv(pdev, &s_priv) != VFS_OK) return VFS_ERR_IO;
+    if (device_set_priv(pdev, &s_priv) != VFS_OK)
+        return VFS_ERR_IO;
     SYS_LOGI(k_tag, "probe OK");
     return VFS_OK;
 }

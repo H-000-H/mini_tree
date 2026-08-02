@@ -13,22 +13,26 @@
  *@=========================================================================================================================*/
 #ifndef VFS_IWDG_H
 #define VFS_IWDG_H
-#include <stdint.h>
 #include "compiler_compat.h"
 #include "hal_iwdg.h"
+#include <stdint.h>
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-#define IWDG_CMD_BASE           COMPAT_MAGIC(IWDG)
-#define IWDG_CMD_FEED           (IWDG_CMD_BASE + 0x01)  /**< 喂狗 */
-#define IWDG_CMD_SET_TIMEOUT    (IWDG_CMD_BASE + 0x02)  /**< arg: iwdg_timeout_arg */
-#define IWDG_CMD_SET_LONG       (IWDG_CMD_BASE + 0x03)  /**< 拉长至硬件上限 (~32768ms) */
-#define IWDG_CMD_RESTORE        (IWDG_CMD_BASE + 0x04)  /**< 恢复 probe/init 超时 */
-#define IWDG_CMD_COUNT          4
+#define IWDG_CMD_BASE COMPAT_MAGIC(IWDG)
+#define IWDG_CMD_FEED (IWDG_CMD_BASE + 0x01) /**< 喂狗 */
+#define IWDG_CMD_SET_TIMEOUT (IWDG_CMD_BASE + 0x02) /**< arg: iwdg_timeout_arg */
+#define IWDG_CMD_SET_LONG (IWDG_CMD_BASE + 0x03) /**< 拉长至硬件上限 (~32768ms) */
+#define IWDG_CMD_RESTORE (IWDG_CMD_BASE + 0x04) /**< 恢复 probe/init 超时 */
+#define IWDG_CMD_COUNT 4
 
-/** IWDG_CMD_SET_TIMEOUT 参数 */
-struct iwdg_timeout_arg { uint32_t timeout_ms; };
+    /** IWDG_CMD_SET_TIMEOUT 参数 */
+    struct iwdg_timeout_arg
+    {
+        uint32_t timeout_ms;
+    };
 
 #ifdef __cplusplus
 }

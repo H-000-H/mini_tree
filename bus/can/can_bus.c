@@ -12,32 +12,33 @@
 
 #define CAN_BUS_IMPL
 #include "can_bus.h"
-#include "bus.h"
-#include "hal_can.h"
-#include "device.h"
-#include "board_devtable.h"
-#include "status.h"
-#include "compiler_compat.h"
-#include "system_log.h"
-#include "osal.h"
 
-#define CAN_BUS_HOST_MAX  2  /* 对齐 HAL/DTS host-max (CAN1/CAN2) */
+#include "board_devtable.h"
+#include "bus.h"
+#include "compiler_compat.h"
+#include "device.h"
+#include "hal_can.h"
+#include "osal.h"
+#include "status.h"
+#include "system_log.h"
+
+#define CAN_BUS_HOST_MAX 2 /* 对齐 HAL/DTS host-max (CAN1/CAN2) */
 
 /** @brief CAN host 运行时描述符 (静态池, 含 HAL 嵌入 + atomic ref_count) */
 struct can_bus_host
 {
-    struct device* dev;              /**< 关联设备 */
+    struct device* pdev; /**< 关联设备 */
     struct hal_can_bus_host hal_host; /**< 嵌入 HAL host (非指针) */
-    COMPAT_ATOMIC_INT ref_count;     /**< atomic 引用计数 */
+    COMPAT_ATOMIC_INT ref_count; /**< atomic 引用计数 */
 };
 
 /** @brief CAN client 运行时描述符 (静态表, 按 device_id 索引) */
 struct can_bus_client
 {
-    struct device* dev;              /**< 关联设备 */
-    struct can_bus_host* host;       /**< 所属 host */
-    struct hal_can_dev hal_dev;      /**< HAL 设备对象 */
-    int hw_open;                     /**< 硬件打开计数 */
+    struct device* pdev; /**< 关联设备 */
+    struct can_bus_host* host; /**< 所属 host */
+    struct hal_can_dev hal_dev; /**< HAL 设备对象 */
+    int hw_open; /**< 硬件打开计数 */
 };
 
 static struct can_bus_host s_can_hosts[CAN_BUS_HOST_MAX];
@@ -49,60 +50,57 @@ static const char* const k_tag = "can_bus";
 /**
  * @brief CAN Host 池启动初始化
  */
-pre_execution(150)
-static void can_bus_pool_init(void)
+pre_execution(150) static void can_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX));
 }
 
 /*===========================================================================================================================================================*/
-                                                              /* Host pool helpers */
+/* Host pool helpers */
 /*===========================================================================================================================================================*/
 /**
  * @brief 通过 device 指针查找对应的 can_bus_host
- * @param dev host device 指针
+ * @param pdev host device 指针
  * @return 找到返回 host 指针, 未找到返回 NULL
  */
-static struct can_bus_host* can_host_from_device(struct device* dev)
+static struct can_bus_host* can_host_from_device(struct device* pdev)
 {
     for (int i = 0; i < CAN_BUS_HOST_MAX; i++)
-    {
-        if (osal_pool_is_used(&s_can_host_pool_ctrl, i) && s_can_hosts[i].dev == dev)
+        if (osal_pool_is_used(&s_can_host_pool_ctrl, i) && s_can_hosts[i].pdev == pdev)
             return &s_can_hosts[i];
-    }
     return NULL;
 }
 
 /**
  * @brief 通过 device 指针查找对应的 can_bus_client
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @return 找到返回 client 指针, 未找到返回 NULL
  */
-static struct can_bus_client* can_client_from_device(struct device* dev)
+static struct can_bus_client* can_client_from_device(struct device* pdev)
 {
-    int id = (int)board_dev_find(device_get_name(dev));
-    if (id < 0 || id >= DEV_ID_COUNT || !s_can_clients[id].dev)
+    int id = (int)board_dev_find(device_get_name(pdev));
+    if (id < 0 || id >= DEV_ID_COUNT || !s_can_clients[id].pdev)
         return NULL;
     return &s_can_clients[id];
 }
 
 /*===========================================================================================================================================================*/
-                                                              /* controller_ops (host 级操作) */
+/* controller_ops (host 级操作) */
 /*===========================================================================================================================================================*/
-static int  can_host_init_impl(struct device* dev, const void* cfg);
-static int  can_host_deinit_impl(struct device* dev);
-static int  can_host_role_impl(struct device* dev);
-static int  can_client_register_impl(struct device* dev, const void* cfg, void** out);
-static void can_client_unregister_impl(struct device* dev);
+static int can_host_init_impl(struct device* pdev, const void* cfg);
+static int can_host_deinit_impl(struct device* pdev);
+static int can_host_role_impl(struct device* pdev);
+static int can_client_register_impl(struct device* pdev, const void* cfg, void** out);
+static void can_client_unregister_impl(struct device* pdev);
 
 /**
  * @brief CAN 总线控制器操作表
  */
 static const struct bus_controller_ops s_can_controller_ops = {
-    .init              = can_host_init_impl,
-    .deinit            = can_host_deinit_impl,
-    .role              = can_host_role_impl,
-    .client_register   = can_client_register_impl,
+    .init = can_host_init_impl,
+    .deinit = can_host_deinit_impl,
+    .role = can_host_role_impl,
+    .client_register = can_client_register_impl,
     .client_unregister = can_client_unregister_impl,
 };
 
@@ -115,9 +113,9 @@ static const struct bus_controller_ops s_can_controller_ops = {
 static int can_host_init_impl(struct device* pdev, const void* cfg)
 {
     const struct hal_can_bus_config* host_cfg;
-    struct can_bus_host*    host;
-    int                     idx;
-    int                     ret;
+    struct can_bus_host* host;
+    int idx;
+    int ret;
 
     if (!pdev || !cfg)
         return VFS_ERR_INVAL;
@@ -135,7 +133,7 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
 
     COMPAT_MEM_SET(host, 0, sizeof(*host));
 
-    host->dev = pdev;
+    host->pdev = pdev;
 
     COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
@@ -161,13 +159,13 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
 
 /**
  * @brief 初始化 CAN host 并绑定总线控制器
- * @param dev host device 指针
+ * @param pdev host device 指针
  * @param cfg host 配置 (struct hal_can_bus_config*)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int can_bus_host_init(struct device* dev, const struct hal_can_bus_config* cfg)
+int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg)
 {
-    return can_host_init_impl(dev, cfg);
+    return can_host_init_impl(pdev, cfg);
 }
 
 /**
@@ -178,8 +176,8 @@ int can_bus_host_init(struct device* dev, const struct hal_can_bus_config* cfg)
 static int can_host_deinit_impl(struct device* pdev)
 {
     struct can_bus_host* host;
-    int                  idx;
-    int                  ret;
+    int idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -212,19 +210,16 @@ static int can_host_deinit_impl(struct device* pdev)
  * @param pdev host device 指针
  * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回负数错误码
  */
-int can_bus_host_deinit(struct device* pdev)
-{
-    return can_host_deinit_impl(pdev);
-}
+int can_bus_host_deinit(struct device* pdev) { return can_host_deinit_impl(pdev); }
 
 /**
  * @brief 查询 host 角色 (CAN 无 master/slave, 固定返回 0)
- * @param dev host 或 client device 指针
+ * @param pdev host 或 client device 指针
  * @return 固定返回 0 (CAN 为对等总线)
  */
-static int can_host_role_impl(struct device* dev)
+static int can_host_role_impl(struct device* pdev)
 {
-    COMPAT_IGNORE_RESULT(dev);
+    COMPAT_IGNORE_RESULT(pdev);
     return 0; /* CAN 为对等总线, 无 master/slave 概念 */
 }
 
@@ -238,9 +233,9 @@ static int can_host_role_impl(struct device* dev)
 static int can_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
     struct bus_controller* ctlr;
-    struct can_bus_host*   host;
+    struct can_bus_host* host;
     struct can_bus_client* client;
-    int                     id;
+    int id;
 
     COMPAT_IGNORE_RESULT(cfg);
 
@@ -260,16 +255,16 @@ static int can_client_register_impl(struct device* pdev, const void* cfg, void**
 
     client = &s_can_clients[id];
 
-    if (client->dev)
+    if (client->pdev)
     {
-        if (client->dev != pdev)
+        if (client->pdev != pdev)
             return VFS_ERR_BUSY;
         *out = client;
         return VFS_OK;
     }
 
     COMPAT_MEM_SET(client, 0, sizeof(*client));
-    client->dev  = pdev;
+    client->pdev = pdev;
     client->host = host;
 
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
@@ -296,7 +291,7 @@ int can_bus_client_register(struct device* pdev, struct can_bus_client** out)
 static void can_client_unregister_impl(struct device* pdev)
 {
     struct can_bus_client* client;
-    struct can_bus_host*   host;
+    struct can_bus_host* host;
 
     client = can_client_from_device(pdev);
     if (!client)
@@ -319,10 +314,7 @@ static void can_client_unregister_impl(struct device* pdev)
  * @brief 注销 CAN client 并递减 host 引用计数
  * @param pdev client device 指针
  */
-void can_bus_client_unregister(struct device* pdev)
-{
-    can_client_unregister_impl(pdev);
-}
+void can_bus_client_unregister(struct device* pdev) { can_client_unregister_impl(pdev); }
 
 /**
  * @brief 打开 CAN client 硬件 (HAL init + hw_open)
@@ -332,7 +324,7 @@ void can_bus_client_unregister(struct device* pdev)
 int can_bus_open(struct device* pdev)
 {
     struct can_bus_client* client;
-    int                    ret;
+    int ret;
 
     client = can_client_from_device(pdev);
     if (!client)
@@ -400,7 +392,8 @@ int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, 失败返回负数错误码
  */
-int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
+int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
+                    uint32_t timeout_ms)
 {
     struct can_bus_client* client;
 

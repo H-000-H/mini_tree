@@ -8,11 +8,12 @@
  */
 #ifndef A7670_DRV_H
 #define A7670_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define A7670_CMD_BASE COMPAT_MAGIC(A7670)
@@ -23,15 +24,15 @@ extern "C" {
 /** 命令总数 */
 #define A7670_CMD_COUNT 2
 
-/** @brief AT 命令收发缓冲（SEND 用 tx，RECV 用 rx/rx_cap，rx_len 回填） */
-struct a7670_at_buf
-{
-    const uint8_t* tx;      /**< 发送缓冲 */
-    size_t         tx_len;  /**< 发送长度 */
-    uint8_t*       rx;      /**< 接收缓冲 */
-    size_t         rx_cap;  /**< 接收容量 */
-    size_t         rx_len;  /**< 实际接收长度（回填） */
-};
+    /** @brief AT 命令收发缓冲（SEND 用 tx，RECV 用 rx/rx_cap，rx_len 回填） */
+    struct a7670_at_buf
+    {
+        const uint8_t* tx; /**< 发送缓冲 */
+        size_t tx_len; /**< 发送长度 */
+        uint8_t* rx; /**< 接收缓冲 */
+        size_t rx_cap; /**< 接收容量 */
+        size_t rx_len; /**< 实际接收长度（回填） */
+    };
 #ifdef __cplusplus
 }
 #endif

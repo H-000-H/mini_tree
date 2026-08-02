@@ -8,11 +8,12 @@
  */
 #ifndef SHT40_DRV_H
 #define SHT40_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define SHT40_CMD_BASE COMPAT_MAGIC(SHT40)
@@ -21,12 +22,12 @@ extern "C" {
 /** 命令总数 */
 #define SHT40_CMD_COUNT 1
 
-/** @brief SHT40 采样结果 */
-struct sht40_sample
-{
-    int16_t  temp_c_x100;  /**< 温度，摄氏度 ×100 */
-    uint16_t rh_x100;      /**< 相对湿度 ×100（0..10000） */
-};
+    /** @brief SHT40 采样结果 */
+    struct sht40_sample
+    {
+        int16_t temp_c_x100; /**< 温度，摄氏度 ×100 */
+        uint16_t rh_x100; /**< 相对湿度 ×100（0..10000） */
+    };
 #ifdef __cplusplus
 }
 #endif

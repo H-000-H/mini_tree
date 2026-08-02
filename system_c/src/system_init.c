@@ -6,34 +6,42 @@
  * Phase 2 (Start-Tasks): 驱动探测 → TWDT → scrubber → seal EventBus → AMP 副核
  */
 #include "system_init.h"
-#include "system_cfg.h"
 
-#include "event_bus.h"
-#include "device.h"
-#include "driver.h"
-#include "status.h"
-#include "safe_state.h"
-#include "system_wdt.h"
-#include "system_scrubber.h"
-#include "hal_amp.h"
 #include "compiler_compat.h"
 #include "config.h"
-#include "compiler_compat_poison.h"
+#include "device.h"
+#include "driver.h"
+#include "event_bus.h"
+#include "hal_amp.h"
 #include "interrupt.h"
+#include "safe_state.h"
+#include "status.h"
+#include "system_cfg.h"
+#include "system_scrubber.h"
+#include "system_wdt.h"
+
+#include "compiler_compat_poison.h"
 #ifdef CONFIG_OSAL_NULL
 #include "xtask.h"
 #endif
 
 /* ── 启动期全局中断控制 ── */
-#if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
-#define IRQ_DISABLE()  __asm__ volatile("cpsid i" ::: "memory")
-#define IRQ_ENABLE()   __asm__ volatile("cpsie i" ::: "memory")
+#if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) ||                \
+    defined(__ARM_ARCH_8M_BASE__)
+#define IRQ_DISABLE() __asm__ volatile("cpsid i" ::: "memory")
+#define IRQ_ENABLE() __asm__ volatile("cpsie i" ::: "memory")
 #elif defined(__riscv)
-#define IRQ_DISABLE()  __asm__ volatile("csrci mstatus, 8" ::: "memory")
-#define IRQ_ENABLE()   __asm__ volatile("csrsi mstatus, 8" ::: "memory")
+#define IRQ_DISABLE() __asm__ volatile("csrci mstatus, 8" ::: "memory")
+#define IRQ_ENABLE() __asm__ volatile("csrsi mstatus, 8" ::: "memory")
 #else
-#define IRQ_DISABLE()  do {} while (0)
-#define IRQ_ENABLE()   do {} while (0)
+#define IRQ_DISABLE()                                                                              \
+    do                                                                                             \
+    {                                                                                              \
+    } while (0)
+#define IRQ_ENABLE()                                                                               \
+    do                                                                                             \
+    {                                                                                              \
+    } while (0)
 #endif
 
 static const char* k_tag = "SysInit";
@@ -46,7 +54,7 @@ volatile bool g_system_os_initialized = false;
  */
 void mini_tree_pre_os_init(void)
 {
-    IRQ_DISABLE();  /* 关全局中断 — ISR 不得在框架就绪前触发 */
+    IRQ_DISABLE(); /* 关全局中断 — ISR 不得在框架就绪前触发 */
     SYS_LOGI(k_tag, "=== mini_tree Phase 1: Pre-OS Init ===");
 
     if (!safe_state_check_bootloop())
@@ -60,9 +68,7 @@ void mini_tree_pre_os_init(void)
 #endif
 
     if (device_tree_init() != VFS_OK)
-    {
         SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
-    }
 
     if (!event_bus_init())
     {
@@ -89,9 +95,7 @@ void mini_tree_start_tasks(void)
 
     int probe_fail = board_driver_probe_all();
     if (probe_fail != 0)
-    {
         SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
-    }
 
 #ifdef CONFIG_ENABLE_WDT
     system_wdt_init(3000);
@@ -135,7 +139,4 @@ void mini_tree_system_loop(void)
 /**
  * @brief 系统初始化完成, 释放全局中断
  */
-void system_init_complete(void)
-{
-    IRQ_ENABLE();
-}
+void system_init_complete(void) { IRQ_ENABLE(); }

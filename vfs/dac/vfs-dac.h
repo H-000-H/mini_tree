@@ -4,7 +4,8 @@
  *
  * 架构位置: [VFS Layer (本文件)] → HAL Layer
  * 职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 HAL 层。
- * 隔离: 本文件定义 DAC_VFS_IMPL 可调 hal_dac API; 其他文件包含本头时 hal_dac 慢路径符号被 #pragma GCC poison。
+ * 隔离: 本文件定义 DAC_VFS_IMPL 可调 hal_dac API; 其他文件包含本头时 hal_dac 慢路径符号被 #pragma
+ * GCC poison。
  *
  * Driver 注册:
  *   - vfs_dac_priv: "dac"
@@ -14,58 +15,59 @@
 #ifndef VFS_DAC_H
 #define VFS_DAC_H
 
+#include "compiler_compat.h"
 #include "hal_dac.h"
 #include "status.h"
-#include "compiler_compat.h"
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-struct vfs_dac_arg_t
-{
-    uint32_t        value;     /**< DAC 输出值 / 校准偏移量 */
-    uint32_t        remaining; /**< DMA 剩余未发送数据个数 */
-    uint32_t        len;       /**< DMA 写入长度 */
-    const uint16_t* data;      /**< DMA 波形数据指针 */
-    uint32_t        pause;     /**< 0 = 恢复, 非 0 = 暂停 (DAC_CMD_DMA_PAUSE / DAC_CMD_BASE_PAUSE) */
-};
-typedef struct vfs_dac_arg_t vfs_dac_arg;
+    struct vfs_dac_arg_t
+    {
+        uint32_t value; /**< DAC 输出值 / 校准偏移量 */
+        uint32_t remaining; /**< DMA 剩余未发送数据个数 */
+        uint32_t len; /**< DMA 写入长度 */
+        const uint16_t* data; /**< DMA 波形数据指针 */
+        uint32_t pause; /**< 0 = 恢复, 非 0 = 暂停 (DAC_CMD_DMA_PAUSE / DAC_CMD_BASE_PAUSE) */
+    };
+    typedef struct vfs_dac_arg_t vfs_dac_arg;
 
-/**
- * @brief Fast Path: 单点写入 DAC 输出值
- */
-COMPAT_STATIC_INLINE int vfs_write_dac_value(hal_dac_device* pdev, uint32_t value)
-{
-    if (!pdev)
-        return VFS_ERR_INVAL;
-    return hal_dac_set_value(pdev, value);
-}
+    /**
+     * @brief Fast Path: 单点写入 DAC 输出值
+     */
+    COMPAT_STATIC_INLINE int vfs_write_dac_value(hal_dac_device* pdev, uint32_t value)
+    {
+        if (!pdev)
+            return VFS_ERR_INVAL;
+        return hal_dac_set_value(pdev, value);
+    }
 
-/**
- * @brief Fast Path: 读取当前 DAC 寄存器锁存值
- */
-COMPAT_STATIC_INLINE int vfs_read_dac_value(hal_dac_device* pdev, uint32_t* out_val)
-{
-    if (!pdev || !out_val)
-        return VFS_ERR_INVAL;
-    return hal_dac_get_value(pdev, out_val);
-}
+    /**
+     * @brief Fast Path: 读取当前 DAC 寄存器锁存值
+     */
+    COMPAT_STATIC_INLINE int vfs_read_dac_value(hal_dac_device* pdev, uint32_t* out_val)
+    {
+        if (!pdev || !out_val)
+            return VFS_ERR_INVAL;
+        return hal_dac_get_value(pdev, out_val);
+    }
 
 /*=======================================================================================================================*/
 /* IOCTL 命令控制字定义 */
 /*=======================================================================================================================*/
-#define DAC_CMD_BASE                            COMPAT_MAGIC(DAC)
-#define DAC_CMD_WRITE_VALUE                     (DAC_CMD_BASE + 1) /**< 单点写入并立即同步触发输出 */
-#define DAC_CMD_GET_VALUE                       (DAC_CMD_BASE + 2) /**< 读取当前寄存器锁存的值 */
-#define DAC_CMD_CALIBRATE_OFFSET                (DAC_CMD_BASE + 3) /**< DAC 偏移量自校准 */
-#define DAC_CMD_DMA_PAUSE                       (DAC_CMD_BASE + 4) /**< DMA 模式暂停/恢复 */
-#define DAC_CMD_START                           (DAC_CMD_BASE + 5) /**< 启动 DAC 输出 */
-#define DAC_CMD_FORCE_STOP                      (DAC_CMD_BASE + 6) /**< 强制停止 DAC 输出 */
-#define DAC_CMD_DMA_WRITE_BUFFER                (DAC_CMD_BASE + 7) /**< DMA 写入波形数据 */
-#define DAC_CMD_BASE_PAUSE                      (DAC_CMD_BASE + 8) /**< 非 DMA 暂停/恢复 */
-#define DAC_CMD_COUNT                           8
+#define DAC_CMD_BASE COMPAT_MAGIC(DAC)
+#define DAC_CMD_WRITE_VALUE (DAC_CMD_BASE + 1) /**< 单点写入并立即同步触发输出 */
+#define DAC_CMD_GET_VALUE (DAC_CMD_BASE + 2) /**< 读取当前寄存器锁存的值 */
+#define DAC_CMD_CALIBRATE_OFFSET (DAC_CMD_BASE + 3) /**< DAC 偏移量自校准 */
+#define DAC_CMD_DMA_PAUSE (DAC_CMD_BASE + 4) /**< DMA 模式暂停/恢复 */
+#define DAC_CMD_START (DAC_CMD_BASE + 5) /**< 启动 DAC 输出 */
+#define DAC_CMD_FORCE_STOP (DAC_CMD_BASE + 6) /**< 强制停止 DAC 输出 */
+#define DAC_CMD_DMA_WRITE_BUFFER (DAC_CMD_BASE + 7) /**< DMA 写入波形数据 */
+#define DAC_CMD_BASE_PAUSE (DAC_CMD_BASE + 8) /**< 非 DMA 暂停/恢复 */
+#define DAC_CMD_COUNT 8
 
 #ifdef __cplusplus
 }

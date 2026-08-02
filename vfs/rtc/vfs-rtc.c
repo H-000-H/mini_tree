@@ -6,33 +6,33 @@
  */
 #define RTC_VFS_IMPL
 #include "vfs-rtc.h"
+
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
 
 #define RTC_VFS_POOL 2
 
 struct vfs_rtc_priv
 {
-    struct file_operations ops;     /**< VFS 操作表 */
-    struct hal_rtc_dev  rtc;        /**< HAL RTC 设备 */
-    int                    pool_idx; /**< 池索引 */
+    struct file_operations ops; /**< VFS 操作表 */
+    struct hal_rtc_dev rtc; /**< HAL RTC 设备 */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_rtc_priv s_pool[RTC_VFS_POOL] COMPAT_ALIGNED(4);
-static uint8_t             s_used[RTC_VFS_POOL] COMPAT_ALIGNED(4);
-static osal_pool_t         s_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   k_tag = "vfs_rtc";
+static uint8_t s_used[RTC_VFS_POOL] COMPAT_ALIGNED(4);
+static osal_pool_t s_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_tag = "vfs_rtc";
 
 /**
  * @brief RTC VFS 私有数据池启动初始化
  */
-pre_execution(160)
-static void vfs_rtc_pool_boot(void)
+pre_execution(160) static void vfs_rtc_pool_boot(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
 }
@@ -45,7 +45,7 @@ static void vfs_rtc_pool_boot(void)
  */
 static int vfs_rtc_open(struct device* pdev, void* arg)
 {
-    struct vfs_rtc_priv*  priv;
+    struct vfs_rtc_priv* priv;
     struct dev_lifecycle* lc;
     int first, ret;
 
@@ -78,7 +78,7 @@ static int vfs_rtc_open(struct device* pdev, void* arg)
  */
 static int vfs_rtc_close(struct device* pdev)
 {
-    struct vfs_rtc_priv*  priv;
+    struct vfs_rtc_priv* priv;
     struct dev_lifecycle* lc;
     int last;
 
@@ -158,7 +158,9 @@ static int rtc_cmd_set_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_le
  */
 static int rtc_cmd_cancel_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len); COMPAT_IGNORE_RESULT(to);
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(to);
     return hal_rtc_cancel_alarm(&priv->rtc);
 }
 
@@ -189,7 +191,9 @@ static int rtc_cmd_set_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_l
  */
 static int rtc_cmd_cancel_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len); COMPAT_IGNORE_RESULT(to);
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(to);
     return hal_rtc_cancel_wakeup_timer(&priv->rtc);
 }
 
@@ -203,20 +207,23 @@ static int rtc_cmd_cancel_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t ar
  */
 static int rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    COMPAT_IGNORE_RESULT(priv); COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len); COMPAT_IGNORE_RESULT(to);
+    COMPAT_IGNORE_RESULT(priv);
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(to);
     hal_rtc_force_stop();
     return VFS_OK;
 }
 
 typedef int (*rtc_ioctl_fn)(struct vfs_rtc_priv*, void*, size_t, uint32_t);
 static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
-    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1]      = rtc_cmd_set_time,
-    [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1]      = rtc_cmd_get_time,
-    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1]     = rtc_cmd_set_alarm,
-    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1]  = rtc_cmd_cancel_alarm,
-    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1]    = rtc_cmd_set_wakeup,
+    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,
+    [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,
+    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,
+    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm,
+    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup,
     [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
-    [RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1]    = rtc_cmd_force_stop,
+    [RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1] = rtc_cmd_force_stop,
 };
 
 /**
@@ -228,9 +235,10 @@ static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
  * @param timeout_ms 未使用 (透传给子命令)
  * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
-    struct vfs_rtc_priv*  priv;
+    struct vfs_rtc_priv* priv;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
@@ -254,7 +262,7 @@ static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 }
 
 static const struct file_operations s_rtc_fops = {
-    .open  = vfs_rtc_open,
+    .open = vfs_rtc_open,
     .close = vfs_rtc_close,
     .ioctl = vfs_rtc_ioctl,
 };

@@ -8,18 +8,19 @@
  */
 #ifndef PCF8574_DRV_H
 #define PCF8574_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define PCF8574_CMD_BASE COMPAT_MAGIC(PCF8574)
 /** 写输出口（arg: uint8_t*，8bit 电平） */
 #define PCF8574_CMD_WRITE (PCF8574_CMD_BASE + 0x01)
 /** 读输入口（arg: uint8_t*，8bit 电平） */
-#define PCF8574_CMD_READ  (PCF8574_CMD_BASE + 0x02)
+#define PCF8574_CMD_READ (PCF8574_CMD_BASE + 0x02)
 /** 命令总数 */
 #define PCF8574_CMD_COUNT 2
 

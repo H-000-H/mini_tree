@@ -27,20 +27,12 @@
  */
 #if defined(__GNUC__)
 
-#pragma GCC poison \
-    gets popen \
-    fopen fclose fread fwrite fseek ftell rewind \
-    tmpfile remove rename \
-    printf fprintf sprintf vsprintf asprintf dprintf \
-    strcpy strcat strdup strndup \
-    memset memcpy memmove
+#pragma GCC poison gets popen fopen fclose fread fwrite fseek ftell rewind tmpfile remove rename printf fprintf sprintf vsprintf asprintf dprintf strcpy strcat strdup strndup memset memcpy memmove
 
 #if !defined(ALLOW_HEAP_ALLOC)
 #pragma GCC poison malloc calloc realloc free
 #ifdef __cplusplus
-#pragma GCC poison new delete\
-         typeid dynamic_cast \
-         try catch throw
+#pragma GCC poison new delete typeid dynamic_cast try catch throw
 #endif
 #endif
 

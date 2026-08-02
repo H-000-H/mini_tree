@@ -9,26 +9,27 @@
  */
 #ifndef XPT2046_DRV_H
 #define XPT2046_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define XPT2046_CMD_BASE COMPAT_MAGIC(XPT2046)
 /** 读取坐标/按压状态（arg: struct xpt2046_xy*） */
-#define XPT2046_CMD_READ_XY (XPT2046_CMD_BASE+0x01)
+#define XPT2046_CMD_READ_XY (XPT2046_CMD_BASE + 0x01)
 /** 命令总数 */
 #define XPT2046_CMD_COUNT 1
 
-/** @brief XPT2046 采样结果 */
-struct xpt2046_xy
-{
-    uint16_t x;        /**< X 坐标 */
-    uint16_t y;        /**< Y 坐标 */
-    int      pressed;  /**< 按压状态：1=按下，0=抬起 */
-};
+    /** @brief XPT2046 采样结果 */
+    struct xpt2046_xy
+    {
+        uint16_t x; /**< X 坐标 */
+        uint16_t y; /**< Y 坐标 */
+        int pressed; /**< 按压状态：1=按下，0=抬起 */
+    };
 #ifdef __cplusplus
 }
 #endif

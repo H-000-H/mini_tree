@@ -9,26 +9,26 @@
 #pragma once
 
 #include "osal.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-bool system_wdt_init(uint32_t timeout_ms);
-bool system_wdt_subscribe(osal_task_handle_t task);
-bool system_wdt_unsubscribe(osal_task_handle_t task);
-void system_wdt_feed(void);
+    bool system_wdt_init(uint32_t timeout_ms);
+    bool system_wdt_subscribe(osal_task_handle_t task);
+    bool system_wdt_unsubscribe(osal_task_handle_t task);
+    void system_wdt_feed(void);
 
-bool system_wdt_init_iwdg(uint32_t timeout_ms);
-void system_wdt_feed_iwdg(void);
-void system_wdt_iwdg_set_long_timeout(void);
-void system_wdt_iwdg_restore_timeout(void);
+    bool system_wdt_init_iwdg(uint32_t timeout_ms);
+    void system_wdt_feed_iwdg(void);
+    void system_wdt_iwdg_set_long_timeout(void);
+    void system_wdt_iwdg_restore_timeout(void);
 
-bool system_wdt_stack_monitor_register(osal_task_handle_t task,
-                                       uint32_t alarm_threshold_bytes);
-void system_wdt_stack_check_all(void);
+    bool system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes);
+    void system_wdt_stack_check_all(void);
 
 #ifdef __cplusplus
 }

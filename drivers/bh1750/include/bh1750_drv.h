@@ -9,20 +9,21 @@
 #ifndef BH1750_DRV_H
 #define BH1750_DRV_H
 
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define BH1750_CMD_BASE      COMPAT_MAGIC(BH1750)
+#define BH1750_CMD_BASE COMPAT_MAGIC(BH1750)
 /** 读取光照强度（arg: uint16_t*，单位 lux） */
-#define BH1750_CMD_READ_LUX  (BH1750_CMD_BASE + 0x01)
+#define BH1750_CMD_READ_LUX (BH1750_CMD_BASE + 0x01)
 /** 命令总数 */
-#define BH1750_CMD_COUNT     1
+#define BH1750_CMD_COUNT 1
 
 #ifdef __cplusplus
 }

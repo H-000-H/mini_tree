@@ -7,19 +7,20 @@
 #define NRF24L01_REGS_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /** 读寄存器操作码 */
-#define NRF24L01_OP_R_REGISTER    0x00U
+#define NRF24L01_OP_R_REGISTER 0x00U
 /** 写寄存器操作码 */
-#define NRF24L01_OP_W_REGISTER    0x20U
+#define NRF24L01_OP_W_REGISTER 0x20U
 /** 写 TX 载荷操作码 */
-#define NRF24L01_OP_W_TX_PAYLOAD  0xA0U
+#define NRF24L01_OP_W_TX_PAYLOAD 0xA0U
 /** 寄存器地址掩码（5bit） */
-#define NRF24L01_REG_ADDR_MASK    0x1FU
+#define NRF24L01_REG_ADDR_MASK 0x1FU
 /** 单包最大载荷字节数 */
-#define NRF24L01_MAX_PAYLOAD      32U
+#define NRF24L01_MAX_PAYLOAD 32U
 
 #ifdef __cplusplus
 }

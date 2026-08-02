@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Weak empty HAL stub — board overrides. */
+#include "hal_rtc.h"
+
 #include "compiler_compat.h"
 #include "status.h"
-#include "hal_rtc.h"
 
 COMPAT_WEAK int hal_rtc_init(struct hal_rtc_dev* pdev, const struct hal_rtc_config* cfg)
 {
@@ -43,7 +44,8 @@ COMPAT_WEAK int hal_rtc_get_time(struct hal_rtc_dev* pdev, struct hal_rtc_time* 
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm, hal_rtc_alarm_cb_t cb, void* user)
+COMPAT_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm,
+                                  hal_rtc_alarm_cb_t cb, void* user)
 {
     (void)pdev;
     (void)alarm;
@@ -71,7 +73,4 @@ COMPAT_WEAK int hal_rtc_cancel_wakeup_timer(struct hal_rtc_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK void hal_rtc_force_stop(void)
-{
-    ;
-}
+COMPAT_WEAK void hal_rtc_force_stop(void) { ; }

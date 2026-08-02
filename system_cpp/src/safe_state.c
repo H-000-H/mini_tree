@@ -7,15 +7,16 @@
  * NMI 紧急标记委托 hal_platform_nmi_emergency_stamp (平台须置于 IRAM)
  */
 #include "safe_state.h"
-#include "hal_platform_safety.h"
-#include "hal_amp.h"
-#include "osal.h"
 
+#include "hal_amp.h"
+#include "hal_platform_safety.h"
+#include "osal.h"
 #include <stdint.h>
+
 #include "compiler_compat_poison.h"
 
 /* Bootloop 退避阈值: 连续 Panic/软件复位 ≥ BOOTLOOP_THRESHOLD 次 → 永久安全锁死 */
-#define BOOTLOOP_THRESHOLD  5
+#define BOOTLOOP_THRESHOLD 5
 
 /*
  * Bootloop 退避计数器.
@@ -42,10 +43,7 @@ bool safe_state_check_bootloop(void)
 /**
  * @brief 清零计数
  */
-void safe_state_clear_bootloop(void)
-{
-    s_panic_counter = 0;
-}
+void safe_state_clear_bootloop(void) { s_panic_counter = 0; }
 
 /**
  * @brief 进入不可恢复的安全状态 (硬件闭锁 → 冻结调度 → 关中断 → 死循环)
@@ -63,15 +61,10 @@ void enter_safe_state(const char* reason)
     osal_int_freeze();
 
     while (1)
-    {
         __asm__ volatile("nop");
-    }
 }
 
 /**
  * @brief NMI 紧急标记 (委托平台 IRAM 安全实现)
  */
-void safe_state_nmi_emergency_stamp(void)
-{
-    hal_platform_nmi_emergency_stamp();
-}
+void safe_state_nmi_emergency_stamp(void) { hal_platform_nmi_emergency_stamp(); }

@@ -7,18 +7,18 @@
  */
 #define ALLOW_STDIO_OUTPUT
 
-#include <stdarg.h>
-#include <stdio.h>
+#include "printf_output.h"
 
 #include "compiler_compat.h"
-#include "printf_output.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 /**
  * @brief vprintf 输出
  * @param fmt 格式
  * @param ... 参数
  */
-void my_printf_output(const char *fmt, ...)
+void my_printf_output(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);

@@ -9,34 +9,35 @@
 #ifndef USB_TUSB_PORT_H
 #define USB_TUSB_PORT_H
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 #include "compiler_compat.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/* TinyUSB 粘合：协议栈入口（tusb_init / tud_task / tud_int_handler） */
-bool     usb_tusb_init(uint8_t rhport);
-void     usb_tusb_task(void);
-void     usb_tusb_int_handler(uint8_t rhport);
+    /* TinyUSB 粘合：协议栈入口（tusb_init / tud_task / tud_int_handler） */
+    bool usb_tusb_init(uint8_t rhport);
+    void usb_tusb_task(void);
+    void usb_tusb_int_handler(uint8_t rhport);
 
-/* CDC ACM 数据通路 */
-bool     usb_tusb_cdc_connected(void);
-uint32_t usb_tusb_cdc_write(const void* buf, uint32_t len);
-void     usb_tusb_cdc_write_flush(void);
-uint32_t usb_tusb_cdc_available(void);
-uint32_t usb_tusb_cdc_read(void* buf, uint32_t len);
+    /* CDC ACM 数据通路 */
+    bool usb_tusb_cdc_connected(void);
+    uint32_t usb_tusb_cdc_write(const void* buf, uint32_t len);
+    void usb_tusb_cdc_write_flush(void);
+    uint32_t usb_tusb_cdc_available(void);
+    uint32_t usb_tusb_cdc_read(void* buf, uint32_t len);
 
-/* HID 数据通路 */
-bool     usb_tusb_hid_ready(void);
-bool     usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
+    /* HID 数据通路 */
+    bool usb_tusb_hid_ready(void);
+    bool usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
 
-/* ECM 网络帧数据面（板级实现，如 usb_net_cb.c）— usb_bus_ecm_* 依赖 */
-int      usb_net_frame_push_tx(const void* frame, size_t len);
-int      usb_net_frame_pop_rx(void* frame, size_t len);
+    /* ECM 网络帧数据面（板级实现，如 usb_net_cb.c）— usb_bus_ecm_* 依赖 */
+    int usb_net_frame_push_tx(const void* frame, size_t len);
+    int usb_net_frame_pop_rx(void* frame, size_t len);
 
 #ifdef __cplusplus
 }

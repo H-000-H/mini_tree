@@ -4,9 +4,9 @@
  * @brief       GPIO VFS 实现 — open/close 引用计数 + ioctl 电平读写/翻转
  * @note        DTS 解析 gpio-port/pin/clk/mode/pull 等; 两层模型无 bus
  */
-#define VFS_GPIO_IMPL  /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
+#define VFS_GPIO_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #include "vfs-gpio.h"
-#include "status.h"
+
 #include "board_config.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
@@ -16,8 +16,8 @@
 #include "hal_gpio.h"
 #include "interrupt.h"
 #include "osal.h"
+#include "status.h"
 #include "system_log.h"
-
 #include <stdint.h>
 
 #ifndef DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
@@ -29,25 +29,25 @@ static const char* const k_tag = "vfs-gpio";
 
 struct vfs_gpio_priv
 {
-    struct file_operations              ops;          /**< VFS 操作表 */
-    struct osal_mutex*                  io_mutex;     /**< I/O 互斥锁 */
-    hal_gpio_dev_t                      obj;          /**< HAL GPIO 设备对象 */
-    int                                 default_level; /**< 默认电平 */
-    int                                 pool_idx;     /**< 池索引 */
+    struct file_operations ops; /**< VFS 操作表 */
+    struct osal_mutex* io_mutex; /**< I/O 互斥锁 */
+    hal_gpio_dev_t obj; /**< HAL GPIO 设备对象 */
+    int default_level; /**< 默认电平 */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_gpio_priv s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] COMPAT_ALIGNED(4);
-static uint8_t              s_gpio_priv_used[VFS_GPIO_PIN_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t          s_gpio_priv_pool_ctrl COMPAT_ALIGNED(4);
+static uint8_t s_gpio_priv_used[VFS_GPIO_PIN_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_gpio_priv_pool_ctrl COMPAT_ALIGNED(4);
 static uint8_t s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
 
 /**
  * @brief GPIO VFS 私有数据池启动初始化
  */
-pre_execution(160)
-static void gpio_priv_pool_boot_init(void)
+pre_execution(160) static void gpio_priv_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used,VFS_GPIO_PIN_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
 }
 
 /**
@@ -68,7 +68,7 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_gpio_priv, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -123,7 +123,7 @@ static int vfs_gpio_close(struct device* pdev)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_gpio_priv, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -142,11 +142,12 @@ static int vfs_gpio_close(struct device* pdev)
 }
 
 /*===========================================================================================================================================================*/
-/* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用                                                                                                              */
+/* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用 */
 /*===========================================================================================================================================================*/
 typedef int (*gpio_cmd_handler_t)(struct vfs_gpio_priv* priv, void* arg, size_t arg_len);
 
-typedef struct {
+typedef struct
+{
     gpio_cmd_handler_t handler;
 } gpio_ioctl_map_t;
 
@@ -198,12 +199,12 @@ static int gpio_cmd_get_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_
 }
 
 /*===========================================================================================================================================================*/
-/* ioctl 命令映射表 — index = (cmd - GPIO_CMD_BASE - 1), 与 GPIO_CMD_* 一一对应                                                                                */
+/* ioctl 命令映射表 — index = (cmd - GPIO_CMD_BASE - 1), 与 GPIO_CMD_* 一一对应 */
 /*===========================================================================================================================================================*/
 static const gpio_ioctl_map_t s_gpio_ioctl_map[GPIO_CMD_COUNT] = {
-    [GPIO_CMD_TOGGLE - GPIO_CMD_BASE - 1]    = { gpio_cmd_toggle },
-    [GPIO_CMD_SET_LEVEL - GPIO_CMD_BASE - 1] = { gpio_cmd_set_level },
-    [GPIO_CMD_GET_LEVEL - GPIO_CMD_BASE - 1] = { gpio_cmd_get_level },
+    [GPIO_CMD_TOGGLE - GPIO_CMD_BASE - 1] = {gpio_cmd_toggle},
+    [GPIO_CMD_SET_LEVEL - GPIO_CMD_BASE - 1] = {gpio_cmd_set_level},
+    [GPIO_CMD_GET_LEVEL - GPIO_CMD_BASE - 1] = {gpio_cmd_get_level},
 };
 
 /**
@@ -218,12 +219,12 @@ static const gpio_ioctl_map_t s_gpio_ioctl_map[GPIO_CMD_COUNT] = {
 static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
                           uint32_t timeout_ms)
 {
-    struct vfs_gpio_priv*  priv;
-    struct dev_lifecycle*  lc;
-    gpio_cmd_handler_t     handler = NULL;
-    int                    ret;
-    int32_t                offset;
-    uint8_t                index;
+    struct vfs_gpio_priv* priv;
+    struct dev_lifecycle* lc;
+    gpio_cmd_handler_t handler = NULL;
+    int ret;
+    int32_t offset;
+    uint8_t index;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
@@ -260,9 +261,8 @@ static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     return ret;
 }
 
-static const struct file_operations gpio_fops =
-{
-    .open  = vfs_gpio_open,
+static const struct file_operations gpio_fops = {
+    .open = vfs_gpio_open,
     .close = vfs_gpio_close,
     .ioctl = vfs_gpio_ioctl,
 };
@@ -299,7 +299,7 @@ static int vfs_gpio_probe(struct device* pdev)
 
     if (device_get_prop_int(pdev, "gpio-port", &port_val) != VFS_OK ||
         device_get_prop_int(pdev, "gpio-pin", &pin_val) != VFS_OK ||
-        device_get_prop_int(pdev, "gpio-clk",  &clk_val) != VFS_OK ||
+        device_get_prop_int(pdev, "gpio-clk", &clk_val) != VFS_OK ||
         device_get_prop_int(pdev, "gpio-mode", &mode_val) != VFS_OK ||
         device_get_prop_int(pdev, "gpio-pull", &pull_val) != VFS_OK)
     {
@@ -322,19 +322,19 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_pool;
     }
 
-    priv->obj.port             = (uintptr_t)port_val;
-    priv->obj.pin              = (uint16_t)pin_val;
-    priv->obj.clk_bus          = (uint32_t)clk_val;
-    priv->obj.virq_idx         = (uint8_t)virq_idx;
-    priv->obj.is_used          = true;
-    priv->obj.cfg.mode         = (uint32_t)mode_val;
-    priv->obj.cfg.pull         = (uint32_t)pull_val;
-    priv->obj.cfg.speed        = (uint32_t)speed_val;
-    priv->obj.cfg.output_type  = (uint32_t)otype_val;
-    priv->obj.cfg.af           = (uint32_t)af_val;
-    priv->obj.cfg.intr         = (uint32_t)intr_val;
-    priv->obj.cfg.deinit_mode  = (uint32_t)deinit_mode_val;
-    priv->obj.cfg.deinit_pull  = (uint32_t)deinit_pull_val;
+    priv->obj.port = (uintptr_t)port_val;
+    priv->obj.pin = (uint16_t)pin_val;
+    priv->obj.clk_bus = (uint32_t)clk_val;
+    priv->obj.virq_idx = (uint8_t)virq_idx;
+    priv->obj.is_used = true;
+    priv->obj.cfg.mode = (uint32_t)mode_val;
+    priv->obj.cfg.pull = (uint32_t)pull_val;
+    priv->obj.cfg.speed = (uint32_t)speed_val;
+    priv->obj.cfg.output_type = (uint32_t)otype_val;
+    priv->obj.cfg.af = (uint32_t)af_val;
+    priv->obj.cfg.intr = (uint32_t)intr_val;
+    priv->obj.cfg.deinit_mode = (uint32_t)deinit_mode_val;
+    priv->obj.cfg.deinit_pull = (uint32_t)deinit_pull_val;
 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "default-level", &default_level));
     priv->default_level = default_level;
@@ -356,8 +356,8 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_mutex;
     }
 
-    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d",
-             (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
+    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val,
+             (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
     return VFS_OK;
 
 err_mutex:
@@ -386,7 +386,7 @@ static int vfs_gpio_remove(struct device* pdev)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_gpio_priv, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 

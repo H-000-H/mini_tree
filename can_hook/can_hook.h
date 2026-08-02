@@ -10,24 +10,27 @@
 #ifndef CAN_HOOK_H
 #define CAN_HOOK_H
 
-#include <stdint.h>
 #include "compiler_compat.h"
-#include "status.h"
 #include "hal_can.h"
+#include "status.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-struct device;
+    struct device;
 
-int can_hook_on_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
-int can_hook_on_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
-int can_hook_pre_tx(struct device* pdev, struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
-int can_hook_post_tx(struct device* pdev, const struct can_frame* frame, int tx_ret) COMPAT_WARN_UNUSED_RESULT;
-int can_hook_filter_match(struct device* pdev, const struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
-int can_hook_on_rx(struct device* pdev, struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
-int can_hook_on_err(struct device* pdev, int err) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_on_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_on_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_pre_tx(struct device* pdev, struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_post_tx(struct device* pdev, const struct can_frame* frame,
+                         int tx_ret) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_filter_match(struct device* pdev,
+                              const struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_on_rx(struct device* pdev, struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_on_err(struct device* pdev, int err) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

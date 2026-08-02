@@ -8,11 +8,12 @@
  */
 #ifndef BMP280_DRV_H
 #define BMP280_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define BMP280_CMD_BASE COMPAT_MAGIC(BMP280)
@@ -21,12 +22,12 @@ extern "C" {
 /** 命令总数 */
 #define BMP280_CMD_COUNT 1
 
-/** @brief BMP280 采样结果 */
-struct bmp280_sample
-{
-    int32_t press_pa;      /**< 气压，Pa */
-    int16_t temp_c_x100;   /**< 温度，摄氏度 ×100 */
-};
+    /** @brief BMP280 采样结果 */
+    struct bmp280_sample
+    {
+        int32_t press_pa; /**< 气压，Pa */
+        int16_t temp_c_x100; /**< 温度，摄氏度 ×100 */
+    };
 #ifdef __cplusplus
 }
 #endif

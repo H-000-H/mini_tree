@@ -6,10 +6,12 @@
  * 提供 extern "C" 包装, 供 .c 文件调用同一总线实例
  */
 #include "event_bus.hpp"
+
+#include "compiler_compat.h"
 #include "safe_state.h"
 #include "system_log.h"
 #include "system_wdt.hpp"
-#include "compiler_compat.h"
+
 #include "compiler_compat_poison.h"
 
 /* SIOF (Static Initialization Order Fiasco) 防御:
@@ -21,9 +23,9 @@ extern volatile bool g_system_os_initialized;
 static constexpr const char* k_tag = "EventBus";
 static constexpr uint32_t kDispatchPrio =
 #if defined(CONFIG_OSAL_FREERTOS)
-    30;  /* FreeRTOS: 0=最低, 31=最高 */
+    30; /* FreeRTOS: 0=最低, 31=最高 */
 #else
-    1;   /* RT-Thread: 0=最高, 31=最低 */
+    1; /* RT-Thread: 0=最高, 31=最低 */
 #endif
 static constexpr uint32_t kDispatchStack = 2048;
 static constexpr uint32_t kStopWaitMs = 500;
@@ -32,7 +34,8 @@ EventBus::EventBus() = default;
 
 bool EventBus::init()
 {
-    if (m_inited) return true;
+    if (m_inited)
+        return true;
 
     m_queue = osal_queue_create(k_queue_len, sizeof(event));
     if (m_queue == nullptr)
@@ -41,8 +44,9 @@ bool EventBus::init()
         return false;
     }
 
-    if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) != OSAL_OK
-        || m_sub_lock == nullptr)
+    if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) !=
+            OSAL_OK ||
+        m_sub_lock == nullptr)
     {
         SYS_LOGE(k_tag, "FATAL: mutex create failed");
         osal_queue_delete(m_queue);
@@ -61,15 +65,14 @@ EventBus& EventBus::get_instance()
     return bus;
 }
 
-bool EventBus::subscribe(uint32_t id_min, uint32_t id_max,
-                         EventCallback callback, void* user_data)
+bool EventBus::subscribe(uint32_t id_min, uint32_t id_max, EventCallback callback, void* user_data)
 {
-    if (osal_in_isr()) return false;
-    if (m_is_sealed) return false;
-    if (callback == nullptr || m_sub_lock == nullptr || id_min > id_max)
-    {
+    if (osal_in_isr())
         return false;
-    }
+    if (m_is_sealed)
+        return false;
+    if (callback == nullptr || m_sub_lock == nullptr || id_min > id_max)
+        return false;
 
     if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
@@ -105,18 +108,13 @@ bool EventBus::post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required
     return post_internal(id, arg, true, px_yield_required);
 }
 
-bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr,
-                             bool* px_yield_required)
+bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
 {
     if (m_queue == nullptr || !m_inited)
-    {
         return false;
-    }
 
     if (!g_system_os_initialized)
-    {
         return false;
-    }
 
     const event event = {id, arg};
     bool ok;
@@ -133,32 +131,26 @@ bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr,
         {
             size_t cur = __atomic_load_n(&m_dropped, __ATOMIC_RELAXED);
             if ((cur % 8) == 0 && cur != 0)
-            {
                 SYS_LOGW(k_tag, "event queue full, dropped=%u", (unsigned)cur);
-            }
         }
         return false;
     }
     return true;
 }
 
-size_t EventBus::dropped_count() const
-{
-    return __atomic_load_n(&m_dropped, __ATOMIC_RELAXED);
-}
+size_t EventBus::dropped_count() const { return __atomic_load_n(&m_dropped, __ATOMIC_RELAXED); }
 
 void EventBus::dispatch_task(void* param)
 {
-    if (!param) return;
+    if (!param)
+        return;
     EventBus* self = static_cast<EventBus*>(param);
     event event;
 
     while (osal_queue_receive(self->m_queue, &event, OSAL_WAIT_FOREVER))
     {
         if (self->m_task == nullptr)
-        {
             break;
-        }
 
         system_wdt_feed();
         system_wdt_feed_iwdg();
@@ -177,22 +169,15 @@ void EventBus::dispatch_task(void* param)
         }
         snapshot_count = self->m_count;
         for (size_t i = 0; i < snapshot_count; i++)
-        {
             snapshot[i] = self->m_subscribers[i];
-        }
         if (self->m_sub_lock)
-        {
             osal_mutex_unlock(self->m_sub_lock);
-        }
 
         for (size_t i = 0; i < snapshot_count; i++)
         {
             subscriber& sub = snapshot[i];
-            if (sub.callback != nullptr &&
-                event.id >= sub.id_min && event.id <= sub.id_max)
-            {
+            if (sub.callback != nullptr && event.id >= sub.id_min && event.id <= sub.id_max)
                 sub.callback(event, sub.user_data);
-            }
         }
     }
 
@@ -202,17 +187,19 @@ void EventBus::dispatch_task(void* param)
 
 void EventBus::start()
 {
-    if (m_task != nullptr || m_queue == nullptr) return;
+    if (m_task != nullptr || m_queue == nullptr)
+        return;
 
-    osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio,
-                            dispatch_task, this, 0, &m_task);
+    osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio, dispatch_task, this, 0,
+                            &m_task);
     system_wdt_subscribe(m_task);
     SYS_LOGI(k_tag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
 }
 
 void EventBus::stop()
 {
-    if (!m_task) return;
+    if (!m_task)
+        return;
 
     osal_task_handle_t handle = m_task;
     m_task = nullptr;
@@ -240,34 +227,21 @@ void EventBus::stop()
     m_queue = nullptr;
 }
 
-void EventBus::seal()
-{
-    m_is_sealed = true;
-}
+void EventBus::seal() { m_is_sealed = true; }
 
 /* ── C 接口 (extern "C") ── */
-extern "C" bool event_bus_init(void)
-{
-    return EventBus::get_instance().init();
-}
+extern "C" bool event_bus_init(void) { return EventBus::get_instance().init(); }
 
 extern "C" bool event_bus_post(uint32_t id, uintptr_t arg)
 {
     return EventBus::get_instance().post(id, arg);
 }
 
-extern "C" bool event_bus_post_from_isr(uint32_t id, uintptr_t arg,
-                                        bool* px_yield_required)
+extern "C" bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
 {
     return EventBus::get_instance().post_from_isr(id, arg, px_yield_required);
 }
 
-extern "C" void event_bus_start(void)
-{
-    EventBus::get_instance().start();
-}
+extern "C" void event_bus_start(void) { EventBus::get_instance().start(); }
 
-extern "C" void event_bus_seal(void)
-{
-    EventBus::get_instance().seal();
-}
+extern "C" void event_bus_seal(void) { EventBus::get_instance().seal(); }

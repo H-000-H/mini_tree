@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Weak empty HAL stub — board overrides. */
-#include "compiler_compat.h"
-#include "status.h"
 #include "hal_spi.h"
 
-COMPAT_WEAK int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,const struct hal_spi_bus_config* cfg)
+#include "compiler_compat.h"
+#include "status.h"
+
+COMPAT_WEAK int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,
+                                      const struct hal_spi_bus_config* cfg)
 {
     (void)host;
     (void)hw_idx;
@@ -18,29 +20,31 @@ COMPAT_WEAK int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_dev_init(struct hal_spi_dev* dev,struct hal_spi_bus_host* host,const struct hal_spi_device_config* dev_cfg)
+COMPAT_WEAK int hal_spi_dev_init(struct hal_spi_dev* pdev, struct hal_spi_bus_host* host,
+                                 const struct hal_spi_device_config* dev_cfg)
 {
-    (void)dev;
+    (void)pdev;
     (void)host;
     (void)dev_cfg;
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_dev_hw_open(struct hal_spi_dev* dev)
+COMPAT_WEAK int hal_spi_dev_hw_open(struct hal_spi_dev* pdev)
 {
-    (void)dev;
+    (void)pdev;
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_dev_hw_close(struct hal_spi_dev* dev)
+COMPAT_WEAK int hal_spi_dev_hw_close(struct hal_spi_dev* pdev)
 {
-    (void)dev;
+    (void)pdev;
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+COMPAT_WEAK int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                             uint32_t timeout_ms, uint32_t xfer_mode)
 {
-    (void)dev;
+    (void)pdev;
     (void)tx;
     (void)rx;
     (void)len;
@@ -49,9 +53,10 @@ COMPAT_WEAK int hal_spi_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_transfer_async(struct hal_spi_dev* dev,const uint8_t* tx, uint8_t* rx,size_t len, hal_spi_callback_t cb,void* userdata)
+COMPAT_WEAK int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx,
+                                       size_t len, hal_spi_callback_t cb, void* userdata)
 {
-    (void)dev;
+    (void)pdev;
     (void)tx;
     (void)rx;
     (void)len;
@@ -60,16 +65,17 @@ COMPAT_WEAK int hal_spi_transfer_async(struct hal_spi_dev* dev,const uint8_t* tx
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_transfer_poll(struct hal_spi_dev* dev, uint32_t timeout_ms)
+COMPAT_WEAK int hal_spi_transfer_poll(struct hal_spi_dev* pdev, uint32_t timeout_ms)
 {
-    (void)dev;
+    (void)pdev;
     (void)timeout_ms;
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_get_trans_result(struct hal_spi_dev* dev, uint8_t* rx_data, size_t rx_cap,size_t* trans_len, uint32_t timeout_ms)
+COMPAT_WEAK int hal_spi_get_trans_result(struct hal_spi_dev* pdev, uint8_t* rx_data, size_t rx_cap,
+                                         size_t* trans_len, uint32_t timeout_ms)
 {
-    (void)dev;
+    (void)pdev;
     (void)rx_data;
     (void)rx_cap;
     (void)trans_len;
@@ -77,9 +83,10 @@ COMPAT_WEAK int hal_spi_get_trans_result(struct hal_spi_dev* dev, uint8_t* rx_da
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_slave_sync(struct hal_spi_dev* dev, const uint8_t* tx, uint8_t* rx,size_t len, uint32_t timeout_ms)
+COMPAT_WEAK int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx,
+                                   size_t len, uint32_t timeout_ms)
 {
-    (void)dev;
+    (void)pdev;
     (void)tx;
     (void)rx;
     (void)len;
@@ -87,9 +94,10 @@ COMPAT_WEAK int hal_spi_slave_sync(struct hal_spi_dev* dev, const uint8_t* tx, u
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_spi_slave_queue_tx(struct hal_spi_dev* dev, const uint8_t* data, size_t len,uint32_t timeout_ms)
+COMPAT_WEAK int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len,
+                                       uint32_t timeout_ms)
 {
-    (void)dev;
+    (void)pdev;
     (void)data;
     (void)len;
     (void)timeout_ms;

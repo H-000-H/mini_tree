@@ -18,16 +18,16 @@
  *@=========================================================================================================================*/
 #define SPI_VFS_IMPL
 #include "vfs-spi.h"
-#include "spi_bus.h"
+
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "dt_config_gen.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "spi_bus.h"
+#include "status.h"
 #include "system_log.h"
-
 #include <string.h>
 
 /*===========================================================================================================================================================*/
@@ -37,23 +37,24 @@
 #define SPI_VFS_PRIV_COUNT 4
 #endif
 
-struct vfs_spi_priv {
-    struct hal_spi_bus_config  cfg;       /**< host 总线配置 (DTSI 直投) */
-    int                        pool_idx;  /**< 池索引 */
+struct vfs_spi_priv
+{
+    struct hal_spi_bus_config cfg; /**< host 总线配置 (DTSI 直投) */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_spi_priv s_spi_priv_pool[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_spi_priv_used[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_spi_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   k_host_tag = "spi_vfs_host";
+static uint8_t s_spi_priv_used[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_spi_priv_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_host_tag = "spi_vfs_host";
 
 /**
  * @brief SPI Host VFS 私有数据池启动初始化
  */
-pre_execution(150)
-static void vfs_spi_priv_pool_init(void)
+pre_execution(150) static void vfs_spi_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT));
 }
 
 /**
@@ -73,36 +74,36 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
     int sclk_port = 0, sclk_pin = 0, sclk_clk = 0, sclk_af = 0;
     int sclk_output_type = 0, sclk_speed = 0, sclk_mode = 0, sclk_pull = 0;
 
-    if (device_get_prop_int(pdev, "spi-base",  &spi_base)  != VFS_OK ||
-        device_get_prop_int(pdev, "spi-clk",   &spi_clk)   != VFS_OK ||
+    if (device_get_prop_int(pdev, "spi-base", &spi_base) != VFS_OK ||
+        device_get_prop_int(pdev, "spi-clk", &spi_clk) != VFS_OK ||
         device_get_prop_int(pdev, "mosi-port", &mosi_port) != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-pin",  &mosi_pin)  != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-clk",  &mosi_clk)  != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-af",   &mosi_af)   != VFS_OK ||
+        device_get_prop_int(pdev, "mosi-pin", &mosi_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "mosi-clk", &mosi_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "mosi-af", &mosi_af) != VFS_OK ||
         device_get_prop_int(pdev, "miso-port", &miso_port) != VFS_OK ||
-        device_get_prop_int(pdev, "miso-pin",  &miso_pin)  != VFS_OK ||
-        device_get_prop_int(pdev, "miso-clk",  &miso_clk)  != VFS_OK ||
-        device_get_prop_int(pdev, "miso-af",   &miso_af)   != VFS_OK ||
+        device_get_prop_int(pdev, "miso-pin", &miso_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "miso-clk", &miso_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "miso-af", &miso_af) != VFS_OK ||
         device_get_prop_int(pdev, "sclk-port", &sclk_port) != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-pin",  &sclk_pin)  != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-clk",  &sclk_clk)  != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-af",   &sclk_af)   != VFS_OK)
+        device_get_prop_int(pdev, "sclk-pin", &sclk_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "sclk-clk", &sclk_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "sclk-af", &sclk_af) != VFS_OK)
     {
         return VFS_ERR_INVAL;
     }
     /** pin_cfg 扩展字段: DTS 未定义时 LL_GPIO_Init 取 0 */
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-output-type", &mosi_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-speed",       &mosi_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-mode",        &mosi_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-pull",        &mosi_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-speed", &mosi_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-mode", &mosi_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-pull", &mosi_pull));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-output-type", &miso_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-speed",       &miso_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-mode",        &miso_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-pull",        &miso_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-speed", &miso_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-mode", &miso_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-pull", &miso_pull));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-output-type", &sclk_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-speed",       &sclk_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-mode",        &sclk_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-pull",        &sclk_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-speed", &sclk_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-mode", &sclk_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-pull", &sclk_pull));
 
     {
         int irqn = -1, irq_priority = 0, it_enable = 0;
@@ -110,41 +111,41 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
         COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
-        cfg->irqn         = (int32_t)irqn;
+        cfg->irqn = (int32_t)irqn;
         cfg->irq_priority = (uint32_t)irq_priority;
-        cfg->it_enable    = (uint32_t)it_enable;
+        cfg->it_enable = (uint32_t)it_enable;
     }
-    cfg->spi           = (uintptr_t)spi_base;
+    cfg->spi = (uintptr_t)spi_base;
     cfg->spi_clk_periph = (uint32_t)spi_clk;
     cfg->mosi = (struct hal_spi_pin_cfg){
-        .port        = (uintptr_t)mosi_port,
-        .pin         = (uint16_t)mosi_pin,
-        .clk_bus     = (uint32_t)mosi_clk,
-        .af          = (uint32_t)mosi_af,
+        .port = (uintptr_t)mosi_port,
+        .pin = (uint16_t)mosi_pin,
+        .clk_bus = (uint32_t)mosi_clk,
+        .af = (uint32_t)mosi_af,
         .output_type = (uint32_t)mosi_output_type,
-        .speed       = (uint32_t)mosi_speed,
-        .mode        = (uint32_t)mosi_mode,
-        .pull        = (uint32_t)mosi_pull,
+        .speed = (uint32_t)mosi_speed,
+        .mode = (uint32_t)mosi_mode,
+        .pull = (uint32_t)mosi_pull,
     };
     cfg->miso = (struct hal_spi_pin_cfg){
-        .port        = (uintptr_t)miso_port,
-        .pin         = (uint16_t)miso_pin,
-        .clk_bus     = (uint32_t)miso_clk,
-        .af          = (uint32_t)miso_af,
+        .port = (uintptr_t)miso_port,
+        .pin = (uint16_t)miso_pin,
+        .clk_bus = (uint32_t)miso_clk,
+        .af = (uint32_t)miso_af,
         .output_type = (uint32_t)miso_output_type,
-        .speed       = (uint32_t)miso_speed,
-        .mode        = (uint32_t)miso_mode,
-        .pull        = (uint32_t)miso_pull,
+        .speed = (uint32_t)miso_speed,
+        .mode = (uint32_t)miso_mode,
+        .pull = (uint32_t)miso_pull,
     };
     cfg->sclk = (struct hal_spi_pin_cfg){
-        .port        = (uintptr_t)sclk_port,
-        .pin         = (uint16_t)sclk_pin,
-        .clk_bus     = (uint32_t)sclk_clk,
-        .af          = (uint32_t)sclk_af,
+        .port = (uintptr_t)sclk_port,
+        .pin = (uint16_t)sclk_pin,
+        .clk_bus = (uint32_t)sclk_clk,
+        .af = (uint32_t)sclk_af,
         .output_type = (uint32_t)sclk_output_type,
-        .speed       = (uint32_t)sclk_speed,
-        .mode        = (uint32_t)sclk_mode,
-        .pull        = (uint32_t)sclk_pull,
+        .speed = (uint32_t)sclk_speed,
+        .mode = (uint32_t)sclk_mode,
+        .pull = (uint32_t)sclk_pull,
     };
     cfg->max_transfer_sz = 0;
     cfg->bus_role = bus_role;
@@ -153,7 +154,8 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
         int max_transfer_sz = 0;
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-trans-buffer", &max_transfer_sz));
         if (max_transfer_sz <= 0)
-            COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
+            COMPAT_IGNORE_RESULT(
+                device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
     }
 
@@ -166,43 +168,43 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
         n = device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14);
         if (n >= 6)
         {
-            cfg->dma_tx.dma_handle      = (uintptr_t)dma_arr[0];
-            cfg->dma_tx.dma_stream      = (uint32_t)dma_arr[1];
-            cfg->dma_tx.dma_channel     = (uint32_t)dma_arr[2];
-            cfg->dma_tx.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_tx.dma_handle = (uintptr_t)dma_arr[0];
+            cfg->dma_tx.dma_stream = (uint32_t)dma_arr[1];
+            cfg->dma_tx.dma_channel = (uint32_t)dma_arr[2];
+            cfg->dma_tx.dma_priority = (uint32_t)dma_arr[3];
             cfg->dma_tx.dma_memory_size = (uint32_t)dma_arr[4];
-            cfg->dma_tx.dma_enable      = (uint32_t)dma_arr[5];
+            cfg->dma_tx.dma_enable = (uint32_t)dma_arr[5];
             if (n >= 14)
             {
-                cfg->dma_tx.dma_mode             = (uint32_t)dma_arr[6];
-                cfg->dma_tx.dma_periph_inc       = (uint32_t)dma_arr[7];
-                cfg->dma_tx.dma_mem_inc          = (uint32_t)dma_arr[8];
+                cfg->dma_tx.dma_mode = (uint32_t)dma_arr[6];
+                cfg->dma_tx.dma_periph_inc = (uint32_t)dma_arr[7];
+                cfg->dma_tx.dma_mem_inc = (uint32_t)dma_arr[8];
                 cfg->dma_tx.dma_periph_data_size = (uint32_t)dma_arr[9];
-                cfg->dma_tx.dma_fifo_mode        = (uint32_t)dma_arr[10];
-                cfg->dma_tx.dma_fifo_threshold   = (uint32_t)dma_arr[11];
-                cfg->dma_tx.dma_mem_burst        = (uint32_t)dma_arr[12];
-                cfg->dma_tx.dma_periph_burst     = (uint32_t)dma_arr[13];
+                cfg->dma_tx.dma_fifo_mode = (uint32_t)dma_arr[10];
+                cfg->dma_tx.dma_fifo_threshold = (uint32_t)dma_arr[11];
+                cfg->dma_tx.dma_mem_burst = (uint32_t)dma_arr[12];
+                cfg->dma_tx.dma_periph_burst = (uint32_t)dma_arr[13];
             }
         }
         n = device_get_prop_int_array(pdev, "dma-rx-cfg", dma_arr, 14);
         if (n >= 6)
         {
-            cfg->dma_rx.dma_handle      = (uintptr_t)dma_arr[0];
-            cfg->dma_rx.dma_stream      = (uint32_t)dma_arr[1];
-            cfg->dma_rx.dma_channel     = (uint32_t)dma_arr[2];
-            cfg->dma_rx.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_rx.dma_handle = (uintptr_t)dma_arr[0];
+            cfg->dma_rx.dma_stream = (uint32_t)dma_arr[1];
+            cfg->dma_rx.dma_channel = (uint32_t)dma_arr[2];
+            cfg->dma_rx.dma_priority = (uint32_t)dma_arr[3];
             cfg->dma_rx.dma_memory_size = (uint32_t)dma_arr[4];
-            cfg->dma_rx.dma_enable      = (uint32_t)dma_arr[5];
+            cfg->dma_rx.dma_enable = (uint32_t)dma_arr[5];
             if (n >= 14)
             {
-                cfg->dma_rx.dma_mode             = (uint32_t)dma_arr[6];
-                cfg->dma_rx.dma_periph_inc       = (uint32_t)dma_arr[7];
-                cfg->dma_rx.dma_mem_inc          = (uint32_t)dma_arr[8];
+                cfg->dma_rx.dma_mode = (uint32_t)dma_arr[6];
+                cfg->dma_rx.dma_periph_inc = (uint32_t)dma_arr[7];
+                cfg->dma_rx.dma_mem_inc = (uint32_t)dma_arr[8];
                 cfg->dma_rx.dma_periph_data_size = (uint32_t)dma_arr[9];
-                cfg->dma_rx.dma_fifo_mode        = (uint32_t)dma_arr[10];
-                cfg->dma_rx.dma_fifo_threshold   = (uint32_t)dma_arr[11];
-                cfg->dma_rx.dma_mem_burst        = (uint32_t)dma_arr[12];
-                cfg->dma_rx.dma_periph_burst     = (uint32_t)dma_arr[13];
+                cfg->dma_rx.dma_fifo_mode = (uint32_t)dma_arr[10];
+                cfg->dma_rx.dma_fifo_threshold = (uint32_t)dma_arr[11];
+                cfg->dma_rx.dma_mem_burst = (uint32_t)dma_arr[12];
+                cfg->dma_rx.dma_periph_burst = (uint32_t)dma_arr[13];
             }
         }
     }
@@ -221,8 +223,8 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
 static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
 {
     struct vfs_spi_priv* priv;
-    int                  pool_idx;
-    int                  ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -249,8 +251,7 @@ static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s role=%s",
-             device_get_name(pdev),
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
              bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
     return VFS_OK;
 
@@ -290,8 +291,8 @@ static int vfs_spi_priv_remove(struct device* pdev)
 {
     struct vfs_spi_priv* priv;
     struct dev_lifecycle* lc;
-    int                   pool_idx;
-    int                   ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -335,24 +336,24 @@ static int vfs_spi_priv_remove(struct device* pdev)
 /*===========================================================================================================================================================*/
 #define SPI_VFS_CLIENT_COUNT 4
 
-struct spi_vfs_client {
-    struct file_operations       ops;       /**< VFS 操作表 */
-    struct hal_spi_device_config cfg;       /**< 设备配置 (DTSI 直投) */
-    int                          role;      /**< SPI_BUS_ROLE_MASTER / SLAVE, probe 时设置 */
-    uint32_t                     xfer_mode; /**< SPI_XFER_*; write/read 默认 AUTO, ioctl 可改 */
-    int                          pool_idx;  /**< 池索引 */
+struct spi_vfs_client
+{
+    struct file_operations ops; /**< VFS 操作表 */
+    struct hal_spi_device_config cfg; /**< 设备配置 (DTSI 直投) */
+    int role; /**< SPI_BUS_ROLE_MASTER / SLAVE, probe 时设置 */
+    uint32_t xfer_mode; /**< SPI_XFER_*; write/read 默认 AUTO, ioctl 可改 */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct spi_vfs_client s_client_pool[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t              s_client_used[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t          s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const    k_client_tag = "spi_vfs_client";
+static uint8_t s_client_used[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_client_tag = "spi_vfs_client";
 
 /**
  * @brief SPI Client VFS 私有数据池启动初始化
  */
-pre_execution(160)
-static void spi_vfs_client_pool_init(void)
+pre_execution(160) static void spi_vfs_client_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT));
 }
@@ -368,15 +369,15 @@ static void spi_vfs_client_pool_init(void)
  */
 static int spi_vfs_open(struct device* pdev, void* arg)
 {
-    struct dev_lifecycle*   lc;
-    int                     first;
-    int                     ret;
+    struct dev_lifecycle* lc;
+    int first;
+    int ret;
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -406,7 +407,7 @@ static int spi_vfs_open(struct device* pdev, void* arg)
 static int spi_vfs_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int                   last;
+    int last;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -439,15 +440,15 @@ static int spi_vfs_close(struct device* pdev)
  */
 static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
-    struct spi_vfs_client*  priv;
-    struct dev_lifecycle*   lc;
-    int                     ret;
+    struct spi_vfs_client* priv;
+    struct dev_lifecycle* lc;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct spi_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -467,7 +468,8 @@ static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
     }
 
     if (priv->role == SPI_BUS_ROLE_MASTER)
-        ret = spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
+        ret =
+            spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
     else
         ret = spi_bus_slave_sync(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms);
 
@@ -485,15 +487,15 @@ static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
  */
 static int spi_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
-    struct spi_vfs_client*  priv;
-    struct dev_lifecycle*   lc;
-    int                     ret;
+    struct spi_vfs_client* priv;
+    struct dev_lifecycle* lc;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct spi_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -528,7 +530,7 @@ typedef int (*spi_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, ui
 
 struct spi_ioctl_map
 {
-    spi_ioctl_fn_t handler;  /**< ioctl 处理函数 */
+    spi_ioctl_fn_t handler; /**< ioctl 处理函数 */
 };
 
 /**
@@ -542,8 +544,8 @@ struct spi_ioctl_map
 static int spi_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct spi_transfer_arg* ta = (const struct spi_transfer_arg*)arg;
-    struct spi_vfs_client*         priv;
-    uint32_t                       mode;
+    struct spi_vfs_client* priv;
+    uint32_t mode;
 
     if (!pdev || !pdev->ops || !ta || arg_len != sizeof(*ta))
         return VFS_ERR_INVAL;
@@ -565,10 +567,11 @@ static int spi_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
  * @param timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     const struct spi_xfer_mode_arg* ma = (const struct spi_xfer_mode_arg*)arg;
-    struct spi_vfs_client*          priv;
+    struct spi_vfs_client* priv;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
@@ -589,10 +592,11 @@ static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     struct spi_xfer_mode_arg* ma = (struct spi_xfer_mode_arg*)arg;
-    struct spi_vfs_client*    priv;
+    struct spi_vfs_client* priv;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
@@ -611,7 +615,8 @@ static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len,
+                                  uint32_t timeout_ms)
 {
     const struct spi_transfer_async_arg* aa = (const struct spi_transfer_async_arg*)arg;
 
@@ -665,7 +670,8 @@ static int spi_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     const struct spi_trans_result_arg* tra = (const struct spi_trans_result_arg*)arg;
     if (!tra || arg_len != sizeof(*tra))
@@ -674,13 +680,13 @@ static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_l
 }
 
 static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
-    [SPI_CMD_TRANSFER - SPI_CMD_BASE - 1]         = { spi_cmd_transfer },
-    [SPI_CMD_QUEUE_TX - SPI_CMD_BASE - 1]         = { spi_cmd_queue_tx },
-    [SPI_CMD_GET_TRANS_RESULT - SPI_CMD_BASE - 1] = { spi_cmd_get_trans_result },
-    [SPI_CMD_SET_XFER_MODE - SPI_CMD_BASE - 1]    = { spi_cmd_set_xfer_mode },
-    [SPI_CMD_GET_XFER_MODE - SPI_CMD_BASE - 1]    = { spi_cmd_get_xfer_mode },
-    [SPI_CMD_TRANSFER_ASYNC - SPI_CMD_BASE - 1]   = { spi_cmd_transfer_async },
-    [SPI_CMD_ASYNC_WAIT - SPI_CMD_BASE - 1]       = { spi_cmd_async_wait },
+    [SPI_CMD_TRANSFER - SPI_CMD_BASE - 1] = {spi_cmd_transfer},
+    [SPI_CMD_QUEUE_TX - SPI_CMD_BASE - 1] = {spi_cmd_queue_tx},
+    [SPI_CMD_GET_TRANS_RESULT - SPI_CMD_BASE - 1] = {spi_cmd_get_trans_result},
+    [SPI_CMD_SET_XFER_MODE - SPI_CMD_BASE - 1] = {spi_cmd_set_xfer_mode},
+    [SPI_CMD_GET_XFER_MODE - SPI_CMD_BASE - 1] = {spi_cmd_get_xfer_mode},
+    [SPI_CMD_TRANSFER_ASYNC - SPI_CMD_BASE - 1] = {spi_cmd_transfer_async},
+    [SPI_CMD_ASYNC_WAIT - SPI_CMD_BASE - 1] = {spi_cmd_async_wait},
 };
 
 /**
@@ -692,11 +698,12 @@ static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int32_t               offset;
-    int                   ret;
+    int32_t offset;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -720,10 +727,10 @@ static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 }
 
 static const struct file_operations spi_vfs_fops = {
-    .open  = spi_vfs_open,
+    .open = spi_vfs_open,
     .close = spi_vfs_close,
     .write = spi_vfs_write,
-    .read  = spi_vfs_read,
+    .read = spi_vfs_read,
     .ioctl = spi_vfs_ioctl,
 };
 
@@ -742,8 +749,8 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
     int mode = 0, freq = 0;
 
     if (device_get_prop_int(pdev, "cs-port", &cs_port) != VFS_OK ||
-        device_get_prop_int(pdev, "cs-pin",  &cs_pin)  != VFS_OK ||
-        device_get_prop_int(pdev, "cs-clk",  &cs_clk)  != VFS_OK ||
+        device_get_prop_int(pdev, "cs-pin", &cs_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "cs-clk", &cs_clk) != VFS_OK ||
         device_get_prop_int(pdev, "spi-mode", &mode) != VFS_OK ||
         device_get_prop_int(pdev, "spi-max-frequency", &freq) != VFS_OK)
     {
@@ -751,10 +758,10 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
     }
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
-    cfg->cs_port        = (uintptr_t)cs_port;
-    cfg->cs_pin         = (int32_t)cs_pin; /* 允许 -1: 无硬件 CS */
-    cfg->cs_clk_periph  = (uint32_t)cs_clk;
-    cfg->mode           = mode;
+    cfg->cs_port = (uintptr_t)cs_port;
+    cfg->cs_pin = (int32_t)cs_pin; /* 允许 -1: 无硬件 CS */
+    cfg->cs_clk_periph = (uint32_t)cs_clk;
+    cfg->mode = mode;
     cfg->clock_speed_hz = freq;
 
     /** 扩展字段: DTS 可选, 未定义时取 0。
@@ -764,19 +771,19 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
         int transfer_direction = 0, data_width = 0, nss = 0, bit_order = 0;
         int crc_calculation = 0, crc_poly = 0, standard = 0;
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "transfer-direction", &transfer_direction));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "data-width",         &data_width));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "nss",                &nss));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "bit-order",          &bit_order));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "crc-calculation",    &crc_calculation));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "crc-poly",           &crc_poly));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "standard",           &standard));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "data-width", &data_width));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "nss", &nss));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "bit-order", &bit_order));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "crc-calculation", &crc_calculation));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "crc-poly", &crc_poly));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "standard", &standard));
         cfg->transfer_direction = (uint32_t)transfer_direction;
-        cfg->data_width         = (uint32_t)data_width;
-        cfg->nss                = (uint32_t)nss;
-        cfg->bit_order          = (uint32_t)bit_order;
-        cfg->crc_calculation    = (uint32_t)crc_calculation;
-        cfg->crc_poly           = (uint32_t)crc_poly;
-        cfg->standard           = (uint32_t)standard;
+        cfg->data_width = (uint32_t)data_width;
+        cfg->nss = (uint32_t)nss;
+        cfg->bit_order = (uint32_t)bit_order;
+        cfg->crc_calculation = (uint32_t)crc_calculation;
+        cfg->crc_poly = (uint32_t)crc_poly;
+        cfg->standard = (uint32_t)standard;
     }
 
     return VFS_OK;
@@ -792,11 +799,11 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
  */
 static int spi_vfs_probe(struct device* pdev)
 {
-    struct spi_vfs_client*   priv;
-    struct spi_bus_client*   bus_cli;
-    int                       role;
-    int                       pool_idx;
-    int                       ret;
+    struct spi_vfs_client* priv;
+    struct spi_bus_client* bus_cli;
+    int role;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -814,8 +821,8 @@ static int spi_vfs_probe(struct device* pdev)
 
     priv = &s_client_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx  = pool_idx;
-    priv->role      = role;
+    priv->pool_idx = pool_idx;
+    priv->role = role;
     priv->xfer_mode = SPI_XFER_AUTO; /* write/read 默认隐式 */
 
     ret = spi_vfs_parse_dts(pdev, &priv->cfg);
@@ -827,7 +834,7 @@ static int spi_vfs_probe(struct device* pdev)
         goto err_pool;
 
     priv->ops = spi_vfs_fops;
-    pdev->ops  = &priv->ops;
+    pdev->ops = &priv->ops;
 
     if (device_set_priv(pdev, priv) != VFS_OK)
     {
@@ -836,15 +843,14 @@ static int spi_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d",
-             device_get_name(pdev),
-             role == SPI_BUS_ROLE_MASTER ? "master" : "slave",
-             priv->cfg.mode, priv->cfg.clock_speed_hz);
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d", device_get_name(pdev),
+             role == SPI_BUS_ROLE_MASTER ? "master" : "slave", priv->cfg.mode,
+             priv->cfg.clock_speed_hz);
     return VFS_OK;
 
 err_pool:
-    pdev->ops = NULL;                   /* 切断 fops, 防 UAF */
-    dev_lc_reset(device_lc(pdev));       /* 重置生命周期 */
+    pdev->ops = NULL; /* 切断 fops, 防 UAF */
+    dev_lc_reset(device_lc(pdev)); /* 重置生命周期 */
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     return ret;
 }
@@ -859,15 +865,15 @@ err_pool:
  */
 static int spi_vfs_remove(struct device* pdev)
 {
-    struct spi_vfs_client*  priv;
-    struct dev_lifecycle*   lc;
-    int                     pool_idx;
+    struct spi_vfs_client* priv;
+    struct dev_lifecycle* lc;
+    int pool_idx;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct spi_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -892,12 +898,8 @@ static int spi_vfs_remove(struct device* pdev)
 /*===========================================================================================================================================================*/
 /*Driver Registration*/
 /*===========================================================================================================================================================*/
-DRIVER_REGISTER(spi_host_master, "spi-master",
-                vfs_spi_priv_probe_master, vfs_spi_priv_remove)
-DRIVER_REGISTER(spi_host_slave, "spi-slave",
-                vfs_spi_priv_probe_slave, vfs_spi_priv_remove)
-DRIVER_REGISTER(spi_vfs_master, "heterogeneous,spi-master-client",
-                spi_vfs_probe, spi_vfs_remove)
-DRIVER_REGISTER(spi_vfs_slave, "heterogeneous,spi-slave-client",
-                spi_vfs_probe, spi_vfs_remove)
+DRIVER_REGISTER(spi_host_master, "spi-master", vfs_spi_priv_probe_master, vfs_spi_priv_remove)
+DRIVER_REGISTER(spi_host_slave, "spi-slave", vfs_spi_priv_probe_slave, vfs_spi_priv_remove)
+DRIVER_REGISTER(spi_vfs_master, "heterogeneous,spi-master-client", spi_vfs_probe, spi_vfs_remove)
+DRIVER_REGISTER(spi_vfs_slave, "heterogeneous,spi-slave-client", spi_vfs_probe, spi_vfs_remove)
 /*===========================================================================================================================================================*/

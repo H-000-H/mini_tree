@@ -13,14 +13,14 @@ extern "C"
 {
 #endif
 
-/**
- * @brief ST7789 公共 probe
- * @param require_nocs 非 0 时断言父 SPI client cs-pin < 0
- */
-int st7789_probe_common(struct device* dev, int require_nocs);
+    /**
+     * @brief ST7789 公共 probe
+     * @param require_nocs 非 0 时断言父 SPI client cs-pin < 0
+     */
+    int st7789_probe_common(struct device* pdev, int require_nocs);
 
-/** @brief ST7789 公共 remove（有 CS / 无 CS 共用） */
-int st7789_remove_common(struct device* dev);
+    /** @brief ST7789 公共 remove（有 CS / 无 CS 共用） */
+    int st7789_remove_common(struct device* pdev);
 
 #ifdef __cplusplus
 }

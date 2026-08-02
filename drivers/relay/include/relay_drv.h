@@ -8,16 +8,17 @@
  */
 #ifndef RELAY_DRV_H
 #define RELAY_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define RELAY_CMD_BASE COMPAT_MAGIC(RELAY)
 /** 设置继电器状态（arg: int*，0=断开 1=吸合） */
-#define RELAY_CMD_SET (RELAY_CMD_BASE+0x01)
+#define RELAY_CMD_SET (RELAY_CMD_BASE + 0x01)
 /** 命令总数 */
 #define RELAY_CMD_COUNT 1
 #ifdef __cplusplus

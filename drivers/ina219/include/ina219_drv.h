@@ -8,11 +8,12 @@
  */
 #ifndef INA219_DRV_H
 #define INA219_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define INA219_CMD_BASE COMPAT_MAGIC(INA219)
@@ -21,13 +22,13 @@ extern "C" {
 /** 命令总数 */
 #define INA219_CMD_COUNT 1
 
-/** @brief INA219 电源监测结果 */
-struct ina219_sample
-{
-    int16_t bus_mV;      /**< 总线电压，mV */
-    int16_t current_mA;  /**< 分流电流，mA */
-    int16_t power_mW;    /**< 功率，mW */
-};
+    /** @brief INA219 电源监测结果 */
+    struct ina219_sample
+    {
+        int16_t bus_mV; /**< 总线电压，mV */
+        int16_t current_mA; /**< 分流电流，mA */
+        int16_t power_mW; /**< 功率，mW */
+    };
 #ifdef __cplusplus
 }
 #endif

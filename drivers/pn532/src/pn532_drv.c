@@ -9,58 +9,57 @@
  * 数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
  */
 #include "pn532_drv.h"
-#include "vfs-uart.h"
 
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "dt_config_gen.h"
-#include "compiler_compat.h"
 #include "osal.h"
+#include "status.h"
 #include "system_log.h"
+#include "vfs-uart.h"
 #include <stddef.h>
 #include <stdint.h>
+
 #include "compiler_compat_poison.h"
 
 #ifndef DTC_GEN_COUNT_NXP_PN532_HSU
-#define DTC_GEN_COUNT_NXP_PN532_HSU  1
+#define DTC_GEN_COUNT_NXP_PN532_HSU 1
 #endif
-#define PN532_POOL_COUNT  DTC_GEN_COUNT_NXP_PN532_HSU
+#define PN532_POOL_COUNT DTC_GEN_COUNT_NXP_PN532_HSU
 
 /** @brief PN532 驱动实例（嵌入 fops） */
 struct pn532_device
 {
-    struct file_operations ops;      /**< 挂入 device 的 fops */
-    struct device*         uart_dev; /**< 所属 UART client 设备 */
+    struct file_operations ops; /**< 挂入 device 的 fops */
+    struct device* uart_dev; /**< 所属 UART client 设备 */
 
-    int                    hw_ready; /**< 硬件已初始化标志 */
+    int hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct pn532_device s_pn532_pool[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_pn532_used[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_pn532_pool_ctrl COMPAT_ALIGNED(4);
+static uint8_t s_pn532_used[PN532_POOL_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_pn532_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_tag = "pn532";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160)
-static void pn532_pool_boot_init(void)
+pre_execution(160) static void pn532_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_pn532_pool_ctrl, s_pn532_used, PN532_POOL_COUNT));
 }
 
 /**
  * @brief 取驱动私有数据
- * @param dev device 指针
+ * @param pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct pn532_device* pn532_get_drvdata(struct device* dev)
+static struct pn532_device* pn532_get_drvdata(struct device* pdev)
 {
-    return (struct pn532_device*)device_get_priv(dev);
+    return (struct pn532_device*)device_get_priv(pdev);
 }
-
 
 /**
  * @brief 向 UART 总线写数据
@@ -82,7 +81,6 @@ static int pn532_uart_rd(struct pn532_device* d, uint8_t* rx, size_t len, uint32
         return VFS_ERR_INVAL;
     return device_read(d->uart_dev, rx, len, to);
 }
-
 
 /**
  * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
@@ -119,18 +117,18 @@ static void pn532_hw_destroy(struct pn532_device* d)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int pn532_open(struct device* dev, void* arg)
+static int pn532_open(struct device* pdev, void* arg)
 {
     struct pn532_device* d;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = pn532_get_drvdata(dev);
+    d = pn532_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     first = dev_lc_open_begin(lc);
@@ -153,17 +151,17 @@ static int pn532_open(struct device* dev, void* arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int pn532_close(struct device* dev)
+static int pn532_close(struct device* pdev)
 {
     struct pn532_device* d;
     struct dev_lifecycle* lc;
     int last;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = pn532_get_drvdata(dev);
+    d = pn532_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     last = dev_lc_close_begin(lc);
@@ -179,8 +177,10 @@ static int pn532_close(struct device* dev)
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
 typedef int (*pn532_ioctl_fn_t)(struct pn532_device* d, void* arg, size_t arg_len, uint32_t ms);
-struct pn532_ioctl_map { pn532_ioctl_fn_t handler; };
-
+struct pn532_ioctl_map
+{
+    pn532_ioctl_fn_t handler;
+};
 
 /**
  * @brief PN532_CMD_GET_FIRMWARE 实现：HSU 唤醒 + GetFirmwareVersion 帧解析
@@ -188,7 +188,8 @@ struct pn532_ioctl_map { pn532_ioctl_fn_t handler; };
 static int pn532_cmd_fw(struct pn532_device* d, void* arg, size_t len, uint32_t to)
 {
     /* HSU wake + GetFirmwareVersion 帧 */
-    static const uint8_t wake[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    static const uint8_t wake[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     static const uint8_t cmd[] = {0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD4, 0x02, 0x2A, 0x00};
     uint8_t rx[32];
     struct pn532_fw* o = (struct pn532_fw*)arg;
@@ -214,26 +215,25 @@ static int pn532_cmd_fw(struct pn532_device* d, void* arg, size_t len, uint32_t 
     return VFS_OK;
 }
 
-
 static const struct pn532_ioctl_map s_pn532_map[PN532_CMD_COUNT] = {
-    [PN532_CMD_GET_FIRMWARE - PN532_CMD_BASE - 1] = { pn532_cmd_fw },
+    [PN532_CMD_GET_FIRMWARE - PN532_CMD_BASE - 1] = {pn532_cmd_fw},
 };
 
 /**
  * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
  */
-static int pn532_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
+static int pn532_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct pn532_device* d;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = pn532_get_drvdata(dev);
+    d = pn532_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
@@ -249,7 +249,7 @@ static int pn532_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, u
 }
 
 static const struct file_operations pn532_fops = {
-    .open  = pn532_open,
+    .open = pn532_open,
     .close = pn532_close,
     .ioctl = pn532_ioctl,
 };
@@ -257,35 +257,35 @@ static const struct file_operations pn532_fops = {
 /**
  * @brief probe：claim 池项、绑定父 UART 设备并挂 fops
  */
-static int pn532_probe(struct device* dev)
+static int pn532_probe(struct device* pdev)
 {
     struct pn532_device* d;
     int pool_idx, ret;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_pn532_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
     d = &s_pn532_pool[pool_idx];
     COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->uart_dev = device_get_parent(dev);
+    d->uart_dev = device_get_parent(pdev);
     if (!d->uart_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(dev, d) != VFS_OK)
+    if (device_set_priv(pdev, d) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
     d->ops = pn532_fops;
-    dev->ops = &d->ops;
+    pdev->ops = &d->ops;
     SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
-    dev->ops = NULL;
+    pdev->ops = NULL;
     COMPAT_MEM_SET(d, 0, sizeof(*d));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_pn532_pool_ctrl, pool_idx));
     return ret;
@@ -294,22 +294,22 @@ err:
 /**
  * @brief remove：排空在途 io、释放硬件并归还池项
  */
-static int pn532_remove(struct device* dev)
+static int pn532_remove(struct device* pdev)
 {
     struct pn532_device* d;
     struct dev_lifecycle* lc;
     int idx;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
-    d = pn532_get_drvdata(dev);
+    d = pn532_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     idx = (int)(d - s_pn532_pool);
     dev_lc_remove_start(lc);
-    device_ops_unregister(dev);
+    device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
     {
         dev_lc_remove_finish(lc);

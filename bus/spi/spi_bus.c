@@ -18,117 +18,117 @@
  *@=========================================================================================================================*/
 #define SPI_BUS_IMPL
 #include "spi_bus.h"
-#include "bus.h"
-#include "hal_spi.h"
-#include "device.h"
-#include "board_devtable.h"
-#include "status.h"
-#include "compiler_compat.h"
-#include "system_log.h"
-#include "osal.h"
 
-#define SPI_BUS_HOST_MAX  3  /* 对齐 HAL/DTS host-max (SPI1/2/3) */
+#include "board_devtable.h"
+#include "bus.h"
+#include "compiler_compat.h"
+#include "device.h"
+#include "hal_spi.h"
+#include "osal.h"
+#include "status.h"
+#include "system_log.h"
+
+#define SPI_BUS_HOST_MAX 3 /* 对齐 HAL/DTS host-max (SPI1/2/3) */
 
 /** @brief SPI host 运行时描述符 (静态池, HAL 嵌入 + atomic ref_count) */
-struct spi_bus_host {
-    struct device*               dev;        /**< 关联设备 */
-    struct hal_spi_bus_host      hal_host;   /**< 嵌入 HAL host (非指针, HAL 无池管理) */
-    COMPAT_ATOMIC_INT             ref_count; /**< atomic 无锁计数, ISR/任务安全 */
+struct spi_bus_host
+{
+    struct device* pdev; /**< 关联设备 */
+    struct hal_spi_bus_host hal_host; /**< 嵌入 HAL host (非指针, HAL 无池管理) */
+    COMPAT_ATOMIC_INT ref_count; /**< atomic 无锁计数, ISR/任务安全 */
 };
 
 /** @brief SPI client 运行时描述符 (静态表, 按 device_id 索引) */
-struct spi_bus_client {
-    struct device*               dev;    /**< 关联设备 */
-    struct spi_bus_host*         host;   /**< 所属 host */
-    struct hal_spi_device_config cfg;    /**< 设备配置 (DTSI 直投) */
-    struct hal_spi_dev           hal_dev; /**< HAL 设备对象 */
-    int                          hw_open; /**< 硬件打开计数 */
+struct spi_bus_client
+{
+    struct device* pdev; /**< 关联设备 */
+    struct spi_bus_host* host; /**< 所属 host */
+    struct hal_spi_device_config cfg; /**< 设备配置 (DTSI 直投) */
+    struct hal_spi_dev hal_dev; /**< HAL 设备对象 */
+    int hw_open; /**< 硬件打开计数 */
 };
 
 static struct spi_bus_host s_spi_hosts[SPI_BUS_HOST_MAX];
-static uint8_t             s_spi_host_used[SPI_BUS_HOST_MAX];
-static osal_pool_t         s_spi_host_pool_ctrl;
+static uint8_t s_spi_host_used[SPI_BUS_HOST_MAX];
+static osal_pool_t s_spi_host_pool_ctrl;
 static struct spi_bus_client s_spi_clients[DEV_ID_COUNT];
-static const char* const     k_tag = "spi_bus";
+static const char* const k_tag = "spi_bus";
 
 /**
  * @brief SPI Host 池启动初始化
  */
-pre_execution(150)
-static void spi_bus_pool_init(void)
+pre_execution(150) static void spi_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_spi_host_pool_ctrl, s_spi_host_used, SPI_BUS_HOST_MAX));
 }
 
 /*===========================================================================================================================================================*/
-                                                              /* Host pool helpers */
+/* Host pool helpers */
 /*===========================================================================================================================================================*/
 /**
  * @brief 通过 device 指针查找对应的 spi_bus_host
- * @param dev host device 指针
+ * @param pdev host device 指针
  * @return 找到返回 host 指针, 未找到返回 NULL
  */
-static struct spi_bus_host* spi_host_from_device(struct device* dev)
+static struct spi_bus_host* spi_host_from_device(struct device* pdev)
 {
     for (int i = 0; i < SPI_BUS_HOST_MAX; i++)
-    {
-        if (osal_pool_is_used(&s_spi_host_pool_ctrl, i) && s_spi_hosts[i].dev == dev)
+        if (osal_pool_is_used(&s_spi_host_pool_ctrl, i) && s_spi_hosts[i].pdev == pdev)
             return &s_spi_hosts[i];
-    }
     return NULL;
 }
 
 /**
  * @brief 通过 device 指针查找对应的 spi_bus_client (按 device_id 索引)
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @return 找到返回 client 指针, 未找到返回 NULL
  */
-static struct spi_bus_client* spi_client_from_device(struct device* dev)
+static struct spi_bus_client* spi_client_from_device(struct device* pdev)
 {
-    int id = (int)board_dev_find(device_get_name(dev));
-    if (id < 0 || id >= DEV_ID_COUNT || !s_spi_clients[id].dev)
+    int id = (int)board_dev_find(device_get_name(pdev));
+    if (id < 0 || id >= DEV_ID_COUNT || !s_spi_clients[id].pdev)
         return NULL;
     return &s_spi_clients[id];
 }
 /*===========================================================================================================================================================*/
-                                                              /* controller_ops (host 级操作) */
+/* controller_ops (host 级操作) */
 /*===========================================================================================================================================================*/
 /* 前向声明: s_spi_controller_ops 引用 impl 函数, 但 impl 定义在 ops 表之后 */
-static int  spi_host_init_impl(struct device* dev, const void* cfg);
-static int  spi_host_deinit_impl(struct device* dev);
-static int  spi_host_role_impl(struct device* dev);
-static int  spi_client_register_impl(struct device* dev, const void* cfg, void** out);
-static void spi_client_unregister_impl(struct device* dev);
+static int spi_host_init_impl(struct device* pdev, const void* cfg);
+static int spi_host_deinit_impl(struct device* pdev);
+static int spi_host_role_impl(struct device* pdev);
+static int spi_client_register_impl(struct device* pdev, const void* cfg, void** out);
+static void spi_client_unregister_impl(struct device* pdev);
 
 static const struct bus_controller_ops s_spi_controller_ops = {
-    .init              = spi_host_init_impl,
-    .deinit            = spi_host_deinit_impl,
-    .role              = spi_host_role_impl,
-    .client_register   = spi_client_register_impl,
+    .init = spi_host_init_impl,
+    .deinit = spi_host_deinit_impl,
+    .role = spi_host_role_impl,
+    .client_register = spi_client_register_impl,
     .client_unregister = spi_client_unregister_impl,
 };
 /*===========================================================================================================================================================*/
-                                                              /* Host API */
+/* Host API */
 /*===========================================================================================================================================================*/
 /**
  * @brief host 初始化实现 (controller_ops.init): 分配 host 池槽位, 调用 HAL 初始化并绑定 controller
- * @param dev controller device (host)
+ * @param pdev controller device (host)
  * @param cfg host 配置 (struct hal_spi_bus_config*)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL/NOMEM/...
  */
-static int spi_host_init_impl(struct device* dev, const void* cfg)
+static int spi_host_init_impl(struct device* pdev, const void* cfg)
 {
     const struct hal_spi_bus_config* host_cfg;
-    struct spi_bus_host*    host;
-    int                     idx;
-    int                     ret;
+    struct spi_bus_host* host;
+    int idx;
+    int ret;
 
-    if (!dev || !cfg)
+    if (!pdev || !cfg)
         return VFS_ERR_INVAL;
 
     host_cfg = (const struct hal_spi_bus_config*)cfg;
 
-    if (spi_host_from_device(dev))
+    if (spi_host_from_device(pdev))
         return VFS_OK;
 
     idx = osal_pool_claim(&s_spi_host_pool_ctrl);
@@ -137,7 +137,7 @@ static int spi_host_init_impl(struct device* dev, const void* cfg)
 
     host = &s_spi_hosts[idx];
     COMPAT_MEM_SET(host, 0, sizeof(*host));
-    host->dev = dev;
+    host->pdev = pdev;
     COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     /* HAL host 嵌入 bus host, 直接传对象指针, 零翻译透传 config。
@@ -150,7 +150,7 @@ static int spi_host_init_impl(struct device* dev, const void* cfg)
         return ret;
     }
 
-    ret = bus_controller_bind_full(dev, BUS_TYPE_SPI, &s_spi_controller_ops, host);
+    ret = bus_controller_bind_full(pdev, BUS_TYPE_SPI, &s_spi_controller_ops, host);
     if (ret != VFS_OK)
     {
         COMPAT_IGNORE_RESULT(hal_spi_bus_host_deinit(&host->hal_host));
@@ -159,49 +159,52 @@ static int spi_host_init_impl(struct device* dev, const void* cfg)
         return ret;
     }
 
-    SYS_LOGI(k_tag, "host init OK: %s role=%s spi=0x%lx", device_get_name(dev), host_cfg->bus_role == HAL_SPI_BUS_ROLE_SLAVE ? "slave" : "master", (unsigned long)host_cfg->spi);
+    SYS_LOGI(k_tag, "host init OK: %s role=%s spi=0x%lx", device_get_name(pdev),
+             host_cfg->bus_role == HAL_SPI_BUS_ROLE_SLAVE ? "slave" : "master",
+             (unsigned long)host_cfg->spi);
     return VFS_OK;
 }
 
 /**
  * @brief 初始化 SPI host 并绑定总线控制器
- * @param dev host device 指针
+ * @param pdev host device 指针
  * @param cfg host 配置 (struct hal_spi_bus_config*)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_host_init(struct device* dev, const struct hal_spi_bus_config* cfg)
+int spi_bus_host_init(struct device* pdev, const struct hal_spi_bus_config* cfg)
 {
-    return spi_host_init_impl(dev, cfg);
+    return spi_host_init_impl(pdev, cfg);
 }
 
 /**
  * @brief host 反初始化实现 (controller_ops.deinit): 检查 ref_count, 解绑 controller, 释放池槽位
- * @param dev controller device (host)
+ * @param pdev controller device (host)
  * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
  */
-static int spi_host_deinit_impl(struct device* dev)
+static int spi_host_deinit_impl(struct device* pdev)
 {
     struct spi_bus_host* host;
-    int                  idx;
-    int                  ret;
+    int idx;
+    int ret;
 
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
 
-    host = spi_host_from_device(dev);
+    host = spi_host_from_device(pdev);
     if (!host)
         return VFS_ERR_NODEV;
 
     /* atomic load: 无锁检查 ref_count, ISR/任务安全 */
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) > 0)
     {
-        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
+                 COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return VFS_ERR_BUSY;
     }
 
     idx = (int)(host - s_spi_hosts);
 
-    bus_controller_unbind(dev);
+    bus_controller_unbind(pdev);
 
     ret = hal_spi_bus_host_deinit(&host->hal_host);
 
@@ -215,31 +218,28 @@ static int spi_host_deinit_impl(struct device* dev)
 
 /**
  * @brief 反初始化 SPI host 并释放对象池槽位
- * @param dev host device 指针
+ * @param pdev host device 指针
  * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回负数错误码
  */
-int spi_bus_host_deinit(struct device* dev)
-{
-    return spi_host_deinit_impl(dev);
-}
+int spi_bus_host_deinit(struct device* pdev) { return spi_host_deinit_impl(pdev); }
 
 /**
  * @brief 查询 host 角色 (master/slave) 实现 (controller_ops.role)
- * @param dev controller device (host)
+ * @param pdev controller device (host)
  * @return master 返回 SPI_BUS_ROLE_MASTER, slave 返回 SPI_BUS_ROLE_SLAVE, 失败返回 -1
  */
-static int spi_host_role_impl(struct device* dev)
+static int spi_host_role_impl(struct device* pdev)
 {
     struct bus_controller* ctlr = NULL;
-    struct spi_bus_host*   host;
+    struct spi_bus_host* host;
 
-    if (!dev)
+    if (!pdev)
         return -1;
 
     /* 支持传 host 或 client: 先查自身, 再查 parent */
-    if (bus_controller_get(dev, &ctlr) != VFS_OK)
+    if (bus_controller_get(pdev, &ctlr) != VFS_OK)
     {
-        if (bus_controller_of(dev, &ctlr) != VFS_OK)
+        if (bus_controller_of(pdev, &ctlr) != VFS_OK)
             return -1;
     }
 
@@ -250,43 +250,41 @@ static int spi_host_role_impl(struct device* dev)
     if (!host)
         return -1;
 
-    return host->hal_host.cfg.bus_role == HAL_SPI_BUS_ROLE_MASTER ? SPI_BUS_ROLE_MASTER : SPI_BUS_ROLE_SLAVE;
+    return host->hal_host.cfg.bus_role == HAL_SPI_BUS_ROLE_MASTER ? SPI_BUS_ROLE_MASTER :
+                                                                    SPI_BUS_ROLE_SLAVE;
 }
 
 /**
  * @brief 查询 SPI host 总线角色 (master/slave)
- * @param dev host 或 client device 指针
+ * @param pdev host 或 client device 指针
  * @return master 返回 SPI_BUS_ROLE_MASTER, slave 返回 SPI_BUS_ROLE_SLAVE, 失败返回 -1
  */
-int spi_bus_host_role(struct device* dev)
-{
-    return spi_host_role_impl(dev);
-}
+int spi_bus_host_role(struct device* pdev) { return spi_host_role_impl(pdev); }
 /*===========================================================================================================================================================*/
-                                                              /* Client API */
+/* Client API */
 /*===========================================================================================================================================================*/
 /**
  * @brief client 注册实现 (controller_ops.client_register): 绑定 client 到 host, ref_count +1
- * @param dev client device
+ * @param pdev client device
  * @param cfg client 配置 (struct hal_spi_device_config*)
  * @param out 输出 client 私有上下文指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-static int spi_client_register_impl(struct device* dev, const void* cfg, void** out)
+static int spi_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
     const struct hal_spi_device_config* client_cfg;
     struct bus_controller* ctlr;
-    struct spi_bus_host*   host;
+    struct spi_bus_host* host;
     struct spi_bus_client* client;
-    int                    id;
+    int id;
 
-    if (!dev || !cfg || !out)
+    if (!pdev || !cfg || !out)
         return VFS_ERR_INVAL;
     *out = NULL;
 
     client_cfg = (const struct hal_spi_device_config*)cfg;
 
-    if (bus_controller_of(dev, &ctlr) != VFS_OK)
+    if (bus_controller_of(pdev, &ctlr) != VFS_OK)
         return VFS_ERR_NODEV;
 
     if (ctlr->type != BUS_TYPE_SPI)
@@ -296,24 +294,24 @@ static int spi_client_register_impl(struct device* dev, const void* cfg, void** 
     if (!host)
         return VFS_ERR_IO;
 
-    id = (int)board_dev_find(device_get_name(dev));
+    id = (int)board_dev_find(device_get_name(pdev));
     if (id < 0 || id >= DEV_ID_COUNT)
         return VFS_ERR_INVAL;
 
     client = &s_spi_clients[id];
     /* 幂等: 已注册则直接返回, 避免重复 memset / ref_count++ */
-    if (client->dev)
+    if (client->pdev)
     {
-        if (client->dev != dev)
+        if (client->pdev != pdev)
             return VFS_ERR_BUSY;
         *out = client;
         return VFS_OK;
     }
 
     COMPAT_MEM_SET(client, 0, sizeof(*client));
-    client->dev  = dev;
+    client->pdev = pdev;
     client->host = host;
-    client->cfg  = *client_cfg;
+    client->cfg = *client_cfg;
 
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
 
@@ -323,33 +321,34 @@ static int spi_client_register_impl(struct device* dev, const void* cfg, void** 
 
 /**
  * @brief 注册 SPI client 并增加 host 引用计数
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param cfg client 配置 (struct hal_spi_device_config*)
  * @param out 输出 client 私有上下文指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_client_register(struct device* dev, const struct hal_spi_device_config* cfg, struct spi_bus_client** out)
+int spi_bus_client_register(struct device* pdev, const struct hal_spi_device_config* cfg,
+                            struct spi_bus_client** out)
 {
-    return spi_client_register_impl(dev, cfg, (void**)out);
+    return spi_client_register_impl(pdev, cfg, (void**)out);
 }
 
 /**
  * @brief client 注销实现 (controller_ops.client_unregister): 关闭 hw, ref_count -1, 清零槽位
- * @param dev client device
+ * @param pdev client device
  */
-static void spi_client_unregister_impl(struct device* dev)
+static void spi_client_unregister_impl(struct device* pdev)
 {
     struct spi_bus_client* client;
-    struct spi_bus_host*   host;
+    struct spi_bus_host* host;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client)
         return;
 
     /* 若 client 仍 hw_open, 先 close 以释放 HAL 层 ref_count 与 master spi_device_handle */
     if (client->hw_open)
     {
-        COMPAT_IGNORE_RESULT(spi_bus_close(dev));
+        COMPAT_IGNORE_RESULT(spi_bus_close(pdev));
         client->hw_open = 0;
     }
 
@@ -362,27 +361,24 @@ static void spi_client_unregister_impl(struct device* dev)
 
 /**
  * @brief 注销 SPI client 并递减 host 引用计数
- * @param dev client device 指针
+ * @param pdev client device 指针
  */
-void spi_bus_client_unregister(struct device* dev)
-{
-    spi_client_unregister_impl(dev);
-}
+void spi_bus_client_unregister(struct device* pdev) { spi_client_unregister_impl(pdev); }
 /*===========================================================================================================================================================*/
 
-                                                              /* Open / Close */
+/* Open / Close */
 /*===========================================================================================================================================================*/
 /**
  * @brief 打开 SPI client 硬件 (HAL init + hw_open)
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_open(struct device* dev)
+int spi_bus_open(struct device* pdev)
 {
-    struct spi_bus_client*       client;
-    int                          ret;
+    struct spi_bus_client* client;
+    int ret;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client)
         return VFS_ERR_NODEV;
 
@@ -401,14 +397,14 @@ int spi_bus_open(struct device* dev)
 
 /**
  * @brief 关闭 SPI client 硬件
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_close(struct device* dev)
+int spi_bus_close(struct device* pdev)
 {
     struct spi_bus_client* client;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client)
         return VFS_ERR_NODEV;
 
@@ -421,11 +417,11 @@ int spi_bus_close(struct device* dev)
 }
 /*===========================================================================================================================================================*/
 
-                                                              /* Transfer API */
+/* Transfer API */
 /*===========================================================================================================================================================*/
 /**
  * @brief SPI 同步传输 (master 走 hal_spi_sync, slave 走 hal_spi_slave_sync)
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param tx 发送缓冲 (可为 NULL)
  * @param rx 接收缓冲 (可为 NULL)
  * @param len 字节数
@@ -433,19 +429,20 @@ int spi_bus_close(struct device* dev)
  * @param xfer_mode 传输模式 (POLL/DMA/AUTO, 仅 master)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int spi_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                     uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct spi_bus_client* client;
-    int                    role;
+    int role;
 
-    if (!dev || len == 0)
+    if (!pdev || len == 0)
         return VFS_ERR_INVAL;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client || !client->hw_open)
         return VFS_ERR_NODEV;
 
-    role = spi_bus_host_role(dev);
+    role = spi_bus_host_role(pdev);
     if (role == SPI_BUS_ROLE_SLAVE)
         return hal_spi_slave_sync(&client->hal_dev, tx, rx, len, timeout_ms);
     if (role == SPI_BUS_ROLE_MASTER)
@@ -455,7 +452,7 @@ int spi_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t 
 }
 
 /*===========================================================================================================================================================*/
-                                                              /* Async transfer (master only) */
+/* Async transfer (master only) */
 /*===========================================================================================================================================================*/
 /* callback 桥接: HAL cb 传 hal_spi_dev* → bus_async_bridge_complete → 用户 device* cb
  * 池按 client idx 分组, 防跨设备争用 / ISR UAF */
@@ -475,7 +472,7 @@ static void spi_async_hal_cb(struct hal_spi_dev* hal_dev, const void* trans, voi
 
 /**
  * @brief SPI 异步传输 (仅 master, 可选用户回调桥接)
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param tx 发送缓冲 (可为 NULL)
  * @param rx 接收缓冲 (可为 NULL)
  * @param len 字节数
@@ -483,21 +480,23 @@ static void spi_async_hal_cb(struct hal_spi_dev* hal_dev, const void* trans, voi
  * @param userdata 回调用户数据
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_transfer_async(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t len, void (*cb)(struct device* dev, const void* trans, void* userdata), void* userdata)
+int spi_bus_transfer_async(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                           void (*cb)(struct device* pdev, const void* trans, void* userdata),
+                           void* userdata)
 {
-    struct spi_bus_client*   client;
+    struct spi_bus_client* client;
     struct bus_async_bridge* bridge;
-    int                      idx;
-    int                      ret;
+    int idx;
+    int ret;
 
-    if (!dev || len == 0)
+    if (!pdev || len == 0)
         return VFS_ERR_INVAL;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client || !client->hw_open)
         return VFS_ERR_NODEV;
 
-    if (spi_bus_host_role(dev) != SPI_BUS_ROLE_MASTER)
+    if (spi_bus_host_role(pdev) != SPI_BUS_ROLE_MASTER)
         return VFS_ERR_INVAL;
 
     if (!cb)
@@ -508,7 +507,7 @@ int spi_bus_transfer_async(struct device* dev, const uint8_t* tx, uint8_t* rx, s
     if (!bridge)
         return VFS_ERR_BUSY;
 
-    bus_async_bridge_bind(bridge, dev, cb, userdata);
+    bus_async_bridge_bind(bridge, pdev, cb, userdata);
 
     ret = hal_spi_transfer_async(&client->hal_dev, tx, rx, len, spi_async_hal_cb, bridge);
     if (ret != VFS_OK)
@@ -518,22 +517,22 @@ int spi_bus_transfer_async(struct device* dev, const uint8_t* tx, uint8_t* rx, s
 
 /**
  * @brief 轮询等待 SPI 异步传输完成 (仅 master)
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms)
+int spi_bus_transfer_poll(struct device* pdev, uint32_t timeout_ms)
 {
     struct spi_bus_client* client;
 
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client || !client->hw_open)
         return VFS_ERR_NODEV;
 
-    if (spi_bus_host_role(dev) != SPI_BUS_ROLE_MASTER)
+    if (spi_bus_host_role(pdev) != SPI_BUS_ROLE_MASTER)
         return VFS_ERR_INVAL;
 
     return hal_spi_transfer_poll(&client->hal_dev, timeout_ms);
@@ -541,25 +540,26 @@ int spi_bus_transfer_poll(struct device* dev, uint32_t timeout_ms)
 
 /**
  * @brief SPI slave 同步传输
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param tx 发送缓冲 (可为 NULL)
  * @param rx 接收缓冲 (可为 NULL)
  * @param len 字节数
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_slave_sync(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
+int spi_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                       uint32_t timeout_ms)
 {
     struct spi_bus_client* client;
 
-    if (!dev || len == 0 || (!tx && !rx))
+    if (!pdev || len == 0 || (!tx && !rx))
         return VFS_ERR_INVAL;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client || !client->hw_open)
         return VFS_ERR_NODEV;
 
-    if (spi_bus_host_role(dev) != SPI_BUS_ROLE_SLAVE)
+    if (spi_bus_host_role(pdev) != SPI_BUS_ROLE_SLAVE)
         return VFS_ERR_INVAL;
 
     return hal_spi_slave_sync(&client->hal_dev, tx, rx, len, timeout_ms);
@@ -567,24 +567,25 @@ int spi_bus_slave_sync(struct device* dev, const uint8_t* tx, uint8_t* rx, size_
 
 /**
  * @brief SPI slave 排队发送
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param data 发送缓冲
  * @param len 字节数
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_slave_queue_tx(struct device* dev, const uint8_t* data, size_t len, uint32_t timeout_ms)
+int spi_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
+                           uint32_t timeout_ms)
 {
     struct spi_bus_client* client;
 
-    if (!dev || !data || len == 0)
+    if (!pdev || !data || len == 0)
         return VFS_ERR_INVAL;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client || !client->hw_open)
         return VFS_ERR_NODEV;
 
-    if (spi_bus_host_role(dev) != SPI_BUS_ROLE_SLAVE)
+    if (spi_bus_host_role(pdev) != SPI_BUS_ROLE_SLAVE)
         return VFS_ERR_INVAL;
 
     return hal_spi_slave_queue_tx(&client->hal_dev, data, len, timeout_ms);
@@ -592,25 +593,26 @@ int spi_bus_slave_queue_tx(struct device* dev, const uint8_t* data, size_t len, 
 
 /**
  * @brief 获取 SPI slave 传输结果
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param rx_data 接收缓冲
  * @param rx_cap 接收缓冲容量
  * @param trans_len 输出实际传输长度
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int spi_bus_slave_get_trans_result(struct device* dev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms)
+int spi_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap,
+                                   size_t* trans_len, uint32_t timeout_ms)
 {
     struct spi_bus_client* client;
 
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
 
-    client = spi_client_from_device(dev);
+    client = spi_client_from_device(pdev);
     if (!client || !client->hw_open)
         return VFS_ERR_NODEV;
 
-    if (spi_bus_host_role(dev) != SPI_BUS_ROLE_SLAVE)
+    if (spi_bus_host_role(pdev) != SPI_BUS_ROLE_SLAVE)
         return VFS_ERR_INVAL;
 
     return hal_spi_get_trans_result(&client->hal_dev, rx_data, rx_cap, trans_len, timeout_ms);

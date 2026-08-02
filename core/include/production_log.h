@@ -8,49 +8,49 @@
 #ifndef PRODUCTION_LOG_H
 #define PRODUCTION_LOG_H
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 #include "compiler_compat.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
 #define PROD_LOG_SLOT_COUNT 32
-#define PROD_LOG_TAG_LEN    8
-#define PROD_LOG_MSG_LEN    112
+#define PROD_LOG_TAG_LEN 8
+#define PROD_LOG_MSG_LEN 112
 
-typedef enum
-{
-    PROD_LOG_ERROR = 0,
-    PROD_LOG_WARN  = 1,
-    PROD_LOG_INFO  = 2,
-} prod_log_level_t;
+    typedef enum
+    {
+        PROD_LOG_ERROR = 0,
+        PROD_LOG_WARN = 1,
+        PROD_LOG_INFO = 2,
+    } prod_log_level_t;
 
-struct prod_log_entry
+    struct prod_log_entry
 
-{
-    uint32_t seq;                /**< 序列号 (单调递增) */
-    uint32_t timestamp;          /**< 时间戳 (ms) */
-    uint8_t  level;              /**< 日志级别 (PROD_LOG_*) */
-    char     tag[PROD_LOG_TAG_LEN]; /**< 标签 */
-    char     msg[PROD_LOG_MSG_LEN]; /**< 消息内容 */
-};
+    {
+        uint32_t seq; /**< 序列号 (单调递增) */
+        uint32_t timestamp; /**< 时间戳 (ms) */
+        uint8_t level; /**< 日志级别 (PROD_LOG_*) */
+        char tag[PROD_LOG_TAG_LEN]; /**< 标签 */
+        char msg[PROD_LOG_MSG_LEN]; /**< 消息内容 */
+    };
 
-int  production_log_init(void);
+    int production_log_init(void);
 
-void production_log_push(prod_log_level_t level, const char* tag, const char* msg);
+    void production_log_push(prod_log_level_t level, const char* tag, const char* msg);
 
-void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
-    COMPAT_FMT_PRINTF(3, 4);
+    void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
+        COMPAT_FMT_PRINTF(3, 4);
 
-int  production_log_count(void);
+    int production_log_count(void);
 
-const struct prod_log_entry* production_log_get(int index);
+    const struct prod_log_entry* production_log_get(int index);
 
-void production_log_dump(void (*sink)(const char* line));
+    void production_log_dump(void (*sink)(const char* line));
 
 #ifdef __cplusplus
 }

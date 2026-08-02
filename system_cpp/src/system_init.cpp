@@ -7,21 +7,21 @@
  * 全局中断由 system_init_complete() 释放, g_system_os_initialized 守护 SIOF
  */
 #include "system_init.hpp"
-#include "system_init.h"
 
-#include "system_cfg.h"
-#include "system_wdt.hpp"
-#include "system_scrubber.hpp"
-#include "safe_state.h"
-#include "hal_amp.h"
 #include "compiler_compat.h"
-#include "compiler_compat_poison.h"
-
-#include "event_bus.h"
 #include "device.h"
 #include "driver.h"
-#include "status.h"
+#include "event_bus.h"
+#include "hal_amp.h"
 #include "interrupt.h"
+#include "safe_state.h"
+#include "status.h"
+#include "system_cfg.h"
+#include "system_init.h"
+#include "system_scrubber.hpp"
+#include "system_wdt.hpp"
+
+#include "compiler_compat_poison.h"
 
 #ifdef CONFIG_OSAL_NULL
 extern "C" void xScheduler_Poll(void);
@@ -33,15 +33,22 @@ extern "C" void xScheduler_Poll(void);
  * FreeRTOS vTaskStartScheduler() 内部也会打开中断, 所以即使忘记调
  * system_init_complete(), 调度器启动后中断也会自动使能.
  */
-#if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
-#define IRQ_DISABLE()  __asm__ volatile("cpsid i" ::: "memory")
-#define IRQ_ENABLE()   __asm__ volatile("cpsie i" ::: "memory")
+#if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) ||                \
+    defined(__ARM_ARCH_8M_BASE__)
+#define IRQ_DISABLE() __asm__ volatile("cpsid i" ::: "memory")
+#define IRQ_ENABLE() __asm__ volatile("cpsie i" ::: "memory")
 #elif defined(__riscv)
-#define IRQ_DISABLE()  __asm__ volatile("csrci mstatus, 8" ::: "memory")
-#define IRQ_ENABLE()   __asm__ volatile("csrsi mstatus, 8" ::: "memory")
+#define IRQ_DISABLE() __asm__ volatile("csrci mstatus, 8" ::: "memory")
+#define IRQ_ENABLE() __asm__ volatile("csrsi mstatus, 8" ::: "memory")
 #else
-#define IRQ_DISABLE()  do {} while (0)
-#define IRQ_ENABLE()   do {} while (0)
+#define IRQ_DISABLE()                                                                              \
+    do                                                                                             \
+    {                                                                                              \
+    } while (0)
+#define IRQ_ENABLE()                                                                               \
+    do                                                                                             \
+    {                                                                                              \
+    } while (0)
 #endif
 
 static constexpr const char* k_tag = "SysInit";
@@ -63,7 +70,7 @@ volatile bool g_system_os_initialized = false;
  * ═══════════════════════════════════════════════════════════════════════════ */
 void mini_tree::system_pre_os_init(void)
 {
-    IRQ_DISABLE();  /* 关全局中断 — ISR 不得在框架就绪前触发 */
+    IRQ_DISABLE(); /* 关全局中断 — ISR 不得在框架就绪前触发 */
     SYS_LOGI(k_tag, "=== mini_tree Phase 1: Pre-OS Init ===");
 
     /* 启动循环保护: >= 5 次连续崩溃 → 永久安全锁死 */
@@ -80,9 +87,7 @@ void mini_tree::system_pre_os_init(void)
 
     /* 设备树初始化 (编译时生成的节点表) */
     if (device_tree_init() != VFS_OK)
-    {
         SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
-    }
 
     /* 事件总线两阶段初始化 (SIOF 防御) */
     if (!event_bus_init())
@@ -133,9 +138,7 @@ void mini_tree::system_start_tasks(void)
     /* 驱动探测 (用户驱动在阶段 1 和阶段 2 之间注册) */
     int probe_fail = board_driver_probe_all();
     if (probe_fail != 0)
-    {
         SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
-    }
 
     /* TWDT 初始化 */
 #ifdef CONFIG_ENABLE_WDT
@@ -171,20 +174,11 @@ void mini_tree::system_start_tasks(void)
 }
 
 /* ── 初始化完成 — 释放全局中断 (进入裸机 while / OS 调度器启动前) ── */
-extern "C" void system_init_complete(void)
-{
-    IRQ_ENABLE();
-}
+extern "C" void system_init_complete(void) { IRQ_ENABLE(); }
 
-extern "C" void mini_tree_pre_os_init(void)
-{
-    mini_tree::system_pre_os_init();
-}
+extern "C" void mini_tree_pre_os_init(void) { mini_tree::system_pre_os_init(); }
 
-extern "C" void mini_tree_start_tasks(void)
-{
-    mini_tree::system_start_tasks();
-}
+extern "C" void mini_tree_start_tasks(void) { mini_tree::system_start_tasks(); }
 
 extern "C" void mini_tree_system_loop(void)
 {
@@ -192,8 +186,8 @@ extern "C" void mini_tree_system_loop(void)
     system_wdt_feed();
     system_wdt_feed_iwdg();
 #endif
-    interrupt_bottom_half_poll();   /**< 执行下半部队列 */
+    interrupt_bottom_half_poll(); /**< 执行下半部队列 */
 #ifdef CONFIG_OSAL_NULL
-    xScheduler_Poll();              /**< 时间片调度器轮询 */
+    xScheduler_Poll(); /**< 时间片调度器轮询 */
 #endif
 }

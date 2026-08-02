@@ -15,96 +15,102 @@
 #ifndef CAN_BUS_H
 #define CAN_BUS_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include "compiler_compat.h"
 #include "hal_can.h"
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-struct device;
-struct can_bus_client;
+    struct device;
+    struct can_bus_client;
 
-/*===========================================================================================================================================================*/
-                                                              /*Host API (VFS 层调用)*/
-/*===========================================================================================================================================================*/
-/**
- * @brief CAN host 初始化 (config 类型直接用 hal_can_bus_config, bus 零翻译透传)
- * @param dev controller device (host)
- * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int can_bus_host_init(struct device* dev, const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief CAN host 反初始化 (ref_count > 0 时返回 BUSY)
- * @param dev controller device (host)
- * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
- */
-int can_bus_host_deinit(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
-/*===========================================================================================================================================================*/
+    /*===========================================================================================================================================================*/
+    /*Host API (VFS 层调用)*/
+    /*===========================================================================================================================================================*/
+    /**
+     * @brief CAN host 初始化 (config 类型直接用 hal_can_bus_config, bus 零翻译透传)
+     * @param pdev controller device (host)
+     * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int can_bus_host_init(struct device* pdev,
+                          const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief CAN host 反初始化 (ref_count > 0 时返回 BUSY)
+     * @param pdev controller device (host)
+     * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+     */
+    int can_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    /*===========================================================================================================================================================*/
 
-                                                              /*Client API (VFS 层调用)*/
-/*===========================================================================================================================================================*/
-/**
- * @brief CAN client 注册 (CAN 无设备级配置, 仅绑定 host)
- * @param dev client device
- * @param out 输出 can_bus_client 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int can_bus_client_register(struct device* dev, struct can_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief CAN client 注销 (ref_count -1, 清零槽位)
- * @param dev client device
- */
-void can_bus_client_unregister(struct device* dev);
+    /*Client API (VFS 层调用)*/
+    /*===========================================================================================================================================================*/
+    /**
+     * @brief CAN client 注册 (CAN 无设备级配置, 仅绑定 host)
+     * @param pdev client device
+     * @param out 输出 can_bus_client 指针
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int can_bus_client_register(struct device* pdev,
+                                struct can_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief CAN client 注销 (ref_count -1, 清零槽位)
+     * @param pdev client device
+     */
+    void can_bus_client_unregister(struct device* pdev);
 
-/**
- * @brief 打开 CAN client 硬件 (幂等)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int can_bus_open(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief 关闭 CAN client 硬件 (幂等)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int can_bus_close(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 打开 CAN client 硬件 (幂等)
+     * @param pdev client device
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int can_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 关闭 CAN client 硬件 (幂等)
+     * @param pdev client device
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int can_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
-/**
- * @brief CAN 发送一帧
- * @param dev client device
- * @param frame 待发送帧
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int can_bus_transmit(struct device* dev, const struct can_frame* frame, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief CAN 从指定 FIFO 接收一帧
- * @param dev client device
- * @param frame 输出帧
- * @param fifo 接收 FIFO 编号 (0 / 1)
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, 失败返回 VFS_ERR_*
- */
-int can_bus_receive(struct device* dev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief 配置 CAN 过滤器
- * @param dev client device
- * @param filter 过滤器配置
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int can_bus_filter_config(struct device* dev, const struct hal_can_filter_config* filter) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief CAN 发送一帧
+     * @param pdev client device
+     * @param frame 待发送帧
+     * @param timeout_ms 超时 (毫秒)
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int can_bus_transmit(struct device* pdev, const struct can_frame* frame,
+                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief CAN 从指定 FIFO 接收一帧
+     * @param pdev client device
+     * @param frame 输出帧
+     * @param fifo 接收 FIFO 编号 (0 / 1)
+     * @param timeout_ms 超时 (毫秒)
+     * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, 失败返回 VFS_ERR_*
+     */
+    int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
+                        uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 配置 CAN 过滤器
+     * @param pdev client device
+     * @param filter 过滤器配置
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int can_bus_filter_config(struct device* pdev,
+                              const struct hal_can_filter_config* filter) COMPAT_WARN_UNUSED_RESULT;
 
-/**
- * @brief 查询 CAN 控制器状态 (error-active / passive / bus-off / stopped)
- * @param dev client device
- * @param out_state 输出 HAL_CAN_STATE_*
- */
-int can_bus_get_state(struct device* dev, uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
-/*===========================================================================================================================================================*/
+    /**
+     * @brief 查询 CAN 控制器状态 (error-active / passive / bus-off / stopped)
+     * @param pdev client device
+     * @param out_state 输出 HAL_CAN_STATE_*
+     */
+    int can_bus_get_state(struct device* pdev, uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
+    /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus
 }

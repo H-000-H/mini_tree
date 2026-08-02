@@ -111,7 +111,7 @@ Six-layer view (app → framework → drivers → HAL → OSAL → ESP-IDF).
 │                          Drivers (VFS 层)                           │
 │  vfs/spi/spi_bus.c · vfs/spi/spi_client.c · drivers/ws2812 ·       │
 │  drivers/fft/fft_spi_drv.c                                          │
-│  ──── 持 dev->lock, 调用 bus.c/HAL 接口 ────                        │
+│  ──── 持 pdev->lock, 调用 bus.c/HAL 接口 ────                        │
 └────────────────┬───────────────────────────────────────────────────┘
                  │  hal_spi_xfer_begin / bus.write/read
                  ▼
@@ -590,7 +590,7 @@ This is the part users care about most: **to add an SPI device driver, follow th
   ```c
   // 1) 查设备（按 DTS label 或 name）
   struct device* dev = device_find_by_label("my_dev");
-  if (!dev) { ESP_LOGE(TAG, "not found"); osal_task_self_delete(); }
+  if (!pdev) { ESP_LOGE(TAG, "not found"); osal_task_self_delete(); }
 
   // 2) 打开（走 spi_client → hal_spi_interface_attach）
   if (device_open(dev, NULL) != 0) { ... }

@@ -14,93 +14,98 @@
 #ifndef UART_BUS_H
 #define UART_BUS_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include "compiler_compat.h"
 #include "hal_uart.h"
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-struct device;
+    struct device;
 
-/*===========================================================================================================================================================*/
-                                                              /*Host API (VFS 层调用)*/
-/*===========================================================================================================================================================*/
-/**
- * @brief UART host 初始化 (config 类型直接用 hal_uart_config, bus 零翻译透传)
- * @param dev controller device (host)
- * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int uart_bus_host_init(struct device* dev, const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief UART host 反初始化 (ref_count > 0 时返回 BUSY)
- * @param dev controller device (host)
- * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
- */
-int  uart_bus_host_deinit(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+    /*===========================================================================================================================================================*/
+    /*Host API (VFS 层调用)*/
+    /*===========================================================================================================================================================*/
+    /**
+     * @brief UART host 初始化 (config 类型直接用 hal_uart_config, bus 零翻译透传)
+     * @param pdev controller device (host)
+     * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int uart_bus_host_init(struct device* pdev,
+                           const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief UART host 反初始化 (ref_count > 0 时返回 BUSY)
+     * @param pdev controller device (host)
+     * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+     */
+    int uart_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
-/*===========================================================================================================================================================*/
-                                                              /*Client API (VFS 层调用)*/
-/*===========================================================================================================================================================*/
-/**
- * @brief UART client 注册 (UART 无 per-client 配置, 单 host 单 client, 无需 cfg)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int  uart_bus_client_register(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief UART client 注销 (ref_count -1, 清零槽位)
- * @param dev client device
- */
-void uart_bus_client_unregister(struct device* dev);
+    /*===========================================================================================================================================================*/
+    /*Client API (VFS 层调用)*/
+    /*===========================================================================================================================================================*/
+    /**
+     * @brief UART client 注册 (UART 无 per-client 配置, 单 host 单 client, 无需 cfg)
+     * @param pdev client device
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int uart_bus_client_register(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief UART client 注销 (ref_count -1, 清零槽位)
+     * @param pdev client device
+     */
+    void uart_bus_client_unregister(struct device* pdev);
 
-/**
- * @brief 打开 UART client (ref_count 在 register/unregister 维护, 此处仅 IO gate)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
- */
-int  uart_bus_open(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
-/**
- * @brief 关闭 UART client (仅 IO gate, 不改 ref_count)
- * @param dev client device
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
- */
-int  uart_bus_close(struct device* dev) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 打开 UART client (ref_count 在 register/unregister 维护, 此处仅 IO gate)
+     * @param pdev client device
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+     */
+    int uart_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 关闭 UART client (仅 IO gate, 不改 ref_count)
+     * @param pdev client device
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+     */
+    int uart_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
-/**
- * @brief UART 写数据
- * @param dev client device
- * @param data 待写入数据
- * @param len 数据长度
- * @param timeout_ms 超时 (ms, 0=平台默认)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
- */
-int uart_bus_write(struct device* dev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief UART 写数据
+     * @param pdev client device
+     * @param data 待写入数据
+     * @param len 数据长度
+     * @param timeout_ms 超时 (ms, 0=平台默认)
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int uart_bus_write(struct device* pdev, const uint8_t* data, size_t len,
+                       uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-/**
- * @brief UART 读数据
- * @param dev client device
- * @param data 读取缓冲区
- * @param len 读取长度
- * @param timeout_ms 超时 (ms, 0=平台默认)
- * @return 成功返回已读字节数或 VFS_OK, 失败返回 VFS_ERR_*
- */
-int uart_bus_read(struct device* dev, uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief UART 读数据
+     * @param pdev client device
+     * @param data 读取缓冲区
+     * @param len 读取长度
+     * @param timeout_ms 超时 (ms, 0=平台默认)
+     * @return 成功返回已读字节数或 VFS_OK, 失败返回 VFS_ERR_*
+     */
+    int uart_bus_read(struct device* pdev, uint8_t* data, size_t len,
+                      uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-/**
- * @brief UART 半双工组合传输 (先写后读)
- * @param dev client device
- * @param tx 发送缓冲 (可 NULL 表示只读)
- * @param rx 接收缓冲 (可 NULL 表示只写)
- * @param tx_len 发送长度
- * @param rx_len 接收长度
- * @param timeout_ms 超时 (ms, 0=平台默认; 写/读各自使用该超时)
- * @return 成功返回 VFS_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
- */
-int uart_bus_transfer(struct device* dev, const uint8_t* tx, uint8_t* rx, size_t tx_len, size_t rx_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief UART 半双工组合传输 (先写后读)
+     * @param pdev client device
+     * @param tx 发送缓冲 (可 NULL 表示只读)
+     * @param rx 接收缓冲 (可 NULL 表示只写)
+     * @param tx_len 发送长度
+     * @param rx_len 接收长度
+     * @param timeout_ms 超时 (ms, 0=平台默认; 写/读各自使用该超时)
+     * @return 成功返回 VFS_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
+     */
+    int uart_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t tx_len,
+                          size_t rx_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

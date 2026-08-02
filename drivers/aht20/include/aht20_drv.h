@@ -8,11 +8,12 @@
  */
 #ifndef AHT20_DRV_H
 #define AHT20_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define AHT20_CMD_BASE COMPAT_MAGIC(AHT20)
@@ -21,12 +22,12 @@ extern "C" {
 /** 命令总数 */
 #define AHT20_CMD_COUNT 1
 
-/** @brief AHT20 采样结果 */
-struct aht20_sample
-{
-    int16_t  temp_c_x100;  /**< 温度，摄氏度 ×100（25.5℃ → 2550） */
-    uint16_t rh_x100;      /**< 相对湿度 ×100（0..10000，60% → 6000） */
-};
+    /** @brief AHT20 采样结果 */
+    struct aht20_sample
+    {
+        int16_t temp_c_x100; /**< 温度，摄氏度 ×100（25.5℃ → 2550） */
+        uint16_t rh_x100; /**< 相对湿度 ×100（0..10000，60% → 6000） */
+    };
 #ifdef __cplusplus
 }
 #endif

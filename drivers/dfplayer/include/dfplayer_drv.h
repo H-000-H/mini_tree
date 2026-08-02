@@ -8,11 +8,12 @@
  */
 #ifndef DFPLAYER_DRV_H
 #define DFPLAYER_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define DFPLAYER_CMD_BASE COMPAT_MAGIC(DFPLAYER)
@@ -23,11 +24,11 @@ extern "C" {
 /** 命令总数 */
 #define DFPLAYER_CMD_COUNT 2
 
-/** @brief 曲目号参数 */
-struct dfplayer_track
-{
-    uint16_t track;  /**< 曲目号（1..2999） */
-};
+    /** @brief 曲目号参数 */
+    struct dfplayer_track
+    {
+        uint16_t track; /**< 曲目号（1..2999） */
+    };
 #ifdef __cplusplus
 }
 #endif

@@ -11,14 +11,15 @@
  *@=========================================================================================================================*/
 #define CAN_VFS_IMPL
 #include "vfs-can.h"
+
 #include "can_bus.h"
 #include "can_hook.h"
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
 
 /*===========================================================================================================================================================*/
@@ -29,23 +30,24 @@
 #endif
 
 /** @brief CAN Host 私有数据 (静态池, 存 host 配置 + 池索引) */
-struct vfs_can_priv {
-    struct hal_can_bus_config cfg;       /**< host 总线配置 (DTSI 直投) */
-    int                       pool_idx;  /**< 池索引 */
+struct vfs_can_priv
+{
+    struct hal_can_bus_config cfg; /**< host 总线配置 (DTSI 直投) */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_can_priv s_can_priv_pool[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_can_priv_used[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_can_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   k_host_tag = "can_vfs_host";
+static uint8_t s_can_priv_used[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_can_priv_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_host_tag = "can_vfs_host";
 
 /**
  * @brief CAN Host 私有数据池启动初始化
  */
-pre_execution(150)
-static void vfs_can_priv_pool_init(void)
+pre_execution(150) static void vfs_can_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
 }
 
 /**
@@ -62,26 +64,26 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
     int tx_output_type = 0, tx_speed = 0, tx_mode = 0, tx_pull = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "can-base",  &can_base)  != VFS_OK ||
-        device_get_prop_int(pdev, "can-clk",   &can_clk)   != VFS_OK ||
-        device_get_prop_int(pdev, "tx-port",   &tx_port)   != VFS_OK ||
-        device_get_prop_int(pdev, "tx-pin",    &tx_pin)    != VFS_OK ||
-        device_get_prop_int(pdev, "tx-clk",    &tx_clk)    != VFS_OK ||
-        device_get_prop_int(pdev, "tx-af",     &tx_af)     != VFS_OK ||
-        device_get_prop_int(pdev, "rx-port",   &rx_port)   != VFS_OK ||
-        device_get_prop_int(pdev, "rx-pin",    &rx_pin)    != VFS_OK ||
-        device_get_prop_int(pdev, "rx-clk",    &rx_clk)    != VFS_OK ||
-        device_get_prop_int(pdev, "rx-af",     &rx_af)     != VFS_OK)
+    if (device_get_prop_int(pdev, "can-base", &can_base) != VFS_OK ||
+        device_get_prop_int(pdev, "can-clk", &can_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-af", &rx_af) != VFS_OK)
         return VFS_ERR_INVAL;
 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-output-type", &tx_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-speed",       &tx_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-mode",        &tx_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-pull",        &tx_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-speed", &tx_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-mode", &tx_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-pull", &tx_pull));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-output-type", &rx_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-speed",       &rx_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode",        &rx_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull",        &rx_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-speed", &rx_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode", &rx_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull", &rx_pull));
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
     {
@@ -105,43 +107,43 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-fifo-prio", &tx_fifo_prio));
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tt-mode", &tt_mode));
 
-        cfg->irqn            = (int32_t)irqn;
-        cfg->irq_priority    = (uint32_t)irq_priority;
-        cfg->it_enable       = (uint32_t)it_enable;
-        cfg->prescaler       = (uint32_t)prescaler;
-        cfg->mode            = (uint32_t)mode;
-        cfg->sjw             = (uint32_t)sjw;
-        cfg->bs1             = (uint32_t)bs1;
-        cfg->bs2             = (uint32_t)bs2;
-        cfg->auto_bus_off    = (uint32_t)auto_bus_off;
-        cfg->auto_wakeup     = (uint32_t)auto_wakeup;
+        cfg->irqn = (int32_t)irqn;
+        cfg->irq_priority = (uint32_t)irq_priority;
+        cfg->it_enable = (uint32_t)it_enable;
+        cfg->prescaler = (uint32_t)prescaler;
+        cfg->mode = (uint32_t)mode;
+        cfg->sjw = (uint32_t)sjw;
+        cfg->bs1 = (uint32_t)bs1;
+        cfg->bs2 = (uint32_t)bs2;
+        cfg->auto_bus_off = (uint32_t)auto_bus_off;
+        cfg->auto_wakeup = (uint32_t)auto_wakeup;
         cfg->auto_retransmit = (uint32_t)auto_retransmit;
-        cfg->rx_fifo_locked  = (uint32_t)rx_fifo_locked;
-        cfg->tx_fifo_prio    = (uint32_t)tx_fifo_prio;
-        cfg->tt_mode         = (uint32_t)tt_mode;
+        cfg->rx_fifo_locked = (uint32_t)rx_fifo_locked;
+        cfg->tx_fifo_prio = (uint32_t)tx_fifo_prio;
+        cfg->tt_mode = (uint32_t)tt_mode;
     }
 
-    cfg->can            = (uintptr_t)can_base;
+    cfg->can = (uintptr_t)can_base;
     cfg->can_clk_periph = (uint32_t)can_clk;
     cfg->tx = (struct hal_can_pin_cfg){
-        .port        = (uintptr_t)tx_port,
-        .pin         = (uint16_t)tx_pin,
-        .clk_bus     = (uint32_t)tx_clk,
-        .af          = (uint32_t)tx_af,
+        .port = (uintptr_t)tx_port,
+        .pin = (uint16_t)tx_pin,
+        .clk_bus = (uint32_t)tx_clk,
+        .af = (uint32_t)tx_af,
         .output_type = (uint32_t)tx_output_type,
-        .speed       = (uint32_t)tx_speed,
-        .mode        = (uint32_t)tx_mode,
-        .pull        = (uint32_t)tx_pull,
+        .speed = (uint32_t)tx_speed,
+        .mode = (uint32_t)tx_mode,
+        .pull = (uint32_t)tx_pull,
     };
     cfg->rx = (struct hal_can_pin_cfg){
-        .port        = (uintptr_t)rx_port,
-        .pin         = (uint16_t)rx_pin,
-        .clk_bus     = (uint32_t)rx_clk,
-        .af          = (uint32_t)rx_af,
+        .port = (uintptr_t)rx_port,
+        .pin = (uint16_t)rx_pin,
+        .clk_bus = (uint32_t)rx_clk,
+        .af = (uint32_t)rx_af,
         .output_type = (uint32_t)rx_output_type,
-        .speed       = (uint32_t)rx_speed,
-        .mode        = (uint32_t)rx_mode,
-        .pull        = (uint32_t)rx_pull,
+        .speed = (uint32_t)rx_speed,
+        .mode = (uint32_t)rx_mode,
+        .pull = (uint32_t)rx_pull,
     };
 
     return VFS_OK;
@@ -155,8 +157,8 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
 static int vfs_can_priv_probe(struct device* pdev)
 {
     struct vfs_can_priv* priv;
-    int                  pool_idx;
-    int                  ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -200,10 +202,10 @@ err_pool:
  */
 static int vfs_can_priv_remove(struct device* pdev)
 {
-    struct vfs_can_priv*  priv;
+    struct vfs_can_priv* priv;
     struct dev_lifecycle* lc;
-    int                   pool_idx;
-    int                   ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -246,21 +248,21 @@ static int vfs_can_priv_remove(struct device* pdev)
 #define CAN_VFS_CLIENT_COUNT 4
 
 /** @brief CAN Client 运行时对象 (静态池, 含 fops + 池索引) */
-struct can_vfs_client {
-    struct file_operations ops;       /**< VFS 操作表 */
-    int                    pool_idx;  /**< 池索引 */
+struct can_vfs_client
+{
+    struct file_operations ops; /**< VFS 操作表 */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct can_vfs_client s_client_pool[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t               s_client_used[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t           s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const     k_client_tag = "can_vfs_client";
+static uint8_t s_client_used[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_client_tag = "can_vfs_client";
 
 /**
  * @brief CAN Client 私有数据池启动初始化
  */
-pre_execution(160)
-static void can_vfs_client_pool_init(void)
+pre_execution(160) static void can_vfs_client_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, CAN_VFS_CLIENT_COUNT));
 }
@@ -271,8 +273,8 @@ static void can_vfs_client_pool_init(void)
 static int can_vfs_open(struct device* pdev, void* arg)
 {
     struct dev_lifecycle* lc;
-    int                   first;
-    int                   ret;
+    int first;
+    int ret;
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -317,7 +319,7 @@ static int can_vfs_open(struct device* pdev, void* arg)
 static int can_vfs_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int                   last;
+    int last;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -373,8 +375,8 @@ static int can_vfs_do_tx(struct device* pdev, struct can_frame* frame, uint32_t 
 }
 
 /** RX: bus_receive → filter_match → on_rx */
-static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame,
-                         uint32_t fifo, uint32_t timeout_ms)
+static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t fifo,
+                         uint32_t timeout_ms)
 {
     int ret;
 
@@ -397,8 +399,8 @@ static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame,
 static int can_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    struct can_frame      local;
-    int                   ret;
+    struct can_frame local;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -430,8 +432,8 @@ static int can_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
 static int can_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    struct can_frame*     frame;
-    int                   ret;
+    struct can_frame* frame;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -459,7 +461,8 @@ static int can_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t 
 
 typedef int (*can_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms);
 
-struct can_ioctl_map {
+struct can_ioctl_map
+{
     can_ioctl_fn_t handler;
 };
 
@@ -504,19 +507,20 @@ static int can_cmd_get_state(struct device* pdev, void* arg, size_t arg_len, uin
 }
 
 static const struct can_ioctl_map s_can_ioctl_map[CAN_CMD_COUNT] = {
-    [CAN_CMD_TRANSFER - CAN_CMD_BASE - 1]   = { can_cmd_transfer },
-    [CAN_CMD_SET_FILTER - CAN_CMD_BASE - 1] = { can_cmd_set_filter },
-    [CAN_CMD_GET_STATE - CAN_CMD_BASE - 1]  = { can_cmd_get_state },
+    [CAN_CMD_TRANSFER - CAN_CMD_BASE - 1] = {can_cmd_transfer},
+    [CAN_CMD_SET_FILTER - CAN_CMD_BASE - 1] = {can_cmd_set_filter},
+    [CAN_CMD_GET_STATE - CAN_CMD_BASE - 1] = {can_cmd_get_state},
 };
 
 /**
  * @brief CAN Client ioctl 派发入口
  */
-static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int32_t               offset;
-    int                   ret;
+    int32_t offset;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -540,10 +544,10 @@ static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 }
 
 static const struct file_operations can_vfs_fops = {
-    .open  = can_vfs_open,
+    .open = can_vfs_open,
     .close = can_vfs_close,
     .write = can_vfs_write,
-    .read  = can_vfs_read,
+    .read = can_vfs_read,
     .ioctl = can_vfs_ioctl,
 };
 
@@ -556,8 +560,8 @@ static int can_vfs_probe(struct device* pdev)
 {
     struct can_vfs_client* priv;
     struct can_bus_client* bus_cli;
-    int                    pool_idx;
-    int                    ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -602,14 +606,14 @@ err_pool:
 static int can_vfs_remove(struct device* pdev)
 {
     struct can_vfs_client* priv;
-    struct dev_lifecycle*  lc;
-    int                    pool_idx;
+    struct dev_lifecycle* lc;
+    int pool_idx;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct can_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -630,7 +634,5 @@ static int can_vfs_remove(struct device* pdev)
     return VFS_OK;
 }
 
-DRIVER_REGISTER(can_host, "can-host",
-                vfs_can_priv_probe, vfs_can_priv_remove)
-DRIVER_REGISTER(can_vfs_client, "heterogeneous,can-client",
-                can_vfs_probe, can_vfs_remove)
+DRIVER_REGISTER(can_host, "can-host", vfs_can_priv_probe, vfs_can_priv_remove)
+DRIVER_REGISTER(can_vfs_client, "heterogeneous,can-client", can_vfs_probe, can_vfs_remove)

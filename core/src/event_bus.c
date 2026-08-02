@@ -9,11 +9,13 @@
  *   - 回调中不得阻塞 I/O 或长时间计算
  */
 #include "event_bus.h"
-#include "safe_state.h"
-#include "system_wdt.hpp"
-#include "system_log.h"
+
 #include "compiler_compat.h"
 #include "config.h"
+#include "safe_state.h"
+#include "system_log.h"
+#include "system_wdt.hpp"
+
 #include "compiler_compat_poison.h"
 
 /* SIOF (Static Initialization Order Fiasco) 防御:
@@ -22,42 +24,42 @@
  *   定义位于 system_init.c / system_init.cpp. */
 extern volatile bool g_system_os_initialized;
 
-#define K_TAG               "EventBus"
-#define K_QUEUE_LEN         CONFIG_EVENT_BUS_QUEUE_LEN
-#define K_MAX_SUBSCRIBERS   CONFIG_EVENT_BUS_MAX_SUBSCRIBERS
+#define K_TAG "EventBus"
+#define K_QUEUE_LEN CONFIG_EVENT_BUS_QUEUE_LEN
+#define K_MAX_SUBSCRIBERS CONFIG_EVENT_BUS_MAX_SUBSCRIBERS
 
 #if defined(CONFIG_OSAL_FREERTOS)
 /* FreeRTOS: 0=最低, configMAX_PRIORITIES-1=最高；ESP-IDF 默认 MAX=24 → 合法 0..24 */
-#  define K_DISPATCH_PRIO   24
+#define K_DISPATCH_PRIO 24
 #else
-#  define K_DISPATCH_PRIO   1    /* RT-Thread: 0=最高, 数值越小越高 */
+#define K_DISPATCH_PRIO 1 /* RT-Thread: 0=最高, 数值越小越高 */
 #endif
 
-#define K_DISPATCH_STACK    CONFIG_EVENT_BUS_DISPATCH_STACK
-#define K_STOP_WAIT_MS      500
+#define K_DISPATCH_STACK CONFIG_EVENT_BUS_DISPATCH_STACK
+#define K_STOP_WAIT_MS 500
 
 /* ── 内部数据结构 ── */
 struct subscriber
 {
-    uint32_t          id_min;     /**< 订阅起始事件 ID */
-    uint32_t          id_max;     /**< 订阅结束事件 ID */
-    event_callback_t  callback;   /**< 事件回调函数 */
-    void*             user_data;  /**< 用户私有数据 */
+    uint32_t id_min; /**< 订阅起始事件 ID */
+    uint32_t id_max; /**< 订阅结束事件 ID */
+    event_callback_t callback; /**< 事件回调函数 */
+    void* user_data; /**< 用户私有数据 */
 };
 
 struct event_bus
 {
-    struct subscriber   subscribers[K_MAX_SUBSCRIBERS]; /**< 订阅者表 */
-    size_t              count;                          /**< 当前订阅者数量 */
-    bool                inited;                         /**< 是否已初始化 */
-    bool                is_sealed;                      /**< 是否已封禁 (不再接受新订阅) */
+    struct subscriber subscribers[K_MAX_SUBSCRIBERS]; /**< 订阅者表 */
+    size_t count; /**< 当前订阅者数量 */
+    bool inited; /**< 是否已初始化 */
+    bool is_sealed; /**< 是否已封禁 (不再接受新订阅) */
 
-    osal_queue_handle_t queue;                          /**< 事件队列 */
-    void*               task;                           /**< 分派任务句柄 */
-    size_t              dropped;                        /**< 丢弃事件计数 */
+    osal_queue_handle_t queue; /**< 事件队列 */
+    void* task; /**< 分派任务句柄 */
+    size_t dropped; /**< 丢弃事件计数 */
 
-    struct osal_mutex*       sub_lock;                  /**< 订阅者表锁 */
-    uint8_t             sub_lock_storage[OSAL_MUTEX_STORAGE_SIZE]; /**< 锁存储 */
+    struct osal_mutex* sub_lock; /**< 订阅者表锁 */
+    uint8_t sub_lock_storage[OSAL_MUTEX_STORAGE_SIZE]; /**< 锁存储 */
 };
 
 /* ── 内部静态单例 ── */
@@ -76,9 +78,7 @@ static void event_bus_dispatch_task(void* param)
     while (osal_queue_receive(s_bus.queue, &event, OSAL_WAIT_FOREVER))
     {
         if (s_bus.task == NULL)
-        {
             break;
-        }
 
         system_wdt_feed();
         system_wdt_feed_iwdg();
@@ -98,22 +98,15 @@ static void event_bus_dispatch_task(void* param)
         }
         snapshot_count = s_bus.count;
         for (size_t i = 0; i < snapshot_count; i++)
-        {
             snapshot[i] = s_bus.subscribers[i];
-        }
         if (s_bus.sub_lock)
-        {
             osal_mutex_unlock(s_bus.sub_lock);
-        }
 
         for (size_t i = 0; i < snapshot_count; i++)
         {
             struct subscriber* sub = &snapshot[i];
-            if (sub->callback != NULL &&
-                event.id >= sub->id_min && event.id <= sub->id_max)
-            {
+            if (sub->callback != NULL && event.id >= sub->id_min && event.id <= sub->id_max)
                 sub->callback(&event, sub->user_data);
-            }
         }
     }
 
@@ -129,7 +122,8 @@ static void event_bus_dispatch_task(void* param)
  */
 bool event_bus_init(void)
 {
-    if (s_bus.inited) return true;
+    if (s_bus.inited)
+        return true;
 
     s_bus.queue = osal_queue_create(K_QUEUE_LEN, sizeof(struct event));
     if (s_bus.queue == NULL)
@@ -138,10 +132,9 @@ bool event_bus_init(void)
         return false;
     }
 
-    if (osal_mutex_create_static(&s_bus.sub_lock,
-                                 s_bus.sub_lock_storage,
-                                 sizeof(s_bus.sub_lock_storage)) != 0
-        || s_bus.sub_lock == NULL)
+    if (osal_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage,
+                                 sizeof(s_bus.sub_lock_storage)) != 0 ||
+        s_bus.sub_lock == NULL)
     {
         SYS_LOGE(K_TAG, "FATAL: mutex create failed");
         osal_queue_delete(s_bus.queue);
@@ -162,14 +155,19 @@ bool event_bus_init(void)
  * @param user_data 传给 callback 的用户数据
  * @return true 订阅成功; false 封表/ISR/参数无效/表满/锁超时
  */
-bool event_bus_subscribe(uint32_t id_min, uint32_t id_max,
-                         event_callback_t callback, void* user_data)
+bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback,
+                         void* user_data)
 {
-    if (osal_in_isr())              return false;
-    if (s_bus.is_sealed)            return false;
-    if (callback == NULL)           return false;
-    if (s_bus.sub_lock == NULL)     return false;
-    if (id_min > id_max)            return false;
+    if (osal_in_isr())
+        return false;
+    if (s_bus.is_sealed)
+        return false;
+    if (callback == NULL)
+        return false;
+    if (s_bus.sub_lock == NULL)
+        return false;
+    if (id_min > id_max)
+        return false;
 
     if (osal_mutex_lock(s_bus.sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
@@ -180,9 +178,9 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max,
     bool ok = false;
     if (s_bus.count < K_MAX_SUBSCRIBERS)
     {
-        s_bus.subscribers[s_bus.count].id_min    = id_min;
-        s_bus.subscribers[s_bus.count].id_max    = id_max;
-        s_bus.subscribers[s_bus.count].callback  = callback;
+        s_bus.subscribers[s_bus.count].id_min = id_min;
+        s_bus.subscribers[s_bus.count].id_max = id_max;
+        s_bus.subscribers[s_bus.count].callback = callback;
         s_bus.subscribers[s_bus.count].user_data = user_data;
         s_bus.count++;
         ok = true;
@@ -204,14 +202,10 @@ static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
                                     bool* px_yield_required)
 {
     if (s_bus.queue == NULL || !s_bus.inited)
-    {
         return false;
-    }
 
     if (!g_system_os_initialized)
-    {
         return false;
-    }
 
     const struct event event = {id, arg};
     bool ok;
@@ -228,9 +222,7 @@ static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
         {
             size_t cur = __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED);
             if ((cur % 8) == 0 && cur != 0)
-            {
                 SYS_LOGW(K_TAG, "event queue full, dropped=%u", (unsigned)cur);
-            }
         }
         return false;
     }
@@ -267,21 +259,19 @@ bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required
  * @brief 丢弃计数
  * @return 次数
  */
-size_t event_bus_dropped_count(void)
-{
-    return __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED);
-}
+size_t event_bus_dropped_count(void) { return __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED); }
 
 /**
  * @brief 启动 dispatch 任务
  */
 void event_bus_start(void)
 {
-    if (s_bus.task != NULL || s_bus.queue == NULL) return;
+    if (s_bus.task != NULL || s_bus.queue == NULL)
+        return;
 
     if (osal_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO,
-                                event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0
-        || s_bus.task == NULL)
+                                event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 ||
+        s_bus.task == NULL)
     {
         SYS_LOGW(K_TAG, "dispatch task create failed");
         return;
@@ -295,7 +285,8 @@ void event_bus_start(void)
  */
 void event_bus_stop(void)
 {
-    if (!s_bus.task) return;
+    if (!s_bus.task)
+        return;
 
     void* handle = s_bus.task;
     s_bus.task = NULL;
@@ -326,7 +317,4 @@ void event_bus_stop(void)
 /**
  * @brief 封表
  */
-void event_bus_seal(void)
-{
-    s_bus.is_sealed = true;
-}
+void event_bus_seal(void) { s_bus.is_sealed = true; }

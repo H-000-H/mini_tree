@@ -9,65 +9,65 @@
  * 数据流: VFS ioctl → rc522_cmd_* → rc522_to_card → SPI transfer（vfs-spi）→ HAL
  */
 #include "rc522_drv.h"
-#include "rc522_regs.h"
-#include "vfs-spi.h"
 
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "dt_config_gen.h"
-#include "compiler_compat.h"
 #include "osal.h"
+#include "rc522_regs.h"
+#include "status.h"
 #include "system_log.h"
+#include "vfs-spi.h"
 #include <stddef.h>
 #include <stdint.h>
+
 #include "compiler_compat_poison.h"
 
 #ifndef DTC_GEN_COUNT_NXP_RC522
-#define DTC_GEN_COUNT_NXP_RC522  1
+#define DTC_GEN_COUNT_NXP_RC522 1
 #endif
-#define RC522_POOL_COUNT  DTC_GEN_COUNT_NXP_RC522
+#define RC522_POOL_COUNT DTC_GEN_COUNT_NXP_RC522
 
 /** @brief RC522 驱动实例（嵌入 fops） */
 struct rc522_device
 {
-    struct file_operations ops;      /**< 挂入 device 的 fops */
-    struct device*         spi_dev;  /**< 所属 SPI client 设备 */
+    struct file_operations ops; /**< 挂入 device 的 fops */
+    struct device* spi_dev; /**< 所属 SPI client 设备 */
 
-    int                    hw_ready; /**< 硬件已初始化标志 */
+    int hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct rc522_device s_rc522_pool[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_rc522_used[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_rc522_pool_ctrl COMPAT_ALIGNED(4);
+static uint8_t s_rc522_used[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_rc522_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_tag = "rc522";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160)
-static void rc522_pool_boot_init(void)
+pre_execution(160) static void rc522_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_rc522_pool_ctrl, s_rc522_used, RC522_POOL_COUNT));
 }
 
 /**
  * @brief 取驱动私有数据
- * @param dev device 指针
+ * @param pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct rc522_device* rc522_get_drvdata(struct device* dev)
+static struct rc522_device* rc522_get_drvdata(struct device* pdev)
 {
-    return (struct rc522_device*)device_get_priv(dev);
+    return (struct rc522_device*)device_get_priv(pdev);
 }
-
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int rc522_spi_xfer(struct rc522_device* d, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t to)
+static int rc522_spi_xfer(struct rc522_device* d, const uint8_t* tx, uint8_t* rx, size_t len,
+                          uint32_t to)
 {
     struct spi_transfer_arg arg;
     if (!d || !d->spi_dev || len == 0U)
@@ -78,7 +78,6 @@ static int rc522_spi_xfer(struct rc522_device* d, const uint8_t* tx, uint8_t* rx
     arg.xfer_mode = SPI_XFER_AUTO;
     return device_ioctl(d->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), to);
 }
-
 
 /**
  * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
@@ -115,18 +114,18 @@ static void rc522_hw_destroy(struct rc522_device* d)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int rc522_open(struct device* dev, void* arg)
+static int rc522_open(struct device* pdev, void* arg)
 {
     struct rc522_device* d;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(dev);
+    d = rc522_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     first = dev_lc_open_begin(lc);
@@ -149,17 +148,17 @@ static int rc522_open(struct device* dev, void* arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int rc522_close(struct device* dev)
+static int rc522_close(struct device* pdev)
 {
     struct rc522_device* d;
     struct dev_lifecycle* lc;
     int last;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(dev);
+    d = rc522_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     last = dev_lc_close_begin(lc);
@@ -175,8 +174,10 @@ static int rc522_close(struct device* dev)
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
 typedef int (*rc522_ioctl_fn_t)(struct rc522_device* d, void* arg, size_t arg_len, uint32_t ms);
-struct rc522_ioctl_map { rc522_ioctl_fn_t handler; };
-
+struct rc522_ioctl_map
+{
+    rc522_ioctl_fn_t handler;
+};
 
 /**
  * @brief 写寄存器（地址左移 1bit 对齐 SPI 帧）
@@ -233,7 +234,8 @@ static int rc522_clr_bits(struct rc522_device* d, uint8_t reg, uint8_t mask, uin
  * @param back 回读缓冲（可空）
  * @param back_len 回读比特数（可空）
  */
-static int rc522_to_card(struct rc522_device* d, uint8_t cmd, const uint8_t* send, uint8_t send_len, uint8_t* back, uint8_t* back_len, uint32_t to)
+static int rc522_to_card(struct rc522_device* d, uint8_t cmd, const uint8_t* send, uint8_t send_len,
+                         uint8_t* back, uint8_t* back_len, uint32_t to)
 {
     uint8_t irq_en = 0;
     uint8_t wait_irq = 0;
@@ -395,27 +397,26 @@ static int rc522_cmd_uid(struct rc522_device* d, void* arg, size_t len, uint32_t
     return VFS_OK;
 }
 
-
 static const struct rc522_ioctl_map s_rc522_map[RC522_CMD_COUNT] = {
-    [RC522_CMD_INIT - RC522_CMD_BASE - 1] = { rc522_cmd_init },
-    [RC522_CMD_READ_UID - RC522_CMD_BASE - 1] = { rc522_cmd_uid },
+    [RC522_CMD_INIT - RC522_CMD_BASE - 1] = {rc522_cmd_init},
+    [RC522_CMD_READ_UID - RC522_CMD_BASE - 1] = {rc522_cmd_uid},
 };
 
 /**
  * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
  */
-static int rc522_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
+static int rc522_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct rc522_device* d;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(dev);
+    d = rc522_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
@@ -431,7 +432,7 @@ static int rc522_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, u
 }
 
 static const struct file_operations rc522_fops = {
-    .open  = rc522_open,
+    .open = rc522_open,
     .close = rc522_close,
     .ioctl = rc522_ioctl,
 };
@@ -439,35 +440,35 @@ static const struct file_operations rc522_fops = {
 /**
  * @brief probe：claim 池项、绑定父 SPI 设备并挂 fops
  */
-static int rc522_probe(struct device* dev)
+static int rc522_probe(struct device* pdev)
 {
     struct rc522_device* d;
     int pool_idx, ret;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_rc522_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
     d = &s_rc522_pool[pool_idx];
     COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->spi_dev = device_get_parent(dev);
+    d->spi_dev = device_get_parent(pdev);
     if (!d->spi_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(dev, d) != VFS_OK)
+    if (device_set_priv(pdev, d) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
     d->ops = rc522_fops;
-    dev->ops = &d->ops;
+    pdev->ops = &d->ops;
     SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
-    dev->ops = NULL;
+    pdev->ops = NULL;
     COMPAT_MEM_SET(d, 0, sizeof(*d));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, pool_idx));
     return ret;
@@ -476,22 +477,22 @@ err:
 /**
  * @brief remove：排空在途 io、释放硬件并归还池项
  */
-static int rc522_remove(struct device* dev)
+static int rc522_remove(struct device* pdev)
 {
     struct rc522_device* d;
     struct dev_lifecycle* lc;
     int idx;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(dev);
+    d = rc522_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     idx = (int)(d - s_rc522_pool);
     dev_lc_remove_start(lc);
-    device_ops_unregister(dev);
+    device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
     {
         dev_lc_remove_finish(lc);

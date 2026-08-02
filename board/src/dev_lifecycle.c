@@ -8,10 +8,12 @@
  * 无互斥锁, 无脉冲窗口.
  */
 #include "dev_lifecycle.h"
+
 #include "osal.h"
+
 #include "compiler_compat_poison.h"
 
-#define DEV_LC_LOCKED  (-1)
+#define DEV_LC_LOCKED (-1)
 
 /**
  * @brief 初始化生命周期状态机为 LIVE
@@ -46,8 +48,8 @@ void dev_lc_reset(struct dev_lifecycle* lc)
  */
 dev_lc_state_t dev_lc_state(const struct dev_lifecycle* lc)
 {
-    return lc ? (dev_lc_state_t)COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE)
-              : DEV_LC_UNINITIALIZED;
+    return lc ? (dev_lc_state_t)COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) :
+                DEV_LC_UNINITIALIZED;
 }
 
 /**
@@ -83,14 +85,14 @@ int dev_lc_open_begin(struct dev_lifecycle* lc)
         return VFS_ERR_INVAL;
 
     int old;
-    do {
+    do
+    {
         old = COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_RELAXED);
         if (old < 0)
             return VFS_ERR_NODEV;
         if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
             return VFS_ERR_NODEV;
-    } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old + 1,
-                                 COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+    } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
     return (old + 1 == 1) ? 1 : 0;
 }
@@ -99,10 +101,7 @@ int dev_lc_open_begin(struct dev_lifecycle* lc)
  * @brief open 完成占位 (当前无额外逻辑)
  * @param lc 生命周期对象指针
  */
-void dev_lc_open_end(struct dev_lifecycle* lc)
-{
-    (void)lc;
-}
+void dev_lc_open_end(struct dev_lifecycle* lc) { (void)lc; }
 
 /**
  * @brief 中止 open (opens -1, 用于 open 中途失败回滚)
@@ -126,12 +125,12 @@ int dev_lc_close_begin(struct dev_lifecycle* lc)
         return VFS_ERR_INVAL;
 
     int old;
-    do {
+    do
+    {
         old = COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_RELAXED);
         if (old <= 0)
             return VFS_ERR_IO;
-    } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old - 1,
-                                 COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+    } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old - 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
     return (old - 1 == 0) ? 1 : 0;
 }
@@ -140,10 +139,7 @@ int dev_lc_close_begin(struct dev_lifecycle* lc)
  * @brief close 完成占位 (当前无额外逻辑)
  * @param lc 生命周期对象指针
  */
-void dev_lc_close_end(struct dev_lifecycle* lc)
-{
-    (void)lc;
-}
+void dev_lc_close_end(struct dev_lifecycle* lc) { (void)lc; }
 
 /**
  * @brief 开始 I/O (CAS 递增 io_active, teardown 或非 LIVE 拒绝)
@@ -156,14 +152,15 @@ int dev_lc_io_begin(struct dev_lifecycle* lc)
         return VFS_ERR_INVAL;
 
     int old;
-    do {
+    do
+    {
         old = COMPAT_ATOMIC_LOAD(&lc->io_active, COMPAT_MO_RELAXED);
         if (old < 0)
             return VFS_ERR_NODEV;
         if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
             return VFS_ERR_NODEV;
-    } while (!COMPAT_ATOMIC_CAS(&lc->io_active, &old, old + 1,
-                                 COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+    } while (
+        !COMPAT_ATOMIC_CAS(&lc->io_active, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
     return VFS_OK;
 }
@@ -208,12 +205,12 @@ int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
     for (;;)
     {
         int opens_expected = 0;
-        if (COMPAT_ATOMIC_CAS(&lc->opens, &opens_expected, DEV_LC_LOCKED,
-                               COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
+        if (COMPAT_ATOMIC_CAS(&lc->opens, &opens_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL,
+                              COMPAT_MO_RELAXED))
         {
             int io_expected = 0;
-            if (COMPAT_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED,
-                                   COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
+            if (COMPAT_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL,
+                                  COMPAT_MO_RELAXED))
                 return VFS_OK;
 
             COMPAT_ATOMIC_STORE(&lc->opens, 0, COMPAT_MO_RELEASE);

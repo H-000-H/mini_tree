@@ -11,11 +11,11 @@
 #include "compiler_compat.h"
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
-void my_printf_output(const char *fmt, ...) COMPAT_FMT_PRINTF(1, 2);
+    void my_printf_output(const char* fmt, ...) COMPAT_FMT_PRINTF(1, 2);
 
 #ifdef __cplusplus
 }

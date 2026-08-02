@@ -13,22 +13,22 @@
 #define HAL_TIM_MODE_INDEX 0
 #endif
 #ifndef HAL_TIM_MODE_BASE
-#define HAL_TIM_MODE_BASE           (HAL_TIM_MODE_INDEX + 1) /**< 基础模式 */
+#define HAL_TIM_MODE_BASE (HAL_TIM_MODE_INDEX + 1) /**< 基础模式 */
 #endif
 #ifndef HAL_TIM_MODE_OC
-#define HAL_TIM_MODE_OC             (HAL_TIM_MODE_INDEX + 2) /**< 输出比较模式 */
+#define HAL_TIM_MODE_OC (HAL_TIM_MODE_INDEX + 2) /**< 输出比较模式 */
 #endif
 #ifndef HAL_TIM_MODE_IC
-#define HAL_TIM_MODE_IC             (HAL_TIM_MODE_INDEX + 3) /**< 输入捕获模式 */
+#define HAL_TIM_MODE_IC (HAL_TIM_MODE_INDEX + 3) /**< 输入捕获模式 */
 #endif
 #ifndef HAL_TIM_MODE_ENCODER
-#define HAL_TIM_MODE_ENCODER        (HAL_TIM_MODE_INDEX + 4) /**< 编码器模式 */
+#define HAL_TIM_MODE_ENCODER (HAL_TIM_MODE_INDEX + 4) /**< 编码器模式 */
 #endif
 #ifndef HAL_TIM_MODE_HALLSENSOR
-#define HAL_TIM_MODE_HALLSENSOR     (HAL_TIM_MODE_INDEX + 5) /**< 霍尔传感器模式 */
+#define HAL_TIM_MODE_HALLSENSOR (HAL_TIM_MODE_INDEX + 5) /**< 霍尔传感器模式 */
 #endif
 #ifndef TIM_DRIVER_COUNT
-#define TIM_DRIVER_COUNT            (HAL_TIM_MODE_INDEX + 6) /**< 驱动数量 */
+#define TIM_DRIVER_COUNT (HAL_TIM_MODE_INDEX + 6) /**< 驱动数量 */
 #endif
 
 #endif /* __TIM_PARAMETER_H__ */

@@ -27,14 +27,14 @@ extern "C"
 {
 #endif
 
-void mini_tree_pre_os_init(void);
-void mini_tree_start_tasks(void);
+    void mini_tree_pre_os_init(void);
+    void mini_tree_start_tasks(void);
 
-/* 裸机 super-loop 入口; OS 后端由内核调度, 通常不调用 */
-void mini_tree_system_loop(void);
+    /* 裸机 super-loop 入口; OS 后端由内核调度, 通常不调用 */
+    void mini_tree_system_loop(void);
 
-/* 初始化完成 — 释放全局中断 (启动调度器 / 进入 while 前调用) */
-void system_init_complete(void);
+    /* 初始化完成 — 释放全局中断 (启动调度器 / 进入 while 前调用) */
+    void system_init_complete(void);
 
 #ifdef __cplusplus
 }

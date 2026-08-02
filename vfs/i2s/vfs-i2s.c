@@ -6,15 +6,16 @@
  */
 #define I2S_VFS_IMPL
 #include "vfs-i2s.h"
-#include "i2s_bus.h"
+
+#include "buffer.h"
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
+#include "i2s_bus.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
-#include "buffer.h"
 
 #define I2S_HOST_POOL 3
 #define I2S_CLIENT_POOL 4
@@ -27,10 +28,10 @@
  */
 struct vfs_i2s_host_priv
 {
-    struct hal_i2s_bus_config cfg;   /**< host 总线配置 (DTSI 直投) */
-    struct fifo_spsc circ_fifo;      /**< circular 环缓 */
+    struct hal_i2s_bus_config cfg; /**< host 总线配置 (DTSI 直投) */
+    struct fifo_spsc circ_fifo; /**< circular 环缓 */
     fifo_data_type circ_buf[I2S_CIRC_FIFO_SIZE] COMPAT_ALIGNED(32); /**< 环缓数据区 */
-    int pool_idx;                    /**< 池索引 */
+    int pool_idx; /**< 池索引 */
 };
 
 /**
@@ -38,10 +39,10 @@ struct vfs_i2s_host_priv
  */
 struct vfs_i2s_client
 {
-    struct file_operations ops;      /**< VFS 操作表 */
+    struct file_operations ops; /**< VFS 操作表 */
     struct hal_i2s_device_config cfg; /**< 设备配置 (DTSI 直投) */
-    uint32_t xfer_mode;              /**< I2S_XFER_AUTO/POLL/DMA */
-    int pool_idx;                    /**< 池索引 */
+    uint32_t xfer_mode; /**< I2S_XFER_AUTO/POLL/DMA */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_i2s_host_priv s_host_pool[I2S_HOST_POOL];
@@ -56,8 +57,7 @@ static const char* k_cli = "i2s_vfs";
 /**
  * @brief Host/Client 私有池启动初始化
  */
-pre_execution(160)
-static void pools(void)
+pre_execution(160) static void pools(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool_ctrl, s_host_used, I2S_HOST_POOL));
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2S_CLIENT_POOL));
@@ -283,20 +283,14 @@ static int host_remove(struct device* pdev)
  * @param p 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int host_probe_master(struct device* p)
-{
-    return host_probe(p, I2S_BUS_ROLE_MASTER);
-}
+static int host_probe_master(struct device* p) { return host_probe(p, I2S_BUS_ROLE_MASTER); }
 
 /**
  * @brief Host Slave 角色探测入口
  * @param p 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int host_probe_slave(struct device* p)
-{
-    return host_probe(p, I2S_BUS_ROLE_SLAVE);
-}
+static int host_probe_slave(struct device* p) { return host_probe(p, I2S_BUS_ROLE_SLAVE); }
 
 /**
  * @brief Client 打开: 引用计数, 首次打开时调用 i2s_bus_open (含虚拟中断注册)
@@ -421,13 +415,13 @@ static int i2s_read(struct device* pdev, void* buf, size_t len, uint32_t to)
 }
 
 /*===========================================================================================================================================================*/
-/* ioctl 命令映射表 — index = (cmd - I2S_CMD_BASE - 1), 与 I2S_CMD_* 编号一一对应 (对齐 SPI)                                                                   */
+/* ioctl 命令映射表 — index = (cmd - I2S_CMD_BASE - 1), 与 I2S_CMD_* 编号一一对应 (对齐 SPI) */
 /*===========================================================================================================================================================*/
 typedef int (*i2s_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms);
 
 struct i2s_ioctl_map
 {
-    i2s_ioctl_fn_t handler;  /**< ioctl 处理函数 */
+    i2s_ioctl_fn_t handler; /**< ioctl 处理函数 */
 };
 
 /**
@@ -463,7 +457,8 @@ static int i2s_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     const struct i2s_xfer_mode_arg* a = (const struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
@@ -485,7 +480,8 @@ static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     struct i2s_xfer_mode_arg* a = (struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
@@ -507,7 +503,8 @@ static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len,
+                                  uint32_t timeout_ms)
 {
     const struct i2s_transfer_async_arg* a = (const struct i2s_transfer_async_arg*)arg;
 
@@ -617,7 +614,8 @@ static int i2s_cmd_circ_read(struct device* pdev, void* arg, size_t arg_len, uin
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     const struct i2s_dma_irq_mode_arg* a = (const struct i2s_dma_irq_mode_arg*)arg;
 
@@ -635,7 +633,8 @@ static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_l
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     struct i2s_dma_irq_mode_arg* a = (struct i2s_dma_irq_mode_arg*)arg;
 
@@ -645,19 +644,18 @@ static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_l
     return i2s_bus_get_dma_irq_mode(pdev, &a->irq_mode);
 }
 
-static const struct i2s_ioctl_map s_i2s_ioctl_map[I2S_CMD_COUNT] =
-{
-    [I2S_CMD_TRANSFER - I2S_CMD_BASE - 1]         = { i2s_cmd_transfer },
-    [I2S_CMD_SET_XFER_MODE - I2S_CMD_BASE - 1]    = { i2s_cmd_set_xfer_mode },
-    [I2S_CMD_GET_XFER_MODE - I2S_CMD_BASE - 1]    = { i2s_cmd_get_xfer_mode },
-    [I2S_CMD_TRANSFER_ASYNC - I2S_CMD_BASE - 1]   = { i2s_cmd_transfer_async },
-    [I2S_CMD_ASYNC_WAIT - I2S_CMD_BASE - 1]       = { i2s_cmd_async_wait },
-    [I2S_CMD_CIRC_START - I2S_CMD_BASE - 1]       = { i2s_cmd_circ_start },
-    [I2S_CMD_CIRC_STOP - I2S_CMD_BASE - 1]        = { i2s_cmd_circ_stop },
-    [I2S_CMD_CIRC_WRITE - I2S_CMD_BASE - 1]       = { i2s_cmd_circ_write },
-    [I2S_CMD_CIRC_READ - I2S_CMD_BASE - 1]        = { i2s_cmd_circ_read },
-    [I2S_CMD_SET_DMA_IRQ_MODE - I2S_CMD_BASE - 1] = { i2s_cmd_set_dma_irq_mode },
-    [I2S_CMD_GET_DMA_IRQ_MODE - I2S_CMD_BASE - 1] = { i2s_cmd_get_dma_irq_mode },
+static const struct i2s_ioctl_map s_i2s_ioctl_map[I2S_CMD_COUNT] = {
+    [I2S_CMD_TRANSFER - I2S_CMD_BASE - 1] = {i2s_cmd_transfer},
+    [I2S_CMD_SET_XFER_MODE - I2S_CMD_BASE - 1] = {i2s_cmd_set_xfer_mode},
+    [I2S_CMD_GET_XFER_MODE - I2S_CMD_BASE - 1] = {i2s_cmd_get_xfer_mode},
+    [I2S_CMD_TRANSFER_ASYNC - I2S_CMD_BASE - 1] = {i2s_cmd_transfer_async},
+    [I2S_CMD_ASYNC_WAIT - I2S_CMD_BASE - 1] = {i2s_cmd_async_wait},
+    [I2S_CMD_CIRC_START - I2S_CMD_BASE - 1] = {i2s_cmd_circ_start},
+    [I2S_CMD_CIRC_STOP - I2S_CMD_BASE - 1] = {i2s_cmd_circ_stop},
+    [I2S_CMD_CIRC_WRITE - I2S_CMD_BASE - 1] = {i2s_cmd_circ_write},
+    [I2S_CMD_CIRC_READ - I2S_CMD_BASE - 1] = {i2s_cmd_circ_read},
+    [I2S_CMD_SET_DMA_IRQ_MODE - I2S_CMD_BASE - 1] = {i2s_cmd_set_dma_irq_mode},
+    [I2S_CMD_GET_DMA_IRQ_MODE - I2S_CMD_BASE - 1] = {i2s_cmd_get_dma_irq_mode},
 };
 
 /**
@@ -696,8 +694,7 @@ static int i2s_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, ui
     return ret;
 }
 
-static const struct file_operations s_fops =
-{
+static const struct file_operations s_fops = {
     .open = i2s_open,
     .close = i2s_close,
     .read = i2s_read,

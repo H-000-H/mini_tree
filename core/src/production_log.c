@@ -8,12 +8,12 @@
 #include "production_log.h"
 
 #include "config.h"
-#include "osal.h"
 #include "hal_storage.h"
-
-#include <string.h>
-#include <stdio.h>
+#include "osal.h"
 #include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "compiler_compat_poison.h"
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -22,14 +22,14 @@
 #ifdef CONFIG_PRODUCTION_LOG
 
 /* 持久化快照: 将环形缓冲区 + 元数据打包为单个 blob */
-#define PROD_LOG_STORAGE_SLOT  0
+#define PROD_LOG_STORAGE_SLOT 0
 
 struct prod_log_persist
 
 {
-    uint16_t head;                                          /**< 环形缓冲头指针 */
-    uint32_t seq;                                           /**< 全局序列号 */
-    struct prod_log_entry ring[PROD_LOG_SLOT_COUNT];        /**< 日志环形缓冲 */
+    uint16_t head; /**< 环形缓冲头指针 */
+    uint32_t seq; /**< 全局序列号 */
+    struct prod_log_entry ring[PROD_LOG_SLOT_COUNT]; /**< 日志环形缓冲 */
 };
 
 static struct prod_log_persist s_state;
@@ -59,12 +59,13 @@ int production_log_init(void)
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
-    if (!s_ready) return;
+    if (!s_ready)
+        return;
 
     struct prod_log_entry* e = &s_state.ring[s_state.head];
-    e->seq       = s_state.seq++;
+    e->seq = s_state.seq++;
     e->timestamp = 0;
-    e->level     = (uint8_t)level;
+    e->level = (uint8_t)level;
 
     strncpy(e->tag, tag ? tag : "", PROD_LOG_TAG_LEN - 1);
     e->tag[PROD_LOG_TAG_LEN - 1] = '\0';
@@ -75,7 +76,8 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     s_state.head = (s_state.head + 1) % PROD_LOG_SLOT_COUNT;
 
     /* ISR 中跳过持久化 (存储操作可能阻塞) */
-    if (osal_in_isr()) return;
+    if (osal_in_isr())
+        return;
 
     hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state));
 }
@@ -104,10 +106,9 @@ void production_log_push_fmt(prod_log_level_t level, const char* tag, const char
 int production_log_count(void)
 {
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
-    {
-        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 && s_state.ring[i].msg[0] == '\0')
+        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 &&
+            s_state.ring[i].msg[0] == '\0')
             return i;
-    }
     return PROD_LOG_SLOT_COUNT;
 }
 
@@ -118,7 +119,8 @@ int production_log_count(void)
  */
 const struct prod_log_entry* production_log_get(int index)
 {
-    if (index < 0 || index >= PROD_LOG_SLOT_COUNT) return NULL;
+    if (index < 0 || index >= PROD_LOG_SLOT_COUNT)
+        return NULL;
     return &s_state.ring[index];
 }
 
@@ -128,7 +130,8 @@ const struct prod_log_entry* production_log_get(int index)
  */
 void production_log_dump(void (*sink)(const char* line))
 {
-    if (!sink) return;
+    if (!sink)
+        return;
 
     char buf[256];
     sink("=== PRODUCTION LOG DUMP ===");
@@ -138,18 +141,25 @@ void production_log_dump(void (*sink)(const char* line))
     {
         int idx = (oldest + i) % PROD_LOG_SLOT_COUNT;
         const struct prod_log_entry* e = &s_state.ring[idx];
-        if (e->seq == 0 && e->msg[0] == '\0') continue;
+        if (e->seq == 0 && e->msg[0] == '\0')
+            continue;
 
         const char* lvl_str = "?";
         switch (e->level)
         {
-        case PROD_LOG_ERROR: lvl_str = "E"; break;
-        case PROD_LOG_WARN:  lvl_str = "W"; break;
-        case PROD_LOG_INFO:  lvl_str = "I"; break;
+        case PROD_LOG_ERROR:
+            lvl_str = "E";
+            break;
+        case PROD_LOG_WARN:
+            lvl_str = "W";
+            break;
+        case PROD_LOG_INFO:
+            lvl_str = "I";
+            break;
         }
 
-        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s",
-                 (unsigned long)e->seq, lvl_str, e->tag, e->msg);
+        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)e->seq, lvl_str, e->tag,
+                 e->msg);
         sink(buf);
     }
     sink("=== END ===");
@@ -161,10 +171,7 @@ void production_log_dump(void (*sink)(const char* line))
  * @brief CONFIG 关闭时的空 init
  * @return 0
  */
-int production_log_init(void)
-{
-    return 0;
-}
+int production_log_init(void) { return 0; }
 
 /**
  * @brief stub: 忽略日志写入
@@ -174,7 +181,9 @@ int production_log_init(void)
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
-    (void)level; (void)tag; (void)msg;
+    (void)level;
+    (void)tag;
+    (void)msg;
 }
 
 /**
@@ -186,17 +195,16 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    (void)level; (void)tag; (void)fmt;
+    (void)level;
+    (void)tag;
+    (void)fmt;
 }
 
 /**
  * @brief stub: 无日志条目
  * @return 0
  */
-int production_log_count(void)
-{
-    return 0;
-}
+int production_log_count(void) { return 0; }
 
 /**
  * @brief stub: 无条目可读
@@ -215,7 +223,8 @@ const struct prod_log_entry* production_log_get(int index)
  */
 void production_log_dump(void (*sink)(const char* line))
 {
-    if (sink) sink("=== PRODUCTION LOG DUMP (stub) ===");
+    if (sink)
+        sink("=== PRODUCTION LOG DUMP (stub) ===");
 }
 
 #endif /* CONFIG_PRODUCTION_LOG */

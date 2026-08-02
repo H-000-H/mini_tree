@@ -9,77 +9,77 @@
  * 数据流: VFS ioctl → bme280_cmd_env → device_read/write(I2C) → HAL
  */
 #include "bme280_drv.h"
+
 #include "bme280_regs.h"
-#include "vfs-i2c.h"
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "dt_config_gen.h"
-#include "compiler_compat.h"
 #include "osal.h"
+#include "status.h"
 #include "system_log.h"
+#include "vfs-i2c.h"
 #include <stddef.h>
 #include <stdint.h>
+
 #include "compiler_compat_poison.h"
 
 #ifndef DTC_GEN_COUNT_BOSCH_BME280
-#define DTC_GEN_COUNT_BOSCH_BME280  1
+#define DTC_GEN_COUNT_BOSCH_BME280 1
 #endif
-#define BME280_POOL_COUNT  DTC_GEN_COUNT_BOSCH_BME280
+#define BME280_POOL_COUNT DTC_GEN_COUNT_BOSCH_BME280
 
 /** @brief BME280 驱动实例（嵌入 fops 与校准系数） */
 struct bme280_device
 {
-    struct file_operations ops;      /**< 挂入 device 的 fops */
-    struct device*         i2c_dev;  /**< 所属 I2C client 设备 */
-    uint16_t dig_T1;                 /**< 温度校准 T1（小端） */
-    int16_t  dig_T2;                 /**< 温度校准 T2 */
-    int16_t  dig_T3;                 /**< 温度校准 T3 */
-    uint16_t dig_P1;                 /**< 气压校准 P1 */
-    int16_t  dig_P2;                 /**< 气压校准 P2 */
-    int16_t  dig_P3;                 /**< 气压校准 P3 */
-    int16_t  dig_P4;                 /**< 气压校准 P4 */
-    int16_t  dig_P5;                 /**< 气压校准 P5 */
-    int16_t  dig_P6;                 /**< 气压校准 P6 */
-    int16_t  dig_P7;                 /**< 气压校准 P7 */
-    int16_t  dig_P8;                 /**< 气压校准 P8 */
-    int16_t  dig_P9;                 /**< 气压校准 P9 */
-    uint8_t  dig_H1;                 /**< 湿度校准 H1 */
-    int16_t  dig_H2;                 /**< 湿度校准 H2 */
-    uint8_t  dig_H3;                 /**< 湿度校准 H3 */
-    int16_t  dig_H4;                 /**< 湿度校准 H4（拼装） */
-    int16_t  dig_H5;                 /**< 湿度校准 H5（拼装） */
-    int8_t   dig_H6;                 /**< 湿度校准 H6 */
-    int32_t  t_fine;                 /**< 温度补偿中间量（共享给 P/H） */
-    int      calib_ok;               /**< 校准参数已加载 */
-    int      hw_ready;               /**< 硬件已初始化标志 */
+    struct file_operations ops; /**< 挂入 device 的 fops */
+    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    uint16_t dig_T1; /**< 温度校准 T1（小端） */
+    int16_t dig_T2; /**< 温度校准 T2 */
+    int16_t dig_T3; /**< 温度校准 T3 */
+    uint16_t dig_P1; /**< 气压校准 P1 */
+    int16_t dig_P2; /**< 气压校准 P2 */
+    int16_t dig_P3; /**< 气压校准 P3 */
+    int16_t dig_P4; /**< 气压校准 P4 */
+    int16_t dig_P5; /**< 气压校准 P5 */
+    int16_t dig_P6; /**< 气压校准 P6 */
+    int16_t dig_P7; /**< 气压校准 P7 */
+    int16_t dig_P8; /**< 气压校准 P8 */
+    int16_t dig_P9; /**< 气压校准 P9 */
+    uint8_t dig_H1; /**< 湿度校准 H1 */
+    int16_t dig_H2; /**< 湿度校准 H2 */
+    uint8_t dig_H3; /**< 湿度校准 H3 */
+    int16_t dig_H4; /**< 湿度校准 H4（拼装） */
+    int16_t dig_H5; /**< 湿度校准 H5（拼装） */
+    int8_t dig_H6; /**< 湿度校准 H6 */
+    int32_t t_fine; /**< 温度补偿中间量（共享给 P/H） */
+    int calib_ok; /**< 校准参数已加载 */
+    int hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct bme280_device s_bme280_pool[BME280_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_bme280_used[BME280_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_bme280_pool_ctrl COMPAT_ALIGNED(4);
+static uint8_t s_bme280_used[BME280_POOL_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_bme280_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_tag = "bme280";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160)
-static void bme280_pool_boot_init(void)
+pre_execution(160) static void bme280_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_bme280_pool_ctrl, s_bme280_used, BME280_POOL_COUNT));
 }
 
 /**
  * @brief 取驱动私有数据
- * @param dev device 指针
+ * @param pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct bme280_device* bme280_get_drvdata(struct device* dev)
+static struct bme280_device* bme280_get_drvdata(struct device* pdev)
 {
-    return (struct bme280_device*)device_get_priv(dev);
+    return (struct bme280_device*)device_get_priv(pdev);
 }
-
 
 /**
  * @brief 向 I2C 总线写数据
@@ -111,13 +111,13 @@ static int bme280_i2c_rd(struct bme280_device* d, uint8_t* rx, size_t len, uint3
     return device_read(d->i2c_dev, rx, len, to);
 }
 
-
 /**
  * @brief 读连续寄存器（先写起始地址，再读）
  * @param start 起始寄存器地址
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bme280_read_regs(struct bme280_device* d, uint8_t start, uint8_t* buf, size_t len, uint32_t to)
+static int bme280_read_regs(struct bme280_device* d, uint8_t start, uint8_t* buf, size_t len,
+                            uint32_t to)
 {
     int r = bme280_i2c_wr(d, &start, 1, to);
     if (r != VFS_OK)
@@ -171,9 +171,10 @@ static int bme280_load_calib(struct bme280_device* d, uint32_t to)
 static int32_t bme280_compensate_t(struct bme280_device* d, int32_t adc_t)
 {
     int32_t var1 = ((((adc_t >> 3) - ((int32_t)d->dig_T1 << 1))) * ((int32_t)d->dig_T2)) >> 11;
-    int32_t var2 = (((((adc_t >> 4) - ((int32_t)d->dig_T1)) *
-                      ((adc_t >> 4) - ((int32_t)d->dig_T1))) >> 12) *
-                    ((int32_t)d->dig_T3)) >> 14;
+    int32_t var2 =
+        (((((adc_t >> 4) - ((int32_t)d->dig_T1)) * ((adc_t >> 4) - ((int32_t)d->dig_T1))) >> 12) *
+         ((int32_t)d->dig_T3)) >>
+        14;
     d->t_fine = var1 + var2;
     return (d->t_fine * 5 + 128) >> 8;
 }
@@ -211,10 +212,16 @@ static uint32_t bme280_compensate_h(struct bme280_device* d, int32_t adc_h)
 {
     int32_t v_x1;
     v_x1 = d->t_fine - 76800;
-    v_x1 = (((((adc_h << 14) - (((int32_t)d->dig_H4) << 20) - (((int32_t)d->dig_H5) * v_x1)) + 16384) >> 15) *
+    v_x1 = (((((adc_h << 14) - (((int32_t)d->dig_H4) << 20) - (((int32_t)d->dig_H5) * v_x1)) +
+              16384) >>
+             15) *
             (((((((v_x1 * ((int32_t)d->dig_H6)) >> 10) *
-                 (((v_x1 * ((int32_t)d->dig_H3)) >> 11) + 32768)) >> 10) + 2097152) *
-              ((int32_t)d->dig_H2) + 8192) >> 14));
+                 (((v_x1 * ((int32_t)d->dig_H3)) >> 11) + 32768)) >>
+                10) +
+               2097152) *
+                  ((int32_t)d->dig_H2) +
+              8192) >>
+             14));
     v_x1 = v_x1 - (((((v_x1 >> 15) * (v_x1 >> 15)) >> 7) * ((int32_t)d->dig_H1)) >> 4);
     v_x1 = (v_x1 < 0) ? 0 : v_x1;
     v_x1 = (v_x1 > 419430400) ? 419430400 : v_x1;
@@ -265,26 +272,26 @@ static void bme280_hw_destroy(struct bme280_device* d)
 {
     if (!d || !d->hw_ready)
         return;
-    if (d->i2c_dev) COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
+    if (d->i2c_dev)
+        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
     d->hw_ready = 0;
-
 }
 
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int bme280_open(struct device* dev, void* arg)
+static int bme280_open(struct device* pdev, void* arg)
 {
     struct bme280_device* d;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = bme280_get_drvdata(dev);
+    d = bme280_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     first = dev_lc_open_begin(lc);
@@ -307,17 +314,17 @@ static int bme280_open(struct device* dev, void* arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int bme280_close(struct device* dev)
+static int bme280_close(struct device* pdev)
 {
     struct bme280_device* d;
     struct dev_lifecycle* lc;
     int last;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = bme280_get_drvdata(dev);
+    d = bme280_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     last = dev_lc_close_begin(lc);
@@ -333,8 +340,10 @@ static int bme280_close(struct device* dev)
  * @brief ioctl 命令分发类型（命令参数由 map 绑定）
  */
 typedef int (*bme280_ioctl_fn_t)(struct bme280_device* d, void* arg, size_t arg_len, uint32_t ms);
-struct bme280_ioctl_map { bme280_ioctl_fn_t handler; };
-
+struct bme280_ioctl_map
+{
+    bme280_ioctl_fn_t handler;
+};
 
 /**
  * @brief BME280_CMD_READ_ENV 实现：触发强制采样并读取 T/P/H
@@ -372,25 +381,24 @@ static int bme280_cmd_env(struct bme280_device* d, void* arg, size_t len, uint32
     return VFS_OK;
 }
 static const struct bme280_ioctl_map s_bme280_map[BME280_CMD_COUNT] = {
-    [BME280_CMD_READ_ENV - BME280_CMD_BASE - 1] = { bme280_cmd_env },
+    [BME280_CMD_READ_ENV - BME280_CMD_BASE - 1] = {bme280_cmd_env},
 };
-
 
 /**
  * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
  */
-static int bme280_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
+static int bme280_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct bme280_device* d;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = bme280_get_drvdata(dev);
+    d = bme280_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
@@ -405,9 +413,8 @@ static int bme280_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, 
     return ret;
 }
 
-static const struct file_operations bme280_fops =
-{
-    .open  = bme280_open,
+static const struct file_operations bme280_fops = {
+    .open = bme280_open,
     .close = bme280_close,
     .ioctl = bme280_ioctl,
 };
@@ -415,31 +422,35 @@ static const struct file_operations bme280_fops =
 /**
  * @brief probe：claim 池项、绑定父 I2C 设备并挂 fops
  */
-static int bme280_probe(struct device* dev)
+static int bme280_probe(struct device* pdev)
 {
     struct bme280_device* d;
     int pool_idx, ret;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_bme280_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
     d = &s_bme280_pool[pool_idx];
     COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(dev);
-    if (!d->i2c_dev) { ret = VFS_ERR_NODEV; goto err; }
+    d->i2c_dev = device_get_parent(pdev);
+    if (!d->i2c_dev)
+    {
+        ret = VFS_ERR_NODEV;
+        goto err;
+    }
 
-    if (device_set_priv(dev, d) != VFS_OK)
+    if (device_set_priv(pdev, d) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
     d->ops = bme280_fops;
-    dev->ops = &d->ops;
+    pdev->ops = &d->ops;
     SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
-    dev->ops = NULL;
+    pdev->ops = NULL;
     COMPAT_MEM_SET(d, 0, sizeof(*d));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_bme280_pool_ctrl, pool_idx));
     return ret;
@@ -448,22 +459,22 @@ err:
 /**
  * @brief remove：排空在途 io、释放硬件并归还池项
  */
-static int bme280_remove(struct device* dev)
+static int bme280_remove(struct device* pdev)
 {
     struct bme280_device* d;
     struct dev_lifecycle* lc;
     int idx;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
-    d = bme280_get_drvdata(dev);
+    d = bme280_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     idx = (int)(d - s_bme280_pool);
     dev_lc_remove_start(lc);
-    device_ops_unregister(dev);
+    device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
     {
         dev_lc_remove_finish(lc);

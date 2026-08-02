@@ -9,72 +9,73 @@
  *   atomic_int 保护; 并发 client_register 需在 bus_xxx 层加 mutex
  *@=========================================================================================================================*/
 #include "bus.h"
+
+#include "board_devtable.h"
+#include "compiler_compat.h"
 #include "device.h"
 #include "status.h"
-#include "compiler_compat.h"
-#include "board_devtable.h"
-
 #include <stddef.h>
 #include <string.h>
 
 static struct bus_controller s_controllers[DEV_ID_COUNT] COMPAT_ALIGNED(4);
-static uint8_t               s_controller_used[DEV_ID_COUNT] COMPAT_ALIGNED(4);
+static uint8_t s_controller_used[DEV_ID_COUNT] COMPAT_ALIGNED(4);
 
 /**
  * @brief 将 device 转换为 device_id (通过 board_dev_find 线性扫描)
- * @param dev 输入的 device 指针
+ * @param pdev 输入的 device 指针
  * @return 找到返回 device_id, 未找到返回 (device_id_t)-1
  */
-static device_id_t device_to_id(const struct device* dev)
+static device_id_t device_to_id(const struct device* pdev)
 {
-    if (!dev || !dev->node)
+    if (!pdev || !pdev->node)
         return (device_id_t)-1;
-    return board_dev_find(device_get_name(dev));
+    return board_dev_find(device_get_name(pdev));
 }
 
 /**
  * @brief 绑定 device 到总线控制器静态表
- * @param dev controller device 指针
+ * @param pdev controller device 指针
  * @param type 总线类型
  * @param ctlr_ops 控制器操作表
  * @param hw_ctx 硬件上下文指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int bus_controller_bind_full(struct device* dev, bus_type_t type,const struct bus_controller_ops* ctlr_ops,void* hw_ctx)
+int bus_controller_bind_full(struct device* pdev, bus_type_t type,
+                             const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
 {
     device_id_t id;
 
-    if (!dev || type == 0)
+    if (!pdev || type == 0)
         return VFS_ERR_INVAL;
 
-    id = device_to_id(dev);
+    id = device_to_id(pdev);
     if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
         return VFS_ERR_INVAL;
 
-    s_controllers[id].type     = type;
+    s_controllers[id].type = type;
     s_controllers[id].ctlr_ops = ctlr_ops;
-    s_controllers[id].hw_ctx   = hw_ctx;
-    s_controller_used[id]      = 1;
+    s_controllers[id].hw_ctx = hw_ctx;
+    s_controller_used[id] = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 获取 device 自身绑定的总线控制器
- * @param dev device 指针
+ * @param pdev device 指针
  * @param out 输出 bus_controller 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int bus_controller_get(const struct device* dev, struct bus_controller** out)
+int bus_controller_get(const struct device* pdev, struct bus_controller** out)
 {
     device_id_t id;
 
     if (!out)
         return VFS_ERR_INVAL;
     *out = NULL;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
 
-    id = device_to_id(dev);
+    id = device_to_id(pdev);
     if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
         return VFS_ERR_NODEV;
 
@@ -84,23 +85,23 @@ int bus_controller_get(const struct device* dev, struct bus_controller** out)
 
 /**
  * @brief 获取 device 父节点绑定的总线控制器 (client 查 host)
- * @param dev client device 指针
+ * @param pdev client device 指针
  * @param out 输出 bus_controller 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int bus_controller_of(const struct device* dev, struct bus_controller** out)
+int bus_controller_of(const struct device* pdev, struct bus_controller** out)
 {
     struct device* parent;
-    device_id_t    id;
+    device_id_t id;
 
     if (!out)
         return VFS_ERR_INVAL;
     *out = NULL;
 
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
 
-    parent = device_get_parent(dev);
+    parent = device_get_parent(pdev);
     if (IS_ERR(parent))
         return PTR_ERR(parent);
 
@@ -114,16 +115,16 @@ int bus_controller_of(const struct device* dev, struct bus_controller** out)
 
 /**
  * @brief 解绑 device 的总线控制器并清零槽位
- * @param dev controller device 指针
+ * @param pdev controller device 指针
  */
-void bus_controller_unbind(struct device* dev)
+void bus_controller_unbind(struct device* pdev)
 {
     device_id_t id;
 
-    if (!dev)
+    if (!pdev)
         return;
 
-    id = device_to_id(dev);
+    id = device_to_id(pdev);
     if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
         return;
 
@@ -132,7 +133,7 @@ void bus_controller_unbind(struct device* dev)
 }
 
 /*===========================================================================================================================================================*/
-                                                              /* Async callback bridge */
+/* Async callback bridge */
 /*===========================================================================================================================================================*/
 /**
  * @brief 从异步桥接池申请空闲槽位
@@ -161,16 +162,17 @@ struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, 
 /**
  * @brief 绑定异步桥接槽位到用户回调
  * @param bridge bridge 指针
- * @param dev 关联 device 指针
+ * @param pdev 关联 device 指针
  * @param cb 用户完成回调
  * @param userdata 回调用户数据
  */
-void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* dev, bus_async_user_cb_t cb, void* userdata)
+void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev,
+                           bus_async_user_cb_t cb, void* userdata)
 {
     if (!bridge)
         return;
-    bridge->dev      = dev;
-    bridge->cb       = cb;
+    bridge->pdev = pdev;
+    bridge->cb = cb;
     bridge->userdata = userdata;
 }
 
@@ -182,10 +184,10 @@ void bus_async_bridge_release(struct bus_async_bridge* bridge)
 {
     if (!bridge)
         return;
-    bridge->dev      = NULL;
-    bridge->cb       = NULL;
+    bridge->pdev = NULL;
+    bridge->cb = NULL;
     bridge->userdata = NULL;
-    bridge->in_use   = 0;
+    bridge->in_use = 0;
 }
 
 /**
@@ -201,7 +203,7 @@ void bus_async_bridge_complete(void* userdata, const void* trans)
         return;
 
     if (bridge->cb)
-        bridge->cb(bridge->dev, trans, bridge->userdata);
+        bridge->cb(bridge->pdev, trans, bridge->userdata);
 
     /* ISR 安全: 单字节写释放槽位 */
     bridge->in_use = 0;

@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Weak empty HAL stub — board overrides. */
-#include "compiler_compat.h"
-#include "status.h"
 #include "hal_tim.h"
 
-COMPAT_WEAK int hal_tim_device_init(hal_tim_device* pdev, hal_tim_platform_unique_config* unique, hal_tim_host_config* host)
+#include "compiler_compat.h"
+#include "status.h"
+
+COMPAT_WEAK int hal_tim_device_init(hal_tim_device* pdev, hal_tim_platform_unique_config* unique,
+                                    hal_tim_host_config* host)
 {
     (void)pdev;
     (void)unique;
@@ -30,7 +32,8 @@ COMPAT_WEAK int hal_tim_close(hal_tim_device* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel, uint32_t frequency, uint32_t duty)
+COMPAT_WEAK int hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel, uint32_t frequency,
+                                   uint32_t duty)
 {
     (void)pdev;
     (void)channel;
@@ -53,7 +56,8 @@ COMPAT_WEAK int hal_tim_get_counter(const hal_tim_device* pdev, uint32_t* value)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_tim_get_capture_value(const hal_tim_device* pdev, uint32_t channel, uint32_t* value)
+COMPAT_WEAK int hal_tim_get_capture_value(const hal_tim_device* pdev, uint32_t channel,
+                                          uint32_t* value)
 {
     (void)pdev;
     (void)channel;
@@ -169,13 +173,13 @@ COMPAT_WEAK int hal_tim_disable_arr_preload(hal_tim_device* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_tim_base_start(hal_tim_device*pdev)
+COMPAT_WEAK int hal_tim_base_start(hal_tim_device* pdev)
 {
     (void)pdev;
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_tim_base_stop(hal_tim_device*pdev)
+COMPAT_WEAK int hal_tim_base_stop(hal_tim_device* pdev)
 {
     (void)pdev;
     return VFS_ERR_NOTSUPP;

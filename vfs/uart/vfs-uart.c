@@ -14,16 +14,16 @@
  *@=========================================================================================================================*/
 #define UART_VFS_IMPL
 #include "vfs-uart.h"
-#include "uart_bus.h"
+
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "dt_config_gen.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
-
+#include "uart_bus.h"
 #include <string.h>
 
 /*===========================================================================================================================================================*/
@@ -31,23 +31,24 @@
 /*===========================================================================================================================================================*/
 #define UART_VFS_PRIV_COUNT 6
 
-struct vfs_uart_priv {
-    struct hal_uart_config  cfg;      /**< host 配置 (DTSI 直投) */
-    int                     pool_idx; /**< 池索引 */
+struct vfs_uart_priv
+{
+    struct hal_uart_config cfg; /**< host 配置 (DTSI 直投) */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct vfs_uart_priv s_uart_priv_pool[UART_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t              s_uart_priv_used[UART_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t          s_uart_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const    k_host_tag = "uart_host_vfs";
+static uint8_t s_uart_priv_used[UART_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_uart_priv_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_host_tag = "uart_host_vfs";
 
 /**
  * @brief UART Host VFS 私有数据池启动初始化
  */
-pre_execution(150)
-static void vfs_uart_priv_pool_init(void)
+pre_execution(150) static void vfs_uart_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT));
 }
 
 /**
@@ -58,7 +59,8 @@ static void vfs_uart_priv_pool_init(void)
  */
 static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* cfg)
 {
-    /* 硬件直投: DTSI 提供厂商宏值, VFS 零翻译填入 hal_uart_config。 device_get_prop_int 取 int*, 指针/uint32 字段用 int temp + (uintptr_t) cast。 */
+    /* 硬件直投: DTSI 提供厂商宏值, VFS 零翻译填入 hal_uart_config。 device_get_prop_int 取 int*,
+     * 指针/uint32 字段用 int temp + (uintptr_t) cast。 */
     int uart_base = 0, uart_clk = 0, uart_baud = 0;
     int data_width = 0, parity = 0, stop_bits = 0;
     int direction = 0, hw_control = 0, oversampling = 0;
@@ -67,35 +69,35 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
     int rx_port = 0, rx_pin = 0, rx_clk = 0, rx_af = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "uart-base",     &uart_base)     != VFS_OK ||
-        device_get_prop_int(pdev, "uart-clk",      &uart_clk)      != VFS_OK ||
-        device_get_prop_int(pdev, "uart-baud",     &uart_baud)     != VFS_OK ||
-        device_get_prop_int(pdev, "data-width",    &data_width)    != VFS_OK ||
-        device_get_prop_int(pdev, "parity",        &parity)        != VFS_OK ||
-        device_get_prop_int(pdev, "stop-bits",     &stop_bits)     != VFS_OK ||
-        device_get_prop_int(pdev, "tx-port",       &tx_port)       != VFS_OK ||
-        device_get_prop_int(pdev, "tx-pin",        &tx_pin)        != VFS_OK ||
-        device_get_prop_int(pdev, "tx-clk",        &tx_clk)        != VFS_OK ||
-        device_get_prop_int(pdev, "tx-af",         &tx_af)         != VFS_OK ||
-        device_get_prop_int(pdev, "rx-port",       &rx_port)       != VFS_OK ||
-        device_get_prop_int(pdev, "rx-pin",        &rx_pin)        != VFS_OK ||
-        device_get_prop_int(pdev, "rx-clk",        &rx_clk)        != VFS_OK ||
-        device_get_prop_int(pdev, "rx-af",         &rx_af)         != VFS_OK)
+    if (device_get_prop_int(pdev, "uart-base", &uart_base) != VFS_OK ||
+        device_get_prop_int(pdev, "uart-clk", &uart_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "uart-baud", &uart_baud) != VFS_OK ||
+        device_get_prop_int(pdev, "data-width", &data_width) != VFS_OK ||
+        device_get_prop_int(pdev, "parity", &parity) != VFS_OK ||
+        device_get_prop_int(pdev, "stop-bits", &stop_bits) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-af", &rx_af) != VFS_OK)
     {
         return VFS_ERR_INVAL;
     }
     /** 扩展字段: DTS 可选, 未定义时取 0 (LL 库默认行为) */
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "direction",    &direction));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "hw-control",   &hw_control));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "direction", &direction));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "hw-control", &hw_control));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "oversampling", &oversampling));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-output-type", &tx_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-speed",       &tx_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-mode",        &tx_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-pull",        &tx_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-speed", &tx_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-mode", &tx_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-pull", &tx_pull));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-output-type", &rx_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-speed",       &rx_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode",        &rx_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull",        &rx_pull));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-speed", &rx_speed));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode", &rx_mode));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull", &rx_pull));
 
     {
         int irqn = -1, irq_priority = 0, it_enable = 0;
@@ -103,38 +105,38 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
         COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
-        cfg->irqn         = (int32_t)irqn;
+        cfg->irqn = (int32_t)irqn;
         cfg->irq_priority = (uint32_t)irq_priority;
-        cfg->it_enable    = (uint32_t)it_enable;
+        cfg->it_enable = (uint32_t)it_enable;
     }
-    cfg->uart            = (uintptr_t)uart_base;
+    cfg->uart = (uintptr_t)uart_base;
     cfg->uart_clk_periph = (uint32_t)uart_clk;
-    cfg->baud_rate       = (uint32_t)uart_baud;
-    cfg->data_width      = (uint32_t)data_width;
-    cfg->parity          = (uint32_t)parity;
-    cfg->stop_bits       = (uint32_t)stop_bits;
-    cfg->direction       = (uint32_t)direction;
-    cfg->hw_control      = (uint32_t)hw_control;
-    cfg->oversampling    = (uint32_t)oversampling;
+    cfg->baud_rate = (uint32_t)uart_baud;
+    cfg->data_width = (uint32_t)data_width;
+    cfg->parity = (uint32_t)parity;
+    cfg->stop_bits = (uint32_t)stop_bits;
+    cfg->direction = (uint32_t)direction;
+    cfg->hw_control = (uint32_t)hw_control;
+    cfg->oversampling = (uint32_t)oversampling;
     cfg->tx = (struct hal_uart_pin_cfg){
-        .port        = (uintptr_t)tx_port,
-        .pin         = (uint16_t)tx_pin,
-        .clk_bus     = (uint32_t)tx_clk,
-        .af          = (uint32_t)tx_af,
+        .port = (uintptr_t)tx_port,
+        .pin = (uint16_t)tx_pin,
+        .clk_bus = (uint32_t)tx_clk,
+        .af = (uint32_t)tx_af,
         .output_type = (uint32_t)tx_output_type,
-        .speed       = (uint32_t)tx_speed,
-        .mode        = (uint32_t)tx_mode,
-        .pull        = (uint32_t)tx_pull,
+        .speed = (uint32_t)tx_speed,
+        .mode = (uint32_t)tx_mode,
+        .pull = (uint32_t)tx_pull,
     };
     cfg->rx = (struct hal_uart_pin_cfg){
-        .port        = (uintptr_t)rx_port,
-        .pin         = (uint16_t)rx_pin,
-        .clk_bus     = (uint32_t)rx_clk,
-        .af          = (uint32_t)rx_af,
+        .port = (uintptr_t)rx_port,
+        .pin = (uint16_t)rx_pin,
+        .clk_bus = (uint32_t)rx_clk,
+        .af = (uint32_t)rx_af,
         .output_type = (uint32_t)rx_output_type,
-        .speed       = (uint32_t)rx_speed,
-        .mode        = (uint32_t)rx_mode,
-        .pull        = (uint32_t)rx_pull,
+        .speed = (uint32_t)rx_speed,
+        .mode = (uint32_t)rx_mode,
+        .pull = (uint32_t)rx_pull,
     };
 
     /** DMA 短元组 (≥6): <handle stream channel priority memory_size enable>
@@ -144,23 +146,23 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
         int n = device_get_prop_int_array(pdev, "dma-cfg", dma_arr, 15);
         if (n >= 6)
         {
-            cfg->dma_cfg.dma_handle      = (uintptr_t)dma_arr[0];
-            cfg->dma_cfg.dma_stream      = (uint32_t)dma_arr[1];
-            cfg->dma_cfg.dma_channel     = (uint32_t)dma_arr[2];
-            cfg->dma_cfg.dma_priority    = (uint32_t)dma_arr[3];
+            cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
+            cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
+            cfg->dma_cfg.dma_channel = (uint32_t)dma_arr[2];
+            cfg->dma_cfg.dma_priority = (uint32_t)dma_arr[3];
             cfg->dma_cfg.dma_memory_size = (uint32_t)dma_arr[4];
-            cfg->dma_cfg.dma_enable      = (uint32_t)dma_arr[5];
+            cfg->dma_cfg.dma_enable = (uint32_t)dma_arr[5];
             if (n >= 15)
             {
-                cfg->dma_cfg.dma_direction        = (uint32_t)dma_arr[6];
-                cfg->dma_cfg.dma_mode             = (uint32_t)dma_arr[7];
-                cfg->dma_cfg.dma_periph_inc       = (uint32_t)dma_arr[8];
-                cfg->dma_cfg.dma_mem_inc          = (uint32_t)dma_arr[9];
+                cfg->dma_cfg.dma_direction = (uint32_t)dma_arr[6];
+                cfg->dma_cfg.dma_mode = (uint32_t)dma_arr[7];
+                cfg->dma_cfg.dma_periph_inc = (uint32_t)dma_arr[8];
+                cfg->dma_cfg.dma_mem_inc = (uint32_t)dma_arr[9];
                 cfg->dma_cfg.dma_periph_data_size = (uint32_t)dma_arr[10];
-                cfg->dma_cfg.dma_fifo_mode        = (uint32_t)dma_arr[11];
-                cfg->dma_cfg.dma_fifo_threshold   = (uint32_t)dma_arr[12];
-                cfg->dma_cfg.dma_mem_burst        = (uint32_t)dma_arr[13];
-                cfg->dma_cfg.dma_periph_burst     = (uint32_t)dma_arr[14];
+                cfg->dma_cfg.dma_fifo_mode = (uint32_t)dma_arr[11];
+                cfg->dma_cfg.dma_fifo_threshold = (uint32_t)dma_arr[12];
+                cfg->dma_cfg.dma_mem_burst = (uint32_t)dma_arr[13];
+                cfg->dma_cfg.dma_periph_burst = (uint32_t)dma_arr[14];
             }
         }
     }
@@ -176,8 +178,8 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
 static int vfs_uart_priv_probe(struct device* pdev)
 {
     struct vfs_uart_priv* priv;
-    int                   pool_idx;
-    int                   ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -207,8 +209,8 @@ static int vfs_uart_priv_probe(struct device* pdev)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu",
-             device_get_name(pdev), (unsigned long)priv->cfg.baud_rate);
+    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev),
+             (unsigned long)priv->cfg.baud_rate);
     return VFS_OK;
 
 err_bus:
@@ -227,8 +229,8 @@ static int vfs_uart_priv_remove(struct device* pdev)
 {
     struct vfs_uart_priv* priv;
     struct dev_lifecycle* lc;
-    int                   pool_idx;
-    int                   ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -272,21 +274,21 @@ static int vfs_uart_priv_remove(struct device* pdev)
 /*===========================================================================================================================================================*/
 #define UART_VFS_COUNT 2
 
-struct uart_vfs_client {
-    struct file_operations ops;       /**< VFS 操作表 */
-    int                    pool_idx;  /**< 池索引 */
+struct uart_vfs_client
+{
+    struct file_operations ops; /**< VFS 操作表 */
+    int pool_idx; /**< 池索引 */
 };
 
 static struct uart_vfs_client s_uart_vfs_pool[UART_VFS_COUNT];
-static uint8_t                s_uart_vfs_used[UART_VFS_COUNT];
-static osal_pool_t            s_uart_vfs_pool_ctrl;
-static const char* const      k_tag = "uart_vfs";
+static uint8_t s_uart_vfs_used[UART_VFS_COUNT];
+static osal_pool_t s_uart_vfs_pool_ctrl;
+static const char* const k_tag = "uart_vfs";
 
 /**
  * @brief UART Client VFS 私有数据池启动初始化
  */
-pre_execution(160)
-static void uart_vfs_pool_init(void)
+pre_execution(160) static void uart_vfs_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT));
 }
@@ -299,14 +301,14 @@ static void uart_vfs_pool_init(void)
  */
 static int uart_vfs_open(struct device* pdev, void* arg)
 {
-    struct dev_lifecycle*   lc;
-    int                     first;
+    struct dev_lifecycle* lc;
+    int first;
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -335,7 +337,7 @@ static int uart_vfs_open(struct device* pdev, void* arg)
 static int uart_vfs_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int                   last;
+    int last;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -366,7 +368,7 @@ static int uart_vfs_close(struct device* pdev)
 static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int                   ret;
+    int ret;
 
     if (!pdev || !pdev->ops || !buf || len == 0)
         return VFS_ERR_INVAL;
@@ -396,7 +398,7 @@ static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint
 static int uart_vfs_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int                   ret;
+    int ret;
 
     if (!pdev || !pdev->ops || !buf || len == 0)
         return VFS_ERR_INVAL;
@@ -422,7 +424,7 @@ typedef int (*uart_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, u
 
 struct uart_ioctl_map
 {
-    uart_ioctl_fn_t handler;  /**< ioctl 处理函数 */
+    uart_ioctl_fn_t handler; /**< ioctl 处理函数 */
 };
 
 /**
@@ -444,7 +446,7 @@ static int uart_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uin
 }
 
 static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
-    [UART_CMD_TRANSFER - UART_CMD_BASE - 1] = { uart_cmd_transfer },
+    [UART_CMD_TRANSFER - UART_CMD_BASE - 1] = {uart_cmd_transfer},
 };
 
 /**
@@ -456,11 +458,12 @@ static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
  * @param timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                          uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int32_t               offset;
-    int                   ret;
+    int32_t offset;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -484,11 +487,11 @@ static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
 }
 
 static const struct file_operations uart_vfs_fops = {
-    .open   = uart_vfs_open,
-    .close  = uart_vfs_close,
-    .write  = uart_vfs_write,
-    .read   = uart_vfs_read,
-    .ioctl  = uart_vfs_ioctl,
+    .open = uart_vfs_open,
+    .close = uart_vfs_close,
+    .write = uart_vfs_write,
+    .read = uart_vfs_read,
+    .ioctl = uart_vfs_ioctl,
 };
 
 /**
@@ -499,8 +502,8 @@ static const struct file_operations uart_vfs_fops = {
 int uart_vfs_probe(struct device* pdev)
 {
     struct uart_vfs_client* priv;
-    int                     pool_idx;
-    int                     ret;
+    int pool_idx;
+    int ret;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -519,7 +522,7 @@ int uart_vfs_probe(struct device* pdev)
         goto err_pool;
 
     priv->ops = uart_vfs_fops;
-    pdev->ops  = &priv->ops;
+    pdev->ops = &priv->ops;
 
     if (device_set_priv(pdev, priv) != VFS_OK)
     {
@@ -532,8 +535,8 @@ int uart_vfs_probe(struct device* pdev)
     return VFS_OK;
 
 err_pool:
-    pdev->ops = NULL;                   /* 切断 fops, 防 UAF */
-    dev_lc_reset(device_lc(pdev));       /* 重置生命周期 */
+    pdev->ops = NULL; /* 切断 fops, 防 UAF */
+    dev_lc_reset(device_lc(pdev)); /* 重置生命周期 */
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_vfs_pool_ctrl, pool_idx));
     return ret;
 }
@@ -546,14 +549,14 @@ err_pool:
 int uart_vfs_remove(struct device* pdev)
 {
     struct uart_vfs_client* priv;
-    struct dev_lifecycle*   lc;
-    int                     pool_idx;
+    struct dev_lifecycle* lc;
+    int pool_idx;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct uart_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 

@@ -8,7 +8,7 @@
 #define __GPIO_PARAMETER_H__
 
 /* SoC 默认 GPIO 模板用的占位常量 (板级 &gpios_pin 可覆盖) */
-#define DTS_GPIO_DEFAULT_INTR   0
-#define DTS_GPIO_DEFAULT_LEVEL  0
+#define DTS_GPIO_DEFAULT_INTR 0
+#define DTS_GPIO_DEFAULT_LEVEL 0
 
 #endif /* __GPIO_PARAMETER_H__ */

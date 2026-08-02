@@ -4,40 +4,41 @@
  *
  * 将 OSAL API 映射到 xSemaphore/xQueue/xTaskCreate 等 FreeRTOS 原语
  * 静态互斥锁/信号量池 + 槽位池 (osal_pool), ISR 检测按 ARM/RISC-V 架构分支
- * ESP32 平台额外嵌入 portMUX 适配 taskENTER_CRITICAL_ISR 路径而且esp32不要直接移植freertos他自带了freertos
+ * ESP32 平台额外嵌入 portMUX 适配 taskENTER_CRITICAL_ISR
+ * 路径而且esp32不要直接移植freertos他自带了freertos
  */
-#ifdef  CONFIG_OSAL_FREERTOS
+#ifdef CONFIG_OSAL_FREERTOS
 
 #define ALLOW_HEAP_ALLOC
 #define ALLOW_STDIO_OUTPUT
 
-#include "config.h"
-#include "osal.h"
 #include "board_config.h"
 #include "compiler_compat.h"
+#include "config.h"
+#include "osal.h"
 #include "status.h"
 #ifdef ESP_PLATFORM
+#include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "esp_task_wdt.h"
 #else
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
 #endif
-#include <stdlib.h>
-#include <time.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <time.h>
+
 #include "compiler_compat_poison.h"
 
 /* ── 队列 / 信号量内部存储 ── */
 struct osal_mutex
 {
-    SemaphoreHandle_t   handle;  /**< FreeRTOS 句柄 */
-    StaticSemaphore_t   sem_buf; /**< 静态存储 */
-    osal_mutex_type_t   type;    /**< 互斥锁类型 */
+    SemaphoreHandle_t handle; /**< FreeRTOS 句柄 */
+    StaticSemaphore_t sem_buf; /**< 静态存储 */
+    osal_mutex_type_t type; /**< 互斥锁类型 */
 };
 
 /**
@@ -48,7 +49,7 @@ struct osal_mutex
  */
 static int osal_mutex_init(struct osal_mutex* mutex, osal_mutex_type_t type)
 {
-    if (!mutex) 
+    if (!mutex)
         return OSAL_ERR_INVAL;
 
     mutex->type = type;
@@ -62,7 +63,8 @@ static int osal_mutex_init(struct osal_mutex* mutex, osal_mutex_type_t type)
     return mutex->handle ? OSAL_OK : OSAL_ERR_NOMEM;
 }
 
-_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE,"OSAL_MUTEX_STORAGE_SIZE too small");
+_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE,
+               "OSAL_MUTEX_STORAGE_SIZE too small");
 
 /**
  * @brief 判定是否在 FreeRTOS ISR 上下文
@@ -87,17 +89,18 @@ int osal_in_isr(void)
 /* ── Spinlock ── */
 /**
  * @details 默认 CONFIG_OSAL_SPINLOCK_IRQ_DISABLE: 使用临界区 (ESP-IDF portMUX
- * @details 或 FreeRTOS taskENTER_CRITICAL). CONFIG_OSAL_SPINLOCK_ATOMIC:非 ESP 平台使用原子 test-and-set 忙等自旋锁 (仅适合 SMP).
+ * @details 或 FreeRTOS taskENTER_CRITICAL). CONFIG_OSAL_SPINLOCK_ATOMIC:非 ESP 平台使用原子
+ * test-and-set 忙等自旋锁 (仅适合 SMP).
  */
 struct osal_spinlock
 {
 #ifdef CONFIG_OSAL_SPINLOCK_IRQ_DISABLE
     /**< ESP-IDF portMUX 已包含嵌套计数; 非 ESP FreeRTOS 用全局临界区 */
 #ifdef ESP_PLATFORM
-    portMUX_TYPE mux;       /**< ESP-IDF portMUX 自旋锁 */
+    portMUX_TYPE mux; /**< ESP-IDF portMUX 自旋锁 */
 #endif
 #else
-    volatile int locked;    /**< 原子锁标志 (0=空闲, 1=持有) */
+    volatile int locked; /**< 原子锁标志 (0=空闲, 1=持有) */
 #endif
 };
 
@@ -108,7 +111,8 @@ struct osal_spinlock
  */
 int osal_spinlock_init(struct osal_spinlock* lock)
 {
-    if (!lock) return OSAL_ERR_INVAL;
+    if (!lock)
+        return OSAL_ERR_INVAL;
 #ifdef CONFIG_OSAL_SPINLOCK_IRQ_DISABLE
 #ifdef ESP_PLATFORM
     portMUX_INITIALIZE(&lock->mux);
@@ -126,7 +130,8 @@ int osal_spinlock_init(struct osal_spinlock* lock)
  */
 int osal_spinlock_lock(struct osal_spinlock* lock)
 {
-    if (!lock) return OSAL_ERR_INVAL;
+    if (!lock)
+        return OSAL_ERR_INVAL;
 #ifdef CONFIG_OSAL_SPINLOCK_IRQ_DISABLE
 #ifdef ESP_PLATFORM
     if (osal_in_isr())
@@ -144,7 +149,8 @@ int osal_spinlock_lock(struct osal_spinlock* lock)
     else
         taskENTER_CRITICAL(&lock->mux);
 #else
-    while (__atomic_test_and_set(&lock->locked, __ATOMIC_ACQUIRE));
+    while (__atomic_test_and_set(&lock->locked, __ATOMIC_ACQUIRE))
+        ;
     __atomic_store_n(&lock->locked, 1, __ATOMIC_RELEASE);
 #endif
 #endif
@@ -158,7 +164,8 @@ int osal_spinlock_lock(struct osal_spinlock* lock)
  */
 int osal_spinlock_unlock(struct osal_spinlock* lock)
 {
-    if (!lock) return OSAL_ERR_INVAL;
+    if (!lock)
+        return OSAL_ERR_INVAL;
 #ifdef CONFIG_OSAL_SPINLOCK_IRQ_DISABLE
 #ifdef ESP_PLATFORM
     if (osal_in_isr())
@@ -195,13 +202,14 @@ COMPAT_UNUSED COMPAT_STATIC_INLINE bool osal_spinlock_is_locked(struct osal_spin
 
 /* ── 槽位池 (每池独立临界区锁) ── */
 
-
 #ifdef ESP_PLATFORM
-_Static_assert(sizeof(portMUX_TYPE) <= OSAL_POOL_MUX_STORAGE_SIZE,"OSAL_POOL_MUX_STORAGE_SIZE too small for portMUX_TYPE");
+_Static_assert(sizeof(portMUX_TYPE) <= OSAL_POOL_MUX_STORAGE_SIZE,
+               "OSAL_POOL_MUX_STORAGE_SIZE too small for portMUX_TYPE");
 /**
  * @param pool 池指针
  * @return 临界区锁指针
- * @brief ESP平台使用portMUX_TYPE作为临界区锁 把字节缓冲区指针强制转换成 portMUX_TYPE 结构体指针, 然后传给 portENTER_CRITICAL_ISR 或 taskENTER_CRITICAL
+ * @brief ESP平台使用portMUX_TYPE作为临界区锁 把字节缓冲区指针强制转换成 portMUX_TYPE 结构体指针,
+ * 然后传给 portENTER_CRITICAL_ISR 或 taskENTER_CRITICAL
  */
 COMPAT_STATIC_INLINE portMUX_TYPE* osal_pool_mux(osal_pool_t* pool)
 {
@@ -311,8 +319,7 @@ int osal_pool_claim(osal_pool_t* pool)
  */
 int osal_pool_release(osal_pool_t* pool, int slot_index)
 {
-    if (!pool || !pool->used_slots || slot_index < 0 ||
-        (size_t)slot_index >= pool->slot_count)
+    if (!pool || !pool->used_slots || slot_index < 0 || (size_t)slot_index >= pool->slot_count)
         return OSAL_ERR_INVAL;
 
     osal_pool_lock(pool);
@@ -329,8 +336,7 @@ int osal_pool_release(osal_pool_t* pool, int slot_index)
  */
 bool osal_pool_is_used(osal_pool_t* pool, int slot_index)
 {
-    if (!pool || !pool->used_slots || slot_index < 0 ||
-        (size_t)slot_index >= pool->slot_count)
+    if (!pool || !pool->used_slots || slot_index < 0 || (size_t)slot_index >= pool->slot_count)
         return false;
     return pool->used_slots[slot_index] != 0U;
 }
@@ -342,15 +348,14 @@ bool osal_pool_is_used(osal_pool_t* pool, int slot_index)
  * @param s_mutex_pool_ctrl 互斥锁池控制结构体指针
  */
 static struct osal_mutex s_mutex_pool[OSAL_MUTEX_POOL_SIZE] COMPAT_ALIGNED(4);
-static uint8_t           s_mutex_used[OSAL_MUTEX_POOL_SIZE] COMPAT_ALIGNED(4);
-static osal_pool_t       s_mutex_pool_ctrl COMPAT_ALIGNED(4);
+static uint8_t s_mutex_used[OSAL_MUTEX_POOL_SIZE] COMPAT_ALIGNED(4);
+static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
 
 /**
  * @brief 初始化静态互斥锁池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化互斥锁池控制结构体
  */
-pre_execution(150)
-static void osal_mutex_pool_boot_init(void)
+pre_execution(150) static void osal_mutex_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE));
 }
@@ -359,10 +364,7 @@ static void osal_mutex_pool_boot_init(void)
  * @brief xTaskGetTickCount 转 ms
  * @return 毫秒
  */
-uint32_t osal_time_ms(void)
-{
-    return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-}
+uint32_t osal_time_ms(void) { return (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS); }
 
 /**
  * @brief vTaskDelay
@@ -370,7 +372,8 @@ uint32_t osal_time_ms(void)
  */
 void osal_delay_ms(uint32_t ms)
 {
-    if (osal_in_isr()) return;  /* 中断中不能阻塞 */
+    if (osal_in_isr())
+        return; /* 中断中不能阻塞 */
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
@@ -401,10 +404,7 @@ void osal_delay_us(uint32_t us)
  * @param ms 毫秒
  * @return tick
  */
-osal_tick_t osal_ticks_from_ms(uint32_t ms)
-{
-    return pdMS_TO_TICKS(ms);
-}
+osal_tick_t osal_ticks_from_ms(uint32_t ms) { return pdMS_TO_TICKS(ms); }
 
 /**
  * @brief 超时转 tick
@@ -425,10 +425,7 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
  * @param size 大小
  * @return 指针
  */
-void* osal_calloc(size_t count, size_t size)
-{
-    return calloc(count, size);
-}
+void* osal_calloc(size_t count, size_t size) { return calloc(count, size); }
 
 /**
  * @brief free
@@ -449,14 +446,17 @@ int osal_free(void* ptr)
  */
 int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
 {
-    if (!out) return OSAL_ERR_INVAL;
-    if (osal_in_isr()) 
+    if (!out)
+        return OSAL_ERR_INVAL;
+    if (osal_in_isr())
         return OSAL_ERR_ISR;
-    if (type != OSAL_MUTEX_RECURSIVE && type != OSAL_MUTEX_PLAIN) return OSAL_ERR_INVAL;
+    if (type != OSAL_MUTEX_RECURSIVE && type != OSAL_MUTEX_PLAIN)
+        return OSAL_ERR_INVAL;
     *out = NULL;
 
     int index = osal_pool_claim(&s_mutex_pool_ctrl);
-    if (index < 0) return OSAL_ERR_NOMEM;
+    if (index < 0)
+        return OSAL_ERR_NOMEM;
 
     struct osal_mutex* m = &s_mutex_pool[index];
     if (osal_mutex_init(m, type) != OSAL_OK)
@@ -473,18 +473,19 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
  * @param out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage,size_t storage_size, osal_mutex_type_t type)
+int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size,
+                                   osal_mutex_type_t type)
 {
-    if (!out || !storage || storage_size < sizeof(struct osal_mutex)) 
+    if (!out || !storage || storage_size < sizeof(struct osal_mutex))
         return OSAL_ERR_INVAL;
-    if (osal_in_isr()) 
+    if (osal_in_isr())
         return OSAL_ERR_ISR;
-    if (type != OSAL_MUTEX_RECURSIVE && type != OSAL_MUTEX_PLAIN) 
+    if (type != OSAL_MUTEX_RECURSIVE && type != OSAL_MUTEX_PLAIN)
         return OSAL_ERR_INVAL;
     *out = NULL;
 
     struct osal_mutex* mutex = (struct osal_mutex*)storage;
-    if (osal_mutex_init(mutex, type) != OSAL_OK) 
+    if (osal_mutex_init(mutex, type) != OSAL_OK)
         return OSAL_ERR_NOMEM;
 
     *out = (struct osal_mutex*)mutex;
@@ -559,7 +560,7 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
 {
     if (!mutex || osal_in_isr())
         return;
- 
+
     if (mutex->handle != NULL)
     {
         /**<先销毁底层信号量 */
@@ -570,12 +571,12 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
     uintptr_t pool_start = (uintptr_t)s_mutex_pool;
     uintptr_t pool_end = pool_start + sizeof(s_mutex_pool);
     uintptr_t ptr = (uintptr_t)mutex;
- 
+
     /**<如果属于全局mutex池, 则释放池化资源 */
     if (ptr >= pool_start && ptr < pool_end)
     {
-         size_t idx = (uintptr_t)mutex - pool_start;
-         COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, (int)idx));
+        size_t idx = (uintptr_t)mutex - pool_start;
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, (int)idx));
     }
 }
 
@@ -589,7 +590,7 @@ int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms)
 {
     if (!mutex || !mutex->handle || osal_in_isr())
         return OSAL_ERR_INVAL;
-    if (osal_in_isr()) 
+    if (osal_in_isr())
         return OSAL_ERR_ISR;
 
     osal_tick_t ticks = osal_timeout_to_ticks(timeout_ms);
@@ -606,8 +607,10 @@ int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms)
  */
 int osal_mutex_unlock(struct osal_mutex* mutex)
 {
-    if (!mutex || !mutex->handle) return OSAL_ERR_INVAL;
-    if (osal_in_isr()) return OSAL_ERR_ISR;  /* 中断中不允许释放 */
+    if (!mutex || !mutex->handle)
+        return OSAL_ERR_INVAL;
+    if (osal_in_isr())
+        return OSAL_ERR_ISR; /* 中断中不允许释放 */
     if (mutex->type == OSAL_MUTEX_RECURSIVE)
         return xSemaphoreGiveRecursive(mutex->handle) == pdTRUE ? OSAL_OK : OSAL_ERR_IO;
     return xSemaphoreGive(mutex->handle) == pdTRUE ? OSAL_OK : OSAL_ERR_IO;
@@ -616,12 +619,12 @@ int osal_mutex_unlock(struct osal_mutex* mutex)
 /* ── 二值信号量 ── */
 struct osal_sem
 {
-    SemaphoreHandle_t handle;      /**< FreeRTOS 句柄 */
-    StaticSemaphore_t sem_buf;     /**< 静态存储 */
-    bool              from_pool;   /**< 是否来自静态池 */
+    SemaphoreHandle_t handle; /**< FreeRTOS 句柄 */
+    StaticSemaphore_t sem_buf; /**< 静态存储 */
+    bool from_pool; /**< 是否来自静态池 */
 };
 
-_Static_assert(sizeof(struct osal_sem) <= OSAL_SEM_STORAGE_SIZE,"OSAL_SEM_STORAGE_SIZE too small");
+_Static_assert(sizeof(struct osal_sem) <= OSAL_SEM_STORAGE_SIZE, "OSAL_SEM_STORAGE_SIZE too small");
 
 /**
  * @brief 静态互斥锁池
@@ -636,21 +639,20 @@ static struct osal_sem s_sem_pool[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
  * @param s_mutex_used 互斥锁使用情况指针
  * @param s_mutex_pool_ctrl 互斥锁池控制结构体指针
  */
-static uint8_t       s_sem_used[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
+static uint8_t s_sem_used[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
 /**
  * @brief 静态互斥锁池
  * @param s_mutex_pool 互斥锁池结构体指针
  * @param s_mutex_used 互斥锁使用情况指针
  * @param s_mutex_pool_ctrl 互斥锁池控制结构体指针
  */
-static osal_pool_t   s_sem_pool_ctrl COMPAT_ALIGNED(4);
+static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
 
 /**
  * @brief 初始化二值信号量池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化二值信号量池
  */
-pre_execution(151)
-static void osal_sem_pool_boot_init(void)
+pre_execution(151) static void osal_sem_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE));
 }
@@ -815,18 +817,12 @@ void osal_yield_from_isr(bool yield_required)
 /**
  * @brief vTaskSuspendAll
  */
-void osal_sched_freeze(void)
-{
-    vTaskSuspendAll();
-}
+void osal_sched_freeze(void) { vTaskSuspendAll(); }
 
 /**
  * @brief portDISABLE_INTERRUPTS
  */
-void osal_int_freeze(void)
-{
-    portDISABLE_INTERRUPTS();
-}
+void osal_int_freeze(void) { portDISABLE_INTERRUPTS(); }
 
 /**
  * @brief FreeRTOS 空闲任务静态内存分配回调
@@ -835,14 +831,16 @@ void osal_int_freeze(void)
  * @param pulIdleTaskStackSize 输出空闲任务栈深度 (StackType_t 个数)
  */
 #ifndef ESP_PLATFORM
-static StackType_t   s_idle_stack[configMINIMAL_STACK_SIZE];/**<空闲任务栈*/
-static StaticTask_t  s_idle_tcb;/**<空闲任务TCB*/
+static StackType_t s_idle_stack[configMINIMAL_STACK_SIZE]; /**<空闲任务栈*/
+static StaticTask_t s_idle_tcb; /**<空闲任务TCB*/
 
-void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer,StackType_t** ppxIdleTaskStackBuffer,uint32_t* pulIdleTaskStackSize)
+void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer,
+                                   StackType_t** ppxIdleTaskStackBuffer,
+                                   uint32_t* pulIdleTaskStackSize)
 {
-    *ppxIdleTaskTCBBuffer   = &s_idle_tcb;
+    *ppxIdleTaskTCBBuffer = &s_idle_tcb;
     *ppxIdleTaskStackBuffer = s_idle_stack;
-    *pulIdleTaskStackSize   = configMINIMAL_STACK_SIZE;
+    *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
 }
 
 /**
@@ -853,7 +851,9 @@ void vApplicationStackOverflowHook(TaskHandle_t x_task, char* pcTaskName)
     (void)x_task;
     (void)pcTaskName;
     taskDISABLE_INTERRUPTS();
-    for (;;) {}
+    for (;;)
+    {
+    }
 }
 #endif /* !ESP_PLATFORM */
 
@@ -864,7 +864,8 @@ void vApplicationStackOverflowHook(TaskHandle_t x_task, char* pcTaskName)
  */
 COMPAT_STATIC_INLINE uint32_t osal_stack_words(uint32_t stack_bytes)
 {
-    return (stack_bytes + sizeof(StackType_t) - 1) / sizeof(StackType_t);/**< 向上取整, 确保栈大小足够 */
+    return (stack_bytes + sizeof(StackType_t) - 1) /
+           sizeof(StackType_t); /**< 向上取整, 确保栈大小足够 */
 }
 
 /**
@@ -873,9 +874,7 @@ COMPAT_STATIC_INLINE uint32_t osal_stack_words(uint32_t stack_bytes)
 COMPAT_STATIC_INLINE UBaseType_t osal_clamp_task_priority(uint32_t priority)
 {
     if (priority >= (uint32_t)configMAX_PRIORITIES)
-    {
         return (UBaseType_t)(configMAX_PRIORITIES - 1U);
-    }
     return (UBaseType_t)priority;
 }
 
@@ -889,12 +888,16 @@ COMPAT_STATIC_INLINE UBaseType_t osal_clamp_task_priority(uint32_t priority)
  * @param core_id 核
  * @return OSAL_OK 或 NOMEM
  */
-int osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, osal_task_entry_t entry,void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
+                     osal_task_entry_t entry, void* param, int core_id)
 {
 #if CONFIG_CPU_CORES > 1
     if (core_id > 0)
     {
-        my_printf_output("[osal] WARN: task '%s' requested Core %d, ""but AMP Core 1 has no OS scheduler. ""Falling back to Core 0.\n", name, core_id);
+        my_printf_output("[osal] WARN: task '%s' requested Core %d, "
+                         "but AMP Core 1 has no OS scheduler. "
+                         "Falling back to Core 0.\n",
+                         name, core_id);
         core_id = 0;
     }
 #else
@@ -902,7 +905,8 @@ int osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, os
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param,osal_clamp_task_priority(priority), &handle);
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size), param,
+                                 osal_clamp_task_priority(priority), &handle);
     return (ret == pdPASS) ? OSAL_OK : OSAL_ERR_NOMEM;
 }
 
@@ -917,13 +921,19 @@ int osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, os
  * @param out_handle 输出
  * @return 0 或 NOMEM
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size,uint32_t priority, osal_task_entry_t entry,void* param, int core_id,osal_task_handle_t* out_handle)
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
+                            osal_task_entry_t entry, void* param, int core_id,
+                            osal_task_handle_t* out_handle)
 {
-    if (!out_handle) return OSAL_ERR_INVAL;
+    if (!out_handle)
+        return OSAL_ERR_INVAL;
 #if CONFIG_CPU_CORES > 1
     if (core_id > 0)
     {
-        my_printf_output("[osal] WARN: task '%s' requested Core %d, ""but AMP Core 1 has no OS scheduler. ""Falling back to Core 0.\n", name, core_id);
+        my_printf_output("[osal] WARN: task '%s' requested Core %d, "
+                         "but AMP Core 1 has no OS scheduler. "
+                         "Falling back to Core 0.\n",
+                         name, core_id);
         core_id = 0;
     }
 #else
@@ -931,9 +941,9 @@ int osal_task_create_handle(const char* name, uint32_t stack_size,uint32_t prior
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size),param,
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size), param,
                                  osal_clamp_task_priority(priority), &handle);
-    if (ret != pdPASS) 
+    if (ret != pdPASS)
         return OSAL_ERR_NOMEM;
     *out_handle = (osal_task_handle_t)handle;
     return 0;
@@ -956,10 +966,7 @@ void osal_task_self_delete(void)
  * @brief vTaskDelete
  * @param task 句柄
  */
-void osal_task_delete(osal_task_handle_t task)
-{
-    vTaskDelete((TaskHandle_t)task);
-}
+void osal_task_delete(osal_task_handle_t task) { vTaskDelete((TaskHandle_t)task); }
 
 /**
  * @brief eTaskGetState != eDeleted
@@ -968,7 +975,8 @@ void osal_task_delete(osal_task_handle_t task)
  */
 bool osal_task_is_running(osal_task_handle_t task)
 {
-    if (!task) return false;
+    if (!task)
+        return false;
     return eTaskGetState((TaskHandle_t)task) != eDeleted;
 }
 
@@ -979,7 +987,8 @@ bool osal_task_is_running(osal_task_handle_t task)
  */
 const char* osal_task_get_name(osal_task_handle_t task)
 {
-    if (!task) return "?";
+    if (!task)
+        return "?";
     return pcTaskGetName((TaskHandle_t)task);
 }
 
@@ -990,7 +999,8 @@ const char* osal_task_get_name(osal_task_handle_t task)
  */
 uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
 {
-    if (!task) return 0;
+    if (!task)
+        return 0;
     UBaseType_t wm = uxTaskGetStackHighWaterMark((TaskHandle_t)task);
     return (uint32_t)wm * sizeof(StackType_t);
 }
@@ -1010,10 +1020,7 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
  * @brief vQueueDelete
  * @param queue 句柄
  */
-void osal_queue_delete(osal_queue_handle_t queue)
-{
-    vQueueDelete((QueueHandle_t)queue);
-}
+void osal_queue_delete(osal_queue_handle_t queue) { vQueueDelete((QueueHandle_t)queue); }
 
 /**
  * @brief xQueueSend 任务态
@@ -1038,8 +1045,7 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  * @param px_yield_required 输出是否需要 ISR 末尾 yield
  * @return true 成功
  */
-bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item,
-                              bool* px_yield_required)
+bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
     BaseType_t higher_prio_woken = pdFALSE;
     BaseType_t ret = xQueueSendFromISR((QueueHandle_t)queue, item, &higher_prio_woken);
@@ -1070,8 +1076,7 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
  * @param px_yield_required 输出是否需要 ISR 末尾 yield
  * @return true 成功
  */
-bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item,
-                                 bool* px_yield_required)
+bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px_yield_required)
 {
     BaseType_t higher_prio_woken = pdFALSE;
     BaseType_t ret = xQueueReceiveFromISR((QueueHandle_t)queue, item, &higher_prio_woken);
@@ -1082,10 +1087,7 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item,
 /**
  * @brief 弱符号硬件安全关断 (板级未覆盖时触发 trap)
  */
-COMPAT_WEAK void safety_hardware_shutdown(void)
-{
-    COMPAT_TRAP();
-}
+COMPAT_WEAK void safety_hardware_shutdown(void) { COMPAT_TRAP(); }
 
 /**
  * @brief 弱符号 Panic 安全互锁 (板级可覆盖: 喂狗、切断执行器等)
@@ -1105,7 +1107,8 @@ COMPAT_WEAK void osal_panic_interlock(void)
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 {
     (void)level;
-    if (!fmt) fmt = "(null)";
+    if (!fmt)
+        fmt = "(null)";
 
     va_list args;
     va_start(args, fmt);
@@ -1122,7 +1125,8 @@ void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
  */
 void osal_log_fatal(const char* fmt, ...)
 {
-    if (!fmt) fmt = "(null)";
+    if (!fmt)
+        fmt = "(null)";
 
     va_list args;
     va_start(args, fmt);
@@ -1141,7 +1145,8 @@ void osal_log_fatal(const char* fmt, ...)
  */
 void osal_log_critical_assert(const char* file, int line, const char* fmt, ...)
 {
-    if (!fmt) fmt = "(null)";
+    if (!fmt)
+        fmt = "(null)";
 
     va_list args;
     va_start(args, fmt);

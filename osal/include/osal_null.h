@@ -14,36 +14,36 @@
 #error "osal_null.h requires CONFIG_OSAL_NULL"
 #endif
 
-#include <stdint.h>
 #include "xtask.h"
+#include <stdint.h>
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
-/**
- * @brief 周期任务包装结构体
- * @details 用于包装周期任务的原始回调函数和对应的任务控制块指针
- * @details 用于包装周期任务的周期时间
- */
-struct osal_periodic_task_wrap 
-{
-    void (*orig_callback)(x_task*); /**< 原始的回调函数(x_task*) */
-    x_task* x_task;           /**< 对应的任务控制块指针 */
-    uint32_t period_ms;      /**< 周期时间 */
-};
-/**
- * @brief 在 ISR 入口调用
- * @return void
- * @details 在 ISR 入口调用时, 使用 osal_null_isr_enter 在 ISR 入口调用
- */
-void osal_null_isr_enter(void);
+    /**
+     * @brief 周期任务包装结构体
+     * @details 用于包装周期任务的原始回调函数和对应的任务控制块指针
+     * @details 用于包装周期任务的周期时间
+     */
+    struct osal_periodic_task_wrap
+    {
+        void (*orig_callback)(x_task*); /**< 原始的回调函数(x_task*) */
+        x_task* x_task; /**< 对应的任务控制块指针 */
+        uint32_t period_ms; /**< 周期时间 */
+    };
+    /**
+     * @brief 在 ISR 入口调用
+     * @return void
+     * @details 在 ISR 入口调用时, 使用 osal_null_isr_enter 在 ISR 入口调用
+     */
+    void osal_null_isr_enter(void);
 
-/**
- * @brief 在 ISR 出口调用
- * @return void
- * @details 在 ISR 出口调用时, 使用 osal_null_isr_exit 在 ISR 出口调用
- */
-void osal_null_isr_exit(void);
+    /**
+     * @brief 在 ISR 出口调用
+     * @return void
+     * @details 在 ISR 出口调用时, 使用 osal_null_isr_exit 在 ISR 出口调用
+     */
+    void osal_null_isr_exit(void);
 
 #ifdef __cplusplus
 }

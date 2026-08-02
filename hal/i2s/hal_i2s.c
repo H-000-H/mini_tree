@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Weak empty HAL stub — board overrides. */
-#include "compiler_compat.h"
-#include "status.h"
 #include "hal_i2s.h"
 
-COMPAT_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx, const struct hal_i2s_bus_config* cfg)
+#include "compiler_compat.h"
+#include "status.h"
+
+COMPAT_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
+                                      const struct hal_i2s_bus_config* cfg)
 {
     (void)host;
     (void)hw_idx;
@@ -18,7 +20,8 @@ COMPAT_WEAK int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host, const struct hal_i2s_device_config* cfg)
+COMPAT_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host,
+                                 const struct hal_i2s_device_config* cfg)
 {
     (void)pdev;
     (void)host;
@@ -44,7 +47,8 @@ COMPAT_WEAK int hal_i2s_dev_hw_close(struct hal_i2s_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx, size_t samples, uint32_t timeout_ms, uint32_t xfer_mode)
+COMPAT_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
+                             size_t samples, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     (void)pdev;
     (void)tx;
@@ -83,7 +87,8 @@ COMPAT_WEAK int hal_i2s_dma_circ_stop(struct hal_i2s_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data, uint32_t samples)
+COMPAT_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data,
+                                       uint32_t samples)
 {
     (void)pdev;
     (void)data;
@@ -99,7 +104,8 @@ COMPAT_WEAK int hal_i2s_dma_circ_read(struct hal_i2s_dev* pdev, uint16_t* data, 
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx, size_t samples, hal_i2s_callback_t cb, void* userdata)
+COMPAT_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
+                                       size_t samples, hal_i2s_callback_t cb, void* userdata)
 {
     (void)pdev;
     (void)tx;
@@ -124,7 +130,4 @@ COMPAT_WEAK int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK void hal_i2s_dma_bottom_half_handler(void* arg)
-{
-    (void)arg;
-}
+COMPAT_WEAK void hal_i2s_dma_bottom_half_handler(void* arg) { (void)arg; }

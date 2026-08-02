@@ -8,15 +8,15 @@
 #define USB_VFS_IMPL
 #define USB_BUS_IMPL
 #include "vfs-usb.h"
-#include "usb_bus.h"
+
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "osal.h"
-#include "compiler_compat.h"
+#include "status.h"
 #include "system_log.h"
-
+#include "usb_bus.h"
 #include <string.h>
 
 /*============================================================================*/
@@ -27,18 +27,18 @@
 struct vfs_usb_priv
 {
     struct hal_usb_bus_config cfg;
-    int                       pool_idx;
+    int pool_idx;
 };
 
 static struct vfs_usb_priv s_usb_priv_pool[USB_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_usb_priv_used[USB_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_usb_priv_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const   k_host_tag = "usb_host_vfs";
+static uint8_t s_usb_priv_used[USB_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_usb_priv_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_host_tag = "usb_host_vfs";
 
-pre_execution(150)
-static void vfs_usb_priv_pool_init(void)
+pre_execution(150) static void vfs_usb_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
 }
 
 static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config* cfg)
@@ -62,17 +62,17 @@ static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-enable", &dma_en));
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
-    cfg->usb_base             = (uintptr_t)usb_base;
-    cfg->rhport               = rhport;
-    cfg->irqn                 = irqn;
-    cfg->vbus_sense           = vbus;
-    cfg->dma_cfg.dma_enable   = (uint32_t)(dma_en ? 1 : 0);
-    cfg->dp.port              = (uintptr_t)dp_port;
-    cfg->dp.pin               = (uint32_t)dp_pin;
-    cfg->dp.af                = (uint32_t)dp_af;
-    cfg->dm.port              = (uintptr_t)dm_port;
-    cfg->dm.pin               = (uint32_t)dm_pin;
-    cfg->dm.af                = (uint32_t)dm_af;
+    cfg->usb_base = (uintptr_t)usb_base;
+    cfg->rhport = rhport;
+    cfg->irqn = irqn;
+    cfg->vbus_sense = vbus;
+    cfg->dma_cfg.dma_enable = (uint32_t)(dma_en ? 1 : 0);
+    cfg->dp.port = (uintptr_t)dp_port;
+    cfg->dp.pin = (uint32_t)dp_pin;
+    cfg->dp.af = (uint32_t)dp_af;
+    cfg->dm.port = (uintptr_t)dm_port;
+    cfg->dm.pin = (uint32_t)dm_pin;
+    cfg->dm.af = (uint32_t)dm_af;
     return VFS_OK;
 }
 
@@ -161,18 +161,17 @@ static int vfs_usb_priv_remove(struct device* pdev)
 struct usb_vfs_client
 {
     struct file_operations ops;
-    enum usb_client_class  cls;
-    uint32_t               xfer_mode; /**< USB_XFER_*; write/read 默认 AUTO */
-    int                    pool_idx;
+    enum usb_client_class cls;
+    uint32_t xfer_mode; /**< USB_XFER_*; write/read 默认 AUTO */
+    int pool_idx;
 };
 
 static struct usb_vfs_client s_client_pool[USB_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t               s_client_used[USB_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t           s_client_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const     k_client_tag = "usb_client_vfs";
+static uint8_t s_client_used[USB_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static const char* const k_client_tag = "usb_client_vfs";
 
-pre_execution(150)
-static void vfs_usb_client_pool_init(void)
+pre_execution(150) static void vfs_usb_client_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT));
 }
@@ -183,10 +182,7 @@ static int usb_vfs_open(struct device* pdev, void* arg)
     return usb_bus_open(pdev);
 }
 
-static int usb_vfs_close(struct device* pdev)
-{
-    return usb_bus_close(pdev);
-}
+static int usb_vfs_close(struct device* pdev) { return usb_bus_close(pdev); }
 
 static int usb_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
@@ -263,7 +259,8 @@ static int usb_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
     return VFS_OK;
 }
 
-static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (cmd == USB_CMD_SET_XFER_MODE)
@@ -274,10 +271,10 @@ static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 }
 
 static const struct file_operations s_usb_fops_template = {
-    .open  = usb_vfs_open,
+    .open = usb_vfs_open,
     .close = usb_vfs_close,
     .write = usb_vfs_write,
-    .read  = usb_vfs_read,
+    .read = usb_vfs_read,
     .ioctl = usb_vfs_ioctl,
 };
 
@@ -296,10 +293,10 @@ static int usb_vfs_client_probe_cls(struct device* pdev, enum usb_client_class c
 
     priv = &s_client_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx  = pool_idx;
-    priv->cls       = cls;
+    priv->pool_idx = pool_idx;
+    priv->cls = cls;
     priv->xfer_mode = USB_XFER_AUTO; /* write/read 默认 AUTO */
-    priv->ops       = s_usb_fops_template;
+    priv->ops = s_usb_fops_template;
 
     ret = usb_bus_client_register(pdev, cls, &bus_cli);
     if (ret != VFS_OK)
@@ -333,7 +330,7 @@ static int usb_vfs_client_remove(struct device* pdev)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct usb_vfs_client, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -366,11 +363,7 @@ static int usb_hid_probe(struct device* pdev)
     return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID);
 }
 
-DRIVER_REGISTER(usb_otg_host, "usb-otg-host",
-                vfs_usb_priv_probe, vfs_usb_priv_remove)
-DRIVER_REGISTER(usb_cdc_acm, "heterogeneous,usb-cdc-acm",
-                usb_cdc_probe, usb_vfs_client_remove)
-DRIVER_REGISTER(usb_cdc_ecm, "heterogeneous,usb-cdc-ecm",
-                usb_ecm_probe, usb_vfs_client_remove)
-DRIVER_REGISTER(usb_hid, "heterogeneous,usb-hid",
-                usb_hid_probe, usb_vfs_client_remove)
+DRIVER_REGISTER(usb_otg_host, "usb-otg-host", vfs_usb_priv_probe, vfs_usb_priv_remove)
+DRIVER_REGISTER(usb_cdc_acm, "heterogeneous,usb-cdc-acm", usb_cdc_probe, usb_vfs_client_remove)
+DRIVER_REGISTER(usb_cdc_ecm, "heterogeneous,usb-cdc-ecm", usb_ecm_probe, usb_vfs_client_remove)
+DRIVER_REGISTER(usb_hid, "heterogeneous,usb-hid", usb_hid_probe, usb_vfs_client_remove)

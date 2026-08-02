@@ -12,25 +12,24 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
-/* ── RMS 单调速率调度优先级 (数值越高优先级越高) ── */
+    /* ── RMS 单调速率调度优先级 (数值越高优先级越高) ── */
 
-/* ── 任务配置结构 (由用户工程定义实例, 配合 board_task_create 使用) ── */
-struct board_task_config
+    /* ── 任务配置结构 (由用户工程定义实例, 配合 board_task_create 使用) ── */
+    struct board_task_config
 
-{
-    const char* name;       /**< 任务名称 */
-    uint32_t    stack_size; /**< 栈大小 (字节) */
-    uint32_t    priority;   /**< 优先级 (数值越高优先级越高) */
-    int         core_id;    /**< 目标核心, tskNO_AFFINITY = 不固定 */
-};
+    {
+        const char* name; /**< 任务名称 */
+        uint32_t stack_size; /**< 栈大小 (字节) */
+        uint32_t priority; /**< 优先级 (数值越高优先级越高) */
+        int core_id; /**< 目标核心, tskNO_AFFINITY = 不固定 */
+    };
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* TASK_CONFIG_H */
-

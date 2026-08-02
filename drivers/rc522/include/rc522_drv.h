@@ -8,11 +8,12 @@
  */
 #ifndef RC522_DRV_H
 #define RC522_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define RC522_CMD_BASE COMPAT_MAGIC(RC522)
@@ -23,12 +24,12 @@ extern "C" {
 /** 命令总数 */
 #define RC522_CMD_COUNT 2
 
-/** @brief 卡片 UID（最长 10B，len 为有效长度） */
-struct rc522_uid
-{
-    uint8_t uid[10];  /**< UID 字节 */
-    uint8_t len;      /**< 有效长度 */
-};
+    /** @brief 卡片 UID（最长 10B，len 为有效长度） */
+    struct rc522_uid
+    {
+        uint8_t uid[10]; /**< UID 字节 */
+        uint8_t len; /**< 有效长度 */
+    };
 #ifdef __cplusplus
 }
 #endif

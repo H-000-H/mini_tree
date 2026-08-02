@@ -7,15 +7,17 @@
  * 暴露 C 链接 task_manager_create / task_manager_create_task 供纯 C 调用
  */
 #include "task_manager.hpp"
-#include "task_manager.h"
 
 #include "system_cfg.h"
 #include "system_wdt.hpp"
+#include "task_manager.h"
+
 #include "compiler_compat_poison.h"
 
 static constexpr const char* k_tag = "TaskManager";
 
-osal_task_handle_t TaskManager::create(const struct board_task_config& config, TaskEntry entry, void* param)
+osal_task_handle_t TaskManager::create(const struct board_task_config& config, TaskEntry entry,
+                                       void* param)
 {
     if (entry == nullptr)
     {
@@ -24,8 +26,8 @@ osal_task_handle_t TaskManager::create(const struct board_task_config& config, T
     }
 
     osal_task_handle_t handle = nullptr;
-    int ret = osal_task_create_handle(config.name, config.stack_size, config.priority,
-                                       entry, param, config.core_id, &handle);
+    int ret = osal_task_create_handle(config.name, config.stack_size, config.priority, entry, param,
+                                      config.core_id, &handle);
     if (ret != 0)
     {
         SYS_LOGE(k_tag, "failed to create task: %s", config.name);
@@ -39,8 +41,8 @@ osal_task_handle_t TaskManager::create(const struct board_task_config& config, T
 }
 
 osal_task_handle_t TaskManager::create_task(const char* name, uint32_t stack_size,
-                                            uint32_t priority, TaskEntry entry,
-                                            void* param, int core_id)
+                                            uint32_t priority, TaskEntry entry, void* param,
+                                            int core_id)
 {
     struct board_task_config cfg = {};
     cfg.name = name ? name : "unknown";

@@ -8,16 +8,17 @@
  */
 #ifndef BUZZER_DRV_H
 #define BUZZER_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define BUZZER_CMD_BASE COMPAT_MAGIC(BUZZER)
 /** 鸣响控制（arg: int*，0=关 1=开） */
-#define BUZZER_CMD_BEEP (BUZZER_CMD_BASE+0x01)
+#define BUZZER_CMD_BEEP (BUZZER_CMD_BASE + 0x01)
 /** 命令总数 */
 #define BUZZER_CMD_COUNT 1
 #ifdef __cplusplus

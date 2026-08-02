@@ -9,58 +9,57 @@
  * 数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
  */
 #include "sh1106_drv.h"
-#include "vfs-i2c.h"
 
+#include "compiler_compat.h"
+#include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
-#include "dev_lifecycle.h"
-#include "status.h"
 #include "dt_config_gen.h"
-#include "compiler_compat.h"
 #include "osal.h"
+#include "status.h"
 #include "system_log.h"
+#include "vfs-i2c.h"
 #include <stddef.h>
 #include <stdint.h>
+
 #include "compiler_compat_poison.h"
 
 #ifndef DTC_GEN_COUNT_SINOWEALTH_SH1106
-#define DTC_GEN_COUNT_SINOWEALTH_SH1106  1
+#define DTC_GEN_COUNT_SINOWEALTH_SH1106 1
 #endif
-#define SH1106_POOL_COUNT  DTC_GEN_COUNT_SINOWEALTH_SH1106
+#define SH1106_POOL_COUNT DTC_GEN_COUNT_SINOWEALTH_SH1106
 
 /** @brief SH1106 驱动实例（嵌入 fops） */
 struct sh1106_device
 {
-    struct file_operations ops;      /**< 挂入 device 的 fops */
-    struct device*         i2c_dev;  /**< 所属 I2C client 设备 */
+    struct file_operations ops; /**< 挂入 device 的 fops */
+    struct device* i2c_dev; /**< 所属 I2C client 设备 */
 
-    int                    hw_ready; /**< 硬件已初始化标志 */
+    int hw_ready; /**< 硬件已初始化标志 */
 };
 
 static struct sh1106_device s_sh1106_pool[SH1106_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t             s_sh1106_used[SH1106_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t         s_sh1106_pool_ctrl COMPAT_ALIGNED(4);
+static uint8_t s_sh1106_used[SH1106_POOL_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_sh1106_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_tag = "sh1106";
 
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160)
-static void sh1106_pool_boot_init(void)
+pre_execution(160) static void sh1106_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_sh1106_pool_ctrl, s_sh1106_used, SH1106_POOL_COUNT));
 }
 
 /**
  * @brief 取驱动私有数据
- * @param dev device 指针
+ * @param pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct sh1106_device* sh1106_get_drvdata(struct device* dev)
+static struct sh1106_device* sh1106_get_drvdata(struct device* pdev)
 {
-    return (struct sh1106_device*)device_get_priv(dev);
+    return (struct sh1106_device*)device_get_priv(pdev);
 }
-
 
 /**
  * @brief 向 I2C 总线写数据
@@ -72,7 +71,6 @@ static int sh1106_i2c_wr(struct sh1106_device* d, const uint8_t* tx, size_t len,
         return VFS_ERR_INVAL;
     return device_write(d->i2c_dev, tx, len, to);
 }
-
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
@@ -109,18 +107,18 @@ static void sh1106_hw_destroy(struct sh1106_device* d)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int sh1106_open(struct device* dev, void* arg)
+static int sh1106_open(struct device* pdev, void* arg)
 {
     struct sh1106_device* d;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = sh1106_get_drvdata(dev);
+    d = sh1106_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     first = dev_lc_open_begin(lc);
@@ -143,17 +141,17 @@ static int sh1106_open(struct device* dev, void* arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int sh1106_close(struct device* dev)
+static int sh1106_close(struct device* pdev)
 {
     struct sh1106_device* d;
     struct dev_lifecycle* lc;
     int last;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = sh1106_get_drvdata(dev);
+    d = sh1106_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     last = dev_lc_close_begin(lc);
@@ -169,8 +167,10 @@ static int sh1106_close(struct device* dev)
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
 typedef int (*sh1106_ioctl_fn_t)(struct sh1106_device* d, void* arg, size_t arg_len, uint32_t ms);
-struct sh1106_ioctl_map { sh1106_ioctl_fn_t handler; };
-
+struct sh1106_ioctl_map
+{
+    sh1106_ioctl_fn_t handler;
+};
 
 /**
  * @brief 写 1B 命令/数据（ctrl 字节 + 值）
@@ -187,11 +187,12 @@ static int sh1106_cmd_byte(struct sh1106_device* d, uint8_t ctrl, uint8_t v, uin
 static int sh1106_set_page_col(struct sh1106_device* d, uint8_t page, uint32_t to)
 {
     uint8_t col = SH1106_COL_OFFSET;
-int r = sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)), to);
+    int r = sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)),
+                            to);
     if (r != VFS_OK)
         return r;
-    r = sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD,
-                        (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)), to);
+    r = sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)),
+                        to);
     if (r != VFS_OK)
         return r;
     return sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD,
@@ -204,21 +205,15 @@ int r = sh1106_cmd_byte(d, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | 
 static int sh1106_cmd_init(struct sh1106_device* d, void* arg, size_t len, uint32_t to)
 {
     static const uint8_t seq[] = {
-        SH1106_REG_DISPLAY_OFF,
-        SH1106_REG_CLK_DIV, SH1106_VAL_CLK_DIV,
-        SH1106_REG_MUX_RATIO, SH1106_VAL_MUX_63,
-        SH1106_REG_DISP_OFFSET, SH1106_VAL_OFFSET_0,
-        SH1106_REG_START_LINE,
-        SH1106_REG_CHARGE_PUMP, SH1106_VAL_CHARGE_ON,
-        SH1106_REG_MEM_MODE, SH1106_VAL_HORIZ_ADDR,
-        SH1106_REG_SEG_REMAP, SH1106_REG_COM_SCAN_DEC,
-        SH1106_REG_COM_PINS, SH1106_VAL_COM_PINS,
-        SH1106_REG_SET_CONTRAST, SH1106_VAL_CONTRAST,
-        SH1106_REG_PRECHARGE, SH1106_VAL_PRECHARGE,
-        SH1106_REG_VCOM_DETECT, SH1106_VAL_VCOM,
-        SH1106_REG_ENTIRE_ON, SH1106_REG_NORMAL_DISP,
-        SH1106_REG_DISPLAY_ON
-    };
+        SH1106_REG_DISPLAY_OFF, SH1106_REG_CLK_DIV,      SH1106_VAL_CLK_DIV,
+        SH1106_REG_MUX_RATIO,   SH1106_VAL_MUX_63,       SH1106_REG_DISP_OFFSET,
+        SH1106_VAL_OFFSET_0,    SH1106_REG_START_LINE,   SH1106_REG_CHARGE_PUMP,
+        SH1106_VAL_CHARGE_ON,   SH1106_REG_MEM_MODE,     SH1106_VAL_HORIZ_ADDR,
+        SH1106_REG_SEG_REMAP,   SH1106_REG_COM_SCAN_DEC, SH1106_REG_COM_PINS,
+        SH1106_VAL_COM_PINS,    SH1106_REG_SET_CONTRAST, SH1106_VAL_CONTRAST,
+        SH1106_REG_PRECHARGE,   SH1106_VAL_PRECHARGE,    SH1106_REG_VCOM_DETECT,
+        SH1106_VAL_VCOM,        SH1106_REG_ENTIRE_ON,    SH1106_REG_NORMAL_DISP,
+        SH1106_REG_DISPLAY_ON};
     size_t i;
     COMPAT_IGNORE_RESULT(arg);
     COMPAT_IGNORE_RESULT(len);
@@ -271,10 +266,10 @@ static int sh1106_cmd_get_info(struct sh1106_device* d, void* arg, size_t len, u
     COMPAT_IGNORE_RESULT(to);
     if (!info || len != sizeof(*info))
         return VFS_ERR_INVAL;
-    info->width      = SH1106_WIDTH;
-    info->height     = SH1106_HEIGHT;
-    info->pages      = SH1106_PAGES;
-    info->fb_size    = SH1106_FB_SIZE;
+    info->width = SH1106_WIDTH;
+    info->height = SH1106_HEIGHT;
+    info->pages = SH1106_PAGES;
+    info->fb_size = SH1106_FB_SIZE;
     info->col_offset = SH1106_COL_OFFSET;
     return VFS_OK;
 }
@@ -353,30 +348,30 @@ static int sh1106_cmd_set_contrast(struct sh1106_device* d, void* arg, size_t le
 }
 
 static const struct sh1106_ioctl_map s_sh1106_map[SH1106_CMD_COUNT] = {
-    [SH1106_CMD_INIT - SH1106_CMD_BASE - 1]         = { sh1106_cmd_init },
-    [SH1106_CMD_FILL - SH1106_CMD_BASE - 1]         = { sh1106_cmd_fill },
-    [SH1106_CMD_GET_INFO - SH1106_CMD_BASE - 1]     = { sh1106_cmd_get_info },
-    [SH1106_CMD_WRITE_CMD - SH1106_CMD_BASE - 1]    = { sh1106_cmd_write_cmd },
-    [SH1106_CMD_WRITE_DATA - SH1106_CMD_BASE - 1]   = { sh1106_cmd_write_data },
-    [SH1106_CMD_FLUSH_FB - SH1106_CMD_BASE - 1]     = { sh1106_cmd_flush_fb },
-    [SH1106_CMD_SET_CONTRAST - SH1106_CMD_BASE - 1] = { sh1106_cmd_set_contrast },
+    [SH1106_CMD_INIT - SH1106_CMD_BASE - 1] = {sh1106_cmd_init},
+    [SH1106_CMD_FILL - SH1106_CMD_BASE - 1] = {sh1106_cmd_fill},
+    [SH1106_CMD_GET_INFO - SH1106_CMD_BASE - 1] = {sh1106_cmd_get_info},
+    [SH1106_CMD_WRITE_CMD - SH1106_CMD_BASE - 1] = {sh1106_cmd_write_cmd},
+    [SH1106_CMD_WRITE_DATA - SH1106_CMD_BASE - 1] = {sh1106_cmd_write_data},
+    [SH1106_CMD_FLUSH_FB - SH1106_CMD_BASE - 1] = {sh1106_cmd_flush_fb},
+    [SH1106_CMD_SET_CONTRAST - SH1106_CMD_BASE - 1] = {sh1106_cmd_set_contrast},
 };
 
 /**
  * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
  */
-static int sh1106_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, uint32_t ms)
+static int sh1106_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct sh1106_device* d;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
-    if (!dev || !dev->ops)
+    if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = sh1106_get_drvdata(dev);
+    d = sh1106_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
@@ -392,7 +387,7 @@ static int sh1106_ioctl(struct device* dev, int cmd, void* arg, size_t arg_len, 
 }
 
 static const struct file_operations sh1106_fops = {
-    .open  = sh1106_open,
+    .open = sh1106_open,
     .close = sh1106_close,
     .ioctl = sh1106_ioctl,
 };
@@ -400,35 +395,35 @@ static const struct file_operations sh1106_fops = {
 /**
  * @brief probe：claim 池项、绑定父 I2C 设备并挂 fops
  */
-static int sh1106_probe(struct device* dev)
+static int sh1106_probe(struct device* pdev)
 {
     struct sh1106_device* d;
     int pool_idx, ret;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sh1106_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
     d = &s_sh1106_pool[pool_idx];
     COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(dev);
+    d->i2c_dev = device_get_parent(pdev);
     if (!d->i2c_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(dev, d) != VFS_OK)
+    if (device_set_priv(pdev, d) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
     d->ops = sh1106_fops;
-    dev->ops = &d->ops;
+    pdev->ops = &d->ops;
     SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
     return VFS_OK;
 err:
-    dev->ops = NULL;
+    pdev->ops = NULL;
     COMPAT_MEM_SET(d, 0, sizeof(*d));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_sh1106_pool_ctrl, pool_idx));
     return ret;
@@ -437,22 +432,22 @@ err:
 /**
  * @brief remove：排空在途 io、释放硬件并归还池项
  */
-static int sh1106_remove(struct device* dev)
+static int sh1106_remove(struct device* pdev)
 {
     struct sh1106_device* d;
     struct dev_lifecycle* lc;
     int idx;
-    if (!dev)
+    if (!pdev)
         return VFS_ERR_INVAL;
-    d = sh1106_get_drvdata(dev);
+    d = sh1106_get_drvdata(pdev);
     if (IS_ERR(d))
         return PTR_ERR(d);
-    lc = device_lc(dev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     idx = (int)(d - s_sh1106_pool);
     dev_lc_remove_start(lc);
-    device_ops_unregister(dev);
+    device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
     {
         dev_lc_remove_finish(lc);

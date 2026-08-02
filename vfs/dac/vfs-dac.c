@@ -2,9 +2,9 @@
  * @file vfs-dac.c
  * @brief DAC VFS 实现 — DAC 子系统 VFS 层实现文件
  */
-#define DAC_VFS_IMPL  /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
+#define DAC_VFS_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #include "vfs-dac.h"
-#include "status.h"
+
 #include "board_config.h"
 #include "buffer.h"
 #include "compiler_compat.h"
@@ -13,6 +13,7 @@
 #include "driver.h"
 #include "dt_config_gen.h"
 #include "osal.h"
+#include "status.h"
 #include "system_log.h"
 
 #ifndef DAC_VFS_DEVICE_COUNT
@@ -30,30 +31,31 @@ static const char* const k_tag = "vfs-dac";
 
 struct vfs_dac_priv
 {
-    struct file_operations              ops;     /**< VFS 操作表 */
-    struct hal_dac_host_cfg             cfg;     /**< host 配置 (DTSI 直投) */
-    struct hal_dac_platform_unique_cfg  unique;  /**< 平台特有配置 */
-    struct hal_dac_dev                  dac;     /**< HAL DAC 设备 */
-    struct fifo_spsc                    dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
-    fifo_data_type                      dma_data_buf[DAC_DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 波形数据缓冲区 */
-    int                                 pool_idx; /**< 池索引 */
+    struct file_operations ops; /**< VFS 操作表 */
+    struct hal_dac_host_cfg cfg; /**< host 配置 (DTSI 直投) */
+    struct hal_dac_platform_unique_cfg unique; /**< 平台特有配置 */
+    struct hal_dac_dev dac; /**< HAL DAC 设备 */
+    struct fifo_spsc dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
+    fifo_data_type dma_data_buf[DAC_DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 波形数据缓冲区 */
+    int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_dac_priv  s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
-static uint8_t              s_dac_priv_used[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t          s_dac_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_dac_priv s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
+static uint8_t s_dac_priv_used[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_dac_priv_pool_ctrl COMPAT_ALIGNED(4);
 
 /**
  * @brief DAC Ioctl 命令处理函数指针类型
  */
 typedef int (*dac_cmd_handler_t)(struct vfs_dac_priv* priv, void* arg, size_t arg_len);
 
-typedef struct {
+typedef struct
+{
     dac_cmd_handler_t handler;
 } dac_ioctl_map_t;
 
 /*===========================================================================================================================================================*/
-/* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用                                                                                                                */
+/* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用 */
 /*===========================================================================================================================================================*/
 
 /**
@@ -93,7 +95,9 @@ static int dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_le
  */
 static int dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(priv); COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(priv);
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
     return VFS_ERR_NOTSUPP;
 }
 
@@ -123,7 +127,8 @@ static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_le
  */
 static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
     return hal_dac_start(&priv->dac);
 }
 
@@ -136,7 +141,8 @@ static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
  */
 static int dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg); COMPAT_IGNORE_RESULT(arg_len);
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
     return hal_dac_force_stop(&priv->dac);
 }
 
@@ -175,28 +181,27 @@ static int dac_cmd_base_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_l
 }
 
 /*===========================================================================================================================================================*/
-/* ioctl 命令映射表 — index = (cmd - DAC_CMD_BASE - 1), 与 DAC_CMD_* 编号一一对应                                                                               */
+/* ioctl 命令映射表 — index = (cmd - DAC_CMD_BASE - 1), 与 DAC_CMD_* 编号一一对应 */
 /*===========================================================================================================================================================*/
 
-static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] =
-{
-    [DAC_CMD_WRITE_VALUE      - DAC_CMD_BASE - 1] = { dac_cmd_write_value },
-    [DAC_CMD_GET_VALUE        - DAC_CMD_BASE - 1] = { dac_cmd_get_value },
-    [DAC_CMD_CALIBRATE_OFFSET - DAC_CMD_BASE - 1] = { dac_cmd_calibrate_offset },
-    [DAC_CMD_DMA_PAUSE        - DAC_CMD_BASE - 1] = { dac_cmd_dma_pause },
-    [DAC_CMD_START            - DAC_CMD_BASE - 1] = { dac_cmd_start },
-    [DAC_CMD_FORCE_STOP       - DAC_CMD_BASE - 1] = { dac_cmd_force_stop },
-    [DAC_CMD_DMA_WRITE_BUFFER - DAC_CMD_BASE - 1] = { dac_cmd_dma_write_buffer },
-    [DAC_CMD_BASE_PAUSE       - DAC_CMD_BASE - 1] = { dac_cmd_base_pause },
+static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
+    [DAC_CMD_WRITE_VALUE - DAC_CMD_BASE - 1] = {dac_cmd_write_value},
+    [DAC_CMD_GET_VALUE - DAC_CMD_BASE - 1] = {dac_cmd_get_value},
+    [DAC_CMD_CALIBRATE_OFFSET - DAC_CMD_BASE - 1] = {dac_cmd_calibrate_offset},
+    [DAC_CMD_DMA_PAUSE - DAC_CMD_BASE - 1] = {dac_cmd_dma_pause},
+    [DAC_CMD_START - DAC_CMD_BASE - 1] = {dac_cmd_start},
+    [DAC_CMD_FORCE_STOP - DAC_CMD_BASE - 1] = {dac_cmd_force_stop},
+    [DAC_CMD_DMA_WRITE_BUFFER - DAC_CMD_BASE - 1] = {dac_cmd_dma_write_buffer},
+    [DAC_CMD_BASE_PAUSE - DAC_CMD_BASE - 1] = {dac_cmd_base_pause},
 };
 
 /**
  * @brief DAC Host VFS 私有数据池启动初始化
  */
-pre_execution(151)
-static void vfs_dac_priv_pool_init(void)
+pre_execution(151) static void vfs_dac_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
 }
 
 /**
@@ -208,7 +213,7 @@ static void vfs_dac_priv_pool_init(void)
 static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* cfg)
 {
     int dac_base = 0;
-    int tmp      = 0;
+    int tmp = 0;
     int pin_arr[VFS_DAC_PIN_FIELD_COUNT];
     int dma_arr[VFS_DAC_DMA_FIELD_COUNT];
 
@@ -255,31 +260,33 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
     cfg->config.dma_data_align = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) == VFS_DAC_PIN_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) ==
+        VFS_DAC_PIN_FIELD_COUNT)
     {
-        cfg->gpio_cfg.port        = (uintptr_t)pin_arr[0];
-        cfg->gpio_cfg.pin         = (uint16_t)pin_arr[1];
-        cfg->gpio_cfg.clk_bus     = (uint32_t)pin_arr[2];
-        cfg->gpio_cfg.af          = (uint32_t)pin_arr[3];
+        cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
+        cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
+        cfg->gpio_cfg.clk_bus = (uint32_t)pin_arr[2];
+        cfg->gpio_cfg.af = (uint32_t)pin_arr[3];
         cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];
-        cfg->gpio_cfg.speed       = (uint32_t)pin_arr[5];
-        cfg->gpio_cfg.mode        = (uint32_t)pin_arr[6];
-        cfg->gpio_cfg.pull        = (uint32_t)pin_arr[7];
+        cfg->gpio_cfg.speed = (uint32_t)pin_arr[5];
+        cfg->gpio_cfg.mode = (uint32_t)pin_arr[6];
+        cfg->gpio_cfg.pull = (uint32_t)pin_arr[7];
     }
     else
         return VFS_ERR_INVAL;
 
     if (cfg->config.dma_enable)
     {
-        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) != VFS_DAC_DMA_FIELD_COUNT)
+        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) !=
+            VFS_DAC_DMA_FIELD_COUNT)
             return VFS_ERR_INVAL;
 
-        cfg->dma_cfg.dma_handle      = (uintptr_t)dma_arr[0];
-        cfg->dma_cfg.dma_stream      = (uint32_t)dma_arr[1];
-        cfg->dma_cfg.dma_channel     = (uint32_t)dma_arr[2];
-        cfg->dma_cfg.dma_priority    = (uint32_t)dma_arr[3];
+        cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
+        cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
+        cfg->dma_cfg.dma_channel = (uint32_t)dma_arr[2];
+        cfg->dma_cfg.dma_priority = (uint32_t)dma_arr[3];
         cfg->dma_cfg.dma_buffer_size = (uint32_t)dma_arr[4];
-        cfg->dma_cfg.dma_data_size   = (uint32_t)dma_arr[5];
+        cfg->dma_cfg.dma_data_size = (uint32_t)dma_arr[5];
         cfg->dma_cfg.dma_fifo_is_enable = (uint32_t)dma_arr[6];
 
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mode", &tmp));
@@ -321,16 +328,16 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
  */
 static int vfs_dac_open(struct device* pdev, void* arg)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   first;
+    int first;
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -358,15 +365,15 @@ static int vfs_dac_open(struct device* pdev, void* arg)
  */
 static int vfs_dac_close(struct device* pdev)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   last;
+    int last;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -391,10 +398,10 @@ static int vfs_dac_close(struct device* pdev)
  */
 static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   ret;
-    const vfs_dac_arg*    dac_arg;
+    int ret;
+    const vfs_dac_arg* dac_arg;
 
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
@@ -402,7 +409,7 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
         return VFS_ERR_INVAL;
 
     dac_arg = (const vfs_dac_arg*)buf;
-    lc      = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -411,7 +418,7 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret  = hal_dac_set_value(&priv->dac, dac_arg->value);
+    ret = hal_dac_set_value(&priv->dac, dac_arg->value);
 
     dev_lc_io_end(lc);
     return ret;
@@ -427,10 +434,10 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
  */
 static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   ret;
-    vfs_dac_arg*          dac_arg;
+    int ret;
+    vfs_dac_arg* dac_arg;
 
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
@@ -438,7 +445,7 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
         return VFS_ERR_INVAL;
 
     dac_arg = (vfs_dac_arg*)buf;
-    lc      = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
@@ -447,7 +454,7 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret  = hal_dac_get_value(&priv->dac, &dac_arg->value);
+    ret = hal_dac_get_value(&priv->dac, &dac_arg->value);
 
     dev_lc_io_end(lc);
     return ret;
@@ -462,12 +469,13 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
  * @param timeout_ms 未使用
  * @return 成功返回 VFS_OK 或写入采样数, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   ret;
-    dac_cmd_handler_t     handler = NULL;
+    int ret;
+    dac_cmd_handler_t handler = NULL;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
@@ -508,9 +516,9 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
  */
 static int vfs_dac_suspend(struct device* pdev)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   ret;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -524,7 +532,7 @@ static int vfs_dac_suspend(struct device* pdev)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret  = hal_dac_pause(&priv->dac);
+    ret = hal_dac_pause(&priv->dac);
 
     dev_lc_io_end(lc);
     return ret;
@@ -537,9 +545,9 @@ static int vfs_dac_suspend(struct device* pdev)
  */
 static int vfs_dac_resume(struct device* pdev)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   ret;
+    int ret;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -553,7 +561,7 @@ static int vfs_dac_resume(struct device* pdev)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret  = hal_dac_resume(&priv->dac);
+    ret = hal_dac_resume(&priv->dac);
 
     dev_lc_io_end(lc);
     return ret;
@@ -562,15 +570,14 @@ static int vfs_dac_resume(struct device* pdev)
 /**
  * @brief DAC Host VFS 文件操作
  */
-static const struct file_operations fops =
-{
-    .close    = vfs_dac_close,
-    .open     = vfs_dac_open,
-    .ioctl    = vfs_dac_ioctl,
-    .read     = vfs_dac_read,
-    .write    = vfs_dac_write,
-    .suspend  = vfs_dac_suspend,
-    .resume   = vfs_dac_resume,
+static const struct file_operations fops = {
+    .close = vfs_dac_close,
+    .open = vfs_dac_open,
+    .ioctl = vfs_dac_ioctl,
+    .read = vfs_dac_read,
+    .write = vfs_dac_write,
+    .suspend = vfs_dac_suspend,
+    .resume = vfs_dac_resume,
 };
 
 /**
@@ -581,9 +588,9 @@ static const struct file_operations fops =
 static int vfs_dac_probe(struct device* pdev)
 {
     struct vfs_dac_priv* priv;
-    int                  pool_idx;
-    int                  ret;
-    int                  private_cfg = 0;
+    int pool_idx;
+    int ret;
+    int private_cfg = 0;
 
     if (!pdev)
         return VFS_ERR_INVAL;
@@ -654,15 +661,15 @@ err_pool:
  */
 static int vfs_dac_remove(struct device* pdev)
 {
-    struct vfs_dac_priv*  priv;
+    struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;
-    int                   pool_idx;
+    int pool_idx;
 
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    lc   = device_lc(pdev);
+    lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 

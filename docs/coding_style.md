@@ -35,8 +35,9 @@
 | 单语句 if/for/while / Single-statement | **不加括号 / No braces** | `if (x) return y;` 或两行式均合法，禁止 `{ }` 包裹单语句 / either one-line or two-line, never wrap a single statement in `{}` |
 | 缩进 / Indent | 4 空格 / spaces | 不用 Tab / no tabs |
 | 列宽 / Column limit | 100 | 超长折行 / wrap over-long lines |
+| 短函数 / Short functions | **允许一行化 / one-line allowed** | `AllowShortFunctionsOnASingleLine: All`：能在一行放下的函数不允许多行 / functions that fit must stay on one line |
 | 指针/引用 / Pointers & refs | 靠左 / left | `char* p` |
-| include | 字母排序 / sorted | `SortIncludes` |
+| include | 字母排序（`compiler_compat_poison.h` 固定最后）/ sorted (`compiler_compat_poison.h` pinned last) | `SortIncludes` + `IncludeCategories` |
 
 实现见根 [`.clang-format`](../.clang-format)（需 clang-format ≥ 15）。
 Implemented by the root [`.clang-format`](../.clang-format) (requires clang-format ≥ 15).
@@ -44,6 +45,9 @@ Implemented by the root [`.clang-format`](../.clang-format) (requires clang-form
 ---
 
 ## 2. 命名规则 / Naming Rules
+
+> **指针显式化 / Explicit pointers**：指针变量/参数一律以 `p` 前缀标明，如 `struct device* pdev`（不写裸 `dev`）。两区通用。
+> Pointer variables/parameters carry a `p` prefix to make the pointer explicit, e.g. `struct device* pdev` (never bare `dev`). Applies to both zones.
 
 ### 2.1 内核区 / Kernel Zone（app 以下 · C，强规定 / below app · C, mandatory）
 

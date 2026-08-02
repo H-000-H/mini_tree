@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "can_hook.h"
+
 #include "device.h"
 
 COMPAT_WEAK int can_hook_on_open(struct device* pdev)

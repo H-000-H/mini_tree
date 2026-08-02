@@ -6,9 +6,8 @@
 #include "system_cmd.hpp"
 
 #include "compiler_compat.h"
-
-#include <etl/string.h>
 #include <etl/char_traits.h>
+#include <etl/string.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════
  *  构造函数
@@ -39,21 +38,22 @@ SystemCmd& SystemCmd::get_instance()
  * ═══════════════════════════════════════════════════════════════════════════ */
 bool SystemCmd::register_cmd(const char* name, bool (*handler)())
 {
-    if (!name || !handler) return false;
+    if (!name || !handler)
+        return false;
     const size_t name_len = etl::strlen(name);
-    if (name_len >= k_max_cmd_name_len) return false;
+    if (name_len >= k_max_cmd_name_len)
+        return false;
 
     HandlerNode node;
     node.args_id = get_type_id<void>();
-    node.ctx_id  = get_type_id<void>();
-    node.wrapper = [handler](const void*, size_t, void*) -> bool {
-        return handler();
-    };
+    node.ctx_id = get_type_id<void>();
+    node.wrapper = [handler](const void*, size_t, void*) -> bool { return handler(); };
 
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
-    if (m_commands.full() || m_commands.contains(cmd)) {
+    if (m_commands.full() || m_commands.contains(cmd))
+    {
         COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return false;
     }
@@ -61,10 +61,9 @@ bool SystemCmd::register_cmd(const char* name, bool (*handler)())
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return success;
 #else
-    for (size_t i = 0; i < m_count; i++) {
+    for (size_t i = 0; i < m_count; i++)
         if (strcmp(m_entries[i].name, name) == 0)
             return false;
-    }
     if (m_count >= k_max_commands)
         return false;
     m_entries[m_count].name = name;
@@ -79,13 +78,15 @@ bool SystemCmd::register_cmd(const char* name, bool (*handler)())
  * ═══════════════════════════════════════════════════════════════════════════ */
 bool SystemCmd::unregister_cmd(const char* name)
 {
-    if (!name) return false;
+    if (!name)
+        return false;
 
 #ifndef CONFIG_OSAL_NULL
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     auto it = m_commands.find(key);
-    if (it == m_commands.end()) {
+    if (it == m_commands.end())
+    {
         COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return false;
     }
@@ -93,8 +94,10 @@ bool SystemCmd::unregister_cmd(const char* name)
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return true;
 #else
-    for (size_t i = 0; i < m_count; i++) {
-        if (strcmp(m_entries[i].name, name) == 0) {
+    for (size_t i = 0; i < m_count; i++)
+    {
+        if (strcmp(m_entries[i].name, name) == 0)
+        {
             m_entries[i] = m_entries[m_count - 1];
             m_count--;
             return true;
@@ -107,17 +110,18 @@ bool SystemCmd::unregister_cmd(const char* name)
 /* ═══════════════════════════════════════════════════════════════════════════
  *  命令分发
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len,
-                          void* ctx, TypeIdToken expected_args_id,
-                          TypeIdToken expected_ctx_id) const
+bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void* ctx,
+                         TypeIdToken expected_args_id, TypeIdToken expected_ctx_id) const
 {
-    if (!name) return false;
+    if (!name)
+        return false;
 
 #ifndef CONFIG_OSAL_NULL
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     auto it = m_commands.find(key);
-    if (it == m_commands.end()) {
+    if (it == m_commands.end())
+    {
         COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return false;
     }
@@ -131,8 +135,10 @@ bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len,
         return false;
     return node.wrapper(arg, arg_len, ctx);
 #else
-    for (size_t i = 0; i < m_count; i++) {
-        if (strcmp(m_entries[i].name, name) == 0) {
+    for (size_t i = 0; i < m_count; i++)
+    {
+        if (strcmp(m_entries[i].name, name) == 0)
+        {
             const HandlerNode& node = m_entries[i].node;
             if (expected_args_id && node.args_id != expected_args_id)
                 return false;
@@ -150,7 +156,8 @@ bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len,
  * ═══════════════════════════════════════════════════════════════════════════ */
 bool SystemCmd::has_cmd(const char* name) const
 {
-    if (!name) return false;
+    if (!name)
+        return false;
 
 #ifndef CONFIG_OSAL_NULL
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
@@ -159,10 +166,9 @@ bool SystemCmd::has_cmd(const char* name) const
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return found;
 #else
-    for (size_t i = 0; i < m_count; i++) {
+    for (size_t i = 0; i < m_count; i++)
         if (strcmp(m_entries[i].name, name) == 0)
             return true;
-    }
     return false;
 #endif
 }

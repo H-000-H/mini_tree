@@ -9,26 +9,27 @@
  */
 #ifndef FT5X06_DRV_H
 #define FT5X06_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define FT5X06_CMD_BASE COMPAT_MAGIC(FT5X06)
 /** 读取触摸点（arg: struct ft5x06_touch*） */
-#define FT5X06_CMD_READ_TOUCH (FT5X06_CMD_BASE+0x01)
+#define FT5X06_CMD_READ_TOUCH (FT5X06_CMD_BASE + 0x01)
 /** 命令总数 */
 #define FT5X06_CMD_COUNT 1
 
-/** @brief FT5x06 触摸结果（首触点坐标） */
-struct ft5x06_touch
-{
-    uint8_t  points;  /**< 有效触点数量（0=无触摸） */
-    uint16_t x;       /**< 首触点 X 坐标 */
-    uint16_t y;       /**< 首触点 Y 坐标 */
-};
+    /** @brief FT5x06 触摸结果（首触点坐标） */
+    struct ft5x06_touch
+    {
+        uint8_t points; /**< 有效触点数量（0=无触摸） */
+        uint16_t x; /**< 首触点 X 坐标 */
+        uint16_t y; /**< 首触点 Y 坐标 */
+    };
 #ifdef __cplusplus
 }
 #endif

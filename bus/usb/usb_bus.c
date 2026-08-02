@@ -8,77 +8,75 @@
 #define USB_BUS_IMPL
 #define HAL_USB_IMPL
 #include "usb_bus.h"
-#include "bus.h"
-#include "hal_usb.h"
-#include "device.h"
+
 #include "board_devtable.h"
-#include "status.h"
+#include "bus.h"
 #include "compiler_compat.h"
-#include "system_log.h"
+#include "device.h"
+#include "hal_usb.h"
 #include "osal.h"
+#include "status.h"
+#include "system_log.h"
 #include "usb_tusb_port.h"
 
 #define USB_BUS_HOST_MAX 1
 
 struct usb_bus_host
 {
-    struct device*          dev;
+    struct device* pdev;
     struct hal_usb_bus_host hal_host;
-    COMPAT_ATOMIC_INT       ref_count;
-    int                     tusb_inited;
-    uint8_t                 rhport;
+    COMPAT_ATOMIC_INT ref_count;
+    int tusb_inited;
+    uint8_t rhport;
 };
 
 struct usb_bus_client
 {
-    struct device*        dev;
-    struct usb_bus_host*  host;
+    struct device* pdev;
+    struct usb_bus_host* host;
     enum usb_client_class cls;
-    int                   hw_open;
+    int hw_open;
 };
 
-static struct usb_bus_host   s_usb_hosts[USB_BUS_HOST_MAX];
-static uint8_t               s_usb_host_used[USB_BUS_HOST_MAX];
-static osal_pool_t           s_usb_host_pool_ctrl;
+static struct usb_bus_host s_usb_hosts[USB_BUS_HOST_MAX];
+static uint8_t s_usb_host_used[USB_BUS_HOST_MAX];
+static osal_pool_t s_usb_host_pool_ctrl;
 static struct usb_bus_client s_usb_clients[DEV_ID_COUNT];
-static struct usb_bus_host*  s_irq_host;
-static const char* const     k_tag = "usb_bus";
+static struct usb_bus_host* s_irq_host;
+static const char* const k_tag = "usb_bus";
 
-pre_execution(150)
-static void usb_bus_pool_init(void)
+pre_execution(150) static void usb_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
 }
 
-static struct usb_bus_host* usb_host_from_device(struct device* dev)
+static struct usb_bus_host* usb_host_from_device(struct device* pdev)
 {
     for (int i = 0; i < USB_BUS_HOST_MAX; i++)
-    {
-        if (osal_pool_is_used(&s_usb_host_pool_ctrl, i) && s_usb_hosts[i].dev == dev)
+        if (osal_pool_is_used(&s_usb_host_pool_ctrl, i) && s_usb_hosts[i].pdev == pdev)
             return &s_usb_hosts[i];
-    }
     return NULL;
 }
 
-static struct usb_bus_client* usb_client_from_device(struct device* dev)
+static struct usb_bus_client* usb_client_from_device(struct device* pdev)
 {
-    int id = (int)board_dev_find(device_get_name(dev));
-    if (id < 0 || id >= DEV_ID_COUNT || !s_usb_clients[id].dev)
+    int id = (int)board_dev_find(device_get_name(pdev));
+    if (id < 0 || id >= DEV_ID_COUNT || !s_usb_clients[id].pdev)
         return NULL;
     return &s_usb_clients[id];
 }
 
-static int  usb_host_init_impl(struct device* dev, const void* cfg);
-static int  usb_host_deinit_impl(struct device* dev);
-static int  usb_host_role_impl(struct device* dev);
-static int  usb_client_register_impl(struct device* dev, const void* cfg, void** out);
-static void usb_client_unregister_impl(struct device* dev);
+static int usb_host_init_impl(struct device* pdev, const void* cfg);
+static int usb_host_deinit_impl(struct device* pdev);
+static int usb_host_role_impl(struct device* pdev);
+static int usb_client_register_impl(struct device* pdev, const void* cfg, void** out);
+static void usb_client_unregister_impl(struct device* pdev);
 
 static const struct bus_controller_ops s_usb_controller_ops = {
-    .init              = usb_host_init_impl,
-    .deinit            = usb_host_deinit_impl,
-    .role              = usb_host_role_impl,
-    .client_register   = usb_client_register_impl,
+    .init = usb_host_init_impl,
+    .deinit = usb_host_deinit_impl,
+    .role = usb_host_role_impl,
+    .client_register = usb_client_register_impl,
     .client_unregister = usb_client_unregister_impl,
 };
 
@@ -101,7 +99,7 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
 
     host = &s_usb_hosts[idx];
     COMPAT_MEM_SET(host, 0, sizeof(*host));
-    host->dev    = pdev;
+    host->pdev = pdev;
     host->rhport = (uint8_t)host_cfg->rhport;
     COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
@@ -137,9 +135,9 @@ fail_pool:
     return ret;
 }
 
-int usb_bus_host_init(struct device* dev, const struct hal_usb_bus_config* cfg)
+int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg)
 {
-    return usb_host_init_impl(dev, cfg);
+    return usb_host_init_impl(pdev, cfg);
 }
 
 static int usb_host_deinit_impl(struct device* pdev)
@@ -168,14 +166,11 @@ static int usb_host_deinit_impl(struct device* pdev)
     return ret;
 }
 
-int usb_bus_host_deinit(struct device* pdev)
-{
-    return usb_host_deinit_impl(pdev);
-}
+int usb_bus_host_deinit(struct device* pdev) { return usb_host_deinit_impl(pdev); }
 
-static int usb_host_role_impl(struct device* dev)
+static int usb_host_role_impl(struct device* pdev)
 {
-    COMPAT_IGNORE_RESULT(dev);
+    COMPAT_IGNORE_RESULT(pdev);
     return 0;
 }
 
@@ -202,18 +197,18 @@ static int usb_client_register_impl(struct device* pdev, const void* cfg, void**
         return VFS_ERR_INVAL;
 
     client = &s_usb_clients[id];
-    if (client->dev)
+    if (client->pdev)
     {
-        if (client->dev != pdev)
+        if (client->pdev != pdev)
             return VFS_ERR_BUSY;
         *out = client;
         return VFS_OK;
     }
 
     COMPAT_MEM_SET(client, 0, sizeof(*client));
-    client->dev  = pdev;
+    client->pdev = pdev;
     client->host = host;
-    client->cls  = *pcls;
+    client->cls = *pcls;
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
     *out = client;
     return VFS_OK;
@@ -243,23 +238,20 @@ static void usb_client_unregister_impl(struct device* pdev)
     COMPAT_MEM_SET(client, 0, sizeof(*client));
 }
 
-void usb_bus_client_unregister(struct device* pdev)
-{
-    usb_client_unregister_impl(pdev);
-}
+void usb_bus_client_unregister(struct device* pdev) { usb_client_unregister_impl(pdev); }
 
-int usb_bus_open(struct device* dev)
+int usb_bus_open(struct device* pdev)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     if (!c)
         return VFS_ERR_NODEV;
     c->hw_open = 1;
     return VFS_OK;
 }
 
-int usb_bus_close(struct device* dev)
+int usb_bus_close(struct device* pdev)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     if (!c)
         return VFS_ERR_NODEV;
     c->hw_open = 0;
@@ -287,10 +279,10 @@ void usb_bus_task(void)
         usb_tusb_task();
 }
 
-int usb_bus_cdc_write(struct device* dev, const void* buf, size_t len,
-                      uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
     size_t done = 0;
     int mode;
@@ -299,7 +291,7 @@ int usb_bus_cdc_write(struct device* dev, const void* buf, size_t len,
     if (!c || c->cls != USB_CLIENT_CDC || !buf)
         return VFS_ERR_INVAL;
 
-    mode = usb_bus_resolve_xfer_mode(dev, xfer_mode);
+    mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 
@@ -323,10 +315,10 @@ int usb_bus_cdc_write(struct device* dev, const void* buf, size_t len,
     return (int)done;
 }
 
-int usb_bus_cdc_read(struct device* dev, void* buf, size_t len,
-                     uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms,
+                     uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
     size_t done = 0;
     int mode;
@@ -334,7 +326,7 @@ int usb_bus_cdc_read(struct device* dev, void* buf, size_t len,
     if (!c || c->cls != USB_CLIENT_CDC || !buf)
         return VFS_ERR_INVAL;
 
-    mode = usb_bus_resolve_xfer_mode(dev, xfer_mode);
+    mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 
@@ -360,34 +352,34 @@ int usb_bus_cdc_read(struct device* dev, void* buf, size_t len,
     return (int)done;
 }
 
-int usb_bus_ecm_write(struct device* dev, const void* frame, size_t len,
-                      uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     int mode;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!c || c->cls != USB_CLIENT_ECM || !frame || !len)
         return VFS_ERR_INVAL;
 
-    mode = usb_bus_resolve_xfer_mode(dev, xfer_mode);
+    mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 
     return usb_net_frame_push_tx(frame, len);
 }
 
-int usb_bus_ecm_read(struct device* dev, void* frame, size_t len,
-                     uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms,
+                     uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
     int n, mode;
 
     if (!c || c->cls != USB_CLIENT_ECM || !frame || !len)
         return VFS_ERR_INVAL;
 
-    mode = usb_bus_resolve_xfer_mode(dev, xfer_mode);
+    mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 
@@ -405,17 +397,17 @@ int usb_bus_ecm_read(struct device* dev, void* frame, size_t len,
     }
 }
 
-int usb_bus_hid_write(struct device* dev, const void* report, size_t len,
-                      uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(dev);
+    struct usb_bus_client* c = usb_client_from_device(pdev);
     int mode;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!c || c->cls != USB_CLIENT_HID || !report || !len)
         return VFS_ERR_INVAL;
 
-    mode = usb_bus_resolve_xfer_mode(dev, xfer_mode);
+    mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 

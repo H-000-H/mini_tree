@@ -30,10 +30,10 @@ BreakBeforeBraces: Allman
 #                                 return -1;
 RemoveBracesLLVM: true
 
-# ── 短语句 / 短函数不压缩成单行 ──
+# ── 短语句不压缩成单行；短函数允许一行化 ──
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
+AllowShortFunctionsOnASingleLine: All
 AllowShortBlocksOnASingleLine: Never
 
 # ── 行宽 ──
@@ -45,8 +45,14 @@ PointerAlignment: Left
 ReferenceAlignment: Pointer
 SpaceAfterCStyleCast: false
 
-# ── 头文件排序 ──
+# ── 头文件排序（compiler_compat_poison.h 固定最后, 保持 poison 语义）──
 SortIncludes: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"compiler_compat_poison\.h"$'
+    Priority: 100
+  - Regex: '.*'
+    Priority: 1
 
 # ── 对齐（内核 / Google 风格均不对齐）──
 AlignConsecutiveAssignments: false

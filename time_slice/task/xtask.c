@@ -4,15 +4,16 @@
  * @file xtask.c
  * @brief 时间片调度器
  * @note 时间片调度器是基于时间片轮转算法实现的调度器
-*/
+ */
 #ifdef CONFIG_OSAL_NULL
 
 #include "xtask.h"
+
+#include "board_devtable.h"
 #include "compiler_compat.h"
+#include "device.h"
 #include "dt_config_gen.h"
 #include "interrupt.h"
-#include "device.h"
-#include "board_devtable.h"
 #include "vfs-tim.h"
 
 /* 占位/无 chosen 板: 调度器 tick 设备缺省为无效 id, xscheduler_start() 直接返回 */
@@ -26,11 +27,7 @@ static struct scheduler_tim_ctx g_sched_tim_ctx;
 /**
  * @brief 时间片调度器早期初始化 (pre_execution 自动调用)
  */
-pre_execution(160)
-static void xscheduler_early_init(void)
-{
-    x_scheduler_init(&g_scheduler);
-}
+pre_execution(160) static void xscheduler_early_init(void) { x_scheduler_init(&g_scheduler); }
 
 /**
  * @brief 启动 tick 设备与 VIRQ
@@ -49,7 +46,7 @@ void xscheduler_start(void)
     if (!tim)
         return;
 
-    g_sched_tim_ctx.tim       = tim;
+    g_sched_tim_ctx.tim = tim;
     g_sched_tim_ctx.scheduler = &g_scheduler;
 
     interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &g_sched_tim_ctx);
@@ -85,14 +82,18 @@ int scheduler_tim_isr_top(void* arg, uint16_t irq_num)
  * @param period_ms 周期
  * @return 句柄
  */
-x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms)
+x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name,
+                                       void (*cb)(x_task*), unsigned int period_ms)
 {
-    if (!sched || !task || !cb) return 0;
+    if (!sched || !task || !cb)
+        return 0;
 
-    task->name          = name;
-    task->xTask_cb      = cb;
+    task->name = name;
+    task->xTask_cb = cb;
     COMPAT_ATOMIC_STORE(&task->period, period_ms, COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->next_running, COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED) + period_ms, COMPAT_MO_RELAXED);
+    COMPAT_ATOMIC_STORE(&task->next_running,
+                        COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED) + period_ms,
+                        COMPAT_MO_RELAXED);
     COMPAT_ATOMIC_STORE(&task->is_running, true, COMPAT_MO_RELAXED);
 
     list_add_tail(&task->node, &sched->task_list_head);
@@ -108,7 +109,8 @@ x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const c
  */
 int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 {
-    if (!sched) return VFS_ERR_INVAL;
+    if (!sched)
+        return VFS_ERR_INVAL;
     COMPAT_ATOMIC_ADD_FETCH(&sched->tick_count, ms, COMPAT_MO_RELAXED);
     return VFS_OK;
 }
@@ -120,7 +122,8 @@ int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
  */
 int x_task_run(x_scheduler* sched)
 {
-    if (!sched) return -1;
+    if (!sched)
+        return -1;
 
     list_node* head = &sched->task_list_head;
     list_node* current = head->next;
@@ -128,9 +131,9 @@ int x_task_run(x_scheduler* sched)
     while (current != head)
     {
         list_node* next = current->next;
-        struct x_task* task = container_of(current,struct x_task, node);
+        struct x_task* task = container_of(current, struct x_task, node);
 
-        if (!COMPAT_ATOMIC_LOAD(&task->is_running, COMPAT_MO_RELAXED))/**< 非运行状态才允许进入 */
+        if (!COMPAT_ATOMIC_LOAD(&task->is_running, COMPAT_MO_RELAXED)) /**< 非运行状态才允许进入 */
         {
             COMPAT_ATOMIC_STORE(&task->is_running, true, COMPAT_MO_RELAXED);
             uint32_t now = COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED);
@@ -140,7 +143,9 @@ int x_task_run(x_scheduler* sched)
             {
                 task->xTask_cb(task);
                 COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);
-                COMPAT_ATOMIC_STORE(&task->next_running, now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED), COMPAT_MO_RELAXED);
+                COMPAT_ATOMIC_STORE(&task->next_running,
+                                    now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),
+                                    COMPAT_MO_RELAXED);
             }
         }
         current = next;
@@ -151,9 +156,6 @@ int x_task_run(x_scheduler* sched)
 /**
  * @brief poll g_scheduler
  */
-void x_scheduler_poll(void)
-{
-    x_task_run(&g_scheduler);
-}
+void x_scheduler_poll(void) { x_task_run(&g_scheduler); }
 
 #endif /* CONFIG_OSAL_NULL */

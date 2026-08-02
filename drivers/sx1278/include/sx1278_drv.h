@@ -8,30 +8,31 @@
  */
 #ifndef SX1278_DRV_H
 #define SX1278_DRV_H
+#include "compiler_compat.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "compiler_compat.h"
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
 #define SX1278_CMD_BASE COMPAT_MAGIC(SX1278)
 /** 复位模块 */
-#define SX1278_CMD_RESET (SX1278_CMD_BASE+0x01)
+#define SX1278_CMD_RESET (SX1278_CMD_BASE + 0x01)
 /** 设置中心频率（arg: uint32_t*，Hz） */
-#define SX1278_CMD_SET_FREQ (SX1278_CMD_BASE+0x02)
+#define SX1278_CMD_SET_FREQ (SX1278_CMD_BASE + 0x02)
 /** 发送载荷（arg: struct sx1278_payload*） */
-#define SX1278_CMD_SEND (SX1278_CMD_BASE+0x03)
+#define SX1278_CMD_SEND (SX1278_CMD_BASE + 0x03)
 /** 接收载荷（arg: struct sx1278_payload*） */
-#define SX1278_CMD_RECV (SX1278_CMD_BASE+0x04)
+#define SX1278_CMD_RECV (SX1278_CMD_BASE + 0x04)
 /** 命令总数 */
 #define SX1278_CMD_COUNT 4
-/** SEND: data=TX；RECV: data=RX 缓冲（可写） */
-struct sx1278_payload
-{
-    uint8_t* data;  /**< 载荷缓冲 */
-    size_t   len;   /**< 载荷长度 */
-};
+    /** SEND: data=TX；RECV: data=RX 缓冲（可写） */
+    struct sx1278_payload
+    {
+        uint8_t* data; /**< 载荷缓冲 */
+        size_t len; /**< 载荷长度 */
+    };
 #ifdef __cplusplus
 }
 #endif
