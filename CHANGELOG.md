@@ -7,6 +7,18 @@
 
 ## [Unreleased] / 未发布
 
+（无未发布改动 / No unreleased changes yet.）
+
+---
+
+## [v1.0.0] / 正式版 / Official Release
+
+> **正式版 / Official Release**：平台无关的稳定基线——风格统一、构建可验证、文档双语、生态按需。
+> A stable, platform-agnostic baseline: unified coding style, verified builds, bilingual docs, on-demand ecosystem.
+>
+> 本版核心亮点 / Release highlights：代码风格体系（`.clang-format` + 分层 `.clang-tidy`，app 以下强规定）、全库命名统一（`kTag`→`k_tag`、`struct Event`→`event`、`namespace mini_tree`、`xTask`→`x_task`、`dev`→`pdev` 指针显式化）、通用 CMake 芯片无关路径最小构建实测通过、安全类模块与异构多核 AMP 作为可选积木、全部文档中英双语。
+> Coding-style enforcement (`.clang-format` + layered `.clang-tidy`, mandatory below `app/`); repo-wide naming unification (`kTag`→`k_tag`, `struct Event`→`event`, `namespace mini_tree`, `xTask`→`x_task`, `dev`→`pdev` explicit pointers); verified chip-agnostic CMake build; safety modules & heterogeneous AMP as optional bricks; fully bilingual docs.
+
 ### 产品驱动与布局 / Product Drivers & Layout
 
 - 产品驱动（37 个）迁入 `drivers/<chip>/{include,src}`（GLOB 编入 `mini_tree`）；**不再**使用独立 `components/driver_*`（除 ws2812）  

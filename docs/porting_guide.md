@@ -9,6 +9,9 @@
 | **前置 / Prereq.** | [getting_started.md](getting_started.md) |
 | **相关 / Related** | [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [architecture.md](architecture.md) · [ecosystem.md](ecosystem.md) |
 
+> **参考模板 / Reference template**：平台移植（板级 DTS、`hal_*` 强符号、`board_port.cmake`、AMP 从核镜像）可整体参考 [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) 仓库——mini_tree 的配套平台示例工程。
+> The whole platform port (board DTS, `hal_*` strong symbols, `board_port.cmake`, AMP secondary-core image) can be modeled on the [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) repository — mini_tree's companion platform example.
+
 ---
 
 ## 目录 / Table of Contents

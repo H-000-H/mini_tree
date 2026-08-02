@@ -2,6 +2,9 @@
 
 > 从零把 `mini_tree` 配进你的平台工程：依赖 → 配置 → CMake → 点火。
 > Integrate `mini_tree` into your platform project from scratch: dependencies → configuration → CMake → ignition.
+>
+> **参考模板工程 / Reference template**：[Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)——mini_tree 的配套平台示例，含完整移植（DTS、HAL、`board_port.cmake`、AMP）。
+> [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) — mini_tree's companion platform example with a full port (DTS, HAL, `board_port.cmake`, AMP).
 
 | 项 / Item | 内容 / Content |
 | :--- | :--- |

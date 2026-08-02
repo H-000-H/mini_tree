@@ -1,7 +1,7 @@
 # 多核 AMP / Heterogeneous Multi-Core AMP
 
-> **异构多核（AMP）也是一个可拼接的可选积木**：默认单核即可开发；需要双核/异构时按 Kconfig 启用，并自行拼接平台侧的从核镜像与共享内存布局。
-> **Heterogeneous multi-core (AMP) is also an assemblable optional brick**: single-core is the default for development; enable dual-core/hetero via Kconfig when needed and assemble the secondary-core image & shared-memory layout on the platform side.
+> **AMP 是可选积木的一部分，按需自行使用**：默认单核即可完整开发；需要双核/异构时再启用，从核镜像与共享内存布局由你自行拼接。
+> **AMP is part of the optional bricks — use it on demand**: single-core is a complete baseline for development; enable dual-core/hetero only when needed, and assemble the secondary-core image & shared-memory layout yourself.
 >
 > `CPU_CORES` / `AMP_MODE` 与 `hal_cpu_*`（目录 `hal/amp`）如何配合 / How `CPU_CORES`, `AMP_MODE` and `hal_cpu_*` (in `hal/amp`) fit together.
 > **完整从核镜像与共享内存布局由平台工程提供**；本仓只给 HAL 契约与 OSAL spinlock 行为差异。
@@ -17,16 +17,35 @@
 
 ## 目录 / Contents
 
-1. [Kconfig](#1-kconfig)
-2. [HAL 契约 / HAL Contract](#2-hal-契约--hal-contract)
-3. [推荐拓扑 / Recommended Topology](#3-推荐拓扑--recommended-topology)
-4. [OSAL / 同步 / Synchronization](#4-osal--同步--synchronization)
-5. [安全 / Safety](#5-安全--safety)
-6. [验收 / Acceptance](#6-验收--acceptance)
+1. [积木定位 / Brick Positioning](#1-积木定位--brick-positioning)
+2. [Kconfig](#2-kconfig)
+3. [HAL 契约 / HAL Contract](#3-hal-契约--hal-contract)
+4. [推荐拓扑 / Recommended Topology](#4-推荐拓扑--recommended-topology)
+5. [OSAL / 同步 / Synchronization](#5-osal--同步--synchronization)
+6. [安全 / Safety](#6-安全--safety)
+7. [验收 / Acceptance](#7-验收--acceptance)
 
 ---
 
-## 1. Kconfig
+## 1. 积木定位 / Brick Positioning
+
+AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md](runtime_services.md) §5）：**默认不启用、按需自行使用**——不启用它，mini_tree 依旧完整可用。
+AMP is an **optional brick** (same family as the safety modules, see [runtime_services.md](runtime_services.md) §5): **off by default, used on demand** — without it, mini_tree stays fully functional.
+
+| 项 / Item | 说明 / Notes |
+| :--- | :--- |
+| 默认状态 / Default | 单核（`CONFIG_CPU_CORES=1`）；设备模型 / VFS / OSAL / EventBus 等核心功能照常工作 / single-core; device model / VFS / OSAL / EventBus all work as usual |
+| 启用方式 / Enable | 需要双核/异构时改 `CONFIG_CPU_CORES=2`（+ `CONFIG_AMP_MODE`）/ set `CONFIG_CPU_CORES=2` (+ `CONFIG_AMP_MODE`) when you actually need it |
+| 使用前提 / Prerequisites | 平台侧自行提供：从核镜像、共享内存布局、核间通信（IPC）；本仓只给 HAL 契约与 OSAL 行为差异 / platform supplies: secondary-core image, shared-memory layout, inter-core IPC; this repo only defines the HAL contract & OSAL behavior |
+| 参考实现 / Reference | [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)（mini_tree 配套平台示例）/ mini_tree's companion platform example |
+| 不启用的影响 / Impact of not enabling | **无**——单核配置是完整可用的基线 / **none** — single-core is a complete, usable baseline |
+
+> 一句话 / In one sentence：**AMP 是积木的一部分，按需自行使用**——不用它，mini_tree 依然完整；用它，从核与共享内存由你拼。
+> **AMP is part of the brick family — use it on demand**: skip it and mini_tree stays complete; adopt it and the secondary core & shared memory are yours to assemble.
+
+---
+
+## 2. Kconfig
 
 | 符号 / Symbol | 含义 / Meaning |
 | :--- | :--- |
@@ -40,7 +59,7 @@ Dual-core: the platform must implement the secondary entry and a clear shared-re
 
 ---
 
-## 2. HAL 契约 / HAL Contract
+## 3. HAL 契约 / HAL Contract
 
 头 / Header：`hal/amp/hal_amp.h`（文件内宏名仍为 `HAL_CPU_H` 历史命名 / the internal guard keeps the legacy `HAL_CPU_H` name）。
 
@@ -57,7 +76,7 @@ Middleware weak stubs default to no-ops; **real hardware needs platform strong s
 
 ---
 
-## 3. 推荐拓扑 / Recommended Topology
+## 4. 推荐拓扑 / Recommended Topology
 
 常见约定（可按 SoC 调整，但文档与 OSAL 按此假设）：
 Common convention (adjustable per SoC; docs & OSAL assume this):
@@ -79,7 +98,7 @@ This repo does **not** ship an inter-core message protocol; use EventBus (local 
 
 ---
 
-## 4. OSAL / 同步 / Synchronization
+## 5. OSAL / 同步 / Synchronization
 
 - `CONFIG_OSAL_NULL` 下，AMP 时互斥等原语倾向 **原子 CAS**；单核可退化为关中断。
   Under `CONFIG_OSAL_NULL`, AMP prefers **atomic CAS** for mutex-like primitives; single-core can fall back to IRQ disable.
@@ -90,7 +109,7 @@ This repo does **not** ship an inter-core message protocol; use EventBus (local 
 
 ---
 
-## 5. 安全 / Safety
+## 6. 安全 / Safety
 
 `safe_state` / `hal_cpu_emergency_stop_all_cores` / `hal_platform_safety`：故障时须能停**所有**会伤人的输出。
 On fault, all hazard-capable outputs must be stopped: `safe_state` / `hal_cpu_emergency_stop_all_cores` / `hal_platform_safety`.
@@ -102,15 +121,15 @@ On dual-core, implement "suspend the peer" or an equivalent silent state — not
 
 ---
 
-## 6. 验收 / Acceptance
+## 7. 验收 / Acceptance
 
 - [ ] `CPU_CORES=2` 时从核能独立跑通最小 loop / secondary core runs a minimal loop at `CPU_CORES=2`
 - [ ] 共享区无数据竞争（或有原子/锁协议）/ no data races on shared regions (or an atomic/lock protocol)
 - [ ] 注入故障后两核输出进入安全态 / both cores reach a safe output state on injected faults
 - [ ] 单核配置回退：不链从核也能正常启动 / single-core fallback: boots fine without the secondary core
 
-平台侧样例工程（链接脚本、从核镜像）不在本 shelf；见各 SoC 仓库。
-Platform sample projects (link scripts, secondary images) live outside this shelf; see the per-SoC repos.
+平台侧样例工程（链接脚本、从核镜像）不在本 shelf；可参考 [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)（mini_tree 配套平台示例）。
+Platform sample projects (link scripts, secondary images) live outside this shelf; see [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) (mini_tree's companion platform example).
 
 ---
 

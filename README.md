@@ -7,9 +7,7 @@
 
 ---
 
-## v0.1.0
-
-### 简介 / Overview
+## 简介 / Overview
 
 平台无关的嵌入式中间件：采用 Linux 风格设备树与驱动模型，统一裸机、FreeRTOS 及 RT-Thread 上的外设访问。不绑定任何厂商 SDK——芯片 HAL、引脚复用与板级 DTS 均由你的平台工程提供。
 
@@ -17,7 +15,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-### 架构特性 / Architecture
+## 架构特性 / Architecture
 
 - **设备树 / Device Tree**：DTS/DTSI 编译期经 `dtc-lite` 展开为静态 probe 表，运行期零字符串匹配、零解析开销。
   Compiled via `dtc-lite` into static probe tables; zero runtime string matching, zero parsing overhead.
@@ -30,7 +28,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-### 外设覆盖 / Peripheral Coverage
+## 外设覆盖 / Peripheral Coverage
 
 | 有总线层 / Bus-Based | 无总线层 / Bus-Less | 仅 HAL / HAL-Only |
 |:---|:---|:---|
@@ -38,7 +36,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-### 产品驱动 / Product Drivers (37)
+## 产品驱动 / Product Drivers (37)
 
 | 分类 / Category | 型号 / Chips & Modules |
 |:---|:---|
@@ -52,7 +50,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-### 操作系统抽象 / OSAL — One API, Three Backends
+## 操作系统抽象 / OSAL — One API, Three Backends
 
 | 后端 / Backend | 调度模型 / Model | 依赖 / Dependency |
 |:---|:---|:---|
@@ -62,32 +60,32 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-### 运行时服务 / Runtime Services
+## 运行时服务 / Runtime Services
 
 - **EventBus** — 区间订阅、ISR 安全投递、启动后封口 / Range subscription, ISR-safe post, seal-after-boot.
 - **VIRQ** — 虚拟中断块 + 上/下半部（SPSC 延迟队列）/ Virtual IRQ blocks, top-half / bottom-half (SPSC deferred queue).
 - **BufferPool** — 池化静态块分配；环形 FIFO、双缓冲 / Pooled static allocator; ring FIFO & double buffer.
-- **Safe State** — 停机回调、IWDG/WWDG、Flash Scrubber CRC / Shutdown callbacks, watchdogs, flash scrubber.
+- **Safe State** — 停机回调、IWDG/WWDG、Flash Scrubber CRC（可选积木）/ Shutdown callbacks, watchdogs, flash scrubber (optional brick).
 - **Production Log** — 黑匣子式故障记录 / Black-box fault recording for field diagnostics.
 
 ---
 
-### 构建与工具 / Build & Toolchain
+## 构建与工具 / Build & Toolchain
 
-- **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` 按需链入积木。
-  Modular on-demand linking via `mini_tree_link_*`.
+- **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` 按需链入积木；通用芯片无关路径 + ESP-IDF 组件路径。
+  Modular on-demand linking via `mini_tree_link_*`; generic chip-agnostic path + ESP-IDF component path.
 - **Kconfig** — `.config` → `genconfig.py` → `config.h`；`menuconfig.py` 可视化配置。
   Interactive configuration via `menuconfig.py`.
 - **dtc-lite** — Python 轻量 DTS 编译器（`pip install lark`），生成 probe 表与板级头。
   Lightweight DTS compiler, auto-generating probe tables & board headers.
-- **代码风格 / Coding Style** — `.clang-format`（Allman、单语句去括号、4 空格）+ 分层 `.clang-tidy`（命名强制）；app 层建议、app 以下强规定。
-  `.clang-format` (Allman, no braces for single statements, 4-space) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
+- **代码风格 / Coding style** — `.clang-format`（Allman、单语句去括号、短函数单行化、4 空格、100 列）+ 分层 `.clang-tidy`（命名强制）；app 层建议、app 以下强规定。
+  `.clang-format` (Allman, no braces for single statements, one-line short functions, 4-space, 100 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
 - **目标架构 / Targets** — ARM Cortex-M3 / M4F / M7, RISC-V 32-bit；双核 AMP。
   Dual-core heterogeneous AMP supported.
 
 ---
 
-### 生态 / Ecosystem
+## 生态 / Ecosystem
 
 核心精瘦，扩展按需：
 
@@ -101,7 +99,7 @@ Core stays lean; extend on demand:
 
 ---
 
-### 快速开始 / Getting Started
+## 快速开始 / Getting Started
 
 ```bash
 git clone https://github.com/H-000-H/mini_tree.git

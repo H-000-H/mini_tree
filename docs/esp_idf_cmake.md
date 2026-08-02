@@ -47,8 +47,8 @@
 
 ## 2. 工程怎么挂上组件 / Wiring the Component into a Project
 
-参考：`Heterogeneous-Multicore/platform/Espressif/esp32s3/CMakeLists.txt`
-Reference: `Heterogeneous-Multicore/platform/Espressif/esp32s3/CMakeLists.txt`
+参考：`platform/Espressif/esp32s3/CMakeLists.txt`（[Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) 仓库内）
+Reference: `platform/Espressif/esp32s3/CMakeLists.txt` in the [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) repo
 
 ```cmake
 # components/mini_tree + hal_* + 可选 driver_ws2812 自动扫描
