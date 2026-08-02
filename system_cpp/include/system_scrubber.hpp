@@ -2,8 +2,7 @@
 /*
  * system_scrubber — Flash 固件位腐烂巡检接口
  *
- * IEC 62304 §5.7 / FDA Class III 运行时自诊断要求
- * 后台超低优先级任务以 ~1KB/s 遍历 app 分区, CRC32 比对出厂基线
+ * 运行时自诊断: 后台超低优先级任务以 ~1KB/s 遍历 app 分区, CRC32 比对出厂基线
  * 失配即进入 Safe State 强制返厂, 防御 X 光/高温导致电荷流失
  */
 #pragma once
@@ -16,7 +15,7 @@ extern "C" {
 #endif
 
 /*
- * Flash 固件位腐烂巡检 (IEC 62304 §5.7 / FDA Class III 运行时自诊断)
+ * Flash 固件位腐烂巡检 (运行时自诊断)
  *
  * SPI Flash 在 X 光/高温环境长期运行后电荷流失, 代码段指令翻转.
  * 后台超低优先级任务以 ~1KB/s 速度遍历整个 app 分区,

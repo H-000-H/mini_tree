@@ -206,7 +206,7 @@ void device_ops_unregister(struct device* dev);
 struct dev_lifecycle* device_lc(struct device* dev);
 void device_lc_bind(struct device* dev);
 
-/* ── VFS 便捷包装（框架层自动持锁, IEC 61508 §7.4.3.1） ──
+/* ── VFS 便捷包装（框架层自动持锁） ──
  * device_open/close/suspend/resume + device_write/read/ioctl 均在持锁状态下
  * 完成状态检查与 ops 调用, 确保 check-then-act 的原子性.
  */

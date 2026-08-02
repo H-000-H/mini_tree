@@ -24,7 +24,7 @@ bool safe_state_check_bootloop(void);
 void safe_state_clear_bootloop(void);
 
 /*
- * 进入不可恢复的安全状态 (IEC 61508 §7.4.3 / ISO 13485 §7.3.3)
+ * 进入不可恢复的安全状态
  *
  * 本函数从 Task 上下文调用, 不能用于 NMI / ISR.
  * BOD NMI 等不可屏蔽中断请使用 safe_state_nmi_emergency_stamp().
@@ -34,7 +34,7 @@ void safe_state_clear_bootloop(void);
 void enter_safe_state(const char* reason) __attribute__((noreturn));
 
 /*
- * BOD NMI 紧急标记 (IEC 61508 §7.4.3.2 掉电保护)
+ * BOD NMI 紧急标记 (掉电保护)
  *
  * 由平台实现 (如 soc_port_mcu 或 stm32_hal_port),
  * 平台实现本身必须置于 IRAM 中.

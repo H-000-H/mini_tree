@@ -3,9 +3,9 @@
  * board_device.c — 板级设备模型运行时实现
  *
  * 维护 device 实例表与递归互斥锁池 (device_tree_init 静态分配, 池水位线预警).
- * 实现设备查找、属性解析 (safe_parse_int32 替代 strtol, MISRA C 21.6 合规).
+ * 实现设备查找、属性解析 (safe_parse_int32 替代 strtol).
  * VFS 转发层在 dev->lock 保护下完成 check-then-act; device_ops_unregister
- * 持锁斩断 ops 防 TOCTOU 竞态 (IEC 61508 §7.4.3.1).
+ * 持锁斩断 ops 防 TOCTOU 竞态.
  */
 #include "device.h"
 #include "status.h"
@@ -588,7 +588,7 @@ int device_get_count(void)
 }
 
 /* ── VFS 转发层 ──
- * IEC 61508 §7.4.3.1: 所有 VFS 入口在持锁状态下完成状态检查 + ops 调用.
+ * 所有 VFS 入口在持锁状态下完成状态检查 + ops 调用.
  *   device_open/close/suspend/resume + device_write/read/ioctl 全部
  *   在 device_lock(dev) 保护下执行 check-then-act, 阻断多线程重入.
  *
@@ -824,7 +824,7 @@ int device_unlock(struct device* dev)
 }
 
 /* ── 驱动卸载清理：状态锁定 → 广播 → 持锁斩断 ──
- * IEC 61508 §7.4.3.1: 必须在持有 dev->lock 的前提下置空 ops,
+ * 必须在持有 dev->lock 的前提下置空 ops,
  * 阻断 TOCTOU 竞态 (Thread A 在 device_read 中已通过 status 检查,
  * Thread B 同时卸载置空 ops → NULL 解引用 → HardFault).
  *

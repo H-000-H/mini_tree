@@ -5,7 +5,7 @@
  * board_driver_probe_all: 3 趟 deferred probe, 按依赖拓扑顺序匹配驱动,
  *   失败按 criticality 分级 (FATAL 触发 OSAL_PANIC, WARNING 告警, IGNORE 静默).
  * board_driver_remove_all: 逆 probe 顺序卸载, 失败保留 ERROR 状态.
- * 实现 IEC 61508 安全停机子系统 (safety pin + 回调 + emergency_stop_all_cores).
+ * 实现安全停机子系统 (safety pin + 回调 + emergency_stop_all_cores).
  */
 #include "config.h"
 #include "driver.h"
@@ -28,7 +28,7 @@ static const char* k_tag = "board_drv";
 static volatile int s_shutdown_entered = 0;
 
 /* ═══════════════════════════════════════════════════════════════════
- *  IEC 61508 安全停机子系统
+ *  安全停机子系统
  *  由 Kconfig CONFIG_SAFETY_SHUTDOWN 控制.
  *  关闭时: board_safety_add_pin / register_shutdown 为空操作,
  *          system_safety_hardware_shutdown 仅执行 CPU 停机.

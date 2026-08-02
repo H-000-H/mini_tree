@@ -1,196 +1,176 @@
 # mini_tree
 
-平台无关的嵌入式中间件：用类似 Linux 的设备树与驱动模型，把裸机 / FreeRTOS / RT-Thread 上的外设访问统一起来。
-
-**不绑定任何厂商 SDK。** 芯片 HAL、引脚与板级 DTS 由你的平台工程提供；本仓库只提供可裁剪的中间件核心，以及可选的开源积木（`lib/`）。
-
-## 目录
-
-- [mini\_tree](#mini_tree)
-  - [目录](#目录)
-  - [简介](#简介)
-  - [特性](#特性)
-  - [适用场景](#适用场景)
-  - [积木型开源生态](#积木型开源生态)
-  - [快速开始](#快速开始)
-    - [依赖](#依赖)
-    - [获取](#获取)
-    - [CMake 集成（示意）](#cmake-集成示意)
-    - [IDE](#ide)
-  - [架构](#架构)
-  - [文档](#文档)
-  - [开发](#开发)
-  - [许可证](#许可证)
-  - [致谢](#致谢)
+> 平台无关的嵌入式中间件 · Platform-agnostic embedded middleware
+>
+> 采用 Linux 风格设备树与驱动模型，统一裸机、FreeRTOS 及 RT-Thread 上的外设访问；不绑定任何厂商 SDK——芯片 HAL、引脚复用与板级 DTS 均由你的平台工程提供。
+> Linux-style Device Tree & Driver Model unifying peripheral access across Bare-Metal, FreeRTOS, and RT-Thread; zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
 
 ---
 
-## 简介
+## v0.1.0
 
-mini_tree 想做的事很简单：让应用通过 `device_open` / `read` / `write` / `ioctl` 访问外设，而不是在业务里直接摸厂商寄存器头文件。
+### 简介 / Overview
 
-为此它提供：
+平台无关的嵌入式中间件：采用 Linux 风格设备树与驱动模型，统一裸机、FreeRTOS 及 RT-Thread 上的外设访问。不绑定任何厂商 SDK——芯片 HAL、引脚复用与板级 DTS 均由你的平台工程提供。
 
-* **设备树（DTS/DTSI）**：板级描述硬件；编译期展开，运行期按表 probe  
-* **VFS / Bus / HAL 分层**：上层看不到厂商 typedef；南向用 weak HAL，由平台强符号覆盖  
-* **OSAL**：同一套 API 可跑在裸机协作调度、FreeRTOS 或 RT-Thread 上  
-* **积木链接**：GUI、网络、文件系统、OTA 等能力放在 `lib/`，**默认不进固件**，需要时再 `mini_tree_link_*`
-
-哲学接近 cJSON / lwIP 一类库：**够用、可移植、不挡路**。中间件核心保持瘦；生态靠开源积木按需叠加，而不是把所有能力焊死进一个巨无库。
+Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, FreeRTOS, and RT-Thread. Zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
 
 ---
 
-## 特性
+### 架构特性 / Architecture
 
-* **平台隔离**：公共头禁止厂商 HAL 类型；Bus 头对上层 `poison` `hal_*`  
-* **硬件直投**：DTSI 中的厂商宏经预处理写入配置结构体，HAL 不做二次 enum 映射  
-* **编译期 probe**：`DRIVER_REGISTER` + `dtc-lite` 生成静态表，运行期不做 `strcmp` 式匹配  
-* **三后端 OSAL**：`CONFIG_OSAL_NULL` / `FREERTOS` / `RTTHREAD`  
-* **SYSTEM_C / SYSTEM_CPP**：启动、看门狗、命令等可选 C 或 C++ 实现  
-* **EventBus / 虚拟中断 / 缓冲池**：横向运行时服务  
-* **Kconfig 裁剪**：功能用 `.config` 打开或关掉  
-* **开源积木**：`lib/` 只留基础设施（OS / USB / lwIP / cJSON / ETL）；其余默认 FetchContent（本地可覆盖）；均为开源，不接入需付费商业闭源栈 
-
----
-
-## 适用场景
-
-| 底层 | mini_tree 做什么 |
-| :--- | :--- |
-| 裸机 | `OSAL_NULL` + 协作调度、设备树 Probe、EventBus、安全回路 |
-| FreeRTOS | 在内核之上提供统一设备模型与 VFS/Bus |
-| RT-Thread | OSAL 垫片；外设仍走本仓库，不混用两套设备框架 |
-| ESP-IDF / Cube 等 | 平台侧提供 DTS 与 `hal_*_<soc>.c`；中间件不 `#include` 厂商头 |
-
-更细的移植步骤见 [docs/porting_guide.md](docs/porting_guide.md)。
+- **设备树 / Device Tree**：DTS/DTSI 编译期经 `dtc-lite` 展开为静态 probe 表，运行期零字符串匹配、零解析开销。
+  Compiled via `dtc-lite` into static probe tables; zero runtime string matching, zero parsing overhead.
+- **硬件直投 / Hardware Direct-Inject**：DTSI 厂商宏直接展开至配置结构体，无中间 enum 映射。
+  Vendor macros expand directly into config structs; no intermediate enum mapping.
+- **分层隔离 / Layer Isolation**：`app → board → vfs → bus → hal(weak) → vendor SDK`；公共头对 `hal_*` 实施 poison 保护。
+  Strict layering with poison guard on `hal_*` in all public headers.
+- **两段式引导 / Two-Phase Boot**：`pre_os_init` → `start_tasks` → `system_init_complete` → 调度器 / 主循环。
+  Standardized boot pipeline ending at scheduler or cooperative main loop.
 
 ---
 
-## 积木型开源生态
+### 外设覆盖 / Peripheral Coverage
 
-能力扩展走 **积木型链接**：核心不强制带齐 GUI / TLS / 文件系统；产品需要什么，就链什么。
-
-```
-应用选积木 ──► lib/ + cmake/mini_tree_link_* ──► mini_tree 核心 ──► 板级 HAL / DTS
-```
-
-* **`lib/` 只保留基础设施**：FreeRTOS、RT-Thread、TinyUSB、lwIP、cJSON、ETL  
-* **其余开源积木默认 FetchContent**（也可手动放到 `lib/<Name>` 离线）  
-* 可选积木默认不编进固件；通过 Kconfig 或 `mini_tree_link_<name>` 接入  
-* **ETL 默认进库**：上层 C++ 基础，源码在 `lib/etl`，根 CMake 链入 `mini_tree`  
-* 清单与致谢：[docs/ecosystem.md](docs/ecosystem.md) · 许可汇总：[NOTICE](NOTICE)  
-
-可选积木示例：mbedtls*、littlefs*、FatFs*、SFUD*、LVGL*、u8g2*、nanopb*、coreMQTT*、coreHTTP*、miniz*、MCUBoot*、FreeModbus*、CMSIS-DSP*、MultiButton*、EasyLogger*、libmodbus* 等（`*` = 默认 Fetch）。
+| 有总线层 / Bus-Based | 无总线层 / Bus-Less | 仅 HAL / HAL-Only |
+|:---|:---|:---|
+| SPI, I2C, I2S, UART, CAN, USB | GPIO, ADC, DAC, TIM, RTC, IWDG, WWDG | AMP/CPU, Storage, Platform Safety, SDIO |
 
 ---
 
-## 快速开始
+### 产品驱动 / Product Drivers (37)
 
-### 依赖
+| 分类 / Category | 型号 / Chips & Modules |
+|:---|:---|
+| 传感器 / Sensors (12) | AHT20, BME280, BMP280, BH1750, SHT30, SHT40, MPU6050, INA219, ADS1115, DS18B20, VL53L0X, NEO-M8N |
+| 显示 / Displays (5) | SSD1306, SH1106, ST7789, E-paper, MAX7219 |
+| 触摸 / Touch (2) | FT5x06, XPT2046 |
+| 通信 / Communication (7) | NRF24L01, SX1278 (LoRa), HC-05 (BT), SN65HVD230 (CAN), RS485 Modbus RTU, A7670 (4G), Air780E (4G) |
+| 存储·NFC / Storage & NFC (4) | W25Qxx (SPI NOR), AT24C02 (EEPROM), PN532, RC522 |
+| 执行器 / Actuators (6) | SG90, DRV8833, Relay, Buzzer, DFPlayer, MAX98357A |
+| 其他 / Other (1) | PCF8574 (GPIO Expander) |
 
-* CMake ≥ 3.16  
-* Python 3（`lark`：`pip install lark`；可选 `kconfiglib` 做 menuconfig）  
-* 目标工具链与平台 SDK（只链在**你的**工程里）
+---
 
-### 获取
+### 操作系统抽象 / OSAL — One API, Three Backends
+
+| 后端 / Backend | 调度模型 / Model | 依赖 / Dependency |
+|:---|:---|:---|
+| `CONFIG_OSAL_NULL` | 协作式时间片 / Cooperative Time-Slice | 无 / None |
+| `CONFIG_OSAL_FREERTOS` | 抢占式 / Preemptive | FreeRTOS v11.3.0 |
+| `CONFIG_OSAL_RTTHREAD` | 抢占式 / Preemptive | RT-Thread v5.3.0 |
+
+---
+
+### 运行时服务 / Runtime Services
+
+- **EventBus** — 区间订阅、ISR 安全投递、启动后封口 / Range subscription, ISR-safe post, seal-after-boot.
+- **VIRQ** — 虚拟中断块 + 上/下半部（SPSC 延迟队列）/ Virtual IRQ blocks, top-half / bottom-half (SPSC deferred queue).
+- **BufferPool** — 池化静态块分配；环形 FIFO、双缓冲 / Pooled static allocator; ring FIFO & double buffer.
+- **Safe State** — 停机回调、IWDG/WWDG、Flash Scrubber CRC / Shutdown callbacks, watchdogs, flash scrubber.
+- **Production Log** — 黑匣子式故障记录 / Black-box fault recording for field diagnostics.
+
+---
+
+### 构建与工具 / Build & Toolchain
+
+- **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` 按需链入积木。
+  Modular on-demand linking via `mini_tree_link_*`.
+- **Kconfig** — `.config` → `genconfig.py` → `config.h`；`menuconfig.py` 可视化配置。
+  Interactive configuration via `menuconfig.py`.
+- **dtc-lite** — Python 轻量 DTS 编译器（`pip install lark`），生成 probe 表与板级头。
+  Lightweight DTS compiler, auto-generating probe tables & board headers.
+- **代码风格 / Coding Style** — `.clang-format`（Allman、单语句去括号、4 空格）+ 分层 `.clang-tidy`（命名强制）；app 层建议、app 以下强规定。
+  `.clang-format` (Allman, no braces for single statements, 4-space) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
+- **目标架构 / Targets** — ARM Cortex-M3 / M4F / M7, RISC-V 32-bit；双核 AMP。
+  Dual-core heterogeneous AMP supported.
+
+---
+
+### 生态 / Ecosystem
+
+核心精瘦，扩展按需：
+
+Core stays lean; extend on demand:
+
+> **按需拉取 / FetchContent (on demand):**
+> TinyUSB · lwIP · cJSON · LVGL · u8g2 · littlefs · FatFs · SFUD · Mbed TLS · coreMQTT · coreHTTP · nanopb · miniz · MCUBoot · FreeModbus · libmodbus · CMSIS-DSP · MultiButton · EasyFlash · EasyLogger · FlashDB
+
+> **内置 / Vendored in `lib/`:**
+> FreeRTOS · RT-Thread · **ETL**（无堆 C++ 容器，默认链入 / heap-free C++ containers, always linked）
+
+---
+
+### 快速开始 / Getting Started
 
 ```bash
 git clone https://github.com/H-000-H/mini_tree.git
 ```
 
-把仓库作为子目录或 submodule（例如 `third_party/mini_tree`）加入平台工程。
-
-### CMake 集成（示意）
-
 ```cmake
 add_subdirectory(path/to/mini_tree)
 
-# 链上中间件核心目标（名称以你工程里实际导出的为准，常见为 mini_tree）
+# 链上中间件核心 / Link the middleware core
 target_link_libraries(your_firmware PUBLIC mini_tree)
 
-# 按需点亮开源积木（示例）
+# 按需点亮积木 / Opt-in bricks (examples)
 # mini_tree_link_cjson(your_firmware)
 # mini_tree_link_lwip(your_firmware "${CMAKE_CURRENT_SOURCE_DIR}/port")
-# mini_tree_link_lvgl(your_firmware "${CMAKE_CURRENT_SOURCE_DIR}/port")
 ```
 
 板级还需：覆盖 DTS、实现强符号 `hal_*`、按积木提供 port 头（如 `lwipopts.h`、`lv_conf.h`）。
+Also required at board level: board DTS, strong-symbol `hal_*`, and per-brick port headers (e.g. `lwipopts.h`, `lv_conf.h`).
 
-逐步说明见 [docs/getting_started.md](docs/getting_started.md)。
-
-### IDE
-
-打开**仓库根目录**，配合 clangd（`compile_flags.txt` / `ide/stubs`）。详见 [docs/debug_monitor.md](docs/debug_monitor.md)。
+逐步说明 / Step-by-step: [docs/getting_started.md](docs/getting_started.md)
 
 ---
 
-## 架构
-
-```
-Application  ──device_* / ioctl──►  board/  ──DRIVER_REGISTER──►  vfs/
-                                                          │
-                                                          ▼
-                                                     bus/ ──► hal/(weak) ──► 平台 HAL / 厂商 SDK
-
-横向: core · osal · interrupt · system_c|cpp · can_hook · tools(dtc-lite, genconfig)
-横向积木: lib/*（按需链接，不进核心契约）
-```
-
-要点：
-
-1. **硬件直投** — DTSI 宏展开进配置结构体  
-2. **编译期 probe** — 静态驱动表  
-3. **南向隔离** — 公共 API 不泄漏厂商类型  
-
-详解：[docs/architecture.md](docs/architecture.md)
-
----
-
-## 文档
+## 文档 / Documentation
 
 根目录只保留入口与开源惯例文件；专题都在 [`docs/`](docs/README.md)。
+Root keeps only entry & legal files; all topics live in [`docs/`](docs/README.md).
 
-| 你想… | 去看 |
+| 你想… / I want to… | 去看 / Read |
 | :--- | :--- |
-| 5 分钟建立整体印象 | [docs/overview.html](docs/overview.html) · [docs/usage.md](docs/usage.md) |
-| 配进工程 / 点火 | [docs/getting_started.md](docs/getting_started.md) |
-| 分层与数据流 | [docs/architecture.md](docs/architecture.md) |
-| 开源积木清单与致谢 | [docs/ecosystem.md](docs/ecosystem.md) |
-| 移植一块板 | [docs/porting_guide.md](docs/porting_guide.md) · [docs/driver_guide.md](docs/driver_guide.md) |
-| 写应用 | [docs/service_spec.md](docs/service_spec.md) · [docs/peripherals.md](docs/peripherals.md) |
-| 查文件 | [docs/file_index.md](docs/file_index.md) |
-| 常见问题 | [docs/faq.md](docs/faq.md) |
+| 建立整体印象 / Get an overview | [docs/usage.md](docs/usage.md) · [docs/overview.html](docs/overview.html) |
+| 配进工程 / Integrate | [docs/getting_started.md](docs/getting_started.md) |
+| 查命名与格式 / Coding style | [docs/coding_style.md](docs/coding_style.md) |
+| 了解分层 / Architecture | [docs/architecture.md](docs/architecture.md) |
+| 看积木清单 / Ecosystem | [docs/ecosystem.md](docs/ecosystem.md) |
+| 移植一块板 / Port a board | [docs/porting_guide.md](docs/porting_guide.md) · [docs/driver_guide.md](docs/driver_guide.md) |
+| 写应用 / Write apps | [docs/service_spec.md](docs/service_spec.md) · [docs/peripherals.md](docs/peripherals.md) |
+| 查文件 / Find files | [docs/file_index.md](docs/file_index.md) |
+| 常见问题 / FAQ | [docs/faq.md](docs/faq.md) |
 
-工具链：[tools/README.md](tools/README.md)。完整索引：[docs/README.md](docs/README.md)。
-
----
-
-## 开发
-
-欢迎 Issue 与 PR。贡献约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-* 变更记录：[CHANGELOG.md](CHANGELOG.md)  
-* 设计取舍：[docs/design_decisions.md](docs/design_decisions.md)  
-* 规划：[docs/roadmap.md](docs/roadmap.md)
-
-新文档请放进 `docs/`；根目录仅保留 `README` / `CHANGELOG` / `CONTRIBUTING` 与法律文件。
+工具链 / Toolchain: [tools/README.md](tools/README.md)
 
 ---
 
-## 许可证
+## 开发 / Development
 
-本项目主体为 **Apache License 2.0**，全文见 [LICENSE](LICENSE)。每个源文件均携带 `SPDX-License-Identifier: Apache-2.0` 头与之对应。
+欢迎 Issue 与 PR，贡献约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Issues & PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-`lib/` 基础设施与 Fetch 所得开源组件遵循各自许可证，完整清单（版本、版权人、合规提示）见 [NOTICE](NOTICE)。商用前请自行复核，尤其注意：
-
-- **libmodbus**（LGPL-2.1-or-later）：链接方式需满足 LGPL 重链接义务
-- **Mbed TLS**（Apache-2.0 OR GPL-2.0）：商用选 Apache-2.0 分支
-- **FatFs**（ChaN's license）：源码分发需保留版权声明
+- 变更记录 / Changelog: [CHANGELOG.md](CHANGELOG.md)
+- 设计取舍 / Design decisions: [docs/design_decisions.md](docs/design_decisions.md)
+- 路线图 / Roadmap: [docs/roadmap.md](docs/roadmap.md)
 
 ---
 
-## 致谢
+## 许可证 / License
 
-mini_tree 的积木生态建立在众多开源作者与社区之上（FreeRTOS、lwIP、LVGL、cJSON、littlefs、armink 工具链、MCUBoot、Mbed TLS……）。完整致谢表见 [docs/ecosystem.md](docs/ecosystem.md) 第 6 节。
+本项目主体为 **Apache License 2.0**，全文见 [LICENSE](LICENSE)；每个源文件携带 `SPDX-License-Identifier: Apache-2.0` 头。
+Licensed under **Apache-2.0** (see [LICENSE](LICENSE)); every source file carries the `SPDX-License-Identifier: Apache-2.0` header.
 
-若署名或许可表述有误，欢迎提 Issue / PR 更正。
+`lib/` 与 Fetch 积木遵循各自许可证，完整清单见 [NOTICE](NOTICE)。商用前请自行复核：libmodbus (LGPL)、Mbed TLS (Apache-2.0 OR GPL-2.0)、FatFs (ChaN's license)。
+`lib/` and fetched bricks keep their own licenses (see [NOTICE](NOTICE)). Review before commercial use: libmodbus (LGPL), Mbed TLS (Apache-2.0 OR GPL-2.0), FatFs (ChaN's license).
+
+---
+
+## 致谢 / Acknowledgements
+
+mini_tree 的积木生态建立在众多开源作者与社区之上（FreeRTOS、lwIP、LVGL、cJSON、littlefs、armink 工具链、MCUBoot、Mbed TLS……）。
+mini_tree's brick ecosystem builds on the open-source community (FreeRTOS, lwIP, LVGL, cJSON, littlefs, armink toolchain, MCUBoot, Mbed TLS, …).
+
+完整致谢表 / Full credits: [docs/ecosystem.md](docs/ecosystem.md) §6。若有署名或许可表述有误，欢迎提 Issue / PR 更正。
+Corrections to credits or licenses welcome via Issue / PR.

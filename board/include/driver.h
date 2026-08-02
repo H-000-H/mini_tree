@@ -4,7 +4,7 @@
  *
  * 声明 board_driver_probe_all/remove_all 按 probe 顺序遍历设备匹配驱动,
  * 提供 DRIVER_REGISTER 宏 (dtc-lite 编译期扫描生成 probe/remove 函数表).
- * 定义 IEC 61508 安全停机回调注册接口 (仅 probe 阶段可注册, 运行期不可追加).
+ * 定义安全停机回调注册接口 (仅 probe 阶段可注册, 运行期不可追加).
  */
 #ifndef BOARD_DRIVER_H
 #define BOARD_DRIVER_H
@@ -26,7 +26,7 @@ int board_driver_remove_all(void) COMPAT_WARN_UNUSED_RESULT;
 void board_register_all_drivers(void);
 
 /* ── 安全停机回调注册 (Observer 模式) ──
- * IEC 61508 §7.4.3.4: 框架不感知具体执行器类型,
+ * 框架不感知具体执行器类型,
  * 由各驱动在 probe 阶段注册自己的停机回调.
  * 仅允许在调度器启动前 (probe 阶段) 注册, 运行期不可追加.
  */
