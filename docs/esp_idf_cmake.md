@@ -191,7 +191,7 @@ Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** a
 
 - ESP 驱动：写在 `idf_component_register(... REQUIRES …)`。
   ESP drivers: declared in `idf_component_register(... REQUIRES …)`.
-- 配置期 FetchContent（根 CMake 直接 include `cmake/*.cmake`，local-or-fetch）：TinyUSB、lwIP、cJSON。ESP 下建议改用 IDF 组件 / Component Manager（如 `esp_tinyusb`、`managed_components`）。
+- 链接期 FetchContent（调用 `mini_tree_link_*` 才拉取，local-or-fetch）：TinyUSB、lwIP、cJSON。ESP 下建议改用 IDF 组件 / Component Manager（如 `esp_tinyusb`、`managed_components`）。
   Config-time FetchContent (the root CMake includes `cmake/*.cmake` directly, local-or-fetch): TinyUSB, lwIP, cJSON. Under ESP, prefer IDF components / Component Manager instead (e.g. `esp_tinyusb`, `managed_components`).
 - 链接期 FetchContent（按需 `mini_tree_link_*`，local-or-fetch on link）：LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB。
   Link-time FetchContent (`mini_tree_link_*`, local-or-fetch on link): LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB.

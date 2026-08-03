@@ -146,9 +146,7 @@ extern "C"
      .executing = COMPAT_ATOMIC_INIT(false),                                                       \
      .rerun = COMPAT_ATOMIC_INIT(false)}
 
-    COMPAT_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) &&
-                             ((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U),
-                         "BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
+    COMPAT_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) &&((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U),"BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
 
     /**
      * @brief 判断当前是否在中断上下文
@@ -161,8 +159,7 @@ extern "C"
      * @param work  工作项指针
      * @return true 成功; false 队列满
      */
-    COMPAT_STATIC_INLINE bool bottom_half_submit_rerun(struct fifo_spsc* fifo,
-                                                       struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE bool bottom_half_submit_rerun(struct fifo_spsc* fifo,struct bottom_half_work* work)
     {
         bool expected = false;
 
@@ -192,8 +189,7 @@ extern "C"
         if (!fifo || !work || !work->fn)
             return false;
 
-        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL,
-                               COMPAT_MO_RELAXED))
+        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL,COMPAT_MO_RELAXED))
         {
             if (COMPAT_ATOMIC_LOAD(&work->executing, COMPAT_MO_ACQUIRE))
                 COMPAT_ATOMIC_STORE(&work->rerun, true, COMPAT_MO_RELEASE);
@@ -271,8 +267,7 @@ extern "C"
         struct osal_sem* sem; /**< 二值信号量 (唤醒下半部任务) */
     };
 
-    COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task,
-                                                   struct osal_sem* sem)
+    COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task,struct osal_sem* sem)
     {
         if (!task || !sem)
             return -1;
@@ -285,9 +280,7 @@ extern "C"
      * @brief ISR 调: 入队 + post 二值信号量
      * @param px_yield_required ISR 出口是否需要 yield
      */
-    COMPAT_STATIC_INLINE bool bottom_half_task_submit_from_isr(struct bottom_half_task* task,
-                                                               struct bottom_half_work* work,
-                                                               bool* px_yield_required)
+    COMPAT_STATIC_INLINE bool bottom_half_task_submit_from_isr(struct bottom_half_task* task,struct bottom_half_work* work,bool* px_yield_required)
     {
         if (!task || !task->sem)
             return false;
@@ -303,8 +296,7 @@ extern "C"
     /**
      * @brief 任务上下文: 入队 + post 二值信号量
      */
-    COMPAT_STATIC_INLINE bool bottom_half_task_submit(struct bottom_half_task* task,
-                                                      struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE bool bottom_half_task_submit(struct bottom_half_task* task,struct bottom_half_work* work)
     {
         if (!task || !task->sem || bottom_half_in_isr())
             return false;
@@ -340,9 +332,7 @@ extern "C"
     {
         if (!task)
             return -1;
-        return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME,
-                                stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority,
-                                bottom_half_task_entry, task, 0);
+        return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME,stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority,bottom_half_task_entry, task, 0);
     }
 #endif /* CONFIG_OSAL_NULL */
 
@@ -357,8 +347,7 @@ extern "C"
      * @param arg       传递给上半部回调和下半部 work 的参数 (ISR 调 dispatch 时从表读取)
      * @note  top_half 返回非零表示需要 submit 下半部; 返回零表示不需要
      */
-    void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half,
-                                    struct bottom_half_work* work, void* arg);
+    void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half,struct bottom_half_work* work, void* arg);
 
     /**
      * @brief 虚拟中断调度入口 (ISR 内调用)

@@ -120,7 +120,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏 / vendor-header `-I` for dtc/cpp macro expansion |
 | `VENDOR_DEFINES` | `STRING` | 额外 `-D`（少用）/ extra `-D` (rarely used) |
 | ETL（`cmake/etl.cmake`） | — | **vendor 于 `lib/etl`**（仅 include + cmake）；根 CMake 始终 link（缺失时 Fetch 兜底）/ **vendored in `lib/etl`** (include + cmake only); always linked by the root CMake (Fetch fallback if missing) |
-| 其它开源积木 / Other open-source bricks | — | TinyUSB / lwIP / cJSON 为配置期 FetchContent；其余（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）由 `mini_tree_link_*` 链接期点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) / TinyUSB / lwIP / cJSON use configure-time FetchContent; the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) are enabled at link time via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
+| 其它开源积木 / Other open-source bricks | — | TinyUSB / lwIP / cJSON 与其余（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) / TinyUSB / lwIP / cJSON and the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) all use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | 可选 / optional；见 `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | 启用后可对目标加反汇编 post-build（`cmake/disasm.cmake`）/ adds a disassembly post-build step when enabled (`cmake/disasm.cmake`) |
 
@@ -132,7 +132,7 @@ Set `... CACHE ... FORCE` **before** `add_subdirectory(mini_tree)` to avoid lock
 1. 跑 `genconfig.py` / Run `genconfig.py`
 2. 跑 `dtc-lite`（扫描 vfs/bus/drivers 中的 `DRIVER_REGISTER`，生成编译期 probe 表）/ Run dtc-lite (scan `DRIVER_REGISTER` in vfs/bus/drivers and generate the compile-time probe table)
 3. 按 `.config` 挑选 OSAL / SYSTEM 源；链入 `lib/` 中的 vendor 内核（FreeRTOS v11.3.0 / RT-Thread v5.3.0）/ Pick OSAL / SYSTEM sources per `.config`; link the vendored kernels in `lib/` (FreeRTOS v11.3.0 / RT-Thread v5.3.0)
-4. TinyUSB / lwIP / cJSON 为配置期 FetchContent；其余可选积木由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）/ TinyUSB / lwIP / cJSON are configure-time FetchContent; other optional bricks are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
+4. 全部可选积木（含 TinyUSB / lwIP / cJSON）由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）/ All optional bricks (incl. TinyUSB / lwIP / cJSON) are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
 
 语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)；积木清单见 [ecosystem.md](ecosystem.md)。
 Language-backend comparison: [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp); USB board-level contract: [usb_tusb_port.md](usb_tusb_port.md); brick list: [ecosystem.md](ecosystem.md).

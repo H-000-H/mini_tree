@@ -22,7 +22,7 @@
 | ✓ | clangd 无 SDK 可解析（stubs + compile_flags） / clangd parses without SDK (stubs + compile_flags) |
 | ✓ | 文档树：根惯例文件 + `docs/` 专题（无 examples / board Wiki）/ doc tree: root convention files + `docs/` topics (no examples / board Wiki) |
 | ✓ | USB / 外设 ioctl / AMP / can_hook / 运行时服务等缺口文档 / gap docs: USB / peripheral ioctl / AMP / can_hook / runtime services |
-| ✓ | 开源积木：vendor 仅 FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 配置期 FetchContent；其余链接期 FetchContent（`ecosystem.md` + `dep_fetch`）/ OSS bricks: only FreeRTOS / RT-Thread / ETL vendored; TinyUSB / lwIP / cJSON fetched at configure time; the rest at link time |
+| ✓ | 开源积木：vendor 仅 FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 与其余积木均链接期 FetchContent（`ecosystem.md` + `dep_fetch`）/ OSS bricks: only FreeRTOS / RT-Thread / ETL vendored; all others (incl. TinyUSB / lwIP / cJSON) fetched at link time |
 | ✓ | 命名统一（kTag→`k_tag`、struct Event→`struct event`、MiniTree→`mini_tree`、xTask→`x_task`、ListNode→`list_node` 等）+ 分层 `.clang-tidy`（app 层建议、app 以下强规定）/ naming unification (kTag→`k_tag`, struct Event→`struct event`, MiniTree→`mini_tree`, xTask→`x_task`, ListNode→`list_node`, …) + layered `.clang-tidy` (suggested at app layer, enforced below) |
 | → | 与平台工程 DTS/API 持续同步 / keep syncing DTS/API with platform projects |
 | → | CI：占位 DTS 下仅编译 smoke / CI: compile-only smoke under placeholder DTS |

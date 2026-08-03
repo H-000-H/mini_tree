@@ -99,8 +99,8 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `algorithm/buffer/` | 环形/双缓冲 / ring & double buffers |
 | `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` / `esp_idf` / `dep_fetch` + `mini_tree_link_*` helpers (see ecosystem.md); also `disasm` / `rust` / `esp_idf` |
 
-> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP / cJSON** 配置期 FetchContent；其余积木链接期 FetchContent。
-> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP / cJSON** are fetched at configure time; the remaining bricks are fetched at link time.
+> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP / cJSON** 与其余积木均为链接期 FetchContent。
+> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP / cJSON** and all other bricks are fetched at link time.
 
 ---
 

@@ -105,7 +105,7 @@ IDF already injects `sdkconfig.h`. `esp_idf.cmake` only generates an empty-shell
 
 ## 3. 推荐：ESP 板删除 vendored `lib/`，改走 IDF / Fetch / Recommended: Drop Vendored `lib/` on ESP Boards, Use IDF / Fetch
 
-现状：`lib/` 已只 vendor **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；TinyUSB / lwIP / cJSON 已改为**配置期 FetchContent**，其余积木（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）为**链接期 FetchContent**（`mini_tree_link_*`）。在 **ESP-IDF** 上与内核/组件重复的部分仍应裁剪，避免体积、版本、许可证维护成本。
+现状：`lib/` 已只 vendor **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；TinyUSB / lwIP / cJSON 与其余积木（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为**链接期 FetchContent**（`mini_tree_link_*`）。在 **ESP-IDF** 上与内核/组件重复的部分仍应裁剪，避免体积、版本、许可证维护成本。
 
 Current state: `lib/` vendors only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL**; TinyUSB / lwIP / cJSON are now **config-time FetchContent**, and the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) are **link-time FetchContent** (`mini_tree_link_*`). Under **ESP-IDF**, anything duplicating the kernel/components should still be dropped to avoid size, version, and license maintenance costs.
 

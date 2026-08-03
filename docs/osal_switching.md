@@ -34,7 +34,7 @@
 公共表面：`osal/include/osal.h`。业务与 VFS 应只依赖该头。
 Public surface: `osal/include/osal.h`. Business code and VFS should depend on this header only.
 
-`lib/` 现状：随仓 vendor 仅 **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；TinyUSB / lwIP / cJSON 为配置期 FetchContent，其余积木（LVGL、littlefs、FatFs、Mbed TLS、coreMQTT、coreHTTP、nanopb、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB、u8g2、SFUD、miniz）为链接期 FetchContent（`mini_tree_link_*`）。
+`lib/` 现状：随仓 vendor 仅 **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；全部积木（TinyUSB / lwIP / cJSON 及 LVGL、littlefs、FatFs、Mbed TLS、coreMQTT、coreHTTP、nanopb、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB、u8g2、SFUD、miniz）均为链接期 FetchContent（`mini_tree_link_*`）。
 
 Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** are vendored; TinyUSB / lwIP / cJSON are config-time FetchContent, and the rest (LVGL, littlefs, FatFs, Mbed TLS, coreMQTT, coreHTTP, nanopb, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB, u8g2, SFUD, miniz) are link-time FetchContent (`mini_tree_link_*`).
 

@@ -6,8 +6,8 @@
 > 能力扩展走 **积木型链接**：需要什么能力，就按需链入对应开源库，用板级 port 补齐配置与硬件胶水。
 > Capability expansion follows a **link-as-a-block** model: link in the needed open-source library on demand, and supply configuration plus hardware glue through a board-level port.
 >
-> **`lib/` 只保留 vendor**（FreeRTOS、RT-Thread、ETL 三个）；TinyUSB / lwIP / cJSON 为**配置期 FetchContent**，其余开源积木为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
-> **`lib/` holds only the vendors** (FreeRTOS, RT-Thread, ETL); TinyUSB / lwIP / cJSON are **configure-time FetchContent**, and the remaining open-source blocks are **link-time FetchContent** (a local `lib/<Name>` still wins; clone manually for offline use). Closed-source middleware requiring paid commercial licenses is **not** integrated. Licenses live in each library and in [`NOTICE`](../NOTICE).
+> **`lib/` 只保留 vendor**（FreeRTOS、RT-Thread、ETL 三个）；TinyUSB / lwIP / cJSON 与其余开源积木均为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
+> **`lib/` holds only the vendors** (FreeRTOS, RT-Thread, ETL); TinyUSB / lwIP / cJSON and all other open-source blocks are **link-time FetchContent** (a local `lib/<Name>` still wins; clone manually for offline use). Closed-source middleware requiring paid commercial licenses is **not** integrated. Licenses live in each library and in [`NOTICE`](../NOTICE).
 
 | 项 / Item | 内容 / Content |
 | :--- | :--- |
@@ -21,8 +21,7 @@
 | 策略 / Strategy | 做法 / Behavior | 组件 / Components |
 | :--- | :--- | :--- |
 | **vendor（进 git）** | 源码在 `lib/`，随仓库提交 | **FreeRTOS**、**RT-Thread**、**ETL** |
-| **配置期 Fetch** | 未本地提供时 configure 阶段拉取；本地 `lib/<Name>` 优先 | **TinyUSB**、**lwIP**、**cJSON** |
-| **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | littlefs、FatFs、MultiButton、MCUBoot、nanopb、coreMQTT、coreHTTP、miniz、libmodbus、LVGL、u8g2、mbedtls、CMSIS-DSP、FlashDB、SFUD、EasyFlash、EasyLogger、FreeModbus… |
+| **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | **TinyUSB**、**lwIP**、**cJSON**、littlefs、FatFs、MultiButton、MCUBoot、nanopb、coreMQTT、coreHTTP、miniz、libmodbus、LVGL、u8g2、mbedtls、CMSIS-DSP、FlashDB、SFUD、EasyFlash、EasyLogger、FreeModbus… |
 | **C++ 基础（默认进库）** | ETL 在 `lib/etl`；根 CMake **始终** `mini_tree_link_etl(mini_tree)` | 上层 C++ / `SYSTEM_CPP` 基座 |
 
 实现：`cmake/dep_fetch.cmake` 的 `mini_tree_dep_get()`（本地标记文件存在则用本地，否则 `FetchContent`）。
@@ -41,7 +40,7 @@ Optional block paths are listed in the root [`.gitignore`](../.gitignore).
 | 原则 / Principle | 含义 / Meaning |
 | :--- | :--- |
 | **开源积木 / Open-source blocks** | 均为开源项目；商用前请复核各库 `LICENSE`（如 libmodbus 为 LGPL）/ All are open source; re-check each library's `LICENSE` before commercial use (e.g. libmodbus is LGPL) |
-| **基础设施 vendor / 其余 Fetch / Vendors for infrastructure, Fetch for the rest** | 控体积；OS/ETL 常驻，USB/网络/JSON 配置期拉取，其它首次链接需联网或预置本地 / Keeps the tree small; OS/ETL are resident, USB/network/JSON are fetched at configure time, the rest need network or a local copy at first link |
+| **基础设施 vendor / 其余 Fetch / Vendors for infrastructure, Fetch for the rest** | 控体积；OS/ETL 常驻，全部积木首次链接需联网或预置本地 / Keeps the tree small; OS/ETL are resident; every block needs network or a local copy at first link |
 | **核心保持瘦 / Core stays lean** | 中间件不绑定厂商 SDK，也不强制带齐 GUI / TLS / 文件系统 / The middleware never binds a vendor SDK, nor forces GUI / TLS / filesystems in |
 | **按需链接 / Link on demand** | 可选积木默认不编进固件；调用 `mini_tree_link_*`（或 OSAL Kconfig）时才进入镜像 / Optional blocks are not built into firmware by default; they enter the image only when `mini_tree_link_*` (or the OSAL Kconfig) is used |
 | **ETL 默认进库 / ETL ships by default** | **不是可选积木**：上层 C++ 基础，源码在 `lib/etl`，根 CMake 默认链入 `mini_tree` / **Not an optional block**: it is the C++ foundation for upper layers, source lives in `lib/etl`, and the root CMake links it into `mini_tree` by default |
@@ -54,7 +53,7 @@ Optional block paths are listed in the root [`.gitignore`](../.gitignore).
 └────────────────────────────┬─────────────────────────────┘
                              │ mini_tree_link_* / Kconfig
 ┌────────────────────────────▼─────────────────────────────┐
-│  基础设施 lib/（OS·USB·lwIP·cJSON·ETL）+ Fetch 可选积木   │
+│  基础设施 lib/（OS·ETL）+ 按需 Fetch 积木（link 时）   │
 └────────────────────────────┬─────────────────────────────┘
                              │ 设备 / ioctl / EventBus
 ┌────────────────────────────▼─────────────────────────────┐

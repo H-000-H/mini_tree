@@ -166,7 +166,7 @@ Platform HAL/driver code follows `.clang-format` (Allman braces, no braces on si
 
 The full contract (API table, lifecycle, acceptance) lives in **[usb_tusb_port.md](usb_tusb_port.md)**. Summary:
 
-- TinyUSB 经 `cmake/tinyusb.cmake` **配置期 FetchContent** 拉取（local-or-fetch，不再 vendor 于 `lib/`）；板级粘合头**不要**同时暴露 TinyUSB osal 与 mini_tree osal 冲突符号。
+- TinyUSB 经 `cmake/tinyusb.cmake` **链接期 FetchContent** 拉取（local-or-fetch，调用 `mini_tree_link_tinyusb` 才拉取，不再 vendor 于 `lib/`）；板级粘合头**不要**同时暴露 TinyUSB osal 与 mini_tree osal 冲突符号。
   TinyUSB is pulled via **config-time FetchContent** (`cmake/tinyusb.cmake`, local-or-fetch; no longer vendored under `lib/`); board glue headers must **not** expose both TinyUSB osal and mini_tree osal conflicting symbols.
 - 契约头在中间件 `bus/usb/usb_tusb_port.h`（含 ECM 帧回调）；平台实现全部符号，`bus/usb` 只经此调用。
   The contract header is `bus/usb/usb_tusb_port.h` in the middleware (incl. the ECM frame callback); the platform implements every symbol and `bus/usb` only calls through it.

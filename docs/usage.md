@@ -38,7 +38,7 @@
 | **VIRQ** | 虚拟中断号 + 上/下半部 / Virtual IRQ numbers + top/bottom halves | `interrupt/` |
 | **status / VFS_ERR_*** | 统一错误码 / Unified error codes | `core/include/status.h` |
 | **积木 / Brick** | 可选开源能力块（GUI/网络/FS…）/ Optional open-source capability blocks (GUI/network/FS…) | [ecosystem.md](ecosystem.md)；`mini_tree_link_*` |
-| **vendor / Fetch** | 仅 FreeRTOS / RT-Thread / ETL 常驻 `lib/`；TinyUSB / lwIP / cJSON 配置期 FetchContent；其余积木链接期 FetchContent / Only FreeRTOS / RT-Thread / ETL stay in `lib/`; TinyUSB / lwIP / cJSON use configure-time FetchContent; the rest use link-time FetchContent | [ecosystem.md](ecosystem.md) §0 |
+| **vendor / Fetch** | 仅 FreeRTOS / RT-Thread / ETL 常驻 `lib/`；全部积木（含 TinyUSB / lwIP / cJSON）链接期 FetchContent / Only FreeRTOS / RT-Thread / ETL stay in `lib/`; all bricks (incl. TinyUSB / lwIP / cJSON) use link-time FetchContent | [ecosystem.md](ecosystem.md) §0 |
 | **两段式点火 / Two-phase ignition** | pre-os → start-tasks → complete → 调度 / pre-os → start-tasks → complete → scheduling | `system_init.h` / `system_init.hpp` |
 
 ---
@@ -78,7 +78,7 @@
 | `core` / `osal` / `interrupt` / `system_*` | 运行时基础设施 / Runtime infrastructure | OSAL 后端可选依赖 `lib/` 内核 / OSAL backends optionally depend on `lib/` kernels |
 | `tools` | dtc-lite、genconfig、gen_compile_db、menuconfig | 否 / No |
 | `ide/stubs` | 无构建时的 clangd 占位头 / clangd placeholder headers when there is no build | 否 / No |
-| `lib/` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 配置期 FetchContent；其余积木链接期 Fetch / vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP / cJSON configure-time FetchContent; the rest link-time Fetch | 开源积木，见 [ecosystem.md](ecosystem.md) / open-source bricks, see [ecosystem.md](ecosystem.md) |
+| `lib/` | vendor：FreeRTOS / RT-Thread / ETL；全部积木（含 TinyUSB / lwIP / cJSON）链接期 Fetch / vendored: FreeRTOS / RT-Thread / ETL; all bricks (incl. TinyUSB / lwIP / cJSON) use link-time Fetch | 开源积木，见 [ecosystem.md](ecosystem.md) / open-source bricks, see [ecosystem.md](ecosystem.md) |
 
 ---
 

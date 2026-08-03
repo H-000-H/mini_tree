@@ -89,7 +89,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `time_slice/` | 裸机协作式调度 / bare-metal cooperative scheduling | `x_scheduler` / `x_task`（仅 `OSAL_NULL`） |
 | `drivers/<chip>/` | 产品驱动（37 个，`{include,src}` 结构）/ product drivers (37, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl；dtc-lite 编译期 probe |
 | `can_hook/` | CAN 钩子扩展 / CAN hook extensions | — |
-| `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 配置期 FetchContent；其余积木链接期 FetchContent / vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP / cJSON configure-time FetchContent; other bricks link-time FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
+| `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；全部积木（TinyUSB / lwIP / cJSON / …）链接期 FetchContent / vendored: FreeRTOS / RT-Thread / ETL; all bricks (TinyUSB / lwIP / cJSON / …) use link-time FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
 
 ### 2.1 外设覆盖（当前）/ Peripheral Coverage (Current)
 
