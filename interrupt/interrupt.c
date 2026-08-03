@@ -7,6 +7,7 @@
 #include "interrupt.h"
 
 #include "compiler_compat.h"
+#include "status.h"
 
 /*=======================================================================================================================================================*/
 /*                              VIRQ 表 + 调度 */
@@ -17,6 +18,9 @@ void* interrupt_virtual_arg[VIRTUAL_IRQ_MAX_BASE] = {0};
 
 /**< ADC DMA 下半部全局工作项 (fn/arg 由板级 HAL 绑定) */
 struct bottom_half_work g_adc_dma_bottom_half_work;
+
+/**< I2S DMA 下半部全局工作项 (fn/arg 由板级 HAL 绑定) */
+struct bottom_half_work g_i2s_bottom_half_work;
 
 void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half,
                                 struct bottom_half_work* work, void* arg)
@@ -59,6 +63,62 @@ COMPAT_WEAK void interrupt_hw_enable(int irqn, uint32_t priority)
 }
 
 COMPAT_WEAK void interrupt_hw_disable(int irqn) { (void)irqn; }
+
+/*=======================================================================================================================================================*/
+/*                              VIRQ 外围弱钩子 (板级强符号覆盖) */
+/*=======================================================================================================================================================*/
+COMPAT_WEAK int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num)
+{
+    (void)arg;
+    (void)irq_num;
+    return VFS_IRQ_ENTRY_NOBOTTOM;
+}
+
+COMPAT_WEAK void hal_adc_dma_bottom_half_handler(void* arg) { (void)arg; }
+
+COMPAT_WEAK void hal_i2s_dma_bottom_half_handler(void* arg) { (void)arg; }
 
 /*=======================================================================================================================================================*/
 /*                              下半部核心非 inline 实现 */

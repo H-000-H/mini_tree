@@ -5,6 +5,10 @@
 #define VFS_ADC_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #define ADC_VFS_IMPL
 
+/* 生成宏头置前: DTC_GEN_* 先于 hal_adc.h 可见; 板级配置见 board_define_adc.h */
+#include "dt_config_gen.h"
+#include "board_define_adc.h"
+
 #include "vfs-adc.h"
 
 #include "device.h"
@@ -14,33 +18,11 @@
 #include "system_log.h"
 #include <stdio.h>
 
-#ifndef ADC_VFS_PRIV_COUNT
-#define ADC_VFS_PRIV_COUNT 4
-#endif
-
-#ifndef DTS_ADC_PIN_FIELD_COUNT
-#define DTS_ADC_PIN_FIELD_COUNT 8
-#endif
+/* 池大小与字段宽度宏见 board_define_adc.h (数量由 DTS 节点数自动生成) */
 #define VFS_ADC_PIN_FIELD_COUNT DTS_ADC_PIN_FIELD_COUNT
-
-#ifndef DTS_ADC_CHANNEL_FIELD_COUNT
-#define DTS_ADC_CHANNEL_FIELD_COUNT 5
-#endif
 #define VFS_ADC_CHANNEL_FIELD_COUNT DTS_ADC_CHANNEL_FIELD_COUNT
-
-#ifndef DTS_ADC_MULTI_FIELD_COUNT
-#define DTS_ADC_MULTI_FIELD_COUNT 4
-#endif
 #define VFS_ADC_MULTI_FIELD_COUNT DTS_ADC_MULTI_FIELD_COUNT
-
-#ifndef DTS_ADC_DMA_FIELD_COUNT
-#define DTS_ADC_DMA_FIELD_COUNT 16
-#endif
 #define VFS_ADC_DMA_FIELD_COUNT DTS_ADC_DMA_FIELD_COUNT
-
-#ifndef DTS_ADC_KEY_MAX
-#define DTS_ADC_KEY_MAX 40
-#endif
 #define VFS_ADC_KEY_MAX DTS_ADC_KEY_MAX
 
 struct vfs_adc_priv
@@ -51,13 +33,19 @@ struct vfs_adc_priv
     struct hal_adc_device adc; /**< HAL ADC 设备 */
     hal_adc_channel_config channels[HAL_ADC_MAX_CHANNELS]; /**< 通道配置表 */
     hal_adc_multi_config multi; /**< 多通道配置 */
-    struct hal_adc_private_cfg private; /**< 私有配置 */
     int pool_idx; /**< 池索引 */
+    int dma_pool_idx; /**< DMA 私有配置池索引 (-1 = 未分配) */
 };
 
 static struct vfs_adc_priv s_adc_priv_pool[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static uint8_t s_adc_priv_used[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t s_adc_priv_pool_ctrl COMPAT_ALIGNED(4);
+
+/* DMA 私有配置池：仅 DTS 启用 dma/dma_it 模式的实例才 claim，
+ * 不用 DMA 的板子零开销（不再内嵌进 struct vfs_adc_priv）。 */
+static struct hal_adc_private_cfg s_adc_dma_pool[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(32);
+static uint8_t s_adc_dma_used[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
+static osal_pool_t s_adc_dma_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_tag = "vfs-adc-host";
 
 /*=======================================================================================================================*/
@@ -181,6 +169,8 @@ pre_execution(150) static void vfs_adc_priv_pool_init()
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
 }
 
 /**
@@ -205,7 +195,7 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     priv = container_of(cfg, struct vfs_adc_priv, cfg);
     cfg->channels = priv->channels;
     cfg->multi_cfg = &priv->multi;
-    cfg->private_cfg = &priv->private;
+    /* private_cfg 由 probe 按需分配绑定 (仅 DMA 模式), 此处保持 NULL */
 
     if (device_get_prop_int(pdev, "adc-base", &adc_base) != VFS_OK)
         return VFS_ERR_INVAL;
@@ -485,12 +475,28 @@ static int vfs_adc_probe(struct device* pdev)
     priv = &s_adc_priv_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
+    priv->dma_pool_idx = -1;
 
     if (vfs_adc_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
     {
         SYS_LOGE(k_tag, "dts parse failed: %s", device_get_name(pdev));
         ret = VFS_ERR_INVAL;
         goto err_pool;
+    }
+
+    /* DMA 私有配置 (双缓冲) 按需分配: 仅 dma / dma_it 模式才 claim, 否则零开销 */
+    if (priv->cfg.dma_cfg.dma_it_enable || priv->cfg.dma_cfg.dma_enable)
+    {
+        int dma_idx = osal_pool_claim(&s_adc_dma_pool_ctrl);
+        if (dma_idx < 0)
+        {
+            SYS_LOGE(k_tag, "dma private pool exhausted: %s", device_get_name(pdev));
+            ret = VFS_ERR_NOMEM;
+            goto err_pool;
+        }
+        COMPAT_MEM_SET(&s_adc_dma_pool[dma_idx], 0, sizeof(s_adc_dma_pool[dma_idx]));
+        priv->dma_pool_idx = dma_idx;
+        priv->cfg.private_cfg = &s_adc_dma_pool[dma_idx];
     }
 
     ret = hal_adc_device_init(&priv->adc, &priv->unique, &priv->cfg);
@@ -507,12 +513,14 @@ static int vfs_adc_probe(struct device* pdev)
         goto err_deinit;
     }
 
+#ifdef CONFIG_VIRQ
     interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback,
                                &g_adc_dma_bottom_half_work, &priv->adc);
 
     int dma_irqn = -1;
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));
     interrupt_hw_enable(dma_irqn, 5);
+#endif
 
     priv->ops = fops;
     pdev->ops = &priv->ops;
@@ -533,6 +541,12 @@ err_deinit:
     /* 解绑设备: hal_adc_device_deinit */
     COMPAT_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
 err_pool:
+    if (priv->cfg.private_cfg != NULL)
+    {
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+        priv->cfg.private_cfg = NULL;
+        priv->dma_pool_idx = -1;
+    }
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));
     return ret;
 }
@@ -566,6 +580,14 @@ static int vfs_adc_remove(struct device* pdev)
 
     COMPAT_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
     COMPAT_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
+
+    /* 归还 DMA 私有配置 (若有) */
+    if (priv->cfg.private_cfg != NULL)
+    {
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+        priv->cfg.private_cfg = NULL;
+        priv->dma_pool_idx = -1;
+    }
 
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));

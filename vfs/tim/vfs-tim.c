@@ -8,18 +8,13 @@
 
 #include "device.h"
 #include "driver.h"
+#include "dt_config_gen.h"
+#include "board_define_tim.h"
 #include "osal.h"
 #include "system_log.h"
 #include <stdio.h>
-#ifndef TIM_VFS_PRIV_COUNT
-#define TIM_VFS_PRIV_COUNT 4
-#endif
 
-/* pin 属性数组元素数 — 对应 hal_tim_pin_cfg 的字段数 */
-#define VFS_TIM_PIN_FIELD_COUNT 8
-
-/* DTS 属性键最大长度 */
-#define VFS_TIM_KEY_MAX 40
+/* 池/字段宽度宏见 board_define_tim.h (数量由 DTS 节点数自动生成) */
 
 struct vfs_tim_priv
 {

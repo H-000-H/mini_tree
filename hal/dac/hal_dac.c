@@ -102,10 +102,3 @@ COMPAT_WEAK int hal_dac_force_stop(hal_dac_device* pdev)
     (void)pdev;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}

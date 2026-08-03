@@ -73,6 +73,29 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
+# System / EventBus 软编码：.config 显式 "# CONFIG_SYSTEM is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_OFF REGEX "^# CONFIG_SYSTEM is not set$")
+if(CONFIG_SYSTEM_OFF)
+    set(MINI_TREE_SYSTEM OFF)
+else()
+    set(MINI_TREE_SYSTEM ON)
+endif()
+file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_OFF REGEX "^# CONFIG_EVENT_BUS is not set$")
+# EVENT_BUS 依赖 SYSTEM: .config 手写 y 但 SYSTEM=n 时按 Kconfig 语义视为关
+if(CONFIG_EVENT_BUS_OFF OR NOT MINI_TREE_SYSTEM)
+    set(MINI_TREE_EVENT_BUS OFF)
+else()
+    set(MINI_TREE_EVENT_BUS ON)
+endif()
+# SystemCmd: 默认关, 仅显式 "CONFIG_SYSTEM_CMD=y" 才编入
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_CMD_ON REGEX "^CONFIG_SYSTEM_CMD=y$")
+# SYSTEM_CMD 仅 SYSTEM_CPP 后端有效
+if(CONFIG_SYSTEM_CMD_ON AND CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
+    set(MINI_TREE_SYSTEM_CMD ON)
+else()
+    set(MINI_TREE_SYSTEM_CMD OFF)
+endif()
+
 # USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
 file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
 if(CONFIG_USB_OFF)
@@ -82,6 +105,14 @@ else()
 endif()
 if(MINI_TREE_USB)
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/tinyusb.cmake")
+endif()
+
+# VIRQ 软编码：.config 显式 "# CONFIG_VIRQ is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_VIRQ_OFF REGEX "^# CONFIG_VIRQ is not set$")
+if(CONFIG_VIRQ_OFF)
+    set(MINI_TREE_VIRQ OFF)
+else()
+    set(MINI_TREE_VIRQ ON)
 endif()
 
 # HAL 全部为 weak 空实现，板级强符号覆盖；中间件不绑任何厂商 SDK
@@ -121,23 +152,27 @@ else()
     set(OSAL_DEFINE CONFIG_OSAL_NULL)
 endif()
 
-if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
-    set(SYSTEM_SRCS
-        "system_cpp/src/system_cmd.cpp"
-        "system_cpp/src/system_init.cpp"
-        "system_cpp/src/system_scrubber.cpp"
-        "system_cpp/src/system_wdt.cpp"
-        "system_cpp/src/task_manager.cpp"
-        "system_cpp/src/safe_state.c"
-    )
-else()
-    set(SYSTEM_SRCS
-        "system_c/src/system_init.c"
-        "system_c/src/system_scrubber.c"
-        "system_c/src/system_wdt.c"
-        "system_c/src/task_manager.c"
-        "system_cpp/src/safe_state.c"
-    )
+if(MINI_TREE_SYSTEM)
+    if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
+        set(SYSTEM_SRCS
+            "system_cpp/src/system_init.cpp"
+            "system_cpp/src/system_scrubber.cpp"
+            "system_cpp/src/system_wdt.cpp"
+            "system_cpp/src/task_manager.cpp"
+            "system_cpp/src/safe_state.c"
+        )
+        if(MINI_TREE_SYSTEM_CMD)
+            list(APPEND SYSTEM_SRCS "system_cpp/src/system_cmd.cpp")
+        endif()
+    else()
+        set(SYSTEM_SRCS
+            "system_c/src/system_init.c"
+            "system_c/src/system_scrubber.c"
+            "system_c/src/system_wdt.c"
+            "system_c/src/task_manager.c"
+            "system_cpp/src/safe_state.c"
+        )
+    endif()
 endif()
 
 
@@ -306,6 +341,15 @@ add_custom_command(
     VERBATIM
 )
 
+set(CORE_SRCS
+    "core/src/buffer_pool.c"
+    "core/src/production_log.c"
+    "core/src/printf_output.c"
+)
+if(MINI_TREE_EVENT_BUS)
+    list(APPEND CORE_SRCS "core/src/event_bus.c")
+endif()
+
 add_library(mini_tree STATIC
     ${OSAL_SRCS}
     ${HAL_SRCS}
@@ -318,10 +362,7 @@ add_library(mini_tree STATIC
     "board/src/task_utils.c"
     ${DRIVER_SRCS}
     ${GEN_SRCS}
-    "core/src/event_bus.c"
-    "core/src/buffer_pool.c"
-    "core/src/production_log.c"
-    "core/src/printf_output.c"
+    ${CORE_SRCS}
     ${SYSTEM_SRCS}
     "algorithm/buffer/circle_fifo_buffer.c"
     vfs/tim/vfs-tim.c
@@ -335,11 +376,14 @@ add_library(mini_tree STATIC
     vfs/i2s/vfs-i2s.c
     vfs/i2s/vfs-i2s.h
     algorithm/buffer/double_buffer.c
-    interrupt/interrupt.c
-    interrupt/interrupt.h
     vfs/dac/vfs-dac.h
     vfs/dac/vfs-dac.c
 )
+
+# VIRQ 中断上下部 — 仅 CONFIG_VIRQ 编入
+if(MINI_TREE_VIRQ)
+    target_sources(mini_tree PRIVATE interrupt/interrupt.c interrupt/interrupt.h)
+endif()
 
 # 裸机时间片调度器 — 仅 CONFIG_OSAL_NULL; OS 后端用内核调度, 不编入
 if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL")
@@ -384,6 +428,7 @@ target_include_directories(mini_tree
         "${CMAKE_CURRENT_LIST_DIR}/algorithm/buffer"
         "${CMAKE_CURRENT_LIST_DIR}/board"
         "${CMAKE_CURRENT_LIST_DIR}/board/include"
+        "${CMAKE_CURRENT_LIST_DIR}/board/define/vfs"
         "${CMAKE_CURRENT_LIST_DIR}/core/include"
         ${HAL_INCLUDE_DIRS}
         "${CMAKE_CURRENT_LIST_DIR}/interrupt"

@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * FT5x06 电容触摸节点模板 (drivers/ft5x06) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x38);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_FOCALTECH_FT5X06 (节点数, 缺省 1)。
+ */
+&i2c0 {
+ft5x06: ft5x06@0 {
+	compatible = "focaltech,ft5x06";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x38 */
+	status = "disabled";
+};
+};

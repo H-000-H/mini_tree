@@ -50,6 +50,7 @@ Vendor this repository as a subdirectory or submodule, e.g. `third_party/mini_tr
 | `CMakeLists.txt` | `add_subdirectory` 入口 / entry point |
 | `.config` / `Kconfig` | 功能裁剪 / feature trimming |
 | `board/dts/board.dts` | 默认占位（必被平台覆盖）/ default placeholder (must be overridden by the platform) |
+| `board/dtsi/` | 节点模板库：`example-soc.dtsi` + `vfs/`（11）+ `drivers/`（37），参数全 0 占位，板级拷走填值（见 [driver_guide.md](driver_guide.md) §1）/ node templates: `example-soc.dtsi` + `vfs/` (11) + `drivers/` (37), all-0 placeholders to copy & fill (see [driver_guide.md](driver_guide.md) §1) |
 | `ide/stubs/` | 无生成物时的 IDE 头 / IDE headers when there are no build artifacts |
 
 ---
@@ -73,13 +74,17 @@ The root `CMakeLists.txt` runs the same logic during the configure stage.
 | Platform | `PLATFORM_ARM_CM4F` 等 / etc. | 架构提示（与工具链配合）/ architecture hint (paired with the toolchain) |
 | Multi-core | `CPU_CORES` / `AMP_MODE` | 1=单核；2=AMP / 1=single core; 2=AMP |
 | OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | 运行时后端：裸机协作 / FreeRTOS v11.3.0 / RT-Thread v5.3.0 / runtime backend: bare-metal cooperative / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
-| System | `SYSTEM_CPP` / `SYSTEM_C` | 启动与系统模块语言 / startup and system module language |
+| OSAL 容量 / OSAL Capacity | `OSAL_NULL_MAX_QUEUES`（基础队列数，EventBus 开自动 +1）/ `OSAL_NULL_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | 队列/堆内存（仅对应后端可见）/ queue & heap RAM (backend-scoped) |
+| System | `SYSTEM` / `SYSTEM_CPP` / `SYSTEM_C` | 总开关（默认自开）+ 语言后端 / master switch (default on) + language backend |
 | Log | `SYS_LOG_USE_PRINTF` / `OSAL` | `SYS_LOG*` 后端 / backend |
-| Board Features | `ENABLE_WDT` / `ENABLE_FLASH_SCRUBBER` 等 / etc. | 安全相关 / safety related |
-| Runtime | `EVENT_BUS_*` / `OSAL_MUTEX_POOL_SIZE` | 容量 / capacity |
+| Board Features | `SYSTEM_WDT` / `SYSTEM_SCRUBBER` 等 / etc. | 框架看门狗（默认开）/ CRC 巡检（默认关），依赖 `SYSTEM` / framework watchdog (on) / CRC scrubber (off), depends on `SYSTEM` |
+| Runtime | `EVENT_BUS` / `EVENT_BUS_*` / `OSAL_MUTEX_POOL_SIZE` / `BOTTOM_HALF_QUEUE_DEPTH` | 总开关 + 容量 / master switch + capacity |
 
-仓库自带 `.config` 常见默认：`OSAL_NULL` + `SYSTEM_CPP` + `SYS_LOG_USE_PRINTF`。
-The repository's bundled `.config` uses common defaults: `OSAL_NULL` + `SYSTEM_CPP` + `SYS_LOG_USE_PRINTF`.
+`SYSTEM` 为**默认自开启**的可选模块，`EVENT_BUS` 与 `SYSTEM_CMD` 为**默认关闭**：关闭 `SYSTEM` 后 `system_c/`、`system_cpp/` 与 EventBus 一并裁剪；仅开启 `EVENT_BUS` 则保留两阶段启动与看门狗，加上发布/订阅总线。
+`SYSTEM` is an optional module **enabled by default**; `EVENT_BUS` and `SYSTEM_CMD` are **off by default**: turning off `SYSTEM` trims `system_c/`, `system_cpp/` and EventBus together; turning on `EVENT_BUS` adds the pub/sub bus while keeping the two-phase boot and watchdogs.
+
+仓库自带 `.config` 常见默认：`OSAL_NULL` + `SYSTEM`/`SYSTEM_CPP` + `SYSTEM_WDT` + `SYS_LOG_USE_PRINTF`（`EVENT_BUS` / `SYSTEM_CMD` / `SYSTEM_SCRUBBER` 默认关）。
+The repository's bundled `.config` uses common defaults: `OSAL_NULL` + `SYSTEM`/`SYSTEM_CPP` + `SYSTEM_WDT` + `SYS_LOG_USE_PRINTF` (`EVENT_BUS` / `SYSTEM_CMD` / `SYSTEM_SCRUBBER` off).
 
 ---
 

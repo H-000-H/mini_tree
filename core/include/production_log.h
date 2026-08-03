@@ -18,7 +18,13 @@ extern "C"
 {
 #endif
 
+#ifndef PROD_LOG_SLOT_COUNT
+#ifdef CONFIG_PRODUCTION_LOG_SLOT_COUNT
+#define PROD_LOG_SLOT_COUNT CONFIG_PRODUCTION_LOG_SLOT_COUNT
+#else
 #define PROD_LOG_SLOT_COUNT 32
+#endif
+#endif
 #define PROD_LOG_TAG_LEN 8
 #define PROD_LOG_MSG_LEN 112
 

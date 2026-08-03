@@ -94,10 +94,12 @@ Don't link or call RTOS scheduler entry points under a NULL configuration.
 
 ## 6. 容量与内存 / Capacity and Memory
 
+- **裸机队列池（仅 OSAL_NULL）**：`CONFIG_OSAL_NULL_MAX_QUEUES` 为**基础队列数**（默认 0，不占内存）；开启 `CONFIG_EVENT_BUS` 时**自动 +1**（EventBus 需要一个队列）。手动用 `osal_queue_create` → 在 Kconfig 设基础数。单队列缓冲 `CONFIG_OSAL_NULL_QUEUE_BUF_SZ`（默认 2048 B）。
+  **Bare-metal queue pool (OSAL_NULL only)**: `CONFIG_OSAL_NULL_MAX_QUEUES` is the **base queue count** (default 0, no RAM); enabling `CONFIG_EVENT_BUS` **auto-adds 1** (EventBus needs a queue). Manual `osal_queue_create` → set the base in Kconfig. Per-queue buffer `CONFIG_OSAL_NULL_QUEUE_BUF_SZ` (2048 B).
 - `CONFIG_OSAL_MUTEX_POOL_SIZE` 需覆盖 `DEV_ID_COUNT`（设备锁）及业务锁。
   `CONFIG_OSAL_MUTEX_POOL_SIZE` must cover `DEV_ID_COUNT` (device locks) plus business locks.
-- FreeRTOS heap 编号、RT-Thread 堆配置在**平台**工程。
-  The FreeRTOS heap number and RT-Thread heap config live in the **platform** project.
+- **RTOS 堆由 Kconfig 控制**：FreeRTOS 动态堆 `CONFIG_FREERTOS_HEAP_SIZE`（默认 8 KB）、RT-Thread 独立静态堆 `CONFIG_RTT_HEAP_SIZE`（默认 32 KB）。
+  **RTOS heaps are Kconfig-gated**: FreeRTOS dynamic heap `CONFIG_FREERTOS_HEAP_SIZE` (8 KB), RT-Thread static heap `CONFIG_RTT_HEAP_SIZE` (32 KB).
 - 任务栈大小随后端栈开销变化，切换后重测水位。
   Task stack size varies with backend stack overhead; re-measure headroom after switching.
 

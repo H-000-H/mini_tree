@@ -11,11 +11,13 @@
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
+#include "dt_config_gen.h"
+#include "board_define_rtc.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"
 
-#define RTC_VFS_POOL 2
+/* 池大小宏见 board_define_rtc.h (数量由 DTS 节点数自动生成) */
 
 struct vfs_rtc_priv
 {

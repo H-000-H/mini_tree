@@ -12,6 +12,9 @@
 | **前置 / Prereq.** | [driver_guide.md](driver_guide.md) · [service_spec.md](service_spec.md) |
 | **相关 / Related** | [usb_tusb_port.md](usb_tusb_port.md) · [can_hook.md](can_hook.md) |
 
+> 每个外设的**节点模板**（属性名与全 0 占位）见 `board/dtsi/vfs/` 与 `board/dtsi/drivers/`；下方 compatible 与模板一一对应。
+> **Node templates** for every peripheral (property names, all-0 placeholders) live in `board/dtsi/vfs/` and `board/dtsi/drivers/`; the compatibles below map one-to-one.
+
 ---
 
 ## 目录 / Table of Contents

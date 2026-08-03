@@ -102,7 +102,15 @@ int device_tree_init(void)
             }
             else
             {
+#ifdef CONFIG_SYSTEM
                 enter_safe_state("device_tree_init: mutex create failed");
+#else
+                /* System 模块关闭时无 safe_state 实现：退化为忙循环停机 */
+                /* No safe_state when System is off: busy-loop halt */
+                while (1)
+                {
+                }
+#endif
             }
         }
     }
@@ -894,7 +902,9 @@ void device_ops_unregister(struct device* pdev)
 
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
 
+#ifdef CONFIG_EVENT_BUS
     COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_DEVICE_REMOVED, (uintptr_t)pdev));
+#endif
 
     if (device_lock(pdev) != VFS_OK)
         return;

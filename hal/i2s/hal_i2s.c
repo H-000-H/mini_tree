@@ -122,12 +122,3 @@ COMPAT_WEAK int hal_i2s_transfer_poll(struct hal_i2s_dev* pdev, uint32_t timeout
     (void)timeout_ms;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}
-
-COMPAT_WEAK void hal_i2s_dma_bottom_half_handler(void* arg) { (void)arg; }

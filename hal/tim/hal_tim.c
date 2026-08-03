@@ -190,10 +190,3 @@ COMPAT_WEAK int hal_tim_clear_update_flag(hal_tim_device* pdev)
     (void)pdev;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}

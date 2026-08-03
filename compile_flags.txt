@@ -11,6 +11,8 @@
 -Iboard
 -Iboard/dt-bindings
 -Iboard/dtsi
+-Iboard/define/vfs
+-Iboard/define/drivers
 -Ialgorithm/buffer
 -Iosal/include
 -Isystem_c/include

@@ -2,7 +2,12 @@
 /*
  * 通用 SoC / 外设片段示例（中间件占位）
  *
- * 平台工程请复制本文件到自己的 board/dtsi/，改名为 <soc>.dtsi，
+ * 模板目录结构 / Template layout:
+ *   board/dtsi/example-soc.dtsi   SoC 骨架: cpus / gpio / uart (本文件)
+ *   board/dtsi/vfs/*.dtsi         每个 VFS 模块一个节点模板 (vfs-i2c / vfs-spi / ...)
+ *   board/dtsi/drivers/*.dtsi     每个产品驱动一个节点模板 (aht20 / w25qxx / ...)
+ *
+ * 平台工程请复制需要的模板到自己的 board/dtsi/，改名为 <soc>.dtsi，
  * 并用 BOARD_DTSI_DIR / BOARD_DTS 指向真实板级树。
  * 厂商宏通过 VENDOR_INC_DIRS 引入，勿把 SoC 专用 dtsi 冒充本仓默认。
  */

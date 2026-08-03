@@ -40,8 +40,12 @@
 #define RT_USING_CONSOLE
 #define RT_CONSOLEBUF_SIZE       128
 
-/* ── Atomic / FFS ── */
+/* ── Atomic / FFS ──
+ * M0/M0+ (ARMv6-M) 无 LDREX/STREX 指令, 原子操作退回软件实现 (关中断),
+ * 由 rtatomic.h 的 rt_soft_atomic_* 内联提供, 无需 libcpu atomic_arm.c. */
+#if !defined(__ARM_ARCH_6M__)
 #define RT_USING_HW_ATOMIC
+#endif
 #define RT_USING_CPU_FFS
 
 /* ── Debug ── */

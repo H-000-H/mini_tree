@@ -24,7 +24,7 @@
 #include "compiler_compat_poison.h"
 
 #ifdef CONFIG_OSAL_NULL
-extern "C" void xScheduler_Poll(void);
+extern "C" void x_scheduler_poll(void);
 #endif
 
 /* ── 启动期全局中断控制 (平台抽象) ──
@@ -81,7 +81,7 @@ void mini_tree::system_pre_os_init(void)
     }
 
     /* RTC 硬件看门狗: 独立时钟, 在 CPU 总线停滞时仍存活 */
-#ifdef CONFIG_ENABLE_WDT
+#ifdef CONFIG_SYSTEM_WDT
     system_wdt_init_iwdg(8000);
 #endif
 
@@ -90,6 +90,7 @@ void mini_tree::system_pre_os_init(void)
         SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
 
     /* 事件总线两阶段初始化 (SIOF 防御) */
+#ifdef CONFIG_EVENT_BUS
     if (!event_bus_init())
     {
         SYS_LOGE(k_tag, "EventBus init failed — entering safe state");
@@ -97,6 +98,7 @@ void mini_tree::system_pre_os_init(void)
         return;
     }
     COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
+#endif
 
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
     g_system_os_initialized = true;
@@ -133,7 +135,9 @@ void mini_tree::system_start_tasks(void)
 {
     SYS_LOGI(k_tag, "=== mini_tree Phase 2: Start Tasks ===");
 
+#ifdef CONFIG_EVENT_BUS
     event_bus_start();
+#endif
 
     /* 驱动探测 (用户驱动在阶段 1 和阶段 2 之间注册) */
     int probe_fail = board_driver_probe_all();
@@ -141,13 +145,13 @@ void mini_tree::system_start_tasks(void)
         SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
 
     /* TWDT 初始化 */
-#ifdef CONFIG_ENABLE_WDT
+#ifdef CONFIG_SYSTEM_WDT
     system_wdt_init(3000);
 #endif
 
     /* Flash 位腐烂巡检 */
     /* Flash 位腐烂巡检 */
-#ifdef CONFIG_ENABLE_FLASH_SCRUBBER
+#ifdef CONFIG_SYSTEM_SCRUBBER
     system_scrubber_init();
     system_scrubber_start();
 #endif
@@ -155,10 +159,12 @@ void mini_tree::system_start_tasks(void)
     /* 启动循环计数器清除 */
     safe_state_clear_bootloop();
 
+#ifdef CONFIG_EVENT_BUS
     COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
     event_bus_seal();
+#endif
 
 #if CONFIG_CPU_CORES > 1
     hal_cpu_secondary_startup();
@@ -182,12 +188,14 @@ extern "C" void mini_tree_start_tasks(void) { mini_tree::system_start_tasks(); }
 
 extern "C" void mini_tree_system_loop(void)
 {
-#ifdef CONFIG_ENABLE_WDT
+#ifdef CONFIG_SYSTEM_WDT
     system_wdt_feed();
     system_wdt_feed_iwdg();
 #endif
+#ifdef CONFIG_VIRQ
     interrupt_bottom_half_poll(); /**< 执行下半部队列 */
+#endif
 #ifdef CONFIG_OSAL_NULL
-    xScheduler_Poll(); /**< 时间片调度器轮询 */
+    x_scheduler_poll(); /**< 时间片调度器轮询 */
 #endif
 }

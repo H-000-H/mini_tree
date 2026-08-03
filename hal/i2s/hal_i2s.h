@@ -22,7 +22,6 @@ extern "C"
 #endif
 
     struct fifo_spsc;
-    struct bottom_half_work;
 
 #ifndef HAL_I2S_HOST_MAX
 #define HAL_I2S_HOST_MAX 3
@@ -149,13 +148,6 @@ extern "C"
         int async_pending; /**< 1=已提交未完成 */
     };
 
-    /**
-     * @brief I2S DMA 下半部全局工作项
-     * @note  fn/arg 由 hal_i2s 在 circular/async 使能 IT 时绑定;
-     *        bus open 经 interrupt_virtual_register 挂到 VIRQ 表 (对齐 ADC)
-     */
-    extern struct bottom_half_work g_i2s_bottom_half_work;
-
     int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
                               const struct hal_i2s_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
@@ -189,22 +181,6 @@ extern "C"
     /** @brief 轮询异步完成 — 占位 */
     int hal_i2s_transfer_poll(struct hal_i2s_dev* pdev,
                               uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
-
-    /**
-     * @brief 虚拟上半部 (ISR 上下文, 经 interrupt_virtual_dispatch 调用)
-     * @param arg      hal_i2s_dev* (bus open 注册时传入)
-     * @param irq_num  VIRQ 号
-     * @return VFS_IRQ_ENTRY_BOTTOM 需要下半部; VFS_IRQ_ENTRY_NOBOTTOM 不需要
-     * @note  硬件 HT/TC 清零在 IRQHandler 内完成 (对齐 ADC / interrupt_stm32 约定)
-     */
-    int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num);
-
-    /**
-     * @brief DMA 下半部处理 (主循环/任务上下文) — 空实现占位
-     * @param arg hal_i2s_dev*
-     * @note  后续: HT 填/取环缓半区; TC 另一半或 async_cb
-     */
-    void hal_i2s_dma_bottom_half_handler(void* arg);
 
 #ifdef __cplusplus
 }

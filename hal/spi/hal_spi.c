@@ -103,10 +103,3 @@ COMPAT_WEAK int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* 
     (void)timeout_ms;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}

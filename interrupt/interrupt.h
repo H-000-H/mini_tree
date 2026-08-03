@@ -75,13 +75,39 @@ extern "C"
 
     /**< ADC DMA 下半部全局工作项 (fn/arg 由 hal_adc.c 在初始化时绑定) */
     extern struct bottom_half_work g_adc_dma_bottom_half_work;
+    /**< I2S DMA 下半部全局工作项 (fn/arg 由板级 hal_i2s 在初始化时绑定) */
+    extern struct bottom_half_work g_i2s_bottom_half_work;
+
+/*=======================================================================================================================================================*/
+/*                              VIRQ 外围弱钩子 (板级强符号覆盖) */
+/*=======================================================================================================================================================*/
+    /**
+     * @brief VIRQ 外围钩子 — 原散落于 hal/* 各外设头，统一集中到本模块声明
+     * @note  板级以强符号覆盖 (弱实现在 interrupt.c); 未覆盖时上半部返回
+     *        VFS_IRQ_ENTRY_NOBOTTOM (不需要下半部)。
+     * @note  上半部约定: 返回 VFS_IRQ_ENTRY_BOTTOM(1) = 需要 submit 下半部;
+     *        VFS_IRQ_ENTRY_NOBOTTOM(0) = 不需要。
+     */
+    int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num);
+    int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num);
+    int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num);
+    int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num);
+    int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num);
+    int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num);
+    int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num);
+    void hal_adc_dma_bottom_half_handler(void* arg);
+    void hal_i2s_dma_bottom_half_handler(void* arg);
 
 /*=======================================================================================================================================================*/
 /*                              下半部配置参数 */
 /*=======================================================================================================================================================*/
-/**< 队列深度, 必须是 2 的幂 (可在 board_config.h 或编译选项中覆盖) */
+/**< 队列深度, 必须是 2 的幂 (Kconfig CONFIG_BOTTOM_HALF_QUEUE_DEPTH 或工程侧覆盖) */
 #ifndef BOTTOM_HALF_QUEUE_DEPTH
+#ifdef CONFIG_BOTTOM_HALF_QUEUE_DEPTH
+#define BOTTOM_HALF_QUEUE_DEPTH CONFIG_BOTTOM_HALF_QUEUE_DEPTH
+#else
 #define BOTTOM_HALF_QUEUE_DEPTH 32U
+#endif
 #endif
 
 /**< bottom_half_task 专用任务默认参数 (可在工程侧覆盖) */

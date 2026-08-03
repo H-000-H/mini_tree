@@ -49,6 +49,7 @@ void xscheduler_start(void)
     g_sched_tim_ctx.tim = tim;
     g_sched_tim_ctx.scheduler = &g_scheduler;
 
+#ifdef CONFIG_VIRQ
     interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &g_sched_tim_ctx);
 
     int irqn = -1;
@@ -56,6 +57,7 @@ void xscheduler_start(void)
     COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "irqn", &irqn));
     COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
     interrupt_hw_enable(irqn, (uint32_t)priority);
+#endif
 }
 
 /**

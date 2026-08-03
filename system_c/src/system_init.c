@@ -63,13 +63,14 @@ void mini_tree_pre_os_init(void)
         return;
     }
 
-#ifdef CONFIG_ENABLE_WDT
+#ifdef CONFIG_SYSTEM_WDT
     system_wdt_init_iwdg(8000);
 #endif
 
     if (device_tree_init() != VFS_OK)
         SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
 
+#ifdef CONFIG_EVENT_BUS
     if (!event_bus_init())
     {
         SYS_LOGE(k_tag, "EventBus init failed — entering safe state");
@@ -77,6 +78,7 @@ void mini_tree_pre_os_init(void)
         return;
     }
     COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
+#endif
 
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
     g_system_os_initialized = true;
@@ -91,27 +93,31 @@ void mini_tree_start_tasks(void)
 {
     SYS_LOGI(k_tag, "=== mini_tree Phase 2: Start Tasks ===");
 
+#ifdef CONFIG_EVENT_BUS
     event_bus_start();
+#endif
 
     int probe_fail = board_driver_probe_all();
     if (probe_fail != 0)
         SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
 
-#ifdef CONFIG_ENABLE_WDT
+#ifdef CONFIG_SYSTEM_WDT
     system_wdt_init(3000);
 #endif
 
-#ifdef CONFIG_ENABLE_FLASH_SCRUBBER
+#ifdef CONFIG_SYSTEM_SCRUBBER
     system_scrubber_init();
     system_scrubber_start();
 #endif
 
     safe_state_clear_bootloop();
 
+#ifdef CONFIG_EVENT_BUS
     COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
     event_bus_seal();
+#endif
 
 #if CONFIG_CPU_CORES > 1
     /* AMP: 启动副核心 (Core 1 跑 hal_cpu_baremetal_entry) */
@@ -126,13 +132,15 @@ void mini_tree_start_tasks(void)
  */
 void mini_tree_system_loop(void)
 {
-#ifdef CONFIG_ENABLE_WDT
+#ifdef CONFIG_SYSTEM_WDT
     system_wdt_feed();
     system_wdt_feed_iwdg();
 #endif
 #ifdef CONFIG_OSAL_NULL
+#ifdef CONFIG_VIRQ
     interrupt_bottom_half_poll();
-    xScheduler_Poll();
+#endif
+    x_scheduler_poll();
 #endif
 }
 

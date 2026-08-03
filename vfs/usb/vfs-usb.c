@@ -13,6 +13,8 @@
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
+#include "dt_config_gen.h"
+#include "board_define_usb.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"
@@ -22,7 +24,7 @@
 /*============================================================================*/
 /* Host VFS */
 /*============================================================================*/
-#define USB_VFS_PRIV_COUNT 2
+/* 池大小宏见 board_define_usb.h (数量由 DTS 节点数自动生成) */
 
 struct vfs_usb_priv
 {
@@ -156,7 +158,7 @@ static int vfs_usb_priv_remove(struct device* pdev)
 /*============================================================================*/
 /* Client VFS */
 /*============================================================================*/
-#define USB_VFS_CLIENT_COUNT 6
+/* client 池宏见 board_define_usb.h */
 
 struct usb_vfs_client
 {

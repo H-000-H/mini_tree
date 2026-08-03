@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * AHT20 温湿度传感器节点模板 (drivers/aht20) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x38);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_AOSONG_AHT20 (节点数, 缺省 1)。
+ */
+&i2c0 {
+aht20: aht20@0 {
+	compatible = "aosong,aht20";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x38 */
+	status = "disabled";
+};
+};

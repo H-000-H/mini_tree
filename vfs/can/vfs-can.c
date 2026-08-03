@@ -18,6 +18,8 @@
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
+#include "dt_config_gen.h"
+#include "board_define_can.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"
@@ -25,9 +27,7 @@
 /*===========================================================================================================================================================*/
 /*Host VFS*/
 /*===========================================================================================================================================================*/
-#ifndef CAN_VFS_PRIV_COUNT
-#define CAN_VFS_PRIV_COUNT 2
-#endif
+/* 池大小宏见 board_define_can.h (数量由 DTS 节点数自动生成) */
 
 /** @brief CAN Host 私有数据 (静态池, 存 host 配置 + 池索引) */
 struct vfs_can_priv
@@ -245,7 +245,7 @@ static int vfs_can_priv_remove(struct device* pdev)
 /*===========================================================================================================================================================*/
 /*Client VFS*/
 /*===========================================================================================================================================================*/
-#define CAN_VFS_CLIENT_COUNT 4
+/* client 池宏见 board_define_can.h */
 
 /** @brief CAN Client 运行时对象 (静态池, 含 fops + 池索引) */
 struct can_vfs_client

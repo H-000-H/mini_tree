@@ -387,15 +387,6 @@ extern "C"
      */
     int COMPAT_WARN_UNUSED_RESULT hal_tim_clear_update_flag(hal_tim_device* pdev);
 
-    /**
-     * @brief TIM 虚拟中断上半部回调 (ISR 内执行)
-     * @param arg 参数 (hal_tim_device*)
-     * @param irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM 需要下半部; VFS_IRQ_ENTRY_NOBOTTOM 不需要
-     * @note  上半部清除 Update 标志; 非 Update 中断返回 NOBOTTOM (spurious)
-     */
-    int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num);
-
 #ifdef __cplusplus
 }
 #endif

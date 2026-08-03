@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * RC522 NFC 节点模板 (drivers/rc522) — 中间件占位示例
+ *
+ * 用法: 默认 I2C 版挂 &i2c0 { } 内 (典型 0x28/0x2A); SPI 版挂 &spi0 { } 内
+ *       (reg = 片选序号); status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_NXP_RC522 (节点数, 缺省 1)。
+ */
+&i2c0 {
+rc522: rc522@0 {
+	compatible = "nxp,rc522";
+	reg = <0>; /* I2C 7bit 地址 0x28/0x2A, 或 SPI 片选序号 */
+	status = "disabled";
+};
+};

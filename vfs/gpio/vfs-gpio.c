@@ -13,6 +13,7 @@
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
+#include "board_define_gpio.h"
 #include "hal_gpio.h"
 #include "interrupt.h"
 #include "osal.h"
@@ -20,11 +21,7 @@
 #include "system_log.h"
 #include <stdint.h>
 
-#ifndef DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
-#define DTC_GEN_COUNT_HETEROGENEOUS_GPIOS 1
-#endif
-#define VFS_GPIO_PIN_COUNT DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
-
+/* 池大小宏见 board_define_gpio.h (数量由 DTS 节点数自动生成) */
 static const char* const k_tag = "vfs-gpio";
 
 struct vfs_gpio_priv

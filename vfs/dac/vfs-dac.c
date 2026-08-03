@@ -12,21 +12,12 @@
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
+#include "board_define_dac.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"
 
-#ifndef DAC_VFS_DEVICE_COUNT
-#define DAC_VFS_DEVICE_COUNT 4
-#endif
-
-#ifndef DAC_DMA_BUFFER_SIZE
-#define DAC_DMA_BUFFER_SIZE 256
-#endif
-
-#define VFS_DAC_PIN_FIELD_COUNT 8
-#define VFS_DAC_DMA_FIELD_COUNT 7
-
+/* 池/缓冲/字段宽度宏见 board_define_dac.h (数量由 DTS 节点数自动生成) */
 static const char* const k_tag = "vfs-dac";
 
 struct vfs_dac_priv

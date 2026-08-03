@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * SN65HVD230 CAN 收发器节点模板 (drivers/sn65hvd230) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &can0 { } 内 (挂在 can host 下); status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_TI_SN65HVD230 (节点数, 缺省 1)。
+ */
+&can0 {
+sn65hvd230: sn65hvd230@0 {
+	compatible = "ti,sn65hvd230";
+	reg = <0>;
+	status = "disabled";
+};
+};

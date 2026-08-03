@@ -239,15 +239,6 @@ extern "C"
      */
     int COMPAT_WARN_UNUSED_RESULT hal_dac_force_stop(hal_dac_device* pdev);
 
-    /**
-     * @brief DAC 虚拟中断上半部回调 (ISR 内执行)
-     * @param arg 参数 (hal_dac_device*)
-     * @param irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM 需要下半部; VFS_IRQ_ENTRY_NOBOTTOM 不需要
-     * @note  DMA TC 中断: 清除 DMA TC 标志; DAC underrun 中断: 清除 underrun 标志
-     */
-    int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num);
-
 #ifdef __cplusplus
 }
 #endif

@@ -19,6 +19,9 @@ config PLATFORM_ARM_CM4F
 config PLATFORM_ARM_CM3
     bool "ARM Cortex-M3"
 
+config PLATFORM_ARM_CM0
+    bool "ARM Cortex-M0 / M0+"
+
 config PLATFORM_RISCV
     bool "RISC-V (32-bit)"
 endchoice
@@ -45,6 +48,13 @@ config AMP_MODE
       双核 AMP 模式使能。AMP 模式下 osal_null 的互斥锁
       等同步原语使用原子 CAS 实现；单核模式下退化为
       关中断 + 普通变量访问，减少开销。
+      注意: M0/M0+ (ARMv6-M) 无 LDREX/STREX 指令, 跨核
+      原子性无硬件保证; 若 M0 作异构从核, 应避免跨核共享锁。
+      Dual-core AMP mode. Under AMP, osal_null mutexes use
+      atomic CAS; single-core falls back to IRQ-lock + plain
+      access. Note: M0/M0+ (ARMv6-M) has no LDREX/STREX, so
+      cross-core atomicity is not guaranteed; when M0 is a
+      heterogeneous slave core, avoid sharing locks across cores.
 
 endmenu
 
@@ -70,6 +80,62 @@ config OSAL_NULL
     help
       No RTOS. Queue uses ring buffer + busy-wait.
 endchoice
+
+config OSAL_NULL_MAX_QUEUES
+    int "Bare-metal queue pool size (base)"
+    default 0
+    range 0 8
+    depends on OSAL_NULL
+    help
+      裸机队列池基础大小 (静态预分配, 供手动 osal_queue_create 使用)。
+      开启 EVENT_BUS 时自动在此基础上 +1 (EventBus 需要一个队列);
+      关闭 (默认) 时仅基础数。
+      Base bare-metal static queue pool size (for manual osal_queue_create).
+      When EVENT_BUS is enabled, 1 is auto-added on top (EventBus needs a
+      queue); when off (default), only the base counts.
+
+config OSAL_NULL_QUEUE_BUF_SZ
+    int "Per-queue buffer size (bytes)"
+    default 2048
+    range 512 8192
+    depends on OSAL_NULL
+    help
+      每个队列静态内嵌的元素缓冲 (字节)。
+      2048 B = 512 个基础单元, EventBus (64×8 B) 约占 1/4。
+      下限 512 B 保证默认 EventBus 队列 (128 单元) 可创建。
+      Element buffer embedded in each bare-metal queue.
+      2048 B = 512 base units; EventBus (64×8 B) uses ~1/4.
+      Lower bound 512 B keeps the default EventBus queue (128 units) creatable.
+
+config FREERTOS_USE_TIMERS
+    bool "FreeRTOS software timers"
+    default n
+    depends on OSAL_FREERTOS
+    help
+      Enable FreeRTOS software timers (configUSE_TIMERS in
+      lib/freeRTOS/FreeRTOSConfig.h). Default off.
+
+config FREERTOS_HEAP_SIZE
+    int "FreeRTOS heap size (bytes)"
+    default 8192
+    range 2048 131072
+    depends on OSAL_FREERTOS
+    help
+      FreeRTOS 动态堆大小 (configTOTAL_HEAP_SIZE), 供任务栈/信号量/队列分配。
+      默认 8 KB; 任务多/栈大时按需调大。
+      FreeRTOS dynamic heap (configTOTAL_HEAP_SIZE) for task stacks,
+      semaphores and queues. Default 8 KB; raise when many/large tasks.
+
+config RTT_HEAP_SIZE
+    int "RT-Thread heap size (bytes)"
+    default 32768
+    range 4096 1048576
+    depends on OSAL_RTTHREAD
+    help
+      RT-Thread 独立系统堆大小 (s_rtt_heap, 静态 .bss), 供线程栈/IPC 分配。
+      默认 32 KB。
+      RT-Thread independent system heap (static .bss) for stacks and IPC.
+      Default 32 KB.
 endmenu
 
 menu "OSAL Spinlock"
@@ -91,6 +157,10 @@ config OSAL_SPINLOCK_ATOMIC
       True busy-wait spinlock using atomic test-and-set.
       Only safe on SMP/multi-core systems where the owning
       context can run on another core.
+      Note: on M0/M0+ (ARMv6-M, no LDREX/STREX) this falls
+      back to the libatomic software implementation (IRQ-lock),
+      which is correct on a single core but cannot provide
+      cross-core mutual exclusion.
 endchoice
 endmenu
 
@@ -113,9 +183,27 @@ config SYS_LOG_USE_OSAL
 endchoice
 endmenu
 
-menu "System Backend"
+menu "System Runtime"
+
+config SYSTEM
+    bool "System runtime (two-phase boot, watchdog, scrubber, task manager)"
+    default y
+    help
+      System 模块总开关，默认自开启。
+      包含两阶段启动 (pre_os_init / start_tasks)、看门狗 (IWDG/TWDT)、
+      Flash CRC 巡检、任务管理器与安全停机等。
+      关闭后 system_c/ 与 system_cpp/ 均不编入，EventBus 也会随之不可用
+      (CONFIG_EVENT_BUS 依赖本项)。
+
+      Master switch for the System module, enabled by default.
+      Covers the two-phase boot (pre_os_init / start_tasks), watchdogs
+      (IWDG/TWDT), Flash CRC scrubber, task manager and safe shutdown.
+      When off, neither system_c/ nor system_cpp/ is compiled, and
+      EventBus is unavailable too (CONFIG_EVENT_BUS depends on this).
+
 choice
-    prompt "System runtime implementation"
+    prompt "System backend"
+    depends on SYSTEM
     default SYSTEM_CPP
     help
       Select C or C++ system backend.
@@ -130,6 +218,16 @@ config SYSTEM_CPP
     help
       C++ system runtime.
 endchoice
+
+config SYSTEM_CMD
+    bool "System command infra (SystemCmd)"
+    default n
+    depends on SYSTEM_CPP
+    help
+      SystemCmd 命令注册/派发基础设施 (system_cpp/src/system_cmd.cpp)。
+      默认关闭; 需要命令行接口时再开启。
+      SystemCmd command register/dispatch infra. Default off;
+      enable only when a command-line interface is needed.
 endmenu
 
 menu "Components"
@@ -152,43 +250,140 @@ config PRODUCTION_LOG
     help
       Enable production-level logging.
 
+config PRODUCTION_LOG_SLOT_COUNT
+    int "Production log slot count"
+    default 32
+    range 8 256
+    depends on PRODUCTION_LOG
+    help
+      Production-log ring buffer depth (slots).
+
 config SAFETY_SHUTDOWN
     bool "Safety shutdown"
     default n
     help
       Enable hardware-level safety shutdown.
 
-config ENABLE_WDT
-    bool "Watchdog (IWDG + TWDT)"
-    default y
-    help
-      Enable independent watchdog and task watchdog stubs.
+config BOARD_MAX_SAFETY_PINS
+    int "Max safety shutdown pins"
+    default 8
+    range 1 32
+    depends on SAFETY_SHUTDOWN
 
-config ENABLE_FLASH_SCRUBBER
-    bool "Flash bit-rot scrubber background task"
+config BOARD_SAFETY_MAX_CALLBACKS
+    int "Max safety shutdown callbacks"
+    default 4
+    range 1 16
+    depends on SAFETY_SHUTDOWN
+
+config SYSTEM_WDT
+    bool "Framework watchdog service (system_wdt)"
     default y
+    depends on SYSTEM
     help
-      Periodically scan flash and verify CRC baseline.
-      Independent of ENABLE_WDT.
+      框架自动看门狗服务: 两阶段启动时自动初始化 IWDG/TWDT、主循环与
+      EventBus 自动喂狗、bootloop 防烧 Flash。
+      注意: 这是框架引导集成的服务 (Kconfig 控制); 应用层可编程看门狗
+      走 vfs-iwdg / vfs-wwdg (DTS 控制的外设驱动), 两者不冲突。
+      Framework watchdog service: auto-inits IWDG/TWDT in the two-phase
+      boot, auto-feeds in the main loop / EventBus, guards bootloop.
+      This is a boot-integrated framework service (Kconfig-gated);
+      app-programmable watchdogs go through vfs-iwdg / vfs-wwdg (DTS
+      driven), they do not conflict.
+
+config SYSTEM_SCRUBBER
+    bool "Flash bit-rot scrubber (system_scrubber)"
+    default n
+    depends on SYSTEM
+    help
+      Flash 位腐烂巡检: 后台任务定期扫描 Flash 并校验 CRC 基线。
+      默认关闭; 生产环境需要掉电/位翻转防护时开启。
+      Independent of SYSTEM_WDT.
+      Flash bit-rot scrubber: a background task periodically scans Flash
+      and verifies the CRC baseline. Off by default; enable for
+      power-loss / bit-flip protection in production.
+      Independent of SYSTEM_WDT.
 endmenu
 
 
 menu "Runtime Capacity"
 
+config EVENT_BUS
+    bool "EventBus (publish/subscribe event bus)"
+    default n
+    depends on SYSTEM
+    help
+      EventBus 总开关，默认关闭。
+      轻量发布/订阅事件总线，ISR 安全投递、启动后封口。
+      依赖 System 模块 (喂狗与 SIOF 就绪标志)。
+      关闭后 core/src/event_bus.c 不编入，系统不再广播 EVENT_SYS_*。
+
+      Master switch for the EventBus, off by default.
+      Lightweight publish/subscribe bus with ISR-safe post and
+      seal-after-boot. Depends on the System module (watchdog feed
+      and SIOF readiness flag). When off, core/src/event_bus.c is
+      not compiled and no EVENT_SYS_* events are posted.
+
 config EVENT_BUS_QUEUE_LEN
     int "Event bus queue depth"
     default 64
     range 8 256
+    depends on EVENT_BUS
 
 config EVENT_BUS_MAX_SUBSCRIBERS
     int "Event bus max subscribers"
     default 24
     range 4 64
+    depends on EVENT_BUS
 
 config EVENT_BUS_DISPATCH_STACK
     int "Event bus dispatch task stack (bytes)"
     default 2048
     range 512 8192
+    depends on EVENT_BUS
+
+config VIRQ
+    bool "Virtual IRQ + bottom-half framework (VIRQ)"
+    default y
+    help
+      VIRQ 虚拟中断总开关，默认自开启。
+      包含 VIRQ 号分配、上/下半部框架与全局下半部轮询器。
+      关闭后 interrupt/interrupt.c 不编入，系统主循环不再 poll 下半部。
+      关闭前请确认以下功能不需要（关闭后不可用，板级/驱动需同步裁剪）：
+        · 裸机时间片调度器 (time_slice/xtask)：xscheduler_start() 不再注册
+          TIM 定时中断，调度器无 tick 源，x_scheduler_poll() 永不调度任务；
+        · ADC/I2S DMA 中断下半部：vfs-adc / i2s_bus 跳过 VIRQ 注册与中断
+          使能，异步/DMA 回调不可用（轮询模式驱动不受影响）；
+        · GPIO 硬件中断路由：hal_gpio 的 virq_idx 槽位形同虚设；
+        · 板级/驱动侧 ISR 不得再调用 interrupt_virtual_dispatch() /
+          interrupt_virtual_register()，否则链接失败——关 VIRQ 时板级
+          ISR 代码须同步裁剪。
+      内存收益约 1.3 KB RAM + 1 KB Flash，详见 docs/memory_footprint.md §3.6。
+
+      Master switch for the Virtual IRQ + bottom-half framework, on by default.
+      When off, interrupt/interrupt.c is not compiled, drivers skip VIRQ
+      registration, and the system loop stops polling the bottom half.
+      Confirm these become unavailable before disabling (trim board/driver
+      code accordingly):
+        · bare-metal time-slice scheduler (time_slice/xtask): xscheduler_start()
+          no longer registers the TIM tick IRQ — no tick source, tasks never run;
+        · ADC/I2S DMA bottom-half offload: vfs-adc / i2s_bus skip VIRQ
+          registration and IRQ enable — async/DMA callbacks dead (polling
+          drivers unaffected);
+        · GPIO hardware IRQ routing: the hal_gpio virq_idx slot goes inert;
+        · board/driver ISRs must not call interrupt_virtual_dispatch() /
+          interrupt_virtual_register() or the link fails — trim board ISR
+          code accordingly.
+      Memory saving ≈ 1.3 KB RAM + 1 KB Flash, see docs/memory_footprint.md §3.6.
+
+config BOTTOM_HALF_QUEUE_DEPTH
+    int "Interrupt bottom-half queue depth (power of two)"
+    default 16
+    range 4 128
+    depends on VIRQ
+    help
+      VIRQ 下半部 FIFO 深度，必须是 2 的幂。
+      Bottom-half FIFO depth; must be a power of two.
 
 config OSAL_MUTEX_POOL_SIZE
     int "OSAL static mutex pool size"

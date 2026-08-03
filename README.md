@@ -80,8 +80,8 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
   Lightweight DTS compiler, auto-generating probe tables & board headers.
 - **代码风格 / Coding style** — `.clang-format`（Allman、单语句去括号、短函数单行化、4 空格、100 列）+ 分层 `.clang-tidy`（命名强制）；app 层建议、app 以下强规定。
   `.clang-format` (Allman, no braces for single statements, one-line short functions, 4-space, 100 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
-- **目标架构 / Targets** — ARM Cortex-M3 / M4F / M7, RISC-V 32-bit；双核 AMP。
-  Dual-core heterogeneous AMP supported.
+- **目标架构 / Targets** — ARM Cortex-M0 / M0+ / M3 / M4F / M7, RISC-V 32-bit；双核 AMP。三个 OSAL 后端（裸机 / FreeRTOS / RT-Thread）均已覆盖。
+  ARM Cortex-M0 / M0+ / M3 / M4F / M7, RISC-V 32-bit; dual-core heterogeneous AMP supported — covered by all three OSAL backends (Bare-Metal / FreeRTOS / RT-Thread).
 
 ---
 

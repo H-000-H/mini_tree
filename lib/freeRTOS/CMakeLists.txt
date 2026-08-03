@@ -5,6 +5,7 @@
 #   cmake .. -DFREERTOS_PORT=GCC_ARM_CM4F -DFREERTOS_HEAP=4
 #
 # 可用端口:
+#   GCC_ARM_CM0   — ARM Cortex-M0 / M0+
 #   GCC_ARM_CM3   — ARM Cortex-M3
 #   GCC_ARM_CM4F  — ARM Cortex-M4F / CM7 (非 r0p1)
 #   GCC_RISC_V    — RISC-V (需要 FREERTOS_RISCV_EXTENSION)
@@ -24,6 +25,8 @@ if(FREERTOS_PORT STREQUAL "")
             set(FREERTOS_PORT "GCC_ARM_CM4F")
         elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM3=y")
             set(FREERTOS_PORT "GCC_ARM_CM3")
+        elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM0=y")
+            set(FREERTOS_PORT "GCC_ARM_CM0")
         elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM4F=y")
             set(FREERTOS_PORT "GCC_ARM_CM4F")
         elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_RISCV=y")
@@ -56,7 +59,14 @@ list(APPEND FREERTOS_KERNEL_SRCS
 set(FREERTOS_PORT_INCDIR "")
 set(FREERTOS_NEED_PTHREADS OFF)
 
-if(FREERTOS_PORT STREQUAL "GCC_ARM_CM3")
+if(FREERTOS_PORT STREQUAL "GCC_ARM_CM0")
+    list(APPEND FREERTOS_KERNEL_SRCS
+        "portable/GCC/ARM_CM0/port.c"
+        "portable/GCC/ARM_CM0/portasm.c"
+    )
+    set(FREERTOS_PORT_INCDIR "portable/GCC/ARM_CM0")
+
+elseif(FREERTOS_PORT STREQUAL "GCC_ARM_CM3")
     list(APPEND FREERTOS_KERNEL_SRCS
         "portable/GCC/ARM_CM3/port.c"
     )
@@ -85,7 +95,7 @@ elseif(FREERTOS_PORT STREQUAL "GCC_POSIX")
 
 else()
     message(FATAL_ERROR "不支持的 FREERTOS_PORT: ${FREERTOS_PORT}。"
-                        "可用选项: GCC_ARM_CM3, GCC_ARM_CM4F, GCC_RISC_V, GCC_POSIX")
+                        "可用选项: GCC_ARM_CM0, GCC_ARM_CM3, GCC_ARM_CM4F, GCC_RISC_V, GCC_POSIX")
 endif()
 
 # ── 构建库 ──

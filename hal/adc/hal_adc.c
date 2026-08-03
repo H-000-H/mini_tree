@@ -116,12 +116,3 @@ COMPAT_WEAK int hal_adc_dma_read_value(hal_adc_device* pdev, uint16_t* out_val)
     (void)out_val;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}
-
-COMPAT_WEAK void hal_adc_dma_bottom_half_handler(void* arg) { (void)arg; }

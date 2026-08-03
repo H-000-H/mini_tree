@@ -478,8 +478,8 @@ CONFIG_OSAL_FREERTOS=y          # OSAL 后端 = FreeRTOS
 CONFIG_CPU_CORES=1              # 单核
 CONFIG_SYS_LOG_USE_PRINTF=y     # 日志 → my_printf_output
 CONFIG_SYSTEM_CPP=y             # 系统运行时 = C++ 实现
-CONFIG_ENABLE_WDT=y             # TWDT + RTC WDT
-CONFIG_ENABLE_FLASH_SCRUBBER=y  # Flash bit-rot 后台扫描
+CONFIG_SYSTEM_WDT=y             # 框架看门狗服务 (TWDT + RTC WDT)
+CONFIG_SYSTEM_SCRUBBER=y        # Flash bit-rot 后台扫描
 CONFIG_BUILD_DISASM=y           # 生成 .lst 反汇编
 CONFIG_OSAL_MUTEX_POOL_SIZE=24
 CONFIG_EVENT_BUS_QUEUE_LEN=64

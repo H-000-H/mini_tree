@@ -22,11 +22,15 @@
 #include "compiler_compat_poison.h"
 
 /*
- * 最小堆大小 — 用户工程可在 board_config.h 中用 RTT_HEAP_SIZE 覆盖.
+ * 最小堆大小 — Kconfig CONFIG_RTT_HEAP_SIZE 优先, 否则默认 32 KB.
  * 实际线程栈、IPC 对象等内存从此堆分配.
  */
 #ifndef RTT_HEAP_SIZE
+#ifdef CONFIG_RTT_HEAP_SIZE
+#define RTT_HEAP_SIZE CONFIG_RTT_HEAP_SIZE
+#else
 #define RTT_HEAP_SIZE (32 * 1024)
+#endif
 #endif
 
 static uint8_t s_rtt_heap[RTT_HEAP_SIZE] COMPAT_ALIGNED(4);

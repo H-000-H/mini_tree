@@ -12,16 +12,14 @@
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
+#include "dt_config_gen.h"
+#include "board_define_i2s.h"
 #include "i2s_bus.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"
 
-#define I2S_HOST_POOL 3
-#define I2S_CLIENT_POOL 4
-#ifndef I2S_CIRC_FIFO_SIZE
-#define I2S_CIRC_FIFO_SIZE 512U /* 必须 2 的幂 */
-#endif
+/* 池/环缓大小宏见 board_define_i2s.h (数量由 DTS 节点数自动生成) */
 
 /**
  * @brief Host VFS 私有数据 (环缓 + DTSI 配置)

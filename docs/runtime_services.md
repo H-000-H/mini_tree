@@ -24,6 +24,9 @@
 
 ## 1. EventBus
 
+> **可选模块（默认关闭）**：`CONFIG_EVENT_BUS`（依赖 `SYSTEM`）。开启后 `core/src/event_bus.c` 编入，`event_bus_*` API 可用；关闭（默认）则不编入、不广播 `EVENT_SYS_*`。
+> **Optional module (off by default)**: `CONFIG_EVENT_BUS` (depends on `SYSTEM`). When on, `core/src/event_bus.c` is compiled and the `event_bus_*` APIs work; when off (default), it is not compiled and no `EVENT_SYS_*` events are posted.
+
 头 / Header：`core/include/event_bus.h`（C++ 另有 `event_bus.hpp` 包装 / plus the `event_bus.hpp` C++ wrapper）。
 
 ### 1.1 事件 ID / Event IDs
@@ -56,7 +59,8 @@ The framework only carries **ID + `uintptr_t arg`**; it never interprets busines
 3. `arg` 若为指针：生命周期必须活过回调（静态/池化，勿栈指针）。
    If `arg` is a pointer, it must outlive the callback (static/pooled; never a stack pointer).
 
-容量 / Capacity：`CONFIG_EVENT_BUS_*`（见 Kconfig Runtime）。
+容量 / Capacity：`CONFIG_EVENT_BUS_*`（见 Kconfig Runtime）；开关 `CONFIG_EVENT_BUS`。
+Capacity: `CONFIG_EVENT_BUS_*` (see Kconfig Runtime); master switch `CONFIG_EVENT_BUS`.
 
 ---
 
@@ -83,12 +87,33 @@ The framework only carries **ID + `uintptr_t arg`**; it never interprets busines
 ISR 禁止：`printf`、长时间锁、无界工作 — [fast_path.md](fast_path.md)。
 ISR forbidden: `printf`, long-held locks, unbounded work — [fast_path.md](fast_path.md).
 
+### 2.1 关闭 VIRQ / Disabling VIRQ
+
+总开关 `CONFIG_VIRQ`（默认开）；关闭后 `interrupt/interrupt.c` 不编入，系统主循环不再 poll 下半部。
+Master switch `CONFIG_VIRQ` (on by default); when off, `interrupt/interrupt.c` is not compiled and the system loop stops polling the bottom half.
+
+**关闭前请确认以下功能不需要（关闭后不可用，板级/驱动需同步裁剪）：**
+**Confirm these are unneeded before disabling (trim board/driver code accordingly):**
+
+| 功能 / Feature | 关闭后的影响 / Effect When Off |
+| :--- | :--- |
+| 裸机时间片调度器（`time_slice/xtask`）| `xscheduler_start()` 不再注册 TIM 定时中断，调度器无 tick 源，`x_scheduler_poll()` 永不调度任务 / no TIM tick IRQ registered — no tick source, tasks never run |
+| ADC / I2S DMA 中断下半部 | `vfs-adc` / `i2s_bus` 跳过 VIRQ 注册与中断使能，异步/DMA 回调不可用（轮询模式驱动不受影响）/ skip VIRQ registration & IRQ enable — async/DMA callbacks dead (polling drivers unaffected) |
+| GPIO 硬件中断路由 | `hal_gpio` 的 `virq_idx` 槽位形同虚设 / the virq_idx slot goes inert |
+| 板级/驱动 ISR | 不得再调 `interrupt_virtual_dispatch()` / `interrupt_virtual_register()`，否则链接失败 / must not call them or the link fails |
+
+**内存收益 ≈ 1.3 KB RAM + 1 KB Flash**（三张 VIRQ 表 864 B + 下半部 poller 320 B + 工作项；FIFO 深度 `CONFIG_BOTTOM_HALF_QUEUE_DEPTH` 每槽 4 B）。详见 [memory_footprint.md](memory_footprint.md) §3.6。
+**Memory saving ≈ 1.3 KB RAM + 1 KB Flash** (three VIRQ tables 864 B + bottom-half poller 320 B + work item; FIFO depth `CONFIG_BOTTOM_HALF_QUEUE_DEPTH` costs 4 B/slot). See [memory_footprint.md](memory_footprint.md) §3.6.
+
 ---
 
 ## 3. SYSTEM_C vs SYSTEM_CPP
 
-Kconfig **二选一**：编入 `system_c/` 或 `system_cpp/`。
-Kconfig picks **one**: compile `system_c/` or `system_cpp/`.
+> **可选模块（默认自开）**：总开关 `CONFIG_SYSTEM`。关闭后 `system_c/` 与 `system_cpp/` 均不编入（`CONFIG_SYSTEM_WDT` / `CONFIG_SYSTEM_SCRUBBER` / `CONFIG_EVENT_BUS` 也依赖本开关）。
+> **Optional module (default on)**: master switch `CONFIG_SYSTEM`. When off, neither `system_c/` nor `system_cpp/` is compiled (`CONFIG_SYSTEM_WDT` / `CONFIG_SYSTEM_SCRUBBER` / `CONFIG_EVENT_BUS` also depend on this switch).
+
+`CONFIG_SYSTEM` 开启时 Kconfig **二选一**：编入 `system_c/` 或 `system_cpp/`。
+When `CONFIG_SYSTEM` is on, Kconfig picks **one**: compile `system_c/` or `system_cpp/`.
 
 | | `SYSTEM_C` | `SYSTEM_CPP` |
 | :--- | :--- | :--- |
@@ -129,8 +154,8 @@ Business code may use them directly; avoid complex allocation in ISRs (pool ISR-
 
 | 模块 / Module | 功能 / Function | Kconfig | 说明 / Notes |
 | :--- | :--- | :--- | :--- |
-| 看门狗 / Watchdog | `system_wdt`：IWDG / WWDG / TWDT | `CONFIG_ENABLE_WDT` | 任务/硬件看门狗，喂狗超时触发复位或安全回调 / HW & task watchdogs; timeout triggers reset or safe callback |
-| Flash CRC 巡检 / CRC Scrubber | `system_scrubber`：后台扫描 + CRC 基线 | `CONFIG_ENABLE_FLASH_SCRUBBER` | 掉电/位翻转防护；链接后由 `post_build_crc.py` 覆盖 CRC 基线 / Bit-rot scan + CRC baseline (overwritten post-link by `post_build_crc.py`) |
+| 看门狗 / Watchdog | `system_wdt`：IWDG / WWDG / TWDT | `CONFIG_SYSTEM_WDT` | 框架引导自动看门狗（IWDG/TWDT + 自动喂狗 + bootloop 防护）；应用可编程看门狗走 `vfs-iwdg`/`vfs-wwdg`（DTS）/ framework boot-integrated watchdog (IWDG/TWDT + auto-feed + bootloop guard); app-programmable ones go through `vfs-iwdg`/`vfs-wwdg` (DTS) |
+| Flash CRC 巡检 / CRC Scrubber | `system_scrubber`：后台扫描 + CRC 基线 | `CONFIG_SYSTEM_SCRUBBER` | 掉电/位翻转防护；链接后由 `post_build_crc.py` 覆盖 CRC 基线 / Bit-rot scan + CRC baseline (overwritten post-link by `post_build_crc.py`) |
 | 安全停机 / Safe State | `safe_state` + `critical_data` + `hal_platform_safety` | `CONFIG_SAFETY_SHUTDOWN` | 停机回调、bootloop 防护、NMI 紧急标记、关键变量双反码存储、硬件闭锁 + 故障 LED/蜂鸣器 / Shutdown callbacks, bootloop guard, NMI stamp, dual-inverted critical storage, hardware latch + fault LED/buzzer |
 | 跨核急停 / CPU Stop | `hal_cpu_emergency_stop_all_cores`（`hal/amp`） | `CONFIG_CPU_CORES > 1` | 双核 AMP 时须停所有核输出 / Stop all cores on AMP |
 

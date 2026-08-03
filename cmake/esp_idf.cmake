@@ -15,6 +15,29 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
+# System / EventBus 软编码：.config 显式 "# CONFIG_SYSTEM is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_OFF REGEX "^# CONFIG_SYSTEM is not set$")
+if(CONFIG_SYSTEM_OFF)
+    set(MINI_TREE_SYSTEM OFF)
+else()
+    set(MINI_TREE_SYSTEM ON)
+endif()
+file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_OFF REGEX "^# CONFIG_EVENT_BUS is not set$")
+# EVENT_BUS 依赖 SYSTEM: .config 手写 y 但 SYSTEM=n 时按 Kconfig 语义视为关
+if(CONFIG_EVENT_BUS_OFF OR NOT MINI_TREE_SYSTEM)
+    set(MINI_TREE_EVENT_BUS OFF)
+else()
+    set(MINI_TREE_EVENT_BUS ON)
+endif()
+# SystemCmd: 默认关, 仅显式 "CONFIG_SYSTEM_CMD=y" 才编入
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_CMD_ON REGEX "^CONFIG_SYSTEM_CMD=y$")
+# SYSTEM_CMD 仅 SYSTEM_CPP 后端有效
+if(CONFIG_SYSTEM_CMD_ON AND CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
+    set(MINI_TREE_SYSTEM_CMD ON)
+else()
+    set(MINI_TREE_SYSTEM_CMD OFF)
+endif()
+
 # USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）。
 # 启用时需板级 usb_tusb_port glue（docs/usb_tusb_port.md），并自行 REQUIRE esp_tinyusb 等。
 file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
@@ -63,23 +86,27 @@ if(MINI_TREE_USB)
     list(APPEND HAL_SRCS "${MINI_TREE_DIR}/hal/usb/hal_usb.c")
 endif()
 
-if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
-    set(SYSTEM_SRCS
-        "${MINI_TREE_DIR}/system_cpp/src/system_cmd.cpp"
-        "${MINI_TREE_DIR}/system_cpp/src/system_init.cpp"
-        "${MINI_TREE_DIR}/system_cpp/src/system_scrubber.cpp"
-        "${MINI_TREE_DIR}/system_cpp/src/system_wdt.cpp"
-        "${MINI_TREE_DIR}/system_cpp/src/task_manager.cpp"
-        "${MINI_TREE_DIR}/system_cpp/src/safe_state.c"
-    )
-else()
-    set(SYSTEM_SRCS
-        "${MINI_TREE_DIR}/system_c/src/system_init.c"
-        "${MINI_TREE_DIR}/system_c/src/system_scrubber.c"
-        "${MINI_TREE_DIR}/system_c/src/system_wdt.c"
-        "${MINI_TREE_DIR}/system_c/src/task_manager.c"
-        "${MINI_TREE_DIR}/system_cpp/src/safe_state.c"
-    )
+if(MINI_TREE_SYSTEM)
+    if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
+        set(SYSTEM_SRCS
+            "${MINI_TREE_DIR}/system_cpp/src/system_init.cpp"
+            "${MINI_TREE_DIR}/system_cpp/src/system_scrubber.cpp"
+            "${MINI_TREE_DIR}/system_cpp/src/system_wdt.cpp"
+            "${MINI_TREE_DIR}/system_cpp/src/task_manager.cpp"
+            "${MINI_TREE_DIR}/system_cpp/src/safe_state.c"
+        )
+        if(MINI_TREE_SYSTEM_CMD)
+            list(APPEND SYSTEM_SRCS "${MINI_TREE_DIR}/system_cpp/src/system_cmd.cpp")
+        endif()
+    else()
+        set(SYSTEM_SRCS
+            "${MINI_TREE_DIR}/system_c/src/system_init.c"
+            "${MINI_TREE_DIR}/system_c/src/system_scrubber.c"
+            "${MINI_TREE_DIR}/system_c/src/system_wdt.c"
+            "${MINI_TREE_DIR}/system_c/src/task_manager.c"
+            "${MINI_TREE_DIR}/system_cpp/src/safe_state.c"
+        )
+    endif()
 endif()
 
 set(BOARD_SRCS
@@ -93,11 +120,13 @@ set(BOARD_SRCS
 )
 
 set(CORE_SRCS
-    "${MINI_TREE_DIR}/core/src/event_bus.c"
     "${MINI_TREE_DIR}/core/src/buffer_pool.c"
     "${MINI_TREE_DIR}/core/src/production_log.c"
     "${MINI_TREE_DIR}/core/src/printf_output.c"
 )
+if(MINI_TREE_EVENT_BUS)
+    list(APPEND CORE_SRCS "${MINI_TREE_DIR}/core/src/event_bus.c")
+endif()
 
 # 总线/VFS + mini_tree/drivers/*/ 产品驱动（ws2812 仍在树外独立组件）
 file(GLOB _PRODUCT_DRV_SRCS
@@ -255,6 +284,7 @@ idf_component_register(
     INCLUDE_DIRS
         "${MINI_TREE_DIR}"
         "${MINI_TREE_DIR}/board/include"
+        "${MINI_TREE_DIR}/board/define/vfs"
         "${MINI_TREE_DIR}/board"
         "${MINI_TREE_DIR}/core/include"
         "${MINI_TREE_DIR}/osal/include"

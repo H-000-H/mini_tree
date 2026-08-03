@@ -150,8 +150,8 @@ device_read/write/ioctl
 
 ### 4.2 EventBus
 
-`core` 发布订阅；容量由 `CONFIG_EVENT_BUS_QUEUE_LEN`、`CONFIG_EVENT_BUS_MAX_SUBSCRIBERS` 决定。
-Publish/subscribe in `core`; capacity is set by `CONFIG_EVENT_BUS_QUEUE_LEN` and `CONFIG_EVENT_BUS_MAX_SUBSCRIBERS`.
+`core` 发布订阅；模块开关 `CONFIG_EVENT_BUS`（默认关闭，依赖 `SYSTEM`），容量由 `CONFIG_EVENT_BUS_QUEUE_LEN`、`CONFIG_EVENT_BUS_MAX_SUBSCRIBERS` 决定。
+Publish/subscribe in `core`; module switch `CONFIG_EVENT_BUS` (off by default, depends on `SYSTEM`); capacity is set by `CONFIG_EVENT_BUS_QUEUE_LEN` and `CONFIG_EVENT_BUS_MAX_SUBSCRIBERS`.
 
 ### 4.3 BufferPool / algorithm
 
@@ -174,8 +174,8 @@ Publish/subscribe in `core`; capacity is set by `CONFIG_EVENT_BUS_QUEUE_LEN` and
 | scrubber stub | CMake copy | `generated/scrubber/.../system_scrubber_crc_gen.h` |
 | 根 `compile_flags.txt` | `tools/gen_compile_db.py` | `compile_commands.json`（含 `.h/.hpp` 头文件条目 / including header entries） |
 
-Kconfig 菜单：Platform、Multi-core/AMP、OSAL、Spinlock、System Log、System C/CPP、Board Features（WDT/Scrubber/…）、Runtime Capacity、Compiler、Build。
-Kconfig menus: Platform, Multi-core/AMP, OSAL, Spinlock, System Log, System C/CPP, Board Features (WDT/Scrubber/…), Runtime Capacity, Compiler, Build.
+Kconfig 菜单：Platform、Multi-core/AMP、OSAL、Spinlock、System Log、System Runtime（`SYSTEM` 总开关 + C/CPP 后端）、Components（USB）、Board Features（WDT/Scrubber/…）、Runtime Capacity（`EVENT_BUS` 总开关 + 容量）、Compiler、Build。
+Kconfig menus: Platform, Multi-core/AMP, OSAL, Spinlock, System Log, System Runtime (`SYSTEM` master switch + C/CPP backend), Components (USB), Board Features (WDT/Scrubber/…), Runtime Capacity (`EVENT_BUS` master switch + capacity), Compiler, Build.
 
 CMake 关键缓存变量：`BOARD_DTS`、`BOARD_DTSI_DIR`、`VENDOR_INC_DIRS`、`VENDOR_DEFINES`。
 Key CMake cache variables: `BOARD_DTS`, `BOARD_DTSI_DIR`, `VENDOR_INC_DIRS`, `VENDOR_DEFINES`.

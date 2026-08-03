@@ -34,13 +34,27 @@
 
 #include "compiler_compat_poison.h"
 /**
- * @brief 队列最大数量与单队列缓冲区字节大小
+ * @brief 队列最大数量与单队列缓冲区字节大小 (Kconfig CONFIG_OSAL_NULL_* 控制)
  */
 #ifndef OSAL_NULL_MAX_QUEUES
-#define OSAL_NULL_MAX_QUEUES 4
+#ifdef CONFIG_OSAL_NULL_MAX_QUEUES
+#define OSAL_NULL_MAX_QUEUES CONFIG_OSAL_NULL_MAX_QUEUES
+#else
+#define OSAL_NULL_MAX_QUEUES 0
+#endif
+#endif
+/* 基础队列数 + EventBus 自动 +1 (EventBus 需要一个队列) */
+#ifdef CONFIG_EVENT_BUS
+#define OSAL_NULL_QUEUE_POOL_SIZE (OSAL_NULL_MAX_QUEUES + 1)
+#else
+#define OSAL_NULL_QUEUE_POOL_SIZE OSAL_NULL_MAX_QUEUES
 #endif
 #ifndef OSAL_NULL_QUEUE_BUF_SZ
-#define OSAL_NULL_QUEUE_BUF_SZ 4096
+#ifdef CONFIG_OSAL_NULL_QUEUE_BUF_SZ
+#define OSAL_NULL_QUEUE_BUF_SZ CONFIG_OSAL_NULL_QUEUE_BUF_SZ
+#else
+#define OSAL_NULL_QUEUE_BUF_SZ 2048
+#endif
 #endif
 #define OSAL_NULL_QUEUE_ELEM_COUNT (OSAL_NULL_QUEUE_BUF_SZ / sizeof(fifo_data_type))
 
@@ -56,18 +70,35 @@ struct osal_queue_obj
     size_t elements_per_item; /**<每个队列元素包含的元素个数*/
 };
 
-static struct osal_queue_obj s_queues[OSAL_NULL_MAX_QUEUES] COMPAT_ALIGNED(64); /**<队列池*/
-static uint8_t s_queue_used[OSAL_NULL_MAX_QUEUES] COMPAT_ALIGNED(4); /**<队列使用情况*/
+#if OSAL_NULL_QUEUE_POOL_SIZE > 0
+static struct osal_queue_obj s_queues[OSAL_NULL_QUEUE_POOL_SIZE] COMPAT_ALIGNED(64); /**<队列池*/
+static uint8_t s_queue_used[OSAL_NULL_QUEUE_POOL_SIZE] COMPAT_ALIGNED(4); /**<队列使用情况*/
 static osal_pool_t s_queue_pool_ctrl COMPAT_ALIGNED(4); /**<队列池控制句柄*/
 
+/** @brief 取队列池第 idx 个对象 (池为 0 时恒 NULL) */
+COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
+{
+    return &s_queues[idx];
+}
+#else
+COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
+{
+    (void)idx;
+    return NULL;
+}
+#endif /* OSAL_NULL_QUEUE_POOL_SIZE > 0 */
+
+#if OSAL_NULL_QUEUE_POOL_SIZE > 0
 /**
  * @brief 队列池初始化
  * @details 队列池初始化 主要是队列的缓冲区 队列的长度 队列的元素大小 队列的头部和尾部
  */
 pre_execution(152) static void osal_null_queue_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_MAX_QUEUES));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_QUEUE_POOL_SIZE));
 }
+#endif /* OSAL_NULL_QUEUE_POOL_SIZE > 0 */
 
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
     defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
@@ -317,13 +348,18 @@ bool osal_pool_is_used(osal_pool_t* pool, int idx)
  */
 COMPAT_STATIC_INLINE int queue_index_of(osal_queue_handle_t queue)
 {
+#if OSAL_NULL_QUEUE_POOL_SIZE > 0
     if (!queue)
         return -1;
     int idx = (int)((struct osal_queue_obj*)queue -
                     s_queues); /**< 计算出队列在静态队列池中的索引queue的地址减去全局起始地址 */
-    if (idx < 0 || idx >= OSAL_NULL_MAX_QUEUES || !s_queue_used[idx])
+    if (idx < 0 || idx >= OSAL_NULL_QUEUE_POOL_SIZE || !s_queue_used[idx])
         return -1;
     return idx;
+#else
+    (void)queue;
+    return -1; /* 队列池未启用 (OSAL_NULL_QUEUE_POOL_SIZE=0) */
+#endif
 }
 
 /**
@@ -1107,6 +1143,7 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
     if (total_elements > OSAL_NULL_QUEUE_ELEM_COUNT)
         return NULL;
 
+#if OSAL_NULL_QUEUE_POOL_SIZE > 0
     int idx = osal_pool_claim(&s_queue_pool_ctrl);
     if (idx < 0)
         return NULL;
@@ -1116,6 +1153,10 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
     fifo_init(&queue->fifo, queue->buf, (uint16_t)total_elements);
 
     return (osal_queue_handle_t)queue;
+#else
+    (void)total_elements;
+    return NULL; /* 队列池未启用, 需在 Kconfig 设置基础队列数或开启 EVENT_BUS */
+#endif
 }
 
 /**
@@ -1124,10 +1165,14 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
  */
 void osal_queue_delete(osal_queue_handle_t queue)
 {
+#if OSAL_NULL_QUEUE_POOL_SIZE > 0
     int idx = queue_index_of(queue);
     if (idx < 0)
         return;
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_queue_pool_ctrl, idx));
+#else
+    (void)queue;
+#endif
 }
 
 /**
@@ -1142,7 +1187,9 @@ static bool queue_send_internal(osal_queue_handle_t queue, const void* item)
     if (idx < 0 || !item)
         return false;
 
-    struct osal_queue_obj* q = &s_queues[idx];
+    struct osal_queue_obj* q = queue_at(idx);
+    if (!q)
+        return false;
     uint16_t epi = (uint16_t)q->elements_per_item;
 
     /**< SPSC 安全: 消费者只能释放空间不会缩减,
@@ -1199,7 +1246,9 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
     if (idx < 0 || !item)
         return false;
 
-    struct osal_queue_obj* q = &s_queues[idx];
+    struct osal_queue_obj* q = queue_at(idx);
+    if (!q)
+        return false;
     uint16_t epi = (uint16_t)q->elements_per_item;
 
     if (timeout_ms == OSAL_WAIT_FOREVER)
@@ -1239,7 +1288,9 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
     if (idx < 0 || !item) /**< 判断队列句柄是否有效且接收数据指针是否有效 */
         return false;
 
-    struct osal_queue_obj* q = &s_queues[idx];
+    struct osal_queue_obj* q = queue_at(idx);
+    if (!q)
+        return false;
     uint16_t epi = (uint16_t)q->elements_per_item;
 
     if (fifo_get_count(&q->fifo) < epi)

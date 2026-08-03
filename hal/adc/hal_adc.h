@@ -35,8 +35,14 @@ extern "C"
 #define HAL_ADC_MAX_CHANNELS 16
 #endif
 
-#ifndef DTS_DMA_BUFFER_SIZE
-#define DMA_BUFFER_SIZE 1024
+/* DMA 采样缓冲深度（元素个数）
+ * 兼容旧名 DTS_DMA_BUFFER_SIZE：DTS 定义了则跟随，否则用默认 256。
+ * 256 个采样点对绝大多数应用足够（音频/波形捕获可自行加大）。 */
+#ifdef DTS_DMA_BUFFER_SIZE
+#define DMA_BUFFER_SIZE DTS_DMA_BUFFER_SIZE
+#endif
+#ifndef DMA_BUFFER_SIZE
+#define DMA_BUFFER_SIZE 256
 #endif
 
     /*===========================================================================================================================================================*/
@@ -315,20 +321,6 @@ extern "C"
      * @return int 错误码
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_read_value(hal_adc_device* pdev, uint16_t* out_val);
-
-    /**
-     * @brief ADC 虚拟中断上半部回调 (ISR 内执行)
-     * @param arg 参数 (hal_adc_device*)
-     * @param irq_num 虚拟中断号
-     * @return 1 表示需要 schedule 下半部; 0 表示不需要
-     */
-    int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num);
-
-    /**
-     * @brief ADC DMA 下半部处理函数 (主循环上下文执行 fifo 拷贝)
-     * @param arg 参数 (hal_adc_device*)
-     */
-    void hal_adc_dma_bottom_half_handler(void* arg);
 
 #ifdef __cplusplus
 }

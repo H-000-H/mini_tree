@@ -78,10 +78,3 @@ COMPAT_WEAK int hal_can_get_state(struct hal_can_bus_host* host, uint32_t* out_s
     (void)out_state;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}

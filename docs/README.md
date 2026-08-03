@@ -57,6 +57,7 @@
 | 文档 / Document | 说明 / Description |
 | :--- | :--- |
 | [coding_style.md](coding_style.md) | 语言规范：命名与格式（app 以下强规定 / app 层建议；enforced below `app/`, recommended in `app/`） |
+| [memory_footprint.md](memory_footprint.md) | 内存足迹：固定静态开销与裁剪开关 / Fixed static RAM overhead & trimming knobs |
 | [service_spec.md](service_spec.md) | 应用层允许/禁止 / Application-layer do's and don'ts |
 | [runtime_services.md](runtime_services.md) | EventBus / VIRQ / SYSTEM_C·CPP / 缓冲 / EventBus / VIRQ / SYSTEM_C·CPP / buffers |
 | [can_hook.md](can_hook.md) | CAN 协议超集钩子 / CAN protocol superset hooks |
@@ -68,7 +69,7 @@
 | 文档 / Document | 说明 / Description |
 | :--- | :--- |
 | [debug_monitor.md](debug_monitor.md) | 日志、生成物、clangd / Logging, generated artifacts, clangd |
-| [keil_integration.md](keil_integration.md) | Keil / IDE |
+| [keil_integration.md](keil_integration.md) | Keil Studio（支持）/ µVision（不推荐）· IDE / Keil Studio (supported) / µVision (not recommended) · IDE |
 | [problem_summary.md](problem_summary.md) | 历史问题轴 / Historical problem timeline |
 
 ### 规划与索引 / Planning & Index

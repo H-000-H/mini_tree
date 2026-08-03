@@ -34,7 +34,9 @@ void config_store_bind_source(const char* buffer, size_t size)
     s_json_size = size;
 }
 
-#define MAX_ENTRIES 32
+#ifndef MAX_ENTRIES
+#define MAX_ENTRIES 8
+#endif
 #define BLOB_MAX 4096
 
 #define FLAG_A_VALID 0xA0

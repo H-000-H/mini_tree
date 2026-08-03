@@ -66,6 +66,29 @@ Each board project brings its own:
 
 The same physical `mini_tree` can be attached to multiple boards via symlink/submodule; **build per board** (each board gets its own `build/` plus generated tables) — one link step never mixes multiple SoCs.
 
+### 架构支持矩阵 / Architecture Support Matrix
+
+Kconfig `PLATFORM_ARM_*` 选定目标架构后，OSAL 后端与 RTOS port 自动匹配：
+
+After `PLATFORM_ARM_*` in Kconfig selects the target architecture, the OSAL backend and RTOS ports are picked automatically:
+
+| 架构 / Arch | 裸机 / Bare-Metal | FreeRTOS | RT-Thread |
+| :--- | :---: | :---: | :---: |
+| ARM Cortex-M0 / M0+（`PLATFORM_ARM_CM0`） | ✅ | ✅ `ARM_CM0` port（官方拉取） | ✅ `cortex-m0` port（官方拉取） |
+| ARM Cortex-M3（`PLATFORM_ARM_CM3`） | ✅ | ✅ `ARM_CM3` port | ✅ `cortex-m3` port |
+| ARM Cortex-M4F（`PLATFORM_ARM_CM4F`） | ✅ | ✅ `ARM_CM4F` port | ✅ `cortex-m4` port |
+| ARM Cortex-M7（`PLATFORM_ARM_CM7`） | ✅ | ✅ `ARM_CM4F` port（M7 无 FPU 例外时） | ✅ `cortex-m7` port |
+| RISC-V 32-bit（`PLATFORM_RISCV`） | ✅ | ✅ `RISC-V` port（需扩展定义） | ✅ `risc-v/common` port |
+
+**M0/M0+ 注意事项 / M0/M0+ notes**：
+
+- **FreeRTOS**：`lib/freeRTOS/FreeRTOSConfig.h` 按 `__ARM_ARCH_6M__` 自动适配——无 MPU（`configENABLE_MPU 0`）、禁用 CLZ 优化任务选择（M0 无 `CLZ` 指令）、NVIC 仅 4 级优先级（`configMAX_SYSCALL_INTERRUPT_PRIORITY 3`，M3/M4F/M7 仍为 `5<<4`）。
+  **FreeRTOS**: `lib/freeRTOS/FreeRTOSConfig.h` auto-adapts on `__ARM_ARCH_6M__` — no MPU (`configENABLE_MPU 0`), CLZ-optimised task selection off (M0 has no `CLZ`), NVIC 4-level priority (`configMAX_SYSCALL_INTERRUPT_PRIORITY 3`; M3/M4F/M7 keep `5<<4`).
+- **RT-Thread**：M0 无 `LDREX/STREX` 指令，`rtconfig.h` 按 `__ARM_ARCH_6M__` 关闭 `RT_USING_HW_ATOMIC`，原子操作退回 `rtatomic.h` 内联软件实现（关中断），`atomic_arm.c` 不编入。
+  **RT-Thread**: M0 lacks `LDREX/STREX`; `rtconfig.h` disables `RT_USING_HW_ATOMIC` on `__ARM_ARCH_6M__` and atomics fall back to the inline software implementations (IRQ-lock) in `rtatomic.h`, with `atomic_arm.c` excluded.
+- 三个后端在 M0 上均已全量构建实测通过（`-mcpu=cortex-m0 -mthumb`）。
+  All three backends have been full-library build-verified on M0 (`-mcpu=cortex-m0 -mthumb`).
+
 ---
 
 ## 2. 步骤总览 / Step Overview
@@ -94,6 +117,20 @@ The same physical `mini_tree` can be attached to multiple boards via symlink/sub
    Nodes with `status = "disabled"` are excluded from the effective probe set (per the generator).
 5. `chosen`（如调度 tick 定时器）写入后会出现在 `board_handles.h` / `CHOSEN_*`。
    A `chosen` entry (e.g. the scheduler tick timer) shows up in `board_handles.h` / `CHOSEN_*`.
+6. **板级配置头 / Board config headers**：VFS 的池大小与属性数组宽度宏统一收在 `board/define/vfs/board_define_<name>.h`（每 VFS 一个，普通 C 宏）——默认值在中间件，板级改该头或 `-D` 覆盖；池数量默认跟随 `DTC_GEN_COUNT_*`（DTS 节点数，自动）。无需在 DTS 里写 `#define`（见 [memory_footprint.md](memory_footprint.md) §2.5）。
+   **Board config headers**: VFS pool-size and property-array-width macros live in `board/define/vfs/board_define_<name>.h` (one per VFS, plain C macros) — middleware defaults, boards override by editing the header or via `-D`; pool counts follow `DTC_GEN_COUNT_*` (DTS node counts, automatic) by default. No `#define` in DTS needed (see [memory_footprint.md](memory_footprint.md) §2.5).
+7. **节点模板 / Node templates**：中间件自带全套占位模板，每个 VFS 与每个产品驱动各一个文件，参数全 0 + 用法注释——板级按需拷走填真实值即可：
+   **Built-in node templates**: one file per VFS and per product driver, all parameters are 0 placeholders with usage comments — boards copy what they need and fill in real values:
+
+   ```
+   board/dtsi/example-soc.dtsi    SoC 骨架: cpus / gpio / uart（含 uart-cap）
+   board/dtsi/vfs/<vfs-name>.dtsi  vfs-i2c / vfs-spi / vfs-i2s / vfs-can / vfs-adc / vfs-dac /
+                                 vfs-tim / vfs-rtc / vfs-iwdg / vfs-wwdg / vfs-usb
+   board/dtsi/drivers/<chip>.dtsi  37 个产品驱动各一（aht20 / w25qxx / st7789 / …）
+   ```
+
+   模板引用关系：drivers 模板挂载在 vfs 模板定义的 label 上（如 `&i2c0 { aht20: aht20@0 {...} }`），板级同时启用总线节点与器件节点；池大小自动 = `DTC_GEN_COUNT_*`（同名 compatible 节点数，缺省 1）。
+   The templates reference each other: driver templates mount on the labels defined by VFS templates (e.g. `&i2c0 { aht20: aht20@0 {...} }`); boards enable both the bus node and the device node; pool sizes follow `DTC_GEN_COUNT_*` automatically (nodes with the same compatible, default 1).
 
 > 占位 `board/dts/board.dts` 仅含 `compatible = "mini-tree,placeholder"` 根节点：能编过、生成空表，但**无任何板级节点**；正式板级必须由 `BOARD_DTS` 注入。
 

@@ -38,9 +38,11 @@
 | 路径 / Path | 说明 / Description |
 | :--- | :--- |
 | `board/dts/board.dts` | **占位**根节点（仅 `mini-tree,placeholder`，无外设）；板级用 `BOARD_DTS` 覆盖<br>**Placeholder** root node (`mini-tree,placeholder` only, no peripherals); boards override via `BOARD_DTS` |
-| `board/dtsi/` | 空；留给平台覆盖 `BOARD_DTSI_DIR`<br>Empty; reserved for platforms overriding `BOARD_DTSI_DIR` |
+| `board/dtsi/` | **节点模板库**：`example-soc.dtsi`（SoC 骨架：cpus/gpio/uart）+ `vfs/`（11 个 VFS 各一文件）+ `drivers/`（37 个产品驱动各一文件）；参数全 0 占位 + 用法注释，板级拷走填值；`BOARD_DTSI_DIR` 可指向平台自有 dtsi<br>**Node-template library**: `example-soc.dtsi` (SoC skeleton: cpus/gpio/uart) + `vfs/` (one file per VFS) + `drivers/` (one file per product driver); all-0 placeholders with usage comments; `BOARD_DTSI_DIR` may point at platform-owned dtsi |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | 通用 `#define`，供 dtsi `#include <dt-bindings/...>`<br>Generic `#define`s for dtsi `#include <dt-bindings/...>` |
 | `drivers/<chip>/{include,src}` | 产品驱动（37 个）；CMake / `dtc-lite` GLOB 扫描<br>Product drivers (37); GLOB-scanned by CMake / `dtc-lite` |
+
+> **模板用法 / How to use the templates**：drivers 模板挂载在 vfs 模板定义的 label 上（如 `&i2c0 { aht20: aht20@0 {...} }`）。板级同时启用总线节点与器件节点（`status = "okay"`）；实例池大小自动 = `DTC_GEN_COUNT_*`（同名 compatible 节点数，缺省 1），无需手调。
 
 ### 平台工程（推荐）/ Platform project (recommended)
 

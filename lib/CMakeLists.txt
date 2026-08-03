@@ -44,9 +44,9 @@ if(EXISTS "${MINI_TREE_CONFIG}")
     endif()
 endif()
 
-# FreeRTOS 默认：本板 Cortex-M4F + heap_4（可 -D 覆盖）
-if(NOT DEFINED FREERTOS_PORT OR FREERTOS_PORT STREQUAL "")
-    set(FREERTOS_PORT "GCC_ARM_CM4F")
+# FreeRTOS 端口：未通过 -D 指定时由 freeRTOS/CMakeLists.txt 按 Kconfig PLATFORM 派生
+if(NOT DEFINED FREERTOS_PORT)
+    set(FREERTOS_PORT "")
 endif()
 if(NOT DEFINED FREERTOS_HEAP OR FREERTOS_HEAP STREQUAL "")
     set(FREERTOS_HEAP "4")

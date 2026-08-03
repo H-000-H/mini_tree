@@ -6,6 +6,7 @@
 # 架构端口由 Kconfig PLATFORM_MCU 自动选择:
 #   CONFIG_PLATFORM_ARM_CM4F → cortex-m4
 #   CONFIG_PLATFORM_ARM_CM3  → cortex-m3
+#   CONFIG_PLATFORM_ARM_CM0  → cortex-m0
 #   CONFIG_PLATFORM_ARM_CM7  → cortex-m7
 #   CONFIG_PLATFORM_RISCV    → risc-v (common)
 #
@@ -39,6 +40,8 @@ if(EXISTS "${_MINI_TREE_KCONFIG}")
         set(RTTHREAD_PORT "arm/cortex-m7")
     elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM3=y")
         set(RTTHREAD_PORT "arm/cortex-m3")
+    elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM0=y")
+        set(RTTHREAD_PORT "arm/cortex-m0")
     elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM4F=y")
         set(RTTHREAD_PORT "arm/cortex-m4")
     elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_RISCV=y")
@@ -67,7 +70,9 @@ set(RTTHREAD_KERNEL_SRCS
 )
 
 # ── 架构端口源文件 ──
-if(RTTHREAD_PORT MATCHES "^arm/")
+# atomic_arm.c 使用 LDREX/STREX (ARMv7-M+), M0/M0+ 由 rtconfig.h 关闭
+# RT_USING_HW_ATOMIC 退回 rtatomic.h 内的软件实现, 因此不编入.
+if(RTTHREAD_PORT MATCHES "^arm/" AND NOT RTTHREAD_PORT STREQUAL "arm/cortex-m0")
     list(APPEND RTTHREAD_KERNEL_SRCS
         "${CMAKE_CURRENT_SOURCE_DIR}/libcpu/arm/common/atomic_arm.c"
     )
@@ -83,6 +88,11 @@ elseif(RTTHREAD_PORT STREQUAL "arm/cortex-m3")
     list(APPEND RTTHREAD_KERNEL_SRCS
         "${CMAKE_CURRENT_SOURCE_DIR}/libcpu/arm/cortex-m3/context_gcc.S"
         "${CMAKE_CURRENT_SOURCE_DIR}/libcpu/arm/cortex-m3/cpuport.c"
+    )
+elseif(RTTHREAD_PORT STREQUAL "arm/cortex-m0")
+    list(APPEND RTTHREAD_KERNEL_SRCS
+        "${CMAKE_CURRENT_SOURCE_DIR}/libcpu/arm/cortex-m0/context_gcc.S"
+        "${CMAKE_CURRENT_SOURCE_DIR}/libcpu/arm/cortex-m0/cpuport.c"
     )
 elseif(RTTHREAD_PORT STREQUAL "risc-v/common")
     list(APPEND RTTHREAD_KERNEL_SRCS

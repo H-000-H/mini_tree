@@ -59,10 +59,3 @@ COMPAT_WEAK int hal_uart_dma_abort(struct hal_uart_dev* pdev)
     (void)pdev;
     return VFS_ERR_NOTSUPP;
 }
-
-COMPAT_WEAK int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num)
-{
-    (void)arg;
-    (void)irq_num;
-    return VFS_ERR_NOTSUPP;
-}

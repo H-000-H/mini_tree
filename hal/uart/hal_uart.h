@@ -158,15 +158,6 @@ extern "C"
                            uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     int hal_uart_dma_abort(struct hal_uart_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief UART 虚拟中断上半部回调 (ISR 内执行)
-     * @param arg 参数 (hal_uart_dev*)
-     * @param irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM 需要下半部; VFS_IRQ_ENTRY_NOBOTTOM 不需要
-     * @note  DMA TC 中断: 清除 DMA TC 标志, 标记传输完成
-     */
-    int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num);
-
 #ifdef __cplusplus
 }
 #endif

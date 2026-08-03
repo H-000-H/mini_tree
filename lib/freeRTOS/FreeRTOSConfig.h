@@ -14,7 +14,12 @@
 #define configTICK_RATE_HZ                      1000
 #define configMAX_PRIORITIES                    32
 #define configMINIMAL_STACK_SIZE                128
-#define configTOTAL_HEAP_SIZE                   4096
+/* 动态堆大小: Kconfig CONFIG_FREERTOS_HEAP_SIZE 优先, 否则 8 KB 默认 */
+#ifdef CONFIG_FREERTOS_HEAP_SIZE
+#define configTOTAL_HEAP_SIZE                   CONFIG_FREERTOS_HEAP_SIZE
+#else
+#define configTOTAL_HEAP_SIZE                   8192
+#endif
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_TRACE_FACILITY                0
 #define INCLUDE_eTaskGetState                   1
@@ -37,8 +42,17 @@
  *
  * STM32F407 NVIC 实现 4 位优先级 (16 级), 硬件寄存器值需要左移 4 位:
  *   configMAX_SYSCALL_INTERRUPT_PRIORITY = configLIBRARY_... << 4
+ *
+ * Cortex-M0/M0+ (ARMv6-M) 无 BASEPRI, NVIC 仅 4 级优先级 (0~3),
+ * 通过 __ARM_ARCH_6M__ 编译器宏自动切换.
  */
+#if defined(__ARM_ARCH_6M__)
+#define configENABLE_MPU                        0   /* M0/M0+ 无 MPU */
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY    3   /* M0/M0+ NVIC 仅 4 级 (0~3) */
+#else
+#define configENABLE_MPU                        0
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY    (5 << 4)  /* = 80, 屏蔽优先级 ≥ 5 的中断 */
+#endif
 #define configKERNEL_INTERRUPT_PRIORITY         255
 #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY     5
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY          15
@@ -68,7 +82,12 @@
 #else
 #define configUSE_TIMERS                        0
 #endif
+#if defined(__ARM_ARCH_6M__)
+/* M0/M0+ 无 CLZ 指令, 禁用优化任务选择 (tasks.c 内联汇编会编译失败) */
+#define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
+#else
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 1
+#endif
 
 #define configASSERT(x) if (!(x)) { taskDISABLE_INTERRUPTS(); for (;;); }
 

@@ -310,6 +310,7 @@ int i2s_bus_open(struct device* pdev)
         return ret;
 
     host = &client->host->hal_host;
+#ifdef CONFIG_VIRQ
     /*
      * 虚拟中断注册 (对齐 ADC vfs_adc_probe; 不走 ioctl):
      *   top  = hal_virtual_i2s_irq_callback
@@ -323,6 +324,7 @@ int i2s_bus_open(struct device* pdev)
         interrupt_hw_enable((int)host->cfg.irqn, host->cfg.irq_priority);
         interrupt_hw_enable((int)host->cfg.irqn_rx, host->cfg.irq_priority);
     }
+#endif
 
     client->hw_open = 1;
     return VFS_OK;

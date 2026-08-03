@@ -603,6 +603,10 @@ class CGenerator:
 
         compat_counts: Dict[str, int] = {}
         for dev in devs:
+            # 只统计有效节点: status = "disabled" 不进 probe 集, 也不该占实例池
+            status_prop: Optional[DtsProperty] = dev.get_prop('status')
+            if status_prop and status_prop.strings and status_prop.strings[0] == 'disabled':
+                continue
             compat_prop: Optional[DtsProperty] = dev.get_prop('compatible')
             if compat_prop and compat_prop.strings:
                 compat: str = compat_prop.strings[0]
@@ -677,7 +681,6 @@ class CGenerator:
                     continue
                 macro = f'DTC_GEN_{prefix}_{pname.replace("-", "_").upper()}'
                 lines.append(f'#define {macro}  {prop.ints[0]}')
-
         lines += [
             '',
             '#endif /* DT_CONFIG_GEN_H */',

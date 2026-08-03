@@ -202,11 +202,6 @@ extern "C"
     int hal_can_get_state(struct hal_can_bus_host* host,
                           uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief 虚拟/平台 CAN 中断入口 (由中断框架回调)
-     */
-    int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num);
-
 #ifdef __cplusplus
 }
 #endif
