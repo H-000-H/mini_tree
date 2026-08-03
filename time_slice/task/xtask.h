@@ -70,7 +70,7 @@ extern "C"
         void (*xTask_cb)(struct x_task* param); /**< 任务回调函数 */
         COMPAT_ATOMIC_UINT period; /**< 任务周期 */
         COMPAT_ATOMIC_UINT next_running; /**< 下次运行时间 */
-        COMPAT_ATOMIC_BOOL is_running; /**< 任务是否正在运行 */
+        COMPAT_ATOMIC_BOOL is_running; /**< 任务执行中标志（重入保护；非使能开关） */
         list_node node; /**< 任务链表节点 */
     } x_task;
 

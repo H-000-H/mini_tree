@@ -96,7 +96,7 @@ x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const c
     COMPAT_ATOMIC_STORE(&task->next_running,
                         COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED) + period_ms,
                         COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->is_running, true, COMPAT_MO_RELAXED);
+    COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED); /**< 创建即武装（非运行态），首轮 poll 即可进入 */
 
     list_add_tail(&task->node, &sched->task_list_head);
 
@@ -144,11 +144,12 @@ int x_task_run(x_scheduler* sched)
             if ((int32_t)(now - next_run) >= 0)
             {
                 task->xTask_cb(task);
-                COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);
                 COMPAT_ATOMIC_STORE(&task->next_running,
                                     now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),
                                     COMPAT_MO_RELAXED);
             }
+            /* 无论到期与否都复位：否则未到期分支会把 is_running 卡在 true，任务永不调度 */
+            COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);
         }
         current = next;
     }

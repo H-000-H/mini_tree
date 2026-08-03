@@ -339,8 +339,13 @@ class DtsTransformer(Transformer):
         return _Val('phandle', idents_list[0] if idents_list else '')
 
     def ai_ident(self, items):
-        # <...> 内的裸 IDENT (宏展开后剩余的符号) — 跳过
-        return None
+        # <...> 内残留裸 IDENT = 宏未定义或 #include 失败; 禁止静默丢弃 (否则生成空属性串)
+        idents_list = _idents(items)
+        name = idents_list[0] if idents_list else '?'
+        raise ValueError(
+            f"unresolved identifier '{name}' inside <...>; "
+            f"macro not expanded — check #include <dt-bindings/...> and -I paths"
+        )
 
     # ---- 地址 ----
     def addr_int(self, items):

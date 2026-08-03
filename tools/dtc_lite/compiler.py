@@ -24,7 +24,12 @@ class DTSCompiler:
                  out_dir: Optional[str] = None) -> None:
         self.dts_path: str = dts_path
         self.out_dir: Optional[str] = out_dir
+        # 板级目录: <board>/dts/xxx.dts → <board>/ (平台板级 dtsi / 可选本地 dt-bindings)
         self.board_dir: str = os.path.dirname(os.path.dirname(os.path.abspath(dts_path)))
+        # 中间件 board: tools/dtc_lite/compiler.py → ../../board (dt-bindings 真相源)
+        self.mini_tree_board_dir: str = os.path.normpath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'board')
+        )
         self.driver_dirs: List[str] = driver_dirs or []
         self.root: Optional[DtsNode] = None
         self.label_map: Dict[str, DtsNode] = {}
@@ -359,7 +364,9 @@ class DTSCompiler:
                     # 注释里的 < 会破坏 _eval_angle_value 的 < ... > 正则匹配
                     value = re.sub(r'/\*.*?\*/', ' ', value, flags=re.S)
                     value = re.sub(r'//[^\n]*', ' ', value).strip()
-                    # 常量折叠: 同 cpp -dM 路径, 把带括号表达式折叠成单个十六进制数
+                    # 先替换已定义宏 (如 INDEX 已在表中时, BASE=(INDEX+1) 可求值),
+                    # 再常量折叠成单个 0xN — 避免 DTS 里留下 <(0 + 1)> 依赖二次 angle 求值
+                    value = self._expand_macro_text(value)
                     folded: Optional[int] = self._eval_c_constant(value)
                     if folded is not None:
                         value = f'0x{folded:X}'
@@ -471,16 +478,13 @@ class DTSCompiler:
                 i += 1
         return tokens
 
-    def _replace_macros(self, text: str) -> str:
-        """对文本做宏替换。空值宏 (如头文件保护宏 DTS_TIM_CTL_H) 不参与替换，
-        避免把恰好包含该名字的标识符误替换成空串。
+    def _expand_macro_text(self, text: str) -> str:
+        """仅做标识符宏链式替换 (不含 ``<...>`` 求值)。
 
-        链式展开: 重复替换直到不再变化或达到上限 (处理 ``A → B → C → 0x10`` 这种
-        厂商头里常见的链式 #define)。
+        用于 #define 右值折叠与 ``_replace_macros`` 的前半段。
         """
-        if not self._macros:
+        if not text or not self._macros:
             return text
-        # 缓存按长度降序排列的宏名列表
         key: Tuple[int, int] = (id(self._macros), len(self._macros))
         if key != self._macro_names_key:
             self._macro_names = sorted(self._macros, key=lambda n: -len(n))
@@ -495,7 +499,6 @@ class DTSCompiler:
                     continue
                 value: str = self._macros[name]
                 if not value:
-                    # 空值宏 (头文件保护) 跳过
                     continue
                 if name not in tokens:
                     continue
@@ -503,7 +506,16 @@ class DTSCompiler:
             if new_text == text:
                 break
             text = new_text
+        return text
 
+    def _replace_macros(self, text: str) -> str:
+        """对文本做宏替换。空值宏 (如头文件保护宏 DTS_TIM_CTL_H) 不参与替换，
+        避免把恰好包含该名字的标识符误替换成空串。
+
+        链式展开: 重复替换直到不再变化或达到上限 (处理 ``A → B → C → 0x10`` 这种
+        厂商头里常见的链式 #define)。
+        """
+        text = self._expand_macro_text(text)
         # 常量求值: 对形如 ``< EXPR >`` 的属性值, 尝试把 EXPR 算成单个整数
         return self._eval_angle_value(text)
 
@@ -532,14 +544,14 @@ class DTSCompiler:
                 token = token.strip()
                 if not token:
                     continue
-                # 仅在需要求值时尝试, 避免对 ``foo`` 这种纯标识符误判
-                if not re.search(r'[|&~^<>()]|\b0[xX][0-9a-fA-F]+\b', token):
-                    # 简单整数已可直接被 lexer 接受; 但若带 U/L 后缀也帮它脱掉
-                    if re.search(r'[uUlL]', token):
-                        stripped: str = self._strip_c_int_suffix(token).strip()
-                        result_tokens.append(stripped)
-                    else:
-                        result_tokens.append(token)
+                # 需要求值: 含括号/位运算/算术, 或带 0x / U/L 后缀
+                needs_eval: bool = bool(
+                    re.search(r'[|&~^<>()+\-*/%]', token)
+                    or re.search(r'\b0[xX][0-9a-fA-F]+\b', token)
+                    or re.search(r'[uUlL]', token)
+                )
+                if not needs_eval:
+                    result_tokens.append(token)
                     continue
                 val: Optional[int] = self._eval_c_constant(token)
                 if val is not None:
@@ -620,9 +632,13 @@ class DTSCompiler:
             os.path.join(os.getcwd(), name),
             os.path.join(self.board_dir, name),
             os.path.join(self.board_dir, 'dtsi', name),
+            os.path.join(self.mini_tree_board_dir, name),
+            os.path.join(self.mini_tree_board_dir, 'dtsi', name),
         ]
         if name.startswith('dt-bindings/'):
-            candidates.insert(0, os.path.join(self.board_dir, name))
+            # 优先中间件 dt-bindings (mini_tree/board), 再板级覆盖
+            candidates.insert(0, os.path.join(self.mini_tree_board_dir, name))
+            candidates.insert(1, os.path.join(self.board_dir, name))
         # 用户 -I 传入的搜索路径: 让 #include <厂商头.h> / <任意 sdk 头> 都能找到
         for d in self._extra_inc_dirs:
             candidates.append(os.path.join(d, name))
@@ -634,7 +650,8 @@ class DTSCompiler:
                 self._visited.add(p)
                 return p
         msg: str = (f"[dtc-lite] warning: include not found: '{name}' "
-                    f"(searched {base_dir}, {os.getcwd()}")
+                    f"(searched {base_dir}, {os.getcwd()}, "
+                    f"board={self.board_dir}, mini_tree_board={self.mini_tree_board_dir}")
         if self._extra_inc_dirs:
             msg += f", extra -I dirs: {', '.join(self._extra_inc_dirs)}"
         msg += ")"
