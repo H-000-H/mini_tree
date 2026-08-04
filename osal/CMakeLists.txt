@@ -44,6 +44,16 @@ else()
     message(FATAL_ERROR "Unsupported OSAL_BACKEND: ${OSAL_BACKEND}")
 endif()
 
+# C++ 任务创建封装（etl::optional）— 软编码: .config 显式 "# CONFIG_OSAL_NULL_TASK_CPP is not set" 才裁剪;
+# 缺省视为启用 (对齐 Kconfig default y)
+file(STRINGS "${_MINI_TREE_CONFIG}" _task_cpp_off REGEX "^# CONFIG_OSAL_NULL_TASK_CPP is not set$")
+if(NOT _task_cpp_off)
+    target_sources(osal
+        PRIVATE
+            "src/osal_task.cpp"
+    )
+endif()
+
 target_include_directories(osal
     PUBLIC
         "include"

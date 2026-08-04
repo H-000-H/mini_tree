@@ -152,6 +152,13 @@ else()
     set(OSAL_DEFINE CONFIG_OSAL_NULL)
 endif()
 
+# C++ 任务创建封装 (osal_task.cpp) — 软编码: .config 显式 "# CONFIG_OSAL_NULL_TASK_CPP is not set" 才裁剪;
+# 缺省视为启用 (对齐 Kconfig default y)
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_TASK_CPP_OFF REGEX "^# CONFIG_OSAL_NULL_TASK_CPP is not set$")
+if(NOT CONFIG_OSAL_NULL_TASK_CPP_OFF)
+    list(APPEND OSAL_SRCS "osal/src/osal_task.cpp")
+endif()
+
 if(MINI_TREE_SYSTEM)
     if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
         set(SYSTEM_SRCS

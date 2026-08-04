@@ -49,4 +49,15 @@ extern "C"
 }
 #endif
 
+#if defined(__cplusplus) && defined(CONFIG_OSAL_NULL_TASK_CPP)
+/* ── 裸机专用 C++ 重载: osal_task_create (定义见 osal_task.cpp) ──
+ * 由 Kconfig CONFIG_OSAL_NULL_TASK_CPP 控制 (依赖 SYSTEM_CPP, 默认开启):
+ * 开启 = 走统一 OSAL 路径; 关闭 = 靠 xtask 自己 (不编译本封装, 直接调 xtask API).
+ * 裸机 C API (osal.h) 恒返回 OSAL_ERR_NOTSUPP, 任务创建请走本重载 (xtask 周期任务).
+ * 入口函数签名与 xtask 回调一致 (void(*)(x_task*), 参数为 x_task* TCB 本身), 无需任何函数指针转换. */
+#include "etl/optional.h"
+
+etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t period, void (*entry)(x_task*),void* param1, void* param2=nullptr, int core_id=-1);
+#endif
+
 #endif /* OSAL_NULL_H */

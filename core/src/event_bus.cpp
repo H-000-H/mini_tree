@@ -190,8 +190,11 @@ void EventBus::start()
     if (m_task != nullptr || m_queue == nullptr)
         return;
 
-    osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio, dispatch_task, this, 0,
-                            &m_task);
+    if(osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio, dispatch_task, this, 0,&m_task)!=VFS_OK)
+    {
+        SYS_LOGE(k_tag,"FATAL: osal_task_create_handle failed — event bus unusable");
+        return;
+    }    
     system_wdt_subscribe(m_task);
     SYS_LOGI(k_tag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
 }
@@ -206,7 +209,11 @@ void EventBus::stop()
 
     /* 向队列发空事件唤醒 dispatch 线程 */
     event dummy = {EVENT_SYS_FAULT, 0};
-    osal_queue_send(m_queue, &dummy, 0);
+    if(osal_queue_send(m_queue, &dummy, 0)!=VFS_OK)
+    {
+        SYS_LOGE(k_tag,"FATAL: osal_queue_send failed — event bus unusable");
+        return;
+    }
 
     uint32_t waited = 0;
     while (osal_task_is_running(handle) && waited < kStopWaitMs)

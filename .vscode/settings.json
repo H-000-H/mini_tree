@@ -1,4 +1,13 @@
 {
+  "cmake.cmakePath": "/usr/bin/cmake",
+  "cmake.environment": {
+    "PATH": "${env.PATH}"
+  },
+  "cmake.useCMakePresets": "always",
+  "cmake.preferredGenerators": ["Ninja"],
+  "cmake.configureOnOpen": true,
+  "cmake.defaultConfigurePreset": "Debug",
+  "cmake.defaultBuildPreset": "Debug",
   "C_Cpp.intelliSenseEngine": "disabled",
   "files.associations": {
     "*.dts": "c",

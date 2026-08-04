@@ -31,7 +31,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "compiler_compat_poison.h"
 /**
  * @brief 队列最大数量与单队列缓冲区字节大小 (Kconfig CONFIG_OSAL_NULL_* 控制)
@@ -856,8 +855,7 @@ __attribute__((unused)) static void osal_periodic_task_stub(void* param)
  * @param core_id 忽略
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
-                     osal_task_entry_t entry, void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,osal_task_entry_t entry, void* param, int core_id)
 {
     (void)name;
     (void)stack_size;
@@ -879,9 +877,7 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
  * @param out_handle 输出
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
-                            osal_task_entry_t entry, void* param, int core_id,
-                            osal_task_handle_t* out_handle)
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,osal_task_entry_t entry, void* param, int core_id,osal_task_handle_t* out_handle)
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;

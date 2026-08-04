@@ -107,6 +107,29 @@ config OSAL_NULL_QUEUE_BUF_SZ
       2048 B = 512 base units; EventBus (64×8 B) uses ~1/4.
       Lower bound 512 B keeps the default EventBus queue (128 units) creatable.
 
+config OSAL_NULL_TASK_CPP
+    bool "Bare-metal task create C++ wrapper (unified OSAL vs raw xtask)"
+    default y
+    depends on OSAL_NULL && SYSTEM_CPP
+    help
+      裸机任务创建的 C++ 封装 (osal/src/osal_task.cpp), 需要 SYSTEM_CPP (C++ 构建)。
+      开启 (默认): 走统一 OSAL 路径 — 通过 C++ 重载 osal_task_create() 创建
+      xtask 周期任务, 返回 etl::optional<x_task_handle_t>, 调用习惯与 OS 后端
+      对齐 (参数语义见 osal_null.h 中该重载的注释)。
+      关闭: 靠 xtask 自己 — 不编译封装, 直接调用 xscheduler_task_create() /
+      x_scheduler_poll() 等 xtask 原生 API。
+      仅裸机 (CONFIG_OSAL_NULL) 生效; OS 后端任务创建始终走标准 C API。
+
+      Bare-metal task-create C++ wrapper (osal/src/osal_task.cpp), needs
+      SYSTEM_CPP (C++ build). On (default): unified OSAL path — create
+      xtask periodic tasks via the C++ overload osal_task_create(), which
+      returns etl::optional<x_task_handle_t> and keeps the OSAL calling
+      convention (parameter semantics are documented on that overload in
+      osal_null.h). Off: raw xtask — the wrapper is not compiled; call
+      xscheduler_task_create() / x_scheduler_poll() directly.
+      Bare-metal (CONFIG_OSAL_NULL) only; on OS backends task creation
+      always goes through the standard C API.
+
 config FREERTOS_USE_TIMERS
     bool "FreeRTOS software timers"
     default n

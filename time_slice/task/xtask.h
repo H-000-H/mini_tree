@@ -95,8 +95,7 @@ extern "C"
      * @brief 创建/注册任务
      * @return 返回任务的句柄（指针地址）
      */
-    x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name,
-                                           void (*cb)(x_task*), unsigned int period_ms);
+    x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name,void (*cb)(x_task*), unsigned int period_ms);
 
     /**
      * @brief 系统滴答计数器增加
