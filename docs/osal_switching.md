@@ -27,7 +27,7 @@
 
 | 宏 / Macro | 实现文件 / Implementation | 链接依赖 / Link deps | 任务模型 / Task model |
 | :--- | :--- | :--- | :--- |
-| `CONFIG_OSAL_NULL` | `osal/src/osal_null.c` | `time_slice/task`（`x_task` / `x_scheduler`） | 协作式时间片（裸机）<br>Cooperative time slices (bare-metal) |
+| `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp`（`CONFIG_OSAL_NULL_TASK_CPP=y` 时） | `time_slice/task`（`x_task` / `x_scheduler`） | 协作式时间片（裸机）<br>Cooperative time slices (bare-metal) |
 | `CONFIG_OSAL_FREERTOS` | `osal/src/osal_freertos.c` | `lib/freeRTOS`（v11.3.0） | 抢占<br>Preemptive |
 | `CONFIG_OSAL_RTTHREAD` | `osal/src/osal_rtthread.c` | `lib/rtthread`（v5.3.0） | 抢占<br>Preemptive |
 
@@ -61,7 +61,17 @@ Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** a
 | :--- | :--- |
 | FreeRTOS | 数值 **越大** 优先级越高<br>**Higher** number = higher priority |
 | RT-Thread | 数值 **越小** 优先级越高<br>**Lower** number = higher priority |
-| NULL | 忽略优先级参数<br>Priority arguments are ignored |
+| NULL | C API 忽略优先级参数<br>C API ignores priority arguments |
+
+裸机任务创建路径由 `CONFIG_OSAL_NULL_TASK_CPP` 控制（依赖 `SYSTEM_CPP`，默认开启）：
+- **开启（走统一）**：用 `osal_null.h` 的 C++ 重载 `osal_task_create`，其 `period` 参数即任务周期 ms（裸机无优先级概念，该参数被**重解释**为周期）。
+- **关闭（靠 xtask 自己）**：不编译封装，直接调 `xscheduler_task_create` / `x_scheduler_poll` 等 xtask 原生 API。
+- 裸机 C API `osal_task_create` / `osal_task_create_handle` 恒返回 `OSAL_ERR_NOTSUPP`。
+
+Bare-metal task creation is controlled by `CONFIG_OSAL_NULL_TASK_CPP` (depends on `SYSTEM_CPP`, on by default):
+- **On (unified path)**: the C++ overload `osal_task_create` in `osal_null.h`; its `period` parameter is the task period in ms (bare-metal has no priority concept — the argument is **reinterpreted** as period).
+- **Off (raw xtask)**: the wrapper is not compiled; call `xscheduler_task_create` / `x_scheduler_poll` directly.
+- The bare-metal C API `osal_task_create` / `osal_task_create_handle` always returns `OSAL_ERR_NOTSUPP`.
 
 同一套业务常量在切换后端时**必须**重新换算，否则会出现「高优先级任务饿死」或倒挂。
 The same business constants **must** be re-mapped when switching backends, or you get "high-priority starvation" or inverted priorities.
@@ -113,6 +123,8 @@ Don't link or call RTOS scheduler entry points under a NULL configuration.
 - [ ] No two OSAL `.c` files compiled at once
 - [ ] 优先级表已按后端换算
 - [ ] Priority table re-mapped for the backend
+- [ ] 裸机任务创建路径符合预期（`CONFIG_OSAL_NULL_TASK_CPP`：统一 C++ 重载 or 直接 xtask）
+- [ ] Bare-metal task-creation path is as intended (`CONFIG_OSAL_NULL_TASK_CPP`: unified C++ overload or raw xtask)
 - [ ] 启动路径匹配后端
 - [ ] Startup path matches the backend
 - [ ] 日志后端（PRINTF/OSAL）仍符合预期

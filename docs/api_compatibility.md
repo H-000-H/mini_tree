@@ -18,6 +18,7 @@
 | `DRIVER_REGISTER(name, compat, probe, remove)` 形态 / shape | 宏参数顺序与生成符号规则 / macro arg order & symbol rules |
 | `status.h` 中 `VFS_OK` / `VFS_ERR_*` 语义 / semantics | 数值可能随 errno 映射，语义保持 / values may map through errno; semantics hold |
 | `osal.h` 公共函数集 / public function set | 三后端共同表面 / common surface across three backends |
+| `osal_null.h` 的 C++ 重载 `osal_task_create`（裸机专属）<br>bare-metal-only C++ overload in `osal_null.h` | 仅 `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus`；`period` 为周期 ms、`param1` 为 `x_task*` TCB<br>Only with `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus`; `period` in ms, `param1` is `x_task*` TCB |
 | HAL **函数名**与配置结构体**字段名** / HAL function & config-field names | 平台按头文件实现 / platforms implement per header |
 
 ---

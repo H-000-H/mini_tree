@@ -208,6 +208,15 @@ system_init_complete();
 // 再启动调度器（vTaskStartScheduler / rt_system_scheduler_start / mini_tree_system_loop）
 ```
 
+> 裸机（`CONFIG_OSAL_NULL`）下 `osal_task_create` **C 版恒返回 `OSAL_ERR_NOTSUPP`**：
+> C++ 工程请用 `osal_null.h` 的 C++ 重载 `osal_task_create`（`CONFIG_OSAL_NULL_TASK_CPP`，默认开启；
+> `period` 参数为任务周期 ms，`param1` 为调用方静态分配的 `x_task*` TCB）；
+> C 工程直接调 `xscheduler_task_create`（见 `time_slice/task/xtask.h`）。OS 后端无此限制。
+> Under bare-metal (`CONFIG_OSAL_NULL`), the C `osal_task_create` **always returns `OSAL_ERR_NOTSUPP`**:
+> C++ projects should use the C++ overload in `osal_null.h` (`CONFIG_OSAL_NULL_TASK_CPP`, on by default;
+> `period` is the task period in ms, `param1` is a caller-provided static `x_task*` TCB);
+> C projects call `xscheduler_task_create` directly (see `time_slice/task/xtask.h`). No such limit on OS backends.
+
 阶段含义见 [architecture.md §3](architecture.md#3-启动时序两段式点火)。
 Phase meanings are in [architecture.md §3](architecture.md#3-启动时序两段式点火).
 

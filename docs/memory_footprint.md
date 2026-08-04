@@ -77,6 +77,23 @@
 > 裸机互斥/信号量池：`CONFIG_OSAL_MUTEX_POOL_SIZE`（默认 24）、`OSAL_SEM_POOL_SIZE`（4）；锁存储 `OSAL_MUTEX_STORAGE_SIZE`（128 B/把，跨后端统一，RTOS 静态锁所需）。
 > Bare-metal mutex/sem pools: `CONFIG_OSAL_MUTEX_POOL_SIZE` (24), `OSAL_SEM_POOL_SIZE` (4); lock storage `OSAL_MUTEX_STORAGE_SIZE` (128 B/lock, unified across backends for RTOS static locks).
 
+#### 3.1.1 实测：ThreadX / uC/OS-III / uC/OS-II 后端
+
+测法：`arm-none-eabi-gcc -Os -mcpu=cortex-m4 -mthumb`（FreeRTOS 基线额外 `-mfpu=fpv4-sp-d16 -mfloat-abi=hard`，其 CM4F 端口强制）；内核为 `.a` 全量对象求和（text+data = Flash，data+bss = RAM）；OSAL 层为单 `.o`（含静态互斥/信号量池）。任务 TCB / 栈 / 队列缓冲均为 `calloc` 动态分配，不计入静态 RAM。
+
+| 后端 / Backend | 内核 Flash / Kernel | 内核 RAM / Kernel | OSAL 层 Flash | OSAL 层 RAM | 队列内存模型 / Queue Memory |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| `OSAL_THREADX`（v6.5.1）| **19.2 KB** | **1.7 KB** | 2.3 KB | 1.5 KB | `calloc`（`tx_queue_create` 需调用方缓冲）|
+| `OSAL_UCOS_III`（V3.08.02）| **25.5 KB** | **6.4 KB** | 2.6 KB | 1.4 KB | `calloc` 槽环 + 内核 MSG 池（`OS_CFG_MSG_POOL_SIZE=256`）|
+| `OSAL_UCOS_II`（V2.93.01）| **10.3 KB** | **4.9 KB** | 2.6 KB | 0.6 KB | `calloc` 槽环（`OS_MAX_QS=8`，控制块来自内核池）|
+| `OSAL_FREERTOS`（对照 / baseline）| 19.9 KB | 8.8 KB | — | — | FreeRTOS 动态堆（`CONFIG_FREERTOS_HEAP_SIZE`，默认 8 KB）|
+
+要点 / Notes：
+- **ThreadX 最省 RAM**：内核状态几乎全在调用方提供的控制块（`TX_THREAD` 等计入 OSAL 层/动态堆），静态 bss 仅 1.6 KB；代价是任务控制块与栈全部 `calloc`。配置见 `lib/threadx/tx_user.h`（1000 Hz tick + `TX_ENABLE_STACK_CHECKING`，栈检查会占用少量 Flash）。
+- **uC/OS-II 最省 Flash**（10.3 KB），但每优先级唯一任务（0~63）是硬约束；`OS_TICKS_PER_SEC=1000` 时 RAM 含 idle/stat 任务栈。
+- **uC/OS-III 最大**：DBG=1（任务名进 TCB）+ 统计任务 + 256 条 MSG 池是 RAM 大头；关 DBG / 调小 `OS_CFG_MSG_POOL_SIZE`（≥ 全系统并发在途消息数）可显著回落。
+- OSAL 层三后端差异小（2.3~2.6 KB Flash），静态池规模由 `CONFIG_OSAL_MUTEX_POOL_SIZE` / `OSAL_SEM_POOL_SIZE` 统一控制。
+
 ### 3.2 EventBus（默认关闭 / off by default）
 
 | 静态项 / Item | 大小 / Size | 可控开关 / Knob |

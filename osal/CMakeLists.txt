@@ -10,11 +10,17 @@
 set(OSAL_BACKEND "NULL")
 set(_MINI_TREE_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../.config")
 if(EXISTS "${_MINI_TREE_CONFIG}")
-    file(STRINGS "${_MINI_TREE_CONFIG}" _osal_choice REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")
+    file(STRINGS "${_MINI_TREE_CONFIG}" _osal_choice REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
     if(_osal_choice STREQUAL "CONFIG_OSAL_FREERTOS=y")
         set(OSAL_BACKEND "FREERTOS")
     elseif(_osal_choice STREQUAL "CONFIG_OSAL_RTTHREAD=y")
         set(OSAL_BACKEND "RTTHREAD")
+    elseif(_osal_choice STREQUAL "CONFIG_OSAL_THREADX=y")
+        set(OSAL_BACKEND "THREADX")
+    elseif(_osal_choice STREQUAL "CONFIG_OSAL_UCOS_III=y")
+        set(OSAL_BACKEND "UCOS_III")
+    elseif(_osal_choice STREQUAL "CONFIG_OSAL_UCOS_II=y")
+        set(OSAL_BACKEND "UCOS_II")
     elseif(_osal_choice STREQUAL "CONFIG_OSAL_NULL=y")
         set(OSAL_BACKEND "NULL")
     endif()
@@ -35,6 +41,30 @@ elseif(OSAL_BACKEND STREQUAL "RTTHREAD")
     target_link_libraries(osal
         PUBLIC
             rtthread_kernel
+    )
+
+elseif(OSAL_BACKEND STREQUAL "THREADX")
+    add_library(osal STATIC "src/osal_threadx.c")
+
+    target_link_libraries(osal
+        PUBLIC
+            threadx_kernel
+    )
+
+elseif(OSAL_BACKEND STREQUAL "UCOS_III")
+    add_library(osal STATIC "src/osal_ucos_iii.c")
+
+    target_link_libraries(osal
+        PUBLIC
+            ucos_iii_kernel
+    )
+
+elseif(OSAL_BACKEND STREQUAL "UCOS_II")
+    add_library(osal STATIC "src/osal_ucos_ii.c")
+
+    target_link_libraries(osal
+        PUBLIC
+            ucos_ii_kernel
     )
 
 elseif(OSAL_BACKEND STREQUAL "NULL")

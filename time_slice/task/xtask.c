@@ -144,9 +144,7 @@ int x_task_run(x_scheduler* sched)
             if ((int32_t)(now - next_run) >= 0)
             {
                 task->xTask_cb(task);
-                COMPAT_ATOMIC_STORE(&task->next_running,
-                                    now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),
-                                    COMPAT_MO_RELAXED);
+                COMPAT_ATOMIC_STORE(&task->next_running,now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),COMPAT_MO_RELAXED);
             }
             /* 无论到期与否都复位：否则未到期分支会把 is_running 卡在 true，任务永不调度 */
             COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);
@@ -160,5 +158,10 @@ int x_task_run(x_scheduler* sched)
  * @brief poll g_scheduler
  */
 void x_scheduler_poll(void) { x_task_run(&g_scheduler); }
+
+/*=======================================================================================================================================================*/
+/*                              以下为N+1链表多时间片抢占调度器实现(可延迟可休眠可抢占帮助使用者在裸机更接近rtos的体验kconfig默认不开启使用者自行开启) */
+/*=======================================================================================================================================================*/
+//TODO: 实现N+1链表多定时器加散发优先级(clz机制)抢占调度器 
 
 #endif /* CONFIG_OSAL_NULL */

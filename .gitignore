@@ -119,6 +119,18 @@ lib/coreHTTP/
 lib/miniz/
 lib/libmodbus/
 
+# ---------------------------------------------
+# OSAL 扩展后端
+# ---------------------------------------------
+/osal/src/osal_threadx.c
+/osal/src/osal_ucos_iii.c
+/osal/src/osal_ucos_ii.c
+lib/threadx/
+lib/uC-OS3/
+lib/uC-OS2/
+lib/uC-CPU/
+lib/uC-LIB/
+
 # 本地 Agent 入口（不入库；vendored 子树内 AGENTS.md 不受影响）
 /AGENTS.md
 /CLAUDE.md

@@ -75,6 +75,43 @@ config OSAL_RTTHREAD
     help
       Use RT-Thread kernel as OSAL backend.
 
+config OSAL_THREADX
+    bool "Eclipse ThreadX"
+    help
+      使用 Eclipse ThreadX (v6.5.1) 作为 OSAL 后端。
+      许可 MIT (Eclipse 基金会托管, 商用友好)。
+      端口按 Kconfig PLATFORM 自动派生 (lib/threadx/ports/cortex_*/gnu);
+      内核配置见 lib/threadx/tx_user.h (1 ms tick + 栈检查)。
+      板级集成: 需改写 ports/cortex_m4/gnu/example_build/ 下的
+      tx_initialize_low_level.S (SysTick 1000 Hz) 并接线 tx_kernel_enter() /
+      tx_application_define()。任务控制块与栈由 OSAL 层 calloc 动态分配
+      (RAM 占用最小, 见 docs/memory_footprint.md §3.1.1)。
+
+config OSAL_UCOS_III
+    bool "uC/OS-III"
+    help
+      使用 Micrium uC/OS-III (V3.08.02) 作为 OSAL 后端。
+      许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
+      依赖 lib/uC-CPU + lib/uC-LIB (需随仓克隆, weston-embedded);
+      项目配置副本 lib/uC-OS3/Cfg/ (os_cfg.h: DBG=1, 任务名入 TCB;
+      os_cfg_app.h: OS_CFG_MSG_POOL_SIZE=256 — 全系统并发在途队列消息上限)。
+      优先级 0 最高, 数小优先高; 队列传指针, OSAL 层自建定长槽环。
+      板级集成: OSInit() → OSStart(), SysTick 挂 OS_CPU_SysTickHandler,
+      ISR 包 OSIntEnter/OSIntExit。
+
+config OSAL_UCOS_II
+    bool "uC/OS-II"
+    help
+      使用 Micrium uC/OS-II (V2.93.01) 作为 OSAL 后端。
+      许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
+      注意: 每优先级仅允许一个任务 (0~63; 61/62/63 保留给 tmr/stat/idle),
+      任务句柄即优先级号。项目配置副本 lib/uC-OS2/Cfg/
+      (os_cfg.h: 1 ms tick、OS_MAX_EVENTS=24、OS_MAX_QS=8;
+      app_cfg.h: 端口要求的 CPU_CFG_KA_IPL_BOUNDARY / NVIC_PRIO_BITS)。
+      OS_EVENT 控制块来自内核池 (OS_MAX_EVENTS/OS_MAX_QS 为上限)。
+      板级集成: OSInit() → OSStart(), SysTick 挂 OS_CPU_SysTickHandler,
+      ISR 包 OSIntEnter/OSIntExit。
+
 config OSAL_NULL
     bool "None (bare-metal)"
     help

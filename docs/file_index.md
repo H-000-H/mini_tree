@@ -79,7 +79,9 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `core/include/system_log.h` · `production_log.h` | 日志 / logging |
 | `core/src/*.c` | 上述实现 / implementations above |
 | `osal/include/osal.h` | OSAL 总头 / OSAL master header |
+| `osal/include/osal_null.h` | 裸机后端辅助接口 + C++ 任务重载声明（`CONFIG_OSAL_NULL_TASK_CPP`）/ bare-metal helper header + C++ task overload declaration |
 | `osal/src/osal_{null,freertos,rtthread}.c` | 三后端 / three backends |
+| `osal/src/osal_task.cpp` | 裸机 C++ 任务创建封装（`CONFIG_OSAL_NULL_TASK_CPP`）/ bare-metal C++ task wrapper |
 | `interrupt/interrupt.{c,h}` | VIRQ |
 | `system_c/` · `system_cpp/` | init、wdt、scrubber、safe_state、task_manager、cmd（Kconfig 选 C 或 C++）/ init, wdt, scrubber, safe_state, task_manager, cmd (C or C++ via Kconfig) |
 | `time_slice/task/xtask.{c,h}` | 裸机调度 / bare-metal scheduler |

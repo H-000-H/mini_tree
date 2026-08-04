@@ -77,7 +77,11 @@ return ret;
 ## 4. 任务与同步 / Tasks & Synchronization
 
 - 创建任务：`osal_task_create` / `osal_task_create_handle`（不要直接 `xTaskCreate`）。
+  裸机例外：C API 恒返回 `OSAL_ERR_NOTSUPP`，任务创建走 `osal_null.h` 的 C++ 重载
+  `osal_task_create`（`CONFIG_OSAL_NULL_TASK_CPP`，默认开启）或直接 `xscheduler_task_create`。
   Create tasks via `osal_task_create` / `osal_task_create_handle` (never raw `xTaskCreate`).
+  Bare-metal exception: the C API always returns `OSAL_ERR_NOTSUPP`; create tasks through the
+  C++ overload in `osal_null.h` (`CONFIG_OSAL_NULL_TASK_CPP`, on by default) or `xscheduler_task_create` directly.
 - 注意 **优先级数值语义随 OSAL 后端变化**（见 [osal_switching.md](osal_switching.md)）。
   Priority-value semantics **depend on the OSAL backend** (see [osal_switching.md](osal_switching.md)).
 - 设备锁由 `device_*` 包装持有；业务勿对同一设备再叠一层易死锁的锁顺序。
