@@ -1,0 +1,9 @@
+# mini_tree Kconfig (ESP-IDF 入口)
+# ESP-IDF 的 confgen 会把本文件 source 进顶层 Kconfig 树 (在 sdkconfig 注入之后),
+# 因此 idf.py menuconfig 里就能看到 "mini_tree Configuration" 子菜单, 并经 IDF 的
+# depends on / default / range 正确求值, 写入 sdkconfig.h。
+# 公共配置树与 非 ESP 路径共用 Kconfig.mini_tree, 避免分叉。
+#
+# 注意: Kconfig.projbuild 不能含 mainmenu (顶层已由 IDF 提供)。
+
+source "$COMPONENT_KCONFIGS_PROJBUILD_SOURCE_DIR/Kconfig.mini_tree"

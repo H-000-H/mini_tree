@@ -13,6 +13,9 @@ import sys
 from pathlib import Path
 from typing import List
 
+import _vendor_loader
+_vendor_loader.prepend_kconfig_vendor()
+
 # kconfiglib ships as a single module (pip); namespace packages expose symbols in .core
 # ESP-IDF v6.x 使用 esp_kconfiglib 分支, kconfiglib 仅 re-export Kconfig 但不含 BOOL/HEX/INT/STRING 常量
 try:

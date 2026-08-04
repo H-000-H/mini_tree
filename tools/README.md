@@ -86,11 +86,32 @@ Writes Kconfig symbols into a `config.h` of `#define CONFIG_*` lines. Needs a us
 ## 4. menuconfig.py / menuconfig.py
 
 ```bash
-python3 tools/menuconfig.py
+python tools/menuconfig.py     # 终端全屏界面 (curses TUI, 同内核 make menuconfig)
+python tools/guiconfig.py      # 独立图形窗口 (Tkinter GUI, 同内核 make xconfig)
 ```
 
-Kconfig **图形化**配置工具（依赖 `kconfiglib`）：交互式浏览/修改 `.config` 并保存，供 genconfig 消费。
-A **menu-style** Kconfig configurator (requires `kconfiglib`): interactively browse/edit `.config` and save it for genconfig to consume.
+Kconfig 配置工具：交互式浏览/修改 `.config` 并保存，供 genconfig 消费。
+A Kconfig configurator: interactively browse/edit `.config` and save it for genconfig to consume.
+
+### 零依赖 / No Dependency
+
+两种界面都由仓库内置的 **官方 kconfiglib 14.1.0**（`tools/_vendor/`，ISC 许可，见 [_vendor/README.md](_vendor/README.md)）提供，**无需安装任何系统级 kconfig 包**，也不依赖 ESP-IDF 的 `esp_idf_kconfig`。启动器自动把 `tools/_vendor` 前置到 `sys.path`，本机若装了其他 kconfig 包也不会冲突。GUI 仅需 Python 标准库 `tkinter`（Windows 官方安装器自带；Linux 需 `python3-tk`）。
+
+两种界面共享解析器与同一套 Kconfig 语法：
+- TUI：`from menuconfig import menuconfig` → `menuconfig(kconf)`
+- GUI：`from guiconfig import menuconfig` → `menuconfig(kconf)`
+
+> 备注 / Note：`tools/menuconfig.py` 本身不是 Kconfig 图形界面，而是启动器——它内置的官方 `menuconfig`/`guiconfig` 模块（上游 kconfiglib 的 TUI/GUI）才是界面。
+
+#### 可选：现代 UI / Optional: Modern UI
+
+GUI 有三级降级链，按观感从高到低：
+
+1. **Canvas 毛玻璃 UI**（`guiconfig_canvas.py`）：CustomTkinter + Canvas 圆角卡片 + PIL 模糊背景，观感最接近现代 dashboard。需 `pip install customtkinter pillow`。
+2. **ttkbootstrap 主题**：Bootstrap 风格圆角按钮/扁平控件/暗色模式。需 `pip install ttkbootstrap`。
+3. **内置手写深色**：`_vendor/guiconfig.py` 的 clam + 自定义配色，零依赖。
+
+启动器 `tools/guiconfig.py` 自动检测并优先使用最高级 UI。TUI（curses）不受影响，已内置 ESP-IDF 风格配色。
 
 ---
 

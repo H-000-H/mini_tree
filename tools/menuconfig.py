@@ -11,6 +11,8 @@ import os
 import sys
 from typing import Optional
 
+import _vendor_loader  # tools/ 下的共享加载器 (sys.path[0] 指向 tools/)
+
 
 KCONFIG_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KCONFIG_PATH: str = os.path.join(KCONFIG_DIR, "Kconfig")
@@ -18,6 +20,8 @@ KCONFIG_TOOLS_DIR: str = os.path.dirname(os.path.abspath(__file__))
 
 
 def main() -> int:
+    _vendor_loader.prepend_kconfig_vendor()
+
     try:
         from kconfiglib import Kconfig
     except ImportError:

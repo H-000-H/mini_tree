@@ -1,5 +1,4 @@
 {
-  "cmake.cmakePath": "/usr/bin/cmake",
   "cmake.environment": {
     "PATH": "${env.PATH}"
   },

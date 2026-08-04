@@ -1,5 +1,4 @@
 # mini_tree (generic CMake build for non-ESP-IDF projects)
-# 目录/源文件布局对齐 ESP32-S3/components/mini_tree 基准
 
 if(ESP_PLATFORM)
     # 纯架构：不硬编码某一 MCU。板级通过下列之一注入 BOARD_DTS / dtc -I/-D / 树外扫描：
@@ -115,6 +114,22 @@ else()
     set(MINI_TREE_VIRQ ON)
 endif()
 
+# XTASK 软编码：.config 显式 "# CONFIG_XTASK is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_OFF REGEX "^# CONFIG_XTASK is not set$")
+if(CONFIG_XTASK_OFF)
+    set(MINI_TREE_XTASK OFF)
+else()
+    set(MINI_TREE_XTASK ON)
+endif()
+
+# XTASK_PREEMPT 软编码：默认关, 仅显式 "CONFIG_XTASK_PREEMPT=y" 才编入（对齐 Kconfig default n）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_PREEMPT_ON REGEX "^CONFIG_XTASK_PREEMPT=y$")
+if(CONFIG_XTASK_PREEMPT_ON AND MINI_TREE_XTASK)
+    set(MINI_TREE_XTASK_PREEMPT ON)
+else()
+    set(MINI_TREE_XTASK_PREEMPT OFF)
+endif()
+
 # HAL 全部为 weak 空实现，板级强符号覆盖；中间件不绑任何厂商 SDK
 set(HAL_SRCS
     "hal/gpio/hal_gpio.c"
@@ -162,9 +177,9 @@ else()
 endif()
 
 # C++ 任务创建封装 (osal_task.cpp) — 软编码: .config 显式 "# CONFIG_OSAL_NULL_TASK_CPP is not set" 才裁剪;
-# 缺省视为启用 (对齐 Kconfig default y)
+# 缺省视为启用 (对齐 Kconfig default y)。依赖 xtask 原生 API, 需 CONFIG_XTASK。
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_TASK_CPP_OFF REGEX "^# CONFIG_OSAL_NULL_TASK_CPP is not set$")
-if(NOT CONFIG_OSAL_NULL_TASK_CPP_OFF)
+if(MINI_TREE_XTASK AND NOT CONFIG_OSAL_NULL_TASK_CPP_OFF)
     list(APPEND OSAL_SRCS "osal/src/osal_task.cpp")
 endif()
 
@@ -401,12 +416,18 @@ if(MINI_TREE_VIRQ)
     target_sources(mini_tree PRIVATE interrupt/interrupt.c interrupt/interrupt.h)
 endif()
 
-# 裸机时间片调度器 — 仅 CONFIG_OSAL_NULL; OS 后端用内核调度, 不编入
-if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL")
-    target_sources(mini_tree PRIVATE
-        time_slice/task/xtask.h
-        time_slice/task/xtask.c
-    )
+# 裸机时间片调度器 — CONFIG_OSAL_NULL 且 CONFIG_XTASK 才编入; OS 后端用内核调度, 不编入
+# 协调式 (xtask_coop.c) 与抢占式 (xtask_preempt.c) 共用 xtask.h, 二选一互斥:
+#   - CONFIG_XTASK_PREEMPT=n (默认): 编 xtask_coop.c (协调式 round-robin)
+#   - CONFIG_XTASK_PREEMPT=y:        编 xtask_preempt.c (抢占式, 实验性)
+# 两套实现提供同一套对外 API (见 xtask.h), 调用方无感知.
+if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
+    target_sources(mini_tree PRIVATE time_slice/task/xtask.h)
+    if(MINI_TREE_XTASK_PREEMPT)
+        target_sources(mini_tree PRIVATE time_slice/task/xtask_preempt.c)
+    else()
+        target_sources(mini_tree PRIVATE time_slice/task/xtask_coop.c)
+    endif()
 endif()
 
 target_include_directories(mini_tree PUBLIC
@@ -462,8 +483,8 @@ target_include_directories(mini_tree
         "${SCRUBBER_GEN_DIR}"
 )
 
-# time_slice 头路径仅裸机暴露, 避免 OS 构建误包含 xtask.h (与 FreeRTOS xTaskCreate 同名冲突)
-if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL")
+# time_slice 头路径仅裸机 + XTASK 暴露, 避免 OS 构建误包含 xtask.h (与 FreeRTOS xTaskCreate 同名冲突)
+if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
     target_include_directories(mini_tree PUBLIC
         "${CMAKE_CURRENT_LIST_DIR}/time_slice/task"
         "${CMAKE_CURRENT_LIST_DIR}/time_slice/time"

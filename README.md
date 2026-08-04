@@ -58,6 +58,18 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 | `CONFIG_OSAL_FREERTOS` | 抢占式 / Preemptive | FreeRTOS v11.3.0 |
 | `CONFIG_OSAL_RTTHREAD` | 抢占式 / Preemptive | RT-Thread v5.3.0 |
 
+裸机后端 (`CONFIG_OSAL_NULL`) 的任务调度器由 `time_slice/task/` 提供, 两套实现二选一:
+
+- `xtask_coop.c` (协调式 / round-robin, 默认) — `CONFIG_XTASK_PREEMPT=n`
+- `xtask_preempt.c` (抢占式 / 实验性) — `CONFIG_XTASK_PREEMPT=y`
+
+两套实现共用 `xtask.h` 对外 API (`xscheduler_task_create` / `x_scheduler_poll` / `xscheduler_start` 等), 调用方代码无需任何改动. CMake 与源码 `#ifdef` 双重门控互斥 (同时只编一个). `osal/src/osal_task.cpp` 与 `osal/include/osal_null.h` 中的协调式重载也通过 `#ifndef CONFIG_XTASK_PREEMPT` 同步门控, 为未来抢占式专用重载预留位置.
+
+The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task schedulers under `time_slice/task/`, gated by `CONFIG_XTASK_PREEMPT` (mutual-exclusive at both CMake and `#ifdef` level, sharing the same `xtask.h` API surface — caller code unchanged):
+
+- `xtask_coop.c` (cooperative / round-robin, default) — `CONFIG_XTASK_PREEMPT=n`
+- `xtask_preempt.c` (preemptive, experimental) — `CONFIG_XTASK_PREEMPT=y`
+
 ---
 
 ## 运行时服务 / Runtime Services
@@ -76,6 +88,8 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
   Modular on-demand linking via `mini_tree_link_*`; generic chip-agnostic path + ESP-IDF component path.
 - **Kconfig** — `.config` → `genconfig.py` → `config.h`；`menuconfig.py` 可视化配置。
   Interactive configuration via `menuconfig.py`.
+  官方 kconfiglib (作者 Ulf Magnusson, ISC 许可) 内置于 `tools/_vendor/`, 无需 `pip install`; 由 `tools/_vendor_loader.py` 前置到 `sys.path`. 三个 `.py` 保持上游原版, 不做任何本地修改.
+  Official kconfiglib (by Ulf Magnusson, ISC license) is vendored under `tools/_vendor/` — no `pip install` needed; prepended to `sys.path` by `tools/_vendor_loader.py`. The three `.py` files stay in sync with upstream, unmodified.
 - **dtc-lite** — Python 轻量 DTS 编译器（`pip install lark`），生成 probe 表与板级头。
   Lightweight DTS compiler, auto-generating probe tables & board headers.
 - **代码风格 / Coding style** — `.clang-format`（Allman、单语句去括号、短函数单行化、4 空格、100 列）+ 分层 `.clang-tidy`（命名强制）；app 层建议、app 以下强规定。

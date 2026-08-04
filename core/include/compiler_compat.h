@@ -162,24 +162,24 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void COMPAT_TRAP(void) { __builtin_trap(); 
 /**
  * @brief 计算 x 的末尾零位 (count trailing zeros)
  * @param x 32 位无符号整数
- * @return 末尾零位个数; x 为 0 时返回 VFS_ERR_INVAL
+ * @return 末尾零位个数; x 为 0 时返回 32
  */
 COMPAT_STATIC_INLINE uint32_t COMPAT_CTZ(uint32_t x)
 {
     if (x == 0U)
-        return (uint32_t)VFS_ERR_INVAL;
+        return 32U;
     return (uint32_t)__builtin_ctz(x);
 }
 
 /**
  * @brief 计算 x 的前导零位 (count leading zeros)
  * @param x 32 位无符号整数
- * @return 前导零位个数; x 为 0 时返回 VFS_ERR_INVAL
+ * @return 前导零位个数; x 为 0 时返回 32
  */
 COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_CLZ(uint32_t x)
 {
-    if (x == 0)
-        return (uint32_t)VFS_ERR_INVAL;
+    if (x == 0U)
+        return 32U;
     return (uint32_t)__builtin_clz(x);
 }
 

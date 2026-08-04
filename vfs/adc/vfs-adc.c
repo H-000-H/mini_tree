@@ -253,8 +253,7 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
     cfg->config.sw_trigger = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==
-        VFS_ADC_PIN_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==VFS_ADC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
         cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
@@ -268,8 +267,7 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     else
         return VFS_ERR_INVAL;
 
-    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) ==
-        VFS_ADC_MULTI_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) ==VFS_ADC_MULTI_FIELD_COUNT)
     {
         cfg->multi_cfg->multimode = (uint32_t)multi_arr[0];
         cfg->multi_cfg->common_clock = (uint32_t)multi_arr[1];

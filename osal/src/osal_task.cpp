@@ -8,8 +8,14 @@
  * 此处只需 CONFIG_OSAL_NULL 守卫 (注意: 不能在此判断 CONFIG_OSAL_NULL_TASK_CPP,
  * 它来自生成的 config.h, 而 config.h 是在本守卫内部才被包含);
  * 声明见 osal_null.h 的 __cplusplus 段 (那里有同开关守卫, 且宏已可见).
+ *
+ * 调度器后端互斥 (与 time_slice/task/xtask_coop.c 同步):
+ *   - CONFIG_XTASK_PREEMPT 未定义 (默认): 本重载有效 (协调式 round-robin)
+ *   - CONFIG_XTASK_PREEMPT 已定义:       本重载整段关闭, 改用抢占式专用重载
+ *   (未来在另一个文件提供, 参数语义不同 — 抢占式有优先级概念).
  */
 #ifdef CONFIG_OSAL_NULL
+#ifndef CONFIG_XTASK_PREEMPT
 
 #include "osal_null.h"
 
@@ -81,4 +87,5 @@ etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t st
     return etl::make_optional(handle);
 }
 
+#endif /* !CONFIG_XTASK_PREEMPT */
 #endif /* CONFIG_OSAL_NULL */

@@ -101,6 +101,9 @@ IDF 已注入 `sdkconfig.h`。`esp_idf.cmake` 只生成空壳 `config.h`，避�
 
 IDF already injects `sdkconfig.h`. `esp_idf.cmake` only generates an empty-shell `config.h` to avoid `-Werror=redefined` against the full genconfig header.
 
+> 自 Kconfig 拆分后（`Kconfig` / `Kconfig.projbuild` / `Kconfig.mini_tree` 三文件），ESP 路径下 `idf.py menuconfig` 会在顶层菜单显示 "mini_tree Configuration" 子菜单，所有 mini_tree 的 `CONFIG_*` 开关经 IDF confgen 求值后写入 `sdkconfig.h`。`esp_idf.cmake` 中的 `file(STRINGS)` 软编码仍保留以向后兼容旧 sdkconfig，可逐步迁到 `if(CONFIG_OSAL_FREERTOS)` 等 IDF 原生 CMake 变量。
+> After the Kconfig split (`Kconfig` / `Kconfig.projbuild` / `Kconfig.mini_tree`), `idf.py menuconfig` on the ESP path shows a "mini_tree Configuration" submenu at the top level; all mini_tree `CONFIG_*` switches are evaluated by IDF confgen and written into `sdkconfig.h`. The `file(STRINGS)` soft-coding in `esp_idf.cmake` is kept for backward compat with legacy sdkconfigs and can be migrated incrementally to IDF-native CMake variables like `if(CONFIG_OSAL_FREERTOS)`.
+
 ---
 
 ## 3. 推荐：ESP 板删除 vendored `lib/`，改走 IDF / Fetch / Recommended: Drop Vendored `lib/` on ESP Boards, Use IDF / Fetch

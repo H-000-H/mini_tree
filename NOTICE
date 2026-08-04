@@ -80,6 +80,17 @@ Infrastructure (vendored under lib/, always present in git)
       Note:      Upper-layer C++ base; always linked into mini_tree (SYSTEM_CPP).
                  NOT an optional brick.
 
+  Kconfiglib
+      License:   ISC
+      Version:   (see tools/_vendor/kconfiglib.py VERSION)
+      Location:  tools/_vendor/kconfiglib.py
+      Copyright: Copyright (c) 2011-2019, Ulf Magnusson
+      Homepage:  https://github.com/ulfalizer/Kconfiglib
+      Note:      Python library that parses the Kconfig configuration system
+                 (https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt).
+                 Vendored to power this project's Kconfig / menuconfig flow
+                 (Kconfig, Kconfig.mini_tree, Kconfig.projbuild).
+
 ------------------------------------------------------------------------
 Optional bricks (fetched on demand; local lib/<Name> override supported)
 ------------------------------------------------------------------------
@@ -210,8 +221,9 @@ Compliance Notes
 - ChaN's FatFs license is permissive but requires retention of the
   copyright notice in source distributions.
 
-- All other components use permissive licenses (MIT / BSD / Apache-2.0 /
-  Zlib) compatible with commercial use provided notices are retained.
+- All other components use permissive licenses (ISC / MIT / BSD /
+  Apache-2.0 / Zlib) compatible with commercial use provided notices
+  are retained.
 
 ========================================================================
 Catalog & Acknowledgements
