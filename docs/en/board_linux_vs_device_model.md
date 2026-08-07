@@ -62,7 +62,7 @@ The difference is not in the layers but in whether each layer is built at runtim
 | fops | `struct file_operations` | same name |
 | private data | `dev_set_drvdata` | `device_set_priv` |
 | parent device | `dev->parent` | `node->deps[0]` |
-| child enumeration | `device_for_each_child` | `board_cascade_get` |
+| child enumeration | `device_for_each_child` | global enumeration `device_get_first`/`device_get_next`/`device_get_count`; cascade parent-child enumeration `board_cascade_get` |
 | device number | `dev_t` | `device_id_t` |
 | sysfs | `kobject` | none |
 | resources | `devm_*` (auto-released with device) | manual + HAL |

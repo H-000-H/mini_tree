@@ -1,7 +1,7 @@
 # Changelog / 变更记录
 
-> 记录中间件 shelf 用户可见的变化。更细的设计动机见 [docs/design_decisions.md](docs/design_decisions.md)。
-> User-visible changes to the middleware shelf. Deeper design rationale: [docs/design_decisions.md](docs/design_decisions.md).
+> 记录中间件 shelf 用户可见的变化。更细的设计动机见 [docs/design_decisions.md](docs/cn/design_decisions.md)。
+> User-visible changes to the middleware shelf. Deeper design rationale: [docs/design_decisions.md](docs/cn/design_decisions.md).
 
 ---
 
@@ -14,8 +14,8 @@
 
 ### 内存与 DTS / Memory & DTS
 
-- **静态内存多轮压缩**（arm-none-eabi / Cortex-M4F 实测）：`vfs-adc` 池 27.5→4.7 KB；VFS 池改由 `DTC_GEN_COUNT_*` 驱动；EventBus / SystemCmd / Flash-Scrubber 默认关闭；队列池 1×2048、config_store 8 项、mutex 24、下半部 16。全库 85.3 → **28.0 KB**；**默认最小（无外设）≈ 2.8 KB**，仍可再压（见 [memory_footprint.md](docs/memory_footprint.md) §2.2）。
-  **Multi-round static-RAM cuts** (measured, Cortex-M4F): `vfs-adc` pool 27.5→4.7 KB; VFS pools `DTC_GEN_COUNT_*` driven; EventBus / SystemCmd / Flash-Scrubber off by default; queue pool 1×2048, config_store 8, mutex 24, bottom-half 16. Whole library 85.3 → **28.0 KB**; **default minimum (no peripherals) ≈ 2.8 KB**, still trimmable (see [memory_footprint.md](docs/memory_footprint.md) §2.2).
+- **静态内存多轮压缩**（arm-none-eabi / Cortex-M4F 实测）：`vfs-adc` 池 27.5→4.7 KB；VFS 池改由 `DTC_GEN_COUNT_*` 驱动；EventBus / SystemCmd / Flash-Scrubber 默认关闭；队列池 1×2048、config_store 8 项、mutex 24、下半部 16。全库 85.3 → **28.0 KB**；**默认最小（无外设）≈ 2.8 KB**，仍可再压（见 [memory_footprint.md](docs/cn/memory_footprint.md) §2.2）。
+  **Multi-round static-RAM cuts** (measured, Cortex-M4F): `vfs-adc` pool 27.5→4.7 KB; VFS pools `DTC_GEN_COUNT_*` driven; EventBus / SystemCmd / Flash-Scrubber off by default; queue pool 1×2048, config_store 8, mutex 24, bottom-half 16. Whole library 85.3 → **28.0 KB**; **default minimum (no peripherals) ≈ 2.8 KB**, still trimmable (see [memory_footprint.md](docs/cn/memory_footprint.md) §2.2).
 - **裸机队列池改为"基础数 + EventBus 自动 +1"**：`CONFIG_OSAL_NULL_MAX_QUEUES` 为基础数（默认 0，不占内存），开启 `CONFIG_EVENT_BUS` 时自动 +1；FreeRTOS/RTT 堆也 Kconfig 化（`CONFIG_FREERTOS_HEAP_SIZE` / `CONFIG_RTT_HEAP_SIZE`）。
   **Bare-metal queue pool is now "base + auto-1 for EventBus"**: `CONFIG_OSAL_NULL_MAX_QUEUES` is the base (default 0, no RAM); enabling `CONFIG_EVENT_BUS` auto-adds 1; FreeRTOS/RTT heaps are Kconfig-gated too (`CONFIG_FREERTOS_HEAP_SIZE` / `CONFIG_RTT_HEAP_SIZE`).
 - **字段宽度/池宏移入 `board/define/` 配置头体系**：每 VFS 一个 `board/define/vfs/board_define_<name>.h`（普通 C 宏，板级改头或 `-D` 覆盖）；池数量仍由 DTS 节点数自动生成（`DTC_GEN_COUNT_*`）；不再走 DTS `#define` 透传。
@@ -25,8 +25,8 @@
 
 ### 工具链 / Toolchain
 
-- **Keil Studio 单独列为支持项**：作者实测确认与经典 µVision 本质不同（VS Code 内核 + CMake 一等公民 + clangd + 官方调试/云编译），推荐作调试（与构建）环境；经典 µVision 维持不推荐、不支持立场。详见 [keil_integration.md](docs/keil_integration.md) §2.1 与 [design_decisions.md](docs/design_decisions.md) 工具链表。
-  **Keil Studio is now a supported entry on its own**: hands-on verified as fundamentally different from classic µVision (VS Code core + first-class CMake + clangd + official debug/cloud build); recommended as a debug (and build) environment. Classic µVision stays not recommended / unsupported. See [keil_integration.md](docs/keil_integration.md) §2.1 and the toolchain table in [design_decisions.md](docs/design_decisions.md).
+- **Keil Studio 单独列为支持项**：作者实测确认与经典 µVision 本质不同（VS Code 内核 + CMake 一等公民 + clangd + 官方调试/云编译），推荐作调试（与构建）环境；经典 µVision 维持不推荐、不支持立场。详见 [keil_integration.md](docs/cn/keil_integration.md) §2.1 与 [design_decisions.md](docs/cn/design_decisions.md) 工具链表。
+  **Keil Studio is now a supported entry on its own**: hands-on verified as fundamentally different from classic µVision (VS Code core + first-class CMake + clangd + official debug/cloud build); recommended as a debug (and build) environment. Classic µVision stays not recommended / unsupported. See [keil_integration.md](docs/cn/keil_integration.md) §2.1 and the toolchain table in [design_decisions.md](docs/cn/design_decisions.md).
 
 ### 目标平台 / Targets
 
@@ -74,8 +74,8 @@
 
 ### 构建与文档 / Build & Docs
 
-- 通用 CMake 芯片无关路径最小构建实测通过；全部文档中英双语并统一收进 `docs/`（目录页 [docs/README.md](docs/README.md)）。
-  Verified chip-agnostic CMake minimal build; all docs are bilingual and consolidated under `docs/` (index: [docs/README.md](docs/README.md)).
+- 通用 CMake 芯片无关路径最小构建实测通过；全部文档中英双语并统一收进 `docs/`（目录页 [docs/README.md](docs/cn/README.md)）。
+  Verified chip-agnostic CMake minimal build; all docs are bilingual and consolidated under `docs/` (index: [docs/README.md](docs/cn/README.md)).
 - 补 [LICENSE](LICENSE)（Apache-2.0）；[NOTICE](NOTICE) 全面重写（组件版本 / 版权 / SPDX / 合规要点）；[CONTRIBUTING.md](CONTRIBUTING.md) 新增 SPDX 头规范。
   Added [LICENSE](LICENSE) (Apache-2.0); [NOTICE](NOTICE) fully rewritten (component versions / copyright / SPDX / compliance notes); [CONTRIBUTING.md](CONTRIBUTING.md) gained the SPDX header spec.
 
@@ -83,8 +83,8 @@
 
 ## [Historical] / 历史
 
-多轮重构（设备树、硬件直投、OSAL、安全回路、文档迁徙等）详见 [docs/design_decisions.md](docs/design_decisions.md)。
-Multiple refactoring rounds (device tree, direct hardware mapping, OSAL, safety loops, doc migration, etc.) — see [docs/design_decisions.md](docs/design_decisions.md).
+多轮重构（设备树、硬件直投、OSAL、安全回路、文档迁徙等）详见 [docs/design_decisions.md](docs/cn/design_decisions.md)。
+Multiple refactoring rounds (device tree, direct hardware mapping, OSAL, safety loops, doc migration, etc.) — see [docs/design_decisions.md](docs/cn/design_decisions.md).
 平台验证历史以各 SoC 工程仓库为准。
 Platform verification history lives in the per-SoC project repositories.
 
@@ -92,4 +92,4 @@ Platform verification history lives in the per-SoC project repositories.
 
 ## 相关文档 / Related Documents
 
-- [docs/roadmap.md](docs/roadmap.md) · [docs/todolist.md](docs/todolist.md) · [docs/api_compatibility.md](docs/api_compatibility.md)
+- [docs/roadmap.md](docs/cn/roadmap.md) · [docs/todolist.md](docs/cn/todolist.md) · [docs/api_compatibility.md](docs/cn/api_compatibility.md)

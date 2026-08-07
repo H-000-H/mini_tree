@@ -62,7 +62,7 @@ VFS（虚拟文件 / file）
 | fops | `struct file_operations` | 同名结构 / same name |
 | 私有数据 / private data | `dev_set_drvdata` | `device_set_priv` |
 | 父设备 / parent device | `dev->parent` | `node->deps[0]` |
-| 子设备枚举 / child enumeration | `device_for_each_child` | `board_cascade_get` |
+| 子设备枚举 / child enumeration | `device_for_each_child` | 全局枚举 `device_get_first`/`device_get_next`/`device_get_count`；级联父子枚举 `board_cascade_get` |
 | 设备号 / device number | `dev_t` | `device_id_t` |
 | sysfs | `kobject` | 无 / none |
 | 资源 / resources | `devm_*`（与 device 绑定自动释放） | 手动 + HAL / manual + HAL |
