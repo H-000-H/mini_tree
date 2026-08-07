@@ -41,10 +41,10 @@
 | :--- | :--- |
 | BasedOnStyle | LLVM |
 | 大括号 | Allman（换行） |
-| 单语句去括号 | `false`（即单语句也保留 `{}`） |
+| 单语句去括号 | `true`（即单语句 `if/for/while` 也去掉 `{}`，见上例） |
 | 缩进 | 4 空格 |
 | 列宽 | 100 |
-| 指针/引用对齐 | 右对齐（`int* p`） |
+| 指针/引用对齐 | 左对齐（`int *p`） |
 
 平台工程若想自定义，复制一份改 `ColumnLimit`，但 **不要** 破坏 Allman / 4 空格主干约定。
 
@@ -97,16 +97,24 @@
 
 ## 7. 危险 API 与 poison
 
-`core/include/compiler_compat.h` 定义 `compiler_compat_poison`，受 `CONFIG_POISON_DANGEROUS_API` 控制：
+`core/include/compiler_compat_poison.h` 通过 `#pragma GCC poison` 禁用危险 API（完整列表见该头）；并非由某个独立 Kconfig 符号门控，而是**默认生效**，仅在定义了豁免宏时才放行：
+
+| 豁免宏 | 放行的 poison |
+| :--- | :--- |
+| `ALLOW_HEAP_ALLOC` | `malloc` / `calloc` / `realloc` / `free`（以及 C++ `new` / `delete`） |
+| `ALLOW_STDIO_OUTPUT` | `printf` / `fprintf` / `sprintf` / `vprintf` 等 stdio 输出 |
+
+常用被 poison 的 API 与替代：
 
 | 被 poison 的 API | 替代 |
 | :--- | :--- |
-| `malloc` / `free` | 静态池 / `bufferpool` / `kalloc` |
-| `printf` | `SYS_LOG*` |
+| `malloc` / `free` / `calloc` / `realloc` | 静态池 / `bufferpool` / `kalloc` |
+| `printf` / `fprintf` / `sprintf` | `SYS_LOG*` |
 | 裸 `memcpy` / `memset` / `memmove` | `safe_mem*` 或显式长度校验 |
-| `strcpy` / `strcat` | `safe_str*` |
+| `strcpy` / `strcat` / `strdup` / `strndup` | `safe_str*` |
+| 文件 IO：`fopen` / `fclose` / `fread` / `fwrite` / `fseek` / `tmpfile` / `popen` / `gets` … | 走中间件/板级提供的 IO 接口 |
 
-poison 只在受控翻译单元生效；HAL 强符号、平台裸机部分可能豁免（以宏定义为准）。
+poison 只在受控翻译单元生效；HAL 强符号、平台裸机部分可能通过 `ALLOW_*` 宏豁免。
 
 ---
 

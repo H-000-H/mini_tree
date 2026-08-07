@@ -87,7 +87,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `time_slice/` | bare-metal scheduling — cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, experimental) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
 | `drivers/<chip>/` | product drivers (37, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
 | `can_hook/` | CAN hook extensions | — |
-| `lib/` + `cmake/*.cmake` | vendored: FreeRTOS / RT-Thread / ETL; all bricks (TinyUSB / lwIP / cJSON / …) use link-time FetchContent | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |
+| `lib/` + `cmake/*.cmake` | vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP / cJSON are config-time FetchContent, the rest link-time | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |
 
 ### 2.1 Peripheral Coverage (Current)
 

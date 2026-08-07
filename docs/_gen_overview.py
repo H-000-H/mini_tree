@@ -12,6 +12,7 @@ OUT = DOCS / "overview.html"
 
 # Logical reading order (docs/README.md). Remaining *.md appended alphabetically.
 ORDER = [
+    "SUMMARY.md",
     "usage.md",
     "getting_started.md",
     "faq.md",
@@ -48,6 +49,7 @@ ROOT_MD = [
 ]
 
 SHORT = {
+    "SUMMARY.md": "摘要",
     "usage.md": "术语",
     "getting_started.md": "上手",
     "faq.md": "FAQ",

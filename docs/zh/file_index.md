@@ -97,7 +97,7 @@
 | `algorithm/buffer/` | 环形/双缓冲 |
 | `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` / `esp_idf` |
 
-> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP / cJSON** 与其余积木均为链接期 FetchContent。
+> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP / cJSON** 为配置期 FetchContent，其余积木为链接期 FetchContent。
 
 ---
 

@@ -8,7 +8,7 @@
 | :--- | :--- |
 | **读者** | 平台/应用工程师 |
 | **前置** | CMake、基本 C；有一块目标板或至少能链出固件 |
-| **相关** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools/README.md](../tools/README.md) |
+| **相关** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 
@@ -32,7 +32,7 @@
 | CMake ≥ 3.16 | 构建静态库 | Ninja / Make 均可 |
 | Python 3 | genconfig、dtc-lite、gen_compile_db | — |
 | `lark` | dtc-lite 解析 | `pip install lark` |
-| 内置 kconfiglib（`tools/_vendor/`） | menuconfig / guiconfig | 仓库自带，**无需安装**；两种界面见 [tools/README.md](../tools/README.md) |
+| 内置 kconfiglib（`tools/_vendor/`） | menuconfig / guiconfig | 仓库自带，**无需安装**；两种界面见 [tools_guide.md](../tools_guide.md) |
 | clang-format ≥ 15 / clang-tidy（可选） | 代码风格与命名检查 | 见 [coding_style.md](coding_style.md) |
 | 平台工具链 + SDK | 真机 | **只**链在平台工程，不进中间件公共头 |
 
@@ -126,7 +126,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏 |
 | `VENDOR_DEFINES` | `STRING` | 额外 `-D`（少用） |
 | ETL（`cmake/etl.cmake`） | — | **vendor 于 `lib/etl`**（仅 include + cmake）；根 CMake 始终 link（缺失时 Fetch 兜底） |
-| 其它开源积木 | — | TinyUSB / lwIP / cJSON 与其余（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) |
+| 其它开源积木 | — | TinyUSB / lwIP / cJSON 为**配置期** FetchContent（根 CMake 直接 include 对应 `cmake/*.cmake`），其余（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | 可选；见 `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | 启用后可对目标加反汇编 post-build（`cmake/disasm.cmake`） |
 
@@ -137,7 +137,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 1. 跑 `genconfig.py`
 2. 跑 `dtc-lite`（扫描 vfs/bus/drivers 中的 `DRIVER_REGISTER`，生成编译期 probe 表）
 3. 按 `.config` 挑选 OSAL / SYSTEM 源；链入 `lib/` 中的 vendor 内核（FreeRTOS v11.3.0 / RT-Thread v5.3.0）
-4. 全部可选积木（含 TinyUSB / lwIP / cJSON）由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）
+4. 配置期积木（TinyUSB / lwIP / cJSON）由根 CMake 直接 `include` 对应 `cmake/*.cmake`；其余可选积木由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）
 
 语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)；积木清单见 [ecosystem.md](ecosystem.md)。
 
@@ -197,6 +197,7 @@ int main(void)
 ### 6.2 C++（`system_init.hpp`）
 
 ```cpp
+#include "config.h"            // CONFIG_OSAL_* / CONFIG_XTASK_PREEMPT 等宏为相关头所需
 #include "system_init.hpp"
 
 mini_tree::system_pre_os_init();
@@ -256,4 +257,4 @@ system_init_complete();
 
 - [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)
 - [osal_switching.md](osal_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)
-- [tools/README.md](../tools/README.md)
+- [tools_guide.md](../tools_guide.md)

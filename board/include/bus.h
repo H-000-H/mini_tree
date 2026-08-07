@@ -166,6 +166,7 @@ extern "C"
 
     /**
      * @brief 释放槽位 (HAL 提交失败时立即调用, 不触发用户 cb)
+     * @param bridge bridge 指针
      */
     void bus_async_bridge_release(struct bus_async_bridge* bridge);
 

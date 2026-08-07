@@ -344,9 +344,6 @@ static void i2c_client_unregister_impl(struct device* pdev)
 }
 
 /**
- * @brief 注销 I2C client 并递减 host 引用计数
- * @param pdev client device 指针
- */
 void i2c_bus_client_unregister(struct device* pdev) { i2c_client_unregister_impl(pdev); }
 
 /**

@@ -32,7 +32,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 | 有总线层 / Bus-Based | 无总线层 / Bus-Less | 仅 HAL / HAL-Only |
 |:---|:---|:---|
-| SPI, I2C, I2S, UART, CAN, USB | GPIO, ADC, DAC, TIM, RTC, IWDG, WWDG | AMP/CPU, Storage, Platform Safety, SDIO |
+| SPI, I2C, I2S, UART, CAN, USB | GPIO, ADC, DAC, TIM, RTC, IWDG, WWDG | AMP/CPU, Storage, Platform Safety, SDIO（预留/HAL 槽，暂无实现） |
 
 ---
 
@@ -154,7 +154,7 @@ Root keeps only entry & legal files; all topics live in [`docs/`](docs/README.md
 | 查文件 / Find files | [docs/file_index.md](docs/file_index.md) |
 | 常见问题 / FAQ | [docs/faq.md](docs/faq.md) |
 
-工具链 / Toolchain: [tools/README.md](tools/README.md)
+工具链 / Toolchain: [docs/zh/tools_guide.md](docs/zh/tools_guide.md) · [docs/en/tools_guide.md](docs/en/tools_guide.md)
 
 ---
 

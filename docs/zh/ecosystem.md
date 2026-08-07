@@ -4,7 +4,7 @@
 >
 > 能力扩展走 **积木型链接**：需要什么能力，就按需链入对应开源库，用板级 port 补齐配置与硬件胶水。
 >
-> **`lib/` 只保留 vendor**（FreeRTOS、RT-Thread、ETL 三个）；TinyUSB / lwIP / cJSON 与其余开源积木均为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
+> **`lib/` 只保留 vendor**（FreeRTOS、RT-Thread、ETL 三个）；TinyUSB / lwIP / cJSON 为**配置期 FetchContent**（根 CMake 直接 include 对应 `cmake/*.cmake`），其余开源积木为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -18,7 +18,8 @@
 | 策略 | 做法 | 组件 |
 | :--- | :--- | :--- |
 | **vendor（进 git）** | 源码在 `lib/`，随仓库提交 | **FreeRTOS**、**RT-Thread**、**ETL** |
-| **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | **TinyUSB**、**lwIP**、**cJSON**、littlefs、FatFs、MultiButton、MCUBoot、nanopb、coreMQTT、coreHTTP、miniz、libmodbus、LVGL、u8g2、mbedtls、CMSIS-DSP、FlashDB、SFUD、EasyFlash、EasyLogger、FreeModbus… |
+| **配置期 Fetch** | 根 CMake 直接 `include(cmake/*.cmake)`，local-or-fetch | **TinyUSB**、**lwIP**、**cJSON** |
+| **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | littlefs、FatFs、MultiButton、MCUBoot、nanopb、coreMQTT、coreHTTP、miniz、libmodbus、LVGL、u8g2、mbedtls、CMSIS-DSP、FlashDB、SFUD、EasyFlash、EasyLogger、FreeModbus… |
 | **C++ 基础（默认进库）** | ETL 在 `lib/etl`；根 CMake **始终** `mini_tree_link_etl(mini_tree)` | 上层 C++ / `SYSTEM_CPP` 基座 |
 
 实现：`cmake/dep_fetch.cmake` 的 `mini_tree_dep_get()`（本地标记文件存在则用本地，否则 `FetchContent`）。

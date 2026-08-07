@@ -93,7 +93,7 @@ extern "C"
         uint8_t irq_count; /**< interrupt 条目数 */
     };
 
-/* 各 compatible 属性契约见 board/docs/devicetree.md */
+/* 各 compatible 属性契约见 docs/zh/board_devicetree.md（en: docs/en/board_devicetree.md） */
 
 /* 编译期节点标志 */
 #define DEVICE_FLAG_DIRECT 0x01 /* 直接访问 (direct), 无需运行时 struct device 实例 */

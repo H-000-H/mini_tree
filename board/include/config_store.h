@@ -18,8 +18,11 @@ extern "C"
 {
 #endif
 
-    /*
-     * 绑定 JSON 配置缓冲区基地址.
+    /**
+     * @brief 绑定工厂默认 JSON 配置源缓冲区 (init 前调用)
+     * @param json_buffer JSON 缓冲区指针
+     * @param size 缓冲区字节数
+     *
      * 必须在 config_store_init() 之前调用.
      * 移植到新平台时, 传入 embedded 的 system_config.json 地址及其大小.
      */

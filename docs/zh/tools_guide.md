@@ -1,4 +1,4 @@
-# mini_tree 构建工具 / mini_tree Build Tools
+# mini_tree 构建工具
 
 > `dtc-lite`、`gen_compile_db`、`genconfig`、`menuconfig`、scrubber CRC stub 的用法与模块说明。
 > Usage and module notes for `dtc-lite`, `gen_compile_db`, `genconfig`, `menuconfig`, and the scrubber CRC stub.
@@ -6,11 +6,9 @@
 | 项 / Item | 内容 / Content |
 | :--- | :--- |
 | **读者 / Audience** | 集成构建或改工具链的人 / People integrating builds or changing the toolchain |
-| **相关 / Related** | [driver_guide.md](../docs/driver_guide.md) · [getting_started.md](../docs/getting_started.md) |
+| **相关 / Related** | [driver_guide.md](../driver_guide.md) · [getting_started.md](../getting_started.md) |
 
----
-
-## 目录 / Contents
+## 目录
 
 1. [dtc-lite / dtc-lite](#1-dtc-lite-dtc-lite)
 2. [gen_compile_db.py / gen_compile_db.py](#2-gen_compiledbpy-gen_compiledbpy)
@@ -19,18 +17,18 @@
 5. [scrubber CRC stub / Scrubber CRC Stub](#5-scrubber-crc-stub-scrubber-crc-stub)
 6. [与 CMake 的关系 / Relationship with CMake](#6-与-cmake-的关系-relationship-with-cmake)
 
----
-
 ## 1. dtc-lite / dtc-lite
 
 MCU **编译期** DeviceTree 编译器：把板级 DTS 变成 C 头/源，并扫描 `DRIVER_REGISTER`。
 A **compile-time** DeviceTree compiler for MCUs: turns a board DTS into C headers/sources and scans for `DRIVER_REGISTER`.
 
 ```bash
-python3 tools/dtc-lite.py <board.dts> <output_dir> [driver_source_dirs...]
+python3 tools/dtc-lite.py <board.dts> <output_dir> [driver_source_dirs...] [-I <include_dir> ...] [-D NAME[=VALUE] ...]
 ```
 
-### 依赖 / Dependency
+`-I <dir>` 追加厂商头搜索目录（供 dtc 经 cpp 展开 `#include <dt-bindings/...>` 与芯片宏）；`-D NAME[=VALUE]` 追加预处理宏定义。二者与根 `CMakeLists.txt` 传入的 `VENDOR_INC_DIRS` / `VENDOR_DEFINES` 对应。
+
+### 依赖
 
 ```bash
 pip install lark
@@ -50,12 +48,8 @@ pip install lark
 
 ### 输出（常见）/ Outputs (Typical)
 
-`board_nodes.h`、`board_devtable.h/.c`、`board_probe.c`、`board_handles.h`、`dt_config_gen.h`。
-
-编写契约见 [driver_guide.md](../docs/driver_guide.md)。
-See [driver_guide.md](../docs/driver_guide.md) for the authoring contract.
-
----
+编写契约见 [driver_guide.md](../driver_guide.md)。
+See [driver_guide.md](../driver_guide.md) for the authoring contract.
 
 ## 2. gen_compile_db.py / gen_compile_db.py
 
@@ -70,8 +64,6 @@ python3 tools/gen_compile_db.py --clean    # 删除已生成的 compile_commands
 场景：mini_tree 作为子模块嵌入父项目时，父项目的 `compile_commands.json` 会覆盖本仓的 `compile_flags.txt`，导致 `hal/bus/vfs` 头文件找不到；本脚本在仓库根就近生成，clangd 优先使用它，无需父项目 configure 即可获得完整索引。
 Use case: when mini_tree is embedded as a submodule, the parent's `compile_commands.json` shadows this repo's `compile_flags.txt`, so `hal/bus/vfs` headers go missing; this script generates a local copy at the repo root that clangd prefers, giving full indexing without a parent configure.
 
----
-
 ## 3. genconfig.py / genconfig.py
 
 ```bash
@@ -80,8 +72,6 @@ python3 tools/genconfig.py Kconfig <output_dir> --config .config
 
 把 Kconfig 符号写成 `#define CONFIG_*` 的 `config.h`。需本机可用的 `kconfiglib`（或项目使用的兼容包）。
 Writes Kconfig symbols into a `config.h` of `#define CONFIG_*` lines. Needs a usable `kconfiglib` (or a compatible package the project uses).
-
----
 
 ## 4. menuconfig.py / menuconfig.py
 
@@ -93,9 +83,9 @@ python tools/guiconfig.py      # 独立图形窗口 (Tkinter GUI, 同内核 make
 Kconfig 配置工具：交互式浏览/修改 `.config` 并保存，供 genconfig 消费。
 A Kconfig configurator: interactively browse/edit `.config` and save it for genconfig to consume.
 
-### 零依赖 / No Dependency
+### 零依赖
 
-两种界面都由仓库内置的 **官方 kconfiglib 14.1.0**（`tools/_vendor/`，ISC 许可，见 [_vendor/README.md](_vendor/README.md)）提供，**无需安装任何系统级 kconfig 包**，也不依赖 ESP-IDF 的 `esp_idf_kconfig`。启动器自动把 `tools/_vendor` 前置到 `sys.path`，本机若装了其他 kconfig 包也不会冲突。GUI 仅需 Python 标准库 `tkinter`（Windows 官方安装器自带；Linux 需 `python3-tk`）。
+两种界面都由仓库内置的 **官方 kconfiglib 14.1.0**（`tools/_vendor/`，ISC 许可，见 [../../tools/_vendor/README.md](../../tools/_vendor/README.md)）提供，**无需安装任何系统级 kconfig 包**，也不依赖 ESP-IDF 的 `esp_idf_kconfig`。启动器自动把 `tools/_vendor` 前置到 `sys.path`，本机若装了其他 kconfig 包也不会冲突。GUI 仅需 Python 标准库 `tkinter`（Windows 官方安装器自带；Linux 需 `python3-tk`）。
 
 两种界面共享解析器与同一套 Kconfig 语法：
 - TUI：`from menuconfig import menuconfig` → `menuconfig(kconf)`
@@ -103,7 +93,7 @@ A Kconfig configurator: interactively browse/edit `.config` and save it for genc
 
 > 备注 / Note：`tools/menuconfig.py` 本身不是 Kconfig 图形界面，而是启动器——它内置的官方 `menuconfig`/`guiconfig` 模块（上游 kconfiglib 的 TUI/GUI）才是界面。
 
-#### 可选：现代 UI / Optional: Modern UI
+#### 可选：现代 UI
 
 GUI 有三级降级链，按观感从高到低：
 
@@ -113,23 +103,19 @@ GUI 有三级降级链，按观感从高到低：
 
 启动器 `tools/guiconfig.py` 自动检测并优先使用最高级 UI。TUI（curses）不受影响，已内置 ESP-IDF 风格配色。
 
----
-
 ## 5. scrubber CRC stub / Scrubber CRC Stub
 
 `tools/system_scrubber_crc_stub.h` 在 CMake 中拷贝为生成目录里的 `system_scrubber_crc_gen.h`，提供：
 `tools/system_scrubber_crc_stub.h` is copied by CMake into the generated directory as `system_scrubber_crc_gen.h`, providing:
 
 ```c
-#define SYSTEM_SCRUBBER_CRC_BASELINE 0x00000000U
+#define SYSTEM_SCRUBBER_CRC_BASELINE 0x00000000
 ```
 
 链接后可用板级脚本覆盖真实 CRC 基线。
 After linking, a board-level script can override the real CRC baseline.
 
----
-
-## 6. 与 CMake 的关系 / Relationship with CMake
+## 6. 与 CMake 的关系
 
 根 `CMakeLists.txt` 在构建 `mini_tree` 时自动：
 The root `CMakeLists.txt` automatically, when building `mini_tree`:
@@ -141,9 +127,4 @@ The root `CMakeLists.txt` automatically, when building `mini_tree`:
 手动跑工具主要用于调试生成物或 IDE 预生成（如 `gen_compile_db.py`）。
 Running tools manually is mainly for debugging generated artifacts or pre-generating for IDEs (e.g. `gen_compile_db.py`).
 
----
-
-## 相关文档 / Related Documents
-
-- [getting_started.md](../docs/getting_started.md) · [faq.md](../docs/faq.md)
-- [file_index.md](../docs/file_index.md)
+## 相关文档

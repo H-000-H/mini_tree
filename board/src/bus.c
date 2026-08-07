@@ -176,10 +176,6 @@ void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev,
     bridge->userdata = userdata;
 }
 
-/**
- * @brief 释放异步桥接槽位
- * @param bridge bridge 指针
- */
 void bus_async_bridge_release(struct bus_async_bridge* bridge)
 {
     if (!bridge)
@@ -190,11 +186,6 @@ void bus_async_bridge_release(struct bus_async_bridge* bridge)
     bridge->in_use = 0;
 }
 
-/**
- * @brief HAL 异步完成回调桥接 → 调用用户 cb 并释放槽位
- * @param userdata bus_async_bridge 上下文指针
- * @param trans 传输完成描述符指针
- */
 void bus_async_bridge_complete(void* userdata, const void* trans)
 {
     struct bus_async_bridge* bridge = (struct bus_async_bridge*)userdata;

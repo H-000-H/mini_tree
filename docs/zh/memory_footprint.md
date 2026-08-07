@@ -53,6 +53,8 @@
 | + WDT + safe_state | 20.4 | 3.5 | 1.2 | 7.3 | 24.9 | `CONFIG_WDT` + `CONFIG_SAFE_STATE` |
 
 > 上表为 GCC `-Os` + LTO 估算。开日志（`CONFIG_SYS_LOG_LEVEL>0`）各档增 ~3–8 KiB `rodata`/`text`；关日志最划算。
+>
+> 口径说明：本表为 **flash 合计**（text+rodata+data），与 [CHANGELOG.md](../../CHANGELOG.md) 中"全库 85.3→28.0 KB / 默认最小 ≈ 2.8 KB"的**静态 RAM（bss + data）下限**叙事口径不同（后者是历史压缩成果、且只计 RAM），二者不可直接比较；最新 RAM 下限以本表 `bss`/`data` 列为准。
 
 ---
 

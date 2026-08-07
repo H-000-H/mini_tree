@@ -50,8 +50,9 @@
 
 ```c
 struct device *dev = device_find("uart0"); /* 名以 DTS 为准 */
-if (!dev)
-    return VFS_ERR_NODEV;
+/* device_find 失败返回错误指针（ERR_PTR），非 NULL，须用 IS_ERR 判错 */
+if (IS_ERR(dev))
+    return PTR_ERR(dev);
 
 int ret = device_open(dev, NULL);
 if (ret != VFS_OK)
@@ -106,3 +107,4 @@ return ret;
 
 - [fast_path.md](fast_path.md) · [osal_switching.md](osal_switching.md)
 - [architecture.md](architecture.md)
+- [app_cpp_guide.md](app_cpp_guide.md)（上层 C++ 限制与推荐）

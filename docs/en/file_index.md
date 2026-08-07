@@ -97,7 +97,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `algorithm/buffer/` | ring & double buffers |
 | `cmake/*.cmake` | `dep_fetch` + `mini_tree_link_*` helpers; also `disasm` / `rust` / `esp_idf` |
 
-> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP / cJSON** and all other bricks are fetched at link time.
+> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP / cJSON** are fetched at config time, all other bricks at link time.
 
 ---
 

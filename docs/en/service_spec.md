@@ -50,8 +50,9 @@
 
 ```c
 struct device *dev = device_find("uart0"); /* name per DTS */
-if (!dev)
-    return VFS_ERR_NODEV;
+/* device_find returns an error pointer (ERR_PTR) on failure, not NULL; check with IS_ERR */
+if (IS_ERR(dev))
+    return PTR_ERR(dev);
 
 int ret = device_open(dev, NULL);
 if (ret != VFS_OK)
@@ -106,3 +107,4 @@ Conventions:
 
 - [fast_path.md](fast_path.md) · [osal_switching.md](osal_switching.md)
 - [architecture.md](architecture.md)
+- [app_cpp_guide.md](app_cpp_guide.md) (upper-layer C++ restrictions and recommendations)

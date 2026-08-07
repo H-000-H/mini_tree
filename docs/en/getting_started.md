@@ -8,7 +8,7 @@
 | :--- | :--- |
 | **Audience** | Platform and application engineers |
 | **Prerequisites** | CMake, basic C; have a target board or at least be able to link a firmware |
-| **Related** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools/README.md](../tools/README.md) |
+| **Related** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 
@@ -32,7 +32,7 @@
 | CMake ≥ 3.16 | Build the static library | Ninja / Make either works |
 | Python 3 | genconfig, dtc-lite, gen_compile_db | — |
 | `lark` | dtc-lite parsing | `pip install lark` |
-| Built-in kconfiglib (`tools/_vendor/`) | menuconfig / guiconfig | Bundled in the repo, **no install needed**; both UIs in [tools/README.md](../tools/README.md) |
+| Built-in kconfiglib (`tools/_vendor/`) | menuconfig / guiconfig | Bundled in the repo, **no install needed**; both UIs in [tools_guide.md](../tools_guide.md) |
 | clang-format ≥ 15 / clang-tidy (optional) | Code style and naming checks | see [coding_style.md](coding_style.md) |
 | Platform toolchain + SDK | Real hardware | **Only** linked into the platform project, never into middleware public headers |
 
@@ -126,7 +126,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | `VENDOR_INC_DIRS` | `STRING` | vendor-header `-I` for dtc/cpp macro expansion |
 | `VENDOR_DEFINES` | `STRING` | extra `-D` (rarely used) |
 | ETL (`cmake/etl.cmake`) | — | **vendored in `lib/etl`** (include + cmake only); always linked by the root CMake (Fetch fallback if missing) |
-| Other open-source bricks | — | TinyUSB / lwIP / cJSON and the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) all use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
+| Other open-source bricks | — | TinyUSB / lwIP / cJSON are **config-time** FetchContent (root CMake directly `include`s their `cmake/*.cmake`); the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | optional; see `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | adds a disassembly post-build step when enabled (`cmake/disasm.cmake`) |
 
@@ -137,7 +137,7 @@ The `mini_tree` target will:
 1. Run `genconfig.py`
 2. Run dtc-lite (scan `DRIVER_REGISTER` in vfs/bus/drivers and generate the compile-time probe table)
 3. Pick OSAL / SYSTEM sources per `.config`; link the vendored kernels in `lib/` (FreeRTOS v11.3.0 / RT-Thread v5.3.0)
-4. All optional bricks (incl. TinyUSB / lwIP / cJSON) are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
+4. Config-time bricks (TinyUSB / lwIP / cJSON) are directly `include`d by the root CMake via their `cmake/*.cmake`; the rest are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
 
 Language-backend comparison: [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp); USB board-level contract: [usb_tusb_port.md](usb_tusb_port.md); brick list: [ecosystem.md](ecosystem.md).
 
@@ -197,6 +197,7 @@ int main(void)
 ### 6.2 C++ (`system_init.hpp`)
 
 ```cpp
+#include "config.h"            // CONFIG_OSAL_* / CONFIG_XTASK_PREEMPT macros required by the headers below
 #include "system_init.hpp"
 
 mini_tree::system_pre_os_init();
@@ -256,4 +257,4 @@ This repo is a **CMake + clangd** based, cross-platform architecture. **At the c
 
 - [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)
 - [osal_switching.md](osal_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)
-- [tools/README.md](../tools/README.md)
+- [tools_guide.md](../tools_guide.md)

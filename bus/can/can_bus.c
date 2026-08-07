@@ -311,9 +311,6 @@ static void can_client_unregister_impl(struct device* pdev)
 }
 
 /**
- * @brief 注销 CAN client 并递减 host 引用计数
- * @param pdev client device 指针
- */
 void can_bus_client_unregister(struct device* pdev) { can_client_unregister_impl(pdev); }
 
 /**

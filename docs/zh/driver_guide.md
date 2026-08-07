@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **读者** | 写平台 dtsi / 写 VFS 驱动的人 |
 | **前置** | [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) |
-| **相关** | [tools/README.md](../tools/README.md) · [architecture.md](architecture.md) |
+| **相关** | [tools_guide.md](../tools_guide.md) · [architecture.md](architecture.md) |
 
 ---
 
@@ -67,10 +67,11 @@ CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `
 
 ```bash
 python3 tools/dtc-lite.py <board.dts> <out_dir> \
-  vfs/spi vfs/uart … drivers/w25qxx …
+  vfs/spi vfs/uart … drivers/w25qxx … \
+  -I <vendor_include_dir> … -D <NAME[=VALUE]> …
 ```
 
-> 上例：`<board.dts>` 为入口，`<out_dir>` 为生成目录，其后为 `DRIVER_REGISTER` 扫描目录列表。
+> 上例：`<board.dts>` 为入口，`<out_dir>` 为生成目录，其后为 `DRIVER_REGISTER` 扫描目录列表；`-I` 追加厂商头搜索目录、`-D` 追加预处理宏（对应根 `CMakeLists.txt` 的 `VENDOR_INC_DIRS` / `VENDOR_DEFINES`）。
 
 根 `CMakeLists.txt` 已传入本仓库相关 vfs/bus/drivers 目录。
 
@@ -194,5 +195,5 @@ Probe 成功路径：`drivers/` 目录产品驱动无需手动调用 `device_lc_
 ## 相关文档
 
 - [usb_tusb_port.md](usb_tusb_port.md) · [peripherals.md](peripherals.md) · [amp.md](amp.md)
-- [tools/README.md](../tools/README.md)
+- [tools_guide.md](../tools_guide.md)
 - [service_spec.md](service_spec.md) · [faq.md](faq.md)

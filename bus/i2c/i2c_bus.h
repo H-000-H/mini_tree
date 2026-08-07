@@ -68,7 +68,7 @@ extern "C"
     int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg,
                                 struct i2c_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
-     * @brief I2C client 注销 (ref_count -1, 清零槽位)
+     * @brief 注销 I2C client 并递减 host 引用计数 (ref_count -1, 清零槽位)
      * @param pdev client device
      */
     void i2c_bus_client_unregister(struct device* pdev);

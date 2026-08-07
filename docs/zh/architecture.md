@@ -87,7 +87,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `time_slice/` | 裸机调度 — 协调式 (`xtask_coop.c`, 默认) 与抢占式 (`xtask_preempt.c`, 实验性) 二选一, 共用 `xtask.h` API; CMake + `#ifdef` 双重互斥; 仅 `OSAL_NULL` | `x_scheduler` / `x_task` |
 | `drivers/<chip>/` | 产品驱动（37 个，`{include,src}` 结构） | `DRIVER_REGISTER` / ioctl；dtc-lite 编译期 probe |
 | `can_hook/` | CAN 钩子扩展 | — |
-| `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；全部积木（TinyUSB / lwIP / cJSON / …）链接期 FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
+| `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 为配置期 FetchContent，其余积木链接期 FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
 
 ### 2.1 外设覆盖（当前）
 

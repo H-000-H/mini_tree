@@ -158,7 +158,7 @@ ESP 构建下生成的 `config.h` 常为占位；业务 `CONFIG_*` 以 `sdkconfi
 `lib/` 现状：随仓 vendor 仅 **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；其余积木全部走 FetchContent。
 
 - ESP 驱动：写在 `idf_component_register(... REQUIRES …)`。
-- 链接期 FetchContent（调用 `mini_tree_link_*` 才拉取，local-or-fetch）：TinyUSB、lwIP、cJSON。ESP 下建议改用 IDF 组件 / Component Manager（如 `esp_tinyusb`、`managed_components`）。
+- 配置期 FetchContent（根 CMake 直接 `include(cmake/*.cmake)`，local-or-fetch）：TinyUSB、lwIP、cJSON。ESP 下建议改用 IDF 组件 / Component Manager（如 `esp_tinyusb`、`managed_components`）。
 - 链接期 FetchContent（按需 `mini_tree_link_*`，local-or-fetch on link）：LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB。
 - ETL：随仓 vendor（`lib/etl`，仅 include + cmake），无需拉取；**不要**把 `managed_components` 塞进 `EXTRA_COMPONENT_DIRS`。
 - FreeRTOS：IDF 自带；`CONFIG_OSAL_FREERTOS` 对接 IDF 内核，勿再嵌 `lib/freeRTOS`。

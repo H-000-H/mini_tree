@@ -58,7 +58,7 @@ extern "C"
     int can_bus_client_register(struct device* pdev,
                                 struct can_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
-     * @brief CAN client 注销 (ref_count -1, 清零槽位)
+     * @brief 注销 CAN client 并递减 host 引用计数 (ref_count -1, 清零槽位)
      * @param pdev client device
      */
     void can_bus_client_unregister(struct device* pdev);

@@ -5,7 +5,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 定位启动 / I/O 问题的人 |
-| **相关** | [faq.md](faq.md) · [problem_summary.md](problem_summary.md) · [tools/README.md](../tools/README.md) |
+| **相关** | [faq.md](faq.md) · [problem_summary.md](problem_summary.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 

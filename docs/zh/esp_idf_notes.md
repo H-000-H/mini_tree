@@ -1,19 +1,15 @@
-# ESP-IDF 集成说明与近期修复 / ESP-IDF Integration Notes and Recent Fixes
+# ESP-IDF 集成说明与近期修复
 
 本文记录从 ESP32-S3 板级验证回灌到中间件的**纯修复**，以及 ESP 路径的特殊性与依赖策略建议。
-
-This document records the **pure fixes** back-ported from ESP32-S3 board-level validation into the middleware, plus the ESP-path specifics and dependency-strategy recommendations.
 
 产品驱动默认在 **`mini_tree/drivers/<chip>/`**（共 37 个，GLOB 编进 `mini_tree` 组件）。
 Product drivers live by default in **`mini_tree/drivers/<chip>/`** (37 total, GLOB-compiled into the `mini_tree` component).
 
-**唯一**树外例外：`components/driver_ws2812`（厂商 RMT / `led_strip`）。详见 [esp_idf_cmake.md](../docs/esp_idf_cmake.md)。
-**The only** out-of-tree exception: `components/driver_ws2812` (vendor RMT / `led_strip`). See [esp_idf_cmake.md](../docs/esp_idf_cmake.md).
+**唯一**树外例外：`components/driver_ws2812`（厂商 RMT / `led_strip`）。详见 [esp_idf_cmake.md](../esp_idf_cmake.md)。
+**The only** out-of-tree exception: `components/driver_ws2812` (vendor RMT / `led_strip`). See [esp_idf_cmake.md](../esp_idf_cmake.md).
 
 入口：`CMakeLists.txt` 在 `ESP_PLATFORM` 时 `include(cmake/esp_idf.cmake)` 后 `return()`。
 Entry: when `ESP_PLATFORM` is set, `CMakeLists.txt` does `include(cmake/esp_idf.cmake)` and then `return()`.
-
----
 
 ## 1. 已同步的修复（跨板通用）/ Synced Fixes (Board-Agnostic)
 
@@ -29,17 +25,11 @@ Entry: when `ESP_PLATFORM` is set, `CMakeLists.txt` does `include(cmake/esp_idf.
 
 验证建议（非 ESP 板）：默认 CMake Preset 全量编译；改过 generator 后确认生成的 `board_probe.c` 中 extern **无** `weak`。
 
-Validation (non-ESP boards): full build with the default CMake preset; after touching the generator, confirm the generated `board_probe.c` externs have **no** `weak`.
-
----
-
 ## 2. ESP-IDF 特殊性（仅 ESP 路径）/ ESP-IDF Specifics (ESP Path Only)
 
 ### 2.1 Include 顺序（stubs vs 生成头）/ Include Order (stubs vs. generated headers)
 
 `ide/stubs/board_nodes.h` 里 `DEV_ID_COUNT=1` 仅供 IDE；若排在生成目录之前，会盖住 dtc-lite 真表，表现为：
-
-`DEV_ID_COUNT=1` in `ide/stubs/board_nodes.h` is for the IDE only; if it sorts ahead of the generated dir it shadows the real dtc-lite table, showing as:
 
 - `probe complete: 0 ok, 0 fail`
 - `device_find_by_label` 找不到真实设备
@@ -57,12 +47,10 @@ GENERATED_BOARD_DIR  →  SCRUBBER_GEN_DIR  →  ide/stubs  →  KCONFIG_GEN_DIR
 
 空壳 `config.h` 必须在 stubs **之后**：stubs 的 `config.h` 提供 `CONFIG_SYS_LOG_USE_PRINTF` 等；空壳若抢先则触发 `SYS_LOG backend not configured`。
 
-The empty-shell `config.h` must come **after** stubs: the stubs' `config.h` provides `CONFIG_SYS_LOG_USE_PRINTF` and friends; if the shell wins, you hit `SYS_LOG backend not configured`.
-
 非 ESP 的 genconfig 真 `config.h` 路径不受此约束。
 The non-ESP genconfig real `config.h` path is not subject to this constraint.
 
-### 2.2 强引用与静态库 / 跨组件驱动 / Strong References, Static Libs, and Cross-Component Drivers
+### 2.2 强引用与静态库
 
 - **同组件**（`drivers/*/src/*.c` 在 `libmini_tree.a` 内）：`board_probe` 强引用即可从同一 `.a` 抽出 `.o`。
   **Same component** (`drivers/*/src/*.c` inside `libmini_tree.a`): the strong reference in `board_probe` pulls the `.o` out of the same `.a`.
@@ -70,8 +58,6 @@ The non-ESP genconfig real `config.h` path is not subject to this constraint.
   **Out-of-tree component** (currently only `driver_ws2812`): use IDF `WHOLE_ARCHIVE` on it so `board_driver_probe_*` lands in the final ELF.
 
 板级扩展 dtc-lite（仅树外驱动需要；产品驱动已由 GLOB 扫入）：
-
-Board-level dtc-lite extension (only needed for out-of-tree drivers; product drivers are already GLOB-scanned):
 
 ```cmake
 set(MINI_TREE_DTC_EXTRA_SCAN_DIRS
@@ -83,34 +69,24 @@ set(MINI_TREE_DTC_EXTRA_DEPENDS
 > 上例：仅树外驱动需要；产品驱动（37 个）已由 `drivers/*/src` GLOB 扫入。
 > Above: only needed for out-of-tree drivers; product drivers (37) are already GLOB-scanned via `drivers/*/src`.
 
-### 2.3 OSAL / 优先级 / OSAL / Priority
+### 2.3 OSAL
 
 ESP-IDF 默认 `configMAX_PRIORITIES` 常为 25（合法 0..24）。中间件默认 dispatch prio=24，并在 OSAL 层钳位，避免 assert。
-
-ESP-IDF's default `configMAX_PRIORITIES` is usually 25 (legal range 0..24). The middleware defaults dispatch prio to 24 and clamps in the OSAL layer to avoid asserts.
 
 ### 2.4 Xtensa windowed ABI
 
 `board_driver_probe_all` 中 `volatile` 循环状态最初为修复 ESP32（Xtensa）上 `call8` 打坏调用方寄存器导致的只 probe 首设备问题。ARM 上作为防御性对齐保留，避免跨板行为分叉。
 
-The `volatile` loop state in `board_driver_probe_all` originally fixed an ESP32 (Xtensa) issue where `call8` clobbered caller registers and only the first device got probed. It is kept on ARM as defensive alignment so behavior doesn't diverge across boards.
-
-### 2.5 `CONFIG_*` 双源 / Dual Source of `CONFIG_*`
+### 2.5 `CONFIG_*` 双源
 
 IDF 已注入 `sdkconfig.h`。`esp_idf.cmake` 只生成空壳 `config.h`，避免与完整 genconfig 头 `-Werror=redefined`。
-
-IDF already injects `sdkconfig.h`. `esp_idf.cmake` only generates an empty-shell `config.h` to avoid `-Werror=redefined` against the full genconfig header.
 
 > 自 Kconfig 拆分后（`Kconfig` / `Kconfig.projbuild` / `Kconfig.mini_tree` 三文件），ESP 路径下 `idf.py menuconfig` 会在顶层菜单显示 "mini_tree Configuration" 子菜单，所有 mini_tree 的 `CONFIG_*` 开关经 IDF confgen 求值后写入 `sdkconfig.h`。`esp_idf.cmake` 中的 `file(STRINGS)` 软编码仍保留以向后兼容旧 sdkconfig，可逐步迁到 `if(CONFIG_OSAL_FREERTOS)` 等 IDF 原生 CMake 变量。
 > After the Kconfig split (`Kconfig` / `Kconfig.projbuild` / `Kconfig.mini_tree`), `idf.py menuconfig` on the ESP path shows a "mini_tree Configuration" submenu at the top level; all mini_tree `CONFIG_*` switches are evaluated by IDF confgen and written into `sdkconfig.h`. The `file(STRINGS)` soft-coding in `esp_idf.cmake` is kept for backward compat with legacy sdkconfigs and can be migrated incrementally to IDF-native CMake variables like `if(CONFIG_OSAL_FREERTOS)`.
 
----
-
-## 3. 推荐：ESP 板删除 vendored `lib/`，改走 IDF / Fetch / Recommended: Drop Vendored `lib/` on ESP Boards, Use IDF / Fetch
+## 3. 推荐：ESP 板删除 vendored `lib/`，改走 IDF
 
 现状：`lib/` 已只 vendor **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；TinyUSB / lwIP / cJSON 与其余积木（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为**链接期 FetchContent**（`mini_tree_link_*`）。在 **ESP-IDF** 上与内核/组件重复的部分仍应裁剪，避免体积、版本、许可证维护成本。
-
-Current state: `lib/` vendors only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL**; TinyUSB / lwIP / cJSON are now **config-time FetchContent**, and the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) are **link-time FetchContent** (`mini_tree_link_*`). Under **ESP-IDF**, anything duplicating the kernel/components should still be dropped to avoid size, version, and license maintenance costs.
 
 **推荐（ESP 板工程）/ Recommended (ESP board project):**
 
@@ -125,10 +101,6 @@ Current state: `lib/` vendors only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and
 
 中间件仓库可继续保留 `lib/` 作为**非 ESP**（Cube / 裸机）的可选 vendored / fetch 落点；ESP 板应视 `lib/` 为可裁剪，默认不依赖其中的 FreeRTOS/lwIP 副本。
 
-The middleware repo may keep `lib/` as an optional vendored / fetch landing spot for **non-ESP** (Cube / bare-metal) builds; ESP boards should treat `lib/` as trimmable and not depend on its FreeRTOS/lwIP copies by default.
-
----
-
 ## 4. 板级对照清单（ESP）/ Board Checklist (ESP)
 
 1. `components/mini_tree` 使用本仓库（或 submodule）并走 `esp_idf.cmake`。
@@ -142,9 +114,7 @@ The middleware repo may keep `lib/` as an optional vendored / fetch landing spot
 5. 逐步去掉 vendored `lib/freeRTOS`、`lib/lwip` 等，确认仍链到 IDF 提供的实现。
    Gradually drop vendored `lib/freeRTOS`, `lib/lwip`, etc., and confirm you still link against the IDF-provided implementations.
 
----
-
-## 5. 刻意不同步到中间件的内容 / Deliberately Not Synced to the Middleware
+## 5. 刻意不同步到中间件的内容
 
 | 内容 / Content | 原因 / Reason |
 |------|------|

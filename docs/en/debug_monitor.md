@@ -5,7 +5,7 @@
 | Item | Content |
 | :--- | :--- |
 | **Audience** | Anyone tracking down boot / probe / I/O issues |
-| **Related** | [faq.md](faq.md) · [problem_summary.md](problem_summary.md) · [tools/README.md](../tools/README.md) |
+| **Related** | [faq.md](faq.md) · [problem_summary.md](problem_summary.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 

@@ -41,10 +41,10 @@ Root `.clang-format`:
 | :--- | :--- |
 | BasedOnStyle | LLVM |
 | Braces | Allman (next line) |
-| AllowShortBlocksOnASingleLine | `false` (keep `{}` even for single statements) |
+| AllowShortBlocksOnASingleLine | `true` (drop `{}` for single-statement `if/for/while`) |
 | Indent | 4 spaces |
 | ColumnLimit | 100 |
-| Pointer/reference alignment | right (`int* p`) |
+| Pointer/reference alignment | left (`int *p`) |
 
 A platform project may copy and tweak `ColumnLimit`, but must **not** break the Allman / 4-space spine.
 
@@ -97,16 +97,24 @@ Recommended at the `app` layer; mandatory below `app`.
 
 ## 7. Dangerous APIs & Poison
 
-`core/include/compiler_compat.h` defines `compiler_compat_poison`, gated by `CONFIG_POISON_DANGEROUS_API`:
+`core/include/compiler_compat_poison.h` disables dangerous APIs via `#pragma GCC poison` (full list in that header). It is **not** gated by a standalone Kconfig symbol — it is **on by default**, and only released when an opt-out macro is defined:
+
+| Opt-out macro | Releases |
+| :--- | :--- |
+| `ALLOW_HEAP_ALLOC` | `malloc` / `calloc` / `realloc` / `free` (and C++ `new` / `delete`) |
+| `ALLOW_STDIO_OUTPUT` | `printf` / `fprintf` / `sprintf` / `vprintf` and other stdio output |
+
+Commonly poisoned APIs and their replacements:
 
 | Poisoned API | Replacement |
 | :--- | :--- |
-| `malloc` / `free` | static pool / `bufferpool` / `kalloc` |
-| `printf` | `SYS_LOG*` |
+| `malloc` / `free` / `calloc` / `realloc` | static pool / `bufferpool` / `kalloc` |
+| `printf` / `fprintf` / `sprintf` | `SYS_LOG*` |
 | bare `memcpy` / `memset` / `memmove` | `safe_mem*` or explicit length checks |
-| `strcpy` / `strcat` | `safe_str*` |
+| `strcpy` / `strcat` / `strdup` / `strndup` | `safe_str*` |
+| file IO: `fopen` / `fclose` / `fread` / `fwrite` / `fseek` / `tmpfile` / `popen` / `gets` … | use middleware/board-provided IO |
 
-Poison only applies in controlled translation units; HAL strong symbols and platform bare-metal parts may be exempt (per the macro definition).
+Poison only applies in controlled translation units; HAL strong symbols and platform bare-metal parts may be exempt via the `ALLOW_*` macros.
 
 ---
 

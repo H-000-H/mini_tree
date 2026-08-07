@@ -37,7 +37,7 @@
 | **VIRQ** | virtual IRQ number + top/bottom halves | `interrupt/` |
 | **status / VFS_ERR_*** | unified error codes | `core/include/status.h` |
 | **Brick** | optional open-source capability block (GUI/network/FS…) | [ecosystem.md](ecosystem.md); `mini_tree_link_*` |
-| **vendor / Fetch** | only FreeRTOS / RT-Thread / ETL live permanently in `lib/`; all bricks (incl. TinyUSB / lwIP / cJSON) use link-time FetchContent | [ecosystem.md](ecosystem.md) §0 |
+| **vendor / Fetch** | only FreeRTOS / RT-Thread / ETL live permanently in `lib/`; TinyUSB / lwIP / cJSON are config-time FetchContent, the rest link-time | [ecosystem.md](ecosystem.md) §0 |
 | **two-phase ignition** | pre-os → start-tasks → complete → scheduler | `system_init.h` / `system_init.hpp` |
 
 ---
@@ -64,7 +64,7 @@
 
 1. [architecture.md](architecture.md) · [design_decisions.md](design_decisions.md)
 2. [file_index.md](file_index.md) · [CONTRIBUTING.md](../CONTRIBUTING.md)
-3. [api_compatibility.md](api_compatibility.md) · [tools/README.md](../tools/README.md)
+3. [api_compatibility.md](api_compatibility.md) · [tools_guide.md](../tools_guide.md)
 
 ---
 
@@ -77,7 +77,7 @@
 | `core` / `osal` / `interrupt` / `system_*` | runtime infrastructure | OSAL backends may pull kernels from `lib/` |
 | `tools` | dtc-lite, genconfig, gen_compile_db, menuconfig | No |
 | `ide/stubs` | clangd placeholder headers without a build | No |
-| `lib/` | vendored: FreeRTOS / RT-Thread / ETL; all bricks (incl. TinyUSB / lwIP / cJSON) at link time | Open-source bricks, see [ecosystem.md](ecosystem.md) |
+| `lib/` | vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP / cJSON at config time, the rest at link time | Open-source bricks, see [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -94,7 +94,7 @@ Condensed map below; full TOC in [docs/README.md](README.md).
 | Diagnostics | [debug_monitor](debug_monitor.md) · [problem_summary](problem_summary.md) |
 | Selection | [design_decisions](design_decisions.md) · [references](references.md) |
 | Index | [file_index](file_index.md) · [roadmap](roadmap.md) · [todolist](todolist.md) |
-| Tools | [tools/README](../tools/README.md) |
+| Tools | [tools_guide](../tools_guide.md) |
 
 ---
 

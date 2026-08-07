@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **Audience** | People writing platform dtsi / VFS drivers |
 | **Prereq.** | [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) |
-| **Related** | [tools/README.md](../tools/README.md) · [architecture.md](architecture.md) |
+| **Related** | [tools_guide.md](../tools_guide.md) · [architecture.md](architecture.md) |
 
 ---
 
@@ -67,10 +67,11 @@ Product drivers and ESP wiring: see [esp_idf_cmake.md](esp_idf_cmake.md).
 
 ```bash
 python3 tools/dtc-lite.py <board.dts> <out_dir> \
-  vfs/spi vfs/uart … drivers/w25qxx …
+  vfs/spi vfs/uart … drivers/w25qxx … \
+  -I <vendor_include_dir> … -D <NAME[=VALUE]> …
 ```
 
-> Above: `<board.dts>` is the entry, `<out_dir>` the output dir, followed by the `DRIVER_REGISTER` scan dirs.
+> Above: `<board.dts>` is the entry, `<out_dir>` the output dir, followed by the `DRIVER_REGISTER` scan dirs; `-I` adds vendor header search dirs, `-D` adds preprocessor macros (matching root `CMakeLists.txt`'s `VENDOR_INC_DIRS` / `VENDOR_DEFINES`).
 
 The root `CMakeLists.txt` already passes the repo's relevant vfs/bus/drivers dirs.
 
@@ -194,5 +195,5 @@ On the probe-success path: product drivers under `drivers/` don't call `device_l
 ## Related Docs
 
 - [usb_tusb_port.md](usb_tusb_port.md) · [peripherals.md](peripherals.md) · [amp.md](amp.md)
-- [tools/README.md](../tools/README.md)
+- [tools_guide.md](../tools_guide.md)
 - [service_spec.md](service_spec.md) · [faq.md](faq.md)
