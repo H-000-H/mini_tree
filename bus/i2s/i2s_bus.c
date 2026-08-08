@@ -49,7 +49,7 @@ static const char* k_tag = "i2s_bus";
 /**
  * @brief 初始化 I2S 总线 host 对象池
  */
-pre_execution(150) static void i2s_bus_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool, s_host_used, I2S_BUS_HOST_MAX));
 }

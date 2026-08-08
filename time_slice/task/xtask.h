@@ -16,6 +16,7 @@
 #include "hal_tim.h"
 #include "status.h"
 #include "stdint.h"
+#include "compiler_inline.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -136,6 +137,13 @@ extern "C"
      */
     int scheduler_tim_isr_top(void* arg, uint16_t irq_num);
 
+    /**
+     *@brief 计算最高优先级默认数字越高优先级越低
+     */
+    COMPAT_STATIC_INLINE uint8_t get_highest_priority(uint32_t priority)
+    {
+        return 31-COMPAT_CLZ(priority);
+    }
 #ifdef __cplusplus
 }
 #endif

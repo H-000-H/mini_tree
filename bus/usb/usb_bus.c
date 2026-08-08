@@ -45,7 +45,7 @@ static struct usb_bus_client s_usb_clients[DEV_ID_COUNT];
 static struct usb_bus_host* s_irq_host;
 static const char* const k_tag = "usb_bus";
 
-pre_execution(150) static void usb_bus_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
 }

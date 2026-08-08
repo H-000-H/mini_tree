@@ -41,7 +41,7 @@ static const char* const k_host_tag = "i2c_vfs_host";
 /**
  * @brief I2C Host 私有数据池启动初始化
  */
-pre_execution(150) static void vfs_i2c_priv_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
@@ -291,7 +291,7 @@ static const char* const k_client_tag = "i2c_vfs_client";
 /**
  * @brief I2C Client 私有数据池启动初始化
  */
-pre_execution(160) static void i2c_vfs_client_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
 }

@@ -37,7 +37,7 @@ static uint8_t s_usb_priv_used[USB_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t s_usb_priv_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_host_tag = "usb_host_vfs";
 
-pre_execution(150) static void vfs_usb_priv_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
@@ -173,7 +173,7 @@ static uint8_t s_client_used[USB_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_client_tag = "usb_client_vfs";
 
-pre_execution(150) static void vfs_usb_client_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT));
 }

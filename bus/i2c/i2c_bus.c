@@ -51,7 +51,7 @@ static const char* const k_tag = "i2c_bus";
 /**
  * @brief I2C Host 池启动初始化
  */
-pre_execution(150) static void i2c_bus_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
 }

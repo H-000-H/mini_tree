@@ -54,7 +54,7 @@ static const char* const k_tag = "uart_bus";
 /**
  * @brief UART Host/Client 池启动初始化
  */
-pre_execution(150) static void uart_bus_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void uart_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_uart_host_pool_ctrl, s_uart_host_used, UART_BUS_HOST_MAX));

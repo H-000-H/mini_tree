@@ -46,7 +46,7 @@ static const char* const k_host_tag = "uart_host_vfs";
 /**
  * @brief UART Host VFS 私有数据池启动初始化
  */
-pre_execution(150) static void vfs_uart_priv_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT));
@@ -289,7 +289,7 @@ static const char* const k_tag = "uart_vfs";
 /**
  * @brief UART Client VFS 私有数据池启动初始化
  */
-pre_execution(160) static void uart_vfs_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT));
 }

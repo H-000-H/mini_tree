@@ -51,7 +51,7 @@ static const char* const k_tag = "drv8833";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160) static void drv8833_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void drv8833_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT));
 }

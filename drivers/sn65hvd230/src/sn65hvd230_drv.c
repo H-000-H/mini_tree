@@ -45,7 +45,7 @@ static const char* const k_tag = "sn65hvd230";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160) static void sn65hvd230_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sn65hvd230_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_sn65hvd230_pool_ctrl, s_sn65hvd230_used, SN65HVD230_POOL_COUNT));

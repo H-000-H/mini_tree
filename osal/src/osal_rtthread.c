@@ -169,7 +169,7 @@ static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 初始化静态互斥锁池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化互斥锁池控制结构体
  */
-pre_execution(150) static void osal_mutex_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void)
 {
     osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE);
 }
@@ -506,7 +506,7 @@ static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 初始化二值信号量池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化二值信号量池
  */
-pre_execution(151) static void osal_sem_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void)
 {
     osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE);
 }

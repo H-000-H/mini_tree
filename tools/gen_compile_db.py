@@ -73,6 +73,29 @@ def _read_flags() -> list[str]:
     return flags
 
 
+def _read_dotconfig() -> list[str]:
+    """读取 .config，把 CONFIG_*=y 转成 -DCONFIG_*=1 宏（与真实 Kconfig 构建对齐）。
+
+    让 clangd 随 .config 自动切换：如 CONFIG_XTASK_PREEMPT=y 时
+    xtask_preempt.c 被激活、xtask_coop.c 被屏蔽，无需手工改 compile_flags.txt。
+    compile_flags.txt 里已显式给出的宏（如 CONFIG_OSAL_NULL）不会被重复注入。
+    """
+    dot = _ROOT / ".config"
+    if not dot.exists():
+        return []
+    macros: list[str] = []
+    try:
+        for line in dot.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line.startswith("CONFIG_") or not line.endswith("=y"):
+                continue
+            name = line[:-2]  # 去掉 "=y"
+            macros.append(f"-D{name}=1")
+    except OSError as e:
+        print(f"警告：读取 .config 失败，跳过 ({e})", file=sys.stderr)
+    return macros
+
+
 def _collect_files() -> tuple[list[Path], list[Path]]:
     """扫描 _SCAN_DIRS 下的源文件与头文件，返回 (sources, headers)。"""
     sources: list[Path] = []
@@ -141,6 +164,13 @@ def main() -> None:
         return
 
     flags = _read_flags()
+    # 合并 .config 的 CONFIG_*=y 宏（自动对齐真实 Kconfig；同名宏以 .config 为准）
+    dot_macros = _read_dotconfig()
+    if dot_macros:
+        dot_names = {m.split("=")[0] for m in dot_macros}
+        flags = dot_macros + [f for f in flags
+                              if not f.startswith("-D") or f.split("=")[0] not in dot_names]
+        print(f"已从 .config 注入 {len(dot_macros)} 个配置宏")
     sources, headers = _collect_files()
     if not sources:
         print("警告：未扫描到任何源文件", file=sys.stderr)

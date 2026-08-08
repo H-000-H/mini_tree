@@ -46,7 +46,7 @@ static const char* const k_tag = "ina219";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160) static void ina219_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ina219_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_ina219_pool_ctrl, s_ina219_used, INA219_POOL_COUNT));
 }

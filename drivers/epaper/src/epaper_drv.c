@@ -54,7 +54,7 @@ static const char* const k_tag = "epaper";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(160) static void epaper_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void epaper_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT));
 }

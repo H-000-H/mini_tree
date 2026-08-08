@@ -34,7 +34,7 @@ static const char* const k_tag = "vfs_rtc";
 /**
  * @brief RTC VFS 私有数据池启动初始化
  */
-pre_execution(160) static void vfs_rtc_pool_boot(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
 }

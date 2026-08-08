@@ -6,13 +6,19 @@
  *          - CONFIG_XTASK_PREEMPT 未定义 (默认): 本文件整段关闭, 用 xtask_coop.c
  *          - CONFIG_XTASK_PREEMPT 已定义:       本文件编入 (抢占式), xtask_coop.c 同步关闭
  *        CMake 也会同步门控, 这里是源码层面的第二道保险.
- *        尚未完工: g_scheduler_arr / g_sched_tim_ctx_arr 当前无任何引用.
+ *        尚未完工: g_scheduler_arr / s_preempt_tim_arr 当前无任何引用.
  */
 #ifdef CONFIG_OSAL_NULL
 #ifdef CONFIG_XTASK_PREEMPT
 
 #include "xtask.h"
 
+#include "board_devtable.h"
+#include "compiler_compat.h"
+#include "device.h"
+#include "dt_config_gen.h"
+#include "interrupt.h"
+#include "vfs-tim.h"
 /* 抢占式调度器专用配置 — 与协调式 xtask_coop.c 解耦, 不污染 xtask.h */
 #ifndef HW_TIM_SCHEDULER
 #define HW_TIM_SCHEDULER 1
@@ -41,13 +47,28 @@ svc不可靠还是pensv，其实挺好的那就这样定了硬件tim就管第x*y
 
 /* TODO: N+1 抢占式调度器尚未完工:
  *   - 原实现用运行期全局变量 g_scheduler 做数组初始化器, 非编译期常量 (C 标准禁止), 已改为 {0};
- *   - 原第二个 xscheduler_early_init 与第一套同名同 constructor 优先级 (重复注册), 已改名 _preempt 并改优先级 161;
- *   - g_scheduler_arr / g_sched_tim_ctx_arr 当前无任何引用, 待补全实现。
+ *   - g_scheduler_arr / s_preempt_tim_arr 当前无任何引用, 待补全实现。
+ *   - 与 xtask_coop.c 由 CONFIG_XTASK_PREEMPT 互斥门控, 故早初始化函数可同名 xscheduler_early_init
+ *     (两者优先级 160/161 不同, 但互斥编译不会同时注册).
  */
-x_scheduler g_scheduler_arr[HW_TIM_SCHEDULER] = {0};
-static struct scheduler_tim_ctx g_sched_tim_ctx_arr;
+struct scheduler_tim_param
+{
+    struct scheduler_tim_ctx ctx;
+    int                      tim_delay;
+};
 
-pre_execution(161) static void xscheduler_early_init_preempt(void)
+struct x_preempt_task
+{
+    x_task* task;
+    int priority;
+};
+
+x_scheduler g_scheduler_arr[HW_TIM_SCHEDULER] = {0};
+static device_id_t s_schedule_chosen_arr[HW_TIM_SCHEDULER] = {CHOSEN_SCHEDULER_TIM};
+static struct scheduler_tim_param s_preempt_tim_arr[HW_TIM_SCHEDULER]={0};
+static struct x_preempt_task s_preempt_task[HW_TIM_SCHEDULER]={0};
+
+pre_execution(PRE_EXEC_PRIO_SCHEDULER) static void xscheduler_early_init(void)
 {
     for (uint8_t i = 0; i < HW_TIM_SCHEDULER; i++)
     {
@@ -55,5 +76,84 @@ pre_execution(161) static void xscheduler_early_init_preempt(void)
     }
 }
 
+static bool is_need_preempt(struct x_preempt_task task,uint32_t schedule_id)
+{
+    return task.priority>s_preempt_task[schedule_id].priority;
+}
+
+void xscheduler_start(void)
+{
+    for (uint8_t i = 0; i < HW_TIM_SCHEDULER; i++)
+    {
+        struct device* tick_dev = board_dev_get(s_schedule_chosen_arr[i]);
+        if (!tick_dev)
+            continue;
+        if(device_open(tick_dev,NULL)!=VFS_OK)
+            return;
+
+        hal_tim_device *ptim = vfs_tim_get_hal_dev(tick_dev);
+
+        s_preempt_tim_arr[i].ctx.tim=ptim;
+        s_preempt_tim_arr[i].ctx.scheduler=&g_scheduler_arr[i];
+    #ifdef CONFIG_VIRQ
+        int tick_delay = -1;
+        struct scheduler_tim_param param;
+        param.tim_delay=tick_delay;
+        param.ctx=s_preempt_tim_arr[i].ctx;
+        COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev,"tick_delay",&tick_delay));
+        
+        interrupt_virtual_register(VIRQ(tim, i),scheduler_tim_isr_top,NULL,&param);
+        int irqn =-1;
+        int priority = 5;
+        COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev,"irqn",&irqn));
+        COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
+        interrupt_hw_enable(irqn, (uint32_t)priority);
+    #endif
+    }
+}
+
+x_task_handle_t x_scheduler_task_create(x_scheduler* sched,const char* name, uint32_t period_ms, uint32_t priority, void (*cb)(x_task*), void* param,struct x_preempt_task* task)
+{
+    if(!cb||sched||task)
+        return VFS_ERR_INVAL;
+    task ->task->name =name;
+    task->task->xTask_cb =cb;
+    COMPAT_ATOMIC_STORE(&task->task->period,period_ms,COMPAT_MO_RELAXED);
+    COMPAT_ATOMIC_STORE(&task->task->next_running,COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED)+period_ms,COMPAT_MO_RELAXED);
+    COMPAT_ATOMIC_STORE(&task->task->is_running, false, COMPAT_MO_RELAXED);
+    /*这里要对list动手脚*/
+    return (x_task_handle_t)(uintptr_t)task;
+}
+
+int scheduler_tim_isr_top(void *arg, uint16_t irq_num)
+{
+    COMPAT_IGNORE_RESULT(irq_num);
+
+    struct scheduler_tim_param* param = (struct scheduler_tim_param*)arg;
+    if(param&&hal_tim_clear_update_flag(param->ctx.tim)==VFS_OK)
+        x_scheduler_tick(param->ctx.scheduler,param->tim_delay);
+    return VFS_OK;
+}
+
+int x_task_run_preempt(x_scheduler* sched[HW_TIM_SCHEDULER])
+{
+    if((!(*sched))||(!sched))
+        return VFS_ERR_INVAL;
+
+    for(uint8_t i;i<HW_TIM_SCHEDULER;i++)
+    {
+        list_node* head = &sched[i]->task_list_head;
+        list_node*curent = head->next;
+    }
+    return VFS_OK;
+}
+
+int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
+{
+    if (!sched)
+        return VFS_ERR_INVAL;
+    COMPAT_ATOMIC_ADD_FETCH(&sched->tick_count, ms, COMPAT_MO_RELAXED);
+    return VFS_OK;
+}
 #endif /* CONFIG_XTASK_PREEMPT */
 #endif /* CONFIG_OSAL_NULL */

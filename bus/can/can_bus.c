@@ -50,7 +50,7 @@ static const char* const k_tag = "can_bus";
 /**
  * @brief CAN Host 池启动初始化
  */
-pre_execution(150) static void can_bus_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX));
 }

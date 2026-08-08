@@ -431,7 +431,7 @@ static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
 /**
  * @brief TIM Host VFS 私有数据池启动初始化
  */
-pre_execution(150) static void vfs_tim_priv_pool_init()
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init()
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_tim_priv_pool_ctrl, s_tim_priv_used, TIM_VFS_PRIV_COUNT));

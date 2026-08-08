@@ -189,7 +189,7 @@ static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
 /**
  * @brief DAC Host VFS 私有数据池启动初始化
  */
-pre_execution(151) static void vfs_dac_priv_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));

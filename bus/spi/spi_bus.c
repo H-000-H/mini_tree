@@ -57,7 +57,7 @@ static const char* const k_tag = "spi_bus";
 /**
  * @brief SPI Host 池启动初始化
  */
-pre_execution(150) static void spi_bus_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void spi_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_spi_host_pool_ctrl, s_spi_host_used, SPI_BUS_HOST_MAX));
 }

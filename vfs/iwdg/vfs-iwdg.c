@@ -28,7 +28,7 @@ static const char* k_tag = "vfs_iwdg";
 /**
  * @brief IWDG VFS 私有数据池启动初始化
  */
-pre_execution(160) static void boot(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1));
 }

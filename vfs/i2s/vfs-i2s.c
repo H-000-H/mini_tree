@@ -55,7 +55,7 @@ static const char* k_cli = "i2s_vfs";
 /**
  * @brief Host/Client 私有池启动初始化
  */
-pre_execution(160) static void pools(void)
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void pools(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool_ctrl, s_host_used, I2S_HOST_POOL));
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2S_CLIENT_POOL));

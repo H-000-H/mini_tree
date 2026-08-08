@@ -92,7 +92,7 @@ COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
  * @brief 队列池初始化
  * @details 队列池初始化 主要是队列的缓冲区 队列的长度 队列的元素大小 队列的头部和尾部
  */
-pre_execution(152) static void osal_null_queue_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_QUEUE_POOL) static void osal_null_queue_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_QUEUE_POOL_SIZE));
@@ -236,7 +236,7 @@ static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 互斥锁池初始化
  * @details 互斥锁池初始化 主要是互斥锁的缓冲区 互斥锁的使用情况 互斥锁的池控制句柄
  */
-pre_execution(150) static void osal_null_mutex_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_null_mutex_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE));
 }
@@ -972,7 +972,7 @@ static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
 /**
  * @brief null OSAL 信号量池启动初始化
  */
-pre_execution(151) static void osal_null_sem_pool_boot_init(void)
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_null_sem_pool_boot_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE));
 }

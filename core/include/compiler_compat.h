@@ -168,25 +168,63 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void COMPAT_TRAP(void) { __builtin_trap(); 
  * @param x 32 位无符号整数
  * @return 末尾零位个数; x 为 0 时返回 32
  */
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS)
+COMPAT_STATIC_INLINE uint32_t COMPAT_CTZ(uint32_t x)/*二分查找*/
+{
+    if (x == 0)
+        return 32; // 0无定义，自定义返回32做异常标记
+    uint8_t count = 0;
+    uint32_t shift;
+    for (shift = 16; shift; shift >>= 1)
+    {
+        if ((x & ((1U << shift) - 1U)) == 0)
+        {
+            count += shift;
+            x >>= shift;
+        }
+    }
+    return count;
+}
+#else
 COMPAT_STATIC_INLINE uint32_t COMPAT_CTZ(uint32_t x)
 {
     if (x == 0U)
         return 32U;
     return (uint32_t)__builtin_ctz(x);
 }
-
+#endif
 /**
  * @brief 计算 x 的前导零位 (count leading zeros)
  * @param x 32 位无符号整数
  * @return 前导零位个数; x 为 0 时返回 32
  */
+
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS)
+COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_CLZ(uint32_t x)
+{
+    uint32_t count = 31;
+    if (x == 0)
+        return 32;
+
+    for (uint32_t shift = 16; shift; shift >>= 1)
+    {
+        uint32_t val = x >> shift;
+        if (val)
+        {
+            x = val;
+            count -= shift;
+        }
+    }
+    return count;
+}
+#else
 COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_CLZ(uint32_t x)
 {
     if (x == 0U)
         return 32U;
     return (uint32_t)__builtin_clz(x);
 }
-
+#endif
 /**
  * @brief 计算 x 的置位个数 (population count)
  * @param x 32 位无符号整数
@@ -422,9 +460,19 @@ enum
  */
 COMPAT_STATIC_INLINE COMPAT_NORETURN void unreachable(void) { __builtin_unreachable(); }
 
+/* ── pre_execution 启动优先级 ──────────────────────────────────────────────
+ * constructor 实际优先级 = 基数 + 100; 数值越小越先执行。
+ * 依赖链: 总线/OSAL 资源池(150) → 信号量/队列池(151/152) → 驱动池(160) → 调度器(161) → 中断下半部池(170)。 */
+#define PRE_EXEC_PRIO_RES_POOL 150 /* 总线池 / VFS 私有池 / OSAL 互斥锁池 */
+#define PRE_EXEC_PRIO_SEM_POOL 151 /* OSAL 信号量池 / DAC 私有池 */
+#define PRE_EXEC_PRIO_QUEUE_POOL 152 /* OSAL 队列池 (osal_null) */
+#define PRE_EXEC_PRIO_DRIVER_POOL 160 /* 驱动静态池 / VFS client 池 / 协调式调度器 */
+#define PRE_EXEC_PRIO_SCHEDULER 161 /* 抢占式调度器早期初始化 */
+#define PRE_EXEC_PRIO_IRQ_BOTTOM 170 /* 中断下半部池 */
+
 /**
  * @brief 静态池在 main 之前自动执行
- * @param x 优先级基数 — pre_execution(150) 实际为 constructor(250)
+ * @param x 优先级基数 (建议用 PRE_EXEC_PRIO_* 常量) — pre_execution(150) 实际为 constructor(250)
  * @details 高级用法: 用于 pre_execution 启动钩子
  */
 #define pre_execution(x) __attribute__((constructor((x) + 100)))

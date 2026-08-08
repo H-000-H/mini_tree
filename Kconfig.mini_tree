@@ -261,6 +261,13 @@ config XTASK_PREEMPT
       Off by default; not finished yet — enabling may fail to compile.
       Turn on only if you need a more RTOS-like scheduling experience on bare-metal.
 
+config HARD_PRIORITY
+    int "Generate Hardware interrupt priority Max Number"
+    default 8
+    depends on XTASK_PREEMPT
+    help 
+      N+1链表的最大硬件优先级的数量默认和虚拟中断数一样,不要大于虚拟中断的数量不然容易虚拟中断越界
+
 config FREERTOS_USE_TIMERS
     bool "FreeRTOS software timers"
     default n

@@ -164,7 +164,7 @@ void bottom_half_poller_run(struct bottom_half_poller* poller)
 /*=======================================================================================================================================================*/
 static struct bottom_half_poller s_global_poller;
 
-pre_execution(170) static void interrupt_bottom_half_pool_init(void)
+pre_execution(PRE_EXEC_PRIO_IRQ_BOTTOM) static void interrupt_bottom_half_pool_init(void)
 {
     bottom_half_poller_init(&s_global_poller);
 }

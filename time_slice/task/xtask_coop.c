@@ -31,7 +31,7 @@ static struct scheduler_tim_ctx g_sched_tim_ctx;
 /**
  * @brief 时间片调度器早期初始化 (pre_execution 自动调用)
  */
-pre_execution(160) static void xscheduler_early_init(void) { x_scheduler_init(&g_scheduler); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void xscheduler_early_init(void) { x_scheduler_init(&g_scheduler); }
 
 /**
  * @brief 启动 tick 设备与 VIRQ
@@ -92,7 +92,7 @@ x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const c
                                        void (*cb)(x_task*), unsigned int period_ms)
 {
     if (!sched || !task || !cb)
-        return 0;
+        return VFS_ERR_INVAL;
 
     task->name = name;
     task->xTask_cb = cb;
@@ -100,7 +100,7 @@ x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const c
     COMPAT_ATOMIC_STORE(&task->next_running,
                         COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED) + period_ms,
                         COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED); /**< 创建即武装（非运行态），首轮 poll 即可进入 */
+    COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
 
     list_add_tail(&task->node, &sched->task_list_head);
 
@@ -129,7 +129,7 @@ int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 int x_task_run(x_scheduler* sched)
 {
     if (!sched)
-        return -1;
+        return VFS_ERR_INVAL;
 
     list_node* head = &sched->task_list_head;
     list_node* current = head->next;

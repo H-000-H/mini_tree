@@ -12,6 +12,7 @@
     "*.dts": "c",
     "*.dtsi": "c"
   },
+  "clangd.path": "/usr/bin/clangd",
   "clangd.arguments": [
     "--background-index",
     "--clang-tidy=false",
