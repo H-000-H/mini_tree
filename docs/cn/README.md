@@ -18,7 +18,7 @@
 | 平台移植 | [porting_guide.md](porting_guide.md) → [esp_idf_cmake.md](esp_idf_cmake.md)（若 ESP）→ [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
 | 写应用 | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
 | 写代码 / 查命名 | [coding_style.md](coding_style.md)（语言规范：app 以下强规定，app 层建议） |
-| 查设计动机 | [design_decisions.md](design_decisions.md) · [references.md](references.md) · [architecture.md](architecture.md) |
+| 查设计动机 / 机制 | [design_decisions.md](design_decisions.md) · [patterns.md](patterns.md) · [references.md](references.md) · [architecture.md](architecture.md) |
 | 查文件 | [file_index.md](file_index.md) |
 | 合规 / 许可证 | [../NOTICE](../NOTICE)（第三方清单与合规提示）· [../LICENSE](../LICENSE)（Apache-2.0 全文）· [ecosystem.md](ecosystem.md) §6（致谢） |
 
@@ -40,6 +40,7 @@
 | 文档 | 说明 |
 | :--- | :--- |
 | [architecture.md](architecture.md) | 分层与数据流 |
+| [patterns.md](patterns.md) | 关键机制解剖：pre_execution 注册链 / 两段式点火 / 编译期 probe 表 / xtask 调度 / VIRQ 上下半部 / SPSC 无锁通道 / dev_lifecycle / 非阻塞状态机 |
 | [ecosystem.md](ecosystem.md) | 积木型链接：已接入开源库清单与扩展方式 |
 | [design_decisions.md](design_decisions.md) | 仍生效的设计决策与作者偏好 |
 | [references.md](references.md) | 外部对照：ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |

@@ -181,9 +181,9 @@ int production_log_init(void) { return 0; }
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
-    (void)level;
-    (void)tag;
-    (void)msg;
+    COMPAT_UNUSED_PARAM(level);
+    COMPAT_UNUSED_PARAM(tag);
+    COMPAT_UNUSED_PARAM(msg);
 }
 
 /**
@@ -195,9 +195,9 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    (void)level;
-    (void)tag;
-    (void)fmt;
+    COMPAT_UNUSED_PARAM(level);
+    COMPAT_UNUSED_PARAM(tag);
+    COMPAT_UNUSED_PARAM(fmt);
 }
 
 /**
@@ -213,7 +213,7 @@ int production_log_count(void) { return 0; }
  */
 const struct prod_log_entry* production_log_get(int index)
 {
-    (void)index;
+    COMPAT_UNUSED_PARAM(index);
     return NULL;
 }
 

@@ -24,6 +24,10 @@ static const char* s_json_buffer = NULL;
 static size_t s_json_size = 0;
 
 /**
+ * @brief 绑定配置源缓冲区
+ * @param buffer 配置源缓冲区指针 (可为 NULL)
+ * @param size 缓冲区大小
+ */
 void config_store_bind_source(const char* buffer, size_t size)
 {
     s_json_buffer = buffer;

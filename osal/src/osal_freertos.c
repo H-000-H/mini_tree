@@ -3,9 +3,24 @@
  * osal_freertos.c — OSAL FreeRTOS 后端实现
  *
  * 将 OSAL API 映射到 xSemaphore/xQueue/xTaskCreate 等 FreeRTOS 原语
- * 静态互斥锁/信号量池 + 槽位池 (osal_pool), ISR 检测按 ARM/RISC-V 架构分支
- * ESP32 平台额外嵌入 portMUX 适配 taskENTER_CRITICAL_ISR
- * 路径而且esp32不要直接移植freertos他自带了freertos
+ * 静态互斥锁/信号量池 + 槽位池 (osal_pool), ISR 临界区用
+ * taskENTER_CRITICAL_FROM_ISR / taskEXIT_CRITICAL_FROM_ISR
+ * ESP32 (ESP-IDF) 平台额外嵌入 portMUX 适配, 由 ESP-IDF 自带
+ * FreeRTOS 提供, 项目侧勿重复 vendor
+ *
+ * 关键差异 (参考基准, 其他后端差异以此对齐):
+ * 1. ISR 临界区用 taskENTER/EXIT_CRITICAL_FROM_ISR; ESP-IDF 下等价于
+ *    portMUX 自旋锁 (portTICK_RATE_MS 1 ms tick), 退出自动让出;
+ * 2. 互斥锁 xSemaphoreCreateMutex 自带优先级继承 (避免优先级反转),
+ *    OSAL_MUTEX_PLAIN 的"二次获取阻塞"语义由本层自实现 (递归计数包装)
+ *    确保 OSAL_ERR_TIMEOUT 一致返回;
+ * 3. 信号量是计数的 — 本层用 posted 标志保证"多次 post 合并计数 ≤ 1"
+ *    实现严格二值语义;
+ * 4. 任务删除自身 vTaskDelete(NULL) 真返回 (与 ThreadX 不同),
+ *    任务控制块/栈可被 idle 回收;
+ * 5. ISR 出口 osal_yield_from_isr 调用 portYIELD_FROM_ISR 触发 PendSV;
+ * 6. 栈水位依赖 configCHECK_FOR_STACK_OVERFLOW > 0; 无运行时栈高水位查询
+ *    (FreeRTOS 不暴露), 仅靠 overflow hook 检测.
  */
 #ifdef CONFIG_OSAL_FREERTOS
 
@@ -195,7 +210,7 @@ int osal_spinlock_unlock(struct osal_spinlock* lock)
  */
 COMPAT_UNUSED COMPAT_STATIC_INLINE bool osal_spinlock_is_locked(struct osal_spinlock* lock)
 {
-    (void)lock;
+    COMPAT_UNUSED_PARAM(lock);
     /**< 临界区模式下不暴露内部计数, 统一返回 false; 调用方不应依赖此状态 */
     return false;
 }
@@ -233,7 +248,7 @@ COMPAT_STATIC_INLINE void osal_pool_lock(osal_pool_t* pool)
         taskENTER_CRITICAL(mux);
 #else
     taskENTER_CRITICAL();
-    (void)pool;
+    COMPAT_UNUSED_PARAM(pool);
 #endif
 }
 
@@ -251,7 +266,7 @@ COMPAT_STATIC_INLINE void osal_pool_unlock(osal_pool_t* pool)
         taskEXIT_CRITICAL(mux);
 #else
     taskEXIT_CRITICAL();
-    (void)pool;
+    COMPAT_UNUSED_PARAM(pool);
 #endif
 }
 
@@ -289,20 +304,15 @@ int osal_pool_claim(osal_pool_t* pool)
 {
     if (!pool || !pool->used_slots || pool->slot_count == 0)
         return OSAL_ERR_INVAL;
-
-    uint32_t rand_val = COMPAT_RAND(0x43U, 0x32U, 0x43U, 0x32U);
-    size_t start_idx = rand_val % pool->slot_count;
-
     osal_pool_lock(pool);
 
     int ret_idx = -1;
     for (size_t i = 0; i < pool->slot_count; i++)
     {
-        size_t cur = (start_idx + i) % pool->slot_count;
-        if (!pool->used_slots[cur])
+        if (!pool->used_slots[i])
         {
-            pool->used_slots[cur] = 1;
-            ret_idx = (int)cur;
+            pool->used_slots[i] = 1;
+            ret_idx = (int)i;
             break;
         }
     }
@@ -394,7 +404,7 @@ void osal_delay_us(uint32_t us)
         uint32_t cycles = us * (configCPU_CLOCK_HZ / 1000000U);
         volatile uint32_t i;
         for (i = 0; i < cycles; i++)
-            (void)i;
+            COMPAT_UNUSED_PARAM(i);
     }
 #endif
 }
@@ -561,21 +571,19 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
     if (!mutex || osal_in_isr())
         return;
 
-    if (mutex->handle != NULL)
-    {
-        /**<先销毁底层信号量 */
-        vSemaphoreDelete(mutex->handle);
-        mutex->handle = NULL;
-    }
-    /**<然后判断是否属于全局mutex池 */
-    uintptr_t pool_start = (uintptr_t)s_mutex_pool;
-    uintptr_t pool_end = pool_start + sizeof(s_mutex_pool);
-    uintptr_t ptr = (uintptr_t)mutex;
+    /* 只有 handle 非空 (合法创建的锁) 才允许销毁底层信号量;
+     * handle 为空的池外指针视为非法输入, 不触碰其字段. */
+    if (mutex->handle == NULL)
+        return;
 
-    /**<如果属于全局mutex池, 则释放池化资源 */
-    if (ptr >= pool_start && ptr < pool_end)
+    /**< 先销毁底层信号量 */
+    vSemaphoreDelete(mutex->handle);
+    mutex->handle = NULL;
+
+    /**< 再判断是否属于全局mutex池: 仅池内对象归还池槽, 静态锁不归还 */
+    if (mutex >= s_mutex_pool && mutex < &s_mutex_pool[OSAL_MUTEX_POOL_SIZE])
     {
-        size_t idx = (uintptr_t)mutex - pool_start;
+        size_t idx = (size_t)(mutex - s_mutex_pool);
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, (int)idx));
     }
 }
@@ -627,24 +635,24 @@ struct osal_sem
 _Static_assert(sizeof(struct osal_sem) <= OSAL_SEM_STORAGE_SIZE, "OSAL_SEM_STORAGE_SIZE too small");
 
 /**
- * @brief 静态互斥锁池
- * @param s_mutex_pool 互斥锁池结构体指针
- * @param s_mutex_used 互斥锁使用情况指针
- * @param s_mutex_pool_ctrl 互斥锁池控制结构体指针
+ * @brief 静态二值信号量池
+ * @param s_sem_pool 信号量池结构体指针
+ * @param s_sem_used 信号量池占用数组
+ * @param s_sem_pool_ctrl 信号量池控制结构体指针
  */
 static struct osal_sem s_sem_pool[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
 /**
- * @brief 静态互斥锁池
- * @param s_mutex_pool 互斥锁池结构体指针
- * @param s_mutex_used 互斥锁使用情况指针
- * @param s_mutex_pool_ctrl 互斥锁池控制结构体指针
+ * @brief 静态二值信号量池占用数组
+ * @param s_sem_pool 信号量池结构体指针
+ * @param s_sem_used 信号量池占用数组
+ * @param s_sem_pool_ctrl 信号量池控制结构体指针
  */
 static uint8_t s_sem_used[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
 /**
- * @brief 静态互斥锁池
- * @param s_mutex_pool 互斥锁池结构体指针
- * @param s_mutex_used 互斥锁使用情况指针
- * @param s_mutex_pool_ctrl 互斥锁池控制结构体指针
+ * @brief 静态二值信号量池控制
+ * @param s_sem_pool 信号量池结构体指针
+ * @param s_sem_used 信号量池占用数组
+ * @param s_sem_pool_ctrl 信号量池控制结构体指针
  */
 static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
 
@@ -733,15 +741,10 @@ void osal_sem_destroy(struct osal_sem* sem)
 
     if (sem->from_pool)
     {
-        uintptr_t pool_start = (uintptr_t)s_sem_pool;
-        uintptr_t pool_end = pool_start + sizeof(s_sem_pool);
-        uintptr_t ptr = (uintptr_t)sem;
-
-        if (ptr >= pool_start && ptr < pool_end)
+        if (sem >= s_sem_pool && sem < &s_sem_pool[OSAL_SEM_POOL_SIZE])
         {
-            size_t idx = sem - s_sem_pool;
-            if (idx < OSAL_SEM_POOL_SIZE)
-                COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, (int)idx));
+            size_t idx = (size_t)(sem - s_sem_pool);
+            COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, (int)idx));
         }
     }
 }
@@ -848,8 +851,8 @@ void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer,
  */
 void vApplicationStackOverflowHook(TaskHandle_t x_task, char* pcTaskName)
 {
-    (void)x_task;
-    (void)pcTaskName;
+    COMPAT_UNUSED_PARAM(x_task);
+    COMPAT_UNUSED_PARAM(pcTaskName);
     taskDISABLE_INTERRUPTS();
     for (;;)
     {
@@ -901,7 +904,7 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
         core_id = 0;
     }
 #else
-    (void)core_id;
+    COMPAT_UNUSED_PARAM(core_id);
 #endif
 
     TaskHandle_t handle = NULL;
@@ -937,7 +940,7 @@ int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t prio
         core_id = 0;
     }
 #else
-    (void)core_id;
+    COMPAT_UNUSED_PARAM(core_id);
 #endif
 
     TaskHandle_t handle = NULL;
@@ -1106,7 +1109,7 @@ COMPAT_WEAK void osal_panic_interlock(void)
  */
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    (void)level;
+    COMPAT_UNUSED_PARAM(level);
     if (!fmt)
         fmt = "(null)";
 

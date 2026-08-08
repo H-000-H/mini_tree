@@ -82,7 +82,7 @@ COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
 #else
 COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
 {
-    (void)idx;
+    COMPAT_UNUSED_PARAM(idx);
     return NULL;
 }
 #endif /* OSAL_NULL_QUEUE_POOL_SIZE > 0 */
@@ -169,7 +169,7 @@ COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void) { return 0U; }
  * @brief 恢复全局中断占位 (未知架构, 无操作)
  * @param primask 保存值 (忽略)
  */
-COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t primask) { (void)primask; }
+COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t primask) { COMPAT_UNUSED_PARAM(primask); }
 /**
  * @brief WFI 占位 (未知架构, 无操作)
  */
@@ -356,7 +356,7 @@ COMPAT_STATIC_INLINE int queue_index_of(osal_queue_handle_t queue)
         return -1;
     return idx;
 #else
-    (void)queue;
+    COMPAT_UNUSED_PARAM(queue);
     return -1; /* 队列池未启用 (OSAL_NULL_QUEUE_POOL_SIZE=0) */
 #endif
 }
@@ -676,12 +676,16 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
     if (osal_in_isr())
         return;
 
+    /* 先做边界检查: 仅池内互斥锁可销毁, 静态锁 (create_static) 不属于池, 直接拒绝.
+     * 必须在校验通过后才触碰 mutex 字段, 避免对池外/非法指针越界写. */
+    if (mutex < s_mutex_pool || mutex >= &s_mutex_pool[OSAL_MUTEX_POOL_SIZE])
+        return;
+
     COMPAT_ATOMIC_STORE(&mutex->lock, 0U, COMPAT_MO_RELEASE); /**< 释放互斥锁 */
     COMPAT_ATOMIC_STORE(&mutex->depth, 0U, COMPAT_MO_RELEASE); /**< 释放互斥锁深度 */
 
     int idx = (int)(mutex - s_mutex_pool); /**< 计算互斥锁在静态互斥锁池中的索引 */
-    if (idx >= 0 && idx < OSAL_MUTEX_POOL_SIZE)
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, idx)); /**< 释放互斥锁索引 */
+    COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, idx)); /**< 释放互斥锁索引 */
 }
 
 /**
@@ -857,12 +861,12 @@ __attribute__((unused)) static void osal_periodic_task_stub(void* param)
  */
 int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,osal_task_entry_t entry, void* param, int core_id)
 {
-    (void)name;
-    (void)stack_size;
-    (void)priority;
-    (void)entry;
-    (void)param;
-    (void)core_id;
+    COMPAT_UNUSED_PARAM(name);
+    COMPAT_UNUSED_PARAM(stack_size);
+    COMPAT_UNUSED_PARAM(priority);
+    COMPAT_UNUSED_PARAM(entry);
+    COMPAT_UNUSED_PARAM(param);
+    COMPAT_UNUSED_PARAM(core_id);
     return OSAL_ERR_NOTSUPP;
 }
 
@@ -881,12 +885,12 @@ int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t prio
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;
-    (void)name;
-    (void)stack_size;
-    (void)priority;
-    (void)entry;
-    (void)param;
-    (void)core_id;
+    COMPAT_UNUSED_PARAM(name);
+    COMPAT_UNUSED_PARAM(stack_size);
+    COMPAT_UNUSED_PARAM(priority);
+    COMPAT_UNUSED_PARAM(entry);
+    COMPAT_UNUSED_PARAM(param);
+    COMPAT_UNUSED_PARAM(core_id);
     *out_handle = NULL;
     return OSAL_ERR_NOTSUPP;
 }
@@ -904,7 +908,7 @@ void osal_task_self_delete(void)
  * @brief 空操作
  * @param task 忽略
  */
-void osal_task_delete(osal_task_handle_t task) { (void)task; }
+void osal_task_delete(osal_task_handle_t task) { COMPAT_UNUSED_PARAM(task); }
 
 /**
  * @brief 恒 false
@@ -913,7 +917,7 @@ void osal_task_delete(osal_task_handle_t task) { (void)task; }
  */
 bool osal_task_is_running(osal_task_handle_t task)
 {
-    (void)task;
+    COMPAT_UNUSED_PARAM(task);
     return false;
 }
 
@@ -924,7 +928,7 @@ bool osal_task_is_running(osal_task_handle_t task)
  */
 const char* osal_task_get_name(osal_task_handle_t task)
 {
-    (void)task;
+    COMPAT_UNUSED_PARAM(task);
     return "baremetal";
 }
 
@@ -935,7 +939,7 @@ const char* osal_task_get_name(osal_task_handle_t task)
  */
 uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
 {
-    (void)task;
+    COMPAT_UNUSED_PARAM(task);
     return 0U;
 }
 
@@ -1022,13 +1026,20 @@ void osal_sem_destroy(struct osal_sem* sem)
     if (!sem)
         return;
 
-    COMPAT_ATOMIC_STORE(&sem->signaled, 0U, COMPAT_MO_RELEASE);
+    /* 池内信号量: 先确认落在池内再清零并释放; 池外/非法指针直接拒绝, 避免越界写. */
     if (sem->from_pool)
     {
+        if (sem < s_sem_pool || sem >= &s_sem_pool[OSAL_SEM_POOL_SIZE])
+            return;
+
+        COMPAT_ATOMIC_STORE(&sem->signaled, 0U, COMPAT_MO_RELEASE);
         int idx = (int)(sem - s_sem_pool); /**< 计算信号量在信号量池中的索引 */
-        if (idx >= 0 && idx < OSAL_SEM_POOL_SIZE) /**< 判断信号量在信号量池中的索引是否有效 */
-            COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, idx));
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, idx));
+        return;
     }
+
+    /* 静态信号量 (create_binary_static): 属于调用方存储, 仅清零不复用池槽. */
+    COMPAT_ATOMIC_STORE(&sem->signaled, 0U, COMPAT_MO_RELEASE);
 }
 
 /**
@@ -1150,7 +1161,7 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
 
     return (osal_queue_handle_t)queue;
 #else
-    (void)total_elements;
+    COMPAT_UNUSED_PARAM(total_elements);
     return NULL; /* 队列池未启用, 需在 Kconfig 设置基础队列数或开启 EVENT_BUS */
 #endif
 }
@@ -1167,7 +1178,7 @@ void osal_queue_delete(osal_queue_handle_t queue)
         return;
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_queue_pool_ctrl, idx));
 #else
-    (void)queue;
+    COMPAT_UNUSED_PARAM(queue);
 #endif
 }
 
@@ -1205,7 +1216,7 @@ static bool queue_send_internal(osal_queue_handle_t queue, const void* item)
  */
 bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeout_ms)
 {
-    (void)timeout_ms;
+    COMPAT_UNUSED_PARAM(timeout_ms);
 
     if (osal_in_isr())
         return false;
@@ -1222,7 +1233,7 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  */
 bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
-    (void)px_yield_required;
+    COMPAT_UNUSED_PARAM(px_yield_required);
     return queue_send_internal(queue, item);
 }
 
@@ -1327,7 +1338,7 @@ void osal_int_freeze(void) { (void)osal_null_irq_disable(); }
  */
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    (void)level;
+    COMPAT_UNUSED_PARAM(level);
     if (!fmt)
         fmt = "(null)";
 

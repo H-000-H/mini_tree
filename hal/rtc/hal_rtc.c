@@ -73,4 +73,4 @@ COMPAT_WEAK int hal_rtc_cancel_wakeup_timer(struct hal_rtc_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK void hal_rtc_force_stop(void) { ; }
+COMPAT_WEAK int hal_rtc_force_stop(void) { return VFS_OK; }

@@ -84,7 +84,7 @@ extern "C"
     int hal_rtc_set_wakeup_timer(struct hal_rtc_dev* pdev,
                                  uint32_t seconds) COMPAT_WARN_UNUSED_RESULT;
     int hal_rtc_cancel_wakeup_timer(struct hal_rtc_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
-    void hal_rtc_force_stop(void);
+    int hal_rtc_force_stop(void) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

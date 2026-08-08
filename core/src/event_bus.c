@@ -72,7 +72,7 @@ static struct event_bus s_bus = {0};
  */
 static void event_bus_dispatch_task(void* param)
 {
-    (void)param;
+    COMPAT_UNUSED_PARAM(param);
     struct event event;
 
     while (osal_queue_receive(s_bus.queue, &event, OSAL_WAIT_FOREVER))

@@ -602,15 +602,32 @@ config COMPILER_GNU_EXTENSIONS
       Supported by GCC and Clang.
 
 config COMPILER_WARN_UNUSED_RESULT
-    bool "Warn on ignored function results (COMPAT_WARN_UNUSED_RESULT)"
+    bool "Warn on ignored results of HAL/bus APIs (COMPAT_WARN_UNUSED_RESULT)"
     default y
     depends on COMPILER_GNU_EXTENSIONS
     help
-      为关键 API 加注解，返回值被丢弃时编译器报警。
-      可用 COMPAT_IGNORE_RESULT() 主动压制。
+      为 HAL 与 bus 层关键 API 加注解，返回值被丢弃时编译器报警。
+      默认开启：底层 (hal→bus) 保持强制检查，保证内部可靠性。
+      开启后可用 COMPAT_IGNORE_RESULT() 主动压制。
 
-      Annotate critical APIs so the compiler warns when return values
-      are discarded. Use COMPAT_IGNORE_RESULT() to silence intentionally.
+      Annotate HAL and bus APIs so the compiler warns when return values
+      are discarded. On by default: internal layers (hal→bus) keep strict
+      checking. Use COMPAT_IGNORE_RESULT() to silence intentionally.
+
+config DEVICE_WARN_UNUSED_RESULT
+    bool "Warn on ignored results of device/VFS APIs (DEVICE_WARN_UNUSED_RESULT)"
+    default n
+    depends on COMPILER_GNU_EXTENSIONS
+    help
+      为对外暴露的 device/VFS API (device_open/read/write/ioctl 等)
+      加注解，应用层丢弃返回值时编译器报警。
+      默认关闭：应用层调用 device_* 可忽略返回值，写法更宽松；
+      需要严格检查时再开启。
+
+      Annotate the externally-exposed device/VFS APIs (device_open/read/
+      write/ioctl, etc.) so the compiler warns when app-layer callers
+      discard the return value. Off by default for a relaxed app style;
+      turn on when strict checking is required.
 
 endmenu
 

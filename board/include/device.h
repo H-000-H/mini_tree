@@ -21,6 +21,19 @@ extern "C"
 {
 #endif
 
+/* ── 对外 API 返回值检查开关 ──
+ * device/VFS 层是暴露给应用层的入口。默认关闭返回值强制检查
+ * (应用层调用 device_open/read/write/ioctl 等可忽略返回值);
+ * 需要严格检查时在 Kconfig 开启 DEVICE_WARN_UNUSED_RESULT。
+ * 底层 HAL/bus 的 COMPAT_WARN_UNUSED_RESULT 不受此影响, 始终由
+ * CONFIG_COMPILER_WARN_UNUSED_RESULT 控制 (默认开启)。
+ */
+#if defined(CONFIG_DEVICE_WARN_UNUSED_RESULT)
+#define DEVICE_WARN_UNUSED_RESULT COMPAT_WARN_UNUSED_RESULT
+#else
+#define DEVICE_WARN_UNUSED_RESULT
+#endif
+
 /* ── 设备树常量 ── */
 #define MAX_DEVICES DEV_ID_COUNT
 
@@ -131,22 +144,22 @@ extern "C"
     struct device* device_find_by_label(const char* label);
     struct device* device_find_by_compatible(const char* compatible);
     struct device* device_find_by_id(device_id_t id);
-    struct device* device_find_by_path(const char* path) COMPAT_WARN_UNUSED_RESULT;
+    struct device* device_find_by_path(const char* path) DEVICE_WARN_UNUSED_RESULT;
     struct device* device_get_parent(const struct device* pdev);
 
     /* ── 从属性中解析 phandle 引用并返回目标设备 ── */
     struct device* device_get_phandle_dev(const struct device* pdev,
-                                          const char* key) COMPAT_WARN_UNUSED_RESULT;
+                                          const char* key) DEVICE_WARN_UNUSED_RESULT;
 
     /* ── 读取属性（从 pdev->node 读取） ── */
     int device_get_prop_int(const struct device* pdev, const char* key,
-                            int* val) COMPAT_WARN_UNUSED_RESULT;
+                            int* val) DEVICE_WARN_UNUSED_RESULT;
     int device_get_prop_int_array(const struct device* pdev, const char* key, int* out_arr,
-                                  int max_len) COMPAT_WARN_UNUSED_RESULT;
+                                  int max_len) DEVICE_WARN_UNUSED_RESULT;
     int device_get_prop_str(const struct device* pdev, const char* key,
-                            const char** val) COMPAT_WARN_UNUSED_RESULT;
+                            const char** val) DEVICE_WARN_UNUSED_RESULT;
     int device_get_prop_bool(const struct device* pdev, const char* key,
-                             int* val) COMPAT_WARN_UNUSED_RESULT;
+                             int* val) DEVICE_WARN_UNUSED_RESULT;
 
     const char* device_get_name(const struct device* pdev);
     const char* device_get_compatible(const struct device* pdev);
@@ -155,11 +168,11 @@ extern "C"
 
     /* ── 读取第 idx 条 reg 条目（按 #address-cells / #size-cells 分组） ── */
     int device_get_reg(const struct device* pdev, int idx,
-                       const struct device_reg** out) COMPAT_WARN_UNUSED_RESULT;
+                       const struct device_reg** out) DEVICE_WARN_UNUSED_RESULT;
 
     /* ── 读取第 idx 条 interrupt 条目（按 #interrupt-cells 分组） ── */
     int device_get_irq(const struct device* pdev, int idx,
-                       const struct device_irq** out) COMPAT_WARN_UNUSED_RESULT;
+                       const struct device_irq** out) DEVICE_WARN_UNUSED_RESULT;
 
     /* ── 运行时状态管理 ── */
     /**
@@ -168,7 +181,7 @@ extern "C"
      * @param status 设备状态
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int device_set_status(struct device* pdev, enum device_status status) COMPAT_WARN_UNUSED_RESULT;
+    int device_set_status(struct device* pdev, enum device_status status) DEVICE_WARN_UNUSED_RESULT;
 
     /**
      * @brief 设置设备私有数据
@@ -176,7 +189,7 @@ extern "C"
      * @param priv 私有数据指针
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int device_set_priv(struct device* pdev, void* priv) COMPAT_WARN_UNUSED_RESULT;
+    int device_set_priv(struct device* pdev, void* priv) DEVICE_WARN_UNUSED_RESULT;
 
     /**
      * @brief 获取设备私有数据
@@ -191,11 +204,11 @@ extern "C"
     int device_get_count(void);
 
     /* ── 设备树加载 ── */
-    int device_tree_init(void) COMPAT_WARN_UNUSED_RESULT;
+    int device_tree_init(void) DEVICE_WARN_UNUSED_RESULT;
 
     /* ── 设备锁（device_tree_init 中已完成全量静态分配） ── */
-    int device_lock(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
-    int device_unlock(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int device_lock(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
+    int device_unlock(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
 
     /* ── 驱动卸载清理 ──
      * 清除 pdev->priv_data + pdev->ops, 切断幽灵指针链.
@@ -211,16 +224,16 @@ extern "C"
      * device_open/close/suspend/resume + device_write/read/ioctl 均在持锁状态下
      * 完成状态检查与 ops 调用, 确保 check-then-act 的原子性.
      */
-    int device_open(struct device* pdev, void* arg) COMPAT_WARN_UNUSED_RESULT;
-    int device_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int device_open(struct device* pdev, void* arg) DEVICE_WARN_UNUSED_RESULT;
+    int device_close(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
     int device_write(struct device* pdev, const void* buf, size_t len,
-                     uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t timeout_ms) DEVICE_WARN_UNUSED_RESULT;
     int device_read(struct device* pdev, void* buf, size_t len,
-                    uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                    uint32_t timeout_ms) DEVICE_WARN_UNUSED_RESULT;
     int device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                     uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
-    int device_suspend(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
-    int device_resume(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t timeout_ms) DEVICE_WARN_UNUSED_RESULT;
+    int device_suspend(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
+    int device_resume(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

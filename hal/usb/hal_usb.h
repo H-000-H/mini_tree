@@ -88,13 +88,15 @@ extern "C"
     /**
      * @brief 使能 OTG NVIC 中断
      * @param host host 对象
+     * @return VFS_OK 成功; 负的 VFS_ERR_* 表示失败
      */
-    void hal_usb_irq_enable(const struct hal_usb_bus_host* host);
+    int hal_usb_irq_enable(const struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 禁止 OTG NVIC 中断
      * @param host host 对象
+     * @return VFS_OK 成功; 负的 VFS_ERR_* 表示失败
      */
-    void hal_usb_irq_disable(const struct hal_usb_bus_host* host);
+    int hal_usb_irq_disable(const struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 按 dma_enable 与请求模式解析实际传输路径

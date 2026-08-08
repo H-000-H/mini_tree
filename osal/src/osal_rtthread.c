@@ -204,19 +204,14 @@ int osal_pool_claim(osal_pool_t* pool)
 {
     if (!pool || !pool->used_slots || pool->slot_count == 0)
         return OSAL_ERR_INVAL;
-
-    uint32_t rand_val = COMPAT_RAND(0x43U, 0x32U, 0x43U, 0x32U);
-    size_t start_idx = rand_val % pool->slot_count;
-
     int claimed_index = -1;
     rt_base_t level = rt_hw_interrupt_disable();
     for (size_t i = 0; i < pool->slot_count; i++)
     {
-        size_t cur = (start_idx + i) % pool->slot_count;
-        if (!pool->used_slots[cur])
+        if (!pool->used_slots[i])
         {
-            pool->used_slots[cur] = 1;
-            claimed_index = (int)cur;
+            pool->used_slots[i] = 1;
+            claimed_index = (int)i;
             break;
         }
     }
@@ -642,7 +637,7 @@ bool osal_sem_post(struct osal_sem* sem)
  */
 bool osal_sem_post_from_isr(struct osal_sem* sem, bool* px_yield_required)
 {
-    (void)px_yield_required;
+    COMPAT_UNUSED_PARAM(px_yield_required);
 
     if (!sem || !sem->inited)
         return false;
@@ -654,7 +649,7 @@ bool osal_sem_post_from_isr(struct osal_sem* sem, bool* px_yield_required)
  * @brief 无 yield
  * @param yield_required 忽略
  */
-void osal_yield_from_isr(bool yield_required) { (void)yield_required; }
+void osal_yield_from_isr(bool yield_required) { COMPAT_UNUSED_PARAM(yield_required); }
 
 /* ── 任务创建 (无句柄, 创建后自动启动) ── */
 /**
@@ -680,7 +675,7 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
     if (core_id >= 0)
         rt_thread_control(thread, RT_THREAD_CTRL_BIND_CPU, (void*)(long)core_id);
 #else
-    (void)core_id;
+    COMPAT_UNUSED_PARAM(core_id);
 #endif
 
     rt_thread_startup(thread);
@@ -715,7 +710,7 @@ int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t prio
     if (core_id >= 0)
         rt_thread_control(thread, RT_THREAD_CTRL_BIND_CPU, (void*)(long)core_id);
 #else
-    (void)core_id;
+    COMPAT_UNUSED_PARAM(core_id);
 #endif
 
     rt_thread_startup(thread);
@@ -868,7 +863,7 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  */
 bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
-    (void)px_yield_required;
+    COMPAT_UNUSED_PARAM(px_yield_required);
 
     if (!queue || !item)
         return false;
@@ -901,9 +896,9 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
  */
 bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px_yield_required)
 {
-    (void)px_yield_required;
-    (void)queue;
-    (void)item;
+    COMPAT_UNUSED_PARAM(px_yield_required);
+    COMPAT_UNUSED_PARAM(queue);
+    COMPAT_UNUSED_PARAM(item);
     return false;
 }
 #else
@@ -915,8 +910,8 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
  */
 osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
 {
-    (void)queue_len;
-    (void)item_size;
+    COMPAT_UNUSED_PARAM(queue_len);
+    COMPAT_UNUSED_PARAM(item_size);
     return NULL;
 }
 
@@ -924,7 +919,7 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
  * @brief rt_mq_delete + free
  * @param queue 句柄
  */
-void osal_queue_delete(osal_queue_handle_t queue) { (void)queue; }
+void osal_queue_delete(osal_queue_handle_t queue) { COMPAT_UNUSED_PARAM(queue); }
 
 /**
  * @brief rt_mq_send_wait
@@ -935,9 +930,9 @@ void osal_queue_delete(osal_queue_handle_t queue) { (void)queue; }
  */
 bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeout_ms)
 {
-    (void)queue;
-    (void)item;
-    (void)timeout_ms;
+    COMPAT_UNUSED_PARAM(queue);
+    COMPAT_UNUSED_PARAM(item);
+    COMPAT_UNUSED_PARAM(timeout_ms);
     return false;
 }
 
@@ -950,9 +945,9 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  */
 bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
-    (void)px_yield_required;
-    (void)queue;
-    (void)item;
+    COMPAT_UNUSED_PARAM(px_yield_required);
+    COMPAT_UNUSED_PARAM(queue);
+    COMPAT_UNUSED_PARAM(item);
     return false;
 }
 
@@ -965,9 +960,9 @@ bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool*
  */
 bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_ms)
 {
-    (void)queue;
-    (void)item;
-    (void)timeout_ms;
+    COMPAT_UNUSED_PARAM(queue);
+    COMPAT_UNUSED_PARAM(item);
+    COMPAT_UNUSED_PARAM(timeout_ms);
     return false;
 }
 
@@ -980,9 +975,9 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
  */
 bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px_yield_required)
 {
-    (void)px_yield_required;
-    (void)queue;
-    (void)item;
+    COMPAT_UNUSED_PARAM(px_yield_required);
+    COMPAT_UNUSED_PARAM(queue);
+    COMPAT_UNUSED_PARAM(item);
     return false;
 }
 #endif /* RT_USING_MESSAGEQUEUE */
@@ -1020,7 +1015,7 @@ void osal_int_freeze(void) { rt_hw_interrupt_disable(); }
  */
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    (void)level;
+    COMPAT_UNUSED_PARAM(level);
     if (!fmt)
         fmt = "(null)";
 

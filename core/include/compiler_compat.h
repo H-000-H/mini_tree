@@ -111,6 +111,10 @@
 #define COMPAT_USED __attribute__((used))
 /** @brief 未使用属性 (抑制警告) */
 #define COMPAT_UNUSED __attribute__((unused))
+/** @brief 未使用参数压制 (用于函数体内显式标记参数/局部变量未引用)
+ * @note 必须为宏而非内联函数: 内联函数里的 (void) 只作用于函数自身的参数,
+ *       无法抑制调用处变量的 unused 警告. */
+#define COMPAT_UNUSED_PARAM(x) ((void)(x))
 /** @brief 可能别名属性 */
 #define COMPAT_MAY_ALIAS __attribute__((may_alias))
 
@@ -452,51 +456,6 @@ COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
  */
 #define RAM_EXEC __attribute__((section(".ram_code")))
 
-/* ── 伪随机数 ───────────────────────────────────────────────────────────── */
-
-/** @brief Xorshift 全局状态 (ChaCha20 混合) */
-static volatile uint32_t xorshift_state = 2463532242UL;
-
-/**
- * @brief 伪随机数生成器 (ChaCha20 + Xorshift 混合)
- * @details 缓解 Flash Cache Miss 导致的延迟抖动; 调用方应自行加入噪音干扰
- * @param a 输入种子
- * @param b 输入种子
- * @param c 输入种子
- * @param d 输入种子
- * @return 伪随机数
- */
-COMPAT_STATIC_INLINE uint32_t COMPAT_RAND(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
-{
-    a ^= xorshift_state;
-
-    /* ChaCha20 四分之一轮 */
-    a += b;
-    d ^= a;
-    d = (d << 16) | (d >> 16);
-    c += d;
-    b ^= c;
-    b = (b << 12) | (b >> 20);
-    a += b;
-    d ^= a;
-    d = (d << 8) | (d >> 24);
-    c += d;
-    b ^= c;
-    b = (b << 7) | (b >> 25);
-
-    /* ChaCha20 输出交替给 Xorshift */
-    uint32_t x = a ^ b ^ c ^ d;
-
-    /* Xorshift 核心变换 */
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-
-    /* Xorshift 结果再与 ChaCha20 非线性项异或后输出 */
-    xorshift_state = x ^ (c + d);
-    return xorshift_state;
-}
-
 /* ── 内存操作封装 ───────────────────────────────────────────────────────── */
 
 /**
@@ -564,6 +523,220 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
     }
     return VFS_OK;
 }
+
+/* ── MMIO 寄存器访问 ─────────────────────────────────────────────────────── */
+
+/**
+ * @defgroup compat_reg MMIO 寄存器访问
+ * @brief 内存映射寄存器 (MMIO) 读写, 全部 static inline, 编译期零开销
+ *
+ * 设计说明:
+ * - 寄存器是独立内存映射地址, 单次 volatile 读/写在 C 语义上已不可分割,
+ * - 地址参数统一用 uintptr_t, 平台可直接传裸地址常量或符号地址.
+ * @{
+ */
+
+/** @brief 读 32 位寄存器 */
+COMPAT_STATIC_INLINE uint32_t COMPAT_REG_READ32(uintptr_t addr)
+{
+    return *(volatile uint32_t*)addr;
+}
+
+/** @brief 写 32 位寄存器 */
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE32(uintptr_t addr, uint32_t val)
+{
+    *(volatile uint32_t*)addr = val;
+}
+
+/**
+ * @brief 读 64 位寄存器
+ * @note 在 32 位 MCU 上 64 位访问由两次 32 位总线事务组成, 非原子;
+ *       如需原子读请用两个 COMPAT_REG_READ32 并在临界区内组合.
+ */
+COMPAT_STATIC_INLINE uint64_t COMPAT_REG_READ64(uintptr_t addr)
+{
+    return *(volatile uint64_t*)addr;
+}
+
+/**
+ * @brief 写 64 位寄存器
+ * @note 在 32 位 MCU 上 64 位访问由两次 32 位总线事务组成, 非原子;
+ *       如需原子写请用两个 COMPAT_REG_WRITE32 并在临界区内组合.
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE64(uintptr_t addr, uint64_t val)
+{
+    *(volatile uint64_t*)addr = val;
+}
+
+/** @brief 读 16 位寄存器 */
+COMPAT_STATIC_INLINE uint16_t COMPAT_REG_READ16(uintptr_t addr)
+{
+    return *(volatile uint16_t*)addr;
+}
+
+/** @brief 写 16 位寄存器 */
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE16(uintptr_t addr, uint16_t val)
+{
+    *(volatile uint16_t*)addr = val;
+}
+
+/** @brief 读 8 位寄存器 */
+COMPAT_STATIC_INLINE uint8_t COMPAT_REG_READ8(uintptr_t addr)
+{
+    return *(volatile uint8_t*)addr;
+}
+
+/** @brief 写 8 位寄存器 */
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE8(uintptr_t addr, uint8_t val)
+{
+    *(volatile uint8_t*)addr = val;
+}
+
+/**
+ * @brief 读-改-写 32 位寄存器 (非原子)
+ * @param addr       寄存器地址
+ * @param clear_mask 先清零的位掩码 (1 = 清零)
+ * @param set_mask   再置位的位掩码 (1 = 置位)
+ * @note 同一地址并发 RMW 需要调用方保护临界区 (关中断 / spinlock);
+ *       需要原子 RMW 时改用 COMPAT_ATOMIC_*.
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask, uint32_t set_mask)
+{
+    uint32_t v = COMPAT_REG_READ32(addr);
+    v = (v & ~clear_mask) | set_mask;
+    COMPAT_REG_WRITE32(addr, v);
+}
+
+/* ── Bit 操作 ───────────────────────────────────────────────────────────── */
+
+/**
+ * @brief 生成位掩码: COMPAT_BIT(n) = 1U << n
+ * @param n 位序号 (0..31)
+ * @return (1U << n)
+ * @note 宏 + __typeof__ 编译期类型检查:
+ *       - GCC/Clang (C): 用 __builtin_types_compatible_p 断言 n 为整数类型,
+ *         类型不符时结果为 void 表达式, 用于值上下文即编译失败;
+ *       - 同时保留编译期常量能力 (类型正确时结果是常量表达式,
+ *         可用于数组维度 / case 标签);
+ *       - C++ / 其他编译器: 退化为普通宏 (C++ 强类型本身有保护).
+ */
+#if defined(__cplusplus)
+#define COMPAT_BIT(n) (1UL << (n))
+#elif defined(__GNUC__) || defined(__clang__)
+#define COMPAT_BIT(n)                                                                              \
+    __builtin_choose_expr(__builtin_types_compatible_p(TYPEOF(n), unsigned int) ||                 \
+                              __builtin_types_compatible_p(TYPEOF(n), int) ||                      \
+                              __builtin_types_compatible_p(TYPEOF(n), unsigned long) ||            \
+                              __builtin_types_compatible_p(TYPEOF(n), long),                       \
+                          (1UL << (n)),                                                            \
+                          ((void)0)) /* 非整数类型: 结果 void, 用于值上下文即编译错误 */
+#else
+#define COMPAT_BIT(n) (1UL << (n))
+#endif
+
+/**
+ * @brief 置位寄存器中的若干位 (read-modify-write, 非原子)
+ * @param addr 寄存器地址
+ * @param mask 置位掩码 (1 = 置位, 等价 reg |= mask)
+ * @note 等价于 `reg |= mask`; 并发 RMW 需调用方保护临界区
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_SET_BITS(uintptr_t addr, uint32_t mask)
+{
+    COMPAT_REG_MODIFY32(addr, 0U, mask);
+}
+
+/**
+ * @brief 清位寄存器中的若干位 (read-modify-write, 非原子)
+ * @param addr 寄存器地址
+ * @param mask 清位掩码 (1 = 清零, 等价 reg &= ~mask)
+ * @note 等价于 `reg &= ~mask`; 并发 RMW 需调用方保护临界区
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_CLR_BITS(uintptr_t addr, uint32_t mask)
+{
+    COMPAT_REG_MODIFY32(addr, mask, 0U);
+}
+
+/**
+ * @brief 翻转寄存器中的若干位 (read-modify-write, 非原子)
+ * @param addr 寄存器地址
+ * @param mask 翻转掩码 (1 = 取反, 等价 reg ^= mask)
+ * @note 等价于 `reg ^= mask`; 并发 RMW 需调用方保护临界区
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_TOGGLE_BITS(uintptr_t addr, uint32_t mask)
+{
+    uint32_t v = COMPAT_REG_READ32(addr);
+    v ^= mask;
+    COMPAT_REG_WRITE32(addr, v);
+}
+
+/**
+ * @brief 置位寄存器中的单个位
+ * @param addr 寄存器地址
+ * @param n    位序号 (0..31)
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_SET_BIT(uintptr_t addr, uint32_t n)
+{
+    COMPAT_REG_SET_BITS(addr, COMPAT_BIT(n));
+}
+
+/**
+ * @brief 清位寄存器中的单个位
+ * @param addr 寄存器地址
+ * @param n    位序号 (0..31)
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_CLR_BIT(uintptr_t addr, uint32_t n)
+{
+    COMPAT_REG_CLR_BITS(addr, COMPAT_BIT(n));
+}
+
+/**
+ * @brief 翻转寄存器中的单个位
+ * @param addr 寄存器地址
+ * @param n    位序号 (0..31)
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_TOGGLE_BIT(uintptr_t addr, uint32_t n)
+{
+    COMPAT_REG_TOGGLE_BITS(addr, COMPAT_BIT(n));
+}
+
+/**
+ * @brief 读取寄存器中若干位 (掩码提取, 不右移)
+ * @param addr 寄存器地址
+ * @param mask 要提取的位掩码
+ * @return reg & mask
+ */
+COMPAT_STATIC_INLINE uint32_t COMPAT_REG_GET_BITS(uintptr_t addr, uint32_t mask)
+{
+    return COMPAT_REG_READ32(addr) & mask;
+}
+
+/**
+ * @brief 提取寄存器字段并右移对齐到 0 位
+ * @param addr  寄存器地址
+ * @param mask  字段掩码 (如 0x0F00)
+ * @param shift 字段低位偏移 (如 8)
+ * @return (reg & mask) >> shift
+ */
+COMPAT_STATIC_INLINE uint32_t COMPAT_REG_FIELD_GET(uintptr_t addr, uint32_t mask, uint32_t shift)
+{
+    return (COMPAT_REG_READ32(addr) & mask) >> shift;
+}
+
+/**
+ * @brief 更新寄存器字段 (读-改-写, 非原子)
+ * @param addr  寄存器地址
+ * @param mask  字段掩码 (如 0x0F00)
+ * @param shift 字段低位偏移 (如 8)
+ * @param val   字段新值 (未预移位, 函数内自动左移)
+ * @note 等价于 reg = (reg & ~mask) | ((val << shift) & mask); 并发 RMW 需临界区
+ */
+COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32_t shift,
+                                               uint32_t val)
+{
+    COMPAT_REG_MODIFY32(addr, mask, (val << shift) & mask);
+}
+
+/** @} */
 
 /* ── 原子操作自适应层 ───────────────────────────────────────────────────── */
 

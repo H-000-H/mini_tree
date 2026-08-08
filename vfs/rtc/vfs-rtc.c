@@ -213,7 +213,7 @@ static int rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_l
     COMPAT_IGNORE_RESULT(arg);
     COMPAT_IGNORE_RESULT(arg_len);
     COMPAT_IGNORE_RESULT(to);
-    hal_rtc_force_stop();
+    COMPAT_IGNORE_RESULT(hal_rtc_force_stop());
     return VFS_OK;
 }
 

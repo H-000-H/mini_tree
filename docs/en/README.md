@@ -18,7 +18,7 @@
 | Platform porting | [porting_guide.md](porting_guide.md) → [esp_idf_cmake.md](esp_idf_cmake.md) (if ESP) → [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
 | Writing applications | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
 | Writing code / checking naming | [coding_style.md](coding_style.md) (language rules: enforced below `app/`, recommended in `app/`) |
-| Design rationale | [design_decisions.md](design_decisions.md) · [references.md](references.md) · [architecture.md](architecture.md) |
+| Design rationale / mechanisms | [design_decisions.md](design_decisions.md) · [patterns.md](patterns.md) · [references.md](references.md) · [architecture.md](architecture.md) |
 | File lookup | [file_index.md](file_index.md) |
 | Compliance / license | [../NOTICE](../NOTICE) (third-party list and compliance notes) · [../LICENSE](../LICENSE) (Apache-2.0 full text) · [ecosystem.md](ecosystem.md) §6 (acknowledgements) |
 
@@ -40,6 +40,7 @@
 | Document | Description |
 | :--- | :--- |
 | [architecture.md](architecture.md) | Layers and data flow |
+| [patterns.md](patterns.md) | Key mechanisms anatomy: pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines |
 | [ecosystem.md](ecosystem.md) | Brick-style linking: integrated open-source libraries and how to extend |
 | [design_decisions.md](design_decisions.md) | Design decisions still in force and author preferences |
 | [references.md](references.md) | External references: ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |

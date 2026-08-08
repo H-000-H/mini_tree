@@ -104,7 +104,7 @@ static int board_safety_hw_probe(struct device* pdev)
  */
 static int board_safety_hw_remove(struct device* pdev)
 {
-    (void)pdev;
+    COMPAT_UNUSED_PARAM(pdev);
     g_safety_pin_count = 0;
     g_safety_cb_count = 0;
     return VFS_OK;
@@ -121,15 +121,15 @@ DRIVER_REGISTER(board_safety_hw, "board,safety-hw", board_safety_hw_probe, board
  */
 void board_safety_add_pin(int pin, int safe_level)
 {
-    (void)pin;
-    (void)safe_level;
+    COMPAT_UNUSED_PARAM(pin);
+    COMPAT_UNUSED_PARAM(safe_level);
 }
 
 /**
  * @brief 注册安全停机回调 (CONFIG_SAFETY_SHUTDOWN 未启用时为 no-op)
  * @param fn 停机回调函数
  */
-void board_safety_register_shutdown(safety_shutdown_fn_t fn) { (void)fn; }
+void board_safety_register_shutdown(safety_shutdown_fn_t fn) { COMPAT_UNUSED_PARAM(fn); }
 
 #endif /* CONFIG_SAFETY_SHUTDOWN */
 
@@ -249,7 +249,7 @@ void system_safety_hardware_shutdown(const char* reason)
         return;
 
 #ifdef CONFIG_SAFETY_SHUTDOWN
-    (void)reason;
+    COMPAT_UNUSED_PARAM(reason);
 
     if (!osal_in_isr())
     {
@@ -258,7 +258,7 @@ void system_safety_hardware_shutdown(const char* reason)
                 g_safety_cbs[i]();
     }
 
-    hal_pwm_force_stop_all();
+    COMPAT_IGNORE_RESULT(hal_pwm_force_stop_all());
 
     /* 注: 所有 GPIO 写操作必须在 hal_cpu_emergency_stop_all_cores() 之前完成,
      * 因为 CPU STOP 后可能冻结外设总线, 后续 GPIO 写将失效. */
@@ -270,7 +270,7 @@ void system_safety_hardware_shutdown(const char* reason)
 #else
     /* 最小安全停机: CONFIG_SAFETY_SHUTDOWN 未启用, 仅停机.
      * 移植阶段用户工程可在此处添加自己的安全逻辑后再 halt. */
-    (void)reason;
+    COMPAT_UNUSED_PARAM(reason);
 #endif /* CONFIG_SAFETY_SHUTDOWN */
 
     while (1)

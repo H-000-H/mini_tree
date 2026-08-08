@@ -115,12 +115,12 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     }
     host->tusb_inited = 1;
     s_irq_host = host;
-    hal_usb_irq_enable(&host->hal_host);
+    COMPAT_IGNORE_RESULT(hal_usb_irq_enable(&host->hal_host));
 
     ret = bus_controller_bind_full(pdev, BUS_TYPE_USB, &s_usb_controller_ops, host);
     if (ret != VFS_OK)
     {
-        hal_usb_irq_disable(&host->hal_host);
+        COMPAT_IGNORE_RESULT(hal_usb_irq_disable(&host->hal_host));
         s_irq_host = NULL;
         COMPAT_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
         goto fail_pool;

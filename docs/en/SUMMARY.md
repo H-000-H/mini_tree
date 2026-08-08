@@ -27,6 +27,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | `getting_started.md` | Dependencies (CMake ≥ 3.16, `lark`, `kconfiglib`), Kconfig dual-track, CMake integration, two-phase boot, clangd | **P0** | [en](getting_started.md) |
 | `faq.md` | FAQ (regenerate artifacts, install `lark`, …) | P2 | [en](faq.md) |
 | `architecture.md` | Layering `app→board→vfs→bus→hal(weak)→vendor`, data flow, boot sequence | **P0** | [en](architecture.md) |
+| `patterns.md` | Key mechanisms anatomy: pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines | P1 | [en](patterns.md) |
 | `ecosystem.md` | Brick-style linking: `lib/` vendors only; TinyUSB/lwIP/cJSON are **config-time** FetchContent, rest link-time; 22 OSS libs with versions | **P0** | [en](ecosystem.md) |
 
 ### 1.2 Porting
@@ -81,7 +82,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 ## 2. Quick Index by Priority
 
 - **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `porting_guide.md` · `esp_idf_cmake.md` (ESP) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
-- **P1 (As-needed)**: `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md` · `board_devicetree.md`
+- **P1 (As-needed)**: `patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md` · `board_devicetree.md`
 - **P2 (Deep-dive)**: `usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `keil_integration.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
 
 ---

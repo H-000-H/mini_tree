@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "compiler_compat.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -73,12 +74,12 @@ extern "C"
         void* _impl; /**< 平台私有实现指针 */
     };
 
-    void hal_sdio_init_struct(struct hal_sdio* sdio);
+    int hal_sdio_init_struct(struct hal_sdio* sdio) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
 
     /*安全停机*/
     /*===========================================================================================================================================================*/
-    void hal_sdio_force_stop(void);
+    int hal_sdio_force_stop(void) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus

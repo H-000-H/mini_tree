@@ -76,25 +76,23 @@ extern "C"
     COMPAT_STATIC_INLINE void hal_irq_enable(int irq_num)
     {
         uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
-        uint32_t bit = 1UL << (irq_num & 0x1F);
-        *(volatile uint32_t*)(HAL_NVIC_ISER_BASE + reg) = bit;
+        COMPAT_REG_WRITE32(HAL_NVIC_ISER_BASE + reg, COMPAT_BIT(irq_num & 0x1F));
     }
 
     COMPAT_STATIC_INLINE void hal_irq_disable(int irq_num)
     {
         uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
-        uint32_t bit = 1UL << (irq_num & 0x1F);
-        *(volatile uint32_t*)(HAL_NVIC_ICER_BASE + reg) = bit;
+        COMPAT_REG_WRITE32(HAL_NVIC_ICER_BASE + reg, COMPAT_BIT(irq_num & 0x1F));
     }
 
     COMPAT_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority)
     {
-        *(volatile uint8_t*)(HAL_NVIC_IPR_BASE + (uint32_t)irq_num) = (uint8_t)(priority & 0xFF);
+        COMPAT_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF));
     }
 
     COMPAT_STATIC_INLINE int hal_irq_get_priority(int irq_num)
     {
-        return *(volatile uint8_t*)(HAL_NVIC_IPR_BASE + (uint32_t)irq_num);
+        return COMPAT_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num);
     }
     /*===========================================================================================================================================================*/
 
