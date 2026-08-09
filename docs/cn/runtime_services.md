@@ -86,7 +86,7 @@ ISR 禁止：`printf`、长时间锁、无界工作 — [fast_path.md](fast_path
 
 | 功能 | 关闭后的影响 |
 | :--- | :--- |
-| 裸机时间片调度器（`time_slice/xtask`） | `xscheduler_start()` 不再注册 TIM 定时中断，调度器无 tick 源，`x_scheduler_poll()` 永不调度任务 |
+| 裸机时间片调度器（`time_slice/xtask`） | **SysTick 默认路径不受影响**（架构中断，不经 VIRQ）；仅当 DTS 显式配 `chosen { scheduler-tim = &timN; }` 用通用 TIM 时，关闭 VIRQ 后该 TIM 中断无法路由，调度器才无 tick 源 |
 | ADC / I2S DMA 中断下半部 | `vfs-adc` / `i2s_bus` 跳过 VIRQ 注册与中断使能，异步/DMA 回调不可用（轮询模式驱动不受影响） |
 | GPIO 硬件中断路由 | `hal_gpio` 的 `virq_idx` 槽位形同虚设 |
 | 板级/驱动 ISR | 不得再调 `interrupt_virtual_dispatch()` / `interrupt_virtual_register()`，否则链接失败 |

@@ -34,7 +34,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 
 | Document | English Title / Key Points | Priority | Links |
 | :--- | :--- | :---: | :--- |
-| `porting_guide.md` | Platform porting checklist (DTS override, HAL strong symbols, board_port.cmake) | **P0** | [en](porting_guide.md) |
+| `device_tree_porting.md` | **Device-tree porting guide (consolidated, full examples)**: dtc-lite pipeline, node templates, board DTS, generated-artifacts, driver wiring, CMake injection (`BOARD_DTS`/`BOARD_DTSI_DIR`/`MINI_TREE_BOARD_PORT`), verification, troubleshooting. In practice porting usually needs only DTS + HAL changes | **P0** | [en](device_tree_porting.md) |
 | `esp_idf_cmake.md` | ESP-IDF component CMake (against esp32s3), Kconfig dual-track, acceptance checklist | **P0** (ESP path) | [en](esp_idf_cmake.md) |
 | `driver_guide.md` | DTS layout, `dtc-lite` pipeline, `DRIVER_REGISTER`, compatible props, `board_*` runtime API, remove lifecycle | **P0** | [en](driver_guide.md) |
 | `peripherals.md` | Peripheral compatible / ioctl overview | P1 | [en](peripherals.md) |
@@ -74,15 +74,14 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | `roadmap.md` | Roadmap | P2 | [en](roadmap.md) |
 | `todolist.md` | TODO list | P2 | [en](todolist.md) |
 | `tools_guide.md` | `dtc-lite` / `genconfig` / `menuconfig` / `gen_compile_db` / scrubber stub usage; `dtc-lite` supports `-I`/`-D` | **P0** (toolchain) | [en](tools_guide.md) |
-| `board_devicetree.md` | Device Tree pipeline (`pip install lark`) | P1 | [en](board_devicetree.md) |
 | `board_linux_vs_device_model.md` | generic: mini_tree device model vs Linux comparison | P2 | [en](board_linux_vs_device_model.md) |
 
 ---
 
 ## 2. Quick Index by Priority
 
-- **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `porting_guide.md` · `esp_idf_cmake.md` (ESP) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
-- **P1 (As-needed)**: `patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md` · `board_devicetree.md`
+- **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `esp_idf_cmake.md` (ESP) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
+- **P1 (As-needed)**: `patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md`
 - **P2 (Deep-dive)**: `usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `keil_integration.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
 
 ---

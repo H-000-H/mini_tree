@@ -87,5 +87,5 @@ Check global constructors, WDT, peripheral clock gating, and link sections; the 
 
 ## Related Documents
 
-- [debug_monitor.md](debug_monitor.md) · [porting_guide.md](porting_guide.md)
+- [debug_monitor.md](debug_monitor.md) · [device_tree_porting.md](device_tree_porting.md)
 - [usage.md](usage.md) · [ecosystem.md](ecosystem.md)

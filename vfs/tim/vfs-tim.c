@@ -220,6 +220,20 @@ static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
 }
 
 /**
+ * @brief TIM 命令: 清更新标志 (ISR 上半部用, 无参数)
+ * @param priv TIM 私有数据指针
+ * @param arg 忽略 (可为 NULL)
+ * @param arg_len 忽略
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
+static int tim_cmd_clear_update_flag(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
+{
+    COMPAT_IGNORE_RESULT(arg);
+    COMPAT_IGNORE_RESULT(arg_len);
+    return hal_tim_clear_update_flag(&priv->tim);
+}
+
+/**
  * @brief TIM 命令: 设置预分频系数
  * @param priv TIM 私有数据指针
  * @param arg uint32_t 设定值指针
@@ -426,6 +440,7 @@ static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
     [TIM_CMD_SET_INTERRUPT - TIM_CMD_BASE - 1] = {tim_cmd_set_interrupt},
     [TIM_CMD_ENCODER_START - TIM_CMD_BASE - 1] = {tim_cmd_encoder_start},
     [TIM_CMD_HALL_START - TIM_CMD_BASE - 1] = {tim_cmd_hall_start},
+    [TIM_CMD_CLEAR_UPDATE_FLAG - TIM_CMD_BASE - 1] = {tim_cmd_clear_update_flag},
 };
 
 /**

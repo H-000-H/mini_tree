@@ -15,7 +15,7 @@
 | :--- | :--- |
 | 第一次接入 | [README.md](README.md)（全量索引）→ [getting_started.md](getting_started.md) → [usage.md](usage.md) → [faq.md](faq.md) |
 | 选开源积木 / 扩生态 | [ecosystem.md](ecosystem.md) |
-| 平台移植 | [porting_guide.md](porting_guide.md) → [esp_idf_cmake.md](esp_idf_cmake.md)（若 ESP）→ [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
+| 平台移植 | [device_tree_porting.md](device_tree_porting.md) → [esp_idf_cmake.md](esp_idf_cmake.md)（若 ESP）→ [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
 | 写应用 | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
 | 写代码 / 查命名 | [coding_style.md](coding_style.md)（语言规范：app 以下强规定，app 层建议） |
 | 查设计动机 / 机制 | [design_decisions.md](design_decisions.md) · [patterns.md](patterns.md) · [references.md](references.md) · [architecture.md](architecture.md) |
@@ -44,7 +44,7 @@
 | [ecosystem.md](ecosystem.md) | 积木型链接：已接入开源库清单与扩展方式 |
 | [design_decisions.md](design_decisions.md) | 仍生效的设计决策与作者偏好 |
 | [references.md](references.md) | 外部对照：ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |
-| [porting_guide.md](porting_guide.md) | 平台移植清单 |
+| [device_tree_porting.md](device_tree_porting.md) | 平台移植清单 |
 | [esp_idf_cmake.md](esp_idf_cmake.md) | ESP-IDF 组件式 CMake（对照 esp32s3） |
 | [driver_guide.md](driver_guide.md) | DTS / `DRIVER_REGISTER` |
 | [peripherals.md](peripherals.md) | 外设 compatible / ioctl 一览 |

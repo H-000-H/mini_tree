@@ -38,7 +38,7 @@
 | 优先级 | 注册点 | 初始化内容 |
 | :---: | :--- | :--- |
 | `170` | `interrupt/interrupt.c` | 全局下半部 poller（FIFO + pending_drain） |
-| `161` | `time_slice/task/xtask_preempt.c` | N+1 抢占式调度器数组（实验性，未完工） |
+| `161` | `time_slice/task/xtask_preempt.c` | N+1 抢占式调度器（分组优先级 + CLZ 定位，可延迟/休眠/抢占，无就绪时精确 WFI） |
 | `160` | `time_slice/task/xtask_coop.c` | 协调式调度器 `g_scheduler`（默认） |
 | `152` | `osal/src/osal_null.c` | 裸机队列池 |
 | `151` | `osal/src/osal_null.c` | 裸机信号量池 |
@@ -132,13 +132,19 @@ board_driver_probe_all()
 
 ### 机制
 
-裸机后端（`CONFIG_OSAL_NULL`）下，全系统只有一个时基源：`x_scheduler.tick_count`，由 chosen TIM 的 ISR 驱动。
+裸机后端（`CONFIG_OSAL_NULL`）下，全系统只有一个时基源：`x_scheduler.tick_count`。`xscheduler_start()` 按"chosen 显式覆盖优先，否则 SysTick 默认"两级选择 tick 源：
 
 ```text
-DTS chosen TIM（CHOSEN_SCHEDULER_TIM）
+① DTS 显式配 chosen TIM（CHOSEN_SCHEDULER_TIM）→ 显式覆盖，走通用 TIM + VIRQ
   → xscheduler_start(): device_open → 取 hal_tim_device → VIRQ(tim,0) 注册
-  → scheduler_tim_isr_top(): 清 update flag + x_scheduler_tick(+1)   ← ISR 内，仅此而已
-  → osal_time_ms() 直接读 g_scheduler.tick_count                     ← 全局统一时钟
+  → scheduler_tim_isr_top(): 清 update flag + x_scheduler_tick(+tick_delay)   ← ISR 内，仅此而已
+
+② 未配 chosen → 默认 SysTick（Cortex-M 架构标准件，零配置）
+  → hal_systick_init(DTC_GEN_TICK_RATE_HZ) 配置 SysTick（频率走 DTS，基址写死）
+  → SysTick_Handler → hal_systick_irq_handler() + x_scheduler_tick(+tick_delay)  ← ISR 内，仅此而已
+
+非 ARM（RISC-V）无 SysTick，hal_systick_init 返回 NOTSUPP，RISC-V 板必须在 DTS 配 chosen。
+→ osal_time_ms() 直接读 g_scheduler.tick_count                     ← 全局统一时钟
 ```
 
 任务模型（`time_slice/task/xtask.h`）：

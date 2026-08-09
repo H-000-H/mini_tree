@@ -8,7 +8,7 @@
 | :--- | :--- |
 | **读者** | 平台/应用工程师 |
 | **前置** | CMake、基本 C；有一块目标板或至少能链出固件 |
-| **相关** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
+| **相关** | [device_tree_porting.md](device_tree_porting.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 
@@ -214,7 +214,7 @@ system_init_complete();
 > `period` 参数为任务周期 ms，`param1` 为调用方静态分配的 `x_task*` TCB）；
 > C 工程直接调 `xscheduler_task_create`（见 `time_slice/task/xtask.h`）。OS 后端无此限制。
 >
-> **抢占式 (`CONFIG_XTASK_PREEMPT=y`) 注意**: 协调式 C++ 重载会通过 `#ifndef CONFIG_XTASK_PREEMPT` 整段关闭, 此时 C++ 工程也只能走 `xscheduler_task_create` 原生 API; 调度器实现换成 `xtask_preempt.c` (实验性, 未完工, 开启后可能编不过).
+> **抢占式 (`CONFIG_XTASK_PREEMPT=y`) 注意**: C++ 重载仍提供, 但 `osal_task_create` 切换为带 `priority` 的分支（`stack_size` 在裸机下复用为周期）; 也可走 `xscheduler_task_create` 原生 API. 调度器实现换成 `xtask_preempt.c` (N+1 多优先级, 已完整实现可编译).
 
 阶段含义见 [architecture.md §3](architecture.md#3-启动时序两段式点火)。
 
@@ -255,6 +255,6 @@ system_init_complete();
 
 ## 相关文档
 
-- [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)
+- [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
 - [osal_switching.md](osal_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)
 - [tools_guide.md](../tools_guide.md)

@@ -5,7 +5,7 @@
 | Item | Description |
 | :--- | :--- |
 | **Audience** | People writing platform dtsi / VFS drivers |
-| **Prereq.** | [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) |
+| **Prereq.** | [getting_started.md](getting_started.md) · [device_tree_porting.md](device_tree_porting.md) |
 | **Related** | [tools_guide.md](../tools_guide.md) · [architecture.md](architecture.md) |
 
 ---

@@ -124,7 +124,7 @@ Root keeps only entry & legal files; all topics live in [`docs/`](docs/en/README
 | Coding style | [docs/en/coding_style.md](docs/en/coding_style.md) |
 | Architecture | [docs/en/architecture.md](docs/en/architecture.md) |
 | Ecosystem | [docs/en/ecosystem.md](docs/en/ecosystem.md) |
-| Port a board | [docs/en/porting_guide.md](docs/en/porting_guide.md) · [docs/en/driver_guide.md](docs/en/driver_guide.md) |
+| Port a board | [docs/en/device_tree_porting.md](docs/en/device_tree_porting.md) · [docs/en/driver_guide.md](docs/en/driver_guide.md) |
 | Write apps | [docs/en/service_spec.md](docs/en/service_spec.md) · [docs/en/peripherals.md](docs/en/peripherals.md) |
 | Find files | [docs/en/file_index.md](docs/en/file_index.md) |
 | FAQ | [docs/en/faq.md](docs/en/faq.md) |

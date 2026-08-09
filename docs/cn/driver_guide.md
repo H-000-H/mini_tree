@@ -5,7 +5,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 写平台 dtsi / 写 VFS 驱动的人 |
-| **前置** | [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) |
+| **前置** | [getting_started.md](getting_started.md) · [device_tree_porting.md](device_tree_porting.md) |
 | **相关** | [tools_guide.md](../tools_guide.md) · [architecture.md](architecture.md) |
 
 ---

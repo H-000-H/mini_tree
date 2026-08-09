@@ -627,6 +627,9 @@ class CGenerator:
             macro: str = _compat_to_macro(compat)
             lines.append(f'#define DTC_GEN_COUNT_{macro}  {compat_counts[compat]}')
 
+        # CPU 主频: SysTick 需要真实主频算 LOAD, 任何非 ESP 的 CPU 必须有主频。
+        # 策略: 显式存在 /cpus/cpu@0 但 clock-frequency 缺失或为 0 → 生成 #error 强制填真值;
+        #       完全没写 cpus (占位验证板 / ESP) → 兜底 16MHz 保证默认构建可编过。
         cpu_node: Optional[DtsNode] = None
         for dev in devs:
             if dev.path in ('/cpus/cpu@0', '/cpus/cpu@0/'):
@@ -634,22 +637,20 @@ class CGenerator:
                 break
         if cpu_node:
             cf_prop: Optional[DtsProperty] = cpu_node.get_prop('clock-frequency')
-            if cf_prop and cf_prop.ints:
+            if cf_prop and cf_prop.ints and cf_prop.ints[0] != 0:
                 lines.append(f'#define DTC_GEN_CPU_CLOCK_HZ  {cf_prop.ints[0]}')
             else:
-                lines.append(f'#define DTC_GEN_CPU_CLOCK_HZ  16000000')
+                lines.append('#error "dt_config_gen.h: /cpus/cpu@0 clock-frequency 未配置(0), SysTick 需要真实 CPU 主频 (Hz)"')
         else:
-            lines.append(f'#define DTC_GEN_CPU_CLOCK_HZ  16000000')
+            lines.append('#define DTC_GEN_CPU_CLOCK_HZ  16000000')
 
+        tick_rate: int = 1000
         chosen_node: Optional[DtsNode] = self.compiler.root.find_node_by_path('/chosen') if self.compiler.root else None
         if chosen_node:
             tr_prop: Optional[DtsProperty] = chosen_node.get_prop('tick-rate')
-            if tr_prop and tr_prop.ints:
-                lines.append(f'#define DTC_GEN_TICK_RATE_HZ  {tr_prop.ints[0]}')
-            else:
-                lines.append(f'#define DTC_GEN_TICK_RATE_HZ  1000')
-        else:
-            lines.append(f'#define DTC_GEN_TICK_RATE_HZ  1000')
+            if tr_prop and tr_prop.ints and tr_prop.ints[0] != 0:
+                tick_rate = tr_prop.ints[0]
+        lines.append(f'#define DTC_GEN_TICK_RATE_HZ  {tick_rate}')
 
         if chosen_node:
             hs_prop: Optional[DtsProperty] = chosen_node.get_prop('heap-size')

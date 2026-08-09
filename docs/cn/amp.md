@@ -8,7 +8,7 @@
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 双核 / AMP 板级工程师 |
-| **前置** | [getting_started.md](getting_started.md) Kconfig · [porting_guide.md](porting_guide.md) |
+| **前置** | [getting_started.md](getting_started.md) Kconfig · [device_tree_porting.md](device_tree_porting.md) |
 | **相关** | [osal_switching.md](osal_switching.md) · [architecture.md](architecture.md) · [runtime_services.md](runtime_services.md) |
 
 ---
@@ -119,5 +119,5 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 
 ## 相关文档
 
-- [porting_guide.md](porting_guide.md) · [osal_switching.md](osal_switching.md) · [design_decisions.md](design_decisions.md)
+- [device_tree_porting.md](device_tree_porting.md) · [osal_switching.md](osal_switching.md) · [design_decisions.md](design_decisions.md)
 - [runtime_services.md](runtime_services.md) · [todolist.md](todolist.md)（AMP 样例跟踪）

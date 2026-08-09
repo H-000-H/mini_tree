@@ -1,11 +1,11 @@
 # USB (TinyUSB) 端口指南
 
-> 把 TinyUSB（`lib/tinyusb`，Fetch 积木）接进中间件的板级端口步骤。涉及：`vfs/usb`、设备树绑定、`dtsi` 节点。核心约定见 [peripherals.md](peripherals.md)、[porting_guide.md](porting_guide.md)。
+> 把 TinyUSB（`lib/tinyusb`，Fetch 积木）接进中间件的板级端口步骤。涉及：`vfs/usb`、设备树绑定、`dtsi` 节点。核心约定见 [peripherals.md](peripherals.md)、[device_tree_porting.md](device_tree_porting.md)。
 
 | 项 | 内容 |
 | :--- | :--- |
 | **读者** | 接 USB / 板级端口 |
-| **相关** | [peripherals.md](peripherals.md) · [porting_guide.md](porting_guide.md) · [ecosystem.md](ecosystem.md) |
+| **相关** | [peripherals.md](peripherals.md) · [device_tree_porting.md](device_tree_porting.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -57,4 +57,4 @@ USB 中断经 `interrupt/interrupt.{c,h}` 的 VIRQ 封装后转 OSAL 中断；�
 
 ## 相关文档
 
-- [peripherals.md](peripherals.md) · [porting_guide.md](porting_guide.md) · [ecosystem.md](ecosystem.md) · [osal_switching.md](osal_switching.md)
+- [peripherals.md](peripherals.md) · [device_tree_porting.md](device_tree_porting.md) · [ecosystem.md](ecosystem.md) · [osal_switching.md](osal_switching.md)

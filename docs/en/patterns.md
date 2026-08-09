@@ -132,13 +132,19 @@ Key points:
 
 ### Mechanism
 
-On the bare-metal backend (`CONFIG_OSAL_NULL`), the whole system has exactly one time source: `x_scheduler.tick_count`, driven by the chosen TIM ISR.
+On the bare-metal backend (`CONFIG_OSAL_NULL`), the whole system has exactly one time source: `x_scheduler.tick_count`. `xscheduler_start()` selects the tick source in two levels — "chosen override first, else SysTick by default":
 
 ```text
-DTS chosen TIM (CHOSEN_SCHEDULER_TIM)
+① DTS explicitly sets chosen TIM (CHOSEN_SCHEDULER_TIM) → explicit override, generic TIM + VIRQ
   → xscheduler_start(): device_open → get hal_tim_device → register VIRQ(tim,0)
-  → scheduler_tim_isr_top(): clear update flag + x_scheduler_tick(+1)   ← ISR only, nothing else
-  → osal_time_ms() reads g_scheduler.tick_count directly                 ← one global clock
+  → scheduler_tim_isr_top(): clear update flag + x_scheduler_tick(+tick_delay)   ← ISR only, nothing else
+
+② No chosen → SysTick by default (Cortex-M architecture standard, zero-config)
+  → hal_systick_init(DTC_GEN_TICK_RATE_HZ) configures SysTick (frequency via DTS, base hard-coded)
+  → SysTick_Handler → hal_systick_irq_handler() + x_scheduler_tick(+tick_delay)  ← ISR only, nothing else
+
+Non-ARM (RISC-V) has no SysTick; hal_systick_init returns NOTSUPP, so RISC-V boards must set chosen in DTS.
+→ osal_time_ms() reads g_scheduler.tick_count directly                 ← one global clock
 ```
 
 Task model (`time_slice/task/xtask.h`):

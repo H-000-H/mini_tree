@@ -2,8 +2,7 @@
 /**
  * @file xtask.h
  * @brief 裸机时间片调度器 (仅 CONFIG_OSAL_NULL)
- * @note 与 FreeRTOS/RT-Thread 互斥; OS 后端勿包含本头文件
- * @note 链表类型:侵入式链表
+ * @note 与 FreeRTOS/RT-Thread 等 OS 后端互斥; OS 后端勿包含本头
  */
 #ifndef XTASK_H
 #define XTASK_H
@@ -24,9 +23,8 @@ extern "C"
 
     typedef uint32_t x_task_handle_t;
 
-    /**
-     * @brief 链表节点结构体
-     */
+    /* ── 侵入式双向链表 ─────────────────────────────────────────────── */
+
     typedef struct list_node
     {
         struct list_node* next;
@@ -34,7 +32,8 @@ extern "C"
     } list_node;
 
     /**
-     * @brief 初始化链表节点
+     * @brief 初始化链表节点 (自环)
+     * @param node 节点
      */
     COMPAT_STATIC_INLINE int list_init(list_node* node)
     {
@@ -44,40 +43,69 @@ extern "C"
     }
 
     /**
-     * @brief 在两个已知节点之间插入一个新节点
+     * @brief 将 new_node 插入到 next 与 prev 之间
+     * @param new_node 新节点
+     * @param next 后继
+     * @param prev 前驱
      */
-    COMPAT_STATIC_INLINE int list_add(list_node* new_node, list_node* next, list_node* pre)
+    COMPAT_STATIC_INLINE int list_add(list_node* new_node, list_node* next, list_node* prev)
     {
         next->prev = new_node;
-        new_node->prev = pre;
+        new_node->prev = prev;
         new_node->next = next;
-        pre->next = new_node;
+        prev->next = new_node;
         return VFS_OK;
     }
 
     /**
-     * @brief 尾插结点也就是头结点前驱
+     * @brief 尾插 (即头节点前)
+     * @param new_node 新节点
+     * @param head 链表头
      */
     COMPAT_STATIC_INLINE int list_add_tail(list_node* new_node, list_node* head)
     {
         return list_add(new_node, head, head->prev);
     }
 
-    struct x_task;
+    /**
+     * @brief 从链表摘下节点 (自我删除)
+     * @param node 节点
+     */
+    COMPAT_STATIC_INLINE void list_del(list_node* node)
+    {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
+        node->next = node;
+        node->prev = node;
+    }
 
+    /**
+     * @brief 链表是否为空
+     * @param head 链表头
+     * @return true 空; false 非空
+     */
+    COMPAT_STATIC_INLINE bool list_empty(const list_node* head)
+    {
+        return head->next == head;
+    }
+
+    /* ── 任务与调度器 ────────────────────────────────────────────────── */
+
+    /** 任务控制块 (TCB) */
     typedef struct x_task
     {
-        const char* name; /**< 任务名称 */
-        void (*xTask_cb)(struct x_task* param); /**< 任务回调函数 */
-        COMPAT_ATOMIC_UINT period; /**< 任务周期 */
-        COMPAT_ATOMIC_UINT next_running; /**< 下次运行时间 */
-        COMPAT_ATOMIC_BOOL is_running; /**< 任务执行中标志（重入保护；非使能开关） */
-        list_node node; /**< 任务链表节点 */
+        const char* name; /**< 任务名 */
+        void (*xTask_cb)(struct x_task* param); /**< 任务回调 */
+        COMPAT_ATOMIC_UINT period; /**< 周期 (ms) */
+        COMPAT_ATOMIC_UINT next_running; /**< 下次到期时刻 (tick) */
+        COMPAT_ATOMIC_BOOL is_running; /**< 运行中标志 (重入保护) */
+        list_node node; /**< 链表节点 */
     } x_task;
 
+    /** 调度器 (coop/preempt 共用契约) */
     typedef struct x_scheduler
     {
-        COMPAT_ATOMIC_UINT tick_count; /**< 虚拟系统滴答计数器 */
+        COMPAT_ATOMIC_UINT tick_count; /**< 系统滴答计数 */
         list_node task_list_head; /**< 任务链表头 */
     } x_scheduler;
 
@@ -85,6 +113,7 @@ extern "C"
 
     /**
      * @brief 初始化调度器
+     * @param sched 调度器
      */
     COMPAT_STATIC_INLINE void x_scheduler_init(x_scheduler* sched)
     {
@@ -93,57 +122,49 @@ extern "C"
     }
 
     /**
-     * @brief 创建/注册任务
-     * @return 返回任务的句柄（指针地址）
-     */
-    x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name,void (*cb)(x_task*), unsigned int period_ms);
-
-    /**
-     * @brief 系统滴答计数器增加
-     * @return VFS_OK 成功; VFS_ERR_INVAL 非法参数
+     * @brief 累加系统滴答
+     * @param sched 调度器
+     * @param ms 滴答增量
+     * @return VFS_OK / VFS_ERR_INVAL
      */
     int x_scheduler_tick(x_scheduler* sched, unsigned int ms);
 
-    /**
-     * @brief 调度器核心轮询逻辑
-     * @return VFS_OK 成功; -1 非法参数
+#ifdef CONFIG_XTASK_PREEMPT
+    /** @brief 创建抢占式任务 (任务池自分配)
+     * @param priority 优先级, 越大越优先
+     * @return 任务句柄; 池满/非法返回 0
      */
+    x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, uint32_t priority,
+                                            void (*cb)(x_task*), void* param);
+
+    /** @brief 抢占式调度核心 (主循环调用, 无任务时精确 WFI) */
+    int x_task_run_preempt(x_scheduler* sched);
+
+    /** @brief 轮询全局调度器 (与协调式同名, 应用层无感知) */
+    void x_scheduler_poll(void);
+#else
+    /** @brief 创建协调式任务 (TCB 由调用方静态分配)
+     * @return 任务句柄; 非法参数返回 0
+     */
+    x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms);
+
+    /** @brief 协调式调度核心 (轮询到期任务) */
     int x_task_run(x_scheduler* sched);
 
-    /**
-     * @brief 轮询全局调度器（主循环调用）
-     */
+    /** @brief 轮询全局调度器 (主循环调用) */
     void x_scheduler_poll(void);
+#endif
 
-    /**
-     * @brief 启动调度器 — 通过 VFS 打开 chosen TIM, 注册 VIRQ, 使能 NVIC
-     * @note  必须在 mini_tree_start_tasks() 之后调用 (VFS 设备已 probe)
-     * @note  NVIC 优先级从 DTS nvic-priority 属性读取
+    /** @brief 启动调度器: 打开 chosen TIM, 注册 VIRQ
+     * @note 必须在 mini_tree_start_tasks() 之后调用
      */
     void xscheduler_start(void);
 
-    /**
-     * @brief 调度器 TIM ISR 上下文 — top_half 使用, 包含 TIM 设备和调度器指针
+    /** @brief TIM 上半部: 清 update flag + 累加 tick
+     * @return VFS_IRQ_ENTRY_NOBOTTOM
      */
-    struct scheduler_tim_ctx
-    {
-        hal_tim_device* tim; /**< TIM 设备 (用于清 update flag) */
-        x_scheduler* scheduler; /**< 调度器实例 (用于 tick) */
-    };
+    int scheduler_tim_isr_top(void* context, uint16_t irq_num);
 
-    /**
-     * @brief 调度器 TIM 上半部回调 — 清 update flag + 累加 tick
-     * @return VFS_IRQ_ENTRY_NOBOTTOM 不需要下半部
-     */
-    int scheduler_tim_isr_top(void* arg, uint16_t irq_num);
-
-    /**
-     *@brief 计算最高优先级默认数字越高优先级越低
-     */
-    COMPAT_STATIC_INLINE uint8_t get_highest_priority(uint32_t priority)
-    {
-        return 31-COMPAT_CLZ(priority);
-    }
 #ifdef __cplusplus
 }
 #endif

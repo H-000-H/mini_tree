@@ -8,7 +8,7 @@
 | :--- | :--- |
 | **Audience** | Platform and application engineers |
 | **Prerequisites** | CMake, basic C; have a target board or at least be able to link a firmware |
-| **Related** | [porting_guide.md](porting_guide.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
+| **Related** | [device_tree_porting.md](device_tree_porting.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 
@@ -255,6 +255,6 @@ This repo is a **CMake + clangd** based, cross-platform architecture. **At the c
 
 ## Related Documents
 
-- [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)
+- [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
 - [osal_switching.md](osal_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)
 - [tools_guide.md](../tools_guide.md)

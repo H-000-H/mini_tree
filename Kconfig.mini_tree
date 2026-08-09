@@ -190,36 +190,75 @@ config OSAL_NULL_QUEUE_BUF_SZ
       2048 B = 512 base units; EventBus (64×8 B) uses ~1/4.
       Lower bound 512 B keeps the default EventBus queue (128 units) creatable.
 
-config XTASK
-    bool "普通时间片调度器 (xtask)"
-    default y
+choice
+    prompt "裸机调度器 (Bare-metal scheduler)"
+    default XTASK_COOP
     depends on OSAL_NULL
     help
-      普通 (裸机) 时间片调度器 (time_slice/task/xtask_coop.c + time_slice/time)。
-      仅 OSAL_NULL (裸机) 后端提供; OS 后端由各自内核调度, 无此选项。
-      开启 (默认): 编入 xtask, 提供 xscheduler_task_create() /
-      x_scheduler_poll() 等原生 API, 也是 OSAL_NULL_TASK_CPP C++ 封装
-      (osal_task.cpp) 的底层。
-      关闭: xtask 不编入, time_slice/ 头路径不暴露; 依赖 xscheduler_* 的
-      OSAL_NULL_TASK_CPP 封装将链接失败, 应同步关闭。
-      注意: 调度 tick 源依赖 VIRQ (CONFIG_VIRQ); VIRQ 关闭时 xtask 无 tick,
-      任务永不调度 (仍可编译)。
+      裸机 (CONFIG_OSAL_NULL) 下的任务调度方式, 三选一:
+      无调度 / 协调式 / 抢占式。OS 后端由各自内核调度, 无此选项。
 
-      Bare-metal plain time-slice scheduler (time_slice/task/xtask_coop.c +
-      time_slice/time). Only available with the OSAL_NULL (bare-metal)
-      backend; OS backends schedule via their own kernels.
-      On (default): xtask is compiled, exposing the native
-      xscheduler_task_create() / x_scheduler_poll() APIs that the
+      Scheduler for the bare-metal (CONFIG_OSAL_NULL) backend:
+      none / cooperative / preemptive. OS backends schedule via their
+      own kernels and ignore this choice.
+
+config XTASK_NONE
+    bool "无调度器 (自己写 while 大循环) / No scheduler (own while-loop)"
+    help
+      不编入任何调度器。应用层自己写 while(1) 大循环 + 轮询
+      (如 mini_tree_system_loop), 不提供 xscheduler_* 原生 API。
+      time_slice/ 头路径不暴露, OSAL_NULL_TASK_CPP C++ 封装需同步关闭。
+
+      No scheduler is compiled. Drive everything from your own
+      while(1) loop (e.g. mini_tree_system_loop); the xscheduler_*
+      native APIs and time_slice/ headers are not available, and the
+      OSAL_NULL_TASK_CPP C++ wrapper must be disabled too.
+
+config XTASK_COOP
+    bool "协调式时间片 (xtask_coop.c) / Cooperative round-robin"
+    help
+      普通 (裸机) 协调式时间片调度器 (time_slice/task/xtask_coop.c +
+      time_slice/time)。提供 xscheduler_task_create() / x_scheduler_poll()
+      等原生 API, 也是 OSAL_NULL_TASK_CPP C++ 封装 (osal_task.cpp) 的底层。
+      默认 tick 源为 Cortex-M SysTick (内核异常, 不经 VIRQ), 关闭 VIRQ 时
+      SysTick 路径照常 tick; 仅当 DTS 显式配 chosen TIM (走通用 TIM + VIRQ)
+      时, 关闭 VIRQ 才导致该 TIM 中断无法路由、调度器无 tick。
+
+      Bare-metal cooperative round-robin time-slice scheduler
+      (time_slice/task/xtask_coop.c + time_slice/time). Exposes the
+      native xscheduler_task_create() / x_scheduler_poll() APIs that the
       OSAL_NULL_TASK_CPP C++ wrapper (osal_task.cpp) builds on.
-      Off: xtask is not compiled and time_slice/ headers are not exposed;
-      the OSAL_NULL_TASK_CPP wrapper then fails to link — disable it too.
-      Tick source depends on VIRQ (CONFIG_VIRQ); with VIRQ off the
-      scheduler has no tick and tasks never run (still compiles).
+      The default tick source is the Cortex-M SysTick (core exception, not
+      via VIRQ), so the SysTick path keeps ticking even with VIRQ off; only
+      when DTS explicitly sets chosen TIM (generic TIM + VIRQ) does disabling
+      VIRQ break TIM IRQ routing and leave the scheduler with no tick.
+
+config XTASK_PREEMPT
+    bool "抢占式 (xtask_preempt.c, 实验性) / Preemptive (experimental)"
+    help
+      N+1 链表多优先级抢占式调度器 (可延迟/可休眠/可抢占), 独立编译为
+      time_slice/task/xtask_preempt.c, 与协调式 xtask_coop.c 共用 xtask.h。
+      开启后**替换**协调式 (xtask_coop.c 不再编入), 两套实现提供同一套
+      对外 API (xscheduler_task_create / x_scheduler_poll / xscheduler_start 等),
+      调用方代码无需任何改动。
+      实验性, 默认关闭; 代码尚未完工, 开启后可能编不过 (g_scheduler_arr 等
+      待修)。仅当你在裸机上需要更接近 RTOS 的调度体验时再开启。
+      Experimental N+1 linked-list multi-priority preemptive scheduler
+      (delayable / sleepable / preemptive), compiled separately as
+      time_slice/task/xtask_preempt.c, sharing xtask.h with the basic
+      round-robin xtask_coop.c. When enabled, it REPLACES xtask_coop.c
+      (the cooperative version is no longer compiled); both implementations
+      expose the same API (xscheduler_task_create / x_scheduler_poll /
+      xscheduler_start, etc.), so caller code needs no changes.
+      Off by default; not finished yet — enabling may fail to compile.
+      Turn on only if you need a more RTOS-like scheduling experience on bare-metal.
+
+endchoice
 
 config OSAL_NULL_TASK_CPP
     bool "Bare-metal task create C++ wrapper (unified OSAL vs raw xtask)"
     default y
-    depends on OSAL_NULL && SYSTEM_CPP && XTASK
+    depends on OSAL_NULL && SYSTEM_CPP && !XTASK_NONE
     help
       裸机任务创建的 C++ 封装 (osal/src/osal_task.cpp), 需要 SYSTEM_CPP (C++ 构建)。
       开启 (默认): 走统一 OSAL 路径 — 通过 C++ 重载 osal_task_create() 创建
@@ -239,34 +278,101 @@ config OSAL_NULL_TASK_CPP
       Bare-metal (CONFIG_OSAL_NULL) only; on OS backends task creation
       always goes through the standard C API.
 
-config XTASK_PREEMPT
-    bool "N+1 链表多时间片抢占调度器 (实验性)"
-    default n
-    depends on XTASK
-    help
-      N+1 链表多优先级抢占式调度器 (可延迟/可休眠/可抢占), 独立编译为
-      time_slice/task/xtask_preempt.c, 与协调式 xtask_coop.c 共用 xtask.h。
-      开启后**替换**协调式 (xtask_coop.c 不再编入), 两套实现提供同一套
-      对外 API (xscheduler_task_create / x_scheduler_poll / xscheduler_start 等),
-      调用方代码无需任何改动。
-      实验性, 默认关闭; 代码尚未完工, 开启后可能编不过 (g_scheduler_arr 等
-      待修)。仅当你在裸机上需要更接近 RTOS 的调度体验时再开启。
-      Experimental N+1 linked-list multi-priority preemptive scheduler
-      (delayable / sleepable / preemptive), compiled separately as
-      time_slice/task/xtask_preempt.c, sharing xtask.h with the basic
-      round-robin xtask_coop.c. When enabled, it REPLACES xtask_coop.c
-      (the cooperative version is no longer compiled); both implementations
-      expose the same API (xscheduler_task_create / x_scheduler_poll /
-      xscheduler_start, etc.), so caller code needs no changes.
-      Off by default; not finished yet — enabling may fail to compile.
-      Turn on only if you need a more RTOS-like scheduling experience on bare-metal.
-
 config HARD_PRIORITY
     int "Generate Hardware interrupt priority Max Number"
     default 8
     depends on XTASK_PREEMPT
     help 
       N+1链表的最大硬件优先级的数量默认和虚拟中断数一样,不要大于虚拟中断的数量不然容易虚拟中断越界
+
+config X_PREEMPT_MAX_TASKS
+    int "Preemptive scheduler task pool size"
+    default 8
+    range 1 32
+    depends on XTASK_PREEMPT
+    help
+      抢占式调度器 (xtask_preempt.c) 的静态任务池容量, 预分配无动态内存。
+      每个任务一份 x_preempt_task 包装结构, 池满时 x_scheduler_task_create 返回失败。
+
+      Static task-pool capacity of the preemptive scheduler
+      (xtask_preempt.c); pre-allocated, no dynamic memory.
+      One x_preempt_task wrapper per slot; task creation fails when full.
+
+choice
+    prompt "Preemptive scheduler total priority levels"
+    default X_PREEMPT_PRIO_32
+    depends on XTASK_PREEMPT
+    help
+      抢占式调度器总优先级级数。越大优先级分辨率越高, 位图/链表开销越大。
+      总级数必须是每组级数 (X_PREEMPT_PRIO_PER_GROUP) 的整数倍。
+
+      Total priority levels of the preemptive scheduler. Higher
+      resolution costs more bitmap/list memory. Must be a multiple of
+      X_PREEMPT_PRIO_PER_GROUP.
+
+config X_PREEMPT_PRIO_16
+    bool "16 levels"
+    help
+      16 级: 可选布局 1×16, 2×8, 4×4, 8×2, 16×1。
+
+      16 levels: layouts include 1×16, 2×8, 4×4, 8×2, 16×1.
+
+config X_PREEMPT_PRIO_32
+    bool "32 levels"
+    help
+      32 级 (默认): 可选布局 1×32, 2×16, 4×8, 8×4, 16×2, 32×1。
+
+      32 levels (default): layouts include 1×32, 2×16, 4×8, 8×4,
+      16×2, 32×1.
+
+config X_PREEMPT_PRIO_64
+    bool "64 levels"
+    help
+      64 级: 可选布局 2×32, 4×16, 8×8, 16×4, 32×2, 64×1。
+      注意 PER_GROUP=1 时组数=64 超位图, 会被编译期拦截。
+
+      64 levels: layouts include 2×32, 4×16, 8×8, 16×4, 32×2, 64×1.
+      Note PER_GROUP=1 yields 64 groups which exceeds the bitmap and
+      is rejected at compile time.
+
+endchoice
+
+config X_PREEMPT_PRIO_LEVELS
+    int
+    default 16 if X_PREEMPT_PRIO_16
+    default 32 if X_PREEMPT_PRIO_32
+    default 64 if X_PREEMPT_PRIO_64
+    depends on XTASK_PREEMPT
+    help
+      抢占式调度器总优先级级数 (由上方 choice 推导, 代码经
+      CONFIG_X_PREEMPT_PRIO_LEVELS 读取): 16 / 32 / 64。
+      与 X_PREEMPT_PRIO_PER_GROUP 配合得到具体布局 (如 32 + 8 = 4×8)。
+
+      Total preemptive priority levels (derived from the choice above,
+      consumed by code as CONFIG_X_PREEMPT_PRIO_LEVELS): 16 / 32 / 64.
+      Combined with X_PREEMPT_PRIO_PER_GROUP for the concrete layout
+      (e.g. 32 + 8 = 4×8).
+
+config X_PREEMPT_PRIO_PER_GROUP
+    int "Preemptive scheduler priority levels per group"
+    default 8
+    range 2 16
+    depends on XTASK_PREEMPT
+    help
+      每组包含的优先级级数。组数 = 总级数 / 每组级数, 自动推导。
+      与总级数配合得到具体布局, 例如:
+        - 总 32 级 + 每组 8  → 4×8 (默认)
+        - 总 32 级 + 每组 16 → 2×16
+        - 总 64 级 + 每组 8  → 8×8
+      组数必须 ≤ 32 (位图 uint32_t 限制); 每组级数需整除总级数。
+
+      Priority levels per ready-list group. Group count is derived as
+      LEVELS / PER_GROUP. Examples with the chosen LEVELS:
+        - 32 levels + 8/group  → 4×8 (default)
+        - 32 levels + 16/group → 2×16
+        - 64 levels + 8/group  → 8×8
+      Group count must be ≤ 32 (uint32_t bitmap limit) and PER_GROUP
+      must divide LEVELS.
 
 config FREERTOS_USE_TIMERS
     bool "FreeRTOS software timers"
@@ -548,8 +654,10 @@ config VIRQ
       包含 VIRQ 号分配、上/下半部框架与全局下半部轮询器。
       关闭后 interrupt/interrupt.c 不编入，系统主循环不再 poll 下半部。
       关闭前请确认以下功能不需要（关闭后不可用，板级/驱动需同步裁剪）：
-        · 裸机时间片调度器 (time_slice/xtask)：xscheduler_start() 不再注册
-          TIM 定时中断，调度器无 tick 源，x_scheduler_poll() 永不调度任务；
+        · 裸机时间片调度器 (time_slice/xtask)：默认 SysTick 路径 (内核异常,
+          不经 VIRQ) 关闭 VIRQ 不受影响, 仍照常 tick; 仅当 DTS 显式配 chosen
+          TIM (走通用 TIM + VIRQ) 时, 关闭 VIRQ 后该 TIM 中断无法路由, 调度器
+          无 tick 源, x_scheduler_poll() 永不调度任务；
         · ADC/I2S DMA 中断下半部：vfs-adc / i2s_bus 跳过 VIRQ 注册与中断
           使能，异步/DMA 回调不可用（轮询模式驱动不受影响）；
         · GPIO 硬件中断路由：hal_gpio 的 virq_idx 槽位形同虚设；
@@ -563,8 +671,10 @@ config VIRQ
       registration, and the system loop stops polling the bottom half.
       Confirm these become unavailable before disabling (trim board/driver
       code accordingly):
-        · bare-metal time-slice scheduler (time_slice/xtask): xscheduler_start()
-          no longer registers the TIM tick IRQ — no tick source, tasks never run;
+        · bare-metal time-slice scheduler (time_slice/xtask): the default SysTick
+          path (core exception, not via VIRQ) keeps ticking with VIRQ off; only
+          when DTS explicitly sets chosen TIM (generic TIM + VIRQ) does disabling
+          VIRQ break TIM IRQ routing — no tick source, tasks never run;
         · ADC/I2S DMA bottom-half offload: vfs-adc / i2s_bus skip VIRQ
           registration and IRQ enable — async/DMA callbacks dead (polling
           drivers unaffected);

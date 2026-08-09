@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **读者** | 把本 shelf 接到 ESP-IDF 工程的人 |
 | **前置** | [getting_started.md](getting_started.md)（通用 CMake） |
-| **相关** | [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md) · [design_decisions.md](design_decisions.md) |
+| **相关** | [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md) · [design_decisions.md](design_decisions.md) |
 
 ---
 
@@ -192,5 +192,5 @@ ESP 构建下生成的 `config.h` 常为占位；业务 `CONFIG_*` 以 `sdkconfi
 
 ## 相关文档
 
-- [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)
+- [getting_started.md](getting_started.md) · [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)
 - [references.md](references.md)（ESP-IDF VFS 心智对照）

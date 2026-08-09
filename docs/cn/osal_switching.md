@@ -26,15 +26,18 @@
 
 | 宏 | 实现文件 | 链接依赖 | 任务模型 |
 | :--- | :--- | :--- | :--- |
-| `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp`（`CONFIG_OSAL_NULL_TASK_CPP=y` **且** `CONFIG_XTASK_PREEMPT=n` 时） | `time_slice/task`（`xtask_coop.c` 或 `xtask_preempt.c`, 由 `CONFIG_XTASK_PREEMPT` 二选一; 共用 `xtask.h` API） | 协作式时间片（裸机, 默认）<br>**或** N+1 抢占式（实验性, `CONFIG_XTASK_PREEMPT=y`） |
+| `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp`（`CONFIG_OSAL_NULL_TASK_CPP=y` **且** `!XTASK_NONE` 时） | `time_slice/task`（`xtask_coop.c` 或 `xtask_preempt.c`, 由 `Kconfig.mini_tree` 裸机调度器 choice 三选一 `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; 共用 `xtask.h` API） | 无调度（`XTASK_NONE`, 自写 while）<br>**或** 协作式时间片（裸机, 默认 `XTASK_COOP`）<br>**或** N+1 抢占式（多优先级, `XTASK_PREEMPT`） |
 | `CONFIG_OSAL_FREERTOS` | `osal/src/osal_freertos.c` | `lib/freeRTOS`（v11.3.0） | 抢占 |
 | `CONFIG_OSAL_RTTHREAD` | `osal/src/osal_rtthread.c` | `lib/rtthread`（v5.3.0） | 抢占 |
 
-裸机后端 (`CONFIG_OSAL_NULL`) 的任务调度器有两套实现, 由 `CONFIG_XTASK_PREEMPT` 二选一, CMake 与源码 `#ifdef` 双重互斥:
-- **协调式**（默认, `CONFIG_XTASK_PREEMPT=n`）— `time_slice/task/xtask_coop.c`, round-robin 时间片轮转, 不可抢占.
-- **抢占式**（实验性, `CONFIG_XTASK_PREEMPT=y`）— `time_slice/task/xtask_preempt.c`, N+1 链表多优先级; **尚未完工**, 开启后可能编不过.
+裸机后端 (`CONFIG_OSAL_NULL`) 的任务调度器由 `Kconfig.mini_tree` 的「裸机调度器」choice 三选一（`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`）, CMake 据 `.config` 注入 `MINI_TREE_XTASK_*` 宏决定编译 `xtask_coop.c` 或 `xtask_preempt.c`, 源码 `#ifdef` 双重互斥:
+- **无调度**（`XTASK_NONE`）— 不编入任何调度器, 应用层自写 `while(1)` 大循环; `OSAL_NULL_TASK_CPP` 由 Kconfig 自动关闭, osal/system 层依赖 xtask 接口无法链接, 固件退化为裸闭包.
+- **协调式**（默认, `XTASK_COOP`）— `time_slice/task/xtask_coop.c`, round-robin 时间片轮转, 不可抢占.
+- **抢占式**（`XTASK_PREEMPT`）— `time_slice/task/xtask_preempt.c`, N+1 链表多优先级（分组优先级 + CLZ 定位, 可延迟/可休眠/可抢占, 无就绪时精确 WFI）; 已完整实现可编译.
 
-两套实现共用 `xtask.h` 对外 API (`xscheduler_task_create` / `x_scheduler_poll` / `xscheduler_start` 等), 调用方代码无需任何改动. `osal/src/osal_task.cpp` 与 `osal/include/osal_null.h` 中的协调式 C++ 重载通过 `#ifndef CONFIG_XTASK_PREEMPT` 同步门控——开启抢占式时该重载整段关闭, 为未来抢占式专用重载预留位置.
+两套实现共用 `xtask.h` 对外 API (`xscheduler_task_create` / `x_scheduler_poll` / `xscheduler_start` 等), 调用方代码无需任何改动. `osal/src/osal_task.cpp` 与 `osal/include/osal_null.h` 中的 C++ 重载按 `CONFIG_XTASK_PREEMPT` 分两个分支:
+- 协调式分支: `osal_task_create` 的 `period` 即任务周期 ms（裸机无优先级概念）.
+- 抢占式分支: 同签名重载新增 `priority` 参数（数值越大越优先）, `stack_size` 在裸机下复用为周期.
 
 公共表面：`osal/include/osal.h`。业务与 VFS 应只依赖该头。
 
@@ -58,15 +61,17 @@
 | :--- | :--- |
 | FreeRTOS | 数值 **越大** 优先级越高 |
 | RT-Thread | 数值 **越小** 优先级越高 |
-| NULL (协调式) | C API 忽略优先级参数 |
-| NULL (抢占式, `CONFIG_XTASK_PREEMPT=y`) | N+1 链表多优先级 (尚未完工) |
+| NULL (协调式, `XTASK_COOP`) | C API 忽略优先级参数 |
+| NULL (抢占式, `XTASK_PREEMPT`) | N+1 链表多优先级, 数值越大越优先 |
 
-裸机任务创建路径由 `CONFIG_OSAL_NULL_TASK_CPP` 控制（依赖 `SYSTEM_CPP`，默认开启）：
-- **开启（走统一）**：用 `osal_null.h` 的 C++ 重载 `osal_task_create`，其 `period` 参数即任务周期 ms（裸机无优先级概念，该参数被**重解释**为周期）。
-- **关闭（靠 xtask 自己）**：不编译封装，直接调 `xscheduler_task_create` / `x_scheduler_poll` 等 xtask 原生 API。
-- 裸机 C API `osal_task_create` / `osal_task_create_handle` 恒返回 `OSAL_ERR_NOTSUPP`。
+裸机任务创建路径由 `CONFIG_OSAL_NULL_TASK_CPP` 控制（依赖 `SYSTEM_CPP && !XTASK_NONE`, 默认开启）：
+- **开启（走统一）**：用 `osal_null.h` 的 C++ 重载 `osal_task_create`.
+  - 协调式: `period` 参数即任务周期 ms（裸机无优先级概念, 该位置被**重解释**为周期）.
+  - 抢占式: 同重载新增 `priority` 参数（数值越大越优先）, `stack_size` 在裸机下复用为周期.
+- **关闭（靠 xtask 自己, 或 `XTASK_NONE` 时强制）**：不编译封装, 直接调 `xscheduler_task_create` / `x_scheduler_poll` 等 xtask 原生 API.
+- 裸机 C API `osal_task_create` / `osal_task_create_handle` 恒返回 `OSAL_ERR_NOTSUPP`.
 
-> **抢占式开启 (`CONFIG_XTASK_PREEMPT=y`) 时**: 协调式重载 (`osal_task.cpp` + `osal_null.h` 中的 C++ 声明) 通过 `#ifndef CONFIG_XTASK_PREEMPT` 整段关闭, 因为抢占式有优先级概念, `period` 参数语义会变化. 抢占式专用重载尚未提供, 当前需要 C 工程直接调 `xscheduler_task_create` 等原生 API (共用 `xtask.h`).
+> **抢占式开启 (`XTASK_PREEMPT=y`) 时**: C++ 重载仍提供, 但签名切换为带 `priority` 的分支（`stack_size` 复用为周期）; 协调式与抢占式分支在 `osal_task.cpp` 内以 `CONFIG_XTASK_PREEMPT` 区分, 无需业务改调用. 也可走 `XTASK_NONE` 直接裸写 `while` 循环.
 
 同一套业务常量在切换后端时**必须**重新换算，否则会出现「高优先级任务饿死」或倒挂。
 
@@ -105,9 +110,9 @@
 
 - [ ] `.config` 与生成 `config.h` 一致
 - [ ] 无同时编入两个 OSAL `.c`
-- [ ] 裸机后端下 `CONFIG_XTASK_PREEMPT` 与预期一致 (协调式 vs 抢占式二选一; `xtask_coop.c` 与 `xtask_preempt.c` 互斥)
-- [ ] 优先级表已按后端换算
-- [ ] 裸机任务创建路径符合预期 (`CONFIG_OSAL_NULL_TASK_CPP`: 统一 C++ 重载 or 直接 xtask; 注意抢占式开启时 C++ 重载关闭)
+- [ ] 裸机后端下「裸机调度器」choice 与预期一致 (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT` 三选一; `xtask_coop.c` 与 `xtask_preempt.c` 互斥)
+- [ ] 优先级表已按后端换算 (NULL 抢占式: 数值越大越优先)
+- [ ] 裸机任务创建路径符合预期 (`CONFIG_OSAL_NULL_TASK_CPP`: 统一 C++ 重载 or 直接 xtask; `XTASK_NONE` 时强制关闭; 抢占式下重载带 `priority` 分支)
 - [ ] 启动路径匹配后端
 - [ ] 日志后端（PRINTF/OSAL）仍符合预期
 

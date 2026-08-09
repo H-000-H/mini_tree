@@ -85,5 +85,5 @@ IDE 无构建时用 `ide/stubs/*` 对齐符号名，但 **ID 数量是占位**�
 
 ## 相关文档
 
-- [faq.md](faq.md) · [porting_guide.md](porting_guide.md)
+- [faq.md](faq.md) · [device_tree_porting.md](device_tree_porting.md)
 - [architecture.md](architecture.md)
