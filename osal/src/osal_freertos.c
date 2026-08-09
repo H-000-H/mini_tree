@@ -596,7 +596,7 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
  */
 int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms)
 {
-    if (!mutex || !mutex->handle || osal_in_isr())
+    if (!mutex || !mutex->handle)
         return OSAL_ERR_INVAL;
     if (osal_in_isr())
         return OSAL_ERR_ISR;

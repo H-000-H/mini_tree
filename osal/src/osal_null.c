@@ -773,7 +773,9 @@ int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms)
         if (timeout_ms != OSAL_WAIT_FOREVER && (osal_time_ms() - start) >= timeout_ms)
             return OSAL_ERR_TIMEOUT;
 
+#ifdef CONFIG_OSAL_NULL_WFI
         osal_null_wfi();
+#endif
     }
 }
 
@@ -1079,7 +1081,11 @@ int osal_sem_wait(struct osal_sem* sem, uint32_t timeout_ms)
     if (timeout_ms == OSAL_WAIT_FOREVER)
     {
         while (osal_sem_try_wait(sem) != OSAL_OK)
+        {
+#ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
+#endif
+        }
         return OSAL_OK;
     }
 
@@ -1088,7 +1094,9 @@ int osal_sem_wait(struct osal_sem* sem, uint32_t timeout_ms)
     {
         if ((osal_time_ms() - start) >= timeout_ms)
             return OSAL_ERR_TIMEOUT;
+#ifdef CONFIG_OSAL_NULL_WFI
         osal_null_wfi();
+#endif
     }
     return OSAL_OK;
 }
@@ -1265,7 +1273,11 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
     if (timeout_ms == OSAL_WAIT_FOREVER)
     {
         while (fifo_get_count(&q->fifo) < epi)
+        {
+#ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
+#endif
+        }
     }
     else if (timeout_ms > 0)
     {
@@ -1274,7 +1286,9 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
         {
             if ((osal_time_ms() - start) >= timeout_ms)
                 return false;
+#ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
+#endif
         }
     }
 

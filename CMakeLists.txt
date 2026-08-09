@@ -430,6 +430,11 @@ if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
     target_sources(mini_tree PRIVATE time_slice/task/xtask.h)
     if(MINI_TREE_XTASK_PREEMPT)
         target_sources(mini_tree PRIVATE time_slice/task/xtask_preempt.c)
+        # xtask_preempt.c 顶部在 include 任何头之前即 #ifdef CONFIG_XTASK_PREEMPT,
+        # 该宏只能经 config.h (compiler_compat.h 间接包含) 进入, 但 include 在判断之后,
+        # 必须在此显式 -D 注入, 否则整个文件被跳过编译成空对象 (链接缺 x_scheduler_* 符号).
+        set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/time_slice/task/xtask_preempt.c
+            PROPERTIES COMPILE_DEFINITIONS CONFIG_XTASK_PREEMPT)
     else()
         target_sources(mini_tree PRIVATE time_slice/task/xtask_coop.c)
     endif()

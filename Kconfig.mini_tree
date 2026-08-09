@@ -190,6 +190,27 @@ config OSAL_NULL_QUEUE_BUF_SZ
       2048 B = 512 base units; EventBus (64×8 B) uses ~1/4.
       Lower bound 512 B keeps the default EventBus queue (128 units) creatable.
 
+config OSAL_NULL_WFI
+    bool "裸机忙等用 WFI 休眠唤醒 (默认关, 纯轮询) / Bare-metal busy-wait via WFI (default off, plain spin)"
+    default n
+    depends on OSAL_NULL
+    help
+      裸机等锁/等信号量/等队列时的忙等策略:
+      开启: 等锁循环里执行 WFI 进入低功耗, 靠中断 (tick) 唤醒后重试 —
+            省电, 但响应依赖中断唤醒, 且抢占调度器下 WFI 会让整个系统
+            空睡, 其他任务 (含持锁方) 无法推进, 只能等超时;
+      关闭 (默认): 纯轮询 (spin), 不依赖中断, 响应最快, 但空转耗电。
+      在裸机抢占调度器 (XTASK_PREEMPT) 下绝大多数场景建议保持默认关闭。
+
+      Busy-wait policy for bare-metal lock/sem/queue waits:
+      On: execute WFI in the wait loop and rely on an interrupt (tick) to
+          wake and retry — saves power, but retry latency depends on the
+          interrupt, and under the preemptive scheduler WFI idles the whole
+          system so other tasks (including the lock owner) cannot advance;
+      Off (default): plain spin with no interrupt dependency — lowest
+          latency, at the cost of power. Under the preemptive scheduler
+          (XTASK_PREEMPT) keep this off in most cases.
+
 choice
     prompt "裸机调度器 (Bare-metal scheduler)"
     default XTASK_COOP
