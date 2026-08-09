@@ -58,7 +58,40 @@
 
 ---
 
-## 4. Trimming Advice
+## 4. Scheduler Comparison (minimal-firmware measured)
+
+> Measured with `arm-none-eabi-gcc 14.2.1`, `-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`. Minimal firmware = `startup` + `main` (system layer) + linking the whole `mini_tree` library (RTOS kernel included), linked with an STM32F4-like script. Units in bytes; `RAM total = data + bss`.
+
+| Scheduler | system backend | text | data | bss | RAM total |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| Bare `while` (`XTASK_NONE`) | none | 86 | 0 | 0 | 0 |
+| Cooperative `XTASK_COOP` | C | 31240 | 1744 | 944 | 2688 |
+| Cooperative `XTASK_COOP` | C++ | 31240 | 1744 | 944 | 2688 |
+| Preemptive `XTASK_PREEMPT` | C | 31368 | 1744 | 1388 | 3132 |
+| Preemptive `XTASK_PREEMPT` | C++ | 31368 | 1744 | 1388 | 3132 |
+| FreeRTOS | C | 34312 | 1752 | 1304 | 3056 |
+| FreeRTOS | C++ | 34696 | 1752 | 1656 | 3408 |
+| RT-Thread | C | 40228 | 1892 | 1164 | 3056 |
+| RT-Thread | C++ | 40612 | 1892 | 1516 | 3408 |
+| ThreadX | C | 34120 | 1752 | 940 | 2692 |
+| ThreadX | C++ | 34504 | 1752 | 1292 | 3044 |
+| uC/OS-II | C | 32992 | 1744 | 872 | 2616 |
+| uC/OS-II | C++ | 33376 | 1744 | 1224 | 2968 |
+| uC/OS-III | C | 33448 | 1744 | 1404 | 3148 |
+| uC/OS-III | C++ | 33832 | 1744 | 1756 | 3500 |
+
+> Scope: under `XTASK_NONE`, `OSAL_NULL_TASK_CPP` is auto-disabled by Kconfig (`depends on !XTASK_NONE`) and the osal/system layer depends on the xtask interface (`osal_null.h` unconditionally includes `xtask.h`), so with no implementation it cannot link; the firmware degrades to a minimal closure (startup + hand-written main loop) without the system/osal layer. RTOS backends' `text` already includes their respective kernels; numbers include the whole library (board device model, etc.) — **relative deltas** are the meaningful comparison. The bare-metal scheduler tri-state (`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`) is selected via the `Kconfig.mini_tree` choice; CMake injects `MINI_TREE_XTASK_*` macros to decide whether `xtask_coop.c` or `xtask_preempt.c` is compiled. Preemptive and cooperative expose the identical API (`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`), so caller code switches transparently.
+
+Conclusions:
+1. Bare `while` is smallest (86 B text, zero RAM) — at the cost of writing all scheduling logic yourself.
+2. Bare-metal xtask (coop/preempt, ~31 KB text) is ~1.7 KB smaller than the smallest RTOS kernel (uC/OS-II ~33 KB) and needs **no per-task stack** (run-to-completion, task stack reuses the main-loop stack); preempt adds a task pool to bss (~444 B: 8×48 B slots + bitmap/list heads).
+3. RTOS kernel cost ordering: uC/OS-II < uC/OS-III < ThreadX < FreeRTOS < RT-Thread (text 33.0 → 40.2 KB).
+4. C vs C++ system backend: identical for bare-metal (coop/preempt); under RTOS, C++ costs ~+300–380 B text and +350–440 B bss more than C. **Pick the C backend for minimum size.**
+5. Per-task extra cost: RTOS needs a TCB + dedicated task stack (stack sized per app, counted separately); xtask only has a static TCB (coop 28 B / preempt 48 B pool slot), no stack.
+
+---
+
+## 5. Trimming Advice
 
 1. Turn off logging (`CONFIG_SYS_LOG_LEVEL=0`) — each `LOG_*` macro occupies space; this saves the most.
 2. Enable LTO (`CONFIG_BUILD_NO_LTO=0`) — link-time merge of duplicates and dead-code elimination.

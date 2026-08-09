@@ -1,13 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @license Apache-2.0
  * @file xtask_coop.c
  * @brief 协调式时间片调度器 (cooperative / round-robin)
- * @note 时间片调度器是基于时间片轮转算法实现的调度器, 不可抢占。
- *       与抢占式实现 xtask_preempt.c 共用 xtask.h, 由 CONFIG_XTASK_PREEMPT 二选一:
- *         - CONFIG_XTASK_PREEMPT 未定义 (默认): 本文件编入 (协调式)
- *         - CONFIG_XTASK_PREEMPT 已定义:       本文件整段关闭, 改用 xtask_preempt.c
- *       CMake 也会同步门控, 这里是源码层面的第二道保险.
+ * @note 与 xtask_preempt.c 二选一互斥 (Kconfig choice + CMake 双重门控)
  */
 #ifdef CONFIG_OSAL_NULL
 #ifndef CONFIG_XTASK_PREEMPT
@@ -18,91 +13,146 @@
 #include "compiler_compat.h"
 #include "device.h"
 #include "dt_config_gen.h"
+#include "hal_systick.h"
 #include "interrupt.h"
 #include "vfs-tim.h"
-/* 占位/无 chosen 板: 调度器 tick 设备缺省为无效 id, xscheduler_start() 直接返回 */
-#ifndef CHOSEN_SCHEDULER_TIM
-#define CHOSEN_SCHEDULER_TIM ((device_id_t)0)
-#endif
+
+/* 协调式私有状态 (集中定时器状态) */
+struct x_coop_priv
+{
+    hal_tim_device* tim; /**< 定时器 (xscheduler_start 绑定) */
+    int tick_delay;      /**< 每次中断 tick 增量 */
+};
+
+static struct x_coop_priv s_priv;
 
 x_scheduler g_scheduler;
-static struct scheduler_tim_ctx g_sched_tim_ctx;
+
+#ifdef CONFIG_XTASK_COROUTINE
+/** 当前正在执行的任务 (protothread 协程让出时供感知) */
+static x_task* s_current_task;
+
+/** @brief 当前系统滴答 (协调式读 g_scheduler.tick_count) */
+uint32_t x_scheduler_now(void)
+{
+    return COMPAT_ATOMIC_LOAD(&g_scheduler.tick_count, COMPAT_MO_RELAXED);
+}
+
+/** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
+x_task* x_scheduler_current(void)
+{
+    return s_current_task;
+}
+#endif /* CONFIG_XTASK_COROUTINE */
 
 /**
  * @brief 时间片调度器早期初始化 (pre_execution 自动调用)
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void xscheduler_early_init(void) { x_scheduler_init(&g_scheduler); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void xscheduler_early_init(void)
+{
+    x_scheduler_init(&g_scheduler);
+    s_priv.tim = NULL;
+    s_priv.tick_delay = 1;
+}
 
 /**
- * @brief 启动 tick 设备与 VIRQ
+ * @brief 启动 tick 源: chosen TIM 显式覆盖优先, 否则默认 SysTick
+ * @note  - DTS 配了 chosen { scheduler-tim = &timN; } → 显式覆盖, 走通用 TIM + VIRQ
+ *        - 未配 chosen → 默认 SysTick (Cortex-M 架构标准件, 开箱即用; 非 ARM 返回 NOTSUPP)
+ * @note  前提: 兜底宏已移除, CHOSEN_SCHEDULER_TIM 仅在 DTS 显式配置时由 dtc-lite 生成,
+ *        #ifdef 编译期即可判定用户是否显式选择 TIM。
  */
 void xscheduler_start(void)
 {
+    /* ① DTS 显式配了 scheduler-tim → 显式覆盖, 直接走 chosen TIM */
+#ifdef CHOSEN_SCHEDULER_TIM
     struct device* tick_dev = board_dev_get(CHOSEN_SCHEDULER_TIM);
-    if (!tick_dev)
-        return;
-
-    if (device_open(tick_dev, NULL) != VFS_OK)
-        return;
-
-    /** 从 VFS 拿 hal_tim_device, 填充 ISR top_half 上下文 */
-    hal_tim_device* tim = vfs_tim_get_hal_dev(tick_dev);
-    if (!tim)
-        return;
-
-    g_sched_tim_ctx.tim = tim;
-    g_sched_tim_ctx.scheduler = &g_scheduler;
-
+    if (tick_dev != NULL && device_open(tick_dev, NULL) == VFS_OK)
+    {
+        s_priv.tim = vfs_tim_get_hal_dev(tick_dev);
+        if (s_priv.tim != NULL)
+        {
 #ifdef CONFIG_VIRQ
-    interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &g_sched_tim_ctx);
+            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
+            interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &s_priv);
 
-    int irqn = -1;
-    int priority = 5;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "irqn", &irqn));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
-    interrupt_hw_enable(irqn, (uint32_t)priority);
+            int irqn = -1;
+            int priority = 5;
+            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "irqn", &irqn));
+            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
+            interrupt_hw_enable(irqn, (uint32_t)priority);
 #endif
+            return;
+        }
+    }
+#endif
+
+    /* ② 没配 chosen (或打开失败) → 默认 SysTick (仅 Cortex-M 存在; 非 ARM 返回 NOTSUPP) */
+    if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == VFS_OK)
+    {
+        s_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
+        /* 每 SysTick 中断推进 ms = 1000 / tick-rate; 亚毫秒 tick-rate 按 1ms 兜底 */
+        int delay = 1000 / DTC_GEN_TICK_RATE_HZ;
+
+       return;
+    }
+}
+
+/**
+ * @brief SysTick 中断业务钩子 (强符号覆盖 hal_systick 的 weak 空实现)
+ * @note  仅 SysTick 作为默认 tick 源时由硬件中断调用; 累加系统滴答。
+ */
+void hal_systick_irq_handler(void)
+{
+    x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay);
 }
 
 /**
  * @brief 定时器 ISR 上半部
- * @param arg ctx
+ * @param arg 指向 x_coop_priv
  * @param irq_num 号
  * @return VFS_IRQ_ENTRY_NOBOTTOM
  */
-int scheduler_tim_isr_top(void* arg, uint16_t irq_num)
+int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 {
     COMPAT_IGNORE_RESULT(irq_num);
-    struct scheduler_tim_ctx* ctx = (struct scheduler_tim_ctx*)arg;
-    if (ctx && hal_tim_clear_update_flag(ctx->tim) == VFS_OK)
-        x_scheduler_tick(ctx->scheduler, 1);
+    struct x_coop_priv* priv = (struct x_coop_priv*)context;
+    if (priv == NULL)
+        return VFS_IRQ_ENTRY_NOBOTTOM;
+
+    struct vfs_tim_arg tim_arg = {0};
+    tim_arg.obj = priv->tim;
+    if (vfs_tim_fast_clear_update_flag(&tim_arg) == VFS_OK)
+        x_scheduler_tick(&g_scheduler, (unsigned int)priv->tick_delay);
     return VFS_IRQ_ENTRY_NOBOTTOM;
 }
 
 /**
- * @brief 注册周期任务
- * @param sched 调度器
- * @param task 任务
- * @param name 名
+ * @brief 注册周期任务 (使用全局 g_scheduler)
+ * @param task 调用方静态分配的 x_task TCB
+ * @param name 任务名
  * @param cb 回调
  * @param period_ms 周期
  * @return 句柄
  */
-x_task_handle_t xscheduler_task_create(x_scheduler* sched, x_task* task, const char* name,
+x_task_handle_t xscheduler_task_create(x_task* task, const char* name,
                                        void (*cb)(x_task*), unsigned int period_ms)
 {
-    if (!sched || !task || !cb)
+    if (!task || !cb || !name)
         return VFS_ERR_INVAL;
 
     task->name = name;
     task->xTask_cb = cb;
     COMPAT_ATOMIC_STORE(&task->period, period_ms, COMPAT_MO_RELAXED);
     COMPAT_ATOMIC_STORE(&task->next_running,
-                        COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED) + period_ms,
+                        COMPAT_ATOMIC_LOAD(&g_scheduler.tick_count, COMPAT_MO_RELAXED) + period_ms,
                         COMPAT_MO_RELAXED);
     COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
+#ifdef CONFIG_XTASK_COROUTINE
+    task->pt_line = 0; /**< 协程让出点复位 (首次进入 case 0) */
+#endif
 
-    list_add_tail(&task->node, &sched->task_list_head);
+    list_add_tail(&task->node, &g_scheduler.task_list_head);
 
     return (x_task_handle_t)(uintptr_t)task;
 }
@@ -147,8 +197,20 @@ int x_task_run(x_scheduler* sched)
 
             if ((int32_t)(now - next_run) >= 0)
             {
+#ifdef CONFIG_XTASK_COROUTINE
+                s_current_task = task; /* protothread 让出时感知当前任务 */
                 task->xTask_cb(task);
-                COMPAT_ATOMIC_STORE(&task->next_running,now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),COMPAT_MO_RELAXED);
+                s_current_task = NULL;
+                if (task->pt_line == 0)
+                {
+                    /* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
+                    COMPAT_ATOMIC_STORE(&task->next_running, now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED), COMPAT_MO_RELAXED);
+                }
+                /* else: 协程挂起中, PT_DELAY 已设 next_running, 保持到期时刻 */
+#else
+                task->xTask_cb(task);
+                COMPAT_ATOMIC_STORE(&task->next_running, now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED), COMPAT_MO_RELAXED);
+#endif
             }
             /* 无论到期与否都复位：否则未到期分支会把 is_running 卡在 true，任务永不调度 */
             COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);

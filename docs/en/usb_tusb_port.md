@@ -1,11 +1,11 @@
 # USB (TinyUSB) Porting Guide
 
-> Steps to bring TinyUSB (`lib/tinyusb`, a Fetch brick) into the middleware's board port. Involves: `vfs/usb`, device-tree bindings, `dtsi` nodes. Core conventions: [peripherals.md](peripherals.md) and [porting_guide.md](porting_guide.md).
+> Steps to bring TinyUSB (`lib/tinyusb`, a Fetch brick) into the middleware's board port. Involves: `vfs/usb`, device-tree bindings, `dtsi` nodes. Core conventions: [peripherals.md](peripherals.md) and [device_tree_porting.md](device_tree_porting.md).
 
 | Item | Content |
 | :--- | :--- |
 | **Audience** | USB / board porting |
-| **Related** | [peripherals.md](peripherals.md) · [porting_guide.md](porting_guide.md) · [ecosystem.md](ecosystem.md) |
+| **Related** | [peripherals.md](peripherals.md) · [device_tree_porting.md](device_tree_porting.md) · [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -57,4 +57,4 @@ USB interrupts go through the VIRQ wrapper in `interrupt/interrupt.{c,h}` and th
 
 ## Related Docs
 
-- [peripherals.md](peripherals.md) · [porting_guide.md](porting_guide.md) · [ecosystem.md](ecosystem.md) · [osal_switching.md](osal_switching.md)
+- [peripherals.md](peripherals.md) · [device_tree_porting.md](device_tree_porting.md) · [ecosystem.md](ecosystem.md) · [osal_switching.md](osal_switching.md)

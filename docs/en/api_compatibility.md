@@ -54,4 +54,4 @@
 
 ## Related Documents
 
-- [porting_guide.md](porting_guide.md) · [CHANGELOG.md](../CHANGELOG.md)
+- [device_tree_porting.md](device_tree_porting.md) · [CHANGELOG.md](../CHANGELOG.md)

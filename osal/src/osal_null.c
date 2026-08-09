@@ -466,8 +466,12 @@ uint32_t osal_time_ms(void)
 
 #define OSAL_NULL_TICK_HANG_THRESHOLD 10000U
 /**
- * @brief WFI 忙等延迟
+ * @brief WFI 忙等延迟 (阻塞当前执行流)
  * @param ms 毫秒
+ * @note  本函数是阻塞式忙等: 调用期间所有裸机任务停摆, 仅用于主循环 /
+ *        非协程上下文。任务回调内的"让出式延时"请用 protothread 宏
+ *        PT_DELAY(task, ms) —— 挂起当前任务到到期时刻, 其他任务继续跑,
+ *        到期后从让出点恢复 (见 xtask.h)。
  */
 void osal_delay_ms(uint32_t ms)
 {

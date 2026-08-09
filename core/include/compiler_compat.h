@@ -504,6 +504,22 @@ COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
  */
 #define RAM_EXEC __attribute__((section(".ram_code")))
 
+/* ── 低功耗等待 ─────────────────────────────────────────────────────────── */
+
+/**
+ * @brief 进入低功耗等待 (Wait For Interrupt)
+ * @note  平台无关的 WFI 封装: Cortex-M 用 __WFI, RISCV 用 wfi;
+ *        调用方需保证随后确有中断到达, 否则 CPU 睡死.
+ */
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) || \
+    defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7)
+#define COMPAT_WFI() __WFI()
+#elif defined(__riscv)
+#define COMPAT_WFI() __asm__ volatile("wfi")
+#else
+#define COMPAT_WFI() ((void)0)
+#endif
+
 /* ── 内存操作封装 ───────────────────────────────────────────────────────── */
 
 /**

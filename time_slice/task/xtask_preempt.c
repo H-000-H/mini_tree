@@ -1,12 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
  * @file xtask_preempt.c
- * @brief N+1 链表多时间片抢占调度器 (preemptive, 实验性, CONFIG_XTASK_PREEMPT)
- * @note  与协调式 xtask_coop.c 共用 xtask.h, 二选一互斥:
- *          - CONFIG_XTASK_PREEMPT 未定义 (默认): 本文件整段关闭, 用 xtask_coop.c
- *          - CONFIG_XTASK_PREEMPT 已定义:       本文件编入 (抢占式), xtask_coop.c 同步关闭
- *        CMake 也会同步门控, 这里是源码层面的第二道保险.
- *        尚未完工: g_scheduler_arr / s_preempt_tim_arr 当前无任何引用.
+ * @brief 抢占式分组优先级调度器 (CONFIG_XTASK_PREEMPT)
+ * @note 与 xtask_coop.c 二选一互斥 (Kconfig choice + CMake 双重门控)
+ *
+ * 设计:
+ *   - 总级数 = GROUP × PER_GROUP (默认 4×8=32), 越大越优先
+ *   - 组间用 group_bitmap + CLZ 定位最高优先级 (O(1)), 组内链表按优先级降序
+ *   - 就绪链表每组一条; 休眠链表单条按到期升序, 只查表头
+ *   - 无就绪任务时精确 WFI: 定时器单次触发到最早到期时刻
+ *   - 全部状态收于 s_priv, 对外 API 走 g_scheduler (xtask.h 契约)
  */
 #ifdef CONFIG_OSAL_NULL
 #ifdef CONFIG_XTASK_PREEMPT
@@ -17,143 +20,399 @@
 #include "compiler_compat.h"
 #include "device.h"
 #include "dt_config_gen.h"
+#include "hal_systick.h"
 #include "interrupt.h"
 #include "vfs-tim.h"
-/* 抢占式调度器专用配置 — 与协调式 xtask_coop.c 解耦, 不污染 xtask.h */
-#ifndef HW_TIM_SCHEDULER
-#define HW_TIM_SCHEDULER 1
+
+/* ── 分组优先级参数 (Kconfig 控制) ───────────────────────────────────────── */
+
+#ifndef CONFIG_X_PREEMPT_PRIO_LEVELS
+#define CONFIG_X_PREEMPT_PRIO_LEVELS 32
 #endif
-#ifndef SOFT_TIME_PRIO_HIGHEST
-#define SOFT_TIME_PRIO_HIGHEST 0
+#ifndef CONFIG_X_PREEMPT_PRIO_PER_GROUP
+#define CONFIG_X_PREEMPT_PRIO_PER_GROUP 8
+#endif
+#ifndef CONFIG_X_PREEMPT_MAX_TASKS
+#define CONFIG_X_PREEMPT_MAX_TASKS 8
+#endif
+#define X_PREEMPT_PRIO_LEVELS CONFIG_X_PREEMPT_PRIO_LEVELS
+#define X_PREEMPT_PRIO_PER_GROUP CONFIG_X_PREEMPT_PRIO_PER_GROUP
+#define X_PREEMPT_PRIO_GROUP (X_PREEMPT_PRIO_LEVELS / X_PREEMPT_PRIO_PER_GROUP)
+
+#if (X_PREEMPT_PRIO_LEVELS % X_PREEMPT_PRIO_PER_GROUP) != 0
+#error "X_PREEMPT_PRIO_LEVELS must be a multiple of X_PREEMPT_PRIO_PER_GROUP"
+#endif
+#if X_PREEMPT_PRIO_GROUP > 32
+#error "X_PREEMPT_PRIO_GROUP must be <= 32 (uint32_t group bitmap)"
 #endif
 
-/*=======================================================================================================================================================*/
-/*                              以下为N+1链表多时间片抢占调度器实现(可延迟可休眠可抢占帮助使用者在裸机更接近rtos的体验kconfig默认不开启使用者自行开启) */
-/*=======================================================================================================================================================*/
-/*如果要1个定时器 就设一个多余字段16？/32 不是问题实在要压就kconfig压 就默认32 优先级问题是如果定时器都到了呢怎么办 1.高抢占
-2.次优先级?这种东西不太对这东西只能排队不行 3.clz或者ctz一样的这是目前为止最好的方法让我再想想感觉还有好方法 4.虚拟中断加clz？对啊我有虚拟中断我的中断优先级
-本来就比一般的单片机项目多我去看看我有几个我自己都记不得了ok默认8个虚拟中断无所谓反正kconfig控制但是如果没有固定值可以吗。感觉可以没问题uc0s3就是这种思想
-只不过支持没有我原生那就是最小2*8 最大2^n * 32/极限可以*64  64开玩笑呢过分了单片机哪里来这么多优先级linux都不需要 所以这个路是对的 我看看啊svc和pensv我看看能不能用
-svc不行会打断调度顺序但是不对如果这是一个好处呢这方面留意下 那就看一下pensv这是标准rtos的方法标准的答案吗有意思 然后再去o(1)数组&匹配链表结点可以 然后二次侵入式 休息侵入运行
-直接接入运行 然后接着睡大觉 如果调度器不止一个呢 上面优先级解决好这个问题了那就优先级控制进入统一运行链表 休息可慢入但是这操作在上半部还是下半部呢 我算一下啊 进下半部可以没问题但是有必要再吃
-一个函数调用吗为了几乎0(1)和&匹配 那群人中断malloc都可以跑我为什么不对不对我是中间件不能这样想但是进入休息链表确实不需要进下半部 然后下半部让他慢慢跑任务但是延迟怎么办呢
-osal—delay依然走不了啊协程？osal-delay假协程return给一个最垃圾的优先级给他对啊这样不就行了 还好我基础设施多ok就这样开写最后加一个wfi就行了啊这个我要藏入kconfig就让你们高功耗不好好读我的kconfig你们就降不下功耗吧我想一想
-svc不可靠还是pensv，其实挺好的那就这样定了硬件tim就管第x*y的x y就由kconfig控制是8还是16还是32位不是这有必要吗感觉没必要啊我想想确实没必要那就是看
-到底是几位中断了16位？只有1个tim时不够32倒是够了亦或者64？我看看啊freertos和zephyr和rt-tread其实没多少实在不行我拿响应再去凑翻倍就行了ok大体好了就看实现了
-我想一个问题啊如果两个tim时钟不一样触发频率不一样我链表思路有没有问题想想啊其实没有多大问题运行链表就一个休眠链表还是自己管还是侵入式没什么问题
-但是移植这块如果这个移植很困难那做到意义不大了移植其实我想想啊虚拟中断加几个函数的事定时器加一个dtsi的事额那问题不大可以但是假协程这边有点麻烦啊之前就是
-因为这破假协程出问题没有走这版我真的不想用宏函数包装宏？我看看啊也行用gcc typdef去函数强转就行了但是协程最大问题就是开始那东西假设我自带状态机呢自带的话其实意义不大
-对了goto 啊或者不行不行那个东西跳转消耗太大而且我也不跨文件跳转goto够用了*/
+/* ── 数据结构 ────────────────────────────────────────────────────────────── */
 
-/* TODO: N+1 抢占式调度器尚未完工:
- *   - 原实现用运行期全局变量 g_scheduler 做数组初始化器, 非编译期常量 (C 标准禁止), 已改为 {0};
- *   - g_scheduler_arr / s_preempt_tim_arr 当前无任何引用, 待补全实现。
- *   - 与 xtask_coop.c 由 CONFIG_XTASK_PREEMPT 互斥门控, 故早初始化函数可同名 xscheduler_early_init
- *     (两者优先级 160/161 不同, 但互斥编译不会同时注册).
- */
-struct scheduler_tim_param
-{
-    struct scheduler_tim_ctx ctx;
-    int                      tim_delay;
-};
-
+/** 抢占式任务 (池槽, 内嵌 x_task 供对外句柄; 到期时刻复用 x_task.next_running) */
 struct x_preempt_task
 {
-    x_task* task;
-    int priority;
+    x_task task;          /**< 基础任务 (name/cb/period/next_running) */
+    uint8_t priority;     /**< 0..LEVELS-1, 越大越优先 */
+    list_node ready_node; /**< 挂就绪链表 */
+    list_node sleep_node; /**< 挂休眠链表 */
 };
 
-x_scheduler g_scheduler_arr[HW_TIM_SCHEDULER] = {0};
-static device_id_t s_schedule_chosen_arr[HW_TIM_SCHEDULER] = {CHOSEN_SCHEDULER_TIM};
-static struct scheduler_tim_param s_preempt_tim_arr[HW_TIM_SCHEDULER]={0};
-static struct x_preempt_task s_preempt_task[HW_TIM_SCHEDULER]={0};
+/** 调度器私有状态 (集中全部状态) */
+struct x_preempt_priv
+{
+    uint32_t tick_count;                        /**< 系统滴答 */
+    uint32_t group_bitmap;                      /**< 组就绪位图 */
+    list_node ready_head[X_PREEMPT_PRIO_GROUP]; /**< 每组一条就绪链表 */
+    list_node sleep_head;                       /**< 休眠链表 */
+    hal_tim_device* tim;                        /**< 定时器 (xscheduler_start 绑定, SysTick 路径为 NULL) */
+    uint32_t tick_period;                       /**< 周期 ARR (WFI 后恢复, 仅通用 TIM 路径) */
+    int tick_delay;                             /**< 每次中断 tick 增量 (ms) */
+    bool systick_active;                        /**< 当前 tick 源为 SysTick (架构异常直连) */
+    struct x_preempt_task task[CONFIG_X_PREEMPT_MAX_TASKS]; /**< 任务池 */
+};
+
+/* ── 全局 ────────────────────────────────────────────────────────────────── */
+
+x_scheduler g_scheduler = {0};   /**< 对外契约 (xtask.h) */
+static struct x_preempt_priv s_priv; /**< 内部完整状态 */
+
+#ifdef CONFIG_XTASK_COROUTINE
+/** 当前正在执行的任务 (protothread 协程让出时供感知) */
+static x_task* s_current_task;
+
+/** @brief 当前系统滴答 (抢占式读内部 s_priv.tick_count) */
+uint32_t x_scheduler_now(void)
+{
+    return s_priv.tick_count;
+}
+
+/** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
+x_task* x_scheduler_current(void)
+{
+    return s_current_task;
+}
+#endif /* CONFIG_XTASK_COROUTINE */
+
+/* ── 内部工具 ────────────────────────────────────────────────────────────── */
+
+/**
+ * @brief 计算优先级所在组
+ * @param priority 优先级
+ * @return 组号
+ */
+static uint32_t prio_group(uint32_t priority)
+{
+    return priority / X_PREEMPT_PRIO_PER_GROUP;
+}
+
+/**
+ * @brief 就绪链表: 组内按优先级降序插入
+ * @param t 任务
+ */
+static void ready_insert(struct x_preempt_task* task)
+{
+    uint32_t group = prio_group(task->priority);
+    list_node* head = &s_priv.ready_head[group];
+    list_node* pos = head->next;
+
+    while (pos != head)
+    {
+        struct x_preempt_task* cur = container_of(pos, struct x_preempt_task, ready_node);
+        if (cur->priority <= task->priority)
+            break;
+        pos = pos->next;
+    }
+    list_add(&task->ready_node, pos, pos->prev);
+    s_priv.group_bitmap |= (1u << group);
+}
+
+/**
+ * @brief 就绪链表: 摘下任务, 组空则清位图
+ * @param t 任务
+ */
+static void ready_remove(struct x_preempt_task* task)
+{
+    uint32_t group = prio_group(task->priority);
+    list_del(&task->ready_node);
+    if (list_empty(&s_priv.ready_head[group]))
+        s_priv.group_bitmap &= ~(1u << group);
+}
+
+/**
+ * @brief 休眠链表: 按到期时刻升序插入
+ * @param t 任务
+ */
+static void sleep_insert(struct x_preempt_task* task)
+{
+    list_node* head = &s_priv.sleep_head;
+    list_node* pos = head->next;
+
+    while (pos != head)
+    {
+        struct x_preempt_task* cur = container_of(pos, struct x_preempt_task, sleep_node);
+        if (COMPAT_ATOMIC_LOAD(&cur->task.next_running, COMPAT_MO_RELAXED) >
+            COMPAT_ATOMIC_LOAD(&task->task.next_running, COMPAT_MO_RELAXED))
+            break;
+        pos = pos->next;
+    }
+    list_add(&task->sleep_node, pos, pos->prev);
+}
+
+/** 取最高优先级就绪任务 (O(1): CLZ + 组内表头) */
+static struct x_preempt_task* ready_highest(void)
+{
+    if (s_priv.group_bitmap == 0)
+        return NULL;
+    uint32_t g = 31u - COMPAT_CLZ(s_priv.group_bitmap);
+    list_node* head = &s_priv.ready_head[g];
+    if (list_empty(head))
+        return NULL;
+    return container_of(head->next, struct x_preempt_task, ready_node);
+}
+
+/** 唤醒所有到期任务: 休眠表头 → 就绪链表 */
+static void wakeup_due(void)
+{
+    while (!list_empty(&s_priv.sleep_head))
+    {
+        struct x_preempt_task* task = container_of(s_priv.sleep_head.next,
+                                                   struct x_preempt_task, sleep_node);
+        if ((int32_t)(COMPAT_ATOMIC_LOAD(&task->task.next_running, COMPAT_MO_RELAXED) -
+                      s_priv.tick_count) > 0)
+            break; /* 表头未到期, 有序性保证后续全未到期 */
+        list_del(&task->sleep_node);
+        ready_insert(task);
+    }
+}
+
+/** 无就绪任务时精确休眠: 睡到最早到期时刻 (通用 TIM) 或等下一个 SysTick 中断 */
+static void idle_wfi(void)
+{
+    /* SysTick 路径: 固定周期架构中断, WFI 等下一个 tick 即可省电 (无法改单次到期时刻) */
+    if (s_priv.systick_active)
+    {
+        COMPAT_WFI();
+        return;
+    }
+
+    if (list_empty(&s_priv.sleep_head) || s_priv.tim == NULL)
+        return;
+
+    struct x_preempt_task* next = container_of(s_priv.sleep_head.next,
+                                               struct x_preempt_task, sleep_node);
+    uint32_t remaining = COMPAT_ATOMIC_LOAD(&next->task.next_running, COMPAT_MO_RELAXED) -
+                         s_priv.tick_count;
+    uint32_t arr = s_priv.tick_period * remaining;
+    if (arr == 0)
+        return;
+
+    struct vfs_tim_arg tim_arg = {0};
+    tim_arg.obj = s_priv.tim;
+    COMPAT_IGNORE_RESULT(vfs_tim_fast_set_counter(&tim_arg));
+    tim_arg.arr = arr;
+    COMPAT_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
+    COMPAT_WFI();
+    tim_arg.arr = s_priv.tick_period;
+    COMPAT_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
+}
+
+/* ── 对外 API ────────────────────────────────────────────────────────────── */
 
 pre_execution(PRE_EXEC_PRIO_SCHEDULER) static void xscheduler_early_init(void)
 {
-    for (uint8_t i = 0; i < HW_TIM_SCHEDULER; i++)
-    {
-        x_scheduler_init(&g_scheduler_arr[i]);
-    }
+    uint32_t group;
+    for (group = 0; group < X_PREEMPT_PRIO_GROUP; group++)
+        list_init(&s_priv.ready_head[group]);
+    list_init(&s_priv.sleep_head);
+    s_priv.tick_count = 0;
+    s_priv.group_bitmap = 0;
+    s_priv.tim = NULL;
+    s_priv.tick_period = 0;
+    s_priv.tick_delay = 1;
+    s_priv.systick_active = false;
 }
 
-static bool is_need_preempt(struct x_preempt_task task,uint32_t schedule_id)
-{
-    return task.priority>s_preempt_task[schedule_id].priority;
-}
-
+/**
+ * @brief 启动 tick 源: chosen TIM 显式覆盖优先, 否则默认 SysTick
+ * @note  - DTS 配了 chosen { scheduler-tim = &timN; } → 显式覆盖, 走通用 TIM + VIRQ
+ *        - 未配 chosen → 默认 SysTick (Cortex-M 架构标准件; 非 ARM 返回 NOTSUPP)
+ * @note  SysTick 路径下 s_priv.tim 置 NULL, idle_wfi 的精确休眠退化为等 SysTick 中断
+ *        (固定周期, 无需软件改 ARR)。
+ */
 void xscheduler_start(void)
 {
-    for (uint8_t i = 0; i < HW_TIM_SCHEDULER; i++)
+    /* ① DTS 显式配了 scheduler-tim → 显式覆盖, 直接走 chosen TIM */
+#ifdef CHOSEN_SCHEDULER_TIM
+    struct device* tick_dev = board_dev_get(CHOSEN_SCHEDULER_TIM);
+    if (tick_dev != NULL && device_open(tick_dev, NULL) == VFS_OK)
     {
-        struct device* tick_dev = board_dev_get(s_schedule_chosen_arr[i]);
-        if (!tick_dev)
-            continue;
-        if(device_open(tick_dev,NULL)!=VFS_OK)
+        s_priv.tim = vfs_tim_get_hal_dev(tick_dev);
+        if (s_priv.tim != NULL)
+        {
+            /* 记录周期 tick 的硬件 ARR (精确 WFI 后恢复用, 走 VFS 快路径) */
+            struct vfs_tim_arg tim_arg = {0};
+            tim_arg.obj = s_priv.tim;
+            if (vfs_tim_fast_get_autoreload(&tim_arg) == VFS_OK && tim_arg.value != 0)
+                s_priv.tick_period = tim_arg.value;
+
+#ifdef CONFIG_VIRQ
+            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
+            interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &s_priv);
+#endif
             return;
+        }
+    }
+#endif
 
-        hal_tim_device *ptim = vfs_tim_get_hal_dev(tick_dev);
-
-        s_preempt_tim_arr[i].ctx.tim=ptim;
-        s_preempt_tim_arr[i].ctx.scheduler=&g_scheduler_arr[i];
-    #ifdef CONFIG_VIRQ
-        int tick_delay = -1;
-        struct scheduler_tim_param param;
-        param.tim_delay=tick_delay;
-        param.ctx=s_preempt_tim_arr[i].ctx;
-        COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev,"tick_delay",&tick_delay));
-        
-        interrupt_virtual_register(VIRQ(tim, i),scheduler_tim_isr_top,NULL,&param);
-        int irqn =-1;
-        int priority = 5;
-        COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev,"irqn",&irqn));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
-        interrupt_hw_enable(irqn, (uint32_t)priority);
-    #endif
+    /* ② 没配 chosen (或打开失败) → 默认 SysTick (仅 Cortex-M 存在; 非 ARM 返回 NOTSUPP) */
+    if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == VFS_OK)
+    {
+        s_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
+        s_priv.systick_active = true;
+        /* 每 SysTick 中断推进 ms = 1000 / tick-rate; 亚毫秒 tick-rate 按 1ms 兜底 */
+        int delay = 1000 / DTC_GEN_TICK_RATE_HZ;
+        s_priv.tick_delay = (delay >= 1) ? delay : 1;
+        return;
     }
 }
 
-x_task_handle_t x_scheduler_task_create(x_scheduler* sched,const char* name, uint32_t period_ms, uint32_t priority, void (*cb)(x_task*), void* param,struct x_preempt_task* task)
+/**
+ * @brief SysTick 中断业务钩子 (强符号覆盖 hal_systick 的 weak 空实现)
+ * @note  仅 SysTick 作为默认 tick 源时由硬件中断调用; 累加系统滴答并唤醒到期任务。
+ */
+void hal_systick_irq_handler(void)
 {
-    if(!cb||sched||task)
-        return VFS_ERR_INVAL;
-    task ->task->name =name;
-    task->task->xTask_cb =cb;
-    COMPAT_ATOMIC_STORE(&task->task->period,period_ms,COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->task->next_running,COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED)+period_ms,COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->task->is_running, false, COMPAT_MO_RELAXED);
-    /*这里要对list动手脚*/
+    x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay);
+}
+
+/**
+ * @brief 创建抢占式任务 (任务池自分配)
+ * @param name 任务名
+ * @param period_ms 周期 (ms)
+ * @param priority 优先级, 越大越优先
+ * @param cb 回调
+ * @param param 透传参数 (忽略)
+ * @return 任务句柄; 池满/非法返回 0
+ */
+x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, uint32_t priority,
+                                        void (*cb)(x_task*), void* param)
+{
+    COMPAT_IGNORE_RESULT(param);
+    if (!cb || !name || priority >= X_PREEMPT_PRIO_LEVELS)
+        return 0;
+
+    /* 从任务池找空闲槽 */
+    struct x_preempt_task* slot = NULL;
+    for (uint32_t i = 0; i < CONFIG_X_PREEMPT_MAX_TASKS; i++)
+    {
+        if (s_priv.task[i].task.name == NULL)
+        {
+            slot = &s_priv.task[i];
+            break;
+        }
+    }
+    if (!slot)
+        return 0;
+
+    x_task* task = &slot->task;
+    task->name = name;
+    task->xTask_cb = cb;
+    slot->priority = (uint8_t)priority;
+    COMPAT_ATOMIC_STORE(&task->next_running, s_priv.tick_count + period_ms, COMPAT_MO_RELAXED);
+    COMPAT_ATOMIC_STORE(&task->period, period_ms, COMPAT_MO_RELAXED);
+    COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);
+#ifdef CONFIG_XTASK_COROUTINE
+    task->pt_line = 0; /**< 协程让出点复位 (首次进入 case 0) */
+#endif
+    list_init(&slot->ready_node);
+    list_init(&slot->sleep_node);
+
+    sleep_insert(slot); /* 首个周期后唤醒 */
     return (x_task_handle_t)(uintptr_t)task;
 }
 
-int scheduler_tim_isr_top(void *arg, uint16_t irq_num)
+/**
+ * @brief TIM 上半部: 清 update flag + 累加 tick
+ * @param arg 指向 x_preempt_priv
+ * @param irq_num 中断号
+ * @return VFS_OK
+ */
+int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 {
     COMPAT_IGNORE_RESULT(irq_num);
+    struct x_preempt_priv* priv = (struct x_preempt_priv*)context;
+    if (priv == NULL)
+        return VFS_OK;
 
-    struct scheduler_tim_param* param = (struct scheduler_tim_param*)arg;
-    if(param&&hal_tim_clear_update_flag(param->ctx.tim)==VFS_OK)
-        x_scheduler_tick(param->ctx.scheduler,param->tim_delay);
+    struct vfs_tim_arg tim_arg = {0};
+    tim_arg.obj = priv->tim;
+    if (vfs_tim_fast_clear_update_flag(&tim_arg) == VFS_OK)
+        x_scheduler_tick(&g_scheduler, (unsigned int)priv->tick_delay);
     return VFS_OK;
 }
 
-int x_task_run_preempt(x_scheduler* sched[HW_TIM_SCHEDULER])
-{
-    if((!(*sched))||(!sched))
-        return VFS_ERR_INVAL;
-
-    for(uint8_t i;i<HW_TIM_SCHEDULER;i++)
-    {
-        list_node* head = &sched[i]->task_list_head;
-        list_node*curent = head->next;
-    }
-    return VFS_OK;
-}
-
+/**
+ * @brief 累加系统滴答并唤醒到期任务
+ * @param sched 忽略 (preempt 用全局 s_priv)
+ * @param ms 滴答增量
+ * @return VFS_OK
+ */
 int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 {
-    if (!sched)
-        return VFS_ERR_INVAL;
-    COMPAT_ATOMIC_ADD_FETCH(&sched->tick_count, ms, COMPAT_MO_RELAXED);
+    s_priv.tick_count += ms;
+    /* 同步对外契约时钟 (osal_time_ms 等读 g_scheduler.tick_count) */
+    COMPAT_ATOMIC_STORE(&g_scheduler.tick_count, s_priv.tick_count, COMPAT_MO_RELAXED);
+    if (sched != NULL)
+    {
+        COMPAT_IGNORE_RESULT(sched); /* preempt 用全局 s_priv, sched 仅契约 */
+    }
+    wakeup_due();
     return VFS_OK;
 }
+
+/**
+ * @brief 抢占式调度核心: 运行最高优先级任务, 无任务时精确 WFI
+ * @param sched 忽略 (preempt 用全局 s_priv)
+ * @return VFS_OK
+ */
+int x_task_run_preempt(x_scheduler* sched)
+{
+    COMPAT_IGNORE_RESULT(sched); /* preempt 用全局 s_priv */
+
+    struct x_preempt_task* task = ready_highest();
+    if (task == NULL)
+    {
+        idle_wfi(); /* 无就绪任务 → 精确休眠 */
+        return VFS_OK;
+    }
+
+    ready_remove(task);
+    if (task->task.xTask_cb)
+    {
+#ifdef CONFIG_XTASK_COROUTINE
+        s_current_task = &task->task; /* protothread 让出时感知当前任务 */
+        task->task.xTask_cb(&task->task);
+        s_current_task = NULL;
+
+        if (task->task.pt_line == 0)
+        {
+            /* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
+            COMPAT_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period,
+                                COMPAT_MO_RELAXED);
+        }
+        /* else: 协程挂起中, PT_DELAY 已设 next_running, sleep_insert 按到期排序 */
+#else
+        task->task.xTask_cb(&task->task);
+        COMPAT_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period,
+                            COMPAT_MO_RELAXED);
+#endif
+    }
+    sleep_insert(task);
+    return VFS_OK;
+}
+
+/** 轮询全局抢占式调度器 (与协调式同名, 应用层无感知) */
+void x_scheduler_poll(void) { x_task_run_preempt(&g_scheduler); }
+
 #endif /* CONFIG_XTASK_PREEMPT */
 #endif /* CONFIG_OSAL_NULL */

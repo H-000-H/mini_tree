@@ -132,13 +132,19 @@ Key points:
 
 ### Mechanism
 
-On the bare-metal backend (`CONFIG_OSAL_NULL`), the whole system has exactly one time source: `x_scheduler.tick_count`, driven by the chosen TIM ISR.
+On the bare-metal backend (`CONFIG_OSAL_NULL`), the whole system has exactly one time source: `x_scheduler.tick_count`. `xscheduler_start()` selects the tick source in two levels — "chosen override first, else SysTick by default":
 
 ```text
-DTS chosen TIM (CHOSEN_SCHEDULER_TIM)
+① DTS explicitly sets chosen TIM (CHOSEN_SCHEDULER_TIM) → explicit override, generic TIM + VIRQ
   → xscheduler_start(): device_open → get hal_tim_device → register VIRQ(tim,0)
-  → scheduler_tim_isr_top(): clear update flag + x_scheduler_tick(+1)   ← ISR only, nothing else
-  → osal_time_ms() reads g_scheduler.tick_count directly                 ← one global clock
+  → scheduler_tim_isr_top(): clear update flag + x_scheduler_tick(+tick_delay)   ← ISR only, nothing else
+
+② No chosen → SysTick by default (Cortex-M architecture standard, zero-config)
+  → hal_systick_init(DTC_GEN_TICK_RATE_HZ) configures SysTick (frequency via DTS, base hard-coded)
+  → SysTick_Handler → hal_systick_irq_handler() + x_scheduler_tick(+tick_delay)  ← ISR only, nothing else
+
+Non-ARM (RISC-V) has no SysTick; hal_systick_init returns NOTSUPP, so RISC-V boards must set chosen in DTS.
+→ osal_time_ms() reads g_scheduler.tick_count directly                 ← one global clock
 ```
 
 Task model (`time_slice/task/xtask.h`):
@@ -171,9 +177,47 @@ Under cooperative scheduling all callbacks run **serially**, so this must hold:
 
 When over budget, prefer in order: shorten blocking inside the callback (use a state machine, §8) → split tasks → move to `CONFIG_OSAL_FREERTOS` preemption (see `osal_switching.md`). The preemptive `xtask_preempt.c` (`CONFIG_XTASK_PREEMPT`) is experimental and incomplete; use an RTOS in production.
 
+### protothread coroutine delays (PT_DELAY)
+
+For "delay inside a callback without stalling other tasks", use the protothread macros in `xtask.h` (`PT_BEGIN`/`PT_DELAY`/`PT_END`). The task sleeps until its deadline while other tasks keep running, then resumes from the yield point — **no heap, no per-task stack** (just the `x_task.pt_line` field), at the cost of writing the callback as a state machine; **locals crossing a yield point are not preserved** (keep them in the TCB or statics).
+
+> **Switch**: gated by Kconfig `CONFIG_XTASK_COROUTINE`, **on by default**. When on, use the pattern below; plain callbacks without PT macros behave exactly as before (backward compatible). When off, the PT_ macros are not defined and the scheduler skips coroutine handling — callbacks stay plain run-to-completion (periodic). Supported by both cooperative and preemptive schedulers.
+
+```c
+/* LED blink: on 100ms / off 100ms, without blocking other tasks */
+static uint32_t s_led_blink_count;   /* cross-yield locals must be static or in TCB */
+
+static void led_task_cb(x_task* task)
+{
+    PT_BEGIN(task);                    /* state-machine entry, must take `task` */
+
+    for (;;)
+    {
+        led_on();
+        s_led_blink_count++;
+        PT_DELAY(task, 100);           /* yield 100ms, resume at the next line */
+
+        led_off();
+        PT_DELAY(task, 100);
+    }
+
+    PT_END(task);                      /* resets pt_line, back to the top (unreachable in a loop) */
+}
+
+/* Creation: period is the first dispatch delay; inner pacing is driven by PT_DELAY */
+static x_task s_led_task;
+/* xscheduler_task_create(&s_led_task, "led", led_task_cb, 0); */
+```
+
+Key points:
+- Do **not** use `osal_delay_ms` (busy-wait, blocks the whole system) inside a callback; use `PT_DELAY(task, ms)` to yield instead.
+- `PT_WAIT_UNTIL(task, cond)` / `PT_YIELD(task)` provide conditional waits / per-frame yields.
+- Both schedulers (coop/preempt) check `pt_line` after the callback returns: non-zero means the coroutine is suspended and the deadline set by `PT_DELAY` is kept; zero means the next round advances by `period`.
+- Backward compatible: plain callbacks without PT macros behave exactly as before.
+
 ### Common Pitfalls
 
-- Calling `osal_delay_ms` (busy-wait) inside a callback stalls all periodic tasks; only allowed during initialization or for short timing.
+- Calling `osal_delay_ms` (busy-wait) inside a callback stalls all periodic tasks; only allowed during initialization or for short timing; use `PT_DELAY` for in-callback delays (see the protothread section above).
 - Callbacks must return quickly; no `while(1)` loops inside.
 - `xscheduler_start()` must be called after `mini_tree_start_tasks()` (the comment states: VFS devices must be probed).
 

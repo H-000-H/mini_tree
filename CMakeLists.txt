@@ -114,19 +114,23 @@ else()
     set(MINI_TREE_VIRQ ON)
 endif()
 
-# XTASK 软编码：.config 显式 "# CONFIG_XTASK is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_OFF REGEX "^# CONFIG_XTASK is not set$")
-if(CONFIG_XTASK_OFF)
-    set(MINI_TREE_XTASK OFF)
-else()
-    set(MINI_TREE_XTASK ON)
-endif()
-
-# XTASK_PREEMPT 软编码：默认关, 仅显式 "CONFIG_XTASK_PREEMPT=y" 才编入（对齐 Kconfig default n）
+# 裸机调度器三态 (choice: XTASK_NONE / XTASK_COOP / XTASK_PREEMPT)：
+#   - 显式 "CONFIG_XTASK_COOP=y"  → 协调式
+#   - 显式 "CONFIG_XTASK_PREEMPT=y" → 抢占式 (实验性)
+#   - 均未显式 =y → 无调度器 (XTASK_NONE, 应用层自写 while 循环)
+file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_COOP_ON REGEX "^CONFIG_XTASK_COOP=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_PREEMPT_ON REGEX "^CONFIG_XTASK_PREEMPT=y$")
-if(CONFIG_XTASK_PREEMPT_ON AND MINI_TREE_XTASK)
+if(CONFIG_XTASK_PREEMPT_ON)
+    set(MINI_TREE_XTASK_MODE "PREEMPT")
+    set(MINI_TREE_XTASK ON)
     set(MINI_TREE_XTASK_PREEMPT ON)
+elseif(CONFIG_XTASK_COOP_ON)
+    set(MINI_TREE_XTASK_MODE "COOP")
+    set(MINI_TREE_XTASK ON)
+    set(MINI_TREE_XTASK_PREEMPT OFF)
 else()
+    set(MINI_TREE_XTASK_MODE "NONE")
+    set(MINI_TREE_XTASK OFF)
     set(MINI_TREE_XTASK_PREEMPT OFF)
 endif()
 
@@ -149,6 +153,7 @@ set(HAL_SRCS
     "hal/storage/hal_storage.c"
     "hal/system/hal_platform_safety.c"
     "hal/system/hal_sdio.c"
+    "hal/system/hal_systick.c"
     "hal/hal_if_dummy.c"
 )
 
@@ -416,11 +421,11 @@ if(MINI_TREE_VIRQ)
     target_sources(mini_tree PRIVATE interrupt/interrupt.c interrupt/interrupt.h)
 endif()
 
-# 裸机时间片调度器 — CONFIG_OSAL_NULL 且 CONFIG_XTASK 才编入; OS 后端用内核调度, 不编入
-# 协调式 (xtask_coop.c) 与抢占式 (xtask_preempt.c) 共用 xtask.h, 二选一互斥:
-#   - CONFIG_XTASK_PREEMPT=n (默认): 编 xtask_coop.c (协调式 round-robin)
-#   - CONFIG_XTASK_PREEMPT=y:        编 xtask_preempt.c (抢占式, 实验性)
-# 两套实现提供同一套对外 API (见 xtask.h), 调用方无感知.
+# 裸机调度器三态 (Kconfig choice: XTASK_NONE / XTASK_COOP / XTASK_PREEMPT):
+#   - NONE   (MINI_TREE_XTASK=OFF):  不编入, 应用层自写 while 循环
+#   - COOP   (PREEMPT=OFF):          编 xtask_coop.c (协调式 round-robin)
+#   - PREEMPT(PREEMPT=ON):           编 xtask_preempt.c (抢占式, 实验性)
+# COOP/PREEMPT 提供同一套对外 API (见 xtask.h), 调用方无感知; OS 后端用内核调度, 不编入.
 if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
     target_sources(mini_tree PRIVATE time_slice/task/xtask.h)
     if(MINI_TREE_XTASK_PREEMPT)

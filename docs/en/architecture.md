@@ -211,5 +211,5 @@ On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_P
 ## Related Documents
 
 - [usage.md](usage.md) · [getting_started.md](getting_started.md) · [ecosystem.md](ecosystem.md)
-- [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)
+- [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
 - [design_decisions.md](design_decisions.md) · [api_compatibility.md](api_compatibility.md)

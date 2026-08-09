@@ -72,7 +72,7 @@
 | :--- | :---: | :--- |
 | **FreeRTOS** | 首选内核 | **最纯粹**：调度与 IPC 模型清晰，和本仓 OSAL 垫片最贴；ESP-IDF 等自带内核时不要硬塞另一份 FreeRTOS。 |
 | **RT-Thread** | 可选 | **组件最丰富**，生态软绑定（包/设备框架可取舍接入）；与本仓设备模型并存时，驱动仍走 mini_tree，勿混两套 probe。 |
-| **裸机 `OSAL_NULL` + xtask** | 小系统默认 | 无调度器开销；协作式，不适合复杂抢占业务。 |
+| **裸机 `OSAL_NULL` + xtask** | 小系统默认 | 无调度器开销；协作式（默认）或 N+1 多优先级抢占式（`XTASK_PREEMPT`，可延迟/休眠/抢占，无就绪时精确 WFI），由 Kconfig 三态 choice 选择；无独立任务栈（run-to-completion，复用主循环栈）。 |
 | **Zephyr** | **暂未接入** | 生态成熟、设备树模型完备；但 **dts 生成宏层级深、展开后难以追踪，现场几乎无法调试**——这也是本仓选择 Linux 式设备树 + `dtc-lite`（生成物为普通 C 静态表，可直接断点/看符号）的原因之一。其 dts 与 Linux 设备树理念同源，若需要该模型，直接以 Linux 为参照即可。本仓 OSAL 后端当前为裸机 / FreeRTOS / RT-Thread，Zephyr 暂未纳入集成计划（无 Zephyr 后端）。 |
 
 优先级数值、ISR 进临界区等行为差异见 [osal_switching.md](osal_switching.md)。

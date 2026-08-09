@@ -6,7 +6,7 @@
 | :--- | :--- |
 | **Audience** | Anyone wiring this shelf into an ESP-IDF project |
 | **Prereq.** | [getting_started.md](getting_started.md) (generic CMake) |
-| **Related** | [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md) · [design_decisions.md](design_decisions.md) |
+| **Related** | [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md) · [design_decisions.md](design_decisions.md) |
 
 ---
 
@@ -192,5 +192,5 @@ Don't overwrite the repo's non-ESP root `CMakeLists.txt` logic with the whole ES
 
 ## Related Docs
 
-- [getting_started.md](getting_started.md) · [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)
+- [getting_started.md](getting_started.md) · [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md) · [osal_switching.md](osal_switching.md) · [ecosystem.md](ecosystem.md)
 - [references.md](references.md) (ESP-IDF VFS mental mapping)

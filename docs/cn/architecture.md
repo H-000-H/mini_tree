@@ -84,7 +84,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `osal/` | 锁/队列/任务/时间 | `osal_mutex_lock` |
 | `interrupt/` | VIRQ、上/下半部 | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | 启动、WDT、scrubber、safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
-| `time_slice/` | 裸机调度 — 协调式 (`xtask_coop.c`, 默认) 与抢占式 (`xtask_preempt.c`, 实验性) 二选一, 共用 `xtask.h` API; CMake + `#ifdef` 双重互斥; 仅 `OSAL_NULL` | `x_scheduler` / `x_task` |
+| `time_slice/` | 裸机调度 — 由 Kconfig 三态 choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`) 选择; 协调式 (`xtask_coop.c`, 默认) 与抢占式 (`xtask_preempt.c`, N+1 多优先级) 二选一, 共用 `xtask.h` API; CMake + `#ifdef` 双重互斥; 仅 `OSAL_NULL` | `x_scheduler` / `x_task` |
 | `drivers/<chip>/` | 产品驱动（37 个，`{include,src}` 结构） | `DRIVER_REGISTER` / ioctl；dtc-lite 编译期 probe |
 | `can_hook/` | CAN 钩子扩展 | — |
 | `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 为配置期 FetchContent，其余积木链接期 FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
@@ -211,5 +211,5 @@ CMake 关键缓存变量：`BOARD_DTS`、`BOARD_DTSI_DIR`、`VENDOR_INC_DIRS`、
 ## 相关文档
 
 - [usage.md](usage.md) · [getting_started.md](getting_started.md) · [ecosystem.md](ecosystem.md)
-- [porting_guide.md](porting_guide.md) · [driver_guide.md](driver_guide.md)
+- [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
 - [design_decisions.md](design_decisions.md) · [api_compatibility.md](api_compatibility.md)

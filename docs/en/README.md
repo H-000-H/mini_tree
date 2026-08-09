@@ -15,7 +15,7 @@
 | :--- | :--- |
 | First-time integration | [README.md](README.md) (full index) → [getting_started.md](getting_started.md) → [usage.md](usage.md) → [faq.md](faq.md) |
 | Picking open-source bricks / extending the ecosystem | [ecosystem.md](ecosystem.md) |
-| Platform porting | [porting_guide.md](porting_guide.md) → [esp_idf_cmake.md](esp_idf_cmake.md) (if ESP) → [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
+| Platform porting | [device_tree_porting.md](device_tree_porting.md) → [esp_idf_cmake.md](esp_idf_cmake.md) (if ESP) → [usb_tusb_port.md](usb_tusb_port.md) → [amp.md](amp.md) → [driver_guide.md](driver_guide.md) |
 | Writing applications | [service_spec.md](service_spec.md) → [peripherals.md](peripherals.md) → [runtime_services.md](runtime_services.md) → [fast_path.md](fast_path.md) |
 | Writing code / checking naming | [coding_style.md](coding_style.md) (language rules: enforced below `app/`, recommended in `app/`) |
 | Design rationale / mechanisms | [design_decisions.md](design_decisions.md) · [patterns.md](patterns.md) · [references.md](references.md) · [architecture.md](architecture.md) |
@@ -44,7 +44,7 @@
 | [ecosystem.md](ecosystem.md) | Brick-style linking: integrated open-source libraries and how to extend |
 | [design_decisions.md](design_decisions.md) | Design decisions still in force and author preferences |
 | [references.md](references.md) | External references: ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |
-| [porting_guide.md](porting_guide.md) | Platform porting checklist |
+| [device_tree_porting.md](device_tree_porting.md) | Platform porting checklist |
 | [esp_idf_cmake.md](esp_idf_cmake.md) | ESP-IDF component-style CMake (against esp32s3) |
 | [driver_guide.md](driver_guide.md) | DTS / `DRIVER_REGISTER` |
 | [peripherals.md](peripherals.md) | Peripheral compatible / ioctl overview |

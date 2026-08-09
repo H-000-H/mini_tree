@@ -50,7 +50,8 @@ extern "C"
 #define TIM_CMD_SET_INTERRUPT (TIM_CMD_BASE + 0x15) /* 20: 配置中断 (DIER) */
 #define TIM_CMD_ENCODER_START (TIM_CMD_BASE + 0x16) /* 21: 启动编码器 */
 #define TIM_CMD_HALL_START (TIM_CMD_BASE + 0x17) /* 22: 启动霍尔 */
-#define TIM_CMD_COUNT 23
+#define TIM_CMD_CLEAR_UPDATE_FLAG (TIM_CMD_BASE + 0x18) /* 23: 清更新标志 (ISR 用) */
+#define TIM_CMD_COUNT 24
     struct tim_start_arg
     {
         uint32_t frequency; /**< 目标频率 (Hz) */
@@ -157,6 +158,16 @@ extern "C"
         if (!arg || !arg->obj)
             return VFS_ERR_INVAL;
         return hal_tim_get_autoreload(arg->obj, &arg->value);
+    }
+
+    /**
+     * @brief 快速清更新标志 (ISR 上半部用, 非阻塞无生命周期)
+     */
+    COMPAT_STATIC_INLINE int vfs_tim_fast_clear_update_flag(struct vfs_tim_arg* arg)
+    {
+        if (!arg || !arg->obj)
+            return VFS_ERR_INVAL;
+        return hal_tim_clear_update_flag(arg->obj);
     }
 
     /**

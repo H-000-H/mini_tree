@@ -85,5 +85,5 @@ With `CONFIG_BUILD_DISASM=y` and `cmake/disasm.cmake` (enabled by the platform p
 
 ## Related Documents
 
-- [faq.md](faq.md) · [porting_guide.md](porting_guide.md)
+- [faq.md](faq.md) · [device_tree_porting.md](device_tree_porting.md)
 - [architecture.md](architecture.md)

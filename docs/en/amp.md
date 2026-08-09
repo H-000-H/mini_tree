@@ -8,7 +8,7 @@
 | Item | Content |
 | :--- | :--- |
 | **Audience** | Dual-core & AMP board engineers |
-| **Prereq** | [getting_started.md](getting_started.md) Kconfig · [porting_guide.md](porting_guide.md) |
+| **Prereq** | [getting_started.md](getting_started.md) Kconfig · [device_tree_porting.md](device_tree_porting.md) |
 | **Related** | [osal_switching.md](osal_switching.md) · [architecture.md](architecture.md) · [runtime_services.md](runtime_services.md) |
 
 ---
@@ -119,5 +119,5 @@ Platform sample projects (link scripts, secondary images) live outside this shel
 
 ## Related Documents
 
-- [porting_guide.md](porting_guide.md) · [osal_switching.md](osal_switching.md) · [design_decisions.md](design_decisions.md)
+- [device_tree_porting.md](device_tree_porting.md) · [osal_switching.md](osal_switching.md) · [design_decisions.md](design_decisions.md)
 - [runtime_services.md](runtime_services.md) · [todolist.md](todolist.md) (AMP sample tracking)

@@ -196,6 +196,6 @@ extern "C" void mini_tree_system_loop(void)
     interrupt_bottom_half_poll(); /**< 执行下半部队列 */
 #endif
 #ifdef CONFIG_OSAL_NULL
-    x_scheduler_poll(); /**< 时间片调度器轮询 */
+    x_scheduler_poll(); /**< 裸机调度器轮询 (coop/preempt 各实现同名函数) */
 #endif
 }

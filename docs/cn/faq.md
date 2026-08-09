@@ -87,5 +87,5 @@ ETL 是 **上层 C++ 基础库**，vendor 于 `lib/etl`（仅 include + cmake）
 
 ## 相关文档
 
-- [debug_monitor.md](debug_monitor.md) · [porting_guide.md](porting_guide.md)
+- [debug_monitor.md](debug_monitor.md) · [device_tree_porting.md](device_tree_porting.md)
 - [usage.md](usage.md) · [ecosystem.md](ecosystem.md)

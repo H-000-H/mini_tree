@@ -38,7 +38,7 @@
 | 优先级 | 注册点 | 初始化内容 |
 | :---: | :--- | :--- |
 | `170` | `interrupt/interrupt.c` | 全局下半部 poller（FIFO + pending_drain） |
-| `161` | `time_slice/task/xtask_preempt.c` | N+1 抢占式调度器数组（实验性，未完工） |
+| `161` | `time_slice/task/xtask_preempt.c` | N+1 抢占式调度器（分组优先级 + CLZ 定位，可延迟/休眠/抢占，无就绪时精确 WFI） |
 | `160` | `time_slice/task/xtask_coop.c` | 协调式调度器 `g_scheduler`（默认） |
 | `152` | `osal/src/osal_null.c` | 裸机队列池 |
 | `151` | `osal/src/osal_null.c` | 裸机信号量池 |
@@ -132,13 +132,19 @@ board_driver_probe_all()
 
 ### 机制
 
-裸机后端（`CONFIG_OSAL_NULL`）下，全系统只有一个时基源：`x_scheduler.tick_count`，由 chosen TIM 的 ISR 驱动。
+裸机后端（`CONFIG_OSAL_NULL`）下，全系统只有一个时基源：`x_scheduler.tick_count`。`xscheduler_start()` 按"chosen 显式覆盖优先，否则 SysTick 默认"两级选择 tick 源：
 
 ```text
-DTS chosen TIM（CHOSEN_SCHEDULER_TIM）
+① DTS 显式配 chosen TIM（CHOSEN_SCHEDULER_TIM）→ 显式覆盖，走通用 TIM + VIRQ
   → xscheduler_start(): device_open → 取 hal_tim_device → VIRQ(tim,0) 注册
-  → scheduler_tim_isr_top(): 清 update flag + x_scheduler_tick(+1)   ← ISR 内，仅此而已
-  → osal_time_ms() 直接读 g_scheduler.tick_count                     ← 全局统一时钟
+  → scheduler_tim_isr_top(): 清 update flag + x_scheduler_tick(+tick_delay)   ← ISR 内，仅此而已
+
+② 未配 chosen → 默认 SysTick（Cortex-M 架构标准件，零配置）
+  → hal_systick_init(DTC_GEN_TICK_RATE_HZ) 配置 SysTick（频率走 DTS，基址写死）
+  → SysTick_Handler → hal_systick_irq_handler() + x_scheduler_tick(+tick_delay)  ← ISR 内，仅此而已
+
+非 ARM（RISC-V）无 SysTick，hal_systick_init 返回 NOTSUPP，RISC-V 板必须在 DTS 配 chosen。
+→ osal_time_ms() 直接读 g_scheduler.tick_count                     ← 全局统一时钟
 ```
 
 任务模型（`time_slice/task/xtask.h`）：
@@ -171,9 +177,47 @@ DTS chosen TIM（CHOSEN_SCHEDULER_TIM）
 
 预算超支时优先：**缩短回调内阻塞**（改状态机，见 §8）→ 拆任务 → 换 `CONFIG_OSAL_FREERTOS` 抢占式（`osal_switching.md`）。抢占式 `xtask_preempt.c`（`CONFIG_XTASK_PREEMPT`）为实验性未完工，生产环境走 RTOS。
 
+### protothread 协程延时（PT_DELAY）
+
+需要"回调内延时但不拖死其他任务"时，用 `xtask.h` 的 protothread 宏（`PT_BEGIN`/`PT_DELAY`/`PT_END`）。任务挂起到期点、其他任务继续跑，到期后从让出点恢复——**无堆、无独立栈**（仅 `x_task.pt_line` 一个字段），代价是回调要写成状态机形式，且**跨让出点的局部变量不保留**（需存 TCB 或静态量）。
+
+> **开关**：本特性由 Kconfig `CONFIG_XTASK_COROUTINE` 控制，**默认开启**。开启后即可用下面的写法；不写 PT 宏的普通回调行为完全不变（向后兼容）。关闭时 PT_ 宏不定义、调度器不做协程判定，回调保持纯 run-to-completion（周期推进）。协调式 / 抢占式两种调度器均支持。
+
+```c
+/* LED 闪烁: on 100ms / off 100ms, 期间不阻塞其他任务 */
+static uint32_t s_led_blink_count;   /* 跨让出点的变量必须静态或存 TCB */
+
+static void led_task_cb(x_task* task)
+{
+    PT_BEGIN(task);                    /* 状态机入口, 必须 task 参数 */
+
+    for (;;)
+    {
+        led_on();
+        s_led_blink_count++;
+        PT_DELAY(task, 100);           /* 让出 100ms, 到期从下一行继续 */
+
+        led_off();
+        PT_DELAY(task, 100);
+    }
+
+    PT_END(task);                      /* 复位 pt_line, 回到开头 (死循环用不到) */
+}
+
+/* 创建: period 为首次调度延迟, 协程内部节奏由 PT_DELAY 控制 */
+static x_task s_led_task;
+/* xscheduler_task_create(&s_led_task, "led", led_task_cb, 0); */
+```
+
+要点：
+- 回调内**不能用** `osal_delay_ms`（忙等阻塞全系统）；用 `PT_DELAY(task, ms)` 让出。
+- `PT_WAIT_UNTIL(task, cond)` / `PT_YIELD(task)` 可做条件等待 / 每帧让出。
+- 调度器（coop/preempt 均支持）在回调返回后检查 `pt_line`：非 0 视为协程挂起，保留 `PT_DELAY` 设的到期时刻；为 0 才按 `period` 推进下一轮。
+- 兼容性：不写 PT 宏的普通回调行为完全不变。
+
 ### 常见坑
 
-- 回调里调用 `osal_delay_ms`（忙等）会拖死所有周期任务，只允许在初始化阶段或短时序使用。
+- 回调里调用 `osal_delay_ms`（忙等）会拖死所有周期任务，只允许在初始化阶段或短时序使用；回调内的延时请用 `PT_DELAY`（见上文 protothread 小节）。
 - 回调必须尽快返回，不能 `while(1)` 死循环。
 - `xscheduler_start()` 必须在 `mini_tree_start_tasks()` 之后调用（注释明确：VFS 设备已 probe）。
 

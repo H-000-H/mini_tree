@@ -86,7 +86,7 @@ Master switch `CONFIG_VIRQ` (on by default); when off, `interrupt/interrupt.c` i
 
 | Feature | Effect When Off |
 | :--- | :--- |
-| Bare-metal time-slice scheduler (`time_slice/xtask`) | no TIM tick IRQ registered — no tick source, tasks never run |
+| Bare-metal time-slice scheduler (`time_slice/xtask`) | **SysTick default path is unaffected** (core exception, not via VIRQ); only when DTS explicitly sets `chosen { scheduler-tim = &timN; }` to use a generic TIM does disabling VIRQ break TIM IRQ routing and leave the scheduler with no tick source |
 | ADC / I2S DMA bottom-half | `vfs-adc` / `i2s_bus` skip VIRQ registration & IRQ enable — async/DMA callbacks dead (polling drivers unaffected) |
 | GPIO HW-interrupt routing | the virq_idx slot goes inert |
 | Board/driver ISR | must not call `interrupt_virtual_dispatch()` / `interrupt_virtual_register()` or the link fails |

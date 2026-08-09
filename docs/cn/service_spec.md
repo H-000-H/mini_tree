@@ -77,7 +77,7 @@ return ret;
 - 创建任务：`osal_task_create` / `osal_task_create_handle`（不要直接 `xTaskCreate`）。
   裸机例外：C API 恒返回 `OSAL_ERR_NOTSUPP`，任务创建走 `osal_null.h` 的 C++ 重载
   `osal_task_create`（`CONFIG_OSAL_NULL_TASK_CPP`，默认开启）或直接 `xscheduler_task_create`。
-  **抢占式 (`CONFIG_XTASK_PREEMPT=y`) 时**: 协调式 C++ 重载关闭, 只能走 `xscheduler_task_create` 原生 API (`xtask.h` 共用).
+  **抢占式 (`CONFIG_XTASK_PREEMPT=y`) 时**: C++ 重载仍提供, 但签名切换为带 `priority` 的分支（`stack_size` 复用为周期）; 也可直接走 `xscheduler_task_create` 原生 API (`xtask.h` 共用).
 - 注意 **优先级数值语义随 OSAL 后端变化**（见 [osal_switching.md](osal_switching.md)）。
 - 设备锁由 `device_*` 包装持有；业务勿对同一设备再叠一层易死锁的锁顺序。
 - ISR 里只做短工作；其余投递 EventBus / 下半部 / 任务。
