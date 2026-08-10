@@ -126,6 +126,8 @@ bmp280: bmp280@0 {
 - `status = "disabled"`: dtc-lite still parses the node (generates ID / slot), but it does **not** enter the probe table and the driver is never invoked.
 - The board turns it on and fills real values via `&label { status = "okay"; ...override... };`.
 
+> **⚠ Override requires the `label` to be declared in some dtsi first (`label: node@x { }`).** If the `&label` reference points to a label that does not exist, dtc-lite does **not** error — it auto-*phantoms* an orphan node at `/soc/<label>` and attaches the `status`/overridden properties to it, leaving the real target node untouched. As a result the real node stays `disabled` and its properties (e.g. `clock-frequency`) are never overridden. Real case: `board.dts` uses `&cpu0`, but `cpu.dtsi` declares `cpu@0` with no `cpu0:` label, so `/cpus/cpu@0` stayed `disabled` while `status="okay"` and `clock-frequency=<72MHz>` went to a phantom node. Fix: label the node `cpu0: cpu@0 { ... }` so the reference hits.
+
 ---
 
 ## 5. Writing the board DTS (full example)
@@ -642,6 +644,7 @@ namespace App_Led
 | Symptom | Cause | Fix |
 | :--- | :--- | :--- |
 | `DEV_ID_xxx` not generated | node `status="disabled"` or template not included | enable it at board level: `&label { status = "okay"; }` |
+| `&label { status="okay" }` leaves the node `DISABLED` / frequency not applied | **label `label` was never declared in any dtsi**; dtc-lite silently *phantoms* an orphan node under `/soc`, so the override never reaches the target | add the label to the target node, e.g. `cpu0: cpu@0 { ... }`, so `&cpu0` resolves exactly; verify `.status` / properties via `git diff` on `board_devtable.c` |
 | probe never called | `DRIVER_REGISTER` compat ≠ dtsi `compatible` (space/case) | make them exactly identical; rerun dtc-lite |
 | pool overflow / `VFS_ERR_NOMEM` | more board nodes than expected | `DTC_GEN_COUNT_*` follows node count; check for un-enabled nodes |
 | driver can't find bus | `board_dev_get(DEV_ID_i2c0)` errors | confirm `i2c0` is `status="okay"` and has an enum in `board_nodes.h` |

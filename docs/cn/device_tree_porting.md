@@ -126,6 +126,8 @@ bmp280: bmp280@0 {
 - `status = "disabled"`：dtc-lite 仍解析节点（生成 ID / 占位），但**不进 probe 表**，驱动不会被调用。
 - 板级通过 `&label { status = "okay"; ...覆盖属性... };` 打开并填真实值。
 
+> **⚠ 覆盖的前提：`label` 必须已在某个 dtsi 里声明过（`label: node@x { }`）**。若 `&label` 引用的标签不存在，dtc-lite **不会报错**，而是自动"虚空创生"一个 `/soc/<label>` 孤儿节点，把 `status` / 覆盖属性挂到它上面——真正的目标节点完全没被改动，导致 `DEV_ID_*` 仍是 `disabled`、属性（如 `clock-frequency`）也没覆盖进去。真实案例：`board.dts` 用 `&cpu0`，但 `cpu.dtsi` 里写的是 `cpu@0`（无 `cpu0:` 标签），结果 `/cpus/cpu@0` 保持 `disabled`，`status="okay"` 和 `clock-frequency=<72MHz>` 全部落到虚空节点。修复：给节点加标签 `cpu0: cpu@0 { ... }`，引用即命中。
+
 ---
 
 ## 5. 写板级 DTS（完整示例）
@@ -642,6 +644,7 @@ namespace App_Led
 | 现象 | 原因 | 解决 |
 | :--- | :--- | :--- |
 | `DEV_ID_xxx` 未生成 | 节点 `status="disabled"` 或未 include 模板 | 板级 `&label { status = "okay"; }` 打开 |
+| `&label { status="okay" }` 覆盖后节点仍是 `DISABLED` / 频率没写进去 | **标签 `label` 未在任一 dtsi 声明**，dtc-lite 不报错而是**虚空创生**一个孤儿节点挂到 `/soc`，覆盖没落到目标节点 | 给目标节点补上标签，如 `cpu0: cpu@0 { ... }`，确保 `&cpu0` 精确命中；`git diff` 对比 `board_devtable.c` 里 `.status` / 属性确认生效 |
 | probe 未被调用 | `DRIVER_REGISTER` 的 compat 与 dtsi `compatible` 不一致（空格/大小写） | 严格一致；重跑 dtc-lite |
 | 池溢出 / `VFS_ERR_NOMEM` | 板级节点数 > 预期 | `DTC_GEN_COUNT_*` 自动跟随节点数，检查是否漏开节点 |
 | 驱动找不到总线 | `board_dev_get(DEV_ID_i2c0)` 返回错误 | 确认 `i2c0` 节点 `status="okay"` 且在 `board_nodes.h` 有枚举 |
