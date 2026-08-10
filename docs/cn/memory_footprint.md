@@ -101,6 +101,46 @@
 
 ---
 
+---
+
+## 6. 工程实例：stm32f103c8t6-node 内存优化记录
+
+> 本节记录一次真实工程（`Host-Device-Architecture-stm32f103c8t6-node`，STM32F103C8T6，20 KB RAM / 64 KB Flash，`arm-none-eabi-gcc`，链接 `--gc-sections`，`.config` 见下）从"逼近溢出"到"安全区间"的完整优化演进。数据来自该工程历次构建日志（`build_log*.txt`）的真实输出。
+
+### 6.1 演进总览（真实测量）
+
+| 阶段 | RAM (B) | RAM 占比 | FLASH (B) | FLASH 占比 | 主要动作 |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| 初始（全功能编译） | 17,928 | 87.54% | 46,692 | 71.25% | 默认全开，RAM 逼近溢出 |
+| 裁减驱动 | 17,928 | 87.54% | 45,724 | 69.77% | 移除未用产品驱动（air780e/hc05/dfplayer/neo_m8n 等） |
+| 裁剪框架 | 15,376 | 75.08% | 45,636 | 69.64% | 进一步裁系统/中间件 |
+| 关 Scr / SysCMD 等 | 12,456 | 60.82% | 39,636 | 60.48% | `CONFIG_SYSTEM_SCRUBBER` / `CONFIG_SYSTEM_CMD` 关 |
+| **最终（Release -Os）** | **9,896** | **48.32%** | **22,692** | **34.63%** | `-Os` + gc-sections + 裁剪收敛 |
+
+> 净效果：RAM **17,928 → 9,896 B（−44.8%）**，FLASH **46,692 → 22,692 B（−51.4%）**，从"RAM 87% 濒危"降到"RAM 48% 安全"。
+
+### 6.2 采取的具体裁剪项（对应 `.config` 生效状态）
+
+| Kconfig / 配置 | 取值 | 影响 |
+| :--- | :--- | :--- |
+| `CONFIG_OSAL_NULL` | `y` | 放弃 FreeRTOS/RT-Thread/ThreadX/UCOS，用裸机 OSAL——RAM 下降主因（RTOS 每任务 TCB+独立栈，xtask 复用主循环栈） |
+| `CONFIG_XTASK_PREEMPT` | `y` | 抢占式 xtask 协程 + `CONFIG_XTASK_COROUTINE` |
+| `# CONFIG_SYSTEM_SCRUBBER` | 未设 | 关启动内存 scrubber |
+| `# CONFIG_SYSTEM_CMD` | 未设 | 关命令行交互 |
+| `CONFIG_SYSTEM_WDT` | `y` | 保留看门狗（安全项未裁） |
+| `CONFIG_SYSTEM_CPP` | `y` | C++ system 后端 |
+| 编译/链接 | `-Os -fdata-sections -ffunction-sections -Wl,--gc-sections` | 裁未引用函数/数据 |
+| HAL / driver 源集合 | 按需 | `mini_tree/CMakeLists.txt` 仅编必要模块 |
+
+### 6.3 关键结论
+
+1. **`--gc-sections` 已生效，但对 RAM 几乎无效**：它裁的是"未引用的独立 section"（主要降 `text`/FLASH），而 RAM 大头是 `bss`（任务池、队列缓冲等静态数据）——这些总是被引用，gc 裁不掉。这正是 Release 仅比 Debug 省 ~1.7 KB FLASH、而 RAM 基本不变（9,776 → 9,768 B）的原因。
+2. **RAM 主要靠功能裁剪，不靠优化级别**：换 `CONFIG_OSAL_NULL`、关 `SYSTEM_SCRUBBER`/`SYSTEM_CMD` 等才是降 RAM 的关键。
+3. **静态库裁剪粒度受限**：`mini_tree` 是 `STATIC` 库，链接按 `.o` 粒度拉入，`--gc-sections` 只能裁 `.o` 内独立 section 且未被引用的部分；未拆 section 的全局数据仍会保留。
+4. **若需进一步压 RAM**：调小队列缓冲（`CONFIG_OSAL_NULL_QUEUE_BUF_SZ`，当前 1024）、关 `CONFIG_EVENT_BUS`/`CONFIG_VIRQ`（当前为 `y`）、收缩任务池。
+
+---
+
 ## 相关文档
 
 - [getting_started.md](getting_started.md) · [design_decisions.md](design_decisions.md)

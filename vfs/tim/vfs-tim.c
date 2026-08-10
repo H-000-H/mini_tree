@@ -522,7 +522,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint32_t)pin_arr[1];
+                p->pin = (uint16_t)pin_arr[1];
                 p->clk_bus = (uint32_t)pin_arr[2];
                 p->af = (uint32_t)pin_arr[3];
                 p->output_type = (uint32_t)pin_arr[4];
@@ -567,7 +567,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint32_t)pin_arr[1];
+                p->pin = (uint16_t)pin_arr[1];
                 p->clk_bus = (uint32_t)pin_arr[2];
                 p->af = (uint32_t)pin_arr[3];
                 p->output_type = (uint32_t)pin_arr[4];
@@ -632,7 +632,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint32_t)pin_arr[1];
+                p->pin = (uint16_t)pin_arr[1];
                 p->clk_bus = (uint32_t)pin_arr[2];
                 p->af = (uint32_t)pin_arr[3];
                 p->output_type = (uint32_t)pin_arr[4];
@@ -680,7 +680,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                 VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint32_t)pin_arr[1];
+                p->pin = (uint16_t)pin_arr[1];
                 p->clk_bus = (uint32_t)pin_arr[2];
                 p->af = (uint32_t)pin_arr[3];
                 p->output_type = (uint32_t)pin_arr[4];

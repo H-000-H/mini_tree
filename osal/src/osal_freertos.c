@@ -972,6 +972,13 @@ void osal_task_self_delete(void)
 void osal_task_delete(osal_task_handle_t task) { vTaskDelete((TaskHandle_t)task); }
 
 /**
+ * @brief 启动 FreeRTOS 调度器
+ * @details 转发 vTaskStartScheduler(); 应在所有 osal_task_create() 之后调用,
+ *          正常情况下永不返回 (控制权交给内核调度器).
+ */
+void osal_scheduler_start(void) { vTaskStartScheduler(); }
+
+/**
  * @brief eTaskGetState != eDeleted
  * @param task 句柄
  * @return true 运行

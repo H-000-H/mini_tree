@@ -465,13 +465,23 @@ class CGenerator:
         remove_extern_seen: Set[str] = set()
         probe_array: List[str] = []
         remove_array: List[str] = []
+        used_driver_srcs: Set[str] = set()  # 本板 active 节点实际用到的 driver 源文件
         for i in devs:
             compat_prop: Optional[DtsProperty] = i.get_prop('compatible')
             snake: str = self._snake_name(i.name)
+            # disabled 节点: 不生成 probe/remove 强引用 (避免驱动被 #if 裁剪后链接失败),
+            # 数组该槽位填 NULL。
+            status_prop: Optional[DtsProperty] = i.get_prop('status')
+            if (status_prop and status_prop.strings and status_prop.strings[0] == 'disabled'):
+                probe_array.append(f'    [DEV_ID_{snake}] = NULL,')
+                remove_array.append(f'    [DEV_ID_{snake}] = NULL,')
+                continue
             if compat_prop and compat_prop.strings:
                 compat: str = compat_prop.strings[0]
                 if compat in self.compiler.driver_map:
-                    p_fn, r_fn = self.compiler.driver_map[compat]
+                    p_fn, r_fn, drv_src = self.compiler.driver_map[compat]
+                    if drv_src:
+                        used_driver_srcs.add(drv_src)
                     if p_fn not in probe_extern_seen:
                         probe_extern_seen.add(p_fn)
                         # 强引用: DTS 匹配到的 DRIVER_REGISTER 必须在最终链接中有定义,
@@ -563,6 +573,14 @@ class CGenerator:
 
         lines += ['']
         self._write_if_changed(path, '\n'.join(lines))
+
+        # 输出本板 active 节点实际用到的 driver 源文件 (绝对路径, 每行一个),
+        # 供 CMake 过滤 DRIVER_SRCS: 未用到的不编译, 保证不开 gc-sections 也体积合理。
+        used_path: str = os.path.join(self.output_dir, 'dt_used_drivers.txt')
+        used_lines: List[str] = []
+        for s in sorted(used_driver_srcs):
+            used_lines.append(s.replace(os.sep, '/'))
+        self._write_if_changed(used_path, '\n'.join(used_lines) + ('\n' if used_lines else ''))
 
     def _gen_board_handles_h(self) -> None:
         path: str = os.path.join(self.output_dir, 'board_handles.h')

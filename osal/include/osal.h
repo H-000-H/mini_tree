@@ -338,6 +338,17 @@ extern "C"
     int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
                          osal_task_entry_t entry, void* param,
                          int core_id) COMPAT_WARN_UNUSED_RESULT;
+
+    /**
+     * @brief 启动调度器 (OS 后端的统一封装)
+     * @return void
+     * @details 在 OS 后端 (FreeRTOS / RT-Thread 等) 调用本函数启动内核调度器:
+     *          FreeRTOS 转发 vTaskStartScheduler(); RT-Thread 转发
+     *          rt_system_scheduler_start()。裸机后端 (CONFIG_OSAL_NULL) 不使用本函数,
+     *          其调度器由 xtask 的 xscheduler_start() 启动, 故本函数不在裸机后端声明。
+     *          应在所有 osal_task_create() 之后、进入主循环前调用一次。
+     */
+    void osal_scheduler_start(void);
     /*===========================================================================================================================================================*/
 
     /*任务句柄 API*/

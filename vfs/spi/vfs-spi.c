@@ -118,7 +118,7 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
     cfg->spi_clk_periph = (uint32_t)spi_clk;
     cfg->mosi = (struct hal_spi_pin_cfg){
         .port = (uintptr_t)mosi_port,
-        .pin = (uint32_t)mosi_pin,
+        .pin = (uint16_t)mosi_pin,
         .clk_bus = (uint32_t)mosi_clk,
         .af = (uint32_t)mosi_af,
         .output_type = (uint32_t)mosi_output_type,
@@ -128,7 +128,7 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
     };
     cfg->miso = (struct hal_spi_pin_cfg){
         .port = (uintptr_t)miso_port,
-        .pin = (uint32_t)miso_pin,
+        .pin = (uint16_t)miso_pin,
         .clk_bus = (uint32_t)miso_clk,
         .af = (uint32_t)miso_af,
         .output_type = (uint32_t)miso_output_type,
@@ -138,7 +138,7 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
     };
     cfg->sclk = (struct hal_spi_pin_cfg){
         .port = (uintptr_t)sclk_port,
-        .pin = (uint32_t)sclk_pin,
+        .pin = (uint16_t)sclk_pin,
         .clk_bus = (uint32_t)sclk_clk,
         .af = (uint32_t)sclk_af,
         .output_type = (uint32_t)sclk_output_type,

@@ -82,7 +82,7 @@ extern "C"
     struct hal_can_pin_cfg
     {
         uintptr_t port; /**< GPIOx_BASE */
-        uint32_t pin; /**< GPIO_PIN_x */
+        uint16_t pin; /**< GPIO_PIN_x */
         uint32_t clk_bus; /**< LL_AHBx_GRPy_PERIPH_GPIOx */
         uint32_t af; /**< GPIO_AFx_CANy */
         uint32_t output_type; /**< LL_GPIO_OUTPUT_* */

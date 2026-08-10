@@ -83,6 +83,29 @@
 - Spinlock 实现由 `CONFIG_OSAL_SPINLOCK_IRQ_DISABLE` / `ATOMIC` 选择；AMP 下倾向 atomic。
 - 禁止业务直接 `#include` `semphr.h` / `rthw.h`。
 
+### 4.1 FreeRTOS 接管 SVC / PendSV 中断与 CubeMX 代码的冲突（STM32 实测）
+
+**现象**：切到 `CONFIG_OSAL_FREERTOS` 后，链接期报 `multiple definition of 'SVC_Handler'` 和 `multiple definition of 'PendSV_Handler'`。
+
+**根因**：FreeRTOS 的任务上下文切换依赖两个内核中断，通过 `FreeRTOSConfig.h` 的宏把处理函数直接占住中断向量表：
+
+```c
+#define vPortSVCHandler     SVC_Handler
+#define xPortPendSVHandler  PendSV_Handler
+```
+
+而 CubeMX 代码生成器（`stm32f1xx_it.c` 等）会**强定义**同名的 `SVC_Handler` 和 `PendSV_Handler` 作为中断服务程序。FreeRTOS 的强符号与 CubeMX 的强符号撞车，链接器报重定义。
+
+**修复（在板级工程侧，不在 mini_tree 仓库内）**：把 CubeMX 生成的 `stm32f1xx_it.c` 里这两个函数改为 `__weak`，让 FreeRTOS 的强符号覆盖它们。这是 STM32 + FreeRTOS 集成的标准做法：
+
+```c
+__weak void SVC_Handler(void) { }
+__weak void PendSV_Handler(void) { }
+```
+
+> 注意：mini_tree 仓库只提供 OSAL 封装与 RTOS 内核，板级中断向量表 / `stm32f1xx_it.c` 由使用方的板级工程提供。该修复应在你自己的板级工程里做，不要回提到中间件。
+> 若改用 RT-Thread 后端，同理需确认 `rt_hw_context_switch` / `rt_hw_context_switch_interrupt` 使用的中断（通常是 PendSV）未被板级强符号抢占。
+
 ---
 
 ## 5. 启动差异

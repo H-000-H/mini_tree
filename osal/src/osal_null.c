@@ -1400,7 +1400,7 @@ void osal_log_critical_assert(const char* file, int line, const char* fmt, ...)
 
     va_list args;
     va_start(args, fmt);
-    my_printf_output("\r\n[CRITICAL_ASSERT FAILED] %s:%d: ", file ? file : "?", line);
+    my_printf_output("\r\n[1 FAILED] %s:%d: ", file ? file : "?", line);
     vprintf(fmt, args);
     my_printf_output("\r\n");
     va_end(args);

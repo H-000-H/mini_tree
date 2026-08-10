@@ -739,6 +739,13 @@ void osal_task_delete(osal_task_handle_t task)
 }
 
 /**
+ * @brief 启动 RT-Thread 调度器
+ * @details 转发 rt_system_scheduler_start(); 应在所有 osal_task_create() 之后调用,
+ *          正常情况下永不返回 (控制权交给内核调度器).
+ */
+void osal_scheduler_start(void) { rt_system_scheduler_start(); }
+
+/**
  * @brief 线程状态非 CLOSE/INIT
  * @param task 句柄
  * @return true

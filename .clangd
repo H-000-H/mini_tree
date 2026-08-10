@@ -8,6 +8,13 @@
 # 子模块场景：父项目 compile_commands.json 会覆盖本库 compile_flags.txt，
 #   执行 python3 tools/gen_compile_db.py 在本库根生成 compile_commands.json 即可解决。
 
+# 屏蔽 OSAL 非当前后端 (FreeRTOS) 的源文件后台索引，避免同名符号干扰跳转。
+# PathMatch 是正则。若切换到 RT-Thread 等后端，请把 osal_freertos.c 加入排除、放开对应后端。
+If:
+  PathMatch: .*osal/src/osal_(null|rtthread|threadx|ucos_ii|ucos_iii)\.c
+Index:
+  Background: Skip
+
 CompileFlags:
   Remove:
     - --target=*
@@ -22,39 +29,8 @@ Diagnostics:
   Suppress:
     - drive_mode_mismatch
 
----
-# 头文件当 C header 解析（跳转 / 补全）
-If:
-  PathMatch: .*\.(h|H)$
-CompileFlags:
-  Remove:
-    - -std=*
-  Add:
-    - -x
-    - c-header
-    - -std=gnu17
-
----
-# C++ 源
-If:
-  PathMatch: .*\.(cpp|cxx|cc|hpp|hxx)$
-CompileFlags:
-  Remove:
-    - -std=*
-  Add:
-    - -std=gnu++17
-    - -x
-    - c++
-
----
-# DTS/DTSI：当 C 解析以便 #include / 宏跳转（语法噪声压掉）
-# include 路径已在 compile_flags.txt；此处只改语言模式
-If:
-  PathMatch: .*\.dtsi?$
-CompileFlags:
-  Add:
-    - -std=gnu17
-    - -x
-    - c
-Diagnostics:
-  Suppress: "*"
+# 说明：不再强制 .h 当 C / .cpp 强制 -std 的语言规则。
+# 在父工程(嵌套子模块)场景下，这些全局规则会把 ETL 的 C++ 模板头
+# (etl/optional.h 等)误当 C 解析，导致 clangd 报 etl::optional/FreeRTOS.h
+# 大量误报。父工程 compile_commands.json 已为每个 TU 提供正确的 -std 与语言模式，
+# 此处应依赖编译数据库，而非在 .clangd 里强改语言。

@@ -17,6 +17,7 @@
 #define UART_BUS_IMPL
 #include "uart_bus.h"
 
+#include "board_config.h"
 #include "bus.h"
 #include "compiler_compat.h"
 #include "device.h"
@@ -25,8 +26,17 @@
 #include "status.h"
 #include "system_log.h"
 
-#define UART_BUS_HOST_MAX 6 /* 对齐 DTS host-max (USART1..6 / UART4/5) */
-#define UART_BUS_CLIENT_MAX 8
+/* host 池 = DTS "uart" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_UART) */
+#ifndef DTC_GEN_COUNT_UART
+#define DTC_GEN_COUNT_UART 1
+#endif
+#define UART_BUS_HOST_MAX DTC_GEN_COUNT_UART
+
+/* client 池 = DTS "uart-client" 节点数 (缺省 1) */
+#ifndef DTC_GEN_COUNT_UART_CLIENT
+#define DTC_GEN_COUNT_UART_CLIENT 1
+#endif
+#define UART_BUS_CLIENT_MAX DTC_GEN_COUNT_UART_CLIENT
 
 /** @brief UART host 运行时描述符 (静态池, HAL 嵌入 + atomic ref_count) */
 struct uart_bus_host

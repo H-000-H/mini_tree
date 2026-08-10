@@ -121,7 +121,7 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
     cfg->oversampling = (uint32_t)oversampling;
     cfg->tx = (struct hal_uart_pin_cfg){
         .port = (uintptr_t)tx_port,
-        .pin = (uint32_t)tx_pin,
+        .pin = (uint16_t)tx_pin,
         .clk_bus = (uint32_t)tx_clk,
         .af = (uint32_t)tx_af,
         .output_type = (uint32_t)tx_output_type,
@@ -131,7 +131,7 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
     };
     cfg->rx = (struct hal_uart_pin_cfg){
         .port = (uintptr_t)rx_port,
-        .pin = (uint32_t)rx_pin,
+        .pin = (uint16_t)rx_pin,
         .clk_bus = (uint32_t)rx_clk,
         .af = (uint32_t)rx_af,
         .output_type = (uint32_t)rx_output_type,

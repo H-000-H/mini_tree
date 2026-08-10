@@ -98,7 +98,7 @@ extern "C"
     struct hal_spi_pin_cfg
     {
         uintptr_t port; /**< 端口 */
-        uint32_t pin; /**< 引脚 */
+        uint16_t pin; /**< 引脚 */
         uint32_t clk_bus; /**< 该引脚所属的外设时钟总线 */
         uint32_t af; /**< 复用功能 */
         uint32_t output_type; /**< 引脚输出类型 */

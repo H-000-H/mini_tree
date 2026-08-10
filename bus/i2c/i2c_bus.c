@@ -13,6 +13,7 @@
 #define I2C_BUS_IMPL
 #include "i2c_bus.h"
 
+#include "board_config.h"
 #include "board_devtable.h"
 #include "bus.h"
 #include "compiler_compat.h"
@@ -22,7 +23,11 @@
 #include "status.h"
 #include "system_log.h"
 
-#define I2C_BUS_HOST_MAX 4 /* 对齐 HAL/DTS host-max (I2C1/2/3) */
+/* host 池 = DTS "i2c-master" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_I2C_MASTER) */
+#ifndef DTC_GEN_COUNT_I2C_MASTER
+#define DTC_GEN_COUNT_I2C_MASTER 1
+#endif
+#define I2C_BUS_HOST_MAX DTC_GEN_COUNT_I2C_MASTER
 
 /** @brief I2C host 运行时描述符 (静态池, 含 HAL 嵌入 + atomic ref_count) */
 struct i2c_bus_host

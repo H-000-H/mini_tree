@@ -19,6 +19,7 @@
 #define SPI_BUS_IMPL
 #include "spi_bus.h"
 
+#include "board_config.h"
 #include "board_devtable.h"
 #include "bus.h"
 #include "compiler_compat.h"
@@ -28,7 +29,11 @@
 #include "status.h"
 #include "system_log.h"
 
-#define SPI_BUS_HOST_MAX 3 /* 对齐 HAL/DTS host-max (SPI1/2/3) */
+/* host 池 = DTS "spi-master" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_SPI_MASTER) */
+#ifndef DTC_GEN_COUNT_SPI_MASTER
+#define DTC_GEN_COUNT_SPI_MASTER 1
+#endif
+#define SPI_BUS_HOST_MAX DTC_GEN_COUNT_SPI_MASTER
 
 /** @brief SPI host 运行时描述符 (静态池, HAL 嵌入 + atomic ref_count) */
 struct spi_bus_host

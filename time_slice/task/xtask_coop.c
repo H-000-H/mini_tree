@@ -93,8 +93,8 @@ void xscheduler_start(void)
         s_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
         /* 每 SysTick 中断推进 ms = 1000 / tick-rate; 亚毫秒 tick-rate 按 1ms 兜底 */
         int delay = 1000 / DTC_GEN_TICK_RATE_HZ;
-
-       return;
+        s_priv.tick_delay = (delay >= 1) ? delay : 1;
+        return;
     }
 }
 

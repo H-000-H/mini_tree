@@ -19,8 +19,13 @@
 if(FREERTOS_PORT STREQUAL "")
     # 未通过 -D 指定 → 从 Kconfig .config 读取平台选择
     set(FREERTOS_PORT "GCC_POSIX")
-    if(EXISTS "${PROJECT_SOURCE_DIR}/.config")
-        file(STRINGS "${PROJECT_SOURCE_DIR}/.config" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
+    # .config 统一位于 mini_tree/.config (lib/CMakeLists.txt 的 MINI_TREE_CONFIG);
+    # 独立入口未定义该变量时回退到同级 ../.config (即 mini_tree/.config)
+    if(NOT DEFINED MINI_TREE_CONFIG)
+        set(MINI_TREE_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../.config")
+    endif()
+    if(EXISTS "${MINI_TREE_CONFIG}")
+        file(STRINGS "${MINI_TREE_CONFIG}" _kconfig_platform REGEX "^CONFIG_PLATFORM_")
         if(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM7=y")
             set(FREERTOS_PORT "GCC_ARM_CM4F")
         elseif(_kconfig_platform STREQUAL "CONFIG_PLATFORM_ARM_CM3=y")

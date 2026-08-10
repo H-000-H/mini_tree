@@ -878,7 +878,9 @@ class DTSCompiler:
                                 compat: str = m.group(2)
                                 probe_fn: str = f"board_driver_probe_{drv_name}"
                                 remove_fn: str = f"board_driver_remove_{drv_name}"
-                                self.driver_map[compat] = (probe_fn, remove_fn)
+                                # 记录源文件绝对路径, 供 CMake 按 DTS 节点裁剪 driver 源
+                                self.driver_map[compat] = (probe_fn, remove_fn,
+                                                           os.path.normpath(path))
                         except Exception:
                             pass
 

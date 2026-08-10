@@ -62,7 +62,7 @@ extern "C"
     typedef struct
     {
         uintptr_t port; /**< 端口基地址 */
-        uint32_t pin; /**< 引脚编号 */
+        uint32_t pin; /**< 引脚 (LL_GPIO_PIN_x 复合值，如 STM32F1 为 32 位复合值放不进 uint16_t) */
         uint32_t clk_bus; /**< 时钟总线/RCC位 */
         uint8_t virq_idx; /**< VIRQ(gpio, idx) 槽位 (DTS virq-idx, < BLOCK_SIZE) */
         hal_gpio_config cfg; /**< 配置 */

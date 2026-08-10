@@ -101,7 +101,7 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
     cfg->bus_role = (uint32_t)bus_role;
     cfg->scl = (struct hal_i2c_pin_cfg){
         .port = (uintptr_t)scl_port,
-        .pin = (uint32_t)scl_pin,
+        .pin = (uint16_t)scl_pin,
         .clk_bus = (uint32_t)scl_clk,
         .af = (uint32_t)scl_af,
         .output_type = (uint32_t)scl_output_type,
@@ -111,7 +111,7 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
     };
     cfg->sda = (struct hal_i2c_pin_cfg){
         .port = (uintptr_t)sda_port,
-        .pin = (uint32_t)sda_pin,
+        .pin = (uint16_t)sda_pin,
         .clk_bus = (uint32_t)sda_clk,
         .af = (uint32_t)sda_af,
         .output_type = (uint32_t)sda_output_type,

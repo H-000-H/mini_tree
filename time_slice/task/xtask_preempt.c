@@ -73,7 +73,7 @@ struct x_preempt_priv
 
 /* ── 全局 ────────────────────────────────────────────────────────────────── */
 
-x_scheduler g_scheduler = {0};   /**< 对外契约 (xtask.h) */
+x_scheduler g_scheduler = {0};   /**< 对外契约 (xtask.h), preempt 内部不用其字段 */
 static struct x_preempt_priv s_priv; /**< 内部完整状态 */
 
 #ifdef CONFIG_XTASK_COROUTINE
@@ -92,7 +92,6 @@ x_task* x_scheduler_current(void)
     return s_current_task;
 }
 #endif /* CONFIG_XTASK_COROUTINE */
-
 /* ── 内部工具 ────────────────────────────────────────────────────────────── */
 
 /**

@@ -219,6 +219,31 @@ file(GLOB _PRODUCT_DRV_INC_DIRS LIST_DIRECTORIES true
 file(GLOB _PRODUCT_DRV_SRC_DIRS LIST_DIRECTORIES true
     "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src")
 
+set(GENERATED_BOARD_DIR "${CMAKE_BINARY_DIR}/generated/board/mini_tree")
+
+# 按 DTS 节点裁剪产品驱动源: 仅编译本板 active 节点实际用到的 driver。
+# dt_used_drivers.txt 由 dtc-lite 生成 (绝对路径, 每行一个), 用正斜杠归一。
+# 首配时文件可能未生成, 视为空 (不裁剪), 由 CMAKE_CONFIGURE_DEPENDS 在生成后触发重配。
+set(_PRODUCT_DRV_USED_TXT "${GENERATED_BOARD_DIR}/dt_used_drivers.txt")
+if(EXISTS "${_PRODUCT_DRV_USED_TXT}")
+    set(_USED_DRV "" )
+    file(STRINGS "${_PRODUCT_DRV_USED_TXT}" _USED_DRV)
+    if(_USED_DRV)
+        set(_PRODUCT_DRV_SRCS_REL_SAVE ${_PRODUCT_DRV_SRCS_REL})
+        set(_PRODUCT_DRV_SRCS_REL "")
+        foreach(_psrc ${_PRODUCT_DRV_SRCS_REL_SAVE})
+            file(TO_CMAKE_PATH "${_psrc}" _psrc_cmake)
+            if(_psrc_cmake IN_LIST _USED_DRV)
+                list(APPEND _PRODUCT_DRV_SRCS_REL "${_psrc}")
+            endif()
+        endforeach()
+    else()
+        # txt 存在但为空: 本板未用任何产品驱动
+        set(_PRODUCT_DRV_SRCS_REL "")
+    endif()
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_PRODUCT_DRV_USED_TXT}")
+
 set(DRIVER_SRCS
     ${_PRODUCT_DRV_SRCS_REL}
     "vfs/gpio/vfs-gpio.c"
@@ -242,7 +267,6 @@ endif()
 set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
 set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
 
-set(GENERATED_BOARD_DIR "${CMAKE_BINARY_DIR}/generated/board/mini_tree")
 set(SCRUBBER_GEN_DIR    "${CMAKE_BINARY_DIR}/generated/scrubber/mini_tree")
 set(SCRUBBER_CRC_HDR    "${SCRUBBER_GEN_DIR}/system_scrubber_crc_gen.h")
 set(BOARD_DTS           "${CMAKE_CURRENT_LIST_DIR}/board/dts/board.dts" CACHE FILEPATH "板级 DTS (各平台覆盖)")
@@ -315,7 +339,7 @@ if(MINI_TREE_USB)
 endif()
 
 add_custom_command(
-    OUTPUT  ${GEN_SRCS} ${GEN_HDRS}
+    OUTPUT  ${GEN_SRCS} ${GEN_HDRS} "${_PRODUCT_DRV_USED_TXT}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${GENERATED_BOARD_DIR}"
     COMMAND "${Python3_EXECUTABLE}" "${DTC_LITE}" "${BOARD_DTS}" "${GENERATED_BOARD_DIR}"
             ${DTC_LITE_ARGS}

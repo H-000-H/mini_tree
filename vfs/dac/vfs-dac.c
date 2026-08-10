@@ -255,7 +255,7 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
         VFS_DAC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
-        cfg->gpio_cfg.pin = (uint32_t)pin_arr[1];
+        cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
         cfg->gpio_cfg.clk_bus = (uint32_t)pin_arr[2];
         cfg->gpio_cfg.af = (uint32_t)pin_arr[3];
         cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];

@@ -101,6 +101,46 @@ Conclusions:
 
 ---
 
+---
+
+## 6. Worked Example: stm32f103c8t6-node Memory Optimization
+
+> This section records the complete optimization run of a real project (`Host-Device-Architecture-stm32f103c8t6-node`, STM32F103C8T6, 20 KB RAM / 64 KB Flash, `arm-none-eabi-gcc`, linked with `--gc-sections`) — from "near overflow" to "safe zone". Data comes from that project's build logs (`build_log*.txt`).
+
+### 6.1 Evolution Overview (measured)
+
+| Stage | RAM (B) | RAM % | FLASH (B) | FLASH % | Main action |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| Initial (full-feature build) | 17,928 | 87.54% | 46,692 | 71.25% | everything on, RAM near overflow |
+| Drop drivers | 17,928 | 87.54% | 45,724 | 69.77% | removed unused product drivers (air780e/hc05/dfplayer/neo_m8n etc.) |
+| Trim framework | 15,376 | 75.08% | 45,636 | 69.64% | further cut system/middleware |
+| Disable Scr / SysCmd etc. | 12,456 | 60.82% | 39,636 | 60.48% | `CONFIG_SYSTEM_SCRUBBER` / `CONFIG_SYSTEM_CMD` off |
+| **Final (Release -Os)** | **9,896** | **48.32%** | **22,692** | **34.63%** | `-Os` + gc-sections + trimming converged |
+
+> Net: RAM **17,928 → 9,896 B (−44.8%)**, FLASH **46,692 → 22,692 B (−51.4%)**; RAM went from "87% at risk" to "48% safe".
+
+### 6.2 Concrete Trims Applied (`.config` effective state)
+
+| Kconfig / config | Value | Impact |
+| :--- | :--- | :--- |
+| `CONFIG_OSAL_NULL` | `y` | drop FreeRTOS/RT-Thread/ThreadX/UCOS, use bare-metal OSAL — main RAM driver (RTOS needs per-task TCB + dedicated stack; xtask reuses the main-loop stack) |
+| `CONFIG_XTASK_PREEMPT` | `y` | preemptive xtask coroutines + `CONFIG_XTASK_COROUTINE` |
+| `# CONFIG_SYSTEM_SCRUBBER` | unset | disable startup memory scrubber |
+| `# CONFIG_SYSTEM_CMD` | unset | disable command-line shell |
+| `CONFIG_SYSTEM_WDT` | `y` | keep watchdog (safety item, not trimmed) |
+| `CONFIG_SYSTEM_CPP` | `y` | C++ system backend |
+| compile/link | `-Os -fdata-sections -ffunction-sections -Wl,--gc-sections` | strip unreferenced functions/data |
+| HAL / driver source set | on demand | `mini_tree/CMakeLists.txt` compiles only needed modules |
+
+### 6.3 Key Findings
+
+1. **`--gc-sections` is active but barely affects RAM**: it strips "unreferenced standalone sections" (mainly `text`/FLASH), while the RAM bulk is `bss` (task pool, queue buffers, etc.) — which is always referenced and cannot be gc'd. This is exactly why Release saved only ~1.7 KB FLASH over Debug while RAM barely moved (9,776 → 9,768 B).
+2. **RAM is cut by feature trimming, not by optimization level**: switching to `CONFIG_OSAL_NULL` and disabling `SYSTEM_SCRUBBER`/`SYSTEM_CMD` are what actually lowered RAM.
+3. **Static-library trimming granularity is limited**: `mini_tree` is a `STATIC` library; the linker pulls in whole `.o` files, so `--gc-sections` can only drop individual unreferenced sections within an `.o`; global data not split into sections stays.
+4. **To reduce RAM further**: shrink the queue buffer (`CONFIG_OSAL_NULL_QUEUE_BUF_SZ`, currently 1024), disable `CONFIG_EVENT_BUS`/`CONFIG_VIRQ` (currently `y`), or shrink the task pool.
+
+---
+
 ## Related Docs
 
 - [getting_started.md](getting_started.md) · [design_decisions.md](design_decisions.md)

@@ -53,7 +53,20 @@ ETL 是 **上层 C++ 基础库**，vendor 于 `lib/etl`（仅 include + cmake）
 
 ### `ERR_PTR` / 链接缺 `ERR_SECTION_BASE`
 
-合并 `error_symbols.ld` 或平台提供等价 `PROVIDE(ERR_SECTION_BASE=…)`。
+`ERR_SECTION_BASE` 由 `mini_tree/error_symbols.ld` 的 `PROVIDE(ERR_SECTION_BASE = 0xFFFFF000)` 提供（给错误码段分配固定地址），`status.h` 用 `extern const char ERR_SECTION_BASE` + `&ERR_SECTION_BASE` 取地址。
+
+mini_tree 仓库只产静态库、从不出 elf，因此**不能在 mini_tree 的 `CMakeLists.txt` 里加 `-T`**——链接脚本参数只在最终出 elf 的板级工程生效。修复必须在**板级工程的 toolchain 链接参数**里追加第二个 `-T`（链接器支持多个 `-T`，脚本合并）：
+
+```cmake
+# 板级工程 cmake/gcc-arm-none-eabi.cmake (或等价 toolchain)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T \"${CMAKE_SOURCE_DIR}/mini_tree/error_symbols.ld\"")
+```
+
+`${CMAKE_SOURCE_DIR}` 指板级工程根；若 mini_tree 放在其它相对路径，按实际位置调整。等价做法：平台自行 `PROVIDE(ERR_SECTION_BASE=…)` 提供该符号亦可。
+
+### `multiple definition of 'SVC_Handler'` / `'PendSV_Handler'`（FreeRTOS 后端）
+
+FreeRTOS 经 `FreeRTOSConfig.h` 的 `vPortSVCHandler` / `xPortPendSVHandler` 宏占住这两个中断向量；CubeMX 生成的 `stm32f1xx_it.c` 也强定义了同名函数，导致重定义。把板级 `stm32f1xx_it.c` 里这两个函数改为 `__weak` 即可。详见 [osal_switching.md](osal_switching.md) 第 4.1 节。
 
 ---
 
