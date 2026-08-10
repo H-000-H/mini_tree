@@ -119,7 +119,7 @@ static int parse_one_pin(struct device* pdev, const char* port_k, const char* pi
 
     out->port = (uintptr_t)v;
     if (device_get_prop_int(pdev, pin_k, &v) == VFS_OK)
-        out->pin = (uint16_t)v;
+        out->pin = (uint32_t)v;
     if (device_get_prop_int(pdev, clk_k, &v) == VFS_OK)
         out->clk_bus = (uint32_t)v;
     if (device_get_prop_int(pdev, af_k, &v) == VFS_OK)

@@ -42,11 +42,15 @@
 
 /* ── Atomic / FFS ──
  * M0/M0+ (ARMv6-M) 无 LDREX/STREX 指令, 原子操作退回软件实现 (关中断),
- * 由 rtatomic.h 的 rt_soft_atomic_* 内联提供, 无需 libcpu atomic_arm.c. */
+ * 由 rtatomic.h 的 rt_soft_atomic_* 内联提供, 无需 libcpu atomic_arm.c.
+ * RT_USING_CPU_FFS 表示使用 CPU 硬件 FFS (ARM 有 CLZ 指令, 见 cpuport.c);
+ * RISC-V 无硬件 FFS 指令, 不定义以启用 kservice.c 的软件 __rt_ffs. */
 #if !defined(__ARM_ARCH_6M__)
 #define RT_USING_HW_ATOMIC
 #endif
+#if !defined(__riscv)
 #define RT_USING_CPU_FFS
+#endif
 
 /* ── Debug ── */
 #define RT_VER_NUM               0x50300

@@ -61,8 +61,8 @@ Kconfig 入口按构建后端分两套，共用同一份公共配置树 `Kconfig
 | 文件 | 路径 | 作用 | 谁用 |
 | :--- | :--- | :--- | :--- |
 | `Kconfig.mini_tree` | 仓库根 | 公共配置树（`menu "mini_tree Configuration" ... endmenu`），不含 `mainmenu` | 两套入口各自 `source` |
-| `Kconfig` | 仓库根 | 非 ESP 入口：`mainmenu` + `source "Kconfig.mini_tree"` | `tools/genconfig.py` / `menuconfig.py` / 非 ESP `CMakeLists.txt` |
-| `Kconfig.projbuild` | 仓库根 | ESP-IDF 入口：`source "$COMPONENT_KCONFIGS_PROJBUILD_SOURCE_DIR/Kconfig.mini_tree"`，被 IDF confgen 注入顶层 Kconfig 树 | ESP-IDF（`idf.py menuconfig` / `idf.py reconfigure`） |
+| `Kconfig.non_esp` | 仓库根 | 非 ESP 入口：`mainmenu` + `source "Kconfig.mini_tree"`（改名避免被 IDF 组件扫描自动收录，造成与 `Kconfig.projbuild` 双重 source） | `tools/genconfig.py` / `menuconfig.py` / 非 ESP `CMakeLists.txt` |
+| `Kconfig.projbuild` | 仓库根 | ESP-IDF 入口：`orsource "Kconfig.mini_tree"`（相对本文件目录），被 IDF confgen 注入顶层 Kconfig 树 | ESP-IDF（`idf.py menuconfig` / `idf.py reconfigure`） |
 
 ESP 路径下，`idf.py menuconfig` 即可在顶层菜单看到 "mini_tree Configuration" 子菜单，所有 `OSAL_*` / `SYSTEM_*` / `EVENT_BUS` 等开关经 IDF 的 `depends on` / `default` / `range` 正确求值后写入 `sdkconfig.h`，无需再手编 `.config`。
 
@@ -123,14 +123,38 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | :--- | :--- | :--- |
 | `BOARD_DTS` | `FILEPATH` | 板级入口 `.dts`（**必须**覆盖默认占位） |
 | `BOARD_DTSI_DIR` | `PATH` | dtsi 搜索目录 |
-| `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏 |
-| `VENDOR_DEFINES` | `STRING` | 额外 `-D`（少用） |
+| `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏（dtsi `#include` 厂商头时**必须**，缺了预处理直接失败） |
+| `VENDOR_DEFINES` | `STRING` | 厂商设备宏 `-D`（dtsi `#include` 厂商头时**必须**，缺了 LL/HAL 宏展开失败） |
 | ETL（`cmake/etl.cmake`） | — | **vendor 于 `lib/etl`**（仅 include + cmake）；根 CMake 始终 link（缺失时 Fetch 兜底） |
 | 其它开源积木 | — | TinyUSB / lwIP / cJSON 为**配置期** FetchContent（根 CMake 直接 include 对应 `cmake/*.cmake`），其余（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | 可选；见 `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | 启用后可对目标加反汇编 post-build（`cmake/disasm.cmake`） |
 
 在 `add_subdirectory(mini_tree)` **之前** `set(... CACHE ... FORCE)` 最稳妥，避免首次配置锁死默认占位 DTS。
+
+> ⚠️ **`VENDOR_INC_DIRS` / `VENDOR_DEFINES` 不是可选优化，而是硬性必需**：
+> dtc-lite 预处理 dtsi 时，`#include <stm32f1xx_ll_*.h>` 这类厂商头要经 `VENDOR_INC_DIRS` 展开；`VENDOR_DEFINES` 缺 `STM32F103xB` 这类设备宏时，`stm32f1xx.h` 中外设位宏被 `#if` 挡掉，LL 宏直接展开失败，**dtc-lite 编译 dtsi 直接报错，整个板级配置无法生成**。两者都必须在 `add_subdirectory(mini_tree)` 之前设置，否则用不了。
+>
+> STM32F1（CMSIS/CubeMX 目录布局）完整必需片段：
+>
+> ```cmake
+> set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+> set(BOARD_DTS "${CMAKE_CURRENT_SOURCE_DIR}/board/dts/board.dts" CACHE FILEPATH "板级 DTS" FORCE)
+>
+> # 厂商 LL/CMSIS 头搜索路径：dtc-lite 预处理 dtsi 中 #include <stm32f1xx_ll_*.h> 时经此展开
+> set(VENDOR_INC_DIRS
+>     "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F1xx/Include"
+>     "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include"
+>     "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F1xx_HAL_Driver/Inc"
+>     CACHE STRING "厂商 HAL 头搜索路径" FORCE)
+>
+> # 厂商设备宏：dtc-lite 预处理 dtsi 中 #include <stm32f1xx_ll_*.h> 时经此 -D 展开
+> # 缺此项会导致 STM32F103xB 未定义，stm32f1xx.h 中外设位宏被 #if 挡掉，LL 宏展开失败
+> set(VENDOR_DEFINES
+>     STM32F103xB
+>     USE_FULL_LL_DRIVER
+>     CACHE STRING "厂商设备宏" FORCE)
+> ```
 
 `mini_tree` 目标会：
 

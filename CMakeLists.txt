@@ -268,14 +268,16 @@ add_custom_command(
     OUTPUT  "${KCONFIG_OUT}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${KCONFIG_GEN_DIR}"
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/tools/genconfig.py"
-            "${CMAKE_CURRENT_LIST_DIR}/Kconfig"
+            "${CMAKE_CURRENT_LIST_DIR}/Kconfig.non_esp"
             "${KCONFIG_GEN_DIR}"
             --config "${KCONFIG_DOT}"
     DEPENDS
-        "${CMAKE_CURRENT_LIST_DIR}/Kconfig"
+        "${CMAKE_CURRENT_LIST_DIR}/Kconfig.non_esp"
+        "${CMAKE_CURRENT_LIST_DIR}/Kconfig.mini_tree"
         "${CMAKE_CURRENT_LIST_DIR}/tools/genconfig.py"
         "${KCONFIG_DOT}"
     COMMENT "Generating mini_tree config.h"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
     VERBATIM
 )
 

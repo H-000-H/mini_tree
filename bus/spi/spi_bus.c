@@ -360,7 +360,14 @@ static void spi_client_unregister_impl(struct device* pdev)
 }
 
 /**
-void spi_bus_client_unregister(struct device* pdev) { spi_client_unregister_impl(pdev); }
+ * @brief 注销 SPI client (公开包装, vfs 层调用)
+ * @param pdev client device 指针
+ */
+void spi_bus_client_unregister(struct device* pdev)
+{
+    spi_client_unregister_impl(pdev);
+}
+
 /*===========================================================================================================================================================*/
 
 /* Open / Close */

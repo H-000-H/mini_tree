@@ -6,4 +6,4 @@
 #
 # 注意: Kconfig.projbuild 不能含 mainmenu (顶层已由 IDF 提供)。
 
-source "$COMPONENT_KCONFIGS_PROJBUILD_SOURCE_DIR/Kconfig.mini_tree"
+orsource "Kconfig.mini_tree"

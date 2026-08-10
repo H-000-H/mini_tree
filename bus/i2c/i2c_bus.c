@@ -344,7 +344,13 @@ static void i2c_client_unregister_impl(struct device* pdev)
 }
 
 /**
-void i2c_bus_client_unregister(struct device* pdev) { i2c_client_unregister_impl(pdev); }
+ * @brief 注销 I2C client (公开包装, vfs 层调用)
+ * @param pdev client device 指针
+ */
+void i2c_bus_client_unregister(struct device* pdev)
+{
+    i2c_client_unregister_impl(pdev);
+}
 
 /**
  * @brief 打开 I2C client 硬件 (HAL init + hw_open)

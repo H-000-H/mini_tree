@@ -52,7 +52,7 @@ extern "C"
     struct hal_i2s_pin_cfg
     {
         uintptr_t port; /**< GPIOx_BASE */
-        uint16_t pin; /**< GPIO_PIN_x */
+        uint32_t pin; /**< GPIO_PIN_x */
         uint32_t clk_bus; /**< LL_AHB1_GRP1_PERIPH_GPIOx */
         uint32_t af; /**< GPIO_AFx_SPIy */
         uint32_t speed; /**< LL_GPIO_SPEED_*; 0=默认 HIGH */

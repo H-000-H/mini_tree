@@ -15,7 +15,7 @@ import _vendor_loader  # tools/ 下的共享加载器 (sys.path[0] 指向 tools/
 
 
 KCONFIG_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KCONFIG_PATH: str = os.path.join(KCONFIG_DIR, "Kconfig")
+KCONFIG_PATH: str = os.path.join(KCONFIG_DIR, "Kconfig.non_esp")
 KCONFIG_TOOLS_DIR: str = os.path.dirname(os.path.abspath(__file__))
 
 

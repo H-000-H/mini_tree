@@ -317,3 +317,16 @@ rt_hw_context_switch_exit:
 #endif
 
     mret
+
+/* ── 中断栈 (mscratch 指向栈顶) ────────────────────────────────────────
+ * rt_hw_context_switch_to 中 `la t0, __rt_rvstack; csrw mscratch, t0`,
+ * 中断入口用 csrrw sp,mscratch,sp 切到本栈。CH32 移植需板级提供,
+ * 此处按主栈 1024B 给出默认实现 (栈顶对齐)。
+ */
+    .section .bss
+    .align 6
+    .globl __rt_rvstack
+__rt_rvstack:
+    .space 1024
+    .align 6
+__rt_rvstack_end:

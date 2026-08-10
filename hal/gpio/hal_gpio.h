@@ -62,7 +62,7 @@ extern "C"
     typedef struct
     {
         uintptr_t port; /**< 端口基地址 */
-        uint16_t pin; /**< 引脚编号 */
+        uint32_t pin; /**< 引脚编号 */
         uint32_t clk_bus; /**< 时钟总线/RCC位 */
         uint8_t virq_idx; /**< VIRQ(gpio, idx) 槽位 (DTS virq-idx, < BLOCK_SIZE) */
         hal_gpio_config cfg; /**< 配置 */

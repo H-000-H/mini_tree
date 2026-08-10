@@ -256,7 +256,7 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==VFS_ADC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
-        cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
+        cfg->gpio_cfg.pin = (uint32_t)pin_arr[1];
         cfg->gpio_cfg.clk_bus = (uint32_t)pin_arr[2];
         cfg->gpio_cfg.af = (uint32_t)pin_arr[3];
         cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];

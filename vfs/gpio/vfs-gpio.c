@@ -320,7 +320,7 @@ static int vfs_gpio_probe(struct device* pdev)
     }
 
     priv->obj.port = (uintptr_t)port_val;
-    priv->obj.pin = (uint16_t)pin_val;
+    priv->obj.pin = (uint32_t)pin_val;
     priv->obj.clk_bus = (uint32_t)clk_val;
     priv->obj.virq_idx = (uint8_t)virq_idx;
     priv->obj.is_used = true;

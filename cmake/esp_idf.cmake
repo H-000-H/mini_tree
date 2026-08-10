@@ -322,6 +322,10 @@ idf_component_register(
         "${SCRUBBER_GEN_DIR}"
         "${MINI_TREE_DIR}/ide/stubs"
         "${KCONFIG_GEN_DIR}"
+    # 覆盖默认 Kconfig 发现: 组件根 Kconfig (mainmenu 入口, 非 ESP 路径用) 带 mainmenu,
+    # 会被 IDF 自动收录并与 Kconfig.projbuild 重复 source Kconfig.mini_tree 导致递归.
+    # ESP 路径只走 Kconfig.projbuild (orsource Kconfig.mini_tree)。
+    KCONFIG ""
     REQUIRES
         freertos
         esp_driver_gpio

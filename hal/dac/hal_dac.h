@@ -33,7 +33,7 @@ extern "C"
     typedef struct hal_dac_gpio_cfg
     {
         uintptr_t port; /**< GPIO 端口基地址或端口号 (支持 32/64 位平台指针转换) */
-        uint16_t pin; /**< 引脚编号 (如 GPIO_PIN_0) */
+        uint32_t pin; /**< 引脚编号 (如 GPIO_PIN_0) */
         uint32_t clk_bus; /**< 该引脚所属的外设时钟总线 */
         uint32_t af; /**< 引脚复用功能设置 (Alternate Function 选择) */
         uint32_t output_type; /**< 引脚输出类型 */

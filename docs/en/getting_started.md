@@ -61,8 +61,8 @@ Kconfig entry points come in two sets by build backend, both sourcing the same s
 | File | Path | Role | Used by |
 | :--- | :--- | :--- | :--- |
 | `Kconfig.mini_tree` | repo root | shared config tree (`menu "mini_tree Configuration" ... endmenu`), no `mainmenu` | sourced by both entry points |
-| `Kconfig` | repo root | non-ESP entry: `mainmenu` + `source "Kconfig.mini_tree"` | `tools/genconfig.py` / `menuconfig.py` / non-ESP `CMakeLists.txt` |
-| `Kconfig.projbuild` | repo root | ESP-IDF entry: `source "$COMPONENT_KCONFIGS_PROJBUILD_SOURCE_DIR/Kconfig.mini_tree"`, injected into the top-level Kconfig tree by IDF confgen | ESP-IDF (`idf.py menuconfig` / `idf.py reconfigure`) |
+| `Kconfig.non_esp` | repo root | non-ESP entry: `mainmenu` + `source "Kconfig.mini_tree"` (renamed to avoid IDF component-scan auto-discovery, which would double-source it alongside `Kconfig.projbuild`) | `tools/genconfig.py` / `menuconfig.py` / non-ESP `CMakeLists.txt` |
+| `Kconfig.projbuild` | repo root | ESP-IDF entry: `orsource "Kconfig.mini_tree"` (relative to this file), injected into the top-level Kconfig tree by IDF confgen | ESP-IDF (`idf.py menuconfig` / `idf.py reconfigure`) |
 
 Under the ESP path, `idf.py menuconfig` shows a "mini_tree Configuration" submenu at the top level; all `OSAL_*` / `SYSTEM_*` / `EVENT_BUS` switches are evaluated by IDF's `depends on` / `default` / `range` and written into `sdkconfig.h` — no manual `.config` editing needed.
 
@@ -123,14 +123,38 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | :--- | :--- | :--- |
 | `BOARD_DTS` | `FILEPATH` | board-level entry `.dts` (**must** override the default placeholder) |
 | `BOARD_DTSI_DIR` | `PATH` | dtsi search directory |
-| `VENDOR_INC_DIRS` | `STRING` | vendor-header `-I` for dtc/cpp macro expansion |
-| `VENDOR_DEFINES` | `STRING` | extra `-D` (rarely used) |
+| `VENDOR_INC_DIRS` | `STRING` | vendor-header `-I` for dtc/cpp macro expansion (**required** when dtsi `#include`s vendor headers — preprocessing fails without it) |
+| `VENDOR_DEFINES` | `STRING` | vendor device macros `-D` (**required** when dtsi `#include`s vendor headers — LL/HAL macros fail to expand without it) |
 | ETL (`cmake/etl.cmake`) | — | **vendored in `lib/etl`** (include + cmake only); always linked by the root CMake (Fetch fallback if missing) |
 | Other open-source bricks | — | TinyUSB / lwIP / cJSON are **config-time** FetchContent (root CMake directly `include`s their `cmake/*.cmake`); the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | optional; see `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | adds a disassembly post-build step when enabled (`cmake/disasm.cmake`) |
 
 Set `... CACHE ... FORCE` **before** `add_subdirectory(mini_tree)` to avoid locking in the default placeholder DTS on the first configure.
+
+> ⚠️ **`VENDOR_INC_DIRS` / `VENDOR_DEFINES` are hard requirements, not optional tuning**:
+> when dtc-lite preprocesses dtsi files, vendor headers such as `#include <stm32f1xx_ll_*.h>` are expanded through `VENDOR_INC_DIRS`; without a device macro like `STM32F103xB` in `VENDOR_DEFINES`, peripheral bit macros in `stm32f1xx.h` are hidden behind `#if`, LL macros fail to expand, and **dtc-lite fails to compile the dtsi — no board configuration can be generated at all**. Both must be set before `add_subdirectory(mini_tree)` or nothing works.
+>
+> Complete required snippet for STM32F1 (CMSIS/CubeMX layout):
+>
+> ```cmake
+> set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+> set(BOARD_DTS "${CMAKE_CURRENT_SOURCE_DIR}/board/dts/board.dts" CACHE FILEPATH "板级 DTS" FORCE)
+>
+> # vendor LL/CMSIS include dirs: expanded when dtc-lite preprocesses #include <stm32f1xx_ll_*.h> in dtsi
+> set(VENDOR_INC_DIRS
+>     "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F1xx/Include"
+>     "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include"
+>     "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F1xx_HAL_Driver/Inc"
+>     CACHE STRING "厂商 HAL 头搜索路径" FORCE)
+>
+> # vendor device macros: passed as -D when dtc-lite preprocesses #include <stm32f1xx_ll_*.h> in dtsi
+> # without STM32F103xB, peripheral bit macros in stm32f1xx.h are hidden behind #if and LL macros fail
+> set(VENDOR_DEFINES
+>     STM32F103xB
+>     USE_FULL_LL_DRIVER
+>     CACHE STRING "厂商设备宏" FORCE)
+> ```
 
 The `mini_tree` target will:
 
