@@ -22,6 +22,7 @@
 #include "dt_config_gen.h"
 #include "hal_systick.h"
 #include "interrupt.h"
+#include "osal_null.h"
 #include "vfs-tim.h"
 
 /* ── 分组优先级参数 (Kconfig 控制) ───────────────────────────────────────── */
@@ -326,7 +327,10 @@ x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, ui
     list_init(&slot->ready_node);
     list_init(&slot->sleep_node);
 
+    /* 与 tick 中断互斥: 休眠链表可能正被 wakeup_due 修改 */
+    uint32_t irq = osal_null_irq_disable();
     sleep_insert(slot); /* 首个周期后唤醒 */
+    osal_null_irq_restore(irq);
     return (x_task_handle_t)(uintptr_t)task;
 }
 
@@ -378,14 +382,18 @@ int x_task_run_preempt(x_scheduler* sched)
 {
     COMPAT_IGNORE_RESULT(sched); /* preempt 用全局 s_priv */
 
+    /* 临界区: 与 tick 中断 (wakeup_due) 互斥, 防就绪/休眠链表被撕裂 */
+    uint32_t irq = osal_null_irq_disable();
     struct x_preempt_task* task = ready_highest();
     if (task == NULL)
     {
-        idle_wfi(); /* 无就绪任务 → 精确休眠 */
+        osal_null_irq_restore(irq);
+        idle_wfi(); /* 无就绪任务 → 精确休眠 (WFI 须在中断使能态执行) */
         return VFS_OK;
     }
 
     ready_remove(task);
+    osal_null_irq_restore(irq);
     if (task->task.xTask_cb)
     {
 #ifdef CONFIG_XTASK_COROUTINE
@@ -406,7 +414,10 @@ int x_task_run_preempt(x_scheduler* sched)
                             COMPAT_MO_RELAXED);
 #endif
     }
+    /* 与 tick 中断互斥: wakeup_due 可能正从休眠链表摘节点 */
+    irq = osal_null_irq_disable();
     sleep_insert(task);
+    osal_null_irq_restore(irq);
     return VFS_OK;
 }
 

@@ -102,56 +102,11 @@ pre_execution(PRE_EXEC_PRIO_QUEUE_POOL) static void osal_null_queue_pool_boot_in
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
     defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
 /**
- * @brief 关全局中断并保存 PRIMASK (Cortex-M 临界区入口)
- * @return 进入前 PRIMASK
- */
-COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void)
-{
-    uint32_t primask;
-    __asm__ volatile(
-        "mrs %0, primask\n\t/*换行而已为了好看*/cpsid i"
-        : "=r"(primask)::
-            "memory"); /**<读取primask寄存器并且禁止编译器对临界区前后的内存读写做重排优化*/
-    return primask;
-}
-
-/**
- * @brief 恢复 Cortex-M PRIMASK
- * @param primask 保存的 PRIMASK
- */
-COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t primask)
-{
-    __asm__ volatile("msr primask, %0" ::"r"(primask) : "memory");
-}
-
-/**
  * @brief 执行 WFI 等待中断 (Cortex-M 低功耗忙等)
  */
 COMPAT_STATIC_INLINE void osal_null_wfi(void) { __asm__ volatile("wfi"); }
 
 #elif defined(__riscv)
-
-/**
- * @brief 关全局中断并保存 mstatus (RISC-V 临界区入口)
- * @return 进入临界区前的 mstatus
- */
-COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void)
-{
-    uintptr_t mstatus;
-    __asm__ volatile("csrr %0, mstatus" : "=r"(mstatus));
-    __asm__ volatile("csrci mstatus, 8" ::: "memory");
-    return (uint32_t)mstatus;
-}
-
-/**
- * @brief 按保存的 mstatus 恢复 RISC-V 全局中断
- * @param mstatus osal_null_irq_disable 返回的 mstatus
- */
-COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t mstatus)
-{
-    if (mstatus & 8U)
-        __asm__ volatile("csrsi mstatus, 8" ::: "memory");
-}
 
 /**
  * @brief 等待中断 低功耗指令
@@ -160,16 +115,6 @@ COMPAT_STATIC_INLINE void osal_null_wfi(void) { __asm__ volatile("wfi"); }
 
 #else
 
-/**
- * @brief 关全局中断占位 (未知架构, 无操作)
- * @return 0
- */
-COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void) { return 0U; }
-/**
- * @brief 恢复全局中断占位 (未知架构, 无操作)
- * @param primask 保存值 (忽略)
- */
-COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t primask) { COMPAT_UNUSED_PARAM(primask); }
 /**
  * @brief WFI 占位 (未知架构, 无操作)
  */

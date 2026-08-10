@@ -45,6 +45,45 @@ extern "C"
      */
     void osal_null_isr_exit(void);
 
+    /**
+     * @brief 关全局中断并保存中断使能状态 (裸机临界区入口)
+     * @return 进入前的中断状态 (Cortex-M: PRIMASK; RISC-V: mstatus)
+     * @note 必须与 osal_null_irq_restore 成对使用, 支持嵌套
+     */
+    COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void)
+    {
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+        uint32_t primask;
+        __asm__ volatile("mrs %0, primask\ncpsid i" : "=r"(primask)::"memory");
+        return primask;
+#elif defined(__riscv)
+        uintptr_t mstatus;
+        __asm__ volatile("csrr %0, mstatus" : "=r"(mstatus));
+        __asm__ volatile("csrci mstatus, 8" ::: "memory");
+        return (uint32_t)mstatus;
+#else
+        return 0U;
+#endif
+    }
+
+    /**
+     * @brief 恢复全局中断 (裸机临界区出口)
+     * @param state osal_null_irq_disable 返回的中断状态
+     */
+    COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t state)
+    {
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+        __asm__ volatile("msr primask, %0" ::"r"(state) : "memory");
+#elif defined(__riscv)
+        if (state & 8U)
+            __asm__ volatile("csrsi mstatus, 8" ::: "memory");
+#else
+        COMPAT_UNUSED_PARAM(state);
+#endif
+    }
+
 #ifdef __cplusplus
 }
 #endif
