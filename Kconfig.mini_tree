@@ -25,6 +25,20 @@ config PLATFORM_ARM_CM0
 
 config PLATFORM_RISCV
     bool "RISC-V (32-bit)"
+
+config PLATFORM_ESP32
+    bool "Espressif ESP32 (ESP-IDF)"
+    help
+      Espressif ESP32 系列 (Xtensa; RISC-V 的 ESP32-C 系列在 IDF 下也选此项)。
+      注意: 本项不参与编译裁剪 —— ESP-IDF 构建的平台由 IDF 自身管理
+      (经 cmake/esp_idf.cmake 接入), 此处仅作配置记录/UI 显示;
+      非 ESP 裸机构建不要选它, 用 ARM / RISC-V 平台选项。
+
+      Espressif ESP32 series (Xtensa; ESP32-C RISC-V parts also select
+      this when built with ESP-IDF). Note: this option does NOT drive
+      compilation — the platform of an ESP-IDF build is provided by IDF
+      itself (wired via cmake/esp_idf.cmake); this entry is record/UI
+      only. Non-ESP bare-metal builds must keep the ARM / RISC-V options.
 endchoice
 endmenu
 
@@ -506,6 +520,17 @@ config SYS_LOG_USE_PRINTF
       通过普通 printf 输出日志。
 
       Output via plain printf.
+
+config SYS_LOG_USE_ESP
+    bool "ESP-IDF esp_log (ESP_LOG*, IDF only)"
+    help
+      通过 ESP-IDF esp_log.h 输出 (ESP_LOGI/ESP_LOGW/ESP_LOGE),
+      带 tag 颜色与等级过滤, 受 menuconfig CONFIG_LOG_* 控制。
+      仅 ESP-IDF 构建可用 (非 ESP 构建无 esp_log.h, 勿选)。
+
+      Output via ESP-IDF esp_log.h (ESP_LOGI/ESP_LOGW/ESP_LOGE),
+      with tag colors and level filtering controlled by CONFIG_LOG_*.
+      ESP-IDF builds only (esp_log.h does not exist outside IDF).
 
 config SYS_LOG_USE_OSAL
     bool "OSAL logging"
