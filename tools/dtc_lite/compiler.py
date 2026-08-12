@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 from collections import deque
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .dts_ast import DtsNode, DtsProperty
@@ -21,47 +22,45 @@ class DTSCompiler:
     def __init__(self, dts_path: str, driver_dirs: Optional[List[str]] = None,
                  extra_inc_dirs: Optional[List[str]] = None,
                  extra_defines: Optional[List[str]] = None,
-                 out_dir: Optional[str] = None) -> None:
+                 out_dir: Optional[Path] = None) -> None:
         self.dts_path: str = dts_path
-        self.out_dir: Optional[str] = out_dir
+        self.out_dir: Optional[Path] = out_dir
         # 板级目录: <board>/dts/xxx.dts → <board>/ (平台板级 dtsi / 可选本地 dt-bindings)
-        self.board_dir: str = os.path.dirname(os.path.dirname(os.path.abspath(dts_path)))
+        self.board_dir: Path = Path(dts_path).resolve().parent.parent
         # 中间件 board: tools/dtc_lite/compiler.py → ../../board (dt-bindings 真相源)
-        self.mini_tree_board_dir: str = os.path.normpath(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'board')
-        )
+        self.mini_tree_board_dir: Path = Path(__file__).resolve().parents[2] / 'board'
         self.driver_dirs: List[str] = driver_dirs or []
         self.root: Optional[DtsNode] = None
         self.label_map: Dict[str, DtsNode] = {}
         self.alias_map: Dict[str, Any] = {}
         self.chosen_map: Dict[str, DtsNode] = {}
         self.device_list: List[DtsNode] = []
-        self.driver_map: Dict[str, Tuple[str, str]] = {}
+        self.driver_map: Dict[str, Tuple[str, str, str]] = {}  # compat → (probe_fn, remove_fn, 源文件路径)
         self.interrupt_controllers: Dict[str, Tuple[DtsNode, int]] = {}  # label → (node, #interrupt-cells)
         self.device_irq_info: List[List[Tuple[int, int, int]]] = []  # index matches device_list
         self._macros: Dict[str, str] = {}
-        self._visited: Set[str] = set()
+        self._visited: Set[Path] = set()
         # 宏名排序缓存: _macros 增删时失效
         self._macro_names: List[str] = []
         self._macro_names_key: Optional[Tuple[int, int]] = None
         # C 预处理器路径缓存
         self._cpp: Optional[str] = None
         # cpp 输出缓存目录 (按头文件 mtime / include / define / cpp 路径做 key)
-        self._cpp_cache_dir: Optional[str] = None
+        self._cpp_cache_dir: Optional[Path] = None
         # 通用 C 头支持: 用户通过命令行 -I / -D 传入任意厂商头搜索路径与预定义宏,
         # dtc-lite 见到 #include <xxx.h> 不在 dt-bindings/ 下时, 就用 cpp 跑该头
         # 提取全部 #define (含链式展开与常量求值), 不再为每个厂商写发现逻辑.
-        self._extra_inc_dirs: List[str] = extra_inc_dirs or []
+        self._extra_inc_dirs: List[Path] = [Path(d) for d in (extra_inc_dirs or [])]
         self._extra_defines: List[str] = extra_defines or []
         # 已用 cpp 提取过宏的头文件集合 (避免对同一头文件重复跑 cpp)
-        self._cpp_headers_loaded: Set[str] = set()
+        self._cpp_headers_loaded: Set[Path] = set()
         # ── 拓扑排序 / 依赖图缓存 (compile() 完成后只读, 可安全缓存) ──
         self._dep_graph: Optional[List[List[int]]] = None
         self._topo_order: Optional[List[int]] = None
         self._deps_cache: Optional[List[List[str]]] = None
 
     def _preprocess(self, text: str) -> str:
-        base_dir: str = os.path.dirname(os.path.abspath(self.dts_path))
+        base_dir: Path = Path(self.dts_path).resolve().parent
         result: List[str] = self._preprocess_lines(text, base_dir)
         text = '\n'.join(result)
         # 跨行属性值 < ... > 在逐行处理时无法被 _eval_angle_value 匹配,
@@ -70,46 +69,39 @@ class DTSCompiler:
 
     # ───────────────────────── 通用 C 头支持 ─────────────────────────
 
-    def _is_extra_header(self, path: str) -> bool:
+    def _is_extra_header(self, path: Path) -> bool:
         """判断一个绝对路径是否落在用户 -I 传入的搜索路径内。
 
         命中即用 cpp 跑该头提取宏; 否则按 dt-bindings / 相对路径走 Python 预处理。
         """
-        if not path:
-            return False
-        norm: str = os.path.realpath(path)
-        for d in self._extra_inc_dirs:
-            try:
-                if os.path.commonpath([norm, os.path.realpath(d)]) == os.path.realpath(d):
-                    return True
-            except ValueError:
-                continue
-        return False
+        norm: Path = path.resolve()
+        return any(norm.is_relative_to(d.resolve()) for d in self._extra_inc_dirs)
 
-    def _cpp_cache_path(self, header_path: str) -> Optional[str]:
+    def _cpp_cache_path(self, header_path: Path) -> Optional[Path]:
         """返回该头文件 cpp 输出的缓存路径; 无输出目录或无法读取 mtime 时返回 None."""
         if not self.out_dir:
             return None
         try:
-            mtime: float = os.path.getmtime(header_path)
+            mtime: float = header_path.stat().st_mtime
         except OSError:
             return None
         if self._cpp_cache_dir is None:
-            self._cpp_cache_dir = os.path.join(self.out_dir, '.dtc_cache')
-            os.makedirs(self._cpp_cache_dir, exist_ok=True)
+            cache_dir: Path = self.out_dir / '.dtc_cache'
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            self._cpp_cache_dir = cache_dir
         key_data: Dict[str, Any] = {
-            'path': os.path.abspath(header_path),
+            'path': str(header_path.resolve()),
             'mtime': mtime,
-            'inc': sorted(os.path.abspath(d) for d in self._extra_inc_dirs),
+            'inc': sorted(str(d.resolve()) for d in self._extra_inc_dirs),
             'def': sorted(self._extra_defines),
             'cpp': self._cpp or '',
         }
         key: str = hashlib.sha256(
             json.dumps(key_data, sort_keys=True).encode('utf-8')
         ).hexdigest()
-        return os.path.join(self._cpp_cache_dir, f'{key}.json')
+        return self._cpp_cache_dir / f'{key}.json'
 
-    def _extract_header_macros(self, header_path: str) -> bool:
+    def _extract_header_macros(self, header_path: Path) -> bool:
         """用系统的 C 预处理器 (优先 arm-none-eabi-gcc, 回退 gcc/cpp) 跑该头
         (及其传递依赖), 同时提取:
 
@@ -136,11 +128,11 @@ class DTSCompiler:
         define_text: str = ''
         enum_text: str = ''
         from_cache: bool = False
-        cache_path: Optional[str] = self._cpp_cache_path(header_path)
-        if cache_path and os.path.isfile(cache_path):
+        cache_path: Optional[Path] = self._cpp_cache_path(header_path)
+        if cache_path and cache_path.is_file():
             try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    data: Dict[str, str] = json.load(f)
+                data: Dict[str, str] = json.loads(
+                    cache_path.read_text(encoding='utf-8'))
                 define_text = data.get('define_text', '')
                 enum_text = data.get('enum_text', '')
                 from_cache = True
@@ -156,7 +148,7 @@ class DTSCompiler:
                 inc_args.append(f'-D{define}')
 
             # --- 第 1 步: cpp -dM 提取 #define ---
-            cmd_dM: List[str] = [cpp, '-E', '-P', '-dM', '-x', 'c'] + inc_args + [header_path]
+            cmd_dM: List[str] = [cpp, '-E', '-P', '-dM', '-x', 'c'] + inc_args + [str(header_path)]
             proc: subprocess.CompletedProcess
             try:
                 proc = subprocess.run(
@@ -175,8 +167,8 @@ class DTSCompiler:
                     return False
 
             # --- 第 2 步: cpp -E -P 提取 enum 块 ---
-            cmd_E: List[str] = [cpp, '-E', '-P', '-x', 'c'] + inc_args + [header_path]
-            proc2: subprocess.CompletedProcess
+            cmd_E: List[str] = [cpp, '-E', '-P', '-x', 'c'] + inc_args + [str(header_path)]
+            proc2: Optional[subprocess.CompletedProcess] = None
             try:
                 proc2 = subprocess.run(
                     cmd_E, capture_output=True, text=True, timeout=30, check=False,
@@ -187,7 +179,7 @@ class DTSCompiler:
                 print(f"[dtc-lite] warning: cpp -E failed on "
                       f"'{header_path}': {e}", file=sys.stderr)
                 # define 已提取, enum 缺失不算致命
-            if proc2.returncode != 0:
+            if proc2 is not None and proc2.returncode != 0:
                 print(f"[dtc-lite] warning: cpp -E returned {proc2.returncode} on "
                       f"'{header_path}' (enums may be incomplete)", file=sys.stderr)
 
@@ -301,7 +293,7 @@ class DTSCompiler:
 
     # ───────────────────────── 预处理 ─────────────────────────
 
-    def _preprocess_lines(self, text: str, base_dir: str) -> List[str]:
+    def _preprocess_lines(self, text: str, base_dir: Path) -> List[str]:
         """预处理 DTS 文本: 展开 #include、记录 #define 宏、按 #ifndef/#ifdef/#else
         跳过被屏蔽的分支。支持嵌套条件编译与头文件保护宏 (header guards)。
 
@@ -330,22 +322,20 @@ class DTSCompiler:
             if not m:
                 m = re.match(r'/include/\s+"([^"]+)"', stripped)
             if m and not _skipping():
-                inc_path: Optional[str] = self._resolve_inc(m.group(1), base_dir)
+                inc_path: Optional[Path] = self._resolve_inc(m.group(1), base_dir)
                 if inc_path:
                     if self._is_extra_header(inc_path):
                         # 用户 -I 路径里的头 (厂商/SDK): 用 cpp 一次性提取全部宏, 不内联文本
                         if not self._extract_header_macros(inc_path):
                             # cpp 不可用时回退: 用原路径展开 (尽力而为)
-                            with open(inc_path, 'r', encoding='utf-8') as f:
-                                inc_text = f.read()
                             out.extend(self._preprocess_lines(
-                                inc_text, os.path.dirname(inc_path)))
+                                inc_path.read_text(encoding='utf-8'),
+                                inc_path.parent))
                     else:
                         # dt-bindings 或相对路径头: 原 Python 路径展开 (保留 header guard)
-                        with open(inc_path, 'r', encoding='utf-8') as f:
-                            inc_text: str = f.read()
+                        inc_text: str = inc_path.read_text(encoding='utf-8')
                         inc_lines: List[str] = self._preprocess_lines(
-                            inc_text, os.path.dirname(inc_path))
+                            inc_text, inc_path.parent)
                         out.extend(inc_lines)
                 continue
 
@@ -626,34 +616,34 @@ class DTSCompiler:
         except Exception:
             return None
 
-    def _resolve_inc(self, name: str, base_dir: str) -> Optional[str]:
-        candidates: List[str] = [
-            os.path.join(base_dir, name),
-            os.path.join(os.getcwd(), name),
-            os.path.join(self.board_dir, name),
-            os.path.join(self.board_dir, 'dtsi', name),
-            os.path.join(self.mini_tree_board_dir, name),
-            os.path.join(self.mini_tree_board_dir, 'dtsi', name),
+    def _resolve_inc(self, name: str, base_dir: Path) -> Optional[Path]:
+        candidates: List[Path] = [
+            base_dir / name,
+            Path.cwd() / name,
+            self.board_dir / name,
+            self.board_dir / 'dtsi' / name,
+            self.mini_tree_board_dir / name,
+            self.mini_tree_board_dir / 'dtsi' / name,
         ]
         if name.startswith('dt-bindings/'):
             # 优先中间件 dt-bindings (mini_tree/board), 再板级覆盖
-            candidates.insert(0, os.path.join(self.mini_tree_board_dir, name))
-            candidates.insert(1, os.path.join(self.board_dir, name))
+            candidates.insert(0, self.mini_tree_board_dir / name)
+            candidates.insert(1, self.board_dir / name)
         # 用户 -I 传入的搜索路径: 让 #include <厂商头.h> / <任意 sdk 头> 都能找到
         for d in self._extra_inc_dirs:
-            candidates.append(os.path.join(d, name))
+            candidates.append(d / name)
         for p in candidates:
-            p = os.path.normpath(p)
-            if os.path.isfile(p):
+            p = p.resolve()
+            if p.is_file():
                 if p in self._visited:
                     return None
                 self._visited.add(p)
                 return p
         msg: str = (f"[dtc-lite] warning: include not found: '{name}' "
-                    f"(searched {base_dir}, {os.getcwd()}, "
+                    f"(searched {base_dir}, {Path.cwd()}, "
                     f"board={self.board_dir}, mini_tree_board={self.mini_tree_board_dir}")
         if self._extra_inc_dirs:
-            msg += f", extra -I dirs: {', '.join(self._extra_inc_dirs)}"
+            msg += ", extra -I dirs: " + ', '.join(str(d) for d in self._extra_inc_dirs)
         msg += ")"
         print(msg, file=sys.stderr)
         return None
@@ -758,6 +748,8 @@ class DTSCompiler:
 
     def _merge_overlays(self) -> None:
         """真·Linux 延迟匹配算法：支持 &label 虚空无中生有创建硬件节点"""
+        if self.root is None:
+            return
         refs: List[DtsNode] = []
         self._collect_ref_nodes(self.root, refs)
 
@@ -862,27 +854,28 @@ class DTSCompiler:
             r'DRIVER_REGISTER\s*\(\s*(\w+)\s*,\s*"([^"]+)"\s*,\s*(\w+)\s*,\s*(\w+)\s*\)'
         )
         for drv_dir in self.driver_dirs:
-            if not os.path.isdir(drv_dir):
+            drv_root = Path(drv_dir)
+            if not drv_root.is_dir():
                 continue
-            for root_dir, dirs, files in os.walk(drv_dir):
-                for f in files:
-                    if f.endswith(('.c', '.h', '.cpp', '.hpp')):
-                        path: str = os.path.join(root_dir, f)
-                        if os.path.getsize(path) > 1024 * 1024:
-                            continue
-                        try:
-                            with open(path, 'r', encoding='utf-8') as fh:
-                                content: str = fh.read()
-                            for m in pattern.finditer(content):
-                                drv_name: str = m.group(1)
-                                compat: str = m.group(2)
-                                probe_fn: str = f"board_driver_probe_{drv_name}"
-                                remove_fn: str = f"board_driver_remove_{drv_name}"
-                                # 记录源文件绝对路径, 供 CMake 按 DTS 节点裁剪 driver 源
-                                self.driver_map[compat] = (probe_fn, remove_fn,
-                                                           os.path.normpath(path))
-                        except Exception:
-                            pass
+            for path in drv_root.rglob('*'):
+                if not path.is_file():
+                    continue
+                if path.suffix not in ('.c', '.h', '.cpp', '.hpp'):
+                    continue
+                if path.stat().st_size > 1024 * 1024:
+                    continue
+                try:
+                    content: str = path.read_text(encoding='utf-8')
+                    for m in pattern.finditer(content):
+                        drv_name: str = m.group(1)
+                        compat: str = m.group(2)
+                        probe_fn: str = f"board_driver_probe_{drv_name}"
+                        remove_fn: str = f"board_driver_remove_{drv_name}"
+                        # 记录源文件绝对路径, 供 CMake 按 DTS 节点裁剪 driver 源
+                        self.driver_map[compat] = (probe_fn, remove_fn,
+                                                   str(path))
+                except Exception:
+                    pass
 
     def _validate_compatibles(self) -> None:
         errors: List[str] = []
@@ -896,8 +889,8 @@ class DTSCompiler:
                     continue
                 if compat not in self.driver_map:
                     status_prop: Optional[DtsProperty] = dev.get_prop('status')
-                    is_disabled: bool = (status_prop and
-                                         status_prop.strings and
+                    is_disabled: bool = (status_prop is not None and
+                                         status_prop.strings is not None and
                                          status_prop.strings[0] == 'disabled')
                     if not is_disabled:
                         errors.append(
@@ -1005,7 +998,8 @@ class DTSCompiler:
         """返回 (邻接表, 拓扑序号映射)。直接复用 topological_sort() 的缓存,
         不再重复建图与排序。"""
         order: List[int] = self.topological_sort()  # 命中缓存则 O(1)
-        graph: List[List[int]] = self._dep_graph   # topological_sort 已缓存
+        graph = self._dep_graph                     # topological_sort 已缓存
+        assert graph is not None  # topological_sort() 后必已建图
         order_idx: Dict[int, int] = {dev: pos for pos, dev in enumerate(order)}
         return graph, order_idx
 

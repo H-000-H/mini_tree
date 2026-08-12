@@ -3,4 +3,5 @@
 # 公共配置树在 Kconfig.mini_tree, 两套入口各自 source 同一份, 避免分叉。
 
 mainmenu "mini_tree Configuration"
-source "Kconfig.mini_tree"
+# rsource = 相对本文件目录解析 (与 CWD/srctree 无关), menuconfig 无需 chdir
+rsource "Kconfig.mini_tree"

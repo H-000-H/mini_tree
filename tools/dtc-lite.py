@@ -11,12 +11,12 @@ dtc-lite.py — MCU 编译期 DeviceTree 编译器 (Lark + Transformer 解析)
 
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
-_TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
-if _TOOLS_DIR not in sys.path:
-    sys.path.insert(0, _TOOLS_DIR)
+_TOOLS_DIR = Path(__file__).resolve().parent
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
 
 from dtc_lite.main import main  # noqa: E402
 

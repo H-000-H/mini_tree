@@ -8,36 +8,47 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 from typing import List
 
-import _vendor_loader
-_vendor_loader.prepend_kconfig_vendor()
+import importlib
+from types import ModuleType
 
-# kconfiglib ships as a single module (pip); namespace packages expose symbols in .core
-# ESP-IDF v6.x 使用 esp_kconfiglib 分支, kconfiglib 仅 re-export Kconfig 但不含 BOOL/HEX/INT/STRING 常量
-try:
-    from kconfiglib import Kconfig, BOOL, HEX, INT, STRING
-except ImportError:
-    try:
-        from kconfiglib.core import Kconfig, BOOL, HEX, INT, STRING
-    except ImportError:
-        from esp_kconfiglib.core import Kconfig, BOOL, HEX, INT, STRING
-try:
-    from kconfiglib import TRISTATE
-    _BOOL_TYPES = (BOOL, TRISTATE)
-except ImportError:
-    try:
-        from kconfiglib.core import TRISTATE
-        _BOOL_TYPES = (BOOL, TRISTATE)
-    except ImportError:
+
+def _load_kconfig() -> ModuleType:
+    """加载 kconfiglib 模块, 返回带 Kconfig/BOOL/HEX/INT/STRING/TRISTATE 的命名空间。
+
+    kconfiglib 有两种形态: 单文件模块 (vendor / pip, 符号在模块根) 与
+    namespace 包 (pip, 符号在 .core); ESP-IDF 的 esp_kconfiglib 只以
+    esp_kconfiglib.core 提供符号。按 vendor → pip 单文件 → .core → esp 依次探测。
+    """
+    import _vendor_loader
+    _vendor_loader.prepend_kconfig_vendor()  # vendor kconfiglib 永远优先
+
+    for name in ("kconfiglib", "kconfiglib.core", "esp_kconfiglib.core"):
         try:
-            from esp_kconfiglib.core import TRISTATE
-            _BOOL_TYPES = (BOOL, TRISTATE)
+            mod = importlib.import_module(name)
         except ImportError:
-            _BOOL_TYPES = (BOOL,)
+            continue
+        if hasattr(mod, "Kconfig"):
+            return mod
+    raise ImportError(
+        "kconfiglib not available (run inside mini_tree tree or install kconfiglib)"
+    )
+
+
+_kconfig = _load_kconfig()
+Kconfig = _kconfig.Kconfig
+BOOL = _kconfig.BOOL
+HEX = _kconfig.HEX
+INT = _kconfig.INT
+STRING = _kconfig.STRING
+try:
+    TRISTATE = _kconfig.TRISTATE
+    _BOOL_TYPES = (BOOL, TRISTATE)
+except AttributeError:
+    _BOOL_TYPES = (BOOL,)
 
 
 def _atomic_write(path: Path, content: str) -> None:
@@ -45,10 +56,9 @@ def _atomic_write(path: Path, content: str) -> None:
     tmp: Path = path.with_suffix(".tmp")
     try:
         tmp.write_text(content, encoding="utf-8")
-        shutil.move(str(tmp), str(path))
+        tmp.replace(path)  # 同目录 rename，原子替换
     except Exception:
-        if tmp.exists():
-            tmp.unlink()
+        tmp.unlink(missing_ok=True)
         raise
 
 
@@ -96,7 +106,7 @@ def _sync_dotconfig(kconfig_dir: Path, config_file: Path) -> None:
     if config_file.resolve() == dst.resolve():
         return
     if config_file.exists():
-        shutil.copy(str(config_file), str(dst))
+        dst.write_bytes(config_file.read_bytes())
 
 
 def main() -> None:

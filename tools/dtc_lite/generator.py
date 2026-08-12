@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-import shutil
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from .dts_ast import DtsNode, DtsProperty
@@ -13,36 +12,33 @@ from .platform import is_platform_node
 class CGenerator:
     """从编译结果生成 C 代码"""
 
-    def __init__(self, compiler: DTSCompiler, output_dir: str) -> None:
+    def __init__(self, compiler: DTSCompiler, output_dir: Path) -> None:
         self.compiler: DTSCompiler = compiler
-        self.output_dir: str = output_dir
-        os.makedirs(output_dir, exist_ok=True)
+        self.output_dir: Path = output_dir
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _atomic_write(self, path: str, content: str) -> None:
+    def _atomic_write(self, path: Path, content: str) -> None:
         if not content.endswith('\n'):
             content += '\n'
-        tmp: str = path + ".tmp"
+        tmp = path.with_name(path.name + ".tmp")
         try:
-            with open(tmp, 'w', encoding='utf-8') as f:
-                f.write(content)
-            shutil.move(tmp, path)
+            tmp.write_text(content, encoding='utf-8')
+            tmp.replace(path)  # 同目录 rename，原子替换
         except Exception:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
+            tmp.unlink(missing_ok=True)
             raise
 
-    def _write_if_changed(self, path: str, content: str) -> None:
+    def _write_if_changed(self, path: Path, content: str) -> None:
         if not content.endswith('\n'):
             content += '\n'
         try:
-            display: str = os.path.relpath(path)
+            display: str = str(path.relative_to(Path.cwd()))
         except ValueError:
-            display = os.path.basename(path)
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                if f.read() == content:
-                    print(f"  [keep] {display}")
-                    return
+            display = path.name
+        if path.exists():
+            if path.read_text(encoding='utf-8') == content:
+                print(f"  [keep] {display}")
+                return
         self._atomic_write(path, content)
         print(f"  [gen]  {display}")
 
@@ -73,7 +69,7 @@ class CGenerator:
 
     def _gen_board_nodes_h(self) -> None:
         devs: List[DtsNode] = self.compiler.device_list
-        path: str = os.path.join(self.output_dir, 'board_nodes.h')
+        path: Path = self.output_dir / 'board_nodes.h'
 
         lines: List[str] = [
             '#ifndef BOARD_NODES_H',
@@ -117,7 +113,7 @@ class CGenerator:
         self._write_if_changed(path, '\n'.join(lines))
 
     def _gen_board_devtable_h(self) -> None:
-        path: str = os.path.join(self.output_dir, 'board_devtable.h')
+        path: Path = self.output_dir / 'board_devtable.h'
         lines: List[str] = [
             '#ifndef BOARD_DEVTABLE_H',
             '#define BOARD_DEVTABLE_H',
@@ -158,7 +154,7 @@ class CGenerator:
 
     def _gen_board_devtable_c(self) -> None:
         devs: List[DtsNode] = self.compiler.device_list
-        path: str = os.path.join(self.output_dir, 'board_devtable.c')
+        path: Path = self.output_dir / 'board_devtable.c'
 
         prop_arrays: List[str] = []
         dep_arrays: List[str] = []
@@ -456,7 +452,7 @@ class CGenerator:
     def _gen_board_probe_c(self) -> None:
         devs: List[DtsNode] = self.compiler.device_list
         order: List[int] = self.compiler.topological_sort()
-        path: str = os.path.join(self.output_dir, 'board_probe.c')
+        path: Path = self.output_dir / 'board_probe.c'
 
         has_platform: bool = False
         probe_externs: List[str] = []
@@ -576,14 +572,14 @@ class CGenerator:
 
         # 输出本板 active 节点实际用到的 driver 源文件 (绝对路径, 每行一个),
         # 供 CMake 过滤 DRIVER_SRCS: 未用到的不编译, 保证不开 gc-sections 也体积合理。
-        used_path: str = os.path.join(self.output_dir, 'dt_used_drivers.txt')
+        used_path: Path = self.output_dir / 'dt_used_drivers.txt'
         used_lines: List[str] = []
         for s in sorted(used_driver_srcs):
-            used_lines.append(s.replace(os.sep, '/'))
+            used_lines.append(Path(s).as_posix())
         self._write_if_changed(used_path, '\n'.join(used_lines) + ('\n' if used_lines else ''))
 
     def _gen_board_handles_h(self) -> None:
-        path: str = os.path.join(self.output_dir, 'board_handles.h')
+        path: Path = self.output_dir / 'board_handles.h'
         lines: List[str] = [
             '#ifndef BOARD_HANDLES_H',
             '#define BOARD_HANDLES_H',
@@ -617,7 +613,7 @@ class CGenerator:
 
     def _gen_dt_config_h(self) -> None:
         devs: List[DtsNode] = self.compiler.device_list
-        path: str = os.path.join(self.output_dir, 'dt_config_gen.h')
+        path: Path = self.output_dir / 'dt_config_gen.h'
 
         compat_counts: Dict[str, int] = {}
         for dev in devs:

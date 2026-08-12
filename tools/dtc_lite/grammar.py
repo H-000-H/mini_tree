@@ -1,6 +1,5 @@
 """Lark 文法定义 — DTS (Device Tree Source) 子集.
 
-兼容 PLY 版 dtc-lite 已支持的全部语法:
   * ``/dts-v1/;`` 头
   * ``/ { }`` 根节点
   * ``&label { }`` overlay
@@ -13,7 +12,7 @@
 from __future__ import annotations
 
 # 文法用 Earley 算法解析 (允许少量歧义, lookahead 区分 prop vs child_node).
-# 关键: IDENT 不含 '/', 路径用 SLASH 显式分隔 (与 PLY 行为一致).
+# 关键: IDENT 不含 '/', 路径用 SLASH 显式分隔.
 
 DTS_GRAMMAR = r"""
 start: top_item*

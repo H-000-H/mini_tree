@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import sys
 import zlib
 from pathlib import Path
@@ -40,10 +39,9 @@ def _atomic_write(path: Path, content: str) -> None:
     tmp: Path = path.with_suffix(".tmp")
     try:
         tmp.write_text(content, encoding="utf-8")
-        shutil.move(str(tmp), str(path))
+        tmp.replace(path)  # 同目录 rename，原子替换
     except Exception:
-        if tmp.exists():
-            tmp.unlink()
+        tmp.unlink(missing_ok=True)
         raise
 
 
@@ -59,6 +57,8 @@ def _replace_in_file(
     path: Path, define_name: str, crc_hex: str
 ) -> Optional[str]:
     """尝试在现有文件中就地替换宏定义值, 返回实际命中的宏名或 None"""
+    if not path.exists():
+        return None
     content: str = path.read_text(encoding="utf-8")
 
     # 优先匹配用户指定的宏名

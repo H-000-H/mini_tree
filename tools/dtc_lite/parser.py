@@ -1,11 +1,9 @@
 """Lark + Transformer 解析 — 构建 DtsNode AST.
-
-替代原 PLY 递归下降实现:
   * 文法定义在 ``grammar.py`` (Lark Earley 算法)
   * ``DtsTransformer`` 把 parse tree 转成中间 op 对象
   * ``parse_dts`` 主函数按顺序应用 op 到 root, 处理 overlay 合并 / delete 语义
 
-对外接口 ``parse_dts(text, filename) -> DtsNode`` 与原 PLY 版完全一致,
+对外接口 ``parse_dts(text, filename) -> DtsNode`` 保持稳定,
 ``compiler.py`` 无需改动.
 """
 
@@ -465,7 +463,7 @@ def _get_parser() -> Lark:
 def parse_dts(text: str, filename: str = '<dts>') -> DtsNode:
     """解析 DTS 文本 → DtsNode AST 根节点.
 
-    与原 PLY 版行为一致:
+    语义:
       * 顶层 ``/ { }`` 内容合并到 root
       * 顶层 ``&label { }`` 作为 root 的子节点 (name=``&label``), 由 compiler 后处理
       * 顶层 ``/delete-node/`` / ``/delete-property/`` 作用于 root

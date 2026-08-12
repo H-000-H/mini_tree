@@ -8,15 +8,15 @@ kconfiglib (kconfiglib.py / menuconfig.py / guiconfig.py, 见 _vendor/README.md)
 
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 from typing import Optional
 
 
 def prepend_kconfig_vendor() -> Optional[str]:
     """将 tools/_vendor 插到 sys.path 最前并返回其路径; 目录不存在返回 None。"""
-    vendor = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_vendor")
-    if os.path.isdir(vendor):
-        sys.path.insert(0, vendor)
-        return vendor
+    vendor = Path(__file__).resolve().parent / "_vendor"
+    if vendor.is_dir():
+        sys.path.insert(0, str(vendor))
+        return str(vendor)
     return None

@@ -2,8 +2,8 @@
 """gen_compile_db.py — 从 compile_flags.txt 生成 compile_commands.json（IDE 索引用）。
 
 用法：
-    python3 tools/gen_compile_db.py          # 在 mini_tree 根目录生成
-    python3 tools/gen_compile_db.py --clean  # 删除已生成的 compile_commands.json
+    python tools/gen_compile_db.py          # 在 mini_tree 根目录生成
+    python tools/gen_compile_db.py --clean  # 删除已生成的 compile_commands.json
 
 场景：
     mini_tree 作为子模块嵌入父项目时，父项目的 compile_commands.json 会覆盖
@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -142,15 +141,12 @@ def _build_entries(flags: list[str], sources: list[Path], headers: list[Path]) -
 
 def _atomic_write(path: Path, content: str) -> None:
     """原子写入：先写临时文件再替换，防止生成残缺文件。"""
-    import shutil
-    import tempfile
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    tmp = path.with_name(path.name + ".tmp")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        shutil.move(tmp, str(path))
+        tmp.write_text(content, encoding="utf-8")
+        tmp.replace(path)  # 同目录 rename，原子替换
     except BaseException:
-        os.unlink(tmp)
+        tmp.unlink(missing_ok=True)
         raise
 
 

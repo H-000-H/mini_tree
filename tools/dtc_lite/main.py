@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
+from pathlib import Path
 from typing import List, Optional
 
 from .dts_ast import DtsProperty
@@ -39,7 +39,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     extra_inc_dirs: List[str] = args.include
     extra_defines: List[str] = args.define
 
-    if not os.path.isfile(dts_path):
+    if not Path(dts_path).is_file():
         print(f'ERROR: DTS file not found: {dts_path}', file=sys.stderr)
         sys.exit(1)
 
@@ -55,7 +55,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     compiler = DTSCompiler(dts_path, driver_dirs,
                             extra_inc_dirs=extra_inc_dirs,
                             extra_defines=extra_defines,
-                            out_dir=output_dir)
+                            out_dir=Path(output_dir))
     compiler.compile()
 
     print(f'  devices: {len(compiler.device_list)}')
@@ -74,7 +74,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     for compat, fn in sorted(compiler.driver_map.items()):
         print(f'    {compat:40s} → {fn}')
 
-    generator = CGenerator(compiler, output_dir)
+    generator = CGenerator(compiler, Path(output_dir))
     generator.gen_all()
 
     print('dtc-lite: done')
