@@ -736,16 +736,23 @@ int osal_sem_create_binary_static(struct osal_sem** out, void* storage, size_t s
  */
 void osal_sem_destroy(struct osal_sem* sem)
 {
-    if (!sem || !sem->handle || osal_in_isr())
+    if (!sem || osal_in_isr())
         return;
 
-    if (sem->from_pool)
+    /* 只有 handle 非空 (合法创建的信号量) 才允许销毁底层 FreeRTOS 信号量;
+     * handle 为空的池外指针视为非法输入, 不触碰其字段. */
+    if (sem->handle == NULL)
+        return;
+
+    /**< 先销毁底层信号量 */
+    vSemaphoreDelete(sem->handle);
+    sem->handle = NULL;
+
+    /**< 再判断是否属于全局信号量池: 仅池内对象归还池槽, 静态信号量不归还 */
+    if (sem >= s_sem_pool && sem < &s_sem_pool[OSAL_SEM_POOL_SIZE])
     {
-        if (sem >= s_sem_pool && sem < &s_sem_pool[OSAL_SEM_POOL_SIZE])
-        {
-            size_t idx = (size_t)(sem - s_sem_pool);
-            COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, (int)idx));
-        }
+        size_t idx = (size_t)(sem - s_sem_pool);
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, (int)idx));
     }
 }
 
