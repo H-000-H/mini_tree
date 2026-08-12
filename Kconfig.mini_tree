@@ -30,15 +30,26 @@ config PLATFORM_ESP32
     bool "Espressif ESP32 (ESP-IDF)"
     help
       Espressif ESP32 系列 (Xtensa; RISC-V 的 ESP32-C 系列在 IDF 下也选此项)。
-      注意: 本项不参与编译裁剪 —— ESP-IDF 构建的平台由 IDF 自身管理
-      (经 cmake/esp_idf.cmake 接入), 此处仅作配置记录/UI 显示;
-      非 ESP 裸机构建不要选它, 用 ARM / RISC-V 平台选项。
+      ESP-IDF 工程**必须**选中此项 (sdkconfig.defaults 显式设置), 作为工程
+      平台身份声明; 非 ESP 裸机构建不要选它, 用 ARM / RISC-V 平台选项。
+
+      编译行为本身由 IDF 管理 (ESP_PLATFORM 编译宏 + cmake/esp_idf.cmake),
+      本选项不直接参与编译裁剪; 但它标识"本工程是 ESP 平台", 与 HAL
+      全屏蔽机制配套: ESP 构建下 mini_tree 的 HAL weak stub 被
+      #if defined(ESP_PLATFORM) 屏蔽, 板级组件 (hal_<soc>) 必须提供
+      strong 实现, 缺失直接链接报错。
 
       Espressif ESP32 series (Xtensa; ESP32-C RISC-V parts also select
-      this when built with ESP-IDF). Note: this option does NOT drive
-      compilation — the platform of an ESP-IDF build is provided by IDF
-      itself (wired via cmake/esp_idf.cmake); this entry is record/UI
-      only. Non-ESP bare-metal builds must keep the ARM / RISC-V options.
+      this when built with ESP-IDF). ESP-IDF projects MUST select this
+      (set in sdkconfig.defaults) as a platform identity declaration;
+      non-ESP bare-metal builds must keep the ARM / RISC-V options.
+
+      Compilation is managed by IDF itself (ESP_PLATFORM macro +
+      cmake/esp_idf.cmake); this option does not directly drive the
+      build, but declares "this project is ESP", pairing with the HAL
+      shutdown: on ESP builds mini_tree HAL weak stubs are excluded by
+      #if defined(ESP_PLATFORM) and the board component (hal_<soc>)
+      must provide strong implementations (link error if missing).
 endchoice
 endmenu
 

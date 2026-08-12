@@ -25,6 +25,10 @@
 #include "dt_config_gen.h"
 #include <stdint.h>
 
+#if defined(ESP_PLATFORM)
+/* ESP-IDF 构建: 本文件编译为空 — ESP 的 tick 由 IDF 管理, hal_systick 不接硬件。
+ * (文件内原有 __CORTEX_M 分支为 ARM 默认真实现, 非 ESP 构建保留。) */
+#else
 /* SysTick 寄存器偏移 (相对 HAL_SYSTICK_BASE) */
 #define HAL_SYSTICK_REG_CTRL 0x00u /* 控制状态寄存器 */
 #define HAL_SYSTICK_REG_LOAD 0x04u /* 重装载值寄存器 (24 位) */
@@ -111,3 +115,4 @@ int hal_systick_deinit(void)
 COMPAT_WEAK void hal_systick_irq_handler(void)
 {
 }
+#endif /* ESP_PLATFORM */

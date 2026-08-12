@@ -61,6 +61,13 @@ set(HAL_INCLUDE_DIRS ${_HAL_INC_EXISTING})
 set(OSAL_SRCS "${MINI_TREE_DIR}/osal/src/osal_freertos.c")
 set(OSAL_DEFINE CONFIG_OSAL_FREERTOS)
 
+# HAL stub 全量编入, 但每个 stub 文件内部已做 #if defined(ESP_PLATFORM) 屏蔽:
+# ESP 构建下文件编译为空 (hal_* 由板级组件提供 strong 实现, 缺失直接链接报错,
+# 杜绝静默 -ENOSYS); 非 ESP 构建保留 weak stub 兜底。
+# 板级需覆盖的引用集 (随 DRIVER_SRCS/SYSTEM_SRCS 变化, 缺失时链接错误会指出):
+#   外设 7: gpio/spi/uart/i2c/can/tim/adc  系统 5: iwdg/storage/flash/usb/platform_safety
+# 注意: hal_cpu_secondary_startup 被 CONFIG_CPU_CORES>1 引用, CPU_CORES=1 时不链接;
+# 设双核 AMP 前先确认板级已实现它。
 set(HAL_SRCS
     "${MINI_TREE_DIR}/hal/gpio/hal_gpio.c"
     "${MINI_TREE_DIR}/hal/spi/hal_spi.c"
@@ -79,6 +86,7 @@ set(HAL_SRCS
     "${MINI_TREE_DIR}/hal/storage/hal_storage.c"
     "${MINI_TREE_DIR}/hal/system/hal_platform_safety.c"
     "${MINI_TREE_DIR}/hal/system/hal_sdio.c"
+    "${MINI_TREE_DIR}/hal/system/hal_systick.c"
     "${MINI_TREE_DIR}/hal/hal_if_dummy.c"
 )
 
@@ -316,12 +324,12 @@ idf_component_register(
         ${USB_INC_DIRS}
         ${_ETL_INC}
         # 生成 board_* 必须先于 ide/stubs (stubs/board_nodes.h 的 DEV_ID_COUNT=1
-        # 会盖住 dtc-lite 真表). 但 stubs/config.h 须先于空壳 KCONFIG_GEN
-        # (否则 SYS_LOG 后端宏丢失).
+        # 会盖住 dtc-lite 真表). KCONFIG_GEN(config.h 转发 sdkconfig.h) 亦须在
+        # ide/stubs 之前: 保证 CONFIG_* 全部来自真实 sdkconfig.h, 不再依赖手写 stub.
         "${GENERATED_BOARD_DIR}"
         "${SCRUBBER_GEN_DIR}"
-        "${MINI_TREE_DIR}/ide/stubs"
         "${KCONFIG_GEN_DIR}"
+        "${MINI_TREE_DIR}/ide/stubs"
     # 覆盖默认 Kconfig 发现: 组件根 Kconfig (mainmenu 入口, 非 ESP 路径用) 带 mainmenu,
     # 会被 IDF 自动收录并与 Kconfig.projbuild 重复 source Kconfig.mini_tree 导致递归.
     # ESP 路径只走 Kconfig.projbuild (orsource Kconfig.mini_tree)。
@@ -335,13 +343,16 @@ idf_component_register(
         esp_driver_twai
 )
 
-# ESP-IDF: CONFIG_* 已由 sdkconfig.h 注入。再生成一份完整 config.h 会 -Werror=redefined。
-# 这里放空壳，满足 #include "config.h"。
+# ESP-IDF: CONFIG_* 已由 IDF 生成于 build/config/sdkconfig.h (pragma once)。
+# 这里只放转发头满足 #include "config.h": 编译器与 clangd 拿到的都是真实配置,
+# 不再依赖 ide/stubs/config.h 手写镜像 (曾导致 SYS_LOG 后端宏与 .config 脱节)。
 add_custom_command(
     OUTPUT  "${KCONFIG_OUT}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${KCONFIG_GEN_DIR}"
-    COMMAND "${CMAKE_COMMAND}" -E echo "/* ESP-IDF: use sdkconfig.h for CONFIG_* */" > "${KCONFIG_OUT}"
-    COMMENT "Generating mini_tree config.h stub (ESP-IDF)"
+    COMMAND "${CMAKE_COMMAND}" -E echo "#pragma once" > "${KCONFIG_OUT}"
+    COMMAND "${CMAKE_COMMAND}" -E echo "/* ESP-IDF: CONFIG_* 全部来自 sdkconfig.h */" >> "${KCONFIG_OUT}"
+    COMMAND "${CMAKE_COMMAND}" -E echo "#include \"sdkconfig.h\"" >> "${KCONFIG_OUT}"
+    COMMENT "Generating mini_tree config.h forwarder to sdkconfig.h (ESP-IDF)"
     VERBATIM
 )
 

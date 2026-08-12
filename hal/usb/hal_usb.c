@@ -6,6 +6,10 @@
 #include "compiler_compat.h"
 #include "status.h"
 
+#if defined(ESP_PLATFORM)
+/* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
+ * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
+#else
 COMPAT_WEAK int hal_usb_bus_host_init(struct hal_usb_bus_host* host,
                                       const struct hal_usb_bus_config* cfg)
 {
@@ -38,3 +42,4 @@ COMPAT_WEAK int hal_usb_resolve_xfer_mode(const struct hal_usb_bus_host* host, u
     (void)xfer_mode;
     return VFS_ERR_NOTSUPP;
 }
+#endif /* ESP_PLATFORM */
