@@ -1,0 +1,2 @@
+# 格式化时忽略 vendored 第三方代码（需要 clang-format >= 17，低版本忽略此文件）
+lib/

@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * INA219 电流/电压监测节点模板 (drivers/ina219) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x40..0x4F);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_TI_INA219 (节点数, 缺省 1)。
+ */
+&i2c0 {
+ina219: ina219@0 {
+	compatible = "ti,ina219";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x40..0x4F */
+	status = "disabled";
+};
+};

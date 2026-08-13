@@ -1,0 +1,19 @@
+version: 1.2.0
+description: 这是一个通用的vfs模型抽象设备树和os抽象插件
+dependencies:
+  idf:
+    version: '>=4.4'
+files:
+  exclude:
+  - build/**
+  - .cache/**
+  - compile_commands.json
+  - .config*
+  - .git/**
+  - lib/freeRTOS/**
+  - lib/rtthread/**
+  - lib/threadx/**
+  - lib/uC-*/**
+  - '**/__pycache__/**'
+  - '**/*.pyc'
+url: https://github.com/H-000-H/mini_tree

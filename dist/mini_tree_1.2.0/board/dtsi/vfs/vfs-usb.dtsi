@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * USB VFS 节点模板 (vfs/usb) — 中间件占位示例
+ *
+ * 用法: 复制本节点到板级 dts; status 改 "okay"; 属性填厂商宏, 全 0 即默认。
+ * 池大小自动: host = DTC_GEN_COUNT_USB_OTG_HOST;
+ *            client = CDC_ACM + CDC_ECM + HID 节点数之和 (缺省各 1)。
+ * 需要哪个 USB 功能就保留对应 client 子节点, 多余删除。
+ */
+/ {
+usb0: usb@0 {
+	compatible = "usb-otg-host";
+	reg = <0>;
+	usb-base = <0>; /* USB 外设寄存器基址 */
+	rhport = <0>; /* 根口号 */
+	irqn = <0>;
+	vbus-sense = <0>; /* VBUS 检测: 0=常供 1=检测 */
+	dp-port = <0>; /* D+ : 端口 */
+	dp-pin  = <0>; /* D+ : 引脚号 */
+	dp-af   = <0>; /* D+ : 复用功能 */
+	dm-port = <0>; /* D- : 端口 */
+	dm-pin  = <0>;
+	dm-af   = <0>;
+	dma-enable = <0>;
+	status = "disabled";
+
+	usb0_cdc_acm: usb-cdc-acm@0 {
+		compatible = "heterogeneous,usb-cdc-acm"; /* 虚拟串口 */
+		reg = <0>;
+		status = "disabled";
+	};
+
+	usb0_cdc_ecm: usb-cdc-ecm@0 {
+		compatible = "heterogeneous,usb-cdc-ecm"; /* 虚拟网卡 */
+		reg = <0>;
+		status = "disabled";
+	};
+
+	usb0_hid: usb-hid@0 {
+		compatible = "heterogeneous,usb-hid"; /* 人机接口设备 */
+		reg = <0>;
+		status = "disabled";
+	};
+};
+};

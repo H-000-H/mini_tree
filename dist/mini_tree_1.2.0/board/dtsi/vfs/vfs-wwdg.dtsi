@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * 窗口看门狗 VFS 节点模板 (vfs/wwdg) — 中间件占位示例
+ *
+ * 用法: 复制本节点到板级 dts; status 改 "okay"; 属性填厂商宏, 全 0 即默认。
+ * 池大小自动 = DTC_GEN_COUNT_WWDG (缺省 1)。
+ */
+/ {
+wwdg0: wwdg@0 {
+	compatible = "wwdg";
+	reg = <0>;
+	counter = <0>; /* 计数器初值 */
+	window = <0>; /* 窗口上限 (喂狗须在窗口内) */
+	prescaler = <0>; /* 预分频 */
+	status = "disabled";
+};
+};

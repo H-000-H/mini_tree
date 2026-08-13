@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * SH1106 OLED 节点模板 (drivers/sh1106) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x3C);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_SINOWEALTH_SH1106 (节点数, 缺省 1)。
+ */
+&i2c0 {
+sh1106: sh1106@0 {
+	compatible = "sinowealth,sh1106";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x3C */
+	status = "disabled";
+};
+};

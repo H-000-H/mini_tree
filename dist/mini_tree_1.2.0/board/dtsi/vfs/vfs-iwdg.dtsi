@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * 独立看门狗 VFS 节点模板 (vfs/iwdg) — 中间件占位示例
+ *
+ * 用法: 复制本节点到板级 dts; status 改 "okay"; timeout-ms 填溢出周期。
+ * 池大小自动 = DTC_GEN_COUNT_IWDG (缺省 1)。
+ */
+/ {
+iwdg0: iwdg@0 {
+	compatible = "iwdg";
+	reg = <0>;
+	timeout-ms = <0>; /* 看门狗溢出周期 ms (0=默认) */
+	status = "disabled";
+};
+};

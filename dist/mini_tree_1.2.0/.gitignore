@@ -1,0 +1,138 @@
+﻿# =============================================
+# 按中间件 shelf（本仓独立构建 / clangd）裁剪与补充。
+# =============================================
+
+# ---------------------------------------------
+# 编译构建目录
+# ---------------------------------------------
+build/
+build-*/
+build-ninja/
+_build/
+out/
+Debug/
+Release/
+
+# ---------------------------------------------
+# CMake 生成文件
+# ---------------------------------------------
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+compile_commands.json
+*.ninja
+*.ninja_deps
+*.ninja_log
+
+# ---------------------------------------------
+# 编译器产物
+# ---------------------------------------------
+*.elf
+*.map
+*.lst
+*.o
+*.obj
+*.a
+*.lib
+*.bin
+*.hex
+*.out
+*.exe
+
+# ---------------------------------------------
+# 缓存 / 语言服务
+# ---------------------------------------------
+.cache/
+.clangd/
+.ccls-cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ---------------------------------------------
+# 日志与临时文件
+# ---------------------------------------------
+*.log
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------
+# 本地环境 / 配置备份（勿提交本机路径）
+# ---------------------------------------------
+.config.old
+*.user
+*.workspace
+
+# ---------------------------------------------
+# 编辑器个人目录（共享的 .vscode/ 可入库）
+# ---------------------------------------------
+.idea/
+.cursor/
+.trae/
+.claude/
+.chatgpt/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.code-workspace
+
+# ---------------------------------------------
+# 本仓补充：IDE 本地依赖（绝对路径 symlink 等）
+# ---------------------------------------------
+ide/third_party/etl
+ide/third_party/etl/
+
+# ---------------------------------------------
+# 开源积木：默认 FetchContent，勿提交进 git
+# lib/ 仅保留 vendor：freeRTOS / rtthread
+# 若需离线，可手动 clone 到对应路径（cmake 会优先用本地）
+# ---------------------------------------------
+lib/tinyusb/
+lib/lwip/
+lib/cJSON/
+lib/lvgl/
+lib/u8g2/
+lib/mbedtls/
+lib/CMSIS-DSP/
+lib/FlashDB/
+lib/SFUD/
+lib/EasyFlash/
+lib/EasyLogger/
+lib/FreeModbus/
+lib/littlefs/
+lib/MultiButton/
+lib/FatFs/
+lib/mcuboot/
+lib/nanopb/
+lib/coreMQTT/
+lib/coreHTTP/
+lib/miniz/
+lib/libmodbus/
+
+# ---------------------------------------------
+# OSAL 扩展后端
+# ---------------------------------------------
+/osal/src/osal_threadx.c
+/osal/src/osal_ucos_iii.c
+/osal/src/osal_ucos_ii.c
+lib/threadx/
+lib/uC-OS3/
+lib/uC-OS2/
+lib/uC-CPU/
+lib/uC-LIB/
+
+# 本地 Agent 入口（不入库；vendored 子树内 AGENTS.md 不受影响）
+/AGENTS.md
+/CLAUDE.md
+
+# IDE 索引生成物（含绝对路径，由 tools/gen_compile_db.py 生成）
+/compile_commands.json

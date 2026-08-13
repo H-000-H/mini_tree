@@ -1,4 +1,20 @@
-## 不拉 marcel-cd/etlcpp：使用本树 lib/etl（header-only）
+name: h-000-h/mini_tree
+version: "1.2.0"
+description: "这是一个通用的vfs模型抽象设备树和os抽象插件"
+url: "https://github.com/H-000-H/mini_tree"
 dependencies:
   idf:
-    version: '>=5.0.0'
+    version: ">=4.4"
+files:
+  exclude:
+    - "build/**"
+    - ".cache/**"
+    - "compile_commands.json"
+    - ".config*"
+    - ".git/**"
+    - "lib/freeRTOS/**"
+    - "lib/rtthread/**"
+    - "lib/threadx/**"
+    - "lib/uC-*/**"
+    - "**/__pycache__/**"
+    - "**/*.pyc"

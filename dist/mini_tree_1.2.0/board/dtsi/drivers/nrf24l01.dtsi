@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * NRF24L01 2.4G 无线节点模板 (drivers/nrf24l01) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &spi0 { } 内; reg = 片选序号; status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_NORDIC_NRF24L01 (节点数, 缺省 1)。
+ */
+&spi0 {
+nrf24l01: nrf24l01@0 {
+	compatible = "nordic,nrf24l01";
+	reg = <0>; /* SPI 片选序号 */
+	spi-max-frequency = <0>; /* 最大时钟 Hz (0=默认) */
+	status = "disabled";
+};
+};

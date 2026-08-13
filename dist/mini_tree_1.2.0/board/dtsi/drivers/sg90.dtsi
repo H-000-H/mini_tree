@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * SG90 舵机节点模板 (drivers/sg90) — 中间件占位示例
+ *
+ * 用法: PWM 驱动, 复制到板级 dts 的 &tim0 { } 同级 (放 soc 下);
+ *       channel 为 TIM 输出通道号 (0..); status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_TOWERPRO_SG90 (节点数, 缺省 1)。
+ */
+/ {
+sg90: sg90@0 {
+	compatible = "towerpro,sg90";
+	reg = <0>;
+	channel = <0>; /* TIM PWM 通道号 (0 = CH1) */
+	status = "disabled";
+};
+};

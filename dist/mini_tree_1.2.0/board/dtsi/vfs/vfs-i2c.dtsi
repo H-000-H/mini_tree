@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * I2C VFS 节点模板 (vfs/i2c) — 中间件占位示例
+ *
+ * 用法 / How to use:
+ *   1. 复制本节点到板级 dts; 2. status 改 "okay";
+ *   3. 属性填厂商宏 (基址/时钟/引脚), 全 0 即默认/占位;
+ *   4. I2C 传感器挂在本节点下 (reg = 器件 7bit 地址, 见 drivers/aht20.dtsi 等)。
+ * 池大小自动 = DTC_GEN_COUNT_I2C_MASTER + _I2C_SLAVE (DTS 节点数, 缺省各 1)。
+ * dma-tx-cfg / dma-rx-cfg: <it-enable handle stream channel ...> 全 0 即关。
+ */
+/ {
+i2c0: i2c@0 {
+	compatible = "i2c-master"; /* host; "i2c-slave" 为从机模式 */
+	reg = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	i2c-base = <0>; /* I2C 外设寄存器基址 */
+	i2c-clk  = <0>; /* 总线时钟 */
+	scl-port = <0>; /* SCL: 端口 */
+	scl-pin  = <0>; /* SCL: 引脚号 */
+	scl-clk  = <0>; /* SCL: 所属时钟总线 */
+	scl-af   = <0>; /* SCL: 复用功能 */
+	sda-port = <0>; /* SDA: 端口 */
+	sda-pin  = <0>;
+	sda-clk  = <0>;
+	sda-af   = <0>;
+	scl-output-type = <0>; /* SCL 输出类型 (推挽/开漏) */
+	scl-speed = <0>; /* SCL 速度等级 */
+	scl-mode  = <0>; /* SCL 工作模式 */
+	scl-pull  = <0>; /* SCL 上下拉 */
+	sda-output-type = <0>;
+	sda-speed = <0>;
+	sda-mode  = <0>;
+	sda-pull  = <0>;
+	irqn = <0>; /* 中断号 */
+	irq-priority = <0>;
+	it-enable = <0>; /* 中断使能 */
+	i2c-mode = <0>; /* 标准/快速/快速+ 等 */
+	max-transfer-buffer = <0>; /* 单次传输缓冲上限 */
+	clock-frequency = <0>; /* 总线频率 Hz (0=默认) */
+	status = "disabled";
+
+	i2c0_client: i2c-master-client@0 {
+		compatible = "heterogeneous,i2c-master-client"; /* client fops 节点 */
+		reg = <0>;
+		i2c-address = <0>; /* 本 client 的 I2C 地址 */
+		ack-enable = <0>;
+		status = "disabled";
+	};
+};
+};

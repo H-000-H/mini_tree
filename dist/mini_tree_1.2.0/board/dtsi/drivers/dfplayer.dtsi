@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * DFPlayer MP3 模块节点模板 (drivers/dfplayer) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &uart0 { } 内 (reg = 客户端号); status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_DFROBOT_DFPLAYER (节点数, 缺省 1)。
+ */
+&uart0 {
+dfplayer: dfplayer@0 {
+	compatible = "dfrobot,dfplayer";
+	reg = <0>; /* UART 客户端号 */
+	status = "disabled";
+};
+};

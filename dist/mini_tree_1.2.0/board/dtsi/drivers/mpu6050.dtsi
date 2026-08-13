@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * MPU6050 六轴 IMU 节点模板 (drivers/mpu6050) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x68/0x69);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_INVENSENSE_MPU6050 (节点数, 缺省 1)。
+ */
+&i2c0 {
+mpu6050: mpu6050@0 {
+	compatible = "invensense,mpu6050";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x68/0x69 */
+	status = "disabled";
+};
+};
