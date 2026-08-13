@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * SPI VFS 节点模板 (vfs/spi) — 中间件占位示例
+ *
+ * 用法 / How to use:
+ *   1. 复制本节点到板级 dts; 2. status 改 "okay"; 3. 属性填厂商宏, 全 0 即默认;
+ *   4. SPI 器件挂在本节点下 (reg = 片选序号, 见 drivers/w25qxx.dtsi 等)。
+ * 池大小自动 = DTC_GEN_COUNT_SPI_MASTER + _SPI_SLAVE (DTS 节点数, 缺省各 1)。
+ */
+/ {
+spi0: spi@0 {
+	compatible = "spi-master"; /* host; "spi-slave" 为从机模式 */
+	reg = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spi-base = <0>; /* SPI 外设寄存器基址 */
+	spi-clk  = <0>; /* 总线时钟 */
+	mosi-port = <0>; /* MOSI: 端口 */
+	mosi-pin  = <0>;
+	mosi-clk  = <0>;
+	mosi-af   = <0>;
+	miso-port = <0>; /* MISO: 端口 */
+	miso-pin  = <0>;
+	miso-clk  = <0>;
+	miso-af   = <0>;
+	sclk-port = <0>; /* SCK: 端口 */
+	sclk-pin  = <0>;
+	sclk-clk  = <0>;
+	sclk-af   = <0>;
+	mosi-output-type = <0>; /* MOSI 输出类型 */
+	mosi-speed = <0>;
+	mosi-mode  = <0>;
+	mosi-pull  = <0>;
+	miso-output-type = <0>;
+	miso-speed = <0>;
+	miso-mode  = <0>;
+	miso-pull  = <0>;
+	sclk-output-type = <0>;
+	sclk-speed = <0>;
+	sclk-mode  = <0>;
+	sclk-pull  = <0>;
+	irqn = <0>; /* 中断号 */
+	irq-priority = <0>;
+	it-enable = <0>;
+	max-trans-buffer = <0>; /* 发送缓冲上限 */
+	max-transfer-buffer = <0>; /* 收发缓冲上限 */
+	dma-tx-cfg = <0 0 0 0>; /* <it-enable handle stream channel ...> 全 0 即关 */
+	dma-rx-cfg = <0 0 0 0>;
+	status = "disabled";
+
+	spi0_client: spi-master-client@0 {
+		compatible = "heterogeneous,spi-master-client"; /* client fops 节点 */
+		reg = <0>;
+		cs-port = <0>; /* 片选: 端口 */
+		cs-pin  = <0>; /* 片选: 引脚号 */
+		cs-clk  = <0>; /* 片选: 所属时钟 */
+		spi-mode = <0>; /* SPI 模式 0..3 */
+		spi-max-frequency = <0>; /* 最大速率 Hz (0=默认) */
+		transfer-direction = <0>; /* 0=半双工 1=全双工 */
+		data-width = <0>; /* 数据位宽 */
+		nss = <0>; /* 片选: 0=软件 1=硬件 */
+		bit-order = <0>; /* 0=MSB 1=LSB */
+		crc-calculation = <0>; /* 硬件 CRC: 0=关 1=开 */
+		crc-poly = <0>; /* CRC 多项式 */
+		standard = <0>; /* SPI 标准 */
+		status = "disabled";
+	};
+};
+};

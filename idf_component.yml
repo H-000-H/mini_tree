@@ -1,4 +1,24 @@
 ## 不拉 marcel-cd/etlcpp：使用本树 lib/etl（header-only）
+name: h-000-h/mini_tree
+version: "1.2.0"
+description: "这是一个通用的vfs模型抽象设备树和os抽象插件"
+url: "https://github.com/H-000-H/mini_tree"
 dependencies:
   idf:
-    version: '>=5.0.0'
+    version: ">=4.4"
+# 注意: include 模式在 exclude 之后执行(会重新加回), 不要用 include 做白名单
+files:
+  exclude:
+    - "build/**"
+    - ".cache/**"
+    - "compile_commands.json"
+    - ".config*"
+    - ".git/**"
+    # 注册表组件只服务 ESP-IDF 构建: 仅 lib/etl 必需 (ESP 用 IDF 自带 FreeRTOS);
+    # 其余 vendor 内核 (freeRTOS/rtthread/threadx/uC-*) 是死重, 非 ESP 工程直接走 git 仓库
+    - "lib/freeRTOS/**"
+    - "lib/rtthread/**"
+    - "lib/threadx/**"
+    - "lib/uC-*/**"
+    - "**/__pycache__/**"
+    - "**/*.pyc"

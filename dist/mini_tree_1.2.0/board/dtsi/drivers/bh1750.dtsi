@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * BH1750 光照强度传感器节点模板 (drivers/bh1750) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x23/0x5C);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_ROHM_BH1750 (节点数, 缺省 1)。
+ */
+&i2c0 {
+bh1750: bh1750@0 {
+	compatible = "rohm,bh1750";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x23/0x5C */
+	status = "disabled";
+};
+};

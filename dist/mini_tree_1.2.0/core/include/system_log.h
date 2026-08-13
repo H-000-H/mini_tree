@@ -1,0 +1,58 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * system_log — 系统日志宏统一入口 (OSAL / ESP-IDF / RT-Thread 三后端)
+ *
+ * 根据 Kconfig CONFIG_SYS_LOG_USE_* 选择后端, 提供 SYS_LOGI/W/E 三级宏。
+ * 层无关: HAL / bus / VFS / OSAL 均可包含, 不引入 VFS 依赖。
+ */
+#ifndef SYSTEM_LOG_H
+#define SYSTEM_LOG_H
+
+/* Kconfig 生成的配置 — 见 tools/genconfig.py */
+#include "config.h"
+
+#if defined(CONFIG_SYS_LOG_USE_OSAL)
+#include "osal.h"
+#define SYS_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
+#define SYS_LOGW(tag, fmt, ...) osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__)
+#define SYS_LOGE(tag, fmt, ...) osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__)
+
+#elif defined(CONFIG_SYS_LOG_USE_ESP)
+#include "esp_log.h"
+#define SYS_LOGI ESP_LOGI
+#define SYS_LOGW ESP_LOGW
+#define SYS_LOGE ESP_LOGE
+
+#elif defined(CONFIG_SYS_LOG_USE_PRINTF)
+#include "osal.h"
+#define SYS_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
+#define SYS_LOGW(tag, fmt, ...) osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__)
+#define SYS_LOGE(tag, fmt, ...) osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__)
+
+#else
+#error "SYS_LOG backend not configured — choose one in Kconfig"
+#endif
+
+/* ── 驱动日志宏 (DRV_LOG) ──
+ * 原位于 osal.h, 提升至 middleware 层以消除层级倒置.
+ * 依赖 production_log 的变体 (LOGE/LOGW) 推送至黑匣子环形缓冲区.
+ */
+#include "production_log.h" /* IWYU pragma: keep */
+
+#define DRV_LOGE(tag, fmt, ...)                                                                    \
+    do                                                                                             \
+    {                                                                                              \
+        osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__);                                         \
+        production_log_push_fmt(0, tag, fmt, ##__VA_ARGS__);                                       \
+    } while (0)
+#define DRV_LOGW(tag, fmt, ...)                                                                    \
+    do                                                                                             \
+    {                                                                                              \
+        osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__);                                          \
+        production_log_push_fmt(1, tag, fmt, ##__VA_ARGS__);                                       \
+    } while (0)
+#define DRV_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
+#define DRV_LOGD(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)
+#define DRV_LOGV(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)
+
+#endif /* SYSTEM_LOG_H */

@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * 通用 SoC / 外设片段示例（中间件占位）
+ *
+ * 模板目录结构 / Template layout:
+ *   board/dtsi/example-soc.dtsi   SoC 骨架: cpus / gpio / uart (本文件)
+ *   board/dtsi/vfs/*.dtsi         每个 VFS 模块一个节点模板 (vfs-i2c / vfs-spi / ...)
+ *   board/dtsi/drivers/*.dtsi     每个产品驱动一个节点模板 (aht20 / w25qxx / ...)
+ *
+ * 平台工程请复制需要的模板到自己的 board/dtsi/，改名为 <soc>.dtsi，
+ * 并用 BOARD_DTSI_DIR / BOARD_DTS 指向真实板级树。
+ * 厂商宏通过 VENDOR_INC_DIRS 引入，勿把 SoC 专用 dtsi 冒充本仓默认。
+ */
+
+#include <dt-bindings/gpio/gpio-parameter.h>
+
+/ {
+	compatible = "example,generic-soc";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "example,cpu";
+			reg = <0>;
+			clock-frequency = <0>;
+			status = "disabled";
+		};
+	};
+
+	soc: soc {
+		compatible = "simple-bus";
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* GPIO 控制器 + 单脚模板；板级用 &gpios_pin { gpio-pin = <N>; status = "okay"; } */
+		gpio: gpio@0 {
+			compatible = "example,gpio";
+			reg = <0>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "disabled";
+		};
+
+		gpios_pin: gpios-pin@0 {
+			compatible = "heterogeneous,gpios";
+			reg = <0>;
+			gpio-port = <0>;
+			gpio-pin  = <0>;
+			gpio-clk  = <0>;
+			gpio-mode = <0>;
+			gpio-pull = <0>;
+			gpio-intr = <DTS_GPIO_DEFAULT_INTR>;
+			default-level = <DTS_GPIO_DEFAULT_LEVEL>;
+			status = "disabled";
+		};
+
+		/* UART host + client 模板；数值由平台 dtsi 换成厂商宏 */
+		uart_cap: uart-cap {
+			compatible = "uart-platform-cap";
+			mini-tree,platform;
+			host-max = <1>;
+			max-xfer = <512>;
+			timeout-ms = <10>;
+			event-queue = <8>;
+		};
+
+		uart0: uart@0 {
+			compatible = "uart";
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			uart-base  = <0>;
+			uart-clk   = <0>;
+			uart-baud  = <115200>;
+			data-width = <8>;
+			parity     = <0>;
+			stop-bits  = <1>;
+			tx-port = <0>;
+			tx-pin  = <0>;
+			tx-clk  = <0>;
+			tx-af   = <0>;
+			rx-port = <0>;
+			rx-pin  = <0>;
+			rx-clk  = <0>;
+			rx-af   = <0>;
+			status = "disabled";
+
+			uart0_client: uart-client@0 {
+				compatible = "uart-client";
+				reg = <0>;
+				status = "disabled";
+			};
+		};
+	};
+};

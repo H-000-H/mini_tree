@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * SHT30 温湿度传感器节点模板 (drivers/sht30) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x44/0x45);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_SENSIRION_SHT30 (节点数, 缺省 1)。
+ */
+&i2c0 {
+sht30: sht30@0 {
+	compatible = "sensirion,sht30";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x44/0x45 */
+	status = "disabled";
+};
+};

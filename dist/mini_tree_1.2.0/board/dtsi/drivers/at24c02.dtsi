@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * AT24C02 EEPROM 节点模板 (drivers/at24c02) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x50);
+ *       status 改 "okay"。
+ * 池大小自动 = DTC_GEN_COUNT_ATMEL_AT24C02 (节点数, 缺省 1)。
+ */
+&i2c0 {
+at24c02: at24c02@0 {
+	compatible = "atmel,at24c02";
+	reg = <0>; /* I2C 7bit 地址, 典型 0x50 (A0/A1/A2 可偏移) */
+	status = "disabled";
+};
+};

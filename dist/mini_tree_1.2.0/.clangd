@@ -1,0 +1,36 @@
+# mini_tree 中间件通用 clangd（Linux / Windows）
+# - include 路径放在根目录 compile_flags.txt（其目录 = 编译 cwd，相对 -I 才正确）
+# - 禁止在子目录再放 compile_flags.txt（会覆盖根配置，且相对路径常失效）
+# - 生成头用 ide/stubs；ETL 已 vendor 在 lib/etl（仅保留 include + cmake）
+# - 勿在本文件用相对 -I：fallback 的 cwd 是源文件所在目录，-Icore/include 会找错
+# - 有 compile_commands.json 时优先用之；本文件只做 Merge（Remove / 语言切换）
+# 用法：打开 mini_tree 根目录；改完后命令面板执行 Clangd: Restart language server
+# 子模块场景：父项目 compile_commands.json 会覆盖本库 compile_flags.txt，
+#   执行 python3 tools/gen_compile_db.py 在本库根生成 compile_commands.json 即可解决。
+
+# 屏蔽 OSAL 非当前后端 (FreeRTOS) 的源文件后台索引，避免同名符号干扰跳转。
+# PathMatch 是正则。若切换到 RT-Thread 等后端，请把 osal_freertos.c 加入排除、放开对应后端。
+If:
+  PathMatch: .*osal/src/osal_(null|rtthread|threadx|ucos_ii|ucos_iii)\.c
+Index:
+  Background: Skip
+
+CompileFlags:
+  Remove:
+    - --target=*
+    - -mcpu=*
+    - -mfpu=*
+    - -mfloat-abi=*
+    - -fdata-sections
+    - -ffunction-sections
+
+Diagnostics:
+  UnusedIncludes: None
+  Suppress:
+    - drive_mode_mismatch
+
+# 说明：不再强制 .h 当 C / .cpp 强制 -std 的语言规则。
+# 在父工程(嵌套子模块)场景下，这些全局规则会把 ETL 的 C++ 模板头
+# (etl/optional.h 等)误当 C 解析，导致 clangd 报 etl::optional/FreeRTOS.h
+# 大量误报。父工程 compile_commands.json 已为每个 TU 提供正确的 -std 与语言模式，
+# 此处应依赖编译数据库，而非在 .clangd 里强改语言。

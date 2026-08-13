@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * MAX98357A I2S DAC 节点模板 (drivers/max98357a) — 中间件占位示例
+ *
+ * 用法: 复制到板级 dts 的 &i2s0_client 同级或 &i2s0 { } 内;
+ *       status 改 "okay"。属性 active-level 为 SD_MODE 脚使能电平 (1=高有效)。
+ * 池大小自动 = DTC_GEN_COUNT_MAXIM_MAX98357A (节点数, 缺省 1)。
+ */
+&i2s0 {
+max98357a: max98357a@0 {
+	compatible = "maxim,max98357a";
+	reg = <0>;
+	active-level = <0>; /* 功放使能电平: 1 = 高有效 */
+	status = "disabled";
+};
+};
