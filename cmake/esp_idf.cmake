@@ -243,6 +243,20 @@ if(MINI_TREE_USB)
 endif()
 list(REMOVE_DUPLICATES _DTC_SCAN_DIRS)
 
+# 压缩命令行长度（Windows CreateProcess 上限 8191 字符）：
+# 把落在 MINI_TREE_DIR 下的扫描目录相对化，并在 add_custom_command 里设
+# WORKING_DIRECTORY=${MINI_TREE_DIR}。板级/树外目录（如 EXTRA_SCAN_DIRS）保持绝对，
+# 否则相对解析会指向 MINI_TREE_DIR 下不存在的路径。
+set(_DTC_SCAN_DIRS_REL "")
+foreach(_d IN LISTS _DTC_SCAN_DIRS)
+    if(IS_ABSOLUTE "${_d}" AND "${_d}" MATCHES "^${MINI_TREE_DIR}/")
+        file(RELATIVE_PATH _rel "${MINI_TREE_DIR}" "${_d}")
+        list(APPEND _DTC_SCAN_DIRS_REL "${_rel}")
+    else()
+        list(APPEND _DTC_SCAN_DIRS_REL "${_d}")
+    endif()
+endforeach()
+
 # dtc-lite DEPENDS：BOARD_DTS + 板级 dtsi（若设 BOARD_DTSI_DIR）+ 可选 SoC 片段
 set(_DTC_DEPENDS
     "${DTC_LITE}"
@@ -358,10 +372,11 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT  ${GEN_SRCS} ${GEN_HDRS}
+    WORKING_DIRECTORY "${MINI_TREE_DIR}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${GENERATED_BOARD_DIR}"
     COMMAND "${Python3_EXECUTABLE}" "${DTC_LITE}" "${BOARD_DTS}" "${GENERATED_BOARD_DIR}"
+            ${_DTC_SCAN_DIRS_REL}
             ${DTC_LITE_ARGS}
-            ${_DTC_SCAN_DIRS}
     DEPENDS ${_DTC_DEPENDS}
     COMMENT "Running dtc-lite on board.dts"
     VERBATIM
