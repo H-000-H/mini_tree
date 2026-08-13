@@ -89,7 +89,7 @@
 | :--- | :--- |
 | 上手 | [getting_started](getting_started.md) · [faq](faq.md) · [keil_integration](keil_integration.md) |
 | 生态 | [ecosystem](ecosystem.md)（积木 / Fetch） · [architecture](architecture.md) |
-| 移植 | [device_tree_porting](device_tree_porting.md) · [esp_idf_cmake](esp_idf_cmake.md) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
+| 移植 | [device_tree_porting](device_tree_porting.md) · [esp_idf_cmake](esp_idf_cmake.md)（ESP：**在 `esp` 分支**）· [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
 | 编码 | [service_spec](service_spec.md) · [peripherals](peripherals.md) · [runtime_services](runtime_services.md) · [can_hook](can_hook.md) · [fast_path](fast_path.md) · [api_compatibility](api_compatibility.md) |
 | 诊断 | [debug_monitor](debug_monitor.md) · [problem_summary](problem_summary.md) |
 | 选型 | [design_decisions](design_decisions.md) · [references](references.md) |

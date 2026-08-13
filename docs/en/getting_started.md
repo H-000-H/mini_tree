@@ -143,8 +143,10 @@ Language-backend comparison: [runtime_services.md](runtime_services.md#3-system_
 
 ### 4.2 What about ESP-IDF?
 
+**ESP support has been split out of `main`** — it lives on the **`esp` branch** (`espidf-branch`) or in the Espressif Component Registry.
+
 **Do not** `add_subdirectory` this repository's root directly into IDF.
-ESP uses `EXTRA_COMPONENT_DIRS` + `idf_component_register` (the component path is triggered by `ESP_PLATFORM`); see **[esp_idf_cmake.md](esp_idf_cmake.md)** (against the `platform/Espressif/esp32s3` platform repo).
+ESP uses the IDF component path (`EXTRA_COMPONENT_DIRS` + `idf_component_register`, triggered by `ESP_PLATFORM`). See the full guide on the `esp` branch: [docs/en/esp_idf_cmake.md](https://github.com/H-000-H/mini_tree/blob/espidf-branch/docs/en/esp_idf_cmake.md) (this repo's `docs/en/esp_idf_cmake.md` only keeps a pointer).
 
 ---
 

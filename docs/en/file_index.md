@@ -23,7 +23,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | entry, changelog, contributing (kept at root per OSS convention) |
 | `docs/` | all topical docs (see README.md) |
 
-> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`; an ESP-IDF component path (`cmake/esp_idf.cmake`) is also provided.
+> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`. The ESP-IDF component path (`cmake/esp_idf.cmake`) has been **moved to the `esp` branch**.
 
 ---
 

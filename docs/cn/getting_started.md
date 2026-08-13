@@ -143,8 +143,10 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 
 ### 4.2 ESP-IDF？
 
+**ESP 支持已从 `main` 剥离**，位于 **`esp` 分支**（`espidf-branch`）或乐鑫组件注册表。
+
 **不要**对本仓根目录直接 `add_subdirectory` 进 IDF。
-ESP 使用 `EXTRA_COMPONENT_DIRS` + `idf_component_register`（组件路径由 `ESP_PLATFORM` 触发），见 **[esp_idf_cmake.md](esp_idf_cmake.md)**（对照平台仓 `platform/Espressif/esp32s3`）。
+ESP 使用 IDF 组件路径（`EXTRA_COMPONENT_DIRS` + `idf_component_register`，由 `ESP_PLATFORM` 触发）。完整指南见 `esp` 分支：[docs/cn/esp_idf_cmake.md](https://github.com/H-000-H/mini_tree/blob/espidf-branch/docs/cn/esp_idf_cmake.md)（本仓 `docs/cn/esp_idf_cmake.md` 仅保留指引）。
 
 ---
 

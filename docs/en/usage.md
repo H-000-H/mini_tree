@@ -89,7 +89,7 @@ Condensed map below; full TOC in [docs/README.md](README.md).
 | :--- | :--- |
 | Onboarding | [getting_started](getting_started.md) · [faq](faq.md) · [keil_integration](keil_integration.md) |
 | Ecosystem | [ecosystem](ecosystem.md) (bricks / Fetch) · [architecture](architecture.md) |
-| Porting | [device_tree_porting](device_tree_porting.md) · [esp_idf_cmake](esp_idf_cmake.md) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
+| Porting | [device_tree_porting](device_tree_porting.md) · [esp_idf_cmake](esp_idf_cmake.md) (ESP: **on `esp` branch**) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
 | Coding | [service_spec](service_spec.md) · [peripherals](peripherals.md) · [runtime_services](runtime_services.md) · [can_hook](can_hook.md) · [fast_path](fast_path.md) · [api_compatibility](api_compatibility.md) |
 | Diagnostics | [debug_monitor](debug_monitor.md) · [problem_summary](problem_summary.md) |
 | Selection | [design_decisions](design_decisions.md) · [references](references.md) |

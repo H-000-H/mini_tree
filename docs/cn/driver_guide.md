@@ -59,7 +59,7 @@ dtsi/<soc>-product-drivers.dtsi
 
 CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `VENDOR_DEFINES`。
 
-产品驱动与 ESP 接线见 [esp_idf_cmake.md](esp_idf_cmake.md)。
+产品驱动与 ESP 接线见 [esp_idf_cmake.md](esp_idf_cmake.md)（在 **`esp` 分支**上）。
 
 ---
 
@@ -138,7 +138,7 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 
 **ioctl / 读写语义汇总**见 [peripherals.md](peripherals.md)。
 
-ESP 接线细节见 [esp_idf_cmake.md](esp_idf_cmake.md)。
+ESP 接线细节见 [esp_idf_cmake.md](esp_idf_cmake.md)（在 **`esp` 分支**上）。
 
 ---
 

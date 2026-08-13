@@ -23,7 +23,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | 入口、变更、贡献（开源惯例留根目录） |
 | `docs/` | 全部专题文档（见 [README.md](README.md)） |
 
-> 构建为通用 CMake：HAL 提供 weak 空实现，板级经 `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR` 注入；另提供 ESP-IDF 组件路径（`cmake/esp_idf.cmake`）。
+> 构建为通用 CMake：HAL 提供 weak 空实现，板级经 `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR` 注入。ESP-IDF 组件路径（`cmake/esp_idf.cmake`）已**迁移到 `esp` 分支**。
 
 ---
 

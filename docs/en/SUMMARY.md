@@ -35,13 +35,13 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | Document | English Title / Key Points | Priority | Links |
 | :--- | :--- | :---: | :--- |
 | `device_tree_porting.md` | **Device-tree porting guide (consolidated, full examples)**: dtc-lite pipeline, node templates, board DTS, generated-artifacts, driver wiring, CMake injection (`BOARD_DTS`/`BOARD_DTSI_DIR`/`MINI_TREE_BOARD_PORT`), verification, troubleshooting. In practice porting usually needs only DTS + HAL changes | **P0** | [en](device_tree_porting.md) |
-| `esp_idf_cmake.md` | ESP-IDF component CMake (against esp32s3), Kconfig dual-track, acceptance checklist | **P0** (ESP path) | [en](esp_idf_cmake.md) |
+| `esp_idf_cmake.md` | ESP-IDF component CMake — **moved to the `esp` branch** (full guide: `docs/en/esp_idf_cmake.md` there) | **P0** (ESP path, on `esp` branch) | [en](esp_idf_cmake.md) |
 | `driver_guide.md` | DTS layout, `dtc-lite` pipeline, `DRIVER_REGISTER`, compatible props, `board_*` runtime API, remove lifecycle | **P0** | [en](driver_guide.md) |
 | `peripherals.md` | Peripheral compatible / ioctl overview | P1 | [en](peripherals.md) |
 | `usb_tusb_port.md` | TinyUSB board-level contract (`usb_tusb_port`) | P1 (USB) | [en](usb_tusb_port.md) |
 | `amp.md` | Dual-core heterogeneous AMP | P2 | [en](amp.md) |
 | `osal_switching.md` | OSAL backend switching (NULL/FREERTOS/RTTHREAD; priority semantics vary by backend) | P1 | [en](osal_switching.md) |
-| `esp_idf_notes.md` | ESP fixes log + ESP specifics + dependency strategy | P1 (ESP) | [en](esp_idf_notes.md) |
+| `esp_idf_notes.md` | ESP fixes log + specifics + dependency strategy — **moved to the `esp` branch** | P1 (ESP, on `esp` branch) | [en](esp_idf_notes.md) |
 
 ### 1.3 Application & Coding
 
@@ -80,7 +80,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 
 ## 2. Quick Index by Priority
 
-- **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `esp_idf_cmake.md` (ESP) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
+- **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `esp_idf_cmake.md` (ESP, **on `esp` branch**) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
 - **P1 (As-needed)**: `patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md`
 - **P2 (Deep-dive)**: `usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `keil_integration.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
 

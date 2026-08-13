@@ -70,7 +70,7 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task sched
 
 ## Build & Toolchain
 
-- **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` on-demand linking; generic chip-agnostic path + ESP-IDF component path.
+- **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` on-demand linking; generic chip-agnostic path.
 - **Kconfig** — `.config` → `genconfig.py` → `config.h`; interactive configuration via `menuconfig.py`. Official kconfiglib (by Ulf Magnusson, ISC license) is vendored under `tools/_vendor/` — no `pip install` needed; prepended to `sys.path` by `tools/_vendor_loader.py`. The three `.py` files stay in sync with upstream, unmodified.
 - **dtc-lite** — Lightweight DTS compiler (`pip install lark`), auto-generating probe tables & board headers.
 - **Coding style** — `.clang-format` (Allman, no braces for single statements, one-line short functions, 4-space, 100 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
@@ -110,6 +110,27 @@ target_link_libraries(your_firmware PUBLIC mini_tree)
 Also required at board level: board DTS, strong-symbol `hal_*`, and per-brick port headers (e.g. `lwipopts.h`, `lv_conf.h`).
 
 Step-by-step: [docs/en/getting_started.md](docs/en/getting_started.md)
+
+---
+
+## ESP-IDF (ESP32)
+
+> **ESP 支持已从 `main` 分支剥离**。`main` 只保留平台无关的通用中间件；所有 ESP-IDF 相关代码（`components/mini_tree`、`board_port.cmake`、`hal_<soc>`、`esp_idf.cmake`）已迁至 **`esp` 分支**。
+
+获取 ESP 版本二选一：
+
+- **`esp` 分支**（完整移植工程 + 全部板级代码）：
+  ```bash
+  git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
+  ```
+- **乐鑫组件注册表（ESP-IDF Component Registry）直接下拉**：在 `idf_component.yml` 中声明
+  ```yaml
+  dependencies:
+    h-000-h/mini_tree: ">=1.2.0"
+  ```
+  或在工程目录执行 `idf.py add-dependency "h-000-h/mini_tree"`，由 `idf-component-manager` 自动拉取。
+
+ESP 移植步骤见 **`esp` 分支**上的 [docs/en/esp_idf_cmake.md](https://github.com/H-000-H/mini_tree/blob/espidf-branch/docs/en/esp_idf_cmake.md)（中文版 `docs/cn/esp_idf_cmake.md`）；本仓 `main` 分支不再维护 ESP 移植细节。
 
 ---
 

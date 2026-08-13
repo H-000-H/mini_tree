@@ -59,7 +59,7 @@ dtsi/<soc>-product-drivers.dtsi
 
 CMake: `BOARD_DTS`, `BOARD_DTSI_DIR`; vendor header search: `VENDOR_INC_DIRS` / `VENDOR_DEFINES`.
 
-Product drivers and ESP wiring: see [esp_idf_cmake.md](esp_idf_cmake.md).
+Product drivers and ESP wiring: see [esp_idf_cmake.md](esp_idf_cmake.md) (on the **`esp` branch**).
 
 ---
 
@@ -138,7 +138,7 @@ The `DRIVER_REGISTER` entries in the source are authoritative; re-run dtc-lite a
 
 The **ioctl / read-write semantics summary** lives in [peripherals.md](peripherals.md).
 
-ESP wiring details: see [esp_idf_cmake.md](esp_idf_cmake.md).
+ESP wiring details: see [esp_idf_cmake.md](esp_idf_cmake.md) (on the **`esp` branch**).
 
 ---
 
