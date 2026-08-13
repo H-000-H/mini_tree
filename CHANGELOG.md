@@ -5,7 +5,12 @@
 
 ---
 
-## [Unreleased] / 未发布
+## [1.3.2] / 未发布
+
+### 工具链 / Toolchain
+
+- **修复 ESP-IDF 在 Windows 深路径工程下的 dtc-lite 命令行超长**：把落在 `MINI_TREE_DIR` 下的驱动扫描目录改为相对路径并在 `add_custom_command` 设 `WORKING_DIRECTORY=${MINI_TREE_DIR}`，避开 Windows CreateProcess 8191 字符上限；同时把 `driver_dirs` 调整到 `-I/-D` 之前，修复 argparse 对 `nargs='*'` 位置参数后置可选参数的解析失败（`unrecognized arguments`）。
+  **Fix dtc-lite CLI overflow on Windows deep-path projects**: driver scan dirs under `MINI_TREE_DIR` are now relative with `WORKING_DIRECTORY=${MINI_TREE_DIR}` to stay under Windows' 8191-char command-line cap; `driver_dirs` moved before `-I/-D` to fix argparse failing to parse `nargs='*'` positional args after optional flags (`unrecognized arguments`).
 
 ### 配置系统 / Configuration
 
