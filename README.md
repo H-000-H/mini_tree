@@ -1,14 +1,14 @@
-# mini_tree
+# mini_tree (ESP-IDF 专用分支)
 
-> Platform-agnostic embedded middleware
+> ESP-IDF component build of mini_tree — the platform-agnostic middleware core.
 >
-> Using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, FreeRTOS, and RT-Thread; zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
+> Using a Linux-style Device Tree & Driver Model to unify peripheral access; **this branch is a pure ESP-IDF component** — configuration, build and dependencies all go through the ESP-IDF (Kconfig / Component Manager) system. Bare-metal / other-RTOS support lives in the main mini_tree repo.
 
 ---
 
 ## Overview
 
-Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, FreeRTOS, and RT-Thread. Zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
+mini_tree is a Linux-style Device Tree & Driver Model middleware. **This branch (`esp-mini-tree`) is the pure ESP-IDF component build**: it plugs into any ESP-IDF project as `components/mini_tree`, fully integrated with the IDF toolchain — `idf.py menuconfig` for Kconfig, `sdkconfig.h` for `CONFIG_*`, and the Component Manager / registry for third-party dependencies. Chip HAL, pinmux, and board DTS are supplied by your board project (`board_port.cmake` + `hal_<soc>`).
 
 ---
 
@@ -18,6 +18,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 - **Hardware Direct-Inject**: Vendor macros expand directly into config structs; no intermediate enum mapping.
 - **Layer Isolation**: `app → board → vfs → bus → hal(weak) → vendor SDK`; strict layering with poison guard on `hal_*` in all public headers.
 - **Two-Phase Boot**: Standardized boot pipeline `pre_os_init` → `start_tasks` → `system_init_complete` → scheduler or cooperative main loop.
+- **ESP Integration**: `if(ESP_PLATFORM)` routes to `cmake/esp_idf.cmake` (`idf_component_register`); Kconfig injected via `Kconfig.projbuild`; HAL stubs compiled empty on ESP, strong `hal_*` supplied by the board component.
 
 ---
 
@@ -43,24 +44,20 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-## OSAL — One API, Three Backends
+## OSAL
 
 | Backend | Model | Dependency |
 |:---|:---|:---|
-| `CONFIG_OSAL_NULL` | Cooperative Time-Slice | None |
-| `CONFIG_OSAL_FREERTOS` | Preemptive | FreeRTOS v11.3.0 |
-| `CONFIG_OSAL_RTTHREAD` | Preemptive | RT-Thread v5.3.0 |
+| `CONFIG_OSAL_FREERTOS` (default) | Preemptive | ESP-IDF built-in FreeRTOS |
+| `CONFIG_OSAL_NULL` | Cooperative Time-Slice | None (bare-metal fallback) |
 
-The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task schedulers under `time_slice/task/`, gated by `CONFIG_XTASK_PREEMPT` (mutual-exclusive at both CMake and `#ifdef` level, sharing the same `xtask.h` API surface — caller code unchanged):
-
-- `xtask_coop.c` (cooperative / round-robin, default) — `CONFIG_XTASK_PREEMPT=n`
-- `xtask_preempt.c` (preemptive, experimental) — `CONFIG_XTASK_PREEMPT=y`
+On the ESP path, the default is **FreeRTOS** (pairs with the IDF built-in kernel, forced by `cmake/esp_idf.cmake`); the bare-metal backend (`CONFIG_OSAL_NULL`) is kept as a no-RTOS fallback.
 
 ---
 
 ## Runtime Services
 
-- **EventBus** — Range subscription, ISR-safe post, seal-after-boot.
+- **EventBus** — Range subscription, ISR-safe post, seal-after-boot (on by default).
 - **VIRQ** — Virtual IRQ blocks, top-half / bottom-half (SPSC deferred queue).
 - **BufferPool** — Pooled static allocator; ring FIFO & double buffer.
 - **Safe State** — Shutdown callbacks, watchdogs, flash scrubber (optional brick).
@@ -70,11 +67,11 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task sched
 
 ## Build & Toolchain
 
-- **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` on-demand linking; generic chip-agnostic path + ESP-IDF component path.
-- **Kconfig** — `.config` → `genconfig.py` → `config.h`; interactive configuration via `menuconfig.py`. Official kconfiglib (by Ulf Magnusson, ISC license) is vendored under `tools/_vendor/` — no `pip install` needed; prepended to `sys.path` by `tools/_vendor_loader.py`. The three `.py` files stay in sync with upstream, unmodified.
+- **ESP-IDF** — This branch is a pure ESP-IDF component. Add it under `components/mini_tree`; the IDF build auto-routes to `cmake/esp_idf.cmake` on `ESP_PLATFORM`.
+- **Kconfig** — Configuration is fully managed by ESP-IDF: `Kconfig.projbuild` (`orsource Kconfig.mini_tree`) injects the mini_tree menu into `idf.py menuconfig`; all `CONFIG_*` are written into `sdkconfig.h`. No standalone kconfiglib / genconfig needed.
 - **dtc-lite** — Lightweight DTS compiler (`pip install lark`), auto-generating probe tables & board headers.
+- **Board injection** — `board_port.cmake` supplies `BOARD_DTS`, chip `-I/-D`, and extra driver scan dirs; `hal_<soc>` supplies strong HAL implementations (`WHOLE_ARCHIVE`).
 - **Coding style** — `.clang-format` (Allman, no braces for single statements, one-line short functions, 4-space, 100 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
-- **Targets** — ARM Cortex-M0 / M0+ / M3 / M4F / M7, RISC-V 32-bit; dual-core heterogeneous AMP supported — covered by all three OSAL backends (Bare-Metal / FreeRTOS / RT-Thread).
 
 ---
 
@@ -82,34 +79,28 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task sched
 
 Core stays lean; extend on demand:
 
-> **FetchContent (on demand):**
-> TinyUSB · lwIP · cJSON · LVGL · u8g2 · littlefs · FatFs · SFUD · Mbed TLS · coreMQTT · coreHTTP · nanopb · miniz · MCUBoot · FreeModbus · libmodbus · CMSIS-DSP · MultiButton · EasyFlash · EasyLogger · FlashDB
-
 > **Vendored in `lib/`:**
-> FreeRTOS · RT-Thread · **ETL** (heap-free C++ containers, always linked)
+> **ETL** (heap-free C++ containers, always linked)
+>
+> Third-party bricks (TinyUSB, cJSON, LVGL, etc.) are pulled through the **ESP-IDF Component Manager / registry** — not vendored or FetchContent-managed in this branch.
 
 ---
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/H-000-H/mini_tree.git
+# In your ESP-IDF project
+git clone https://github.com/H-000-H/mini_tree.git  # or add as a submodule / symlink under components/
+ln -s path/to/mini_tree components/mini_tree
+
+# Add the component dependency
+idf.py add-dependency "h-000-h/mini_tree"   # or list it in idf_component.yml
+idf.py build
 ```
 
-```cmake
-add_subdirectory(path/to/mini_tree)
+Also required at board level: `board_port.cmake` (board DTS, chip `-I/-D`), strong-symbol `hal_*` (`hal_<soc>` component), and per-brick port headers where needed.
 
-# Link the middleware core
-target_link_libraries(your_firmware PUBLIC mini_tree)
-
-# Opt-in bricks (examples)
-# mini_tree_link_cjson(your_firmware)
-# mini_tree_link_lwip(your_firmware "${CMAKE_CURRENT_SOURCE_DIR}/port")
-```
-
-Also required at board level: board DTS, strong-symbol `hal_*`, and per-brick port headers (e.g. `lwipopts.h`, `lv_conf.h`).
-
-Step-by-step: [docs/en/getting_started.md](docs/en/getting_started.md)
+Step-by-step: [docs/en/getting_started.md](docs/en/getting_started.md) · ESP-IDF specifics: [docs/en/esp_idf_cmake.md](docs/en/esp_idf_cmake.md)
 
 ---
 
@@ -121,6 +112,7 @@ Root keeps only entry & legal files; all topics live in [`docs/`](docs/en/README
 | :--- | :--- |
 | Get an overview | [docs/en/usage.md](docs/en/usage.md) |
 | Integrate | [docs/en/getting_started.md](docs/en/getting_started.md) |
+| ESP-IDF specifics | [docs/en/esp_idf_cmake.md](docs/en/esp_idf_cmake.md) |
 | Coding style | [docs/en/coding_style.md](docs/en/coding_style.md) |
 | Architecture | [docs/en/architecture.md](docs/en/architecture.md) |
 | Ecosystem | [docs/en/ecosystem.md](docs/en/ecosystem.md) |
@@ -149,12 +141,12 @@ Issues & PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Licensed under **Apache-2.0** (see [LICENSE](LICENSE)); every source file carries the `SPDX-License-Identifier: Apache-2.0` header.
 
-`lib/` and fetched bricks keep their own licenses (see [NOTICE](NOTICE)). Review before commercial use: libmodbus (LGPL), Mbed TLS (Apache-2.0 OR GPL-2.0), FatFs (ChaN's license).
+`lib/` keeps its own licenses (see [NOTICE](NOTICE)).
 
 ---
 
 ## Acknowledgements
 
-mini_tree's brick ecosystem builds on the open-source community (FreeRTOS, lwIP, LVGL, cJSON, littlefs, armink toolchain, MCUBoot, Mbed TLS, …).
+mini_tree's ecosystem builds on the open-source community (ETL, ESP-IDF, lwIP, LVGL, cJSON, littlefs, …).
 
 Full credits: [docs/en/ecosystem.md](docs/en/ecosystem.md) §6. Corrections to credits or licenses welcome via Issue / PR.

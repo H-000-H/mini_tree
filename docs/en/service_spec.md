@@ -40,7 +40,7 @@
 | Forbidden | Why |
 | :--- | :--- |
 | `hal_*.h` (in business code) | breaks layering; go through device/vfs |
-| `FreeRTOS.h` / `rtthread.h` (in business code) | use OSAL for backend portability |
+| `FreeRTOS.h` (in business code) | use OSAL for backend portability |
 | Vendor register headers | not portable |
 | ad-hoc `malloc` / `printf` / `memset` | may be poisoned; use `COMPAT_MEM_*` / pools |
 

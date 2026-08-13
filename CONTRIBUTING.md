@@ -35,7 +35,7 @@
 | :--- | :--- |
 | CMake + Ninja/Make | 构建 / Build |
 | Python3 + `lark` | dtc-lite |
-| 内置 kconfiglib（`tools/_vendor/`） | menuconfig / guiconfig，**无需安装** |
+| ESP-IDF（自带 kconfiglib） | `idf.py menuconfig` / `sdkconfig.h` |
 | clangd | 打开仓库根；用根 `compile_flags.txt` / Open the repo root; use the root `compile_flags.txt` |
 
 ```bash
@@ -53,7 +53,7 @@ pip install lark
 | DTS 契约变更 / DTS contract changes | 同步 `docs/cn/driver_guide.md` / Update `docs/cn/driver_guide.md` |
 | 文档位置 / Doc placement | 新专题进 `docs/`；勿在根目录再堆手册 / New topics go to `docs/`; do not pile more manuals in the root |
 | 不提交 / Do not commit | 密钥、本机绝对路径、子目录 `compile_flags.txt`、SoC 专用 dtsi 冒充默认板 / Secrets, machine-local absolute paths, per-directory `compile_flags.txt`, SoC-specific dtsi masquerading as the default board |
-| Keil 5 工程 / Keil 5 projects | **不接受**传统 Keil 5（经典 µVision / MDK）工程相关的 PR、issue、分支；兼容工具请走独立仓或 `tools/` 子模块，可收录进 [docs/ecosystem.md](docs/cn/ecosystem.md)。详见 [docs/keil_integration.md](docs/cn/keil_integration.md) §4 / **No** traditional Keil 5 (classic µVision / MDK) project PRs, issues, or branches; compatibility tools belong in a separate repo or `tools/` submodule and may be listed in [docs/ecosystem.md](docs/cn/ecosystem.md). See [docs/keil_integration.md](docs/cn/keil_integration.md) §4 |
+| 平台 / Platform | 本分支为纯 **ESP-IDF** 组件，主 IDE 为 VSCode 系（VS Code / Cursor / Qoder）；不接受传统 Keil 5（经典 µVision / MDK）工程相关的 PR、issue、分支 / This branch is a pure **ESP-IDF** component; the main IDEs are VSCode-based (VS Code / Cursor / Qoder). No traditional Keil 5 (classic µVision / MDK) project PRs, issues, or branches |
 | 测试说明 / Testing notes | 至少：生成物是否更新、相关外设是否编过 / At minimum: whether generated artifacts were updated and whether the affected peripherals compile |
 
 ---

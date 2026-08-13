@@ -48,7 +48,7 @@
 ## Versioning
 
 - Pin via Git commits, tags, or platform submodule pointers.
-- On upgrade: re-run genconfig + dtc-lite, full rebuild, and probe + key-peripheral smoke tests.
+- On upgrade: re-run `idf.py build` (dtc-lite re-runs automatically), full rebuild, and probe + key-peripheral smoke tests.
 
 ---
 

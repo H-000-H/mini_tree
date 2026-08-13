@@ -1,5 +1,5 @@
 """设备树平台节点判定 — 无需在 compiler 中手工维护 compatible 白名单."""
-    
+
 from __future__ import annotations
 
 from .dts_ast import DtsNode

@@ -40,7 +40,7 @@
 | 禁止 | 原因 |
 | :--- | :--- |
 | `hal_*.h`（业务里） | 破坏分层；应走 device/vfs |
-| `FreeRTOS.h` / `rtthread.h`（业务里） | 应走 OSAL，便于切后端 |
+| `FreeRTOS.h`（业务里） | 应走 OSAL，便于切后端 |
 | 厂商寄存器头 | 不可移植 |
 | 随意 `malloc` / `printf` / `memset` | 可能被 `compiler_compat_poison` 毒杀；用 `COMPAT_MEM_*` / 池 |
 

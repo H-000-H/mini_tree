@@ -31,9 +31,9 @@ ETL is the **upper-layer C++ base library**, vendored under `lib/etl` (include +
 
 If the IDE still reports `etl/string.h` not found: confirm `lib/etl/include` exists, or refresh `compile_commands.json` / the root `compile_flags.txt` (which already contains `-Ilib/etl/include`). See [ecosystem.md](ecosystem.md).
 
-### Can Keil be the main IDE?
+### What IDE should I use?
 
-**This repo does not provide or follow up on traditional Keil 5 as a main IDE.** If a customer forces a project file, the fallback path is: after CMake generates the headers, use **Python to auto-generate the `.uvprojx`** (a similar approach existed long ago and is no longer maintained). For daily work, Cursor / VS Code / CLion / Qoder are just nicer; if you want Keil, go straight to Keil Studio (I've tried it and it works, see [keil_integration.md](keil_integration.md)).
+For daily work use **VSCode-based** editors/IDEs (**VS Code / Cursor / Qoder**), with clangd (see [getting_started.md §7](getting_started.md) and [debug_monitor.md](debug_monitor.md)). This branch does not follow up on traditional Keil or other non-VSCode platforms.
 
 ---
 

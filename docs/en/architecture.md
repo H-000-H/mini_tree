@@ -87,7 +87,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `time_slice/` | bare-metal scheduling — cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, experimental) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
 | `drivers/<chip>/` | product drivers (37, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
 | `can_hook/` | CAN hook extensions | — |
-| `lib/` + `cmake/*.cmake` | vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP / cJSON are config-time FetchContent, the rest link-time | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |
+| `lib/` | vendored **ETL** (only) | C++ foundation for upper layers; FreeRTOS via IDF built-in, other third-party via IDF components (see [ecosystem.md](ecosystem.md)) |
 
 ### 2.1 Peripheral Coverage (Current)
 
@@ -112,7 +112,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | — | (optional) business/platform prep | static config, extra registrations |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`, TWDT, Flash Scrubber |
 | 3 | `system_init_complete()` | re-enable global interrupts |
-| 4 | scheduler or bare-metal loop | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_tree_system_loop` |
+| 4 | scheduler or bare-metal loop | FreeRTOS: ESP-IDF already starts the scheduler; bare-metal (`OSAL_NULL`): `mini_tree_system_loop` |
 
 ### 3.2 C++ API (`system_cpp`)
 
@@ -163,10 +163,10 @@ Publish/subscribe in `core`; module switch `CONFIG_EVENT_BUS` (off by default, d
 
 | Input | Tool | Output Directory (Typical) |
 | :--- | :--- | :--- |
-| `Kconfig` + `.config` | `tools/genconfig.py` | `generated/kconfig/mini_tree/config.h` |
+| `Kconfig.projbuild` + `Kconfig.mini_tree` | ESP-IDF confgen (`idf.py menuconfig` → `sdkconfig.h`) | `config.h` (forwarder) |
 | `BOARD_DTS` + dtsi + `VENDOR_INC_*` | `tools/dtc-lite.py` | `generated/board/mini_tree/*` |
 | scrubber stub | CMake copy | `generated/scrubber/.../system_scrubber_crc_gen.h` |
-| root `compile_flags.txt` | `tools/gen_compile_db.py` | `compile_commands.json` (including header entries) |
+| root `compile_flags.txt` | ESP-IDF (`idf.py build`) | `build/compile_commands.json` |
 
 Kconfig menus: Platform, Multi-core/AMP, OSAL, Spinlock, System Log, System Runtime (`SYSTEM` master switch + C/CPP backend), Components (USB), Board Features (WDT/Scrubber/…), Runtime Capacity (`EVENT_BUS` master switch + capacity), Compiler, Build.
 
@@ -204,7 +204,7 @@ Key CMake cache variables: `BOARD_DTS`, `BOARD_DTSI_DIR`, `VENDOR_INC_DIRS`, `VE
 | middleware source, weak HAL, placeholder DTS, docs, IDE stubs | `hal_*_<soc>.c`, full dts/dtsi, vendor `-I`, board linker scripts and startup files |
 | three OSAL backend skeletons | clocks, heap, SysTick/RTOS ports (if needed) |
 
-On the generic CMake path, the platform injects its board via `BOARD_DTS` / `BOARD_DTSI_DIR` CACHE variables; the ESP-IDF path is triggered by `ESP_PLATFORM` and uses the component mode, with the board auto-discovered via the `components/board_${IDF_TARGET}` convention (see [esp_idf_cmake.md](esp_idf_cmake.md) §3). The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
+On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_PORT` (absolute path) or a sibling `board_port.cmake`; the ESP-IDF path is triggered by `ESP_PLATFORM` and uses the component mode. The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
 
 ---
 

@@ -24,8 +24,7 @@
 | Resource | Description |
 | :--- | :--- |
 | FreeRTOS official docs | reference for `CONFIG_OSAL_FREERTOS` backend |
-| RT-Thread official docs | reference for `CONFIG_OSAL_RTTHREAD` backend |
-| OSAL three-backend design | `osal/src/osal_{null,freertos,rtthread}.c` |
+| OSAL two-backend design | `osal/src/osal_{null,freertos}.c` |
 
 ---
 
@@ -47,8 +46,8 @@
 | :--- | :--- |
 | ARMCLANG (AC6) | recommended compiler (ARMCC v5 unsupported) |
 | clangd | editing / indexing (see [getting_started.md](getting_started.md) §7) |
-| CMake | build system |
-| Keil Studio | works (I've tried it, see [keil_integration.md](keil_integration.md)) |
+| CMake / ESP-IDF | build system |
+| VSCode family (VS Code / Cursor / Qoder) | main IDE, with clangd |
 
 ---
 

@@ -34,7 +34,7 @@ AMP is an **optional brick** (same family as the safety modules, see [runtime_se
 | Default | single-core (`CONFIG_CPU_CORES=1`); device model / VFS / OSAL / EventBus all work as usual |
 | Enable | set `CONFIG_CPU_CORES=2` (+ `CONFIG_AMP_MODE`) when you actually need it |
 | Prerequisites | platform supplies: secondary-core image, shared-memory layout, inter-core IPC; this repo only defines the HAL contract & OSAL behavior |
-| Reference | [device-platform](https://github.com/H-000-H/device-platform) (mini_tree's companion platform example) |
+| Reference | [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) (mini_tree's companion platform example) |
 | Impact of not enabling | **none** — single-core is a complete, usable baseline |
 
 > **AMP is part of the brick family — use it on demand**: skip it and mini_tree stays complete; adopt it and the secondary core & shared memory are yours to assemble.
@@ -113,7 +113,7 @@ On dual-core, implement "suspend the peer" or an equivalent silent state — not
 - [ ] both cores reach a safe output state on injected faults
 - [ ] single-core fallback: boots fine without the secondary core
 
-Platform sample projects (link scripts, secondary images) live outside this shelf; see [device-platform](https://github.com/H-000-H/device-platform) (mini_tree's companion platform example).
+Platform sample projects (link scripts, secondary images) live outside this shelf; see [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) (mini_tree's companion platform example).
 
 ---
 

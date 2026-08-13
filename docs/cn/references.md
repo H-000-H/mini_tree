@@ -24,8 +24,7 @@
 | 资源 | 说明 |
 | :--- | :--- |
 | FreeRTOS 官方文档 | `CONFIG_OSAL_FREERTOS` 后端参考 |
-| RT-Thread 官方文档 | `CONFIG_OSAL_RTTHREAD` 后端参考 |
-| OSAL 三后端设计 | `osal/src/osal_{null,freertos,rtthread}.c` |
+| OSAL 两后端设计 | `osal/src/osal_{null,freertos}.c` |
 
 ---
 
@@ -47,8 +46,8 @@
 | :--- | :--- |
 | ARMCLANG (AC6) | 推荐编译器（不支持 ARMCC v5） |
 | clangd | 编辑 / 索引（见 [getting_started.md](getting_started.md) §7） |
-| CMake | 构建系统 |
-| Keil Studio | 可以（我试过能用，见 [keil_integration.md](keil_integration.md)） |
+| CMake / ESP-IDF | 构建系统 |
+| VSCode 系（VS Code / Cursor / Qoder） | 主 IDE，配 clangd |
 
 ---
 

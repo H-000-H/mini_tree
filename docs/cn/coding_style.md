@@ -27,7 +27,7 @@
 先从根 `compile_flags.txt` 找 clangd（否则 IDE 只有残缺索引）：
 
 - `Clangd: Restart language server`
-- 改了宏 / 配置 → 重跑 genconfig（见 [getting_started.md](getting_started.md)）
+- 改了宏 / 配置 → 重跑 `idf.py build`（ESP 路径见 [getting_started.md](getting_started.md)）
 
 格式与命名：**交给工具**，不要手改。
 

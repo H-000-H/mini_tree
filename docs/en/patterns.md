@@ -65,7 +65,7 @@ Boot proceeds in four stages (C API in `system_c/include/system_init.h`):
 | — | (optional) business/platform prep | static config, extra registration |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`, TWDT, Flash Scrubber |
 | 3 | `system_init_complete()` | Re-enable global interrupts |
-| 4 | scheduler or bare-metal loop | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_tree_system_loop` |
+| 4 | scheduler or bare-metal loop | FreeRTOS: ESP-IDF already starts the scheduler; bare-metal (`OSAL_NULL`): `mini_tree_system_loop` |
 
 The C++ side (`mini_tree::system_pre_os_init()` / `system_start_tasks()`) mirrors stages 1/2 and finally calls `system_init_complete()` too.
 
@@ -414,7 +414,7 @@ Key points:
 
 ### Difference on RTOS Backends
 
-After switching to `CONFIG_OSAL_FREERTOS` / `RTTHREAD`, `osal_delay_ms` is **real sleep** (task suspended, CPU released) and blocking is fine; the same state-machine code runs on both bare metal and RTOS - a portable lowest-common-denominator style.
+After switching to `CONFIG_OSAL_FREERTOS`, `osal_delay_ms` is **real sleep** (task suspended, CPU released) and blocking is fine; the same state-machine code runs on both bare metal and RTOS - a portable lowest-common-denominator style.
 
 ### Common Pitfalls
 

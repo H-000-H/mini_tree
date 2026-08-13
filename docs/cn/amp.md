@@ -34,7 +34,7 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 | 默认状态 | 单核（`CONFIG_CPU_CORES=1`）；设备模型 / VFS / OSAL / EventBus 等核心功能照常工作 |
 | 启用方式 | 需要双核/异构时改 `CONFIG_CPU_CORES=2`（+ `CONFIG_AMP_MODE`） |
 | 使用前提 | 平台侧自行提供：从核镜像、共享内存布局、核间通信（IPC）；本仓只给 HAL 契约与 OSAL 行为差异 |
-| 参考实现 | [device-platform](https://github.com/H-000-H/device-platform)（mini_tree 配套平台示例） |
+| 参考实现 | [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)（mini_tree 配套平台示例） |
 | 不启用的影响 | **无**——单核配置是完整可用的基线 |
 
 > 一句话：**AMP 是积木的一部分，按需自行使用**——不用它，mini_tree 依然完整；用它，从核与共享内存由你拼。
@@ -75,7 +75,7 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 
 | 核 | 角色 |
 | :--- | :--- |
-| Core 0 | 跑 RTOS（FreeRTOS / RT-Thread）+ mini_tree 主栈（probe、VFS、业务） |
+| Core 0 | 跑 RTOS（FreeRTOS）+ mini_tree 主栈（probe、VFS、业务） |
 | Core 1 | 裸机或轻循环：快路径、专用外设；经共享内存 / IPC 与 Core 0 通信 |
 
 启动顺序建议：
@@ -113,7 +113,7 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 - [ ] 注入故障后两核输出进入安全态
 - [ ] 单核配置回退：不链从核也能正常启动
 
-平台侧样例工程（链接脚本、从核镜像）不在本 shelf；可参考 [device-platform](https://github.com/H-000-H/device-platform)（mini_tree 配套平台示例）。
+平台侧样例工程（链接脚本、从核镜像）不在本 shelf；可参考 [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)（mini_tree 配套平台示例）。
 
 ---
 

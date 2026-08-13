@@ -11,7 +11,7 @@
 
 ## 1. 前置条件
 
-- TinyUSB 经 FetchContent 拉取（`mini_tree_link_tinyusb`，见 [ecosystem.md](ecosystem.md)）；不在 `lib/` vendor 内。
+- TinyUSB 走 **ESP-IDF 组件**（`esp_tinyusb` / registry，声明于 `idf_component.yml`）；不在 `lib/` vendor 内。
 - 板级 `dtsi/` 提供 USB 控制器节点（参考 `board/dtsi/example-soc.dtsi`）。
 - `CONFIG_OSAL_*` 后端已选（USB 中断需 OSAL 中断封装）。
 

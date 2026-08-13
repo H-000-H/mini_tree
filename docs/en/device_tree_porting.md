@@ -57,7 +57,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
 | Location | Path | Description |
 | :--- | :--- | :--- |
 | Middleware placeholder (this repo) | `board/dts/board.dts`, `board/dtsi/example-soc.dtsi`, `board/dtsi/drivers/*.dtsi`, `board/dtsi/vfs/*.dtsi` | generic templates, no real peripherals; `board.dts` with no nodes still runs the full pipeline |
-| Platform project (formal) | pointed to via `BOARD_DTS` / `BOARD_DTSI_DIR` (non-ESP); on ESP: `components/board_${IDF_TARGET}` convention auto-discovery | **real SoC / board files live here**, overriding the middleware placeholders |
+| Platform project (formal) | pointed to via `BOARD_DTS` / `BOARD_DTSI_DIR` / `MINI_TREE_BOARD_PORT` | **real SoC / board files live here**, overriding the middleware placeholders |
 | dt-bindings constants | `board/dt-bindings/<bus>/*.h` | macros for `#include <dt-bindings/...>` (e.g. `DTS_GPIO_DEFAULT_INTR`) |
 
 > **Core rule**: this repo keeps only placeholder examples; put real board files in the platform project and override via CMake variables. Do **not** stuff vendor-specific dtsi into `board/dtsi/` (use `VENDOR_INC_DIRS` for vendor macros).
@@ -342,22 +342,22 @@ See §5 (copy as-is).
 
 ### 8.3 CMake injection (platform project)
 
-**Non-ESP (generic CMake)**: the platform project injects its tree via these variables (set before `add_subdirectory(mini_tree)`):
+The platform project injects its tree via these variables (on the ESP path set by `board_port.cmake` before `idf_component_register`, see [esp_idf_cmake.md §3](esp_idf_cmake.md)):
 
 ```cmake
-set(BOARD_DTS      ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board/board.dts)
-set(BOARD_DTSI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board/dtsi)   # contains my_soc.dtsi
+set(MINI_TREE_BOARD_PORT   ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board)
+set(BOARD_DTS              ${MINI_TREE_BOARD_PORT}/board.dts)
+set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # contains my_soc.dtsi
 # vendor macros if needed:
-# set(VENDOR_INC_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board/vendor_inc)
+# set(VENDOR_INC_DIRS      ${MINI_TREE_BOARD_PORT}/vendor_inc)
 ```
 
 | Variable | Effect |
 | :--- | :--- |
 | `BOARD_DTS` | full board `.dts` entry path |
 | `BOARD_DTSI_DIR` | board `dtsi/` directory (SoC skeleton, etc.) |
+| `MINI_TREE_BOARD_PORT` | board-port root directory |
 | `VENDOR_INC_DIRS` | extra `-I` for vendor headers (macros beyond dt-bindings) |
-
-**ESP-IDF**: no injection needed — `components/board_${IDF_TARGET}/dts/board.dts` + `dtsi/` are auto-discovered by convention (see [esp_idf_cmake.md §3](esp_idf_cmake.md); `MINI_TREE_BOARD_PORT` has been removed).
 
 ---
 
@@ -479,9 +479,7 @@ int main(void)
     for (;;)
         x_scheduler_poll();           /* bare-metal time-slice poll (incl. preemptive) */
 #elif defined(CONFIG_OSAL_FREERTOS)
-    vTaskStartScheduler();
-#elif defined(CONFIG_OSAL_RTTHREAD)
-    rt_system_scheduler_start();
+    vTaskStartScheduler();            /* ESP-IDF already starts it; this is a generic example */
 #endif
     return 0;
 }
@@ -631,7 +629,7 @@ namespace App_Led
 
 ## 10. Verification flow
 
-1. **genconfig**: `.config` → `config.h`; confirm `CONFIG_*` matches your selection.
+1. **Kconfig**: on the ESP path via `idf.py menuconfig` (`sdkconfig.h`); confirm `CONFIG_*` matches your selection.
 2. **dtc-lite**: runs automatically at build; check `<build>/generated/board/mini_tree/board_nodes.h` contains `DEV_ID_bmp280`, and `dt_config_gen.h` has `DTC_GEN_COUNT_BOSCH_BMP280 >= 1`.
 3. **Compile**: build the `mini_tree` static lib; confirm `board_driver_probe_bmp280` is collected and there are no undefined symbols (`board_dev_get` comes from the generated `board_devtable.c`).
 4. **Run**: `board_driver_probe_all()` runs early in boot; the log should print `bmp280 probed @0x76 on i2c0`.

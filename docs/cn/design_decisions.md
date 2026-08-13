@@ -36,7 +36,7 @@
 
 ## 与平台仓库的关系
 
-| 本仓库 | 平台仓库（如 device-platform） |
+| 本仓库 | 平台仓库（如 Heterogeneous-Multicore） |
 | :--- | :--- |
 | 通用中间件、文档、ide stubs、占位 DTS | SoC HAL、完整 dtsi、厂商 `-I`、板级启动与验证 |
 
@@ -85,20 +85,19 @@
 | **CLion** | **推荐** | CMake 一等公民；C/C++ 索引与重构强；适合大仓库与 `SYSTEM_CPP`。 |
 | **Qoder** 等现代 AI IDE | **推荐** | 与 Cursor 同类：以现代语言服务 + AI 集成为中心，跟得上本仓文档/多文件重构节奏。 |
 | **Zed** | **推荐（只写代码）** | clangd 语言服务 + 快速编辑体验好；无调试/烧录一体化，定位为纯代码编辑器。 |
-| **CMake + Ninja/Make + GCC/Clang** | **推荐** | 构建与生成物（genconfig / dtc-lite）的主路径。 |
-| **Keil Studio**（基于 VS Code） | **可以（我试过能用）** | 与 µVision 本质不同：VS Code 内核 + CMake 一等公民（CMSIS-Toolbox / cbuild），可装 clangd 扩展，保留官方调试与云编译；我实测 Keil Studio Pack 插件直接接本仓 CMake 流程就能跑（见 [keil_integration.md](keil_integration.md) §2.1）。 |
-| **传统 Keil 5**：**Keil µVision** | **不提供、不跟进** | 几乎无法干净集成；跳转/C++/AI 弱。降级时最简单是 **自写/自改 Python 生成 `.uvprojx`**（远古有过类似思路，**现已不维护**）。详见 [keil_integration.md](keil_integration.md)。 |
-| **ARMCC v5** | 不用的 | 过旧，缺现代 C/GNU 扩展。 |
+| **CMake + Ninja/Make + GCC/Clang** | **推荐** | 构建与生成物（dtc-lite / ESP-IDF）的主路径。 |
+| **VS Code / Cursor / Qoder** 等 | **推荐** | 基于 VSCode 的编辑器/IDE，配 clangd 与 ESP-IDF 扩展。 |
+| **传统 Keil 5 / µVision** | **不提供、不跟进** | 本分支为 ESP 组件，主路径是 VSCode 系 + ESP-IDF；非 VSCode 平台不作为主战场。 |
 
-我的习惯：**用现代编辑器写代码，用 CMake 出固件**；经典 Keil µVision（**传统 Keil 5**）本仓库**不提供、不跟进**，不当主路径，若必须交付 µVision 工程，自备 Python 生成 `.uvprojx`（见 [keil_integration.md](keil_integration.md)），那个生成器不维护；**Keil Studio 我试过能直接用**（VS Code 内核 + CMake 一等公民，见 [keil_integration.md](keil_integration.md) §2.1），想用 Keil 就选它。
+我的习惯：**用现代编辑器写代码，用 CMake / ESP-IDF 出固件**；本分支主路径是 **VSCode 系（VS Code / Cursor / Qoder）+ clangd + ESP-IDF**，不跟进传统 Keil 等非 VSCode 平台。
 
 ### 和本架构的关系（一句话）
 
-学 Linux / ESP 的 **分层与 VFS 心智**，用 FreeRTOS（或 RT-Thread 组件）做 **调度**，用本仓 dtc-lite 做 **编译期、可裁剪的板级描述**（板级描述走 Linux 式设备树；与 Zephyr 的 dts 宏生成路径取舍见上表）。开发侧则避开 Keil 当主战场，留在 **Cursor / VS Code / CLion / Qoder / Zed（只写代码）** 一类现代工具上。
+学 Linux / ESP 的 **分层与 VFS 心智**，用 FreeRTOS 做 **调度**，用本仓 dtc-lite 做 **编译期、可裁剪的板级描述**（板级描述走 Linux 式设备树；与 Zephyr 的 dts 宏生成路径取舍见上表）。开发侧留在 **VS Code / Cursor / Qoder** 一类现代工具上。
 
 ---
 
 ## 相关文档
 
 - [architecture.md](architecture.md) · [roadmap.md](roadmap.md) · [api_compatibility.md](api_compatibility.md) · [ecosystem.md](ecosystem.md)
-- [references.md](references.md) · [osal_switching.md](osal_switching.md) · [keil_integration.md](keil_integration.md)
+- [references.md](references.md) · [osal_switching.md](osal_switching.md)

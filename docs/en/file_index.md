@@ -13,8 +13,8 @@
 
 | Path | Description |
 | :--- | :--- |
-| `CMakeLists.txt` | static lib `mini_tree`, genconfig, dtc-lite, source set |
-| `Kconfig` / `.config` | config menu and dotfile |
+| `CMakeLists.txt` | ESP component entry (routes to `cmake/esp_idf.cmake`) |
+| `Kconfig.projbuild` / `Kconfig.mini_tree` | ESP-IDF Kconfig (`idf.py menuconfig` → `sdkconfig.h`) |
 | `compile_flags.txt` / `.clangd` | clangd compilation database |
 | `.clang-format` · `.clang-format-ignore` · layered `.clang-tidy` | code style: formatting + naming rules; suggested at app layer, enforced below |
 | `error_symbols.ld` | `ERR_SECTION_BASE` |
@@ -23,7 +23,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | entry, changelog, contributing (kept at root per OSS convention) |
 | `docs/` | all topical docs (see README.md) |
 
-> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `BOARD_DTS` / `BOARD_DTSI_DIR`; an ESP-IDF component path (`cmake/esp_idf.cmake`) is also provided, with the board auto-discovered via the `board_${IDF_TARGET}` convention.
+> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`; an ESP-IDF component path (`cmake/esp_idf.cmake`) is also provided.
 
 ---
 
@@ -76,7 +76,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `core/src/*.c` | implementations above |
 | `osal/include/osal.h` | OSAL master header |
 | `osal/include/osal_null.h` | bare-metal helper header + C++ task overload declaration |
-| `osal/src/osal_{null,freertos,rtthread}.c` | three backends |
+| `osal/src/osal_{null,freertos}.c` | two backends (bare-metal / FreeRTOS) |
 | `osal/src/osal_task.cpp` | bare-metal C++ task wrapper |
 | `interrupt/interrupt.{c,h}` | VIRQ |
 | `system_c/` · `system_cpp/` | init, wdt, scrubber, safe_state, task_manager, cmd (C or C++ via Kconfig) |
@@ -89,15 +89,15 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | Path | Description |
 | :--- | :--- |
 | `tools/dtc-lite.py` · `tools/dtc_lite/` | device tree compiler package |
-| `tools/genconfig.py` | Kconfig → `config.h` |
 | `tools/system_scrubber_crc_stub.h` | CRC stub |
 | `ide/stubs/` | generated-header stubs for clangd |
 | `drivers/<chip>/` | **37** product drivers (`include/` + `src/`, `DRIVER_REGISTER` + dtc-lite compile-time probe); e.g. `w25qxx`, `st7789`, `ssd1306`…; no legacy `drivers/flash` |
 | `can_hook/` | CAN protocol superset hooks |
 | `algorithm/buffer/` | ring & double buffers |
-| `cmake/*.cmake` | `dep_fetch` + `mini_tree_link_*` helpers; also `disasm` / `rust` / `esp_idf` |
+| `cmake/esp_idf.cmake` | ESP component entry (`idf_component_register`) |
+| `cmake/etl.cmake` | ETL link helper (kept; the ESP path uses `lib/etl/include` directly) |
 
-> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP / cJSON** are fetched at config time, all other bricks at link time.
+> `lib/` status: only **ETL** is vendored; other third-party libs (FreeRTOS, TinyUSB, cJSON, etc.) come through the **ESP-IDF component system** (see [ecosystem.md](ecosystem.md)).
 
 ---
 

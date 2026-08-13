@@ -13,7 +13,7 @@
 
 - **English**: Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal / FreeRTOS / RT-Thread; zero vendor SDK lock-in.
 
-Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`, `OSAL (NULL/FREERTOS/RTTHREAD)`, `VFS`, `BUS`, `HAL`, `EventBus`, `VIRQ`.
+Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`, `OSAL (NULL/FREERTOS)`, `VFS`, `BUS`, `HAL`, `EventBus`, `VIRQ`.
 
 ---
 
@@ -34,13 +34,13 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 
 | Document | English Title / Key Points | Priority | Links |
 | :--- | :--- | :---: | :--- |
-| `device_tree_porting.md` | **Device-tree porting guide (consolidated, full examples)**: dtc-lite pipeline, node templates, board DTS, generated-artifacts, driver wiring, CMake injection (`BOARD_DTS`/`BOARD_DTSI_DIR`; on ESP the `board_${IDF_TARGET}` convention auto-discovery), verification, troubleshooting. In practice porting usually needs only DTS + HAL changes | **P0** | [en](device_tree_porting.md) |
+| `device_tree_porting.md` | **Device-tree porting guide (consolidated, full examples)**: dtc-lite pipeline, node templates, board DTS, generated-artifacts, driver wiring, CMake injection (`BOARD_DTS`/`BOARD_DTSI_DIR`/`MINI_TREE_BOARD_PORT`), verification, troubleshooting. In practice porting usually needs only DTS + HAL changes | **P0** | [en](device_tree_porting.md) |
 | `esp_idf_cmake.md` | ESP-IDF component CMake (against esp32s3), Kconfig dual-track, acceptance checklist | **P0** (ESP path) | [en](esp_idf_cmake.md) |
 | `driver_guide.md` | DTS layout, `dtc-lite` pipeline, `DRIVER_REGISTER`, compatible props, `board_*` runtime API, remove lifecycle | **P0** | [en](driver_guide.md) |
 | `peripherals.md` | Peripheral compatible / ioctl overview | P1 | [en](peripherals.md) |
 | `usb_tusb_port.md` | TinyUSB board-level contract (`usb_tusb_port`) | P1 (USB) | [en](usb_tusb_port.md) |
 | `amp.md` | Dual-core heterogeneous AMP | P2 | [en](amp.md) |
-| `osal_switching.md` | OSAL backend switching (NULL/FREERTOS/RTTHREAD; priority semantics vary by backend) | P1 | [en](osal_switching.md) |
+| `osal_switching.md` | OSAL backend switching (NULL/FREERTOS; priority semantics vary by backend) | P1 | [en](osal_switching.md) |
 | `esp_idf_notes.md` | ESP fixes log + ESP specifics + dependency strategy | P1 (ESP) | [en](esp_idf_notes.md) |
 
 ### 1.3 Application & Coding
@@ -61,7 +61,6 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | Document | English Title / Key Points | Priority | Links |
 | :--- | :--- | :---: | :--- |
 | `debug_monitor.md` | Logging (`SYS_LOG*`/`DRV_LOG*`), generated artifacts, `compile_commands.json`, clangd | P1 | [en](debug_monitor.md) |
-| `keil_integration.md` | Keil Studio supported / classic µVision not recommended | P2 (IDE) | [en](keil_integration.md) |
 | `design_decisions.md` | Design decisions still in force | P1 | [en](design_decisions.md) |
 | `references.md` | External references (ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt) | P2 | [en](references.md) |
 | `problem_summary.md` | Historical problem timeline | P2 | [en](problem_summary.md) |
@@ -73,7 +72,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | `file_index.md` | Source navigation (directory → module map) | P1 | [en](file_index.md) |
 | `roadmap.md` | Roadmap | P2 | [en](roadmap.md) |
 | `todolist.md` | TODO list | P2 | [en](todolist.md) |
-| `tools_guide.md` | `dtc-lite` / `genconfig` / `menuconfig` / `gen_compile_db` / scrubber stub usage; `dtc-lite` supports `-I`/`-D` | **P0** (toolchain) | [en](tools_guide.md) |
+| `tools_guide.md` | `dtc-lite` / scrubber stub usage; `dtc-lite` supports `-I`/`-D` | **P0** (toolchain) | [en](tools_guide.md) |
 | `board_linux_vs_device_model.md` | generic: mini_tree device model vs Linux comparison | P2 | [en](board_linux_vs_device_model.md) |
 
 ---
@@ -82,7 +81,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 
 - **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `esp_idf_cmake.md` (ESP) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
 - **P1 (As-needed)**: `patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md`
-- **P2 (Deep-dive)**: `usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `keil_integration.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
+- **P2 (Deep-dive)**: `usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
 
 ---
 
@@ -91,8 +90,8 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | Topic | English |
 | :--- | :--- |
 | Product drivers | 37, in `drivers/<chip>/{include,src}`, GLOB-scanned; the only out-of-tree exception is `driver_ws2812` (WHOLE_ARCHIVE) |
-| OSAL backends | `CONFIG_OSAL_NULL` (bare-metal cooperative, default) / `FREERTOS` (v11.3.0) / `RTTHREAD` (v5.3.0) |
-| Targets | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · dual-core AMP |
+| OSAL backends | `CONFIG_OSAL_FREERTOS` (default, IDF built-in) / `CONFIG_OSAL_NULL` (bare-metal fallback) |
+| Platform | ESP32 (this branch is pure ESP) |
 | Peripheral coverage | Bus-based 6 (SPI/I2C/I2S/UART/CAN/USB) · Bus-less 7 (GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG) · HAL-Only: AMP/Storage/Platform Safety/**SDIO (reserved)** |
 | Error codes | `VFS_OK=0`; `VFS_ERR_*` (full name, see `status.h`); `device_find` failure returns `ERR_PTR` not `NULL` |
 | Build | CMake ≥ 3.16; `lark` (dtc-lite); vendored `kconfiglib` 14.1.0; `ETL` vendored and linked by default |

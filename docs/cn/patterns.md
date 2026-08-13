@@ -65,7 +65,7 @@
 | — | （可选）业务/平台准备 | 静态配置、额外注册 |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`、TWDT、Flash Scrubber |
 | 3 | `system_init_complete()` | 释放全局中断 |
-| 4 | 调度或裸机循环 | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_tree_system_loop` |
+| 4 | 调度或裸机循环 | FreeRTOS：ESP-IDF 已启动调度器；裸机（`OSAL_NULL`）：`mini_tree_system_loop` |
 
 C++ 侧 `mini_tree::system_pre_os_init()` / `system_start_tasks()` 与之对应，最后同样调 `system_init_complete()`。
 
@@ -414,7 +414,7 @@ void my_task_cb(x_task* t)          /* 注册到 xtask，周期 5ms */
 
 ### RTOS 后端的差异
 
-切到 `CONFIG_OSAL_FREERTOS` / `RTTHREAD` 后，`osal_delay_ms` 是**真正的休眠**（任务挂起、让出 CPU），可以放心阻塞；但同一套状态机代码在裸机/RTOS 都能跑，属于"可移植的最低公共分母"写法。
+切到 `CONFIG_OSAL_FREERTOS` 后，`osal_delay_ms` 是**真正的休眠**（任务挂起、让出 CPU），可以放心阻塞；但同一套状态机代码在裸机/RTOS 都能跑，属于"可移植的最低公共分母"写法。
 
 ### 常见坑
 

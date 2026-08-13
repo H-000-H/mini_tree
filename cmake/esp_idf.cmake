@@ -1,47 +1,60 @@
 # ESP-IDF 组件入口（由根 CMakeLists.txt 在 ESP_PLATFORM 时 include）
 # 全部用 MINI_TREE_DIR 绝对路径，避免 include 后相对路径落到 cmake/ 下。
 #
-# 板级/芯片/树外驱动全部自动推导，无需外部注入文件:
-#   B: 芯片 dtc -I/-D      ← IDF_TARGET (idf_build_get_property)
-#   C: 板级 DTS           ← 约定组件 components/board_${IDF_TARGET} (dts/board.dts + dtsi/)
-#   D: 树外产品驱动       ← 工程 components/*/src (DRIVER_REGISTER)
-#   E: 功能开关           ← IDF CONFIG_* (sdkconfig, menuconfig 可见)
-# 逃生门: MINI_TREE_DTC_EXTRA_ARGS 仍可注入非标准芯片头路径 (默认空)。
+# 板级可在 idf_component 之前设置（推荐经 ../board_port.cmake / MINI_TREE_BOARD_PORT）:
+#   BOARD_DTS / BOARD_DTSI_DIR     — 板级设备树（默认占位）
+#   MINI_TREE_DTC_EXTRA_SCAN_DIRS  — 额外 DRIVER_REGISTER 扫描目录列表
+#   MINI_TREE_DTC_EXTRA_DEPENDS    — dtc-lite 额外 DEPENDS 文件列表
+#   MINI_TREE_DTC_EXTRA_ARGS       — 芯片专用 -I/-D（勿把 SoC 路径写死进本文件）
 
 get_filename_component(MINI_TREE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-idf_build_get_property(_IDF_TARGET IDF_TARGET)
-string(TOUPPER "${_IDF_TARGET}" _IDF_TARGET_UP)
 
-# ── E: 功能软编码 — 直接读 IDF 的 CONFIG_* CMake 变量 ───────────────────
-# sdkconfig.cmake 在组件 CMakeLists 处理前已 include, CONFIG_* 即配置期变量,
-# 板级经 sdkconfig.defaults / menuconfig 控制, ESP 路径不再读 .config。
-# SYSTEM / EVENT_BUS / SYSTEM_CMD / USB 均为 Kconfig.mini_tree 符号。
-
-# System / EventBus: Kconfig default y; 显式关才裁剪
-if(CONFIG_SYSTEM)
-    set(MINI_TREE_SYSTEM ON)
+# ESP-IDF 路径下 CONFIG_* 全部来自原生 IDF（sdkconfig → sdkconfig.h），
+# 不再维护 mini_tree/.config 副本，避免与 IDF 配置脱节。
+# sdkconfig 默认在工程根（SDKCONFIG=${project_dir}/sdkconfig），configure 早期即已生成；
+# 若读取失败（如 requirements 脚本模式拿不到工程根）再回退到组件内 .config。
+if(DEFINED SDKCONFIG)
+    set(KCONFIG_DOT "${SDKCONFIG}")
+elseif(EXISTS "${MINI_TREE_DIR}/../../sdkconfig")
+    set(KCONFIG_DOT "${MINI_TREE_DIR}/../../sdkconfig")
 else()
+    set(KCONFIG_DOT "${MINI_TREE_DIR}/.config")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
+
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
+
+# System / EventBus 软编码：.config 显式 "# CONFIG_SYSTEM is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_OFF REGEX "^# CONFIG_SYSTEM is not set$")
+if(CONFIG_SYSTEM_OFF)
     set(MINI_TREE_SYSTEM OFF)
-endif()
-# EVENT_BUS 依赖 SYSTEM: CONFIG_EVENT_BUS=y 且 SYSTEM=y 才编入 (对齐 Kconfig 语义)
-if(CONFIG_EVENT_BUS AND MINI_TREE_SYSTEM)
-    set(MINI_TREE_EVENT_BUS ON)
 else()
-    set(MINI_TREE_EVENT_BUS OFF)
+    set(MINI_TREE_SYSTEM ON)
 endif()
-# SystemCmd: Kconfig default n; 仅 SYSTEM_CPP 后端有效
-if(CONFIG_SYSTEM_CMD AND CONFIG_SYSTEM_CPP)
+file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_OFF REGEX "^# CONFIG_EVENT_BUS is not set$")
+# EVENT_BUS 依赖 SYSTEM: .config 手写 y 但 SYSTEM=n 时按 Kconfig 语义视为关
+if(CONFIG_EVENT_BUS_OFF OR NOT MINI_TREE_SYSTEM)
+    set(MINI_TREE_EVENT_BUS OFF)
+else()
+    set(MINI_TREE_EVENT_BUS ON)
+endif()
+# SystemCmd: 默认关, 仅显式 "CONFIG_SYSTEM_CMD=y" 才编入
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_CMD_ON REGEX "^CONFIG_SYSTEM_CMD=y$")
+# SYSTEM_CMD 仅 SYSTEM_CPP 后端有效
+if(CONFIG_SYSTEM_CMD_ON AND CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
     set(MINI_TREE_SYSTEM_CMD ON)
 else()
     set(MINI_TREE_SYSTEM_CMD OFF)
 endif()
 
-# USB: Kconfig default y; 显式关才裁剪。
+# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）。
 # 启用时需板级 usb_tusb_port glue（docs/usb_tusb_port.md），并自行 REQUIRE esp_tinyusb 等。
-if(CONFIG_USB)
-    set(MINI_TREE_USB ON)
-else()
+file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
+if(CONFIG_USB_OFF)
     set(MINI_TREE_USB OFF)
+else()
+    set(MINI_TREE_USB ON)
 endif()
 
 include("${MINI_TREE_DIR}/hal/paths.cmake")
@@ -92,7 +105,7 @@ if(MINI_TREE_USB)
 endif()
 
 if(MINI_TREE_SYSTEM)
-    if(CONFIG_SYSTEM_CPP)
+    if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
         set(SYSTEM_SRCS
             "${MINI_TREE_DIR}/system_cpp/src/system_init.cpp"
             "${MINI_TREE_DIR}/system_cpp/src/system_scrubber.cpp"
@@ -171,25 +184,7 @@ set(KCONFIG_GEN_DIR     "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
 set(SCRUBBER_GEN_DIR    "${CMAKE_BINARY_DIR}/generated/scrubber/mini_tree")
 set(KCONFIG_OUT         "${KCONFIG_GEN_DIR}/config.h")
 set(SCRUBBER_CRC_HDR    "${SCRUBBER_GEN_DIR}/system_scrubber_crc_gen.h")
-# ── C: 板级 DTS 自动发现 ────────────────────────────────────────────────
-# 约定: 名为 board_${IDF_TARGET} 的组件提供 dts/board.dts + dtsi/。
-# 组件发现期即设 COMPONENT_DIR 属性 (component.cmake), 此处查询不依赖其
-# CMakeLists 执行顺序; 但组件不存在时 idf_component_get_property 会 FATAL,
-# 故先用 "CMakeLists.txt 存在" 作守卫 (查文件而非目录, 防半成品目录误判)。
-# 未发现板级组件 → 用中间件占位 (可编过, 无板级节点); 发现但布局不符 → FAIL loud。
-set(_BOARD_NAME "board_${_IDF_TARGET}")
-file(GLOB _BOARD_CAND "${CMAKE_SOURCE_DIR}/components/${_BOARD_NAME}/CMakeLists.txt")
-if(_BOARD_CAND)
-    idf_component_get_property(_BOARD_DIR "${_BOARD_NAME}" COMPONENT_DIR)
-    if(EXISTS "${_BOARD_DIR}/dts/board.dts")
-        set(BOARD_DTS      "${_BOARD_DIR}/dts/board.dts")
-        set(BOARD_DTSI_DIR "${_BOARD_DIR}/dtsi")
-    else()
-        message(FATAL_ERROR
-            "${_BOARD_NAME} 已发现但缺 dts/board.dts; 约定布局: "
-            "${_BOARD_DIR}/dts/board.dts + dtsi/ (纯数据组件, 空 idf_component_register)")
-    endif()
-endif()
+# 板级可覆盖 BOARD_DTS；未设则用中间件占位
 if(NOT DEFINED BOARD_DTS OR BOARD_DTS STREQUAL "")
     set(BOARD_DTS "${MINI_TREE_DIR}/board/dts/board.dts")
 endif()
@@ -210,9 +205,8 @@ file(MAKE_DIRECTORY "${GENERATED_BOARD_DIR}")
 file(MAKE_DIRECTORY "${KCONFIG_GEN_DIR}")
 file(MAKE_DIRECTORY "${SCRUBBER_GEN_DIR}")
 
-# ── B: dtc 参数 — dt-bindings 基础 + 跨芯片通用 IDF 头 + 芯片专属头/宏 ──
-# 基础 "-I mini_tree/board" (dt-bindings 搜索路径) 是固定项, 勿把 dtsi 目录塞进来。
-set(DTC_LITE_ARGS "-I${MINI_TREE_DIR}/board")
+# 仅挂跨芯片通用 IDF 头；芯片专用路径/宏由板级 MINI_TREE_DTC_EXTRA_ARGS 注入
+set(DTC_LITE_ARGS "")
 if(DEFINED ENV{IDF_PATH})
     set(_IDF "$ENV{IDF_PATH}")
     foreach(d
@@ -229,26 +223,12 @@ if(DEFINED ENV{IDF_PATH})
             list(APPEND DTC_LITE_ARGS "-I${d}")
         endif()
     endforeach()
-    # 芯片专属头 (按 IDF_TARGET 推导)。IDF 目录结构随版本变, 存在才加 (跳过不影响构建)
-    foreach(_d
-        "${_IDF}/components/esp_hal_gpio/${_IDF_TARGET}/include"
-        "${_IDF}/components/soc/${_IDF_TARGET}/include"
-    )
-        if(IS_DIRECTORY "${_d}")
-            list(APPEND DTC_LITE_ARGS "-I${_d}")
-        endif()
-    endforeach()
-    # 目标宏: 让 dtsi 里的 #ifdef CONFIG_IDF_TARGET_<CHIP> 分支生效 (一个 dtsi 服务多芯片)
-    list(APPEND DTC_LITE_ARGS
-        "-DCONFIG_IDF_TARGET_${_IDF_TARGET_UP}=1"
-        "-DIDF_TARGET_${_IDF_TARGET_UP}=1")
 endif()
-# 逃生门: 非标准芯片头路径等特殊注入 (默认空, 正常工程无需设置)
 if(DEFINED MINI_TREE_DTC_EXTRA_ARGS)
     list(APPEND DTC_LITE_ARGS ${MINI_TREE_DTC_EXTRA_ARGS})
 endif()
 
-# 默认 DRIVER_REGISTER 扫描目录（中间件 + drivers/*/src + 工程树外驱动）
+# 默认 DRIVER_REGISTER 扫描目录（中间件 + drivers/*/src；树外用 EXTRA）
 set(_DTC_SCAN_DIRS
     ${_PRODUCT_DRV_SRC_DIRS}
     "${MINI_TREE_DIR}/vfs/spi"
@@ -263,11 +243,9 @@ set(_DTC_SCAN_DIRS
     "${MINI_TREE_DIR}/bus/i2c"
     "${MINI_TREE_DIR}/bus/can"
 )
-# ── D: 树外产品驱动自动扫描 ─────────────────────────────────────────────
-# 约定: 工程 components/*/src 下的 DRIVER_REGISTER 即树外产品驱动 (如 driver_ws2812)。
-# 无 DRIVER_REGISTER 的 src (如 hal_*) 只是多解析一次, 无害。
-file(GLOB _OUT_DRV_SRC_DIRS LIST_DIRECTORIES true "${CMAKE_SOURCE_DIR}/components/*/src")
-list(APPEND _DTC_SCAN_DIRS ${_OUT_DRV_SRC_DIRS})
+if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
+    list(APPEND _DTC_SCAN_DIRS ${MINI_TREE_DTC_EXTRA_SCAN_DIRS})
+endif()
 if(MINI_TREE_USB)
     list(APPEND _DTC_SCAN_DIRS
         "${MINI_TREE_DIR}/bus/usb"
@@ -285,9 +263,9 @@ if(DEFINED BOARD_DTSI_DIR AND IS_DIRECTORY "${BOARD_DTSI_DIR}")
     file(GLOB _BOARD_DTSI_FILES "${BOARD_DTSI_DIR}/*.dtsi")
     list(APPEND _DTC_DEPENDS ${_BOARD_DTSI_FILES})
 endif()
-# 树外驱动源进 DEPENDS: 驱动代码变更即重跑 dts (与 D 段扫描目录配套)
-file(GLOB _OUT_DRV_SRCS "${CMAKE_SOURCE_DIR}/components/*/src/*.c")
-list(APPEND _DTC_DEPENDS ${_OUT_DRV_SRCS})
+if(DEFINED MINI_TREE_DTC_EXTRA_DEPENDS)
+    list(APPEND _DTC_DEPENDS ${MINI_TREE_DTC_EXTRA_DEPENDS})
+endif()
 if(MINI_TREE_USB)
     list(APPEND _DTC_DEPENDS
         "${MINI_TREE_DIR}/bus/usb/usb_bus.c"
@@ -418,7 +396,7 @@ add_dependencies(${COMPONENT_LIB}
 set_source_files_properties(${GEN_SRCS} PROPERTIES GENERATED TRUE)
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC ${OSAL_DEFINE} ETL_NO_STL)
-if(CONFIG_SYSTEM_CPP)
+if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_SYSTEM_CPP)
     target_compile_options(${COMPONENT_LIB} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>

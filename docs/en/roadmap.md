@@ -34,8 +34,8 @@
 | Direction | Content |
 | :--- | :--- |
 | network stack integration | expose lwIP via VFS with a standardized interface |
-| Rust interop | experimental `cmake/rust.cmake` integration |
-| Keil Studio validation | tried it and it works; just use Keil Studio if you want Keil (see [keil_integration.md](keil_integration.md)) |
+| Rust interop | experimental integration |
+| Non-VSCode IDE | this branch only maintains the VSCode family (VS Code / Cursor / Qoder); no traditional Keil |
 
 ---
 
@@ -43,8 +43,7 @@
 
 | Direction | Reason |
 | :--- | :--- |
-| official classic Keil µVision support | architectural mismatch; this repo does not provide or follow it up, see [keil_integration.md](keil_integration.md) |
-| ARMCC v5 support | ARMCLANG (AC6) only |
+| official classic Keil µVision support | not provided / not followed up (this branch only maintains the VSCode family) |
 
 ---
 

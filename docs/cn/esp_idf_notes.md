@@ -23,7 +23,7 @@ Entry: when `ESP_PLATFORM` is set, `CMakeLists.txt` does `include(cmake/esp_idf.
 | 对象池查询 / Pool query | `osal/src/osal_freertos.c` | bus 层调用 `osal_pool_is_used`，FreeRTOS 后端缺失<br>The bus layer calls `osal_pool_is_used`, missing in the FreeRTOS backend | 补齐实现（与 `osal_null` 语义一致）<br>Implemented (same semantics as `osal_null`) |
 | spinlock 告警 / Spinlock warning | `system_cpp/src/system_cmd.cpp` | `-Werror=unused-result` | `COMPAT_IGNORE_RESULT` 包裹 `osal_spinlock_*`<br>Wrap `osal_spinlock_*` in `COMPAT_IGNORE_RESULT` |
 
-验证建议（非 ESP 板）：默认 CMake Preset 全量编译；改过 generator 后确认生成的 `board_probe.c` 中 extern **无** `weak`。
+验证建议（ESP 板）：`idf.py build` 全量编译；改过 generator 后确认生成的 `board_probe.c` 中 extern **无** `weak`。
 
 ## 2. ESP-IDF 特殊性（仅 ESP 路径）/ ESP-IDF Specifics (ESP Path Only)
 
@@ -47,8 +47,8 @@ GENERATED_BOARD_DIR  →  SCRUBBER_GEN_DIR  →  ide/stubs  →  KCONFIG_GEN_DIR
 
 空壳 `config.h` 必须在 stubs **之后**：stubs 的 `config.h` 提供 `CONFIG_SYS_LOG_USE_PRINTF` 等；空壳若抢先则触发 `SYS_LOG backend not configured`。
 
-非 ESP 的 genconfig 真 `config.h` 路径不受此约束。
-The non-ESP genconfig real `config.h` path is not subject to this constraint.
+本分支已无独立 genconfig 路径（`config.h` 仅转发 `sdkconfig.h`）。
+This branch has no standalone genconfig path (`config.h` is just a forwarder to `sdkconfig.h`).
 
 ### 2.2 强引用与静态库
 
@@ -57,14 +57,17 @@ The non-ESP genconfig real `config.h` path is not subject to this constraint.
 - **树外组件**（当前仅 `driver_ws2812`）：对该组件使用 IDF `WHOLE_ARCHIVE`，保证 `board_driver_probe_*` 进最终 ELF。
   **Out-of-tree component** (currently only `driver_ws2812`): use IDF `WHOLE_ARCHIVE` on it so `board_driver_probe_*` lands in the final ELF.
 
-树外组件（如 `driver_ws2812`）经 **`components/*/src` 约定自动扫入 dtc**（见 [esp_idf_cmake.md §3](esp_idf_cmake.md)），板级无需再写 `MINI_TREE_DTC_EXTRA_SCAN_DIRS/DEPENDS`：
+板级扩展 dtc-lite（仅树外驱动需要；产品驱动已由 GLOB 扫入）：
 
-```text
-工程 components/*/src/*.c  → dtc-lite 扫 DRIVER_REGISTER + 挂 DEPENDS (变更即重跑)
+```cmake
+set(MINI_TREE_DTC_EXTRA_SCAN_DIRS
+    "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src")
+set(MINI_TREE_DTC_EXTRA_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/../driver_ws2812/src/ws2812_drv.c")
 ```
 
-> 无 `DRIVER_REGISTER` 的 `src/`（如 `hal_*`）只是多解析一次，无害。
-> `src/` dirs without `DRIVER_REGISTER` (e.g. `hal_*`) are merely parsed once more; harmless.
+> 上例：仅树外驱动需要；产品驱动（37 个）已由 `drivers/*/src` GLOB 扫入。
+> Above: only needed for out-of-tree drivers; product drivers (37) are already GLOB-scanned via `drivers/*/src`.
 
 ### 2.3 OSAL
 
@@ -78,40 +81,32 @@ ESP-IDF 默认 `configMAX_PRIORITIES` 常为 25（合法 0..24）。中间件默
 
 IDF 已注入 `sdkconfig.h`。`esp_idf.cmake` 只生成空壳 `config.h`，避免与完整 genconfig 头 `-Werror=redefined`。
 
-> 自 Kconfig 拆分后（`Kconfig` / `Kconfig.projbuild` / `Kconfig.mini_tree` 三文件），ESP 路径下 `idf.py menuconfig` 会在顶层菜单显示 "mini_tree Configuration" 子菜单，所有 mini_tree 的 `CONFIG_*` 开关经 IDF confgen 求值后写入 `sdkconfig.h`。`esp_idf.cmake` 已**完成迁移**：`file(STRINGS)` 软编码移除，直接读 IDF 原生 CMake 变量（`if(CONFIG_SYSTEM)` / `if(CONFIG_USB)` / `if(CONFIG_EVENT_BUS)` / `if(CONFIG_SYSTEM_CMD)` / `if(CONFIG_SYSTEM_CPP)`）；ESP 路径不再读 `.config`。
-> After the Kconfig split (`Kconfig` / `Kconfig.projbuild` / `Kconfig.mini_tree`), `idf.py menuconfig` on the ESP path shows a "mini_tree Configuration" submenu at the top level; all mini_tree `CONFIG_*` switches are evaluated by IDF confgen and written into `sdkconfig.h`. The `file(STRINGS)` soft-coding in `esp_idf.cmake` has been **fully migrated** to IDF-native CMake variables (`if(CONFIG_SYSTEM)` / `if(CONFIG_USB)` / `if(CONFIG_EVENT_BUS)` / `if(CONFIG_SYSTEM_CMD)` / `if(CONFIG_SYSTEM_CPP)`); the ESP path no longer reads `.config`.
+> Kconfig 经 `Kconfig.projbuild`（`orsource Kconfig.mini_tree`）接入 IDF，ESP 路径下 `idf.py menuconfig` 会在顶层菜单显示 "mini_tree Configuration" 子菜单，所有 mini_tree 的 `CONFIG_*` 开关经 IDF confgen 求值后写入 `sdkconfig.h`。`esp_idf.cmake` 中的 `file(STRINGS)` 软编码仍保留以向后兼容旧 sdkconfig，可逐步迁到 `if(CONFIG_OSAL_FREERTOS)` 等 IDF 原生 CMake 变量。
+> Kconfig is wired in via `Kconfig.projbuild` (`orsource Kconfig.mini_tree`); `idf.py menuconfig` on the ESP path shows a "mini_tree Configuration" submenu at the top level; all mini_tree `CONFIG_*` switches are evaluated by IDF confgen and written into `sdkconfig.h`. The `file(STRINGS)` soft-coding in `esp_idf.cmake` is kept for backward compat with legacy sdkconfigs and can be migrated incrementally to IDF-native CMake variables like `if(CONFIG_OSAL_FREERTOS)`.
 
-## 3. 推荐：ESP 板删除 vendored `lib/`，改走 IDF
+## 3. 依赖策略（ESP 分支已落实）
 
-现状：`lib/` 已只 vendor **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；TinyUSB / lwIP / cJSON 与其余积木（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为**链接期 FetchContent**（`mini_tree_link_*`）。在 **ESP-IDF** 上与内核/组件重复的部分仍应裁剪，避免体积、版本、许可证维护成本。
+本分支已完成 ESP 化：`lib/` 只 vendor **ETL**；`freeRTOS`、`rtthread`、`threadx`、`uC-*` 等 RTOS 树已删除，`cmake/*.cmake`（FetchContent）体系已移除。
 
-**推荐（ESP 板工程）/ Recommended (ESP board project):**
-
-1. **删除**（或不再编入）`mini_tree/lib` 下与 IDF 重叠的树：至少 `freeRTOS`、`lwip`；`rtthread` 在 ESP 路径本就不使用。
-   **Remove** (or stop compiling) the trees under `mini_tree/lib` that overlap IDF: at least `freeRTOS` and `lwip`; `rtthread` is unused on the ESP path anyway.
-2. **OSAL**：继续用 `osal_freertos.c` 对接 IDF 内置 FreeRTOS（`esp_idf.cmake` 已强制 `CONFIG_OSAL_FREERTOS`）。
-   **OSAL**: keep using `osal_freertos.c` against IDF's built-in FreeRTOS (`esp_idf.cmake` already forces `CONFIG_OSAL_FREERTOS`).
-3. **第三方有用库**（ETL、cJSON、TinyUSB 等）：用板级 / 中间件 `cmake/*.cmake`（FetchContent）或 IDF Component Manager（`idf_component.yml`）拉取，**不要**长期把整棵 upstream 拷进 `lib/`。
-   **Useful third-party libs** (ETL, cJSON, TinyUSB, etc.): pull via the board / middleware `cmake/*.cmake` (FetchContent) or the IDF Component Manager (`idf_component.yml`); **don't** vendor a full upstream tree into `lib/` long-term.
-4. **TinyUSB**：优先 Espressif 组件或官方 registry；DCD/`CFG_TUSB_MCU` 仍由板级配置，中间件不绑 MCU。
-   **TinyUSB**: prefer the Espressif component or the official registry; DCD/`CFG_TUSB_MCU` stays board-configured — the middleware binds no MCU.
-
-中间件仓库可继续保留 `lib/` 作为**非 ESP**（Cube / 裸机）的可选 vendored / fetch 落点；ESP 板应视 `lib/` 为可裁剪，默认不依赖其中的 FreeRTOS/lwIP 副本。
+- **OSAL**：继续用 `osal_freertos.c` 对接 IDF 内置 FreeRTOS（`esp_idf.cmake` 已强制 `CONFIG_OSAL_FREERTOS`）。
+  **OSAL**: keep using `osal_freertos.c` against IDF's built-in FreeRTOS (`esp_idf.cmake` already forces `CONFIG_OSAL_FREERTOS`).
+- **第三方有用库**（ETL、cJSON、TinyUSB 等）：走 IDF Component Manager / registry（`idf_component.yml`）拉取，**不要**长期把整棵 upstream 拷进 `lib/`。
+  **Useful third-party libs** (ETL, cJSON, TinyUSB, etc.): pull via the IDF Component Manager / registry (`idf_component.yml`); **don't** vendor a full upstream tree into `lib/` long-term.
+- **TinyUSB**：优先 Espressif 组件或官方 registry；DCD/`CFG_TUSB_MCU` 仍由板级配置，中间件不绑 MCU。
+  **TinyUSB**: prefer the Espressif component or the official registry; DCD/`CFG_TUSB_MCU` stays board-configured — the middleware binds no MCU.
 
 ## 4. 板级对照清单（ESP）/ Board Checklist (ESP)
 
-1. `mini_tree` 经根 `CMakeLists.txt` `EXTRA_COMPONENT_DIRS` 注册（优先 `managed_components/mini_tree` vendored 副本，回退 shelf 绝对路径）并走 `esp_idf.cmake`。
-   `mini_tree` is registered via `EXTRA_COMPONENT_DIRS` in the root `CMakeLists.txt` (vendored copy in `managed_components/mini_tree` preferred, shelf absolute path fallback) and goes through `esp_idf.cmake`.
+1. `components/mini_tree` 使用本仓库（或 submodule）并走 `esp_idf.cmake`。
+   `components/mini_tree` uses this repo (or a submodule) and goes through `esp_idf.cmake`.
 2. Include 顺序未被板级 `EXTRA_INCLUDE` 打乱。
    The include order isn't disturbed by board `EXTRA_INCLUDE`.
-3. 树外 `DRIVER_REGISTER`：`components/*/src` 约定自动扫入 dtc + 组件 `WHOLE_ARCHIVE`（或同库编译）。
-   Out-of-tree `DRIVER_REGISTER`: auto-scanned from `components/*/src` + component `WHOLE_ARCHIVE` (or compile into the same lib).
-4. `components/board_${IDF_TARGET}/` 存在（`CMakeLists.txt` + `dts/board.dts` + `dtsi/`）；发现但布局不符会在配置期报错。
-   `components/board_${IDF_TARGET}/` exists (`CMakeLists.txt` + `dts/board.dts` + `dtsi/`); a found-but-misconfigured board fails at configure time.
-5. 烧录后应看到真实 `probing '...'`，而非 `0 ok, 0 fail`。
+3. 树外 `DRIVER_REGISTER`：`MINI_TREE_DTC_EXTRA_SCAN_DIRS` + 组件 `WHOLE_ARCHIVE`（或同库编译）。
+   Out-of-tree `DRIVER_REGISTER`: `MINI_TREE_DTC_EXTRA_SCAN_DIRS` + component `WHOLE_ARCHIVE` (or compile into the same lib).
+4. 烧录后应看到真实 `probing '...'`，而非 `0 ok, 0 fail`。
    After flashing you should see real `probing '...'` lines, not `0 ok, 0 fail`.
-6. 逐步去掉 vendored `lib/freeRTOS`、`lib/lwip` 等，确认仍链到 IDF 提供的实现。
-   Gradually drop vendored `lib/freeRTOS`, `lib/lwip`, etc., and confirm you still link against the IDF-provided implementations.
+5. 确认 `lib/` 仅含 ETL，FreeRTOS 链到 IDF 内置实现（无 vendored 副本）。
+   Confirm `lib/` holds only ETL and FreeRTOS links against the IDF built-in (no vendored copy).
 
 ## 5. 刻意不同步到中间件的内容
 

@@ -70,7 +70,6 @@
 | Document | Description |
 | :--- | :--- |
 | [debug_monitor.md](debug_monitor.md) | Logging, generated artifacts, clangd |
-| [keil_integration.md](keil_integration.md) | Keil Studio (supported) / µVision (not recommended) · IDE |
 | [problem_summary.md](problem_summary.md) | Historical problem timeline |
 
 ### Planning & Index

@@ -1,37 +1,17 @@
-# mini_tree Kconfig — 公共配置树 (ESP / 非 ESP 共用)
-# 本文件不包含 mainmenu; 由根 Kconfig (非 ESP) 或 Kconfig.projbuild (ESP-IDF) source 进去。
-# 编辑 .config 或运行 tools/menuconfig.py
+# mini_tree Kconfig — 公共配置树 (ESP-IDF 组件)
+# 本文件不包含 mainmenu; 由 Kconfig.projbuild (ESP-IDF) orsource 进去。
+# ESP-IDF 路径下用 idf.py menuconfig 编辑 (写入 sdkconfig.h)
 
 menu "mini_tree Configuration"
 
 menu "Platform"
-choice
-    prompt "Target MCU"
-    default PLATFORM_ARM_CM4F
-    help
-      Select the target processor architecture.
-
-config PLATFORM_ARM_CM7
-    bool "ARM Cortex-M7"
-
-config PLATFORM_ARM_CM4F
-    bool "ARM Cortex-M4F"
-
-config PLATFORM_ARM_CM3
-    bool "ARM Cortex-M3"
-
-config PLATFORM_ARM_CM0
-    bool "ARM Cortex-M0 / M0+"
-
-config PLATFORM_RISCV
-    bool "RISC-V (32-bit)"
 
 config PLATFORM_ESP32
     bool "Espressif ESP32 (ESP-IDF)"
+    default y
     help
       Espressif ESP32 系列 (Xtensa; RISC-V 的 ESP32-C 系列在 IDF 下也选此项)。
-      ESP-IDF 工程**必须**选中此项 (sdkconfig.defaults 显式设置), 作为工程
-      平台身份声明; 非 ESP 裸机构建不要选它, 用 ARM / RISC-V 平台选项。
+      本分支为纯 ESP-IDF 组件, 平台固定为 ESP32 并默认启用。
 
       编译行为本身由 IDF 管理 (ESP_PLATFORM 编译宏 + cmake/esp_idf.cmake),
       本选项不直接参与编译裁剪; 但它标识"本工程是 ESP 平台", 与 HAL
@@ -40,9 +20,8 @@ config PLATFORM_ESP32
       strong 实现, 缺失直接链接报错。
 
       Espressif ESP32 series (Xtensa; ESP32-C RISC-V parts also select
-      this when built with ESP-IDF). ESP-IDF projects MUST select this
-      (set in sdkconfig.defaults) as a platform identity declaration;
-      non-ESP bare-metal builds must keep the ARM / RISC-V options.
+      this when built with ESP-IDF). This branch is a pure ESP-IDF
+      component: the platform is fixed to ESP32 and enabled by default.
 
       Compilation is managed by IDF itself (ESP_PLATFORM macro +
       cmake/esp_idf.cmake); this option does not directly drive the
@@ -50,7 +29,6 @@ config PLATFORM_ESP32
       shutdown: on ESP builds mini_tree HAL weak stubs are excluded by
       #if defined(ESP_PLATFORM) and the board component (hal_<soc>)
       must provide strong implementations (link error if missing).
-endchoice
 endmenu
 
 menu "Multi-core Configuration"
@@ -93,98 +71,33 @@ endmenu
 menu "OSAL Backend"
 choice
     prompt "RTOS backend"
-    default OSAL_NULL
+    default OSAL_FREERTOS
     help
-      选择 OS 抽象层后端。
+      选择 OS 抽象层后端。ESP 路径默认并推荐 FreeRTOS (对接 IDF 内置内核);
+      裸机 (OSAL_NULL) 选项保留作无 RTOS 场景的后备。
 
-      Select the OS abstraction layer backend.
+      Select the OS abstraction layer backend. On the ESP path FreeRTOS
+      is the default and recommended (pairs with the IDF-built-in kernel);
+      the bare-metal (OSAL_NULL) option is kept as a no-RTOS fallback.
 
 config OSAL_FREERTOS
     bool "FreeRTOS"
     help
-      使用仓库内置或项目自带的 FreeRTOS。
+      使用 ESP-IDF 内置 FreeRTOS (cmake/esp_idf.cmake 强制对接)。
+      ESP 路径默认后端, 不再依赖仓库 vendored FreeRTOS。
 
-      Use bundled or project-supplied FreeRTOS.
-
-config OSAL_RTTHREAD
-    bool "RT-Thread"
-    help
-      使用 RT-Thread 内核作为 OSAL 后端。
-
-      Use RT-Thread kernel as OSAL backend.
-
-config OSAL_THREADX
-    bool "Eclipse ThreadX"
-    help
-      使用 Eclipse ThreadX (v6.5.1) 作为 OSAL 后端。
-      许可 MIT (Eclipse 基金会托管, 商用友好)。
-      端口按 Kconfig PLATFORM 自动派生 (lib/threadx/ports/cortex_*/gnu);
-      内核配置见 lib/threadx/tx_user.h (1 ms tick + 栈检查)。
-      板级集成: 需改写 ports/cortex_m4/gnu/example_build/ 下的
-      tx_initialize_low_level.S (SysTick 1000 Hz) 并接线 tx_kernel_enter() /
-      tx_application_define()。任务控制块与栈由 OSAL 层 calloc 动态分配
-      (RAM 占用最小, 见 docs/memory_footprint.md §3.1.1)。
-
-      Use Eclipse ThreadX (v6.5.1) as the OSAL backend.
-      MIT licensed (hosted by the Eclipse Foundation, commercial-friendly).
-      Port is derived from Kconfig PLATFORM (lib/threadx/ports/cortex_*/gnu);
-      kernel config in lib/threadx/tx_user.h (1 ms tick + stack checking).
-      Board integration: edit tx_initialize_low_level.S under
-      ports/cortex_m4/gnu/example_build/ (SysTick 1000 Hz) and wire
-      tx_kernel_enter() / tx_application_define(). TCB and stack are
-      calloc'd by the OSAL layer (minimal RAM, see docs/memory_footprint.md §3.1.1).
-
-config OSAL_UCOS_III
-    bool "uC/OS-III"
-    help
-      使用 Micrium uC/OS-III (V3.08.02) 作为 OSAL 后端。
-      许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
-      依赖 lib/uC-CPU + lib/uC-LIB (需随仓克隆, weston-embedded);
-      项目配置副本 lib/uC-OS3/Cfg/ (os_cfg.h: DBG=1, 任务名入 TCB;
-      os_cfg_app.h: OS_CFG_MSG_POOL_SIZE=256 — 全系统并发在途队列消息上限)。
-      优先级 0 最高, 数小优先高; 队列传指针, OSAL 层自建定长槽环。
-      板级集成: OSInit() → OSStart(), SysTick 挂 OS_CPU_SysTickHandler,
-      ISR 包 OSIntEnter/OSIntExit。
-
-      Use Micrium uC/OS-III (V3.08.02) as the OSAL backend.
-      Apache-2.0 licensed (Micrium/Silicon Labs, open source).
-      Depends on lib/uC-CPU + lib/uC-LIB (clone with the repo, weston-embedded);
-      config copy at lib/uC-OS3/Cfg/ (os_cfg.h: DBG=1, task name in TCB;
-      os_cfg_app.h: OS_CFG_MSG_POOL_SIZE=256 — system-wide in-flight queue
-      message cap). Priority 0 is highest; queues pass pointers, OSAL
-      builds a fixed-slot ring. Board integration: OSInit() → OSStart(),
-      SysTick to OS_CPU_SysTickHandler, ISR wrapped with OSIntEnter/OSIntExit.
-
-config OSAL_UCOS_II
-    bool "uC/OS-II"
-    help
-      使用 Micrium uC/OS-II (V2.93.01) 作为 OSAL 后端。
-      许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
-      注意: 每优先级仅允许一个任务 (0~63; 61/62/63 保留给 tmr/stat/idle),
-      任务句柄即优先级号。项目配置副本 lib/uC-OS2/Cfg/
-      (os_cfg.h: 1 ms tick、OS_MAX_EVENTS=24、OS_MAX_QS=8;
-      app_cfg.h: 端口要求的 CPU_CFG_KA_IPL_BOUNDARY / NVIC_PRIO_BITS)。
-      OS_EVENT 控制块来自内核池 (OS_MAX_EVENTS/OS_MAX_QS 为上限)。
-      板级集成: OSInit() → OSStart(), SysTick 挂 OS_CPU_SysTickHandler,
-      ISR 包 OSIntEnter/OSIntExit。
-
-      Use Micrium uC/OS-II (V2.93.01) as the OSAL backend.
-      Apache-2.0 licensed (Micrium/Silicon Labs, open source).
-      Note: only one task per priority (0~63; 61/62/63 reserved for
-      tmr/stat/idle); the task handle IS the priority number. Config copy
-      at lib/uC-OS2/Cfg/ (os_cfg.h: 1 ms tick, OS_MAX_EVENTS=24,
-      OS_MAX_QS=8; app_cfg.h: port-required CPU_CFG_KA_IPL_BOUNDARY /
-      NVIC_PRIO_BITS). OS_EVENT blocks come from the kernel pool
-      (OS_MAX_EVENTS/OS_MAX_QS caps). Board integration: OSInit() →
-      OSStart(), SysTick to OS_CPU_SysTickHandler, ISR wrapped with
-      OSIntEnter/OSIntExit.
+      Use the ESP-IDF built-in FreeRTOS (forced by cmake/esp_idf.cmake).
+      Default backend on the ESP path; no longer relies on a vendored
+      FreeRTOS tree.
 
 config OSAL_NULL
     bool "None (bare-metal)"
     help
       无 RTOS。队列使用环形缓冲 + 忙等待。
+      裸机场景后备选项。
 
       No RTOS. Queue uses ring buffer + busy-wait.
+      Fallback option for bare-metal scenarios.
 endchoice
 
 config OSAL_NULL_MAX_QUEUES
@@ -446,38 +359,6 @@ config X_PREEMPT_PRIO_PER_GROUP
       Group count must be ≤ 32 (uint32_t bitmap limit) and PER_GROUP
       must divide LEVELS.
 
-config FREERTOS_USE_TIMERS
-    bool "FreeRTOS software timers"
-    default n
-    depends on OSAL_FREERTOS
-    help
-      开启 FreeRTOS 软件定时器（对应 lib/freeRTOS/FreeRTOSConfig.h 中的
-      configUSE_TIMERS）。默认关闭。
-
-      Enable FreeRTOS software timers (configUSE_TIMERS in
-      lib/freeRTOS/FreeRTOSConfig.h). Default off.
-
-config FREERTOS_HEAP_SIZE
-    int "FreeRTOS heap size (bytes)"
-    default 8192
-    range 2048 131072
-    depends on OSAL_FREERTOS
-    help
-      FreeRTOS 动态堆大小 (configTOTAL_HEAP_SIZE), 供任务栈/信号量/队列分配。
-      默认 8 KB; 任务多/栈大时按需调大。
-      FreeRTOS dynamic heap (configTOTAL_HEAP_SIZE) for task stacks,
-      semaphores and queues. Default 8 KB; raise when many/large tasks.
-
-config RTT_HEAP_SIZE
-    int "RT-Thread heap size (bytes)"
-    default 32768
-    range 4096 1048576
-    depends on OSAL_RTTHREAD
-    help
-      RT-Thread 独立系统堆大小 (s_rtt_heap, 静态 .bss), 供线程栈/IPC 分配。
-      默认 32 KB。
-      RT-Thread independent system heap (static .bss) for stacks and IPC.
-      Default 32 KB.
 endmenu
 
 menu "OSAL Spinlock"
@@ -596,13 +477,12 @@ endchoice
 
 config SYSTEM_CMD
     bool "System command infra (SystemCmd)"
-    default n
+    default y
     depends on SYSTEM_CPP
     help
       SystemCmd 命令注册/派发基础设施 (system_cpp/src/system_cmd.cpp)。
-      默认关闭; 需要命令行接口时再开启。
-      SystemCmd command register/dispatch infra. Default off;
-      enable only when a command-line interface is needed.
+      纯软件功能, 默认开启。
+      SystemCmd command register/dispatch infra. Pure-software feature; on by default.
 endmenu
 
 menu "Components"
@@ -627,11 +507,11 @@ menu "Board Features"
 
 config PRODUCTION_LOG
     bool "Production log"
-    default n
+    default y
     help
-      开启生产级日志。
+      开启生产级日志。纯软件功能, 默认开启。
 
-      Enable production-level logging.
+      Enable production-level logging. Pure-software feature; on by default.
 
 config PRODUCTION_LOG_SLOT_COUNT
     int "Production log slot count"
@@ -697,15 +577,15 @@ menu "Runtime Capacity"
 
 config EVENT_BUS
     bool "EventBus (publish/subscribe event bus)"
-    default n
+    default y
     depends on SYSTEM
     help
-      EventBus 总开关，默认关闭。
+      EventBus 总开关，默认开启。
       轻量发布/订阅事件总线，ISR 安全投递、启动后封口。
       依赖 System 模块 (喂狗与 SIOF 就绪标志)。
       关闭后 core/src/event_bus.c 不编入，系统不再广播 EVENT_SYS_*。
 
-      Master switch for the EventBus, off by default.
+      Master switch for the EventBus, on by default.
       Lightweight publish/subscribe bus with ISR-safe post and
       seal-after-boot. Depends on the System module (watchdog feed
       and SIOF readiness flag). When off, core/src/event_bus.c is

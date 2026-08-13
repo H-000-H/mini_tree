@@ -70,7 +70,6 @@
 | 文档 | 说明 |
 | :--- | :--- |
 | [debug_monitor.md](debug_monitor.md) | 日志、生成物、clangd |
-| [keil_integration.md](keil_integration.md) | Keil Studio（支持）/ µVision（不推荐）· IDE |
 | [problem_summary.md](problem_summary.md) | 历史问题轴 |
 
 ### 规划与索引

@@ -31,9 +31,9 @@ ETL 是 **上层 C++ 基础库**，vendor 于 `lib/etl`（仅 include + cmake）
 
 若 IDE 仍报 `etl/string.h` not found：确认 `lib/etl/include` 存在，或刷新 `compile_commands.json` / 根 `compile_flags.txt`（已含 `-Ilib/etl/include`）。详见 [ecosystem.md](ecosystem.md)。
 
-### 能不能用 Keil 当主 IDE？
+### 用什么 IDE？
 
-**本仓库不提供、不跟进传统 Keil 5 作为主 IDE。** 若客户强制要工程文件，降级路径是：CMake 生成头之后，用 **Python 自动生成 `.uvprojx`**（远古有过类似做法，现不维护）。日常还是用 Cursor / VS Code / CLion / Qoder 更顺手；想用 Keil 的话直接上 Keil Studio（我试过能用，见 [keil_integration.md](keil_integration.md)）。
+日常使用基于 **VSCode** 的编辑器/IDE（**VS Code / Cursor / Qoder** 等），配合 clangd（见 [getting_started.md §7](getting_started.md) 与 [debug_monitor.md](debug_monitor.md)）。本分支不跟进传统 Keil 等非 VSCode 平台。
 
 ---
 

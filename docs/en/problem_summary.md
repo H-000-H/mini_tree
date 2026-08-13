@@ -43,8 +43,7 @@
 
 | ID | Issue | Handling |
 | :--- | :--- | :--- |
-| P10 | classic Keil µVision integration | not provided / not followed up in this repo, see [keil_integration.md](keil_integration.md) |
-| P11 | ARMCC v5 compilation | unsupported; ARMCLANG (AC6) only |
+| P10 | classic Keil µVision integration | not provided / not followed up (this branch only maintains the VSCode family) |
 
 ---
 

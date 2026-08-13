@@ -16,7 +16,7 @@ This document records the **pure fixes** back-ported from ESP32-S3 board-level v
 | 对象池查询 / Pool query | `osal/src/osal_freertos.c` | bus 层调用 `osal_pool_is_used`，FreeRTOS 后端缺失<br>The bus layer calls `osal_pool_is_used`, missing in the FreeRTOS backend | 补齐实现（与 `osal_null` 语义一致）<br>Implemented (same semantics as `osal_null`) |
 | spinlock 告警 / Spinlock warning | `system_cpp/src/system_cmd.cpp` | `-Werror=unused-result` | `COMPAT_IGNORE_RESULT` 包裹 `osal_spinlock_*`<br>Wrap `osal_spinlock_*` in `COMPAT_IGNORE_RESULT` |
 
-Validation (non-ESP boards): full build with the default CMake preset; after touching the generator, confirm the generated `board_probe.c` externs have **no** `weak`.
+Validation (ESP boards): full `idf.py build`; after touching the generator, confirm the generated `board_probe.c` externs have **no** `weak`.
 ---
 ## 2. ESP-IDF 特殊性（仅 ESP 路径）/ ESP-IDF Specifics (ESP Path Only)
 
@@ -50,15 +50,16 @@ ESP-IDF's default `configMAX_PRIORITIES` is usually 25 (legal range 0..24). The 
 The `volatile` loop state in `board_driver_probe_all` originally fixed an ESP32 (Xtensa) issue where `call8` clobbered caller registers and only the first device got probed. It is kept on ARM as defensive alignment so behavior doesn't diverge across boards.
 ### Dual Source of `CONFIG_*`
 
-IDF already injects `sdkconfig.h`. `esp_idf.cmake` only generates an empty-shell `config.h` to avoid `-Werror=redefined` against the full genconfig header.
+IDF already injects `sdkconfig.h`. `esp_idf.cmake` only generates a `config.h` forwarder to `sdkconfig.h`.
 
 ---
-## Fetch / Recommended: Drop Vendored `lib/` on ESP Boards, Use IDF / Fetch
+## Dependency Strategy (already implemented in this branch)
 
-Current state: `lib/` vendors only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL**; TinyUSB / lwIP / cJSON are now **config-time FetchContent**, and the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) are **link-time FetchContent** (`mini_tree_link_*`). Under **ESP-IDF**, anything duplicating the kernel/components should still be dropped to avoid size, version, and license maintenance costs.
+This branch has completed ESP-ization: `lib/` vendors only **ETL**; the `freeRTOS` / `rtthread` / `threadx` / `uC-*` RTOS trees are removed, and the `cmake/*.cmake` FetchContent system is gone.
 
-
-The middleware repo may keep `lib/` as an optional vendored / fetch landing spot for **non-ESP** (Cube / bare-metal) builds; ESP boards should treat `lib/` as trimmable and not depend on its FreeRTOS/lwIP copies by default.
+- **OSAL**: keep using `osal_freertos.c` against the IDF built-in FreeRTOS (`esp_idf.cmake` already forces `CONFIG_OSAL_FREERTOS`).
+- **Third-party libs** (ETL, cJSON, TinyUSB, etc.): pull via the IDF Component Manager / registry (`idf_component.yml`); **don't** vendor a full upstream tree into `lib/` long-term.
+- **TinyUSB**: prefer the Espressif component or the official registry; DCD/`CFG_TUSB_MCU` stays board-configured — the middleware binds no MCU.
 ---
 ## 4. 板级对照清单（ESP）/ Board Checklist (ESP)
 

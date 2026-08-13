@@ -1,6 +1,6 @@
 # OSAL 后端切换注意事项
 
-> 在 FreeRTOS / RT-Thread / 裸机（NULL）之间切换时，必须复查的行为差异。
+> 在 FreeRTOS / 裸机（NULL）之间切换时，必须复查的行为差异。本分支 OSAL 仅 FreeRTOS（默认）与裸机（后备）两后端。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -27,8 +27,7 @@
 | 宏 | 实现文件 | 链接依赖 | 任务模型 |
 | :--- | :--- | :--- | :--- |
 | `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp`（`CONFIG_OSAL_NULL_TASK_CPP=y` **且** `!XTASK_NONE` 时） | `time_slice/task`（`xtask_coop.c` 或 `xtask_preempt.c`, 由 `Kconfig.mini_tree` 裸机调度器 choice 三选一 `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; 共用 `xtask.h` API） | 无调度（`XTASK_NONE`, 自写 while）<br>**或** 协作式时间片（裸机, 默认 `XTASK_COOP`）<br>**或** N+1 抢占式（多优先级, `XTASK_PREEMPT`） |
-| `CONFIG_OSAL_FREERTOS` | `osal/src/osal_freertos.c` | `lib/freeRTOS`（v11.3.0） | 抢占 |
-| `CONFIG_OSAL_RTTHREAD` | `osal/src/osal_rtthread.c` | `lib/rtthread`（v5.3.0） | 抢占 |
+| `CONFIG_OSAL_FREERTOS` | `osal/src/osal_freertos.c` | ESP-IDF 内置 FreeRTOS | 抢占 |
 
 裸机后端 (`CONFIG_OSAL_NULL`) 的任务调度器由 `Kconfig.mini_tree` 的「裸机调度器」choice 三选一（`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`）, CMake 据 `.config` 注入 `MINI_TREE_XTASK_*` 宏决定编译 `xtask_coop.c` 或 `xtask_preempt.c`, 源码 `#ifdef` 双重互斥:
 - **无调度**（`XTASK_NONE`）— 不编入任何调度器, 应用层自写 `while(1)` 大循环; `OSAL_NULL_TASK_CPP` 由 Kconfig 自动关闭, osal/system 层依赖 xtask 接口无法链接, 固件退化为裸闭包.
@@ -41,15 +40,15 @@
 
 公共表面：`osal/include/osal.h`。业务与 VFS 应只依赖该头。
 
-`lib/` 现状：随仓 vendor 仅 **FreeRTOS（v11.3.0）、RT-Thread（v5.3.0）、ETL**；TinyUSB / lwIP / cJSON 为配置期 FetchContent，其余（LVGL、littlefs、FatFs、Mbed TLS、coreMQTT、coreHTTP、nanopb、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB、u8g2、SFUD、miniz）为链接期 FetchContent（`mini_tree_link_*`）。
+`lib/` 现状：随仓 vendor 仅 **ETL**；其余第三方库走 ESP-IDF Component Manager / registry。FreeRTOS 由 ESP-IDF 内置提供。
 
 ---
 
 ## 2. 切换步骤
 
-1. 改 `mini_tree/.config` 中 OSAL choice（互斥）。
-2. 重新 `genconfig.py` / 重跑 CMake。
-3. **全量重编**（勿混用旧 `config.h`）。
+1. 用 `idf.py menuconfig` 改 OSAL choice（互斥）。
+2. 重新 `idf.py build`（配置写入 `sdkconfig.h`）。
+3. **全量重编**（勿混用旧 `sdkconfig.h`）。
 4. 按下文复查优先级、启动、栈、ISR。
 5. 跑一遍关键外设与安全路径。
 
@@ -60,7 +59,6 @@
 | 后端 | 数值语义 |
 | :--- | :--- |
 | FreeRTOS | 数值 **越大** 优先级越高 |
-| RT-Thread | 数值 **越小** 优先级越高 |
 | NULL (协调式, `XTASK_COOP`) | C API 忽略优先级参数 |
 | NULL (抢占式, `XTASK_PREEMPT`) | N+1 链表多优先级, 数值越大越优先 |
 
@@ -81,7 +79,7 @@
 
 - 只使用 `osal.h` 中标明可用于 ISR 的 API（若有）；不确定则假设 **不可** 在 ISR 拿 mutex。
 - Spinlock 实现由 `CONFIG_OSAL_SPINLOCK_IRQ_DISABLE` / `ATOMIC` 选择；AMP 下倾向 atomic。
-- 禁止业务直接 `#include` `semphr.h` / `rthw.h`。
+- 禁止业务直接 `#include` `semphr.h`（FreeRTOS 头）。
 
 ### 4.1 FreeRTOS 接管 SVC / PendSV 中断与 CubeMX 代码的冲突（STM32 实测）
 
@@ -104,7 +102,7 @@ __weak void PendSV_Handler(void) { }
 ```
 
 > 注意：mini_tree 仓库只提供 OSAL 封装与 RTOS 内核，板级中断向量表 / `stm32f1xx_it.c` 由使用方的板级工程提供。该修复应在你自己的板级工程里做，不要回提到中间件。
-> 若改用 RT-Thread 后端，同理需确认 `rt_hw_context_switch` / `rt_hw_context_switch_interrupt` 使用的中断（通常是 PendSV）未被板级强符号抢占。
+> 在 ESP-IDF 下 FreeRTOS 由 IDF 托管，中断向量由 IDF 管理，无需在板级处理 SVC/PendSV 冲突。
 
 ---
 
@@ -113,8 +111,7 @@ __weak void PendSV_Handler(void) { }
 | 后端 | `system_init_complete` 之后 |
 | :--- | :--- |
 | NULL | `for(;;) mini_tree_system_loop();` |
-| FreeRTOS | `vTaskStartScheduler();` |
-| RT-Thread | `rt_system_scheduler_start();` |
+| FreeRTOS | ESP-IDF 已启动调度器，无需额外调用 |
 
 不要在 NULL 配置下链接并调用 RTOS 调度器入口。
 

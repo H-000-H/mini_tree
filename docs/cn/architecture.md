@@ -87,7 +87,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `time_slice/` | 裸机调度 — 由 Kconfig 三态 choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`) 选择; 协调式 (`xtask_coop.c`, 默认) 与抢占式 (`xtask_preempt.c`, N+1 多优先级) 二选一, 共用 `xtask.h` API; CMake + `#ifdef` 双重互斥; 仅 `OSAL_NULL` | `x_scheduler` / `x_task` |
 | `drivers/<chip>/` | 产品驱动（37 个，`{include,src}` 结构） | `DRIVER_REGISTER` / ioctl；dtc-lite 编译期 probe |
 | `can_hook/` | CAN 钩子扩展 | — |
-| `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP / cJSON 为配置期 FetchContent，其余积木链接期 FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
+| `lib/` | vendor **ETL**（唯一） | 上层 C++ 基础；FreeRTOS 走 IDF 内置，其余第三方走 IDF 组件（见 [ecosystem.md](ecosystem.md)） |
 
 ### 2.1 外设覆盖（当前）
 
@@ -112,7 +112,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | — | （可选）业务/平台准备 | 静态配置、额外注册 |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`、TWDT、Flash Scrubber |
 | 3 | `system_init_complete()` | 释放全局中断 |
-| 4 | 调度或裸机循环 | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_tree_system_loop` |
+| 4 | 调度或裸机循环 | FreeRTOS：ESP-IDF 已启动调度器；裸机（`OSAL_NULL`）：`mini_tree_system_loop` |
 
 ### 3.2 C++ API（`system_cpp`）
 
@@ -163,10 +163,10 @@ device_read/write/ioctl
 
 | 输入 | 工具 | 输出目录（典型） |
 | :--- | :--- | :--- |
-| `Kconfig` + `.config` | `tools/genconfig.py` | `generated/kconfig/mini_tree/config.h` |
+| `Kconfig.projbuild` + `Kconfig.mini_tree` | ESP-IDF confgen（`idf.py menuconfig` → `sdkconfig.h`） | `config.h`（转发头） |
 | `BOARD_DTS` + dtsi + `VENDOR_INC_*` | `tools/dtc-lite.py` | `generated/board/mini_tree/*` |
 | scrubber stub | CMake copy | `generated/scrubber/.../system_scrubber_crc_gen.h` |
-| 根 `compile_flags.txt` | `tools/gen_compile_db.py` | `compile_commands.json`（含 `.h/.hpp` 头文件条目） |
+| 根 `compile_flags.txt` | ESP-IDF（`idf.py build`） | `build/compile_commands.json` |
 
 Kconfig 菜单：Platform、Multi-core/AMP、OSAL、Spinlock、System Log、System Runtime（`SYSTEM` 总开关 + C/CPP 后端）、Components（USB）、Board Features（WDT/Scrubber/…）、Runtime Capacity（`EVENT_BUS` 总开关 + 容量）、Compiler、Build。
 
@@ -204,7 +204,7 @@ CMake 关键缓存变量：`BOARD_DTS`、`BOARD_DTSI_DIR`、`VENDOR_INC_DIRS`、
 | 中间件源码、weak HAL、占位 DTS、文档、ide stubs | `hal_*_<soc>.c`、完整 dts/dtsi、厂商 `-I`、板级链接脚本与启动文件 |
 | OSAL 三后端骨架 | 时钟、堆、SysTick/RTOS 端口（若需要） |
 
-通用 CMake 路径下，平台通过 `BOARD_DTS` / `BOARD_DTSI_DIR` CACHE 变量注入板级；ESP-IDF 路径由 `ESP_PLATFORM` 触发组件模式，板级经 `components/board_${IDF_TARGET}` 约定自动发现（见 [esp_idf_cmake.md](esp_idf_cmake.md) §3）。验证矩阵以各 `platform/*/mini_tree` 工程为准，不在本 shelf 内绑定具体 SoC。
+通用 CMake 路径下，平台通过 `MINI_TREE_BOARD_PORT`（绝对路径）或同级 `board_port.cmake` 注入板级；ESP-IDF 路径由 `ESP_PLATFORM` 触发组件模式。验证矩阵以各 `platform/*/mini_tree` 工程为准，不在本 shelf 内绑定具体 SoC。
 
 ---
 

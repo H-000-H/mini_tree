@@ -1,12 +1,41 @@
 # mini_tree (generic CMake build for non-ESP-IDF projects)
 
 if(ESP_PLATFORM)
-    # 纯架构：不硬编码某一 MCU。芯片/板级/树外驱动全部由 cmake/esp_idf.cmake 自动推导：
-    #   · 芯片 dtc -I/-D          ← IDF_TARGET (idf_build_get_property)
-    #   · 板级 DTS (dts/board.dts + dtsi/) ← 约定组件 components/board_${IDF_TARGET}
-    #   · 树外产品驱动            ← 工程 components/*/src (DRIVER_REGISTER)
-    #   · 功能开关                ← IDF CONFIG_* (sdkconfig, menuconfig 可见)
-    # 换 MCU = 换 board_<soc> 目录 + hal_<soc> 组件, mini_tree 本体不动。
+    # 纯架构：不硬编码某一 MCU。板级通过下列之一注入 BOARD_DTS / dtc -I/-D / 树外扫描：
+    #   1) MINI_TREE_BOARD_PORT（绝对路径）
+    #   2) 同级 ../board_port.cmake（本 ESP 板工程默认）
+    # 注意: component_get_requirements 为 script 模式，不可用 CONFIGURE_DEPENDS
+    if(DEFINED MINI_TREE_BOARD_PORT AND EXISTS "${MINI_TREE_BOARD_PORT}")
+        include("${MINI_TREE_BOARD_PORT}")
+    elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../board_port.cmake")
+        include("${CMAKE_CURRENT_LIST_DIR}/../board_port.cmake")
+    endif()
+
+    # 产品驱动在 mini_tree/drivers/*/（中间件内，与 MCU 无关）
+    file(GLOB MINI_TREE_PRODUCT_DRV_SRC_DIRS
+        LIST_DIRECTORIES true
+        "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src")
+    file(GLOB MINI_TREE_PRODUCT_DRV_SRCS
+        "${CMAKE_CURRENT_LIST_DIR}/drivers/*/src/*.c")
+    if(DEFINED MINI_TREE_DTC_EXTRA_SCAN_DIRS)
+        list(APPEND MINI_TREE_DTC_EXTRA_SCAN_DIRS ${MINI_TREE_PRODUCT_DRV_SRC_DIRS})
+    else()
+        set(MINI_TREE_DTC_EXTRA_SCAN_DIRS ${MINI_TREE_PRODUCT_DRV_SRC_DIRS})
+    endif()
+    if(DEFINED MINI_TREE_DTC_EXTRA_DEPENDS)
+        list(APPEND MINI_TREE_DTC_EXTRA_DEPENDS ${MINI_TREE_PRODUCT_DRV_SRCS})
+    else()
+        set(MINI_TREE_DTC_EXTRA_DEPENDS ${MINI_TREE_PRODUCT_DRV_SRCS})
+    endif()
+
+    # 未注入时：占位 DTS + 仅 dt-bindings -I（可编过，无板级节点）
+    if(NOT DEFINED BOARD_DTS OR BOARD_DTS STREQUAL "")
+        set(BOARD_DTS "${CMAKE_CURRENT_LIST_DIR}/board/dts/board.dts")
+    endif()
+    if(NOT DEFINED MINI_TREE_DTC_EXTRA_ARGS)
+        set(MINI_TREE_DTC_EXTRA_ARGS "-I${CMAKE_CURRENT_LIST_DIR}/board")
+    endif()
+
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/esp_idf.cmake")
     return()
 endif()

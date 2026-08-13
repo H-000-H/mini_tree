@@ -48,7 +48,7 @@
 ## 版本策略
 
 - 以 Git 提交 / tag / 平台 submodule 指针锁定。
-- 升级中间件时：重跑 genconfig + dtc-lite，全量重编，跑 probe 与关键外设冒烟。
+- 升级中间件时：重跑 `idf.py build`（dtc-lite 自动重跑），全量重编，跑 probe 与关键外设冒烟。
 
 ---
 

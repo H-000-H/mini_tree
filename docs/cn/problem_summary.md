@@ -43,8 +43,7 @@
 
 | 编号 | 问题 | 处理 |
 | :--- | :--- | :--- |
-| P10 | 经典 Keil µVision 集成 | 本仓库不提供、不跟进，见 [keil_integration.md](keil_integration.md) |
-| P11 | ARMCC v5 编译 | 不支持，仅 ARMCLANG (AC6) |
+| P10 | 传统 Keil µVision 集成 | 不提供、不跟进（本分支只维护 VSCode 系） |
 
 ---
 

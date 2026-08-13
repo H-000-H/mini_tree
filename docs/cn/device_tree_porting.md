@@ -57,7 +57,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
 | 位置 | 路径 | 说明 |
 | :--- | :--- | :--- |
 | 中间件占位（本仓） | `board/dts/board.dts`、`board/dtsi/example-soc.dtsi`、`board/dtsi/drivers/*.dtsi`、`board/dtsi/vfs/*.dtsi` | 通用模板，无真实外设；`board.dts` 无节点也能走通流水线 |
-| 平台工程（正式） | 由 `BOARD_DTS` / `BOARD_DTSI_DIR` 指向（非 ESP）；ESP 下为 `components/board_${IDF_TARGET}` 约定自动发现 | **真实 SoC / 板级文件放这里**，覆盖中间件占位 |
+| 平台工程（正式） | 由 `BOARD_DTS` / `BOARD_DTSI_DIR` / `MINI_TREE_BOARD_PORT` 指向 | **真实 SoC / 板级文件放这里**，覆盖中间件占位 |
 | dt-bindings 常量 | `board/dt-bindings/<bus>/*.h` | `#include <dt-bindings/...>` 的宏定义（如 `DTS_GPIO_DEFAULT_INTR`） |
 
 > **核心约定**：中间件本仓只保留占位示例；正式板级文件放平台工程，通过 CMake 变量覆盖。不要往本仓 `board/dtsi/` 塞厂商专用 dtsi（用 `VENDOR_INC_DIRS` 引入厂商宏）。
@@ -342,22 +342,22 @@ DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
 
 ### 8.3 CMake 注入（平台工程）
 
-**非 ESP（通用 CMake）**：平台工程通过以下变量把板级树注入 mini_tree（通常在 `add_subdirectory(mini_tree)` 之前 set）：
+平台工程通过以下变量把板级树注入 mini_tree（ESP 路径下由 `board_port.cmake` 在 `idf_component_register` 之前 set，见 [esp_idf_cmake.md §3](esp_idf_cmake.md)）：
 
 ```cmake
-set(BOARD_DTS      ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board/board.dts)
-set(BOARD_DTSI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board/dtsi)   # 含 my_soc.dtsi
+set(MINI_TREE_BOARD_PORT   ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board)
+set(BOARD_DTS              ${MINI_TREE_BOARD_PORT}/board.dts)
+set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # 含 my_soc.dtsi
 # 若需厂商宏：
-# set(VENDOR_INC_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board/vendor_inc)
+# set(VENDOR_INC_DIRS      ${MINI_TREE_BOARD_PORT}/vendor_inc)
 ```
 
 | 变量 | 作用 |
 | :--- | :--- |
 | `BOARD_DTS` | 完整板级 `.dts` 入口路径 |
 | `BOARD_DTSI_DIR` | 板级 `dtsi/` 目录（SoC 骨架等） |
+| `MINI_TREE_BOARD_PORT` | 板级端口根目录 |
 | `VENDOR_INC_DIRS` | 厂商头（dt-bindings 之外的宏）额外 `-I` |
-
-**ESP-IDF**：无需注入——`components/board_${IDF_TARGET}/dts/board.dts` + `dtsi/` 约定自动发现（见 [esp_idf_cmake.md §3](esp_idf_cmake.md)；`MINI_TREE_BOARD_PORT` 已移除）。
 
 ---
 
@@ -479,9 +479,7 @@ int main(void)
     for (;;)
         x_scheduler_poll();           /* 裸机时间片轮询（含抢占式） */
 #elif defined(CONFIG_OSAL_FREERTOS)
-    vTaskStartScheduler();
-#elif defined(CONFIG_OSAL_RTTHREAD)
-    rt_system_scheduler_start();
+    vTaskStartScheduler();            /* ESP-IDF 已自行启动，此处为通用示例 */
 #endif
     return 0;
 }
@@ -631,7 +629,7 @@ namespace App_Led
 
 ## 10. 验证流程
 
-1. **genconfig**：`.config` → `config.h`，确认 `CONFIG_*` 与选择一致。
+1. **Kconfig**：ESP 路径经 `idf.py menuconfig`（`sdkconfig.h`），确认 `CONFIG_*` 与选择一致。
 2. **dtc-lite**：编译期自动跑；检查生成 `<build>/generated/board/mini_tree/board_nodes.h` 里出现 `DEV_ID_bmp280`，`dt_config_gen.h` 里 `DTC_GEN_COUNT_BOSCH_BMP280 >= 1`。
 3. **编译**：编 `mini_tree` 静态库，确认 `board_driver_probe_bmp280` 被收录、无未定义符号（`board_dev_get` 来自生成的 `board_devtable.c`）。
 4. **运行**：`board_driver_probe_all()` 在启动早期遍历，日志应打出 `bmp280 probed @0x76 on i2c0`。

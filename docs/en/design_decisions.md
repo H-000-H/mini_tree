@@ -36,7 +36,7 @@
 
 ## Relationship with Platform Repos
 
-| This repo | Platform repo (e.g. device-platform) |
+| This repo | Platform repo (e.g. Heterogeneous-Multicore) |
 | :--- | :--- |
 | Generic middleware, docs, IDE stubs, placeholder DTS | SoC HAL, full dtsi, vendor `-I`, board bring-up & validation |
 
@@ -85,20 +85,19 @@ See [osal_switching.md](osal_switching.md) for behavioral differences such as pr
 | **CLion** | **Recommended** | First-class CMake; strong C/C++ indexing and refactoring; good for large repos and `SYSTEM_CPP`. |
 | **Qoder** and other modern AI IDEs | **Recommended** | Same category as Cursor: centered on modern language servers + AI integration, keeping pace with this repo's doc/multi-file refactor cadence. |
 | **Zed** | **Recommended (coding only)** | Great clangd-based language service and fast editing; no integrated debug/flash — positioned as a pure code editor. |
-| **CMake + Ninja/Make + GCC/Clang** | **Recommended** | The main path for building and generated artifacts (genconfig / dtc-lite). |
-| **Keil Studio** (VS Code-based) | **Works (I've tried it)** | Fundamentally different from µVision: VS Code core + first-class CMake (CMSIS-Toolbox / cbuild), clangd extension available, official debug & cloud build kept; I verified the Keil Studio Pack plugin consumes this repo's CMake flow directly and runs (see [keil_integration.md](keil_integration.md) §2.1). |
-| **Classic Keil 5**: **Keil µVision** | **Not provided, not followed up** | Nearly impossible to integrate cleanly; weak navigation/C++/AI. The simplest fallback is a **self-written/modified Python script generating `.uvprojx`** (a legacy idea, **no longer maintained**). See [keil_integration.md](keil_integration.md). |
-| **ARMCC v5** | don't use | Too old; lacks modern C/GNU extensions. |
+| **CMake + Ninja/Make + GCC/Clang** | **Recommended** | The main path for building and generated artifacts (dtc-lite / ESP-IDF). |
+| **VS Code / Cursor / Qoder** etc. | **Recommended** | VSCode-based editors/IDEs, with clangd and the ESP-IDF extension. |
+| **Classic Keil 5 / µVision** | **Not provided, not followed up** | This branch is an ESP component; the main path is VSCode-based + ESP-IDF. Non-VSCode platforms are not the main battlefield. |
 
-My habit: **write code in a modern editor, build firmware with CMake**; classic Keil µVision (**traditional Keil 5**) is **not provided and not followed up** in this repo, and isn't my main path — if a µVision project must be delivered, bring your own Python generator for `.uvprojx` (see [keil_integration.md](keil_integration.md)); that generator isn't maintained. **Keil Studio I've tried and it works directly** (VS Code core + first-class CMake, see [keil_integration.md](keil_integration.md) §2.1) — if you want Keil, use it.
+My habit: **write code in a modern editor, build firmware with CMake / ESP-IDF**; this branch's main path is the **VSCode family (VS Code / Cursor / Qoder) + clangd + ESP-IDF** and does not follow up on traditional Keil or other non-VSCode platforms.
 
 ### This Architecture in One Sentence
 
-Borrow Linux/ESP's **layering & VFS mindset**, use FreeRTOS (or RT-Thread components) for **scheduling**, and this repo's dtc-lite for **compile-time, trimmable board description** (Linux-style device tree; the trade-off vs Zephyr's dts macrogen path is in the table above). On the dev side, avoid making Keil the main battlefield; stay on modern tools such as **Cursor / VS Code / CLion / Qoder / Zed (coding only)**.
+Borrow Linux/ESP's **layering & VFS mindset**, use FreeRTOS for **scheduling**, and this repo's dtc-lite for **compile-time, trimmable board description** (Linux-style device tree; the trade-off vs Zephyr's dts macrogen path is in the table above). On the dev side, stay on modern tools such as **VS Code / Cursor / Qoder**.
 
 ---
 
 ## Related Documents
 
 - [architecture.md](architecture.md) · [roadmap.md](roadmap.md) · [api_compatibility.md](api_compatibility.md) · [ecosystem.md](ecosystem.md)
-- [references.md](references.md) · [osal_switching.md](osal_switching.md) · [keil_integration.md](keil_integration.md)
+- [references.md](references.md) · [osal_switching.md](osal_switching.md)

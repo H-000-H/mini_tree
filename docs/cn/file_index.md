@@ -13,8 +13,8 @@
 
 | 路径 | 说明 |
 | :--- | :--- |
-| `CMakeLists.txt` | 静态库 `mini_tree`、genconfig、dtc-lite、源文件集合 |
-| `Kconfig` / `.config` | 配置菜单与点文件 |
+| `CMakeLists.txt` | ESP 组件入口（路由到 `cmake/esp_idf.cmake`） |
+| `Kconfig.projbuild` / `Kconfig.mini_tree` | ESP-IDF Kconfig（`idf.py menuconfig` → `sdkconfig.h`） |
 | `compile_flags.txt` / `.clangd` | clangd 编译数据库 |
 | `.clang-format` · `.clang-format-ignore` · 分层 `.clang-tidy` | 代码风格：格式化 + 命名规范；app 层建议、app 以下强规定 |
 | `error_symbols.ld` | `ERR_SECTION_BASE` |
@@ -23,7 +23,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | 入口、变更、贡献（开源惯例留根目录） |
 | `docs/` | 全部专题文档（见 [README.md](README.md)） |
 
-> 构建为通用 CMake：HAL 提供 weak 空实现，板级经 `BOARD_DTS` / `BOARD_DTSI_DIR` 注入；另提供 ESP-IDF 组件路径（`cmake/esp_idf.cmake`，板级经 `board_${IDF_TARGET}` 约定自动发现）。
+> 构建为通用 CMake：HAL 提供 weak 空实现，板级经 `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR` 注入；另提供 ESP-IDF 组件路径（`cmake/esp_idf.cmake`）。
 
 ---
 
@@ -76,7 +76,7 @@
 | `core/src/*.c` | 上述实现 |
 | `osal/include/osal.h` | OSAL 总头 |
 | `osal/include/osal_null.h` | 裸机后端辅助接口 + C++ 任务重载声明（`CONFIG_OSAL_NULL_TASK_CPP`） |
-| `osal/src/osal_{null,freertos,rtthread}.c` | 三后端 |
+| `osal/src/osal_{null,freertos}.c` | 两后端（裸机 / FreeRTOS） |
 | `osal/src/osal_task.cpp` | 裸机 C++ 任务创建封装（`CONFIG_OSAL_NULL_TASK_CPP`） |
 | `interrupt/interrupt.{c,h}` | VIRQ |
 | `system_c/` · `system_cpp/` | init、wdt、scrubber、safe_state、task_manager、cmd（Kconfig 选 C 或 C++） |
@@ -89,15 +89,15 @@
 | 路径 | 说明 |
 | :--- | :--- |
 | `tools/dtc-lite.py` · `tools/dtc_lite/` | 设备树编译器包 |
-| `tools/genconfig.py` | Kconfig → `config.h` |
 | `tools/system_scrubber_crc_stub.h` | CRC 占位 |
 | `ide/stubs/` | clangd 生成头占位 |
 | `drivers/<chip>/` | 产品驱动共 **37 个**（`include/` + `src/`，`DRIVER_REGISTER` + dtc-lite 编译期 probe）；例 `w25qxx`、`st7789`、`ssd1306`…；**无**旧 `drivers/flash` |
 | `can_hook/` | CAN 协议超集钩子（见 [can_hook.md](can_hook.md)） |
 | `algorithm/buffer/` | 环形/双缓冲 |
-| `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` / `esp_idf` |
+| `cmake/esp_idf.cmake` | ESP 组件入口（`idf_component_register`） |
+| `cmake/etl.cmake` | ETL 链接辅助（保留；ESP 路径直接用 `lib/etl/include`） |
 
-> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP / cJSON** 为配置期 FetchContent，其余积木为链接期 FetchContent。
+> `lib/` 现状：vendor 仅 **ETL**；其余第三方库（FreeRTOS、TinyUSB、cJSON 等）走 **ESP-IDF 组件体系**（见 [ecosystem.md](ecosystem.md)）。
 
 ---
 

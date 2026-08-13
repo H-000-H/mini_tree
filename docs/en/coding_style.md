@@ -27,7 +27,7 @@
 Find clangd from the root `compile_flags.txt` first (otherwise the IDE only has a partial index):
 
 - `Clangd: Restart language server`
-- After changing macros / config → re-run genconfig (see [getting_started.md](getting_started.md))
+- After changing macros / config → re-run `idf.py build` (ESP path; see [getting_started.md](getting_started.md))
 
 Formatting and naming: **let the tools do it** — don't hand-edit.
 
