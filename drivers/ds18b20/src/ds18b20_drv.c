@@ -72,21 +72,21 @@ static void ds18b20_delay_us(uint32_t us) { osal_delay_us(us); }
  * @brief 单总线复位脉冲：拉低 480us 后释放，检测存在脉冲
  * @return VFS_OK（检测到应答）或 VFS_ERR_IO（无应答）
  */
-static int ds18b20_reset(struct ds18b20_device* d)
+static int ds18b20_reset(struct ds18b20_device* dev)
 {
     int present;
 
-    d->data_gpio.level = 0;
-    if (vfs_gpio_set_level(&d->data_gpio) != VFS_OK)
+    dev->data_gpio.level = 0;
+    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
     ds18b20_delay_us(480);
-    d->data_gpio.level = 1;
-    if (vfs_gpio_set_level(&d->data_gpio) != VFS_OK)
+    dev->data_gpio.level = 1;
+    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
     ds18b20_delay_us(70);
-    if (vfs_gpio_get_level(&d->data_gpio) != VFS_OK)
+    if (vfs_gpio_get_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
-    present = (d->data_gpio.level == 0);
+    present = (dev->data_gpio.level == 0);
     ds18b20_delay_us(410);
     return present ? VFS_OK : VFS_ERR_IO;
 }
@@ -94,14 +94,14 @@ static int ds18b20_reset(struct ds18b20_device* d)
 /**
  * @brief 写 1bit（写 1：短拉低；写 0：长拉低）
  */
-static int ds18b20_write_bit(struct ds18b20_device* d, int bit)
+static int ds18b20_write_bit(struct ds18b20_device* dev, int bit)
 {
-    d->data_gpio.level = 0;
-    if (vfs_gpio_set_level(&d->data_gpio) != VFS_OK)
+    dev->data_gpio.level = 0;
+    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
     ds18b20_delay_us(bit ? 6U : 60U);
-    d->data_gpio.level = 1;
-    if (vfs_gpio_set_level(&d->data_gpio) != VFS_OK)
+    dev->data_gpio.level = 1;
+    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
     ds18b20_delay_us(bit ? 64U : 10U);
     return VFS_OK;
@@ -111,19 +111,19 @@ static int ds18b20_write_bit(struct ds18b20_device* d, int bit)
  * @brief 读 1bit（拉低 3us 后释放，采样电平）
  * @param bit 输出读到的位
  */
-static int ds18b20_read_bit(struct ds18b20_device* d, int* bit)
+static int ds18b20_read_bit(struct ds18b20_device* dev, int* bit)
 {
-    d->data_gpio.level = 0;
-    if (vfs_gpio_set_level(&d->data_gpio) != VFS_OK)
+    dev->data_gpio.level = 0;
+    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
     ds18b20_delay_us(3);
-    d->data_gpio.level = 1;
-    if (vfs_gpio_set_level(&d->data_gpio) != VFS_OK)
+    dev->data_gpio.level = 1;
+    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
     ds18b20_delay_us(10);
-    if (vfs_gpio_get_level(&d->data_gpio) != VFS_OK)
+    if (vfs_gpio_get_level(&dev->data_gpio) != VFS_OK)
         return VFS_ERR_IO;
-    *bit = d->data_gpio.level ? 1 : 0;
+    *bit = dev->data_gpio.level ? 1 : 0;
     ds18b20_delay_us(50);
     return VFS_OK;
 }
@@ -131,35 +131,35 @@ static int ds18b20_read_bit(struct ds18b20_device* d, int* bit)
 /**
  * @brief 写 1B（LSB 先行）
  */
-static int ds18b20_write_byte(struct ds18b20_device* d, uint8_t v)
+static int ds18b20_write_byte(struct ds18b20_device* dev, uint8_t val)
 {
     int i;
     for (i = 0; i < 8; i++)
     {
-        int r = ds18b20_write_bit(d, (v >> i) & 1);
-        if (r != VFS_OK)
-            return r;
+        int ret = ds18b20_write_bit(dev, (val >> i) & 1);
+        if (ret != VFS_OK)
+            return ret;
     }
     return VFS_OK;
 }
 
 /**
  * @brief 读 1B（LSB 先行）
- * @param v 输出读到的字节
+ * @param val 输出读到的字节
  */
-static int ds18b20_read_byte(struct ds18b20_device* d, uint8_t* v)
+static int ds18b20_read_byte(struct ds18b20_device* dev, uint8_t* val)
 {
     int i;
-    int b;
+    int bit_val;
     uint8_t out = 0;
     for (i = 0; i < 8; i++)
     {
-        if (ds18b20_read_bit(d, &b) != VFS_OK)
+        if (ds18b20_read_bit(dev, &bit_val) != VFS_OK)
             return VFS_ERR_IO;
-        if (b)
+        if (bit_val)
             out |= (uint8_t)(1U << i);
     }
-    *v = out;
+    *val = out;
     return VFS_OK;
 }
 
@@ -167,34 +167,34 @@ static int ds18b20_read_byte(struct ds18b20_device* d, uint8_t* v)
  * @brief 首次 open 时打开 GPIO 设备并查询默认电平（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ds18b20_hw_create(struct ds18b20_device* d)
+static int ds18b20_hw_create(struct ds18b20_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
     {
-        int r = device_open(d->data_dev, NULL);
-        if (r != VFS_OK)
-            return r;
-        r = device_ioctl(d->data_dev, GPIO_CMD_GET_LEVEL, &d->data_gpio, sizeof(d->data_gpio), 0);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->data_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
+        ret = device_ioctl(dev->data_dev, GPIO_CMD_GET_LEVEL, &dev->data_gpio, sizeof(dev->data_gpio), 0);
+        if (ret != VFS_OK)
+            return ret;
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 GPIO 设备）
  */
-static void ds18b20_hw_destroy(struct ds18b20_device* d)
+static void ds18b20_hw_destroy(struct ds18b20_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->data_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->data_dev));
-    d->hw_ready = 0;
+    if (dev->data_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->data_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -202,15 +202,15 @@ static void ds18b20_hw_destroy(struct ds18b20_device* d)
  */
 static int ds18b20_open(struct device* pdev, void* arg)
 {
-    struct ds18b20_device* d;
+    struct ds18b20_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ds18b20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ds18b20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -220,7 +220,7 @@ static int ds18b20_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = ds18b20_hw_create(d);
+        ret = ds18b20_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -236,14 +236,14 @@ static int ds18b20_open(struct device* pdev, void* arg)
  */
 static int ds18b20_close(struct device* pdev)
 {
-    struct ds18b20_device* d;
+    struct ds18b20_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ds18b20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ds18b20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -251,7 +251,7 @@ static int ds18b20_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        ds18b20_hw_destroy(d);
+        ds18b20_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -259,7 +259,7 @@ static int ds18b20_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct ds18b20_ioctl_map
 {
     ds18b20_ioctl_fn_t handler;
@@ -268,31 +268,31 @@ struct ds18b20_ioctl_map
 /**
  * @brief DS18B20_CMD_READ_TEMP 实现：复位 → 转换（750ms）→ 读暂存器换算温度
  */
-static int ds18b20_cmd_temp(struct ds18b20_device* d, void* arg, size_t len, uint32_t ms)
+static int ds18b20_cmd_temp(struct ds18b20_device* dev, void* arg, size_t len, uint32_t ms)
 {
     uint8_t lo = 0;
     uint8_t hi = 0;
     int16_t raw;
     int* t = (int*)arg;
     COMPAT_IGNORE_RESULT(ms);
-    if (!d->hw_ready || !t || len != sizeof(int))
+    if (!dev->hw_ready || !t || len != sizeof(int))
         return VFS_ERR_INVAL;
-    if (ds18b20_reset(d) != VFS_OK)
+    if (ds18b20_reset(dev) != VFS_OK)
         return VFS_ERR_IO;
-    if (ds18b20_write_byte(d, DS18B20_OW_SKIP_ROM) != VFS_OK)
+    if (ds18b20_write_byte(dev, DS18B20_OW_SKIP_ROM) != VFS_OK)
         return VFS_ERR_IO;
-    if (ds18b20_write_byte(d, DS18B20_OW_CONVERT_T) != VFS_OK)
+    if (ds18b20_write_byte(dev, DS18B20_OW_CONVERT_T) != VFS_OK)
         return VFS_ERR_IO;
     osal_delay_ms(DS18B20_CONVERT_MS);
-    if (ds18b20_reset(d) != VFS_OK)
+    if (ds18b20_reset(dev) != VFS_OK)
         return VFS_ERR_IO;
-    if (ds18b20_write_byte(d, DS18B20_OW_SKIP_ROM) != VFS_OK)
+    if (ds18b20_write_byte(dev, DS18B20_OW_SKIP_ROM) != VFS_OK)
         return VFS_ERR_IO;
-    if (ds18b20_write_byte(d, DS18B20_OW_READ_SCRATCHPAD) != VFS_OK)
+    if (ds18b20_write_byte(dev, DS18B20_OW_READ_SCRATCHPAD) != VFS_OK)
         return VFS_ERR_IO;
-    if (ds18b20_read_byte(d, &lo) != VFS_OK)
+    if (ds18b20_read_byte(dev, &lo) != VFS_OK)
         return VFS_ERR_IO;
-    if (ds18b20_read_byte(d, &hi) != VFS_OK)
+    if (ds18b20_read_byte(dev, &hi) != VFS_OK)
         return VFS_ERR_IO;
     raw = (int16_t)(((uint16_t)hi << 8) | lo);
     *t = (int)(raw / DS18B20_TEMP_LSB_PER_C);
@@ -307,15 +307,15 @@ static const struct ds18b20_ioctl_map s_ds18b20_map[DS18B20_CMD_COUNT] = {
  */
 static int ds18b20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct ds18b20_device* d;
+    struct ds18b20_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ds18b20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ds18b20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -326,7 +326,7 @@ static int ds18b20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (off < 1 || off > DS18B20_CMD_COUNT || !s_ds18b20_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_ds18b20_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_ds18b20_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -342,34 +342,34 @@ static const struct file_operations ds18b20_fops = {
  */
 static int ds18b20_probe(struct device* pdev)
 {
-    struct ds18b20_device* d;
+    struct ds18b20_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ds18b20_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_ds18b20_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->data_dev = device_get_phandle_dev(pdev, "data-gpio");
-    if (IS_ERR(d->data_dev))
+    dev = &s_ds18b20_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->data_dev = device_get_phandle_dev(pdev, "data-gpio");
+    if (IS_ERR(dev->data_dev))
     {
-        ret = PTR_ERR(d->data_dev);
+        ret = PTR_ERR(dev->data_dev);
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = ds18b20_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = ds18b20_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, pool_idx));
     return ret;
 }
@@ -379,18 +379,18 @@ err:
  */
 static int ds18b20_remove(struct device* pdev)
 {
-    struct ds18b20_device* d;
+    struct ds18b20_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = ds18b20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ds18b20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_ds18b20_pool);
+    idx = (int)(dev - s_ds18b20_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -398,8 +398,8 @@ static int ds18b20_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    ds18b20_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    ds18b20_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

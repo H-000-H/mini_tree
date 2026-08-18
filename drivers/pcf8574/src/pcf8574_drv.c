@@ -65,53 +65,53 @@ static struct pcf8574_device* pcf8574_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int pcf8574_i2c_wr(struct pcf8574_device* d, const uint8_t* tx, size_t len, uint32_t to)
+static int pcf8574_i2c_wr(struct pcf8574_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !tx || len == 0U)
+    if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_write(d->i2c_dev, tx, len, to);
+    return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 /**
  * @brief 从 I2C 总线读数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int pcf8574_i2c_rd(struct pcf8574_device* d, uint8_t* rx, size_t len, uint32_t to)
+static int pcf8574_i2c_rd(struct pcf8574_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !rx || len == 0U)
+    if (!dev || !dev->i2c_dev || !rx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_read(d->i2c_dev, rx, len, to);
+    return device_read(dev->i2c_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int pcf8574_hw_create(struct pcf8574_device* d)
+static int pcf8574_hw_create(struct pcf8574_device* dev)
 {
-    int r;
-    if (!d)
+    int ret;
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->i2c_dev, NULL);
-    if (r != VFS_OK)
-        return r;
+    ret = device_open(dev->i2c_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
 
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 I2C client）
  */
-static void pcf8574_hw_destroy(struct pcf8574_device* d)
+static void pcf8574_hw_destroy(struct pcf8574_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-    d->hw_ready = 0;
+    if (dev->i2c_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -119,15 +119,15 @@ static void pcf8574_hw_destroy(struct pcf8574_device* d)
  */
 static int pcf8574_open(struct device* pdev, void* arg)
 {
-    struct pcf8574_device* d;
+    struct pcf8574_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = pcf8574_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = pcf8574_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -137,7 +137,7 @@ static int pcf8574_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = pcf8574_hw_create(d);
+        ret = pcf8574_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -153,14 +153,14 @@ static int pcf8574_open(struct device* pdev, void* arg)
  */
 static int pcf8574_close(struct device* pdev)
 {
-    struct pcf8574_device* d;
+    struct pcf8574_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = pcf8574_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = pcf8574_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -168,7 +168,7 @@ static int pcf8574_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        pcf8574_hw_destroy(d);
+        pcf8574_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -176,7 +176,7 @@ static int pcf8574_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*pcf8574_ioctl_fn_t)(struct pcf8574_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*pcf8574_ioctl_fn_t)(struct pcf8574_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct pcf8574_ioctl_map
 {
     pcf8574_ioctl_fn_t handler;
@@ -185,22 +185,22 @@ struct pcf8574_ioctl_map
 /**
  * @brief PCF8574_CMD_WRITE 实现：写 8bit 输出口
  */
-static int pcf8574_cmd_write(struct pcf8574_device* d, void* arg, size_t len, uint32_t to)
+static int pcf8574_cmd_write(struct pcf8574_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    uint8_t v;
-    if (!d->hw_ready || !arg || len != sizeof(uint8_t))
+    uint8_t val;
+    if (!dev->hw_ready || !arg || len != sizeof(uint8_t))
         return VFS_ERR_INVAL;
-    v = *(uint8_t*)arg;
-    return pcf8574_i2c_wr(d, &v, 1, to);
+    val = *(uint8_t*)arg;
+    return pcf8574_i2c_wr(dev, &val, 1, timeout_ms);
 }
 /**
  * @brief PCF8574_CMD_READ 实现：读 8bit 输入口
  */
-static int pcf8574_cmd_read(struct pcf8574_device* d, void* arg, size_t len, uint32_t to)
+static int pcf8574_cmd_read(struct pcf8574_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    if (!d->hw_ready || !arg || len != sizeof(uint8_t))
+    if (!dev->hw_ready || !arg || len != sizeof(uint8_t))
         return VFS_ERR_INVAL;
-    return pcf8574_i2c_rd(d, (uint8_t*)arg, 1, to);
+    return pcf8574_i2c_rd(dev, (uint8_t*)arg, 1, timeout_ms);
 }
 
 static const struct pcf8574_ioctl_map s_pcf8574_map[PCF8574_CMD_COUNT] = {
@@ -213,15 +213,15 @@ static const struct pcf8574_ioctl_map s_pcf8574_map[PCF8574_CMD_COUNT] = {
  */
 static int pcf8574_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct pcf8574_device* d;
+    struct pcf8574_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = pcf8574_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = pcf8574_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -232,7 +232,7 @@ static int pcf8574_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (off < 1 || off > PCF8574_CMD_COUNT || !s_pcf8574_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_pcf8574_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_pcf8574_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -248,34 +248,34 @@ static const struct file_operations pcf8574_fops = {
  */
 static int pcf8574_probe(struct device* pdev)
 {
-    struct pcf8574_device* d;
+    struct pcf8574_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_pcf8574_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_pcf8574_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(pdev);
-    if (!d->i2c_dev)
+    dev = &s_pcf8574_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->i2c_dev = device_get_parent(pdev);
+    if (!dev->i2c_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = pcf8574_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = pcf8574_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_pcf8574_pool_ctrl, pool_idx));
     return ret;
 }
@@ -285,18 +285,18 @@ err:
  */
 static int pcf8574_remove(struct device* pdev)
 {
-    struct pcf8574_device* d;
+    struct pcf8574_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = pcf8574_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = pcf8574_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_pcf8574_pool);
+    idx = (int)(dev - s_pcf8574_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -304,8 +304,8 @@ static int pcf8574_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    pcf8574_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    pcf8574_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_pcf8574_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

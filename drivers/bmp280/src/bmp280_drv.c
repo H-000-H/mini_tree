@@ -77,31 +77,31 @@ static struct bmp280_device* bmp280_get_drvdata(struct device* pdev)
 
 /**
  * @brief 向 I2C 总线写数据
- * @param d 驱动实例
+ * @param dev 驱动实例
  * @param tx 发送缓冲
  * @param len 发送长度
- * @param to 超时（ms）
+ * @param timeout_ms 超时（ms）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bmp280_i2c_wr(struct bmp280_device* d, const uint8_t* tx, size_t len, uint32_t to)
+static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !tx || len == 0U)
+    if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_write(d->i2c_dev, tx, len, to);
+    return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 /**
  * @brief 从 I2C 总线读数据
- * @param d 驱动实例
+ * @param dev 驱动实例
  * @param rx 接收缓冲
  * @param len 接收长度
- * @param to 超时（ms）
+ * @param timeout_ms 超时（ms）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bmp280_i2c_rd(struct bmp280_device* d, uint8_t* rx, size_t len, uint32_t to)
+static int bmp280_i2c_rd(struct bmp280_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !rx || len == 0U)
+    if (!dev || !dev->i2c_dev || !rx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_read(d->i2c_dev, rx, len, to);
+    return device_read(dev->i2c_dev, rx, len, timeout_ms);
 }
 
 /**
@@ -109,38 +109,38 @@ static int bmp280_i2c_rd(struct bmp280_device* d, uint8_t* rx, size_t len, uint3
  * @param start 起始寄存器地址
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bmp280_read_regs(struct bmp280_device* d, uint8_t start, uint8_t* buf, size_t len,
-                            uint32_t to)
+static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* buf, size_t len,
+                            uint32_t timeout_ms)
 {
-    int r = bmp280_i2c_wr(d, &start, 1, to);
-    if (r != VFS_OK)
-        return r;
-    return bmp280_i2c_rd(d, buf, len, to);
+    int ret = bmp280_i2c_wr(dev, &start, 1, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    return bmp280_i2c_rd(dev, buf, len, timeout_ms);
 }
 
 /**
  * @brief 加载校准系数（T/P）并校验可用
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bmp280_load_calib(struct bmp280_device* d, uint32_t to)
+static int bmp280_load_calib(struct bmp280_device* dev, uint32_t timeout_ms)
 {
     uint8_t c[24];
-    int r = bmp280_read_regs(d, BMP280_REG_DIG_T1, c, sizeof(c), to);
-    if (r != VFS_OK)
-        return r;
-    d->dig_T1 = (uint16_t)(c[0] | ((uint16_t)c[1] << 8));
-    d->dig_T2 = (int16_t)(c[2] | ((uint16_t)c[3] << 8));
-    d->dig_T3 = (int16_t)(c[4] | ((uint16_t)c[5] << 8));
-    d->dig_P1 = (uint16_t)(c[6] | ((uint16_t)c[7] << 8));
-    d->dig_P2 = (int16_t)(c[8] | ((uint16_t)c[9] << 8));
-    d->dig_P3 = (int16_t)(c[10] | ((uint16_t)c[11] << 8));
-    d->dig_P4 = (int16_t)(c[12] | ((uint16_t)c[13] << 8));
-    d->dig_P5 = (int16_t)(c[14] | ((uint16_t)c[15] << 8));
-    d->dig_P6 = (int16_t)(c[16] | ((uint16_t)c[17] << 8));
-    d->dig_P7 = (int16_t)(c[18] | ((uint16_t)c[19] << 8));
-    d->dig_P8 = (int16_t)(c[20] | ((uint16_t)c[21] << 8));
-    d->dig_P9 = (int16_t)(c[22] | ((uint16_t)c[23] << 8));
-    d->calib_ok = 1;
+    int ret = bmp280_read_regs(dev, BMP280_REG_DIG_T1, c, sizeof(c), timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    dev->dig_T1 = (uint16_t)(c[0] | ((uint16_t)c[1] << 8));
+    dev->dig_T2 = (int16_t)(c[2] | ((uint16_t)c[3] << 8));
+    dev->dig_T3 = (int16_t)(c[4] | ((uint16_t)c[5] << 8));
+    dev->dig_P1 = (uint16_t)(c[6] | ((uint16_t)c[7] << 8));
+    dev->dig_P2 = (int16_t)(c[8] | ((uint16_t)c[9] << 8));
+    dev->dig_P3 = (int16_t)(c[10] | ((uint16_t)c[11] << 8));
+    dev->dig_P4 = (int16_t)(c[12] | ((uint16_t)c[13] << 8));
+    dev->dig_P5 = (int16_t)(c[14] | ((uint16_t)c[15] << 8));
+    dev->dig_P6 = (int16_t)(c[16] | ((uint16_t)c[17] << 8));
+    dev->dig_P7 = (int16_t)(c[18] | ((uint16_t)c[19] << 8));
+    dev->dig_P8 = (int16_t)(c[20] | ((uint16_t)c[21] << 8));
+    dev->dig_P9 = (int16_t)(c[22] | ((uint16_t)c[23] << 8));
+    dev->calib_ok = 1;
     return VFS_OK;
 }
 
@@ -150,17 +150,17 @@ static int bmp280_load_calib(struct bmp280_device* d, uint32_t to)
  * @param adc_t 温度 ADC 原始值
  * @return 温度 ×100
  */
-static int32_t bmp280_compensate_t(struct bmp280_device* d, int32_t adc_t)
+static int32_t bmp280_compensate_t(struct bmp280_device* dev, int32_t adc_t)
 {
     int32_t var1;
     int32_t var2;
-    var1 = ((((adc_t >> 3) - ((int32_t)d->dig_T1 << 1))) * ((int32_t)d->dig_T2)) >> 11;
+    var1 = ((((adc_t >> 3) - ((int32_t)dev->dig_T1 << 1))) * ((int32_t)dev->dig_T2)) >> 11;
     var2 =
-        (((((adc_t >> 4) - ((int32_t)d->dig_T1)) * ((adc_t >> 4) - ((int32_t)d->dig_T1))) >> 12) *
-         ((int32_t)d->dig_T3)) >>
+        (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >> 12) *
+         ((int32_t)dev->dig_T3)) >>
         14;
-    d->t_fine = var1 + var2;
-    return (d->t_fine * 5 + 128) >> 8; /* 0.01°C */
+    dev->t_fine = var1 + var2;
+    return (dev->t_fine * 5 + 128) >> 8; /* 0.01°C */
 }
 
 /**
@@ -168,24 +168,24 @@ static int32_t bmp280_compensate_t(struct bmp280_device* d, int32_t adc_t)
  * @param adc_p 气压 ADC 原始值
  * @return 气压 Pa
  */
-static uint32_t bmp280_compensate_p(struct bmp280_device* d, int32_t adc_p)
+static uint32_t bmp280_compensate_p(struct bmp280_device* dev, int32_t adc_p)
 {
     int64_t var1;
     int64_t var2;
     int64_t p;
-    var1 = ((int64_t)d->t_fine) - 128000;
-    var2 = var1 * var1 * (int64_t)d->dig_P6;
-    var2 = var2 + ((var1 * (int64_t)d->dig_P5) << 17);
-    var2 = var2 + (((int64_t)d->dig_P4) << 35);
-    var1 = ((var1 * var1 * (int64_t)d->dig_P3) >> 8) + ((var1 * (int64_t)d->dig_P2) << 12);
-    var1 = (((((int64_t)1) << 47) + var1) * (int64_t)d->dig_P1) >> 33;
+    var1 = ((int64_t)dev->t_fine) - 128000;
+    var2 = var1 * var1 * (int64_t)dev->dig_P6;
+    var2 = var2 + ((var1 * (int64_t)dev->dig_P5) << 17);
+    var2 = var2 + (((int64_t)dev->dig_P4) << 35);
+    var1 = ((var1 * var1 * (int64_t)dev->dig_P3) >> 8) + ((var1 * (int64_t)dev->dig_P2) << 12);
+    var1 = (((((int64_t)1) << 47) + var1) * (int64_t)dev->dig_P1) >> 33;
     if (var1 == 0)
         return 0;
     p = 1048576 - adc_p;
     p = (((p << 31) - var2) * 3125) / var1;
-    var1 = (((int64_t)d->dig_P9) * (p >> 13) * (p >> 13)) >> 25;
-    var2 = (((int64_t)d->dig_P8) * p) >> 19;
-    p = ((p + var1 + var2) >> 8) + (((int64_t)d->dig_P7) << 4);
+    var1 = (((int64_t)dev->dig_P9) * (p >> 13) * (p >> 13)) >> 25;
+    var2 = (((int64_t)dev->dig_P8) * p) >> 19;
+    p = ((p + var1 + var2) >> 8) + (((int64_t)dev->dig_P7) << 4);
     return (uint32_t)(p >> 8); /* Pa */
 }
 
@@ -193,45 +193,45 @@ static uint32_t bmp280_compensate_p(struct bmp280_device* d, int32_t adc_p)
  * @brief 首次 open 时初始化硬件：软复位 + 加载校准
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bmp280_hw_create(struct bmp280_device* d)
+static int bmp280_hw_create(struct bmp280_device* dev)
 {
-    int r;
+    int ret;
     const uint8_t soft_rst[2] = {BMP280_REG_SOFT_RESET, BMP280_SOFT_RESET_VAL};
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->i2c_dev, NULL);
-    if (r != VFS_OK)
-        return r;
-    r = bmp280_i2c_wr(d, soft_rst, 2, 100);
-    if (r != VFS_OK)
+    ret = device_open(dev->i2c_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
+    ret = bmp280_i2c_wr(dev, soft_rst, 2, 100);
+    if (ret != VFS_OK)
     {
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-        return r;
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+        return ret;
     }
     osal_delay_ms(10);
-    r = bmp280_load_calib(d, 100);
-    if (r != VFS_OK)
+    ret = bmp280_load_calib(dev, 100);
+    if (ret != VFS_OK)
     {
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-        return r;
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+        return ret;
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 I2C client）
  */
-static void bmp280_hw_destroy(struct bmp280_device* d)
+static void bmp280_hw_destroy(struct bmp280_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-    d->hw_ready = 0;
+    if (dev->i2c_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -239,15 +239,15 @@ static void bmp280_hw_destroy(struct bmp280_device* d)
  */
 static int bmp280_open(struct device* pdev, void* arg)
 {
-    struct bmp280_device* d;
+    struct bmp280_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = bmp280_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = bmp280_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -257,7 +257,7 @@ static int bmp280_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = bmp280_hw_create(d);
+        ret = bmp280_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -273,14 +273,14 @@ static int bmp280_open(struct device* pdev, void* arg)
  */
 static int bmp280_close(struct device* pdev)
 {
-    struct bmp280_device* d;
+    struct bmp280_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = bmp280_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = bmp280_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -288,7 +288,7 @@ static int bmp280_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        bmp280_hw_destroy(d);
+        bmp280_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -296,7 +296,7 @@ static int bmp280_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*bmp280_ioctl_fn_t)(struct bmp280_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*bmp280_ioctl_fn_t)(struct bmp280_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct bmp280_ioctl_map
 {
     bmp280_ioctl_fn_t handler;
@@ -305,29 +305,29 @@ struct bmp280_ioctl_map
 /**
  * @brief BMP280_CMD_READ_PRESS_TEMP 实现：触发强制采样并读取 P/T
  */
-static int bmp280_cmd_read(struct bmp280_device* d, void* arg, size_t len, uint32_t to)
+static int bmp280_cmd_read(struct bmp280_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const uint8_t ctrl[2] = {BMP280_REG_CTRL_MEAS, BMP280_CTRL_FORCED_X1};
     uint8_t raw[6];
     struct bmp280_sample* o = (struct bmp280_sample*)arg;
-    int r;
+    int ret;
     int32_t adc_p;
     int32_t adc_t;
     int32_t t_x100;
-    if (!d->hw_ready || !d->calib_ok || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !dev->calib_ok || !o || len != sizeof(*o))
         return VFS_ERR_INVAL;
-    r = bmp280_i2c_wr(d, ctrl, 2, to);
-    if (r != VFS_OK)
-        return r;
+    ret = bmp280_i2c_wr(dev, ctrl, 2, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     osal_delay_ms(10);
-    r = bmp280_read_regs(d, BMP280_REG_PRESS_MSB, raw, sizeof(raw), to);
-    if (r != VFS_OK)
-        return r;
+    ret = bmp280_read_regs(dev, BMP280_REG_PRESS_MSB, raw, sizeof(raw), timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     adc_p = (int32_t)(((uint32_t)raw[0] << 12) | ((uint32_t)raw[1] << 4) | (raw[2] >> 4));
     adc_t = (int32_t)(((uint32_t)raw[3] << 12) | ((uint32_t)raw[4] << 4) | (raw[5] >> 4));
-    t_x100 = bmp280_compensate_t(d, adc_t);
+    t_x100 = bmp280_compensate_t(dev, adc_t);
     o->temp_c_x100 = (int16_t)t_x100;
-    o->press_pa = (int32_t)bmp280_compensate_p(d, adc_p);
+    o->press_pa = (int32_t)bmp280_compensate_p(dev, adc_p);
     return VFS_OK;
 }
 
@@ -340,15 +340,15 @@ static const struct bmp280_ioctl_map s_bmp280_map[BMP280_CMD_COUNT] = {
  */
 static int bmp280_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct bmp280_device* d;
+    struct bmp280_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = bmp280_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = bmp280_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -359,7 +359,7 @@ static int bmp280_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (off < 1 || off > BMP280_CMD_COUNT || !s_bmp280_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_bmp280_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_bmp280_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -375,34 +375,34 @@ static const struct file_operations bmp280_fops = {
  */
 static int bmp280_probe(struct device* pdev)
 {
-    struct bmp280_device* d;
+    struct bmp280_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_bmp280_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_bmp280_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(pdev);
-    if (!d->i2c_dev)
+    dev = &s_bmp280_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->i2c_dev = device_get_parent(pdev);
+    if (!dev->i2c_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = bmp280_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = bmp280_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_bmp280_pool_ctrl, pool_idx));
     return ret;
 }
@@ -412,18 +412,18 @@ err:
  */
 static int bmp280_remove(struct device* pdev)
 {
-    struct bmp280_device* d;
+    struct bmp280_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = bmp280_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = bmp280_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_bmp280_pool);
+    idx = (int)(dev - s_bmp280_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -431,8 +431,8 @@ static int bmp280_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    bmp280_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    bmp280_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_bmp280_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

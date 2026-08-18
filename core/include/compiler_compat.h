@@ -333,7 +333,8 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
     X(MAX7219, 0x35)                                                                               \
     X(A7670, 0x36)                                                                                 \
     X(PN532, 0x37)                                                                                 \
-    X(DFPLAYER, 0x38)
+    X(DFPLAYER, 0x38)                                                                              \
+    X(DISPLAY, 0x39)
 
 /**
  * @brief 魔法槽枚举生成器

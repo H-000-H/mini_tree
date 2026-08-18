@@ -8,15 +8,12 @@
  *
  * 静态池: s_st7789_pool[ST7789_COUNT]（有 CS + 无 CS 两路 DTS 节点数量之和）
  */
-#include "st7789_core.h"
-
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
-#include "driver.h"
 #include "dt_config_gen.h"
 #include "osal.h"
-#include "st7789_drv.h"
+#include "display_drv.h"
 #include "st7789_regs.h"
 #include "status.h"
 #include "system_log.h"
@@ -172,40 +169,41 @@ static int st7789_write_data(struct st7789_device* lcd, const uint8_t* data, siz
  * @brief 矩形裁剪到面板边界（越界部分裁掉）
  * @return VFS_OK（裁剪后仍有有效区域）或 VFS_ERR_INVAL（完全越界）
  */
-static int st7789_clip_rect(const struct st7789_device* lcd, int* x, int* y, int* w, int* h)
+static int st7789_clip_rect(const struct st7789_device* lcd, int* pos_x, int* pos_y, int* size_w,
+                            int* size_h)
 {
-    if (!lcd || !x || !y || !w || !h || *w <= 0 || *h <= 0)
+    if (!lcd || !pos_x || !pos_y || !size_w || !size_h || *size_w <= 0 || *size_h <= 0)
         return VFS_ERR_INVAL;
 
-    if (*x < 0)
+    if (*pos_x < 0)
     {
-        *w += *x;
-        *x = 0;
+        *size_w += *pos_x;
+        *pos_x = 0;
     }
-    if (*y < 0)
+    if (*pos_y < 0)
     {
-        *h += *y;
-        *y = 0;
+        *size_h += *pos_y;
+        *pos_y = 0;
     }
-    if (*x >= lcd->width || *y >= lcd->height || *w <= 0 || *h <= 0)
+    if (*pos_x >= lcd->width || *pos_y >= lcd->height || *size_w <= 0 || *size_h <= 0)
         return VFS_ERR_INVAL;
-    if (*w > lcd->width - *x)
-        *w = lcd->width - *x;
-    if (*h > lcd->height - *y)
-        *h = lcd->height - *y;
-    return (*w > 0 && *h > 0) ? VFS_OK : VFS_ERR_INVAL;
+    if (*size_w > lcd->width - *pos_x)
+        *size_w = lcd->width - *pos_x;
+    if (*size_h > lcd->height - *pos_y)
+        *size_h = lcd->height - *pos_y;
+    return (*size_w > 0 && *size_h > 0) ? VFS_OK : VFS_ERR_INVAL;
 }
 
 /**
  * @brief 设置 GRAM 写入窗口（CASET/RASET）
  */
-static int st7789_set_window(struct st7789_device* lcd, int x, int y, int w, int h,
-                             uint32_t timeout_ms)
+static int st7789_set_window(struct st7789_device* lcd, int pos_x, int pos_y, int size_w,
+                             int size_h, uint32_t timeout_ms)
 {
-    uint16_t x0 = (uint16_t)x;
-    uint16_t y0 = (uint16_t)y;
-    uint16_t x1 = (uint16_t)(x + w - 1);
-    uint16_t y1 = (uint16_t)(y + h - 1);
+    uint16_t x0 = (uint16_t)pos_x;
+    uint16_t y0 = (uint16_t)pos_y;
+    uint16_t x1 = (uint16_t)(pos_x + size_w - 1);
+    uint16_t y1 = (uint16_t)(pos_y + size_h - 1);
     uint8_t col[] = {
         (uint8_t)(x0 >> 8),
         (uint8_t)(x0 & 0xFFU),
@@ -328,8 +326,8 @@ static int st7789_apply_backlight(struct st7789_device* lcd, uint8_t brightness)
 /**
  * @brief 矩形填充：裁剪 → 开窗 → 分块流式写 GRAM
  */
-static int st7789_do_fill_rect(struct st7789_device* lcd, int x, int y, int w, int h,
-                               uint16_t color, uint32_t timeout_ms)
+static int st7789_do_fill_rect(struct st7789_device* lcd, int pos_x, int pos_y, int size_w,
+                               int size_h, uint16_t color, uint32_t timeout_ms)
 {
     uint8_t hi;
     uint8_t lo;
@@ -339,10 +337,10 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int x, int y, int w, i
     size_t total;
     size_t left;
 
-    if (st7789_clip_rect(lcd, &x, &y, &w, &h) != VFS_OK)
+    if (st7789_clip_rect(lcd, &pos_x, &pos_y, &size_w, &size_h) != VFS_OK)
         return VFS_ERR_INVAL;
 
-    ret = st7789_set_window(lcd, x, y, w, h, timeout_ms);
+    ret = st7789_set_window(lcd, pos_x, pos_y, size_w, size_h, timeout_ms);
     if (ret != VFS_OK)
         return ret;
     ret = st7789_write_cmd(lcd, ST7789_REG_RAMWR, timeout_ms);
@@ -368,16 +366,16 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int x, int y, int w, i
         lcd->block_buf[i * 2 + 1] = lo;
     }
 
-    total = (size_t)w * (size_t)h * 2U;
+    total = (size_t)size_w * (size_t)size_h * 2U;
     left = total;
     while (left > 0U)
     {
-        size_t n = (left < fill_bytes) ? left : fill_bytes;
+        size_t count = (left < fill_bytes) ? left : fill_bytes;
 
-        ret = st7789_spi_write(lcd, lcd->block_buf, n, timeout_ms);
+        ret = st7789_spi_write(lcd, lcd->block_buf, count, timeout_ms);
         if (ret != VFS_OK)
             return ret;
-        left -= n;
+        left -= count;
     }
     return VFS_OK;
 }
@@ -385,22 +383,22 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int x, int y, int w, i
 /**
  * @brief 位图绘制：开窗后一次写入 RGB565 数据（须完全在屏内）
  */
-static int st7789_do_draw_bitmap(struct st7789_device* lcd, int x, int y, int w, int h,
-                                 const uint8_t* data, uint32_t timeout_ms)
+static int st7789_do_draw_bitmap(struct st7789_device* lcd, int pos_x, int pos_y, int size_w,
+                                 int size_h, const uint8_t* data, uint32_t timeout_ms)
 {
     size_t pixels;
     int ret;
 
-    if (!data || w <= 0 || h <= 0)
+    if (!data || size_w <= 0 || size_h <= 0)
         return VFS_ERR_INVAL;
-    if (x < 0 || y < 0 || x > lcd->width - w || y > lcd->height - h)
-        return VFS_ERR_INVAL;
-
-    pixels = (size_t)w * (size_t)h;
-    if (h != 0 && pixels / (size_t)h != (size_t)w)
+    if (pos_x < 0 || pos_y < 0 || pos_x > lcd->width - size_w || pos_y > lcd->height - size_h)
         return VFS_ERR_INVAL;
 
-    ret = st7789_set_window(lcd, x, y, w, h, timeout_ms);
+    pixels = (size_t)size_w * (size_t)size_h;
+    if (size_h != 0 && pixels / (size_t)size_h != (size_t)size_w)
+        return VFS_ERR_INVAL;
+
+    ret = st7789_set_window(lcd, pos_x, pos_y, size_w, size_h, timeout_ms);
     if (ret != VFS_OK)
         return ret;
     ret = st7789_write_cmd(lcd, ST7789_REG_RAMWR, timeout_ms);
@@ -589,12 +587,12 @@ struct st7789_ioctl_map
 };
 
 /**
- * @brief ST7789_CMD_FILL_RECT 实现
+ * @brief DISPLAY_CMD_FILL_RECT 实现
  */
 static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg_len,
                                 uint32_t timeout_ms)
 {
-    const struct st7789_fill_rect_arg* a = (const struct st7789_fill_rect_arg*)arg;
+    const struct display_rect_arg* a = (const struct display_rect_arg*)arg;
 
     if (!lcd || !a || arg_len != sizeof(*a))
         return VFS_ERR_INVAL;
@@ -602,88 +600,82 @@ static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg
 }
 
 /**
- * @brief ST7789_CMD_FILL_SCREEN 实现
+ * @brief DISPLAY_CMD_CLEAR 实现：全屏填充
  */
-static int st7789_cmd_fill_screen(struct st7789_device* lcd, void* arg, size_t arg_len,
-                                  uint32_t timeout_ms)
+static int st7789_cmd_clear(struct st7789_device* lcd, void* arg, size_t arg_len,
+                            uint32_t timeout_ms)
 {
-    const struct st7789_fill_screen_arg* a = (const struct st7789_fill_screen_arg*)arg;
+    const struct display_clear_arg* a = (const struct display_clear_arg*)arg;
 
     if (!lcd || !a || arg_len != sizeof(*a))
         return VFS_ERR_INVAL;
-    return st7789_do_fill_rect(lcd, 0, 0, lcd->width, lcd->height, a->color, timeout_ms);
+    return st7789_do_fill_rect(lcd, 0, 0, lcd->width, lcd->height, a->value, timeout_ms);
 }
 
 /**
- * @brief ST7789_CMD_DRAW_BITMAP 实现
+ * @brief DISPLAY_CMD_DRAW_AREA 实现（RGB565）
  */
-static int st7789_cmd_draw_bitmap(struct st7789_device* lcd, void* arg, size_t arg_len,
-                                  uint32_t timeout_ms)
+static int st7789_cmd_draw_area(struct st7789_device* lcd, void* arg, size_t arg_len,
+                                uint32_t timeout_ms)
 {
-    const struct st7789_draw_bitmap_arg* a = (const struct st7789_draw_bitmap_arg*)arg;
+    const struct display_draw_arg* a = (const struct display_draw_arg*)arg;
 
-    if (!lcd || !a || arg_len != sizeof(*a))
+    if (!lcd || !a || arg_len != sizeof(*a) || a->format != DISPLAY_FMT_RGB565)
         return VFS_ERR_INVAL;
     return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
 }
 
 /**
- * @brief ST7789_CMD_SET_BACKLIGHT 实现
+ * @brief DISPLAY_CMD_SET_BRIGHTNESS 实现
  */
-static int st7789_cmd_set_backlight(struct st7789_device* lcd, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int st7789_cmd_set_brightness(struct st7789_device* lcd, void* arg, size_t arg_len,
+                                     uint32_t timeout_ms)
 {
-    const struct st7789_backlight_arg* a = (const struct st7789_backlight_arg*)arg;
+    const struct display_bright_arg* a = (const struct display_bright_arg*)arg;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!lcd || !a || arg_len != sizeof(*a))
         return VFS_ERR_INVAL;
-    return st7789_apply_backlight(lcd, a->brightness);
+    return st7789_apply_backlight(lcd, a->value);
 }
 
 /**
- * @brief ST7789_CMD_GET_INFO 实现
+ * @brief DISPLAY_CMD_GET_INFO 实现
  */
 static int st7789_cmd_get_info(struct st7789_device* lcd, void* arg, size_t arg_len,
                                uint32_t timeout_ms)
 {
-    struct st7789_info_arg* a = (struct st7789_info_arg*)arg;
+    struct display_info_arg* a = (struct display_info_arg*)arg;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!lcd || !a || arg_len != sizeof(*a))
         return VFS_ERR_INVAL;
-    a->width = (int16_t)lcd->width;
-    a->height = (int16_t)lcd->height;
-    a->color_format = ST7789_COLOR_FORMAT_RGB565;
+    a->width = (uint16_t)lcd->width;
+    a->height = (uint16_t)lcd->height;
+    a->format = DISPLAY_FMT_RGB565;
     return VFS_OK;
 }
 
 /**
- * @brief ST7789_CMD_FLUSH_AREA 实现：LVGL 区域坐标 → 位图绘制
+ * @brief DISPLAY_CMD_FLUSH 实现：LVGL 区域坐标 → 位图绘制
  */
-static int st7789_cmd_flush_area(struct st7789_device* lcd, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int st7789_cmd_flush(struct st7789_device* lcd, void* arg, size_t arg_len,
+                            uint32_t timeout_ms)
 {
-    const struct st7789_flush_area_arg* a = (const struct st7789_flush_area_arg*)arg;
-    int16_t w;
-    int16_t h;
+    const struct display_draw_arg* a = (const struct display_draw_arg*)arg;
 
-    if (!lcd || !a || arg_len != sizeof(*a) || !a->color_map)
+    if (!lcd || !a || arg_len != sizeof(*a) || a->format != DISPLAY_FMT_RGB565)
         return VFS_ERR_INVAL;
-    if (a->x2 < a->x1 || a->y2 < a->y1)
-        return VFS_ERR_INVAL;
-    w = (int16_t)(a->x2 - a->x1 + 1);
-    h = (int16_t)(a->y2 - a->y1 + 1);
-    return st7789_do_draw_bitmap(lcd, a->x1, a->y1, w, h, a->color_map, timeout_ms);
+    return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
 }
 
-static const struct st7789_ioctl_map s_st7789_ioctl_map[ST7789_CMD_COUNT] = {
-    [ST7789_CMD_FILL_RECT - ST7789_CMD_BASE - 1] = {st7789_cmd_fill_rect},
-    [ST7789_CMD_FILL_SCREEN - ST7789_CMD_BASE - 1] = {st7789_cmd_fill_screen},
-    [ST7789_CMD_DRAW_BITMAP - ST7789_CMD_BASE - 1] = {st7789_cmd_draw_bitmap},
-    [ST7789_CMD_SET_BACKLIGHT - ST7789_CMD_BASE - 1] = {st7789_cmd_set_backlight},
-    [ST7789_CMD_GET_INFO - ST7789_CMD_BASE - 1] = {st7789_cmd_get_info},
-    [ST7789_CMD_FLUSH_AREA - ST7789_CMD_BASE - 1] = {st7789_cmd_flush_area},
+static const struct st7789_ioctl_map s_st7789_ioctl_map[DISPLAY_CMD_COUNT] = {
+    [DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1] = {st7789_cmd_fill_rect},
+    [DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1] = {st7789_cmd_clear},
+    [DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1] = {st7789_cmd_draw_area},
+    [DISPLAY_CMD_SET_BRIGHTNESS - DISPLAY_CMD_BASE - 1] = {st7789_cmd_set_brightness},
+    [DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1] = {st7789_cmd_get_info},
+    [DISPLAY_CMD_FLUSH - DISPLAY_CMD_BASE - 1] = {st7789_cmd_flush},
 };
 
 /**
@@ -712,8 +704,8 @@ static int st7789_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (ret != VFS_OK)
         return ret;
 
-    offset = (int32_t)cmd - (int32_t)ST7789_CMD_BASE;
-    if (offset < 1 || offset > ST7789_CMD_COUNT || !s_st7789_ioctl_map[offset - 1].handler)
+    offset = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
+    if (offset < 1 || offset > DISPLAY_CMD_COUNT || !s_st7789_ioctl_map[offset - 1].handler)
         ret = VFS_ERR_INVAL;
     else
         ret = s_st7789_ioctl_map[offset - 1].handler(lcd, arg, arg_len, timeout_ms);

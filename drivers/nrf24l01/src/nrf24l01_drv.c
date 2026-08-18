@@ -67,49 +67,49 @@ static struct nrf24l01_device* nrf24l01_get_drvdata(struct device* pdev)
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int nrf24l01_spi_xfer(struct nrf24l01_device* d, const uint8_t* tx, uint8_t* rx, size_t len,
-                             uint32_t to)
+static int nrf24l01_spi_xfer(struct nrf24l01_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
+                             uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
-    if (!d || !d->spi_dev || len == 0U)
+    if (!dev || !dev->spi_dev || len == 0U)
         return VFS_ERR_INVAL;
     arg.tx = tx;
     arg.rx = rx;
     arg.len = len;
     arg.xfer_mode = SPI_XFER_AUTO;
-    return device_ioctl(d->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), to);
+    return device_ioctl(dev->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int nrf24l01_hw_create(struct nrf24l01_device* d)
+static int nrf24l01_hw_create(struct nrf24l01_device* dev)
 {
-    int r;
-    if (!d)
+    int ret;
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->spi_dev, NULL);
-    if (r != VFS_OK)
-        return r;
+    ret = device_open(dev->spi_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
 
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 SPI client）
  */
-static void nrf24l01_hw_destroy(struct nrf24l01_device* d)
+static void nrf24l01_hw_destroy(struct nrf24l01_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->spi_dev));
-    d->hw_ready = 0;
+    if (dev->spi_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -117,15 +117,15 @@ static void nrf24l01_hw_destroy(struct nrf24l01_device* d)
  */
 static int nrf24l01_open(struct device* pdev, void* arg)
 {
-    struct nrf24l01_device* d;
+    struct nrf24l01_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = nrf24l01_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = nrf24l01_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -135,7 +135,7 @@ static int nrf24l01_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = nrf24l01_hw_create(d);
+        ret = nrf24l01_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -151,14 +151,14 @@ static int nrf24l01_open(struct device* pdev, void* arg)
  */
 static int nrf24l01_close(struct device* pdev)
 {
-    struct nrf24l01_device* d;
+    struct nrf24l01_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = nrf24l01_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = nrf24l01_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -166,7 +166,7 @@ static int nrf24l01_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        nrf24l01_hw_destroy(d);
+        nrf24l01_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -174,7 +174,7 @@ static int nrf24l01_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*nrf24l01_ioctl_fn_t)(struct nrf24l01_device* d, void* arg, size_t arg_len,
+typedef int (*nrf24l01_ioctl_fn_t)(struct nrf24l01_device* dev, void* arg, size_t arg_len,
                                    uint32_t ms);
 struct nrf24l01_ioctl_map
 {
@@ -184,32 +184,32 @@ struct nrf24l01_ioctl_map
 /**
  * @brief NRF24L01_CMD_WRITE_REG 实现：写寄存器
  */
-static int nrf24l01_cmd_wreg(struct nrf24l01_device* d, void* arg, size_t len, uint32_t to)
+static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
     uint8_t tx[2];
-    if (!d->hw_ready || !a || len != sizeof(*a))
+    if (!dev->hw_ready || !a || len != sizeof(*a))
         return VFS_ERR_INVAL;
     tx[0] = (uint8_t)(NRF24L01_OP_W_REGISTER | (a->reg & NRF24L01_REG_ADDR_MASK));
     tx[1] = a->val;
-    return nrf24l01_spi_xfer(d, tx, NULL, 2, to);
+    return nrf24l01_spi_xfer(dev, tx, NULL, 2, timeout_ms);
 }
 
 /**
  * @brief NRF24L01_CMD_READ_REG 实现：读寄存器并回填 val
  */
-static int nrf24l01_cmd_rreg(struct nrf24l01_device* d, void* arg, size_t len, uint32_t to)
+static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
     uint8_t tx[2] = {0};
     uint8_t rx[2] = {0};
-    int r;
-    if (!d->hw_ready || !a || len != sizeof(*a))
+    int ret;
+    if (!dev->hw_ready || !a || len != sizeof(*a))
         return VFS_ERR_INVAL;
     tx[0] = (uint8_t)(a->reg & NRF24L01_REG_ADDR_MASK);
-    r = nrf24l01_spi_xfer(d, tx, rx, 2, to);
-    if (r != VFS_OK)
-        return r;
+    ret = nrf24l01_spi_xfer(dev, tx, rx, 2, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     a->val = rx[1];
     return VFS_OK;
 }
@@ -217,17 +217,17 @@ static int nrf24l01_cmd_rreg(struct nrf24l01_device* d, void* arg, size_t len, u
 /**
  * @brief NRF24L01_CMD_SEND 实现：写 TX 载荷（超长截断）
  */
-static int nrf24l01_cmd_send(struct nrf24l01_device* d, void* arg, size_t len, uint32_t to)
+static int nrf24l01_cmd_send(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct nrf24l01_payload* p = (struct nrf24l01_payload*)arg;
     uint8_t tx[NRF24L01_MAX_PAYLOAD + 1U];
-    size_t n;
-    if (!d->hw_ready || !p || len != sizeof(*p) || !p->data || p->len == 0U)
+    size_t count;
+    if (!dev->hw_ready || !p || len != sizeof(*p) || !p->data || p->len == 0U)
         return VFS_ERR_INVAL;
-    n = p->len > NRF24L01_MAX_PAYLOAD ? NRF24L01_MAX_PAYLOAD : p->len;
+    count = p->len > NRF24L01_MAX_PAYLOAD ? NRF24L01_MAX_PAYLOAD : p->len;
     tx[0] = NRF24L01_OP_W_TX_PAYLOAD;
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], p->data, n));
-    return nrf24l01_spi_xfer(d, tx, NULL, n + 1U, to);
+    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], p->data, count));
+    return nrf24l01_spi_xfer(dev, tx, NULL, count + 1U, timeout_ms);
 }
 
 static const struct nrf24l01_ioctl_map s_nrf24l01_map[NRF24L01_CMD_COUNT] = {
@@ -241,15 +241,15 @@ static const struct nrf24l01_ioctl_map s_nrf24l01_map[NRF24L01_CMD_COUNT] = {
  */
 static int nrf24l01_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct nrf24l01_device* d;
+    struct nrf24l01_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = nrf24l01_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = nrf24l01_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -260,7 +260,7 @@ static int nrf24l01_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     if (off < 1 || off > NRF24L01_CMD_COUNT || !s_nrf24l01_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_nrf24l01_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_nrf24l01_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -276,34 +276,34 @@ static const struct file_operations nrf24l01_fops = {
  */
 static int nrf24l01_probe(struct device* pdev)
 {
-    struct nrf24l01_device* d;
+    struct nrf24l01_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_nrf24l01_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_nrf24l01_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->spi_dev = device_get_parent(pdev);
-    if (!d->spi_dev)
+    dev = &s_nrf24l01_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->spi_dev = device_get_parent(pdev);
+    if (!dev->spi_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = nrf24l01_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = nrf24l01_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_nrf24l01_pool_ctrl, pool_idx));
     return ret;
 }
@@ -313,18 +313,18 @@ err:
  */
 static int nrf24l01_remove(struct device* pdev)
 {
-    struct nrf24l01_device* d;
+    struct nrf24l01_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = nrf24l01_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = nrf24l01_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_nrf24l01_pool);
+    idx = (int)(dev - s_nrf24l01_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -332,8 +332,8 @@ static int nrf24l01_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    nrf24l01_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    nrf24l01_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_nrf24l01_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

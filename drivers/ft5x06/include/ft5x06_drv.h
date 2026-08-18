@@ -27,8 +27,8 @@ extern "C"
     struct ft5x06_touch
     {
         uint8_t points; /**< 有效触点数量（0=无触摸） */
-        uint16_t x; /**< 首触点 X 坐标 */
-        uint16_t y; /**< 首触点 Y 坐标 */
+        uint16_t pos_x; /**< 首触点 X 坐标 */
+        uint16_t pos_y; /**< 首触点 Y 坐标 */
     };
 #ifdef __cplusplus
 }

@@ -65,53 +65,53 @@ static struct ina219_device* ina219_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ina219_i2c_wr(struct ina219_device* d, const uint8_t* tx, size_t len, uint32_t to)
+static int ina219_i2c_wr(struct ina219_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !tx || len == 0U)
+    if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_write(d->i2c_dev, tx, len, to);
+    return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 /**
  * @brief 从 I2C 总线读数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ina219_i2c_rd(struct ina219_device* d, uint8_t* rx, size_t len, uint32_t to)
+static int ina219_i2c_rd(struct ina219_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !rx || len == 0U)
+    if (!dev || !dev->i2c_dev || !rx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_read(d->i2c_dev, rx, len, to);
+    return device_read(dev->i2c_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ina219_hw_create(struct ina219_device* d)
+static int ina219_hw_create(struct ina219_device* dev)
 {
-    int r;
-    if (!d)
+    int ret;
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->i2c_dev, NULL);
-    if (r != VFS_OK)
-        return r;
+    ret = device_open(dev->i2c_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
 
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 I2C client）
  */
-static void ina219_hw_destroy(struct ina219_device* d)
+static void ina219_hw_destroy(struct ina219_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-    d->hw_ready = 0;
+    if (dev->i2c_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -119,15 +119,15 @@ static void ina219_hw_destroy(struct ina219_device* d)
  */
 static int ina219_open(struct device* pdev, void* arg)
 {
-    struct ina219_device* d;
+    struct ina219_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ina219_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ina219_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -137,7 +137,7 @@ static int ina219_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = ina219_hw_create(d);
+        ret = ina219_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -153,14 +153,14 @@ static int ina219_open(struct device* pdev, void* arg)
  */
 static int ina219_close(struct device* pdev)
 {
-    struct ina219_device* d;
+    struct ina219_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ina219_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ina219_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -168,7 +168,7 @@ static int ina219_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        ina219_hw_destroy(d);
+        ina219_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -176,7 +176,7 @@ static int ina219_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ina219_ioctl_fn_t)(struct ina219_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ina219_ioctl_fn_t)(struct ina219_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct ina219_ioctl_map
 {
     ina219_ioctl_fn_t handler;
@@ -186,37 +186,37 @@ struct ina219_ioctl_map
  * @brief 读 16bit 大端寄存器
  * @param out 输出寄存器值
  */
-static int ina219_rd16(struct ina219_device* d, uint8_t reg, int16_t* out, uint32_t to)
+static int ina219_rd16(struct ina219_device* dev, uint8_t reg, int16_t* out, uint32_t timeout_ms)
 {
     uint8_t raw[2];
-    int r = ina219_i2c_wr(d, &reg, 1, to);
-    if (r != VFS_OK)
-        return r;
-    r = ina219_i2c_rd(d, raw, 2, to);
-    if (r != VFS_OK)
-        return r;
+    int ret = ina219_i2c_wr(dev, &reg, 1, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = ina219_i2c_rd(dev, raw, 2, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     *out = (int16_t)((raw[0] << 8) | raw[1]);
     return VFS_OK;
 }
 /**
  * @brief INA219_CMD_READ_POWER 实现：读总线电压/电流/功率寄存器并换算
  */
-static int ina219_cmd_read(struct ina219_device* d, void* arg, size_t len, uint32_t to)
+static int ina219_cmd_read(struct ina219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct ina219_sample* o = (struct ina219_sample*)arg;
     int16_t bus, cur, pwr;
-    int r;
-    if (!d->hw_ready || !o || len != sizeof(*o))
+    int ret;
+    if (!dev->hw_ready || !o || len != sizeof(*o))
         return VFS_ERR_INVAL;
-    r = ina219_rd16(d, 0x02, &bus, to);
-    if (r != VFS_OK)
-        return r;
-    r = ina219_rd16(d, 0x04, &cur, to);
-    if (r != VFS_OK)
-        return r;
-    r = ina219_rd16(d, 0x03, &pwr, to);
-    if (r != VFS_OK)
-        return r;
+    ret = ina219_rd16(dev, 0x02, &bus, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = ina219_rd16(dev, 0x04, &cur, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = ina219_rd16(dev, 0x03, &pwr, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     o->bus_mV = (int16_t)((bus >> 3) * 4);
     o->current_mA = cur;
     o->power_mW = (int16_t)(pwr * 20);
@@ -232,15 +232,15 @@ static const struct ina219_ioctl_map s_ina219_map[INA219_CMD_COUNT] = {
  */
 static int ina219_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct ina219_device* d;
+    struct ina219_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ina219_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ina219_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -251,7 +251,7 @@ static int ina219_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (off < 1 || off > INA219_CMD_COUNT || !s_ina219_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_ina219_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_ina219_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -267,34 +267,34 @@ static const struct file_operations ina219_fops = {
  */
 static int ina219_probe(struct device* pdev)
 {
-    struct ina219_device* d;
+    struct ina219_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ina219_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_ina219_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(pdev);
-    if (!d->i2c_dev)
+    dev = &s_ina219_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->i2c_dev = device_get_parent(pdev);
+    if (!dev->i2c_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = ina219_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = ina219_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ina219_pool_ctrl, pool_idx));
     return ret;
 }
@@ -304,18 +304,18 @@ err:
  */
 static int ina219_remove(struct device* pdev)
 {
-    struct ina219_device* d;
+    struct ina219_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = ina219_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ina219_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_ina219_pool);
+    idx = (int)(dev - s_ina219_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -323,8 +323,8 @@ static int ina219_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    ina219_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    ina219_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ina219_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

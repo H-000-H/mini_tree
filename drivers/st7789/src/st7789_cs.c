@@ -5,7 +5,7 @@
  * @note compatible: sitronix,st7789
  */
 #include "driver.h"
-#include "st7789_core.h"
+#include "st7789_regs.h"
 
 /**
  * @brief 有 CS 场景 probe（require_nocs=0）

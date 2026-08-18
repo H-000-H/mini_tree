@@ -1,11 +1,15 @@
 /**
  * SPDX-License-Identifier: Apache-2.0
  * @file st7789_regs.h
- * @brief ST7789 面板命令 / 时序常量（避免 .c 内散落魔术字）
+ * @brief ST7789 面板命令 / 时序常量 / 公共接口（避免 .c 内散落魔术字）
+ *
+ * 有 CS / 无 CS 两个 compatible 入口（st7789_cs.c / st7789_nocs.c）
+ * 共用本头声明的公共 probe/remove 实现（st7789_core.c）。
  */
 #ifndef ST7789_REGS_H
 #define ST7789_REGS_H
 
+#include "device.h"
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -29,7 +33,6 @@ extern "C"
 
 /* COLMOD / MADCTL 常用值 */
 #define ST7789_COLMOD_16BIT 0x55U /**< RGB565 */
-#define ST7789_MADCTL_DEFAULT 0x00U /**< 默认方向 */
 #define ST7789_RAMCTRL_BE0 0x00U /**< 小端 */
 #define ST7789_RAMCTRL_BE1 0xF0U /**< 大端（RGB565 常用） */
 
@@ -37,13 +40,23 @@ extern "C"
 #define ST7789_BLOCK_BUF_SIZE 2048U /**< 分块填充缓冲大小 */
 #define ST7789_DEFAULT_CHUNK 512U /**< 默认单次 SPI 传输上限 */
 #define ST7789_TIMEOUT_CMD_MS 100U /**< 命令超时 */
-#define ST7789_TIMEOUT_IO_MS 500U /**< IO 超时 */
 #define ST7789_MAX_WIDTH 320 /**< 面板最大宽度 */
 #define ST7789_BL_ARR_FALLBACK 1023U /**< 背光 ARR 回退值 */
 
-/* 像素格式（对接 LVGL COLOR_FORMAT_RGB565） */
-#define ST7789_COLOR_FORMAT_RGB565 16 /**< LVGL RGB565 格式值 */
-#define ST7789_BYTES_PER_PIXEL 2U /**< 每像素字节数 */
+/**
+ * @brief ST7789 公共 probe
+ * @param pdev device 指针
+ * @param require_nocs 非 0 时断言父 SPI client cs-pin < 0
+ * @return VFS_OK 或 VFS_ERR_*
+ */
+int st7789_probe_common(struct device* pdev, int require_nocs);
+
+/**
+ * @brief ST7789 公共 remove（有 CS / 无 CS 共用）
+ * @param pdev device 指针
+ * @return VFS_OK 或 VFS_ERR_*
+ */
+int st7789_remove_common(struct device* pdev);
 
 #ifdef __cplusplus
 }
