@@ -65,53 +65,53 @@ static struct aht20_device* aht20_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int aht20_i2c_wr(struct aht20_device* d, const uint8_t* tx, size_t len, uint32_t to)
+static int aht20_i2c_wr(struct aht20_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !tx || len == 0U)
+    if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_write(d->i2c_dev, tx, len, to);
+    return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 /**
  * @brief 从 I2C 总线读数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int aht20_i2c_rd(struct aht20_device* d, uint8_t* rx, size_t len, uint32_t to)
+static int aht20_i2c_rd(struct aht20_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !rx || len == 0U)
+    if (!dev || !dev->i2c_dev || !rx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_read(d->i2c_dev, rx, len, to);
+    return device_read(dev->i2c_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int aht20_hw_create(struct aht20_device* d)
+static int aht20_hw_create(struct aht20_device* dev)
 {
-    int r;
-    if (!d)
+    int ret;
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->i2c_dev, NULL);
-    if (r != VFS_OK)
-        return r;
+    ret = device_open(dev->i2c_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
 
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 I2C client）
  */
-static void aht20_hw_destroy(struct aht20_device* d)
+static void aht20_hw_destroy(struct aht20_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-    d->hw_ready = 0;
+    if (dev->i2c_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -119,15 +119,15 @@ static void aht20_hw_destroy(struct aht20_device* d)
  */
 static int aht20_open(struct device* pdev, void* arg)
 {
-    struct aht20_device* d;
+    struct aht20_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = aht20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = aht20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -137,7 +137,7 @@ static int aht20_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = aht20_hw_create(d);
+        ret = aht20_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -153,14 +153,14 @@ static int aht20_open(struct device* pdev, void* arg)
  */
 static int aht20_close(struct device* pdev)
 {
-    struct aht20_device* d;
+    struct aht20_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = aht20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = aht20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -168,7 +168,7 @@ static int aht20_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        aht20_hw_destroy(d);
+        aht20_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -176,7 +176,7 @@ static int aht20_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*aht20_ioctl_fn_t)(struct aht20_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*aht20_ioctl_fn_t)(struct aht20_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct aht20_ioctl_map
 {
     aht20_ioctl_fn_t handler;
@@ -185,22 +185,22 @@ struct aht20_ioctl_map
 /**
  * @brief AHT20_CMD_READ_TEMP_RH 实现：触发测量（80ms）并换算 T/RH
  */
-static int aht20_cmd_read(struct aht20_device* d, void* arg, size_t len, uint32_t to)
+static int aht20_cmd_read(struct aht20_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const uint8_t trig[3] = {0xAC, 0x33, 0x00};
     uint8_t raw[6];
     struct aht20_sample* o = (struct aht20_sample*)arg;
-    int r;
+    int ret;
     uint32_t rh, t;
-    if (!d->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !o || len != sizeof(*o))
         return VFS_ERR_INVAL;
-    r = aht20_i2c_wr(d, trig, 3, to);
-    if (r != VFS_OK)
-        return r;
+    ret = aht20_i2c_wr(dev, trig, 3, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     osal_delay_ms(80);
-    r = aht20_i2c_rd(d, raw, 6, to);
-    if (r != VFS_OK)
-        return r;
+    ret = aht20_i2c_rd(dev, raw, 6, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     rh = ((uint32_t)raw[1] << 12) | ((uint32_t)raw[2] << 4) | (raw[3] >> 4);
     t = (((uint32_t)raw[3] & 0x0FU) << 16) | ((uint32_t)raw[4] << 8) | raw[5];
     o->rh_x100 = (uint16_t)((rh * 10000U) / 1048576U);
@@ -217,15 +217,15 @@ static const struct aht20_ioctl_map s_aht20_map[AHT20_CMD_COUNT] = {
  */
 static int aht20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct aht20_device* d;
+    struct aht20_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = aht20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = aht20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -236,7 +236,7 @@ static int aht20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
     if (off < 1 || off > AHT20_CMD_COUNT || !s_aht20_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_aht20_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_aht20_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -252,34 +252,34 @@ static const struct file_operations aht20_fops = {
  */
 static int aht20_probe(struct device* pdev)
 {
-    struct aht20_device* d;
+    struct aht20_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_aht20_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_aht20_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(pdev);
-    if (!d->i2c_dev)
+    dev = &s_aht20_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->i2c_dev = device_get_parent(pdev);
+    if (!dev->i2c_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = aht20_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = aht20_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_aht20_pool_ctrl, pool_idx));
     return ret;
 }
@@ -289,18 +289,18 @@ err:
  */
 static int aht20_remove(struct device* pdev)
 {
-    struct aht20_device* d;
+    struct aht20_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = aht20_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = aht20_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_aht20_pool);
+    idx = (int)(dev - s_aht20_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -308,8 +308,8 @@ static int aht20_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    aht20_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    aht20_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_aht20_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

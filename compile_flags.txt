@@ -29,6 +29,7 @@
 -Idrivers/bmp280/include
 -Idrivers/buzzer/include
 -Idrivers/dfplayer/include
+-Idrivers/display/include
 -Idrivers/drv8833/include
 -Idrivers/ds18b20/include
 -Idrivers/epaper/include

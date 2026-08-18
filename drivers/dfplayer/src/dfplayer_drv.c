@@ -67,53 +67,53 @@ static struct dfplayer_device* dfplayer_get_drvdata(struct device* pdev)
  * @brief 向 UART 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int dfplayer_uart_wr(struct dfplayer_device* d, const uint8_t* tx, size_t len, uint32_t to)
+static int dfplayer_uart_wr(struct dfplayer_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->uart_dev || !tx || len == 0U)
+    if (!dev || !dev->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_write(d->uart_dev, tx, len, to);
+    return device_write(dev->uart_dev, tx, len, timeout_ms);
 }
 /**
  * @brief 从 UART 总线读数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int dfplayer_uart_rd(struct dfplayer_device* d, uint8_t* rx, size_t len, uint32_t to)
+static int dfplayer_uart_rd(struct dfplayer_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->uart_dev || !rx || len == 0U)
+    if (!dev || !dev->uart_dev || !rx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_read(d->uart_dev, rx, len, to);
+    return device_read(dev->uart_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int dfplayer_hw_create(struct dfplayer_device* d)
+static int dfplayer_hw_create(struct dfplayer_device* dev)
 {
-    int r;
-    if (!d)
+    int ret;
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->uart_dev, NULL);
-    if (r != VFS_OK)
-        return r;
+    ret = device_open(dev->uart_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
 
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 UART client）
  */
-static void dfplayer_hw_destroy(struct dfplayer_device* d)
+static void dfplayer_hw_destroy(struct dfplayer_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->uart_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->uart_dev));
-    d->hw_ready = 0;
+    if (dev->uart_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->uart_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -121,15 +121,15 @@ static void dfplayer_hw_destroy(struct dfplayer_device* d)
  */
 static int dfplayer_open(struct device* pdev, void* arg)
 {
-    struct dfplayer_device* d;
+    struct dfplayer_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = dfplayer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = dfplayer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -139,7 +139,7 @@ static int dfplayer_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = dfplayer_hw_create(d);
+        ret = dfplayer_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -155,14 +155,14 @@ static int dfplayer_open(struct device* pdev, void* arg)
  */
 static int dfplayer_close(struct device* pdev)
 {
-    struct dfplayer_device* d;
+    struct dfplayer_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = dfplayer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = dfplayer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -170,12 +170,12 @@ static int dfplayer_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        dfplayer_hw_destroy(d);
+        dfplayer_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
 
-typedef int (*dfplayer_ioctl_fn_t)(struct dfplayer_device* d, void* arg, size_t arg_len,
+typedef int (*dfplayer_ioctl_fn_t)(struct dfplayer_device* dev, void* arg, size_t arg_len,
                                    uint32_t ms);
 struct dfplayer_ioctl_map
 {
@@ -185,44 +185,44 @@ struct dfplayer_ioctl_map
 /**
  * @brief 组装并发送一帧命令（起始/版本/长度/反馈 + 参数 + 校验 + 结束）
  */
-static int dfplayer_frame(struct dfplayer_device* d, uint8_t cmd, uint16_t param, uint32_t to)
+static int dfplayer_frame(struct dfplayer_device* dev, uint8_t cmd, uint16_t param, uint32_t timeout_ms)
 {
-    uint8_t f[10];
+    uint8_t frame[10];
     uint16_t sum;
-    f[0] = DFPLAYER_FRAME_START;
-    f[1] = DFPLAYER_FRAME_VER;
-    f[2] = DFPLAYER_FRAME_LEN;
-    f[3] = cmd;
-    f[4] = DFPLAYER_FRAME_FEEDBACK;
-    f[5] = (uint8_t)(param >> 8);
-    f[6] = (uint8_t)param;
-    sum = (uint16_t)(0xFFFF - (f[1] + f[2] + f[3] + f[4] + f[5] + f[6]) + 1);
-    f[7] = (uint8_t)(sum >> 8);
-    f[8] = (uint8_t)sum;
-    f[9] = DFPLAYER_FRAME_END;
-    return dfplayer_uart_wr(d, f, sizeof(f), to);
+    frame[0] = DFPLAYER_FRAME_START;
+    frame[1] = DFPLAYER_FRAME_VER;
+    frame[2] = DFPLAYER_FRAME_LEN;
+    frame[3] = cmd;
+    frame[4] = DFPLAYER_FRAME_FEEDBACK;
+    frame[5] = (uint8_t)(param >> 8);
+    frame[6] = (uint8_t)param;
+    sum = (uint16_t)(0xFFFF - (frame[1] + frame[2] + frame[3] + frame[4] + frame[5] + frame[6]) + 1);
+    frame[7] = (uint8_t)(sum >> 8);
+    frame[8] = (uint8_t)sum;
+    frame[9] = DFPLAYER_FRAME_END;
+    return dfplayer_uart_wr(dev, frame, sizeof(frame), timeout_ms);
 }
 
 /**
  * @brief DFPLAYER_CMD_PLAY 实现：播放指定曲目
  */
-static int dfplayer_cmd_play(struct dfplayer_device* d, void* arg, size_t len, uint32_t to)
+static int dfplayer_cmd_play(struct dfplayer_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct dfplayer_track* a = (struct dfplayer_track*)arg;
-    if (!d->hw_ready || !a || len != sizeof(*a))
+    if (!dev->hw_ready || !a || len != sizeof(*a))
         return VFS_ERR_INVAL;
-    return dfplayer_frame(d, DFPLAYER_OP_PLAY_TRACK, a->track, to);
+    return dfplayer_frame(dev, DFPLAYER_OP_PLAY_TRACK, a->track, timeout_ms);
 }
 
 /**
  * @brief DFPLAYER_CMD_VOLUME 实现：设置音量（0..30）
  */
-static int dfplayer_cmd_vol(struct dfplayer_device* d, void* arg, size_t len, uint32_t to)
+static int dfplayer_cmd_vol(struct dfplayer_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    uint8_t* v = (uint8_t*)arg;
-    if (!d->hw_ready || !v || len != sizeof(uint8_t) || *v > 30U)
+    uint8_t* val = (uint8_t*)arg;
+    if (!dev->hw_ready || !val || len != sizeof(uint8_t) || *val > 30U)
         return VFS_ERR_INVAL;
-    return dfplayer_frame(d, DFPLAYER_OP_SET_VOL, *v, to);
+    return dfplayer_frame(dev, DFPLAYER_OP_SET_VOL, *val, timeout_ms);
 }
 
 static const struct dfplayer_ioctl_map s_dfplayer_map[DFPLAYER_CMD_COUNT] = {
@@ -235,15 +235,15 @@ static const struct dfplayer_ioctl_map s_dfplayer_map[DFPLAYER_CMD_COUNT] = {
  */
 static int dfplayer_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct dfplayer_device* d;
+    struct dfplayer_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = dfplayer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = dfplayer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -254,7 +254,7 @@ static int dfplayer_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     if (off < 1 || off > DFPLAYER_CMD_COUNT || !s_dfplayer_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_dfplayer_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_dfplayer_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -270,34 +270,34 @@ static const struct file_operations dfplayer_fops = {
  */
 static int dfplayer_probe(struct device* pdev)
 {
-    struct dfplayer_device* d;
+    struct dfplayer_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_dfplayer_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_dfplayer_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->uart_dev = device_get_parent(pdev);
-    if (!d->uart_dev)
+    dev = &s_dfplayer_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->uart_dev = device_get_parent(pdev);
+    if (!dev->uart_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = dfplayer_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = dfplayer_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_dfplayer_pool_ctrl, pool_idx));
     return ret;
 }
@@ -307,18 +307,18 @@ err:
  */
 static int dfplayer_remove(struct device* pdev)
 {
-    struct dfplayer_device* d;
+    struct dfplayer_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = dfplayer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = dfplayer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_dfplayer_pool);
+    idx = (int)(dev - s_dfplayer_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -326,8 +326,8 @@ static int dfplayer_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    dfplayer_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    dfplayer_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_dfplayer_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

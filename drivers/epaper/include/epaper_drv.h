@@ -1,48 +1,27 @@
 /**
  * SPDX-License-Identifier: Apache-2.0
  * @file epaper_drv.h
- * @brief 电子纸 — 可接 LVGL 单色 flush / 自绘缓冲
+ * @brief 电子纸驱动对外接口说明（实现见 src/epaper_drv.c）
+ *
+ * 命令与参数结构统一由 display_drv.h 提供：
+ * - 整帧/全屏刷新 → DISPLAY_CMD_FLUSH / DISPLAY_CMD_DRAW_AREA（MONO_1BPP）
+ * - 分辨率 → DISPLAY_CMD_GET_INFO（format = DISPLAY_FMT_MONO_1BPP）
+ * - 无亮度控制 → DISPLAY_CMD_SET_BRIGHTNESS 返回 VFS_ERR_NOTSUPP
+ *
+ * 几何参数（width/height）由 DTS 提供，busy-timeout-ms 可选。
+ * compatible: "gooddisplay,epaper"（DRIVER_REGISTER 见 src/epaper_drv.c）
  */
 #ifndef EPAPER_DRV_H
 #define EPAPER_DRV_H
 
-#include "compiler_compat.h"
-#include "epaper_regs.h"
-#include <stddef.h>
-#include <stdint.h>
+#include "display_drv.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define EPAPER_CMD_BASE COMPAT_MAGIC(EPAPER)
-/** 初始化面板（含复位与 LUT 装载） */
-#define EPAPER_CMD_INIT (EPAPER_CMD_BASE + 0x01)
-/** 全屏刷新（白/黑） */
-#define EPAPER_CMD_CLEAR (EPAPER_CMD_BASE + 0x02)
-/** 刷入整帧位图（arg: struct epaper_bitmap*） */
-#define EPAPER_CMD_DRAW_BITMAP (EPAPER_CMD_BASE + 0x03)
-/** 获取面板信息（arg: struct epaper_info*） */
-#define EPAPER_CMD_GET_INFO (EPAPER_CMD_BASE + 0x04)
-/** 命令总数 */
-#define EPAPER_CMD_COUNT 4
-
-    /** @brief 整帧位图参数（bpp 由 GET_INFO 决定） */
-    struct epaper_bitmap
-    {
-        const uint8_t* data; /**< 位图缓冲 */
-        size_t len; /**< 位图长度 */
-    };
-
-    /** @brief 面板信息 */
-    struct epaper_info
-    {
-        uint16_t width; /**< 宽（像素） */
-        uint16_t height; /**< 高（像素） */
-        uint16_t bpp; /**< 每像素比特数 */
-    };
+/* probe/remove 均为驱动内部 static，无需对外声明 */
 
 #ifdef __cplusplus
 }

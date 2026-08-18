@@ -65,48 +65,48 @@ static struct hc05_device* hc05_get_drvdata(struct device* pdev)
  * @brief UART 双向传输（UART_CMD_TRANSFER）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int hc05_uart_xchg(struct hc05_device* d, const uint8_t* tx, size_t tx_len, uint8_t* rx,
-                          size_t rx_len, uint32_t to)
+static int hc05_uart_xchg(struct hc05_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx,
+                          size_t rx_len, uint32_t timeout_ms)
 {
     struct uart_transfer_arg arg;
-    if (!d || !d->uart_dev)
+    if (!dev || !dev->uart_dev)
         return VFS_ERR_INVAL;
     arg.tx = tx;
     arg.rx = rx;
     arg.tx_len = tx_len;
     arg.rx_len = rx_len;
-    return device_ioctl(d->uart_dev, UART_CMD_TRANSFER, &arg, sizeof(arg), to);
+    return device_ioctl(dev->uart_dev, UART_CMD_TRANSFER, &arg, sizeof(arg), timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int hc05_hw_create(struct hc05_device* d)
+static int hc05_hw_create(struct hc05_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
     {
-        int r = device_open(d->uart_dev, NULL);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->uart_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 UART client）
  */
-static void hc05_hw_destroy(struct hc05_device* d)
+static void hc05_hw_destroy(struct hc05_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->uart_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->uart_dev));
-    d->hw_ready = 0;
+    if (dev->uart_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->uart_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -114,15 +114,15 @@ static void hc05_hw_destroy(struct hc05_device* d)
  */
 static int hc05_open(struct device* pdev, void* arg)
 {
-    struct hc05_device* d;
+    struct hc05_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = hc05_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = hc05_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -132,7 +132,7 @@ static int hc05_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = hc05_hw_create(d);
+        ret = hc05_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -148,14 +148,14 @@ static int hc05_open(struct device* pdev, void* arg)
  */
 static int hc05_close(struct device* pdev)
 {
-    struct hc05_device* d;
+    struct hc05_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = hc05_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = hc05_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -163,7 +163,7 @@ static int hc05_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        hc05_hw_destroy(d);
+        hc05_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -171,7 +171,7 @@ static int hc05_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*hc05_ioctl_fn_t)(struct hc05_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*hc05_ioctl_fn_t)(struct hc05_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct hc05_ioctl_map
 {
     hc05_ioctl_fn_t handler;
@@ -180,12 +180,12 @@ struct hc05_ioctl_map
 /**
  * @brief HC05_CMD_AT_SEND 实现：UART 发送 AT 命令
  */
-static int hc05_cmd_send(struct hc05_device* d, void* arg, size_t len, uint32_t to)
+static int hc05_cmd_send(struct hc05_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct hc05_at* a = (struct hc05_at*)arg;
-    if (!d->hw_ready || !a || len != sizeof(*a) || !a->tx || !a->tx_len)
+    if (!dev->hw_ready || !a || len != sizeof(*a) || !a->tx || !a->tx_len)
         return VFS_ERR_INVAL;
-    return device_write(d->uart_dev, a->tx, a->tx_len, to);
+    return device_write(dev->uart_dev, a->tx, a->tx_len, timeout_ms);
 }
 static const struct hc05_ioctl_map s_hc05_map[HC05_CMD_COUNT] = {
     [HC05_CMD_AT_SEND - HC05_CMD_BASE - 1] = {hc05_cmd_send},
@@ -196,15 +196,15 @@ static const struct hc05_ioctl_map s_hc05_map[HC05_CMD_COUNT] = {
  */
 static int hc05_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct hc05_device* d;
+    struct hc05_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = hc05_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = hc05_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -215,7 +215,7 @@ static int hc05_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, u
     if (off < 1 || off > HC05_CMD_COUNT || !s_hc05_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_hc05_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_hc05_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -231,34 +231,34 @@ static const struct file_operations hc05_fops = {
  */
 static int hc05_probe(struct device* pdev)
 {
-    struct hc05_device* d;
+    struct hc05_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_hc05_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_hc05_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->uart_dev = device_get_parent(pdev);
-    if (!d->uart_dev)
+    dev = &s_hc05_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->uart_dev = device_get_parent(pdev);
+    if (!dev->uart_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = hc05_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = hc05_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_hc05_pool_ctrl, pool_idx));
     return ret;
 }
@@ -268,18 +268,18 @@ err:
  */
 static int hc05_remove(struct device* pdev)
 {
-    struct hc05_device* d;
+    struct hc05_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = hc05_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = hc05_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_hc05_pool);
+    idx = (int)(dev - s_hc05_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -287,8 +287,8 @@ static int hc05_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    hc05_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    hc05_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_hc05_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

@@ -69,93 +69,94 @@ static struct rs485_modbus_device* rs485_modbus_get_drvdata(struct device* pdev)
 /**
  * @brief 切换 DE/RE 方向（1=发送，0=接收）
  */
-static int rs485_de(struct rs485_modbus_device* d, int tx)
+static int rs485_de(struct rs485_modbus_device* dev, int tx)
 {
-    d->de_gpio.level = tx ? 1 : 0;
-    return vfs_gpio_set_level(&d->de_gpio);
+    dev->de_gpio.level = tx ? 1 : 0;
+    return vfs_gpio_set_level(&dev->de_gpio);
 }
 
 /**
  * @brief RS485 半双工帧交换（DE 拉高发送 → DE 拉低接收）
- * @param d   驱动实例
+ * @param dev   驱动实例
  * @param tx  发送帧（含 CRC）
  * @param tx_len 发送长度
  * @param rx  接收缓冲（NULL 则不接收）
  * @param rx_len 期望接收长度
- * @param to  超时 ms
+ * @param timeout_ms  超时 ms
  * @return 实际接收字节数（>=0），或 VFS_ERR_*
  */
-static int rs485_modbus_uart_xchg(struct rs485_modbus_device* d, const uint8_t* tx, size_t tx_len,
-                                  uint8_t* rx, size_t rx_len, uint32_t to)
+static int rs485_modbus_uart_xchg(struct rs485_modbus_device* dev, const uint8_t* tx, size_t tx_len,
+                                  uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
 {
-    int n;
-    if (!d || !d->uart_dev || !tx || tx_len == 0)
+    int count;
+    if (!dev || !dev->uart_dev || !tx || tx_len == 0)
         return VFS_ERR_INVAL;
-    rs485_de(d, 1);
-    n = device_write(d->uart_dev, tx, tx_len, to);
-    rs485_de(d, 0);
-    if (n < 0)
-        return n;
+    rs485_de(dev, 1);
+    count = device_write(dev->uart_dev, tx, tx_len, timeout_ms);
+    rs485_de(dev, 0);
+    if (count < 0)
+        return count;
     if (!rx || rx_len == 0)
         return 0;
-    return device_read(d->uart_dev, rx, rx_len, to);
+    return device_read(dev->uart_dev, rx, rx_len, timeout_ms);
 }
 
 /**
  * @brief CRC16（Modbus RTU 多项式 0xA001）
  */
-static uint16_t rs485_modbus_crc(const uint8_t* p, size_t n)
+static uint16_t rs485_modbus_crc(const uint8_t* data, size_t count)
 {
-    uint16_t c = 0xFFFF;
+    uint16_t crc_val = 0xFFFF;
     size_t i, j;
-    for (i = 0; i < n; i++)
+    for (i = 0; i < count; i++)
     {
-        c ^= p[i];
+        crc_val ^= data[i];
         for (j = 0; j < 8; j++)
-            c = (c & 1) ? (c >> 1) ^ 0xA001U : (c >> 1);
+            crc_val = (crc_val & 1) ? (crc_val >> 1) ^ 0xA001U : (crc_val >> 1);
     }
-    return c;
+    return crc_val;
 }
 
 /**
  * @brief 首次 open 时打开 UART 与方向控制 GPIO 并绑定参数
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int rs485_modbus_hw_create(struct rs485_modbus_device* d)
+static int rs485_modbus_hw_create(struct rs485_modbus_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
     {
-        int r = device_open(d->uart_dev, NULL);
-        if (r != VFS_OK)
-            return r;
-        r = device_open(d->de_dev, NULL);
-        if (r != VFS_OK)
-            return r;
-        r = device_ioctl(d->de_dev, GPIO_CMD_GET_LEVEL, &d->de_gpio, sizeof(d->de_gpio), 0);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->uart_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
+        ret = device_open(dev->de_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
+        ret =
+            device_ioctl(dev->de_dev, GPIO_CMD_GET_LEVEL, &dev->de_gpio, sizeof(dev->de_gpio), 0);
+        if (ret != VFS_OK)
+            return ret;
     }
-    d->de_gpio.level = 0;
-    vfs_gpio_set_level(&d->de_gpio);
-    d->hw_ready = 1;
+    dev->de_gpio.level = 0;
+    vfs_gpio_set_level(&dev->de_gpio);
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 UART 与 DE 设备）
  */
-static void rs485_modbus_hw_destroy(struct rs485_modbus_device* d)
+static void rs485_modbus_hw_destroy(struct rs485_modbus_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->uart_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->uart_dev));
-    if (d->de_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->de_dev));
-    d->hw_ready = 0;
+    if (dev->uart_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->uart_dev));
+    if (dev->de_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->de_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -163,15 +164,15 @@ static void rs485_modbus_hw_destroy(struct rs485_modbus_device* d)
  */
 static int rs485_modbus_open(struct device* pdev, void* arg)
 {
-    struct rs485_modbus_device* d;
+    struct rs485_modbus_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rs485_modbus_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rs485_modbus_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -181,7 +182,7 @@ static int rs485_modbus_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = rs485_modbus_hw_create(d);
+        ret = rs485_modbus_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -197,14 +198,14 @@ static int rs485_modbus_open(struct device* pdev, void* arg)
  */
 static int rs485_modbus_close(struct device* pdev)
 {
-    struct rs485_modbus_device* d;
+    struct rs485_modbus_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rs485_modbus_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rs485_modbus_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -212,7 +213,7 @@ static int rs485_modbus_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        rs485_modbus_hw_destroy(d);
+        rs485_modbus_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -220,7 +221,7 @@ static int rs485_modbus_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*rs485_modbus_ioctl_fn_t)(struct rs485_modbus_device* d, void* arg, size_t arg_len,
+typedef int (*rs485_modbus_ioctl_fn_t)(struct rs485_modbus_device* dev, void* arg, size_t arg_len,
                                        uint32_t ms);
 struct rs485_modbus_ioctl_map
 {
@@ -230,55 +231,55 @@ struct rs485_modbus_ioctl_map
 /**
  * @brief RS485_MODBUS_CMD_READ_HOLDING 实现：03 功能码读保持寄存器并回填
  */
-static int rs485_modbus_cmd_read(struct rs485_modbus_device* d, void* arg, size_t len, uint32_t to)
+static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct modbus_read* r = (struct modbus_read*)arg;
+    struct modbus_read* rd = (struct modbus_read*)arg;
     uint8_t req[8];
     uint8_t rsp[32];
     uint16_t crc;
-    int n;
-    if (!d->hw_ready || !r || len != sizeof(*r))
+    int rx_len;
+    if (!dev->hw_ready || !rd || len != sizeof(*rd))
         return VFS_ERR_INVAL;
-    req[0] = r->slave;
+    req[0] = rd->slave;
     req[1] = 0x03;
-    req[2] = (uint8_t)(r->addr >> 8);
-    req[3] = (uint8_t)r->addr;
+    req[2] = (uint8_t)(rd->addr >> 8);
+    req[3] = (uint8_t)rd->addr;
     req[4] = 0;
     req[5] = 1;
     crc = rs485_modbus_crc(req, 6);
     req[6] = (uint8_t)crc;
     req[7] = (uint8_t)(crc >> 8);
-    n = rs485_modbus_uart_xchg(d, req, 8, rsp, sizeof(rsp), to);
-    if (n < 7)
+    rx_len = rs485_modbus_uart_xchg(dev, req, 8, rsp, sizeof(rsp), timeout_ms);
+    if (rx_len < 7)
         return VFS_ERR_IO;
-    crc = rs485_modbus_crc(rsp, (size_t)(n - 2));
-    if (rsp[n - 2] != (uint8_t)crc || rsp[n - 1] != (uint8_t)(crc >> 8))
+    crc = rs485_modbus_crc(rsp, (size_t)(rx_len - 2));
+    if (rsp[rx_len - 2] != (uint8_t)crc || rsp[rx_len - 1] != (uint8_t)(crc >> 8))
         return VFS_ERR_IO;
-    r->value = (uint16_t)((rsp[3] << 8) | rsp[4]);
+    rd->value = (uint16_t)((rsp[3] << 8) | rsp[4]);
     return VFS_OK;
 }
 /**
  * @brief RS485_MODBUS_CMD_WRITE_SINGLE 实现：06 功能码写单寄存器
  */
-static int rs485_modbus_cmd_write(struct rs485_modbus_device* d, void* arg, size_t len, uint32_t to)
+static int rs485_modbus_cmd_write(struct rs485_modbus_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct modbus_write* w = (struct modbus_write*)arg;
+    struct modbus_write* wr = (struct modbus_write*)arg;
     uint8_t req[8];
     uint16_t crc;
-    int n;
-    if (!d->hw_ready || !w || len != sizeof(*w))
+    int tx_len;
+    if (!dev->hw_ready || !wr || len != sizeof(*wr))
         return VFS_ERR_INVAL;
-    req[0] = w->slave;
+    req[0] = wr->slave;
     req[1] = 0x06;
-    req[2] = (uint8_t)(w->addr >> 8);
-    req[3] = (uint8_t)w->addr;
-    req[4] = (uint8_t)(w->value >> 8);
-    req[5] = (uint8_t)w->value;
+    req[2] = (uint8_t)(wr->addr >> 8);
+    req[3] = (uint8_t)wr->addr;
+    req[4] = (uint8_t)(wr->value >> 8);
+    req[5] = (uint8_t)wr->value;
     crc = rs485_modbus_crc(req, 6);
     req[6] = (uint8_t)crc;
     req[7] = (uint8_t)(crc >> 8);
-    n = rs485_modbus_uart_xchg(d, req, 8, NULL, 0, to);
-    if (n < 0)
+    tx_len = rs485_modbus_uart_xchg(dev, req, 8, NULL, 0, timeout_ms);
+    if (tx_len < 0)
         return VFS_ERR_IO;
     return VFS_OK;
 }
@@ -292,15 +293,15 @@ static const struct rs485_modbus_ioctl_map s_rs485_modbus_map[RS485_MODBUS_CMD_C
  */
 static int rs485_modbus_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct rs485_modbus_device* d;
+    struct rs485_modbus_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rs485_modbus_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rs485_modbus_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -311,7 +312,7 @@ static int rs485_modbus_ioctl(struct device* pdev, int cmd, void* arg, size_t ar
     if (off < 1 || off > RS485_MODBUS_CMD_COUNT || !s_rs485_modbus_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_rs485_modbus_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_rs485_modbus_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -327,40 +328,40 @@ static const struct file_operations rs485_modbus_fops = {
  */
 static int rs485_modbus_probe(struct device* pdev)
 {
-    struct rs485_modbus_device* d;
+    struct rs485_modbus_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_rs485_modbus_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_rs485_modbus_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->uart_dev = device_get_parent(pdev);
-    if (!d->uart_dev)
+    dev = &s_rs485_modbus_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->uart_dev = device_get_parent(pdev);
+    if (!dev->uart_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
-    d->de_dev = device_get_phandle_dev(pdev, "de-gpio");
-    if (IS_ERR(d->de_dev))
+    dev->de_dev = device_get_phandle_dev(pdev, "de-gpio");
+    if (IS_ERR(dev->de_dev))
     {
-        ret = PTR_ERR(d->de_dev);
+        ret = PTR_ERR(dev->de_dev);
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = rs485_modbus_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = rs485_modbus_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_rs485_modbus_pool_ctrl, pool_idx));
     return ret;
 }
@@ -370,18 +371,18 @@ err:
  */
 static int rs485_modbus_remove(struct device* pdev)
 {
-    struct rs485_modbus_device* d;
+    struct rs485_modbus_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = rs485_modbus_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rs485_modbus_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_rs485_modbus_pool);
+    idx = (int)(dev - s_rs485_modbus_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -389,8 +390,8 @@ static int rs485_modbus_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    rs485_modbus_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    rs485_modbus_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_rs485_modbus_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

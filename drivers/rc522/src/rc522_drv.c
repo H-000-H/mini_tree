@@ -66,49 +66,49 @@ static struct rc522_device* rc522_get_drvdata(struct device* pdev)
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int rc522_spi_xfer(struct rc522_device* d, const uint8_t* tx, uint8_t* rx, size_t len,
-                          uint32_t to)
+static int rc522_spi_xfer(struct rc522_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
+                          uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
-    if (!d || !d->spi_dev || len == 0U)
+    if (!dev || !dev->spi_dev || len == 0U)
         return VFS_ERR_INVAL;
     arg.tx = tx;
     arg.rx = rx;
     arg.len = len;
     arg.xfer_mode = SPI_XFER_AUTO;
-    return device_ioctl(d->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), to);
+    return device_ioctl(dev->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int rc522_hw_create(struct rc522_device* d)
+static int rc522_hw_create(struct rc522_device* dev)
 {
-    int r;
-    if (!d)
+    int ret;
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    r = device_open(d->spi_dev, NULL);
-    if (r != VFS_OK)
-        return r;
+    ret = device_open(dev->spi_dev, NULL);
+    if (ret != VFS_OK)
+        return ret;
 
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 SPI client）
  */
-static void rc522_hw_destroy(struct rc522_device* d)
+static void rc522_hw_destroy(struct rc522_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
 
-    if (d->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->spi_dev));
-    d->hw_ready = 0;
+    if (dev->spi_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -116,15 +116,15 @@ static void rc522_hw_destroy(struct rc522_device* d)
  */
 static int rc522_open(struct device* pdev, void* arg)
 {
-    struct rc522_device* d;
+    struct rc522_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rc522_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -134,7 +134,7 @@ static int rc522_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = rc522_hw_create(d);
+        ret = rc522_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -150,14 +150,14 @@ static int rc522_open(struct device* pdev, void* arg)
  */
 static int rc522_close(struct device* pdev)
 {
-    struct rc522_device* d;
+    struct rc522_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rc522_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -165,7 +165,7 @@ static int rc522_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        rc522_hw_destroy(d);
+        rc522_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -173,7 +173,7 @@ static int rc522_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*rc522_ioctl_fn_t)(struct rc522_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*rc522_ioctl_fn_t)(struct rc522_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct rc522_ioctl_map
 {
     rc522_ioctl_fn_t handler;
@@ -182,23 +182,23 @@ struct rc522_ioctl_map
 /**
  * @brief 写寄存器（地址左移 1bit 对齐 SPI 帧）
  */
-static int rc522_wreg(struct rc522_device* d, uint8_t reg, uint8_t val, uint32_t to)
+static int rc522_wreg(struct rc522_device* dev, uint8_t reg, uint8_t val, uint32_t timeout_ms)
 {
     uint8_t tx[2] = {(uint8_t)((reg << 1) & RC522_SPI_ADDR_MASK), val};
-    return rc522_spi_xfer(d, tx, NULL, 2, to);
+    return rc522_spi_xfer(dev, tx, NULL, 2, timeout_ms);
 }
 
 /**
  * @brief 读寄存器（带读标志位）
  * @param val 输出寄存器值
  */
-static int rc522_rreg(struct rc522_device* d, uint8_t reg, uint8_t* val, uint32_t to)
+static int rc522_rreg(struct rc522_device* dev, uint8_t reg, uint8_t* val, uint32_t timeout_ms)
 {
     uint8_t tx[2] = {(uint8_t)(((reg << 1) & RC522_SPI_ADDR_MASK) | RC522_SPI_READ_FLAG), 0};
     uint8_t rx[2] = {0};
-    int r = rc522_spi_xfer(d, tx, rx, 2, to);
-    if (r != VFS_OK)
-        return r;
+    int ret = rc522_spi_xfer(dev, tx, rx, 2, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     *val = rx[1];
     return VFS_OK;
 }
@@ -206,25 +206,25 @@ static int rc522_rreg(struct rc522_device* d, uint8_t reg, uint8_t* val, uint32_
 /**
  * @brief 置位寄存器位（读-改-写）
  */
-static int rc522_set_bits(struct rc522_device* d, uint8_t reg, uint8_t mask, uint32_t to)
+static int rc522_set_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, uint32_t timeout_ms)
 {
-    uint8_t v = 0;
-    int r = rc522_rreg(d, reg, &v, to);
-    if (r != VFS_OK)
-        return r;
-    return rc522_wreg(d, reg, (uint8_t)(v | mask), to);
+    uint8_t val = 0;
+    int ret = rc522_rreg(dev, reg, &val, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    return rc522_wreg(dev, reg, (uint8_t)(val | mask), timeout_ms);
 }
 
 /**
  * @brief 清除寄存器位（读-改-写）
  */
-static int rc522_clr_bits(struct rc522_device* d, uint8_t reg, uint8_t mask, uint32_t to)
+static int rc522_clr_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, uint32_t timeout_ms)
 {
-    uint8_t v = 0;
-    int r = rc522_rreg(d, reg, &v, to);
-    if (r != VFS_OK)
-        return r;
-    return rc522_wreg(d, reg, (uint8_t)(v & (uint8_t)~mask), to);
+    uint8_t val = 0;
+    int ret = rc522_rreg(dev, reg, &val, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    return rc522_wreg(dev, reg, (uint8_t)(val & (uint8_t)~mask), timeout_ms);
 }
 
 /**
@@ -234,15 +234,15 @@ static int rc522_clr_bits(struct rc522_device* d, uint8_t reg, uint8_t mask, uin
  * @param back 回读缓冲（可空）
  * @param back_len 回读比特数（可空）
  */
-static int rc522_to_card(struct rc522_device* d, uint8_t cmd, const uint8_t* send, uint8_t send_len,
-                         uint8_t* back, uint8_t* back_len, uint32_t to)
+static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send, uint8_t send_len,
+                         uint8_t* back, uint8_t* back_len, uint32_t timeout_ms)
 {
     uint8_t irq_en = 0;
     uint8_t wait_irq = 0;
-    uint8_t n;
+    uint8_t count;
     uint8_t last_bits;
     int i;
-    int r;
+    int ret;
     if (cmd == RC522_OP_MF_AUTHENT)
     {
         irq_en = RC522_IRQ_AUTH_EN;
@@ -253,71 +253,71 @@ static int rc522_to_card(struct rc522_device* d, uint8_t cmd, const uint8_t* sen
         irq_en = RC522_IRQ_TXRX_EN;
         wait_irq = RC522_IRQ_TXRX_WAIT;
     }
-    r = rc522_wreg(d, RC522_REG_COMIEN, (uint8_t)(irq_en | RC522_IRQ_IEN), to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_clr_bits(d, RC522_REG_COMIRQ, RC522_IRQ_IEN, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_set_bits(d, RC522_REG_FIFO_LEVEL, RC522_BIT_FLUSH_FIFO, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_COMMAND, RC522_OP_IDLE, to);
-    if (r != VFS_OK)
-        return r;
+    ret = rc522_wreg(dev, RC522_REG_COMIEN, (uint8_t)(irq_en | RC522_IRQ_IEN), timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_clr_bits(dev, RC522_REG_COMIRQ, RC522_IRQ_IEN, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_set_bits(dev, RC522_REG_FIFO_LEVEL, RC522_BIT_FLUSH_FIFO, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_COMMAND, RC522_OP_IDLE, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     for (i = 0; i < (int)send_len; i++)
     {
-        r = rc522_wreg(d, RC522_REG_FIFO_DATA, send[i], to);
-        if (r != VFS_OK)
-            return r;
+        ret = rc522_wreg(dev, RC522_REG_FIFO_DATA, send[i], timeout_ms);
+        if (ret != VFS_OK)
+            return ret;
     }
-    r = rc522_wreg(d, RC522_REG_COMMAND, cmd, to);
-    if (r != VFS_OK)
-        return r;
+    ret = rc522_wreg(dev, RC522_REG_COMMAND, cmd, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     if (cmd == RC522_OP_TRANSCEIVE)
     {
-        r = rc522_set_bits(d, RC522_REG_BIT_FRAMING, RC522_BIT_START_SEND, to);
-        if (r != VFS_OK)
-            return r;
+        ret = rc522_set_bits(dev, RC522_REG_BIT_FRAMING, RC522_BIT_START_SEND, timeout_ms);
+        if (ret != VFS_OK)
+            return ret;
     }
     i = 2000;
     do
     {
-        r = rc522_rreg(d, RC522_REG_COMIRQ, &n, to);
-        if (r != VFS_OK)
-            return r;
+        ret = rc522_rreg(dev, RC522_REG_COMIRQ, &count, timeout_ms);
+        if (ret != VFS_OK)
+            return ret;
         i--;
-    } while (i && !(n & RC522_IRQ_TIMER) && !(n & wait_irq));
-    r = rc522_clr_bits(d, RC522_REG_BIT_FRAMING, RC522_BIT_START_SEND, to);
-    if (r != VFS_OK)
-        return r;
+    } while (i && !(count & RC522_IRQ_TIMER) && !(count & wait_irq));
+    ret = rc522_clr_bits(dev, RC522_REG_BIT_FRAMING, RC522_BIT_START_SEND, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     if (i == 0)
         return VFS_ERR_TIMEOUT;
-    r = rc522_rreg(d, RC522_REG_ERROR, &n, to);
-    if (r != VFS_OK)
-        return r;
-    if (n & RC522_IRQ_ERR_MASK)
+    ret = rc522_rreg(dev, RC522_REG_ERROR, &count, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    if (count & RC522_IRQ_ERR_MASK)
         return VFS_ERR_IO;
     if (cmd == RC522_OP_TRANSCEIVE && back && back_len)
     {
-        r = rc522_rreg(d, RC522_REG_FIFO_LEVEL, &n, to);
-        if (r != VFS_OK)
-            return r;
-        r = rc522_rreg(d, RC522_REG_CONTROL, &last_bits, to);
-        if (r != VFS_OK)
-            return r;
+        ret = rc522_rreg(dev, RC522_REG_FIFO_LEVEL, &count, timeout_ms);
+        if (ret != VFS_OK)
+            return ret;
+        ret = rc522_rreg(dev, RC522_REG_CONTROL, &last_bits, timeout_ms);
+        if (ret != VFS_OK)
+            return ret;
         last_bits &= RC522_BIT_RX_ALIGN;
         if (last_bits)
-            *back_len = (uint8_t)(((n - 1U) * 8U) + last_bits);
+            *back_len = (uint8_t)(((count - 1U) * 8U) + last_bits);
         else
-            *back_len = (uint8_t)(n * 8U);
-        if (n > RC522_FIFO_MAX)
-            n = RC522_FIFO_MAX;
-        for (i = 0; i < (int)n; i++)
+            *back_len = (uint8_t)(count * 8U);
+        if (count > RC522_FIFO_MAX)
+            count = RC522_FIFO_MAX;
+        for (i = 0; i < (int)count; i++)
         {
-            r = rc522_rreg(d, RC522_REG_FIFO_DATA, &back[i], to);
-            if (r != VFS_OK)
-                return r;
+            ret = rc522_rreg(dev, RC522_REG_FIFO_DATA, &back[i], timeout_ms);
+            if (ret != VFS_OK)
+                return ret;
         }
     }
     return VFS_OK;
@@ -326,42 +326,42 @@ static int rc522_to_card(struct rc522_device* d, uint8_t cmd, const uint8_t* sen
 /**
  * @brief RC522_CMD_INIT 实现：软复位 + 定时器/调制/模式配置 + 开天线
  */
-static int rc522_cmd_init(struct rc522_device* d, void* arg, size_t len, uint32_t to)
+static int rc522_cmd_init(struct rc522_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    int r;
+    int ret;
     COMPAT_IGNORE_RESULT(arg);
     COMPAT_IGNORE_RESULT(len);
-    if (!d->hw_ready)
+    if (!dev->hw_ready)
         return VFS_ERR_INVAL;
-    r = rc522_wreg(d, RC522_REG_COMMAND, RC522_OP_SOFT_RESET, to);
-    if (r != VFS_OK)
-        return r;
+    ret = rc522_wreg(dev, RC522_REG_COMMAND, RC522_OP_SOFT_RESET, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     osal_delay_ms(50);
-    r = rc522_wreg(d, RC522_REG_TMODE, RC522_INIT_TMODE, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_TPRESCALER, RC522_INIT_TPRESCALER, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_TRELOAD_H, RC522_INIT_TRELOAD_H, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_TRELOAD_L, RC522_INIT_TRELOAD_L, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_TX_ASK, RC522_INIT_TX_ASK, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_MODE, RC522_INIT_MODE, to);
-    if (r != VFS_OK)
-        return r;
-    return rc522_set_bits(d, RC522_REG_TX_CONTROL, RC522_ANTENNA_ON_MASK, to);
+    ret = rc522_wreg(dev, RC522_REG_TMODE, RC522_INIT_TMODE, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_TPRESCALER, RC522_INIT_TPRESCALER, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_TRELOAD_H, RC522_INIT_TRELOAD_H, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_TRELOAD_L, RC522_INIT_TRELOAD_L, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_TX_ASK, RC522_INIT_TX_ASK, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_MODE, RC522_INIT_MODE, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    return rc522_set_bits(dev, RC522_REG_TX_CONTROL, RC522_ANTENNA_ON_MASK, timeout_ms);
 }
 
 /**
  * @brief RC522_CMD_READ_UID 实现：REQA → 防冲突 → BCC 校验 → 输出 4B UID
  */
-static int rc522_cmd_uid(struct rc522_device* d, void* arg, size_t len, uint32_t to)
+static int rc522_cmd_uid(struct rc522_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct rc522_uid* o = (struct rc522_uid*)arg;
     uint8_t req[1] = {RC522_PICC_REQA};
@@ -370,21 +370,21 @@ static int rc522_cmd_uid(struct rc522_device* d, void* arg, size_t len, uint32_t
     uint8_t anti[2] = {RC522_PICC_ANTICOLL1, RC522_PICC_SELECTNVB};
     uint8_t uid[5] = {0};
     uint8_t uid_bits = 0;
-    int r;
-    if (!d->hw_ready || !o || len != sizeof(*o))
+    int ret;
+    if (!dev->hw_ready || !o || len != sizeof(*o))
         return VFS_ERR_INVAL;
-    r = rc522_wreg(d, RC522_REG_BIT_FRAMING, RC522_BIT_TX_LASTBITS7, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_to_card(d, RC522_OP_TRANSCEIVE, req, 1, atqa, &atqa_bits, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_wreg(d, RC522_REG_BIT_FRAMING, 0x00, to);
-    if (r != VFS_OK)
-        return r;
-    r = rc522_to_card(d, RC522_OP_TRANSCEIVE, anti, 2, uid, &uid_bits, to);
-    if (r != VFS_OK)
-        return r;
+    ret = rc522_wreg(dev, RC522_REG_BIT_FRAMING, RC522_BIT_TX_LASTBITS7, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_to_card(dev, RC522_OP_TRANSCEIVE, req, 1, atqa, &atqa_bits, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_wreg(dev, RC522_REG_BIT_FRAMING, 0x00, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
+    ret = rc522_to_card(dev, RC522_OP_TRANSCEIVE, anti, 2, uid, &uid_bits, timeout_ms);
+    if (ret != VFS_OK)
+        return ret;
     if ((uid_bits / 8U) < 5U)
         return VFS_ERR_IO;
     if ((uint8_t)(uid[0] ^ uid[1] ^ uid[2] ^ uid[3]) != uid[4])
@@ -407,15 +407,15 @@ static const struct rc522_ioctl_map s_rc522_map[RC522_CMD_COUNT] = {
  */
 static int rc522_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct rc522_device* d;
+    struct rc522_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rc522_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -426,7 +426,7 @@ static int rc522_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
     if (off < 1 || off > RC522_CMD_COUNT || !s_rc522_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_rc522_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_rc522_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -442,34 +442,34 @@ static const struct file_operations rc522_fops = {
  */
 static int rc522_probe(struct device* pdev)
 {
-    struct rc522_device* d;
+    struct rc522_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_rc522_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_rc522_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->spi_dev = device_get_parent(pdev);
-    if (!d->spi_dev)
+    dev = &s_rc522_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->spi_dev = device_get_parent(pdev);
+    if (!dev->spi_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = rc522_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = rc522_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, pool_idx));
     return ret;
 }
@@ -479,18 +479,18 @@ err:
  */
 static int rc522_remove(struct device* pdev)
 {
-    struct rc522_device* d;
+    struct rc522_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = rc522_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = rc522_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_rc522_pool);
+    idx = (int)(dev - s_rc522_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -498,8 +498,8 @@ static int rc522_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    rc522_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    rc522_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

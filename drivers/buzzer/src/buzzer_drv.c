@@ -70,43 +70,43 @@ static struct buzzer_device* buzzer_get_drvdata(struct device* pdev)
  * @brief 首次 open 时打开对应后端（TIM 或 GPIO）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int buzzer_hw_create(struct buzzer_device* d)
+static int buzzer_hw_create(struct buzzer_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
-    if (d->use_tim && d->tim_dev)
+    if (dev->use_tim && dev->tim_dev)
     {
-        int r = device_open(d->tim_dev, NULL);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->tim_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
     }
-    else if (d->gpio_dev)
+    else if (dev->gpio_dev)
     {
-        int r = device_open(d->gpio_dev, NULL);
-        if (r != VFS_OK)
-            return r;
-        r = device_ioctl(d->gpio_dev, GPIO_CMD_GET_LEVEL, &d->gpio, sizeof(d->gpio), 0);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->gpio_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
+        ret = device_ioctl(dev->gpio_dev, GPIO_CMD_GET_LEVEL, &dev->gpio, sizeof(dev->gpio), 0);
+        if (ret != VFS_OK)
+            return ret;
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭全部后端设备）
  */
-static void buzzer_hw_destroy(struct buzzer_device* d)
+static void buzzer_hw_destroy(struct buzzer_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->tim_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->tim_dev));
-    if (d->gpio_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->gpio_dev));
-    d->hw_ready = 0;
+    if (dev->tim_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->tim_dev));
+    if (dev->gpio_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->gpio_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -114,15 +114,15 @@ static void buzzer_hw_destroy(struct buzzer_device* d)
  */
 static int buzzer_open(struct device* pdev, void* arg)
 {
-    struct buzzer_device* d;
+    struct buzzer_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = buzzer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = buzzer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -132,7 +132,7 @@ static int buzzer_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = buzzer_hw_create(d);
+        ret = buzzer_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -148,14 +148,14 @@ static int buzzer_open(struct device* pdev, void* arg)
  */
 static int buzzer_close(struct device* pdev)
 {
-    struct buzzer_device* d;
+    struct buzzer_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = buzzer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = buzzer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -163,7 +163,7 @@ static int buzzer_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        buzzer_hw_destroy(d);
+        buzzer_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -171,7 +171,7 @@ static int buzzer_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*buzzer_ioctl_fn_t)(struct buzzer_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*buzzer_ioctl_fn_t)(struct buzzer_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct buzzer_ioctl_map
 {
     buzzer_ioctl_fn_t handler;
@@ -180,26 +180,26 @@ struct buzzer_ioctl_map
 /**
  * @brief BUZZER_CMD_BEEP 实现：PWM 占空比或 GPIO 电平控制，可带时长
  */
-static int buzzer_cmd_beep(struct buzzer_device* d, void* arg, size_t len, uint32_t ms)
+static int buzzer_cmd_beep(struct buzzer_device* dev, void* arg, size_t len, uint32_t ms)
 {
     int on;
     uint32_t dur;
-    if (!d->hw_ready || !arg || len != sizeof(int))
+    if (!dev->hw_ready || !arg || len != sizeof(int))
         return VFS_ERR_INVAL;
     on = *(int*)arg;
     dur = ms ? ms : 50U;
-    if (d->use_tim && d->tim_dev)
+    if (dev->use_tim && dev->tim_dev)
     {
-        d->tim.arr = 1000U;
-        d->tim.ccr = on ? 500U : 0U;
-        d->tim.channel = 1U;
+        dev->tim.arr = 1000U;
+        dev->tim.ccr = on ? 500U : 0U;
+        dev->tim.channel = 1U;
         COMPAT_IGNORE_RESULT(
-            device_ioctl(d->tim_dev, TIM_CMD_PWM_UPDATE, &d->tim, sizeof(d->tim), 100));
+            device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 100));
     }
-    else if (d->gpio_dev)
+    else if (dev->gpio_dev)
     {
-        d->gpio.level = on ? 1 : 0;
-        vfs_gpio_set_level(&d->gpio);
+        dev->gpio.level = on ? 1 : 0;
+        vfs_gpio_set_level(&dev->gpio);
     }
     if (on)
         osal_delay_ms(dur);
@@ -214,15 +214,15 @@ static const struct buzzer_ioctl_map s_buzzer_map[BUZZER_CMD_COUNT] = {
  */
 static int buzzer_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct buzzer_device* d;
+    struct buzzer_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = buzzer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = buzzer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -233,7 +233,7 @@ static int buzzer_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (off < 1 || off > BUZZER_CMD_COUNT || !s_buzzer_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_buzzer_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_buzzer_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -249,40 +249,40 @@ static const struct file_operations buzzer_fops = {
  */
 static int buzzer_probe(struct device* pdev)
 {
-    struct buzzer_device* d;
+    struct buzzer_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_buzzer_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_buzzer_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->tim_dev = device_get_phandle_dev(pdev, "pwm");
-    d->gpio_dev = device_get_phandle_dev(pdev, "beep-gpio");
-    d->use_tim = !IS_ERR(d->tim_dev);
-    if (!d->use_tim && IS_ERR(d->gpio_dev))
+    dev = &s_buzzer_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->tim_dev = device_get_phandle_dev(pdev, "pwm");
+    dev->gpio_dev = device_get_phandle_dev(pdev, "beep-gpio");
+    dev->use_tim = !IS_ERR(dev->tim_dev);
+    if (!dev->use_tim && IS_ERR(dev->gpio_dev))
     {
         ret = VFS_ERR_INVAL;
         goto err;
     }
-    if (IS_ERR(d->tim_dev))
-        d->tim_dev = NULL;
-    if (IS_ERR(d->gpio_dev))
-        d->gpio_dev = NULL;
+    if (IS_ERR(dev->tim_dev))
+        dev->tim_dev = NULL;
+    if (IS_ERR(dev->gpio_dev))
+        dev->gpio_dev = NULL;
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = buzzer_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = buzzer_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_buzzer_pool_ctrl, pool_idx));
     return ret;
 }
@@ -292,18 +292,18 @@ err:
  */
 static int buzzer_remove(struct device* pdev)
 {
-    struct buzzer_device* d;
+    struct buzzer_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = buzzer_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = buzzer_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_buzzer_pool);
+    idx = (int)(dev - s_buzzer_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -311,8 +311,8 @@ static int buzzer_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    buzzer_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    buzzer_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_buzzer_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

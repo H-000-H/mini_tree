@@ -70,46 +70,46 @@ static struct drv8833_device* drv8833_get_drvdata(struct device* pdev)
  * @brief 首次 open 时打开四路输入 GPIO 并绑定参数
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int drv8833_hw_create(struct drv8833_device* d)
+static int drv8833_hw_create(struct drv8833_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
     {
-        struct device* g[4] = {d->ain1_dev, d->ain2_dev, d->bin1_dev, d->bin2_dev};
-        struct vfs_gpio_arg* a[4] = {&d->ain1, &d->ain2, &d->bin1, &d->bin2};
-        int i, r;
+        struct device* g[4] = {dev->ain1_dev, dev->ain2_dev, dev->bin1_dev, dev->bin2_dev};
+        struct vfs_gpio_arg* a[4] = {&dev->ain1, &dev->ain2, &dev->bin1, &dev->bin2};
+        int i, ret;
         for (i = 0; i < 4; i++)
         {
-            r = device_open(g[i], NULL);
-            if (r != VFS_OK)
-                return r;
-            r = device_ioctl(g[i], GPIO_CMD_GET_LEVEL, a[i], sizeof(*a[i]), 0);
-            if (r != VFS_OK)
-                return r;
+            ret = device_open(g[i], NULL);
+            if (ret != VFS_OK)
+                return ret;
+            ret = device_ioctl(g[i], GPIO_CMD_GET_LEVEL, a[i], sizeof(*a[i]), 0);
+            if (ret != VFS_OK)
+                return ret;
         }
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭全部 GPIO 设备）
  */
-static void drv8833_hw_destroy(struct drv8833_device* d)
+static void drv8833_hw_destroy(struct drv8833_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->ain1_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->ain1_dev));
-    if (d->ain2_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->ain2_dev));
-    if (d->bin1_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->bin1_dev));
-    if (d->bin2_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->bin2_dev));
-    d->hw_ready = 0;
+    if (dev->ain1_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->ain1_dev));
+    if (dev->ain2_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->ain2_dev));
+    if (dev->bin1_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->bin1_dev));
+    if (dev->bin2_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->bin2_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -117,15 +117,15 @@ static void drv8833_hw_destroy(struct drv8833_device* d)
  */
 static int drv8833_open(struct device* pdev, void* arg)
 {
-    struct drv8833_device* d;
+    struct drv8833_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = drv8833_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = drv8833_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -135,7 +135,7 @@ static int drv8833_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = drv8833_hw_create(d);
+        ret = drv8833_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -151,14 +151,14 @@ static int drv8833_open(struct device* pdev, void* arg)
  */
 static int drv8833_close(struct device* pdev)
 {
-    struct drv8833_device* d;
+    struct drv8833_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = drv8833_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = drv8833_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -166,12 +166,12 @@ static int drv8833_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        drv8833_hw_destroy(d);
+        drv8833_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
 
-typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct drv8833_ioctl_map
 {
     drv8833_ioctl_fn_t handler;
@@ -180,29 +180,29 @@ struct drv8833_ioctl_map
 /**
  * @brief 设置单引脚电平（写 GPIO）
  */
-static void drv8833_apply(struct vfs_gpio_arg* a, int v)
+static void drv8833_apply(struct vfs_gpio_arg* a, int val)
 {
-    a->level = v ? 1 : 0;
+    a->level = val ? 1 : 0;
     COMPAT_IGNORE_RESULT(vfs_gpio_set_level(a));
 }
 /**
  * @brief DRV8833_CMD_SET_MOTOR 实现：按方向差分驱动两路输入
  */
-static int drv8833_cmd_motor(struct drv8833_device* d, void* arg, size_t len, uint32_t ms)
+static int drv8833_cmd_motor(struct drv8833_device* dev, void* arg, size_t len, uint32_t ms)
 {
     struct drv8833_motor* m = (struct drv8833_motor*)arg;
     COMPAT_IGNORE_RESULT(ms);
-    if (!d->hw_ready || !m || len != sizeof(*m))
+    if (!dev->hw_ready || !m || len != sizeof(*m))
         return VFS_ERR_INVAL;
     if (m->motor == 0)
     {
-        drv8833_apply(&d->ain1, m->fwd);
-        drv8833_apply(&d->ain2, !m->fwd);
+        drv8833_apply(&dev->ain1, m->fwd);
+        drv8833_apply(&dev->ain2, !m->fwd);
     }
     else
     {
-        drv8833_apply(&d->bin1, m->fwd);
-        drv8833_apply(&d->bin2, !m->fwd);
+        drv8833_apply(&dev->bin1, m->fwd);
+        drv8833_apply(&dev->bin2, !m->fwd);
     }
     return VFS_OK;
 }
@@ -215,15 +215,15 @@ static const struct drv8833_ioctl_map s_drv8833_map[DRV8833_CMD_COUNT] = {
  */
 static int drv8833_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct drv8833_device* d;
+    struct drv8833_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = drv8833_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = drv8833_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -234,7 +234,7 @@ static int drv8833_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (off < 1 || off > DRV8833_CMD_COUNT || !s_drv8833_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_drv8833_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_drv8833_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -250,37 +250,37 @@ static const struct file_operations drv8833_fops = {
  */
 static int drv8833_probe(struct device* pdev)
 {
-    struct drv8833_device* d;
+    struct drv8833_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_drv8833_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_drv8833_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->ain1_dev = device_get_phandle_dev(pdev, "ain1-gpio");
-    d->ain2_dev = device_get_phandle_dev(pdev, "ain2-gpio");
-    d->bin1_dev = device_get_phandle_dev(pdev, "bin1-gpio");
-    d->bin2_dev = device_get_phandle_dev(pdev, "bin2-gpio");
-    if (IS_ERR(d->ain1_dev) || IS_ERR(d->ain2_dev) || IS_ERR(d->bin1_dev) || IS_ERR(d->bin2_dev))
+    dev = &s_drv8833_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->ain1_dev = device_get_phandle_dev(pdev, "ain1-gpio");
+    dev->ain2_dev = device_get_phandle_dev(pdev, "ain2-gpio");
+    dev->bin1_dev = device_get_phandle_dev(pdev, "bin1-gpio");
+    dev->bin2_dev = device_get_phandle_dev(pdev, "bin2-gpio");
+    if (IS_ERR(dev->ain1_dev) || IS_ERR(dev->ain2_dev) || IS_ERR(dev->bin1_dev) || IS_ERR(dev->bin2_dev))
     {
         ret = VFS_ERR_INVAL;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = drv8833_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = drv8833_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_drv8833_pool_ctrl, pool_idx));
     return ret;
 }
@@ -290,18 +290,18 @@ err:
  */
 static int drv8833_remove(struct device* pdev)
 {
-    struct drv8833_device* d;
+    struct drv8833_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = drv8833_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = drv8833_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_drv8833_pool);
+    idx = (int)(dev - s_drv8833_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -309,8 +309,8 @@ static int drv8833_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    drv8833_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    drv8833_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_drv8833_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

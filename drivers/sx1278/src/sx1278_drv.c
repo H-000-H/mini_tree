@@ -66,48 +66,48 @@ static struct sx1278_device* sx1278_get_drvdata(struct device* pdev)
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int sx1278_spi_xfer(struct sx1278_device* d, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t to)
+static int sx1278_spi_xfer(struct sx1278_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
+                           uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
-    if (!d || !d->spi_dev || len == 0U)
+    if (!dev || !dev->spi_dev || len == 0U)
         return VFS_ERR_INVAL;
     arg.tx = tx;
     arg.rx = rx;
     arg.len = len;
     arg.xfer_mode = SPI_XFER_AUTO;
-    return device_ioctl(d->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), to);
+    return device_ioctl(dev->spi_dev, SPI_CMD_TRANSFER, &arg, sizeof(arg), timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int sx1278_hw_create(struct sx1278_device* d)
+static int sx1278_hw_create(struct sx1278_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
     {
-        int r = device_open(d->spi_dev, NULL);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->spi_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 SPI client）
  */
-static void sx1278_hw_destroy(struct sx1278_device* d)
+static void sx1278_hw_destroy(struct sx1278_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->spi_dev));
-    d->hw_ready = 0;
+    if (dev->spi_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -115,15 +115,15 @@ static void sx1278_hw_destroy(struct sx1278_device* d)
  */
 static int sx1278_open(struct device* pdev, void* arg)
 {
-    struct sx1278_device* d;
+    struct sx1278_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = sx1278_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = sx1278_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -133,7 +133,7 @@ static int sx1278_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = sx1278_hw_create(d);
+        ret = sx1278_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -149,14 +149,14 @@ static int sx1278_open(struct device* pdev, void* arg)
  */
 static int sx1278_close(struct device* pdev)
 {
-    struct sx1278_device* d;
+    struct sx1278_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = sx1278_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = sx1278_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -164,7 +164,7 @@ static int sx1278_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        sx1278_hw_destroy(d);
+        sx1278_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -172,7 +172,7 @@ static int sx1278_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*sx1278_ioctl_fn_t)(struct sx1278_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*sx1278_ioctl_fn_t)(struct sx1278_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct sx1278_ioctl_map
 {
     sx1278_ioctl_fn_t handler;
@@ -181,41 +181,41 @@ struct sx1278_ioctl_map
 /**
  * @brief 写寄存器（写标志位 + 地址 + 值）
  */
-static int sx1278_wr_reg(struct sx1278_device* d, uint8_t reg, uint8_t val, uint32_t to)
+static int sx1278_wr_reg(struct sx1278_device* dev, uint8_t reg, uint8_t val, uint32_t timeout_ms)
 {
     uint8_t tx[2] = {(uint8_t)(reg | 0x80U), val};
-    return sx1278_spi_xfer(d, tx, NULL, 2, to);
+    return sx1278_spi_xfer(dev, tx, NULL, 2, timeout_ms);
 }
 /**
  * @brief SX1278_CMD_RESET 实现：复位到睡眠模式
  */
-static int sx1278_cmd_reset(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
+static int sx1278_cmd_reset(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(arg);
     COMPAT_IGNORE_RESULT(len);
-    if (sx1278_wr_reg(d, 0x01, 0x00, to) != VFS_OK)
+    if (sx1278_wr_reg(dev, 0x01, 0x00, timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
-    d->opmode = 0;
+    dev->opmode = 0;
     return VFS_OK;
 }
 /**
  * @brief SX1278_CMD_SET_FREQ 实现：按 Frf 公式换算并写频点寄存器
  */
-static int sx1278_cmd_freq(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
+static int sx1278_cmd_freq(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     uint32_t hz;
     uint8_t frf[3];
-    uint64_t f;
+    uint64_t freq;
     if (!arg || len != sizeof(uint32_t))
         return VFS_ERR_INVAL;
     hz = *(uint32_t*)arg;
-    f = ((uint64_t)hz << 19) / 32000000ULL;
-    frf[0] = (uint8_t)(f >> 16);
-    frf[1] = (uint8_t)(f >> 8);
-    frf[2] = (uint8_t)f;
+    freq = ((uint64_t)hz << 19) / 32000000ULL;
+    frf[0] = (uint8_t)(freq >> 16);
+    frf[1] = (uint8_t)(freq >> 8);
+    frf[2] = (uint8_t)freq;
     {
         uint8_t tx[4] = {0x06 | 0x80U, frf[0], frf[1], frf[2]};
-        if (sx1278_spi_xfer(d, tx, NULL, 4, to) != VFS_OK)
+        if (sx1278_spi_xfer(dev, tx, NULL, 4, timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
     }
     return VFS_OK;
@@ -223,21 +223,21 @@ static int sx1278_cmd_freq(struct sx1278_device* d, void* arg, size_t len, uint3
 /**
  * @brief SX1278_CMD_SEND 实现：切 TX 模式并写 FIFO 载荷（截断至 255B）
  */
-static int sx1278_cmd_send(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
+static int sx1278_cmd_send(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct sx1278_payload* pl = (struct sx1278_payload*)arg;
     if (!pl || len != sizeof(*pl) || !pl->data || !pl->len)
         return VFS_ERR_INVAL;
-    if (sx1278_wr_reg(d, 0x01, 0x83, to) != VFS_OK)
+    if (sx1278_wr_reg(dev, 0x01, 0x83, timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
     {
         uint8_t tx[257];
-        size_t n = pl->len;
-        if (n > 255U)
-            n = 255U;
+        size_t count = pl->len;
+        if (count > 255U)
+            count = 255U;
         tx[0] = 0x80;
-        COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], pl->data, n));
-        if (sx1278_spi_xfer(d, tx, NULL, n + 1U, to) != VFS_OK)
+        COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], pl->data, count));
+        if (sx1278_spi_xfer(dev, tx, NULL, count + 1U, timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
     }
     return VFS_OK;
@@ -245,17 +245,17 @@ static int sx1278_cmd_send(struct sx1278_device* d, void* arg, size_t len, uint3
 /**
  * @brief SX1278_CMD_RECV 实现：读取 FIFO 首字节（简化单字节接收）
  */
-static int sx1278_cmd_recv(struct sx1278_device* d, void* arg, size_t len, uint32_t to)
+static int sx1278_cmd_recv(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct sx1278_payload* pl = (struct sx1278_payload*)arg;
     uint8_t tx[2] = {0, 0};
     uint8_t rx[2] = {0, 0};
     uint8_t* out;
 
-    COMPAT_IGNORE_RESULT(to);
+    COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pl || len != sizeof(*pl) || !pl->data || pl->len == 0U)
         return VFS_ERR_INVAL;
-    if (sx1278_spi_xfer(d, tx, rx, 2, 50) != VFS_OK)
+    if (sx1278_spi_xfer(dev, tx, rx, 2, 50) != VFS_OK)
         return VFS_ERR_IO;
     out = (uint8_t*)(uintptr_t)pl->data;
     out[0] = rx[1];
@@ -274,15 +274,15 @@ static const struct sx1278_ioctl_map s_sx1278_map[SX1278_CMD_COUNT] = {
  */
 static int sx1278_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct sx1278_device* d;
+    struct sx1278_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = sx1278_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = sx1278_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -293,7 +293,7 @@ static int sx1278_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (off < 1 || off > SX1278_CMD_COUNT || !s_sx1278_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_sx1278_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_sx1278_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -309,34 +309,34 @@ static const struct file_operations sx1278_fops = {
  */
 static int sx1278_probe(struct device* pdev)
 {
-    struct sx1278_device* d;
+    struct sx1278_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sx1278_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_sx1278_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->spi_dev = device_get_parent(pdev);
-    if (!d->spi_dev)
+    dev = &s_sx1278_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->spi_dev = device_get_parent(pdev);
+    if (!dev->spi_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = sx1278_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = sx1278_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_sx1278_pool_ctrl, pool_idx));
     return ret;
 }
@@ -346,18 +346,18 @@ err:
  */
 static int sx1278_remove(struct device* pdev)
 {
-    struct sx1278_device* d;
+    struct sx1278_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = sx1278_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = sx1278_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_sx1278_pool);
+    idx = (int)(dev - s_sx1278_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -365,8 +365,8 @@ static int sx1278_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    sx1278_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    sx1278_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_sx1278_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;

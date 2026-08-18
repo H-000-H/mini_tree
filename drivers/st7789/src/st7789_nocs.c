@@ -5,7 +5,7 @@
  * @note compatible: sitronix,st7789-nocs
  */
 #include "driver.h"
-#include "st7789_core.h"
+#include "st7789_regs.h"
 
 /**
  * @brief 无 CS 场景 probe（require_nocs=1，断言父 cs-pin < 0）

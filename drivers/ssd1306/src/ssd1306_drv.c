@@ -8,7 +8,8 @@
  *
  * 数据流: VFS ioctl → ssd1306_cmd_* → device_write(I2C) → HAL
  */
-#include "ssd1306_drv.h"
+#include "display_drv.h"
+#include "ssd1306_regs.h"
 
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
@@ -65,42 +66,42 @@ static struct ssd1306_device* ssd1306_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ssd1306_i2c_wr(struct ssd1306_device* d, const uint8_t* tx, size_t len, uint32_t to)
+static int ssd1306_i2c_wr(struct ssd1306_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
-    if (!d || !d->i2c_dev || !tx || len == 0U)
+    if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
-    return device_write(d->i2c_dev, tx, len, to);
+    return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ssd1306_hw_create(struct ssd1306_device* d)
+static int ssd1306_hw_create(struct ssd1306_device* dev)
 {
-    if (!d)
+    if (!dev)
         return VFS_ERR_INVAL;
-    if (d->hw_ready)
+    if (dev->hw_ready)
         return VFS_OK;
     {
-        int r = device_open(d->i2c_dev, NULL);
-        if (r != VFS_OK)
-            return r;
+        int ret = device_open(dev->i2c_dev, NULL);
+        if (ret != VFS_OK)
+            return ret;
     }
-    d->hw_ready = 1;
+    dev->hw_ready = 1;
     return VFS_OK;
 }
 
 /**
  * @brief 释放硬件资源（关闭 I2C client）
  */
-static void ssd1306_hw_destroy(struct ssd1306_device* d)
+static void ssd1306_hw_destroy(struct ssd1306_device* dev)
 {
-    if (!d || !d->hw_ready)
+    if (!dev || !dev->hw_ready)
         return;
-    if (d->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(d->i2c_dev));
-    d->hw_ready = 0;
+    if (dev->i2c_dev)
+        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+    dev->hw_ready = 0;
 }
 
 /**
@@ -108,15 +109,15 @@ static void ssd1306_hw_destroy(struct ssd1306_device* d)
  */
 static int ssd1306_open(struct device* pdev, void* arg)
 {
-    struct ssd1306_device* d;
+    struct ssd1306_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ssd1306_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ssd1306_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -126,7 +127,7 @@ static int ssd1306_open(struct device* pdev, void* arg)
     ret = VFS_OK;
     if (first == 1)
     {
-        ret = ssd1306_hw_create(d);
+        ret = ssd1306_hw_create(dev);
         if (ret != VFS_OK)
         {
             dev_lc_open_abort(lc);
@@ -142,14 +143,14 @@ static int ssd1306_open(struct device* pdev, void* arg)
  */
 static int ssd1306_close(struct device* pdev)
 {
-    struct ssd1306_device* d;
+    struct ssd1306_device* dev;
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ssd1306_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ssd1306_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -157,7 +158,7 @@ static int ssd1306_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last)
-        ssd1306_hw_destroy(d);
+        ssd1306_hw_destroy(dev);
     dev_lc_close_end(lc);
     return VFS_OK;
 }
@@ -165,7 +166,7 @@ static int ssd1306_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ssd1306_ioctl_fn_t)(struct ssd1306_device* d, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ssd1306_ioctl_fn_t)(struct ssd1306_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct ssd1306_ioctl_map
 {
     ssd1306_ioctl_fn_t handler;
@@ -174,187 +175,148 @@ struct ssd1306_ioctl_map
 /**
  * @brief 写 1B 命令/数据（ctrl 字节 + 值）
  */
-static int ssd1306_wr_ctrl(struct ssd1306_device* d, uint8_t ctrl, uint8_t v, uint32_t to)
+static int ssd1306_wr_ctrl(struct ssd1306_device* dev, uint8_t ctrl, uint8_t val, uint32_t timeout_ms)
 {
-    uint8_t tx[2] = {ctrl, v};
-    return ssd1306_i2c_wr(d, tx, 2, to);
+    uint8_t tx[2] = {ctrl, val};
+    return ssd1306_i2c_wr(dev, tx, 2, timeout_ms);
 }
 
 /**
- * @brief SSD1306_CMD_INIT 实现：下发完整初始化命令序列
+ * @brief DISPLAY_CMD_CLEAR 实现：逐页填充指定值（0=灭 1=亮）
  */
-static int ssd1306_cmd_init(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_clear(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    static const uint8_t seq[] = {
-        SSD1306_REG_DISPLAY_OFF, SSD1306_REG_CLK_DIV,      SSD1306_VAL_CLK_DIV,
-        SSD1306_REG_MUX_RATIO,   SSD1306_VAL_MUX_63,       SSD1306_REG_DISP_OFFSET,
-        SSD1306_VAL_OFFSET_0,    SSD1306_REG_START_LINE,   SSD1306_REG_CHARGE_PUMP,
-        SSD1306_VAL_CHARGE_ON,   SSD1306_REG_MEM_MODE,     SSD1306_VAL_HORIZ_ADDR,
-        SSD1306_REG_SEG_REMAP,   SSD1306_REG_COM_SCAN_DEC, SSD1306_REG_COM_PINS,
-        SSD1306_VAL_COM_PINS,    SSD1306_REG_SET_CONTRAST, SSD1306_VAL_CONTRAST,
-        SSD1306_REG_PRECHARGE,   SSD1306_VAL_PRECHARGE,    SSD1306_REG_VCOM_DETECT,
-        SSD1306_VAL_VCOM,        SSD1306_REG_ENTIRE_ON,    SSD1306_REG_NORMAL_DISP,
-        SSD1306_REG_DISPLAY_ON};
-    size_t i;
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(len);
-    if (!d->hw_ready)
-        return VFS_ERR_IO;
-    for (i = 0; i < sizeof(seq); i++)
-    {
-        int r = ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, seq[i], ms ? ms : 100U);
-        if (r != VFS_OK)
-            return r;
-    }
-    return VFS_OK;
-}
-
-/**
- * @brief SSD1306_CMD_FILL 实现：逐页填充指定值
- */
-static int ssd1306_cmd_fill(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
-{
+    const struct display_clear_arg* darg = (const struct display_clear_arg*)arg;
     uint8_t page_buf[1 + SSD1306_WIDTH];
     size_t i;
     int page;
-    int v;
-    uint32_t to = ms ? ms : 100U;
-    if (!d->hw_ready || !arg || len != sizeof(int))
+    uint8_t fill_val;
+    uint32_t timeout_ms = ms ? ms : 100U;
+    if (!dev->hw_ready || !darg || len != sizeof(*darg))
         return VFS_ERR_INVAL;
-    v = *(int*)arg;
+    fill_val = darg->value ? 0xFFU : 0x00U;
     page_buf[0] = SSD1306_I2C_CTRL_DATA;
     for (i = 1; i < sizeof(page_buf); i++)
-        page_buf[i] = (uint8_t)v;
+        page_buf[i] = fill_val;
     for (page = 0; page < SSD1306_PAGES; page++)
     {
-        if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page), to) !=
-            VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),
+                            timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, to) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, to) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_i2c_wr(d, page_buf, sizeof(page_buf), to) != VFS_OK)
+        if (ssd1306_i2c_wr(dev, page_buf, sizeof(page_buf), timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
     }
     return VFS_OK;
 }
 
 /**
- * @brief SSD1306_CMD_DRAW 实现：透传原始 I2C 载荷（含 control byte）
+ * @brief DISPLAY_CMD_GET_INFO 实现：返回面板几何与像素格式
  */
-static int ssd1306_cmd_draw(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_get_info(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    struct ssd1306_draw* dr = (struct ssd1306_draw*)arg;
-    if (!d->hw_ready || !dr || len != sizeof(*dr) || !dr->buf || dr->len == 0U)
-        return VFS_ERR_INVAL;
-    return ssd1306_i2c_wr(d, dr->buf, dr->len, ms ? ms : 100U);
-}
-
-/**
- * @brief SSD1306_CMD_GET_INFO 实现：返回面板几何
- */
-static int ssd1306_cmd_get_info(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
-{
-    struct ssd1306_info* info = (struct ssd1306_info*)arg;
-    COMPAT_IGNORE_RESULT(d);
+    struct display_info_arg* info = (struct display_info_arg*)arg;
+    COMPAT_IGNORE_RESULT(dev);
     COMPAT_IGNORE_RESULT(ms);
     if (!info || len != sizeof(*info))
         return VFS_ERR_INVAL;
     info->width = SSD1306_WIDTH;
     info->height = SSD1306_HEIGHT;
-    info->pages = SSD1306_PAGES;
-    info->fb_size = SSD1306_FB_SIZE;
+    info->format = DISPLAY_FMT_MONO_1BPP;
     return VFS_OK;
 }
 
 /**
- * @brief SSD1306_CMD_WRITE_CMD 实现：写单条命令
+ * @brief DISPLAY_CMD_FILL_RECT 实现：单色屏仅支持全屏矩形
  */
-static int ssd1306_cmd_write_cmd(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_fill_rect(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    struct ssd1306_byte* a = (struct ssd1306_byte*)arg;
-    if (!d->hw_ready || !a || len != sizeof(*a))
+    const struct display_rect_arg* darg = (const struct display_rect_arg*)arg;
+    struct display_clear_arg clear_arg;
+    if (!dev->hw_ready || !darg || len != sizeof(*darg))
         return VFS_ERR_INVAL;
-    return ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, a->value, ms ? ms : 100U);
+    if (darg->x != 0 || darg->y != 0 || darg->w != SSD1306_WIDTH || darg->h != SSD1306_HEIGHT)
+        return VFS_ERR_INVAL;
+    clear_arg.value = darg->color ? 1U : 0U;
+    return ssd1306_cmd_clear(dev, &clear_arg, sizeof(clear_arg), ms);
 }
 
 /**
- * @brief SSD1306_CMD_WRITE_DATA 实现：按 64B 分块写显示数据
+ * @brief DISPLAY_CMD_DRAW_AREA 实现：单色屏仅支持整帧 page-major 位图
  */
-static int ssd1306_cmd_write_data(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    struct ssd1306_data* a = (struct ssd1306_data*)arg;
-    uint8_t chunk[1 + 64];
-    size_t off = 0;
-    uint32_t to = ms ? ms : 100U;
-    if (!d->hw_ready || !a || len != sizeof(*a) || !a->buf || a->len == 0U)
-        return VFS_ERR_INVAL;
-    chunk[0] = SSD1306_I2C_CTRL_DATA;
-    while (off < a->len)
-    {
-        size_t n = a->len - off;
-        if (n > 64U)
-            n = 64U;
-        COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&chunk[1], &a->buf[off], n));
-        if (ssd1306_i2c_wr(d, chunk, n + 1U, to) != VFS_OK)
-            return VFS_ERR_IO;
-        off += n;
-    }
-    return VFS_OK;
-}
-
-/**
- * @brief SSD1306_CMD_FLUSH_FB 实现：逐页定位并刷写整帧
- */
-static int ssd1306_cmd_flush_fb(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
-{
-    struct ssd1306_fb* a = (struct ssd1306_fb*)arg;
+    const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
     int page;
-    uint32_t to = ms ? ms : 100U;
-    if (!d->hw_ready || !a || len != sizeof(*a) || !a->buf || a->len != SSD1306_FB_SIZE)
+    uint32_t timeout_ms = ms ? ms : 100U;
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
+        !darg->data)
+        return VFS_ERR_INVAL;
+    if (darg->x != 0 || darg->y != 0 || darg->w != SSD1306_WIDTH || darg->h != SSD1306_HEIGHT)
         return VFS_ERR_INVAL;
     for (page = 0; page < SSD1306_PAGES; page++)
     {
-        struct ssd1306_data slice;
-        if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page), to) !=
-            VFS_OK)
+        uint8_t chunk[1 + 64];
+        size_t off = 0;
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),
+                            timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, to) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, to) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        slice.buf = &a->buf[page * SSD1306_WIDTH];
-        slice.len = SSD1306_WIDTH;
-        if (ssd1306_cmd_write_data(d, &slice, sizeof(slice), to) != VFS_OK)
-            return VFS_ERR_IO;
+        chunk[0] = SSD1306_I2C_CTRL_DATA;
+        while (off < SSD1306_WIDTH)
+        {
+            size_t chunk_len = SSD1306_WIDTH - off;
+            if (chunk_len > 64U)
+                chunk_len = 64U;
+            COMPAT_IGNORE_RESULT(
+                COMPAT_MEM_COPY(&chunk[1], &darg->data[page * SSD1306_WIDTH + off], chunk_len));
+            if (ssd1306_i2c_wr(dev, chunk, chunk_len + 1U, timeout_ms) != VFS_OK)
+                return VFS_ERR_IO;
+            off += chunk_len;
+        }
     }
     return VFS_OK;
 }
 
 /**
- * @brief SSD1306_CMD_SET_CONTRAST 实现：设置对比度
+ * @brief DISPLAY_CMD_FLUSH 实现：整帧 page-major 位图
  */
-static int ssd1306_cmd_set_contrast(struct ssd1306_device* d, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_flush(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    struct ssd1306_contrast* a = (struct ssd1306_contrast*)arg;
-    uint32_t to = ms ? ms : 100U;
-    if (!d->hw_ready || !a || len != sizeof(*a))
+    const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
+        !darg->data)
         return VFS_ERR_INVAL;
-    if (ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_CONTRAST, to) != VFS_OK)
-        return VFS_ERR_IO;
-    return ssd1306_wr_ctrl(d, SSD1306_I2C_CTRL_CMD, a->value, to);
+    return ssd1306_cmd_draw_area(dev, (void*)darg, sizeof(*darg), ms);
 }
 
-static const struct ssd1306_ioctl_map s_ssd1306_map[SSD1306_CMD_COUNT] = {
-    [SSD1306_CMD_INIT - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_init},
-    [SSD1306_CMD_FILL - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_fill},
-    [SSD1306_CMD_DRAW - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_draw},
-    [SSD1306_CMD_GET_INFO - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_get_info},
-    [SSD1306_CMD_WRITE_CMD - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_write_cmd},
-    [SSD1306_CMD_WRITE_DATA - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_write_data},
-    [SSD1306_CMD_FLUSH_FB - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_flush_fb},
-    [SSD1306_CMD_SET_CONTRAST - SSD1306_CMD_BASE - 1] = {ssd1306_cmd_set_contrast},
+/**
+ * @brief DISPLAY_CMD_SET_BRIGHTNESS 实现：亮度映射为对比度
+ */
+static int ssd1306_cmd_set_brightness(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
+{
+    const struct display_bright_arg* darg = (const struct display_bright_arg*)arg;
+    uint32_t timeout_ms = ms ? ms : 100U;
+    if (!dev->hw_ready || !darg || len != sizeof(*darg))
+        return VFS_ERR_INVAL;
+    if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_CONTRAST, timeout_ms) != VFS_OK)
+        return VFS_ERR_IO;
+    return ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, darg->value, timeout_ms);
+}
+
+static const struct ssd1306_ioctl_map s_ssd1306_map[DISPLAY_CMD_COUNT] = {
+    [DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_get_info},
+    [DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_clear},
+    [DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_fill_rect},
+    [DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_draw_area},
+    [DISPLAY_CMD_FLUSH - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_flush},
+    [DISPLAY_CMD_SET_BRIGHTNESS - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_set_brightness},
 };
 
 /**
@@ -362,26 +324,26 @@ static const struct ssd1306_ioctl_map s_ssd1306_map[SSD1306_CMD_COUNT] = {
  */
 static int ssd1306_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct ssd1306_device* d;
+    struct ssd1306_device* dev;
     struct dev_lifecycle* lc;
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
-    d = ssd1306_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ssd1306_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
     if (ret != VFS_OK)
         return ret;
-    off = (int32_t)cmd - (int32_t)SSD1306_CMD_BASE;
-    if (off < 1 || off > SSD1306_CMD_COUNT || !s_ssd1306_map[off - 1].handler)
+    off = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
+    if (off < 1 || off > DISPLAY_CMD_COUNT || !s_ssd1306_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
-        ret = s_ssd1306_map[off - 1].handler(d, arg, arg_len, ms);
+        ret = s_ssd1306_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
     return ret;
 }
@@ -397,34 +359,34 @@ static const struct file_operations ssd1306_fops = {
  */
 static int ssd1306_probe(struct device* pdev)
 {
-    struct ssd1306_device* d;
+    struct ssd1306_device* dev;
     int pool_idx, ret;
     if (!pdev)
         return VFS_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ssd1306_pool_ctrl);
     if (pool_idx < 0)
         return VFS_ERR_NOMEM;
-    d = &s_ssd1306_pool[pool_idx];
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
-    d->i2c_dev = device_get_parent(pdev);
-    if (!d->i2c_dev)
+    dev = &s_ssd1306_pool[pool_idx];
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    dev->i2c_dev = device_get_parent(pdev);
+    if (!dev->i2c_dev)
     {
         ret = VFS_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, d) != VFS_OK)
+    if (device_set_priv(pdev, dev) != VFS_OK)
     {
         ret = VFS_ERR_IO;
         goto err;
     }
-    d->ops = ssd1306_fops;
-    pdev->ops = &d->ops;
-    SYS_LOGI(k_tag, "probe OK pool=%d", pool_idx);
+    dev->ops = ssd1306_fops;
+    pdev->ops = &dev->ops;
+    SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
     return VFS_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ssd1306_pool_ctrl, pool_idx));
     return ret;
 }
@@ -434,18 +396,18 @@ err:
  */
 static int ssd1306_remove(struct device* pdev)
 {
-    struct ssd1306_device* d;
+    struct ssd1306_device* dev;
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
         return VFS_ERR_INVAL;
-    d = ssd1306_get_drvdata(pdev);
-    if (IS_ERR(d))
-        return PTR_ERR(d);
+    dev = ssd1306_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
-    idx = (int)(d - s_ssd1306_pool);
+    idx = (int)(dev - s_ssd1306_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
     if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
@@ -453,8 +415,8 @@ static int ssd1306_remove(struct device* pdev)
         dev_lc_remove_finish(lc);
         return VFS_ERR_IO;
     }
-    ssd1306_hw_destroy(d);
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    ssd1306_hw_destroy(dev);
+    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ssd1306_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return VFS_OK;
