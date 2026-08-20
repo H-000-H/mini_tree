@@ -1,0 +1,9 @@
+set(NET_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/sys/sys_arch.c"
+)
+
+set(NET_INCLUDE_DIRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/sys"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
