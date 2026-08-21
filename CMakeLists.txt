@@ -1,5 +1,10 @@
 # mini_tree (generic CMake build for non-ESP-IDF projects)
 
+# 策略兼容：本文件被父工程 include（自身无 cmake_minimum_required），
+if(POLICY CMP0003)
+    cmake_policy(SET CMP0003 NEW)
+endif()
+
 if(ESP_PLATFORM)
     # 纯架构：不硬编码某一 MCU。板级通过下列之一注入 BOARD_DTS / dtc -I/-D / 树外扫描：
     #   1) MINI_TREE_BOARD_PORT（绝对路径）
@@ -552,5 +557,10 @@ add_dependencies(mini_tree mini_tree_gen)
 file(STRINGS "${KCONFIG_DOT}" MINI_TREE_LWIP_ON REGEX "^CONFIG_LWIP=y$")
 if(MINI_TREE_LWIP_ON)
     add_subdirectory(net)
+    add_dependencies(mini_tree_net mini_tree_gen)
     target_link_libraries(mini_tree PUBLIC mini_tree_net)
+endif()
+
+if(MINI_TREE_USB_ON)
+    target_link_libraries(mini_tree PUBLIC tinyusb)
 endif()

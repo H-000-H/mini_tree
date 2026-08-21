@@ -1,6 +1,3 @@
-# TinyUSB — 通用 USB 核心（不绑 MCU）。按需加载：本地 lib/tinyusb 优先，
-# 缺失时首次 mini_tree_link_tinyusb() 才 FetchContent 拉取。不链接则不拉取。
-# 板级自行链接 DCD / CFG_TUSB_MCU，中间件不绑 MCU。
 include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
 
 if(DEFINED MINI_TREE_TINYUSB_CMAKE_LOADED)
@@ -11,11 +8,15 @@ set(MINI_TREE_TINYUSB_CMAKE_LOADED ON)
 set(MINI_TREE_TINYUSB_VERSION "0.21.0" CACHE STRING "TinyUSB git tag")
 message(STATUS "mini_tree TinyUSB: ${MINI_TREE_TINYUSB_VERSION} (local-or-fetch on link)")
 
+# include 时求值: 函数内 CMAKE_CURRENT_LIST_DIR 解析为调用点目录（依赖调用位置，
+# 与 lwip.cmake 的 MINI_TREE_LWIP_DOTCONFIG 同模式），须在函数外固化本文件路径。
+set(MINI_TREE_TINYUSB_LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/tinyusb")
+
 function(mini_tree_link_tinyusb target)
     if(NOT TARGET tinyusb)
         mini_tree_dep_get(_tinyusb_source_dir
             NAME tinyusb
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/tinyusb"
+            LOCAL_DIR "${MINI_TREE_TINYUSB_LOCAL_DIR}"
             MARKER "src/tusb.c"
             GIT_REPOSITORY https://github.com/hathach/tinyusb
             GIT_TAG ${MINI_TREE_TINYUSB_VERSION}

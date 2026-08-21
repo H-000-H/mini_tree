@@ -12,33 +12,34 @@
 #ifndef LWIP_ARCH_CC_H
 #define LWIP_ARCH_CC_H
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <inttypes.h>
-#include <stdlib.h>
 #include "system_log.h"
+#include <inttypes.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* sys_prot_t: lwIP 轻量级临界区保护 (SYS_ARCH_PROTECT) 的状态类型。           */
-/* uint32_t 足以容纳各后端关中断前的 primask 状态。加上我也不喜欢u16这种写法     */
-/* -------------------------------------------------------------------------- */
-typedef uint32_t sys_prot_t;
+    /* -------------------------------------------------------------------------- */
+    /* sys_prot_t: lwIP 轻量级临界区保护 (SYS_ARCH_PROTECT) 的状态类型。           */
+    /* uint32_t 足以容纳各后端关中断前的 primask 状态。加上我也不喜欢u16这种写法     */
+    /* -------------------------------------------------------------------------- */
+    typedef uint32_t sys_prot_t;
 
 /* -------------------------------------------------------------------------- */
 /* 格式化输出占位符宏 (lwIP 内部 LWIP_PLATFORM_DIAG 用)                        */
 /* -------------------------------------------------------------------------- */
-#define U16_F   PRIu16
-#define S16_F   PRId16
-#define X16_F   PRIx16
-#define U32_F   PRIu32
-#define S32_F   PRId32
-#define X32_F   PRIx32
-#define SZT_F   "zu"
+#define U16_F PRIu16
+#define S16_F PRId16
+#define X16_F PRIx16
+#define U32_F PRIu32
+#define S32_F PRId32
+#define X32_F PRIx32
+#define SZT_F "zu"
 
 /* -------------------------------------------------------------------------- */
 /* 目标机字节序 (ARM / Xtensa 等均为小端)                                     */
@@ -56,23 +57,27 @@ typedef uint32_t sys_prot_t;
 #define PACK_STRUCT_END
 #define PACK_STRUCT_FIELD(x) x
 
-/* -------------------------------------------------------------------------- */
-/* 诊断输出 / 断言 (走 OSAL, 轻量且后端统一)                                  */
-/*   LWIP_PLATFORM_DIAG(x) 的 x 是 "(fmt, args...)" 双括号形式;                */
-/* -------------------------------------------------------------------------- */
-/**
- * @brief lwIP 诊断输出
- * @param x 双括号形式的参数列表 (fmt, args...)
- */
-void lwip_diag(const char* fmt, ...);
+    /* -------------------------------------------------------------------------- */
+    /* 诊断输出 / 断言 (走 OSAL, 轻量且后端统一)                                  */
+    /*   LWIP_PLATFORM_DIAG(x) 的 x 是 "(fmt, args...)" 双括号形式;                */
+    /* -------------------------------------------------------------------------- */
+    /**
+     * @brief lwIP 诊断输出
+     * @param x 双括号形式的参数列表 (fmt, args...)
+     */
+    void lwip_diag(const char* fmt, ...);
 
-#define LWIP_PLATFORM_DIAG(x)   do { lwip_diag x; } while (0)
-#define LWIP_PLATFORM_ASSERT(x)                                                    \
-    do                                                                             \
-    {                                                                              \
-        SYS_LOGE("lwIP", "Assertion \"%s\" failed at line %d in %s",               \
-                 x, __LINE__, __FILE__);                                           \
-        while(1);                                                                \
+#define LWIP_PLATFORM_DIAG(x)                                                                      \
+    do                                                                                             \
+    {                                                                                              \
+        lwip_diag x;                                                                               \
+    } while (0)
+#define LWIP_PLATFORM_ASSERT(x)                                                                    \
+    do                                                                                             \
+    {                                                                                              \
+        SYS_LOGE("lwIP", "Assertion \"%s\" failed at line %d in %s", x, __LINE__, __FILE__);       \
+        while (1)                                                                                  \
+            ;                                                                                      \
     } while (0)
 
 /* -------------------------------------------------------------------------- */

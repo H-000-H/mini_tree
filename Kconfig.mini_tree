@@ -1204,6 +1204,37 @@ menu "lwIP (TCP/IP Stack)"
             depends on PPP_SUPPORT
             help
               PPP 最大发送单元。与运营商协商, 一般 1500。
+
+        menu "PPPIF (pppif 适配层)"
+
+            config PPPIF_RX_BUF_SIZE
+                int "PPP 数据态接收缓冲大小 (bytes)"
+                default 512
+                range 128 4096
+                depends on PPPOS_SUPPORT
+                help
+                  pppif 数据态轮询接收缓冲, device_read 单次最多读入的字节数。
+                  需 >= PPP_MRU 对齐链路最大帧, 一般 512 足够 (PPP 帧 1500 字节
+                  时按 512 分片多次喂入 pppos_input)。
+
+            config PPPIF_RX_TASK_STACK_SIZE
+                int "PPP 接收任务栈大小 (bytes)"
+                default 2048
+                range 512 16384
+                depends on PPPOS_SUPPORT
+                help
+                  若移植层用独立接收任务喂 pppos_input (RTOS 模式), 该任务栈大小;
+                  NO_SYS 裸机轮询模式 (pppif_poll 主循环) 不创建任务, 本项仅用于
+                  预留/后续移植扩展。
+
+            config PPPIF_RX_TASK_PRIO
+                int "PPP 接收任务优先级"
+                default 6
+                range 1 32
+                depends on PPPOS_SUPPORT
+                help
+                  接收任务优先级 (仅 RTOS 模式使用)。裸机轮询模式无任务, 忽略。
+        endmenu
     endmenu
 
     menu "Checksum"

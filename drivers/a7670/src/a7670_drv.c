@@ -183,21 +183,21 @@ struct a7670_ioctl_map
 };
 
 /**
- * @brief A7670_CMD_AT_SEND 实现：UART 发送 AT 命令
+ * @brief MODEM_CMD_AT_SEND 实现：UART 发送 AT 命令
  */
 static int a7670_cmd_send(struct a7670_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct a7670_at_buf* a = (struct a7670_at_buf*)arg;
+    struct modem_at_buf* a = (struct modem_at_buf*)arg;
     if (!dev->hw_ready || !a || len != sizeof(*a) || !a->tx || a->tx_len == 0U)
         return VFS_ERR_INVAL;
     return a7670_uart_wr(dev, a->tx, a->tx_len, timeout_ms);
 }
 /**
- * @brief A7670_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
+ * @brief MODEM_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
  */
 static int a7670_cmd_recv(struct a7670_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct a7670_at_buf* a = (struct a7670_at_buf*)arg;
+    struct modem_at_buf* a = (struct modem_at_buf*)arg;
     int ret;
     if (!dev->hw_ready || !a || len != sizeof(*a) || !a->rx || a->rx_cap == 0U)
         return VFS_ERR_INVAL;
@@ -264,9 +264,9 @@ static int a7670_read(struct device* pdev, void* buffer, size_t len, uint32_t ti
     return ret;
 }
 
-static const struct a7670_ioctl_map s_a7670_map[A7670_CMD_COUNT] = {
-    [A7670_CMD_AT_SEND - A7670_CMD_BASE - 1] = {a7670_cmd_send},
-    [A7670_CMD_AT_RECV - A7670_CMD_BASE - 1] = {a7670_cmd_recv},
+static const struct a7670_ioctl_map s_a7670_map[MODEM_CMD_COUNT] = {
+    [MODEM_CMD_AT_SEND - MODEM_CMD_BASE - 1] = {a7670_cmd_send},
+    [MODEM_CMD_AT_RECV - MODEM_CMD_BASE - 1] = {a7670_cmd_recv},
 };
 
 /**
@@ -289,8 +289,8 @@ static int a7670_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
     ret = dev_lc_io_begin(lc);
     if (ret != VFS_OK)
         return ret;
-    off = (int32_t)cmd - (int32_t)A7670_CMD_BASE;
-    if (off < 1 || off > A7670_CMD_COUNT || !s_a7670_map[off - 1].handler)
+    off = (int32_t)cmd - (int32_t)MODEM_CMD_BASE;
+    if (off < 1 || off > MODEM_CMD_COUNT || !s_a7670_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
         ret = s_a7670_map[off - 1].handler(dev, arg, arg_len, ms);

@@ -32,7 +32,8 @@
 #define COMPAT_HAVE_KCONFIG 0
 #if defined(__has_include)
 #if __has_include("config.h")
-#include "config.h"
+/* IWYU pragma: keep — Kconfig 生成头 (cmake KCONFIG_GEN_DIR), 头里大量 CONFIG_* 宏被下方 COMAT_CFG_ENABLED / 单元隐式消费, clangd 在 IDE 阶段会误报 unused-includes。 */
+#include "config.h" /* IWYU pragma: keep */
 #undef COMPAT_HAVE_KCONFIG
 #define COMPAT_HAVE_KCONFIG 1
 #endif
@@ -310,7 +311,6 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
     X(SX1278, 0x1E)                                                                                \
     X(EPAPER, 0x1F)                                                                                \
     X(NEO_M8N, 0x20)                                                                               \
-    X(AIR780E, 0x21)                                                                               \
     X(HC05, 0x22)                                                                                  \
     X(RS485_MODBUS, 0x23)                                                                          \
     X(DRV8833, 0x24)                                                                               \
@@ -331,10 +331,10 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
     X(NRF24L01, 0x33)                                                                              \
     X(RC522, 0x34)                                                                                 \
     X(MAX7219, 0x35)                                                                               \
-    X(A7670, 0x36)                                                                                 \
     X(PN532, 0x37)                                                                                 \
     X(DFPLAYER, 0x38)                                                                              \
-    X(DISPLAY, 0x39)
+    X(DISPLAY, 0x39)                                                                                \
+    X(MODEM, 0x3A)
 
 /**
  * @brief 魔法槽枚举生成器

@@ -15,7 +15,22 @@ If:
 Index:
   Background: Skip
 
+# 编译数据库由仓库根 compile_commands.json 软链指向 build/Debug 提供
+# (ln -sf build/Debug/compile_commands.json compile_commands.json),
+# clangd 从源码目录向上查找时即可命中, 无需在此处显式声明。
+# 注: 旧版 "CompilationDatabase: ..." 不是合法 clangd 配置项, 已移除。
+
+# CompileFlags 放在 If 块外, 对全部文件生效 (含 pppif.c)。
+# 注入 PPP/Kconfig 宏: lwIP net/lwipopts.h 头部把 PPP_SUPPORT 重映射为
+# CONFIG_PPP_SUPPORT (genconfig.py 写出)。config.h 未在 -I 时需显式注入,
+# 否则 PPP_SUPPORT=0 → ppp.h/pppos.h 整段被 #if 跳过 → unknown_typename。
 CompileFlags:
+  Add:
+    - -DCONFIG_PPP_SUPPORT=1
+    - -DCONFIG_PPPOS_SUPPORT=1
+    - -DCONFIG_PPP_AUTH_SUPPORT=1
+    - -DCONFIG_PAP_SUPPORT=1
+    - -DCONFIG_CHAP_SUPPORT=1
   Remove:
     - --target=*
     - -mcpu=*
@@ -28,6 +43,7 @@ Diagnostics:
   UnusedIncludes: None
   Suppress:
     - drive_mode_mismatch
+    - unused-includes
 
 # 说明：不再强制 .h 当 C / .cpp 强制 -std 的语言规则。
 # 在父工程(嵌套子模块)场景下，这些全局规则会把 ETL 的 C++ 模板头

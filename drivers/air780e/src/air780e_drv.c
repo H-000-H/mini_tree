@@ -178,21 +178,21 @@ struct air780e_ioctl_map
 };
 
 /**
- * @brief AIR780E_CMD_AT_SEND 实现：UART 发送 AT 命令
+ * @brief MODEM_CMD_AT_SEND 实现：UART 发送 AT 命令
  */
 static int air780e_cmd_send(struct air780e_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct air780e_at* a = (struct air780e_at*)arg;
+    struct modem_at_buf* a = (struct modem_at_buf*)arg;
     if (!dev->hw_ready || !a || len != sizeof(*a) || !a->tx || !a->tx_len)
         return VFS_ERR_INVAL;
     return device_write(dev->uart_dev, a->tx, a->tx_len, timeout_ms);
 }
 /**
- * @brief AIR780E_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
+ * @brief MODEM_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
  */
 static int air780e_cmd_recv(struct air780e_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct air780e_at* a = (struct air780e_at*)arg;
+    struct modem_at_buf* a = (struct modem_at_buf*)arg;
     int ret;
 
     if (!dev->hw_ready || !a || len != sizeof(*a) || !a->rx || a->rx_cap == 0U)
@@ -259,9 +259,9 @@ static int air780e_read(struct device* pdev, void* buffer, size_t len, uint32_t 
     dev_lc_io_end(lc);
     return ret;
 }
-static const struct air780e_ioctl_map s_air780e_map[AIR780E_CMD_COUNT] = {
-    [AIR780E_CMD_AT_SEND - AIR780E_CMD_BASE - 1] = {air780e_cmd_send},
-    [AIR780E_CMD_AT_RECV - AIR780E_CMD_BASE - 1] = {air780e_cmd_recv},
+static const struct air780e_ioctl_map s_air780e_map[MODEM_CMD_COUNT] = {
+    [MODEM_CMD_AT_SEND - MODEM_CMD_BASE - 1] = {air780e_cmd_send},
+    [MODEM_CMD_AT_RECV - MODEM_CMD_BASE - 1] = {air780e_cmd_recv},
 };
 
 /**
@@ -284,8 +284,8 @@ static int air780e_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     ret = dev_lc_io_begin(lc);
     if (ret != VFS_OK)
         return ret;
-    off = (int32_t)cmd - (int32_t)AIR780E_CMD_BASE;
-    if (off < 1 || off > AIR780E_CMD_COUNT || !s_air780e_map[off - 1].handler)
+    off = (int32_t)cmd - (int32_t)MODEM_CMD_BASE;
+    if (off < 1 || off > MODEM_CMD_COUNT || !s_air780e_map[off - 1].handler)
         ret = VFS_ERR_INVAL;
     else
         ret = s_air780e_map[off - 1].handler(dev, arg, arg_len, ms);

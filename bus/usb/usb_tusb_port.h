@@ -35,7 +35,6 @@ extern "C"
     bool usb_tusb_hid_ready(void);
     bool usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
 
-    /* ECM 网络帧数据面（板级实现，如 usb_net_cb.c）— usb_bus_ecm_* 依赖 */
     int usb_net_frame_push_tx(const void* frame, size_t len);
     int usb_net_frame_pop_rx(void* frame, size_t len);
 

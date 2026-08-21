@@ -10,6 +10,11 @@ set(MINI_TREE_LWIP_CMAKE_LOADED ON)
 set(MINI_TREE_LWIP_VERSION "STABLE-2_2_1_RELEASE" CACHE STRING "lwIP git tag")
 message(STATUS "mini_tree lwIP: ${MINI_TREE_LWIP_VERSION} (local-or-fetch on link)")
 
+# include 时求值: lwip.cmake 位于 cmake/, .config 与 lib/lwip 位于仓库根
+# （函数内 CMAKE_CURRENT_LIST_DIR 解析为调用点目录，须在函数外固化路径）
+set(MINI_TREE_LWIP_DOTCONFIG "${CMAKE_CURRENT_LIST_DIR}/../.config")
+set(MINI_TREE_LWIP_LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lwip")
+
 # Link lwIP into a target. Pass directory that contains lwipopts.h (and arch/).
 # Example: mini_tree_link_lwip(my_fw "${CMAKE_CURRENT_SOURCE_DIR}/port")
 function(mini_tree_link_lwip target)
@@ -24,13 +29,34 @@ function(mini_tree_link_lwip target)
     if(NOT TARGET mini_tree_lwip)
         mini_tree_dep_get(_lwip_source_dir
             NAME lwip
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lwip"
+            LOCAL_DIR "${MINI_TREE_LWIP_LOCAL_DIR}"
             MARKER "src/include/lwip/init.h"
             GIT_REPOSITORY https://github.com/lwip-tcpip/lwip
             GIT_TAG ${MINI_TREE_LWIP_VERSION}
         )
 
         set(LWIP_DIR "${_lwip_source_dir}")
+
+        # PPP (pppos, 4G 模组拨号): 由 .config 的 CONFIG_PPP_SUPPORT 桥接条件编入。
+        # ppp/*.c 顶部均有 #if PPP_SUPPORT (及子选项) 保护, 未开子功能时为空 TU,
+        # Flash 由 -ffunction-sections/-fdata-sections + gc-sections 回收。
+        # pppoe/pppol2tp 一并编入: 独立链路承载 (PPPOE/PPPOL2TP_SUPPORT 默认 0,
+        # 空 TU), 后续开启无需再改本文件。
+        set(_lwip_dotconfig "${MINI_TREE_LWIP_DOTCONFIG}")
+        if(DEFINED KCONFIG_DOT)
+            set(_lwip_dotconfig "${KCONFIG_DOT}")
+        endif()
+        set(_mini_tree_lwip_PPP_SRCS "")
+        if(EXISTS "${_lwip_dotconfig}")
+            file(STRINGS "${_lwip_dotconfig}" _mini_tree_lwip_PPP_ON REGEX "^CONFIG_PPP_SUPPORT=y$")
+            if(_mini_tree_lwip_PPP_ON)
+                file(GLOB _mini_tree_lwip_PPP_SRCS
+                    "${LWIP_DIR}/src/netif/ppp/*.c"
+                    "${LWIP_DIR}/src/netif/ppp/polarssl/*.c"
+                )
+                message(STATUS "mini_tree lwIP: PPP sources enabled (pppos)")
+            endif()
+        endif()
 
         # Default stack (no PPP / 6LoWPAN / apps) — suitable for Ethernet / USB-RNDIS / etc.
         set(_mini_tree_lwip_SRCS
@@ -82,6 +108,7 @@ function(mini_tree_link_lwip target)
             ${LWIP_DIR}/src/api/sockets.c
             ${LWIP_DIR}/src/api/tcpip.c
             ${LWIP_DIR}/src/netif/ethernet.c
+            ${_mini_tree_lwip_PPP_SRCS}
         )
 
         add_library(mini_tree_lwip INTERFACE)
