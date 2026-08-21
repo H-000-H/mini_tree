@@ -1,18 +1,22 @@
-/** * @license SPDX-License-Identifier: Apache-2.0
- * @file vfs-dac.c
- * @brief DAC VFS 实现 — DAC 子系统 VFS 层实现文件
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-dac.c
+ *@brief DAC VFS 实现 — DAC 子系统 VFS 层实现文件
+ *@author H-000-H
+
  */
+
 #define DAC_VFS_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #include "vfs-dac.h"
 
 #include "board_config.h"
+#include "board_define_dac.h"
 #include "buffer.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_dac.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"

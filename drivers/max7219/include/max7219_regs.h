@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file max7219_regs.h
- * @brief MAX7219 芯片寄存器 / 几何常量
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file max7219_regs.h
+ *@brief MAX7219 芯片寄存器 / 几何常量
+ *@author H-000-H
+
  */
+
 #ifndef MAX7219_REGS_H
 #define MAX7219_REGS_H
 

@@ -1,17 +1,23 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * CAN VFS 实现 : Host + Client
- *
- * DTS:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-can.c
+ *@brief vfs-can 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   CAN VFS 实现 : Host + Client
+ *   DTS:
  *   can@n (can-host)                    ← host
  *   └── can-client (heterogeneous,can-client) ← client (fops)
- *
- * write/read: struct can_frame; 一律经 can_hook 弱钩子 (无强符号=普通 Classic CAN)
- * ioctl: TRANSFER / SET_FILTER / GET_STATE
- *@=========================================================================================================================*/
+ *   write/read: struct can_frame; 一律经 can_hook 弱钩子 (无强符号=普通 Classic CAN)
+ *   ioctl: TRANSFER / SET_FILTER / GET_STATE
+ *   @=========================================================================================================================
+ */
+
 #define CAN_VFS_IMPL
 #include "vfs-can.h"
 
+#include "board_define_can.h"
 #include "can_bus.h"
 #include "can_hook.h"
 #include "compiler_compat.h"
@@ -19,7 +25,6 @@
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_can.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"

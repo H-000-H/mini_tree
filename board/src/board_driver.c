@@ -1,12 +1,16 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * board_driver.c — 板级驱动核心实现
- *
- * board_driver_probe_all: 3 趟 deferred probe, 按依赖拓扑顺序匹配驱动,
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_driver.c
+ *@brief board driver 实现
+ *@author H-000-H
+ *@details
+ *   board_driver.c — 板级驱动核心实现
+ *   board_driver_probe_all: 3 趟 deferred probe, 按依赖拓扑顺序匹配驱动,
  *   失败按 criticality 分级 (FATAL 触发 OSAL_PANIC, WARNING 告警, IGNORE 静默).
- * board_driver_remove_all: 逆 probe 顺序卸载, 失败保留 ERROR 状态.
- * 实现安全停机子系统 (safety pin + 回调 + emergency_stop_all_cores).
+ *   board_driver_remove_all: 逆 probe 顺序卸载, 失败保留 ERROR 状态.
+ *   实现安全停机子系统 (safety pin + 回调 + emergency_stop_all_cores).
  */
+
 #include "board_devtable.h"
 #include "compiler_compat.h"
 #include "config.h"

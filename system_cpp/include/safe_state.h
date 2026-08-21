@@ -1,11 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * safe_state — 不可恢复安全状态与启动循环防护接口
- *
- * safe_state_check_bootloop: 连续 ≥5 次异常启动 → 永久锁死, 防 Flash 烧穿
- * enter_safe_state: Task 上下文调用, 永不返回; NMI 用 safe_state_nmi_emergency_stamp
- * fail-fast: 异常即停机, 防蔓延
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file safe_state.h
+ *@brief safe state 头文件
+ *@author H-000-H
+ *@details
+ *   safe_state — 不可恢复安全状态与启动循环防护接口
+ *   safe_state_check_bootloop: 连续 ≥5 次异常启动 → 永久锁死, 防 Flash 烧穿
+ *   enter_safe_state: Task 上下文调用, 永不返回; NMI 用 safe_state_nmi_emergency_stamp
+ *   fail-fast: 异常即停机, 防蔓延
  */
+
 #pragma once
 
 #include <stdbool.h>

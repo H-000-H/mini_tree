@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file hc05_drv.c
- * @brief HC-05 蓝牙串口模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_hc05_pool[HC05_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 hc05_drv.h。
- *
- * 数据流: VFS ioctl → hc05_cmd_send → device_write(UART) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hc05_drv.c
+ *@brief HC-05 蓝牙串口模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_hc05_pool[HC05_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 hc05_drv.h。
+ *   数据流: VFS ioctl → hc05_cmd_send → device_write(UART) → HAL
  */
+
 #include "hc05_drv.h"
 
 #include "compiler_compat.h"

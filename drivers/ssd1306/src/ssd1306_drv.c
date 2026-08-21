@@ -1,22 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file ssd1306_drv.c
- * @brief SSD1306 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_ssd1306_pool[SSD1306_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 ssd1306_drv.h，寄存器定义见 ssd1306_regs.h。
- *
- * 数据流: VFS ioctl → ssd1306_cmd_* → device_write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file ssd1306_drv.c
+ *@brief SSD1306 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_ssd1306_pool[SSD1306_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 ssd1306_drv.h，寄存器定义见 ssd1306_regs.h。
+ *   数据流: VFS ioctl → ssd1306_cmd_* → device_write(I2C) → HAL
  */
-#include "display_drv.h"
-#include "ssd1306_regs.h"
 
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
+#include "display_drv.h"
 #include "driver.h"
 #include "dt_config_gen.h"
 #include "osal.h"
+#include "ssd1306_regs.h"
 #include "status.h"
 #include "system_log.h"
 #include "vfs-i2c.h"
@@ -66,7 +66,8 @@ static struct ssd1306_device* ssd1306_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ssd1306_i2c_wr(struct ssd1306_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int ssd1306_i2c_wr(struct ssd1306_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -166,7 +167,8 @@ static int ssd1306_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ssd1306_ioctl_fn_t)(struct ssd1306_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ssd1306_ioctl_fn_t)(struct ssd1306_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct ssd1306_ioctl_map
 {
     ssd1306_ioctl_fn_t handler;
@@ -175,7 +177,8 @@ struct ssd1306_ioctl_map
 /**
  * @brief 写 1B 命令/数据（ctrl 字节 + 值）
  */
-static int ssd1306_wr_ctrl(struct ssd1306_device* dev, uint8_t ctrl, uint8_t val, uint32_t timeout_ms)
+static int ssd1306_wr_ctrl(struct ssd1306_device* dev, uint8_t ctrl, uint8_t val,
+                           uint32_t timeout_ms)
 {
     uint8_t tx[2] = {ctrl, val};
     return ssd1306_i2c_wr(dev, tx, 2, timeout_ms);
@@ -203,9 +206,11 @@ static int ssd1306_cmd_clear(struct ssd1306_device* dev, void* arg, size_t len, 
         if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),
                             timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) !=
+            VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) !=
+            VFS_OK)
             return VFS_ERR_IO;
         if (ssd1306_i2c_wr(dev, page_buf, sizeof(page_buf), timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
@@ -264,9 +269,11 @@ static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t l
         if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),
                             timeout_ms) != VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) !=
+            VFS_OK)
             return VFS_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) != VFS_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) !=
+            VFS_OK)
             return VFS_ERR_IO;
         chunk[0] = SSD1306_I2C_CTRL_DATA;
         while (off < SSD1306_WIDTH)
@@ -299,7 +306,8 @@ static int ssd1306_cmd_flush(struct ssd1306_device* dev, void* arg, size_t len, 
 /**
  * @brief DISPLAY_CMD_SET_BRIGHTNESS 实现：亮度映射为对比度
  */
-static int ssd1306_cmd_set_brightness(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_set_brightness(struct ssd1306_device* dev, void* arg, size_t len,
+                                      uint32_t ms)
 {
     const struct display_bright_arg* darg = (const struct display_bright_arg*)arg;
     uint32_t timeout_ms = ms ? ms : 100U;

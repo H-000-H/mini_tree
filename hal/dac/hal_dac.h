@@ -1,13 +1,16 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        hal_dac.h
- * @brief       DAC HAL 层 — 硬件抽象接口, 硬件直投层
- * @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
- * @note        由于 DAC 是热路径外设所以 DAC 的初始化与配置应该尽量在硬件直投层完成
- * @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
- * @note        获取参数不能直接返回，必须通过指针参数传递
- * @note 禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_dac.h
+ *@brief DAC HAL 层 — 硬件抽象接口, 硬件直投层
+ *@author H-000-H
+ *@details
+ *   @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ *   @note        由于 DAC 是热路径外设所以 DAC 的初始化与配置应该尽量在硬件直投层完成
+ *   @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
+ *   @note        获取参数不能直接返回，必须通过指针参数传递
+ *   @note 禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
+
 #ifndef HAL_DAC_H
 #define HAL_DAC_H
 

@@ -1,15 +1,19 @@
 /**
- * @license SPDX-License-Identifier: Apache-2.0
- * @brief TIM VFS 实现 — TIM 总线子系统 VFS 层实现文件
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-tim.c
+ *@brief TIM VFS 实现 — TIM 总线子系统 VFS 层实现文件
+ *@author H-000-H
+
  */
+
 #define VFS_TIM_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #define TIM_VFS_IMPL
 #include "vfs-tim.h"
 
+#include "board_define_tim.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_tim.h"
 #include "osal.h"
 #include "system_log.h"
 #include <stdio.h>

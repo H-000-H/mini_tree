@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file xtask.h
- * @brief 裸机时间片调度器 (仅 CONFIG_OSAL_NULL)
- * @note 与 FreeRTOS/RT-Thread 等 OS 后端互斥; OS 后端勿包含本头
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file xtask.h
+ *@brief 裸机时间片调度器 (仅 CONFIG_OSAL_NULL)
+ *@author H-000-H
+ *@details
+ *   @note 与 FreeRTOS/RT-Thread 等 OS 后端互斥; OS 后端勿包含本头
  */
+
 #ifndef XTASK_H
 #define XTASK_H
 
@@ -12,10 +15,10 @@
 #endif
 
 #include "compiler_compat.h"
+#include "compiler_inline.h"
 #include "hal_tim.h"
 #include "status.h"
 #include "stdint.h"
-#include "compiler_inline.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -84,10 +87,7 @@ extern "C"
      * @param head 链表头
      * @return true 空; false 非空
      */
-    COMPAT_STATIC_INLINE bool list_empty(const list_node* head)
-    {
-        return head->next == head;
-    }
+    COMPAT_STATIC_INLINE bool list_empty(const list_node* head) { return head->next == head; }
 
     /* ── 任务与调度器 ────────────────────────────────────────────────── */
 
@@ -149,19 +149,43 @@ extern "C"
      * 注意: 跨让出点的局部变量不保留, 需存 TCB 或静态量。
      *       任务创建时 pt_line 须为 0 (首次进入 case 0)。
      */
-#define PT_BEGIN(task)                  { switch ((task)->pt_line) { case 0:
-#define PT_YIELD(task)                  (task)->pt_line = __LINE__; COMPAT_FALLTHROUGH; \
+#define PT_BEGIN(task)                                                                             \
+    {                                                                                              \
+        switch ((task)->pt_line)                                                                   \
+        {                                                                                          \
+        case 0:
+#define PT_YIELD(task)                                                                             \
+    (task)->pt_line = __LINE__;                                                                    \
+    COMPAT_FALLTHROUGH;                                                                            \
     case __LINE__:
-#define PT_WAIT_UNTIL(task, cond)       do { (task)->pt_line = __LINE__; COMPAT_FALLTHROUGH; \
-    case __LINE__: \
-    if (!(cond)) { return; } } while (0)
-#define PT_DELAY(task, ms)              do { COMPAT_ATOMIC_STORE(&(task)->next_running, \
-    x_scheduler_now() + (ms), COMPAT_MO_RELAXED); (task)->pt_line = __LINE__; \
-    COMPAT_FALLTHROUGH; \
-    case __LINE__: \
-    if ((int32_t)(x_scheduler_now() - COMPAT_ATOMIC_LOAD(&(task)->next_running, \
-    COMPAT_MO_RELAXED)) < 0) { return; } } while (0)
-#define PT_END(task)                    } (task)->pt_line = 0; }
+#define PT_WAIT_UNTIL(task, cond)                                                                  \
+    do                                                                                             \
+    {                                                                                              \
+        (task)->pt_line = __LINE__;                                                                \
+        COMPAT_FALLTHROUGH;                                                                        \
+    case __LINE__:                                                                                 \
+        if (!(cond))                                                                               \
+        {                                                                                          \
+            return;                                                                                \
+        }                                                                                          \
+    } while (0)
+#define PT_DELAY(task, ms)                                                                         \
+    do                                                                                             \
+    {                                                                                              \
+        COMPAT_ATOMIC_STORE(&(task)->next_running, x_scheduler_now() + (ms), COMPAT_MO_RELAXED);   \
+        (task)->pt_line = __LINE__;                                                                \
+        COMPAT_FALLTHROUGH;                                                                        \
+    case __LINE__:                                                                                 \
+        if ((int32_t)(x_scheduler_now() -                                                          \
+                      COMPAT_ATOMIC_LOAD(&(task)->next_running, COMPAT_MO_RELAXED)) < 0)           \
+        {                                                                                          \
+            return;                                                                                \
+        }                                                                                          \
+    } while (0)
+#define PT_END(task)                                                                               \
+    }                                                                                              \
+    (task)->pt_line = 0;                                                                           \
+    }
 #endif /* CONFIG_XTASK_COROUTINE */
 
 #ifdef CONFIG_XTASK_PREEMPT
@@ -178,16 +202,17 @@ extern "C"
     /** @brief 轮询全局调度器 (与协调式同名, 应用层无感知) */
     void x_scheduler_poll(void);
 #else
-    /** @brief 创建协调式任务 (TCB 由调用方静态分配)
-     * @return 任务句柄; 非法参数返回 0
-     */
-    x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms);
+/** @brief 创建协调式任务 (TCB 由调用方静态分配)
+ * @return 任务句柄; 非法参数返回 0
+ */
+x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*),
+                                       unsigned int period_ms);
 
-    /** @brief 协调式调度核心 (轮询到期任务) */
-    int x_task_run(x_scheduler* sched);
+/** @brief 协调式调度核心 (轮询到期任务) */
+int x_task_run(x_scheduler* sched);
 
-    /** @brief 轮询全局调度器 (主循环调用) */
-    void x_scheduler_poll(void);
+/** @brief 轮询全局调度器 (主循环调用) */
+void x_scheduler_poll(void);
 #endif
 
     /** @brief 启动调度器: 打开 chosen TIM, 注册 VIRQ

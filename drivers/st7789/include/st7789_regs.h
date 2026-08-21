@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file st7789_regs.h
- * @brief ST7789 面板命令 / 时序常量 / 公共接口（避免 .c 内散落魔术字）
- *
- * 有 CS / 无 CS 两个 compatible 入口（st7789_cs.c / st7789_nocs.c）
- * 共用本头声明的公共 probe/remove 实现（st7789_core.c）。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file st7789_regs.h
+ *@brief ST7789 面板命令 / 时序常量 / 公共接口（避免 .c 内散落魔术字）
+ *@author H-000-H
+ *@details
+ *   有 CS / 无 CS 两个 compatible 入口（st7789_cs.c / st7789_nocs.c）
+ *   共用本头声明的公共 probe/remove 实现（st7789_core.c）。
  */
+
 #ifndef ST7789_REGS_H
 #define ST7789_REGS_H
 
@@ -43,20 +45,20 @@ extern "C"
 #define ST7789_MAX_WIDTH 320 /**< 面板最大宽度 */
 #define ST7789_BL_ARR_FALLBACK 1023U /**< 背光 ARR 回退值 */
 
-/**
- * @brief ST7789 公共 probe
- * @param pdev device 指针
- * @param require_nocs 非 0 时断言父 SPI client cs-pin < 0
- * @return VFS_OK 或 VFS_ERR_*
- */
-int st7789_probe_common(struct device* pdev, int require_nocs);
+    /**
+     * @brief ST7789 公共 probe
+     * @param pdev device 指针
+     * @param require_nocs 非 0 时断言父 SPI client cs-pin < 0
+     * @return VFS_OK 或 VFS_ERR_*
+     */
+    int st7789_probe_common(struct device* pdev, int require_nocs);
 
-/**
- * @brief ST7789 公共 remove（有 CS / 无 CS 共用）
- * @param pdev device 指针
- * @return VFS_OK 或 VFS_ERR_*
- */
-int st7789_remove_common(struct device* pdev);
+    /**
+     * @brief ST7789 公共 remove（有 CS / 无 CS 共用）
+     * @param pdev device 指针
+     * @return VFS_OK 或 VFS_ERR_*
+     */
+    int st7789_remove_common(struct device* pdev);
 
 #ifdef __cplusplus
 }

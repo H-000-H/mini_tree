@@ -1,12 +1,16 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * board_device.c — 板级设备模型运行时实现
- *
- * 维护 device 实例表与递归互斥锁池 (device_tree_init 静态分配, 池水位线预警).
- * 实现设备查找、属性解析 (safe_parse_int32 替代 strtol).
- * VFS 转发层在 pdev->lock 保护下完成 check-then-act; device_ops_unregister
- * 持锁斩断 ops 防 TOCTOU 竞态.
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_device.c
+ *@brief board device 实现
+ *@author H-000-H
+ *@details
+ *   board_device.c — 板级设备模型运行时实现
+ *   维护 device 实例表与递归互斥锁池 (device_tree_init 静态分配, 池水位线预警).
+ *   实现设备查找、属性解析 (safe_parse_int32 替代 strtol).
+ *   VFS 转发层在 pdev->lock 保护下完成 check-then-act; device_ops_unregister
+ *   持锁斩断 ops 防 TOCTOU 竞态.
  */
+
 #include "board_config.h"
 #include "board_devtable.h"
 #include "compiler_compat.h"

@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file max7219_drv.h
- * @brief MAX7219 LED 点阵驱动 ioctl 命令与参数结构
- *
- * 挂在 SPI 总线 client 下的 VFS 设备驱动；
- * 业务经 device_open/ioctl/close 访问。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file max7219_drv.h
+ *@brief MAX7219 LED 点阵驱动 ioctl 命令与参数结构
+ *@author H-000-H
+ *@details
+ *   挂在 SPI 总线 client 下的 VFS 设备驱动；
+ *   业务经 device_open/ioctl/close 访问。
  */
+
 #ifndef MAX7219_DRV_H
 #define MAX7219_DRV_H
 

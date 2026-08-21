@@ -1,21 +1,26 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * TIM VFS — TIM 子系统 VFS 层
- *
- * 架构位置: [VFS Layer (本文件)] → HAL Layer
- * 职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 HAL 层。
- * 隔离: 本文件定义 TIM_VFS_IMPL 可调 tim_hal API; 其他文件包含本头时 tim_hal 符号被 #pragma GCC
- * poison。
- *
- * Driver 注册:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-tim.h
+ *@brief vfs-tim 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   TIM VFS — TIM 子系统 VFS 层
+ *   架构位置: [VFS Layer (本文件)] → HAL Layer
+ *   职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 HAL 层。
+ *   隔离: 本文件定义 TIM_VFS_IMPL 可调 tim_hal API; 其他文件包含本头时 tim_hal 符号被 #pragma GCC
+ *   poison。
+ *   Driver 注册:
  *   - tim_vfs: "tim"
- * TIM和I2C SPI
- * 这些需要总线的设备不同,不需要挂载到总线,直接挂载到VFS层,通过文件操作接口进行操作。和gpio类似,TIM和GPIO都是通过文件操作接口进行操作。
- * 并且TIM不需要上层抽象,所以.c中几乎全为static函数,probe和remove函数也是static函数。但是和gpio一样的是我会提供2个路径：一个是有lifeycle的,
- * 一个是没有lifeycle的.h内联版本。但是open和close必须走life版本因为这是和速度无关的。只是初始化不存在所谓冷热问题。基础定时器也是默认走life版本。
- * 只有pwm这一类和速度相关的需要走inline版本。inline是残缺的函数,我只会实现部分功能。而life是完整的函数我会全部实现,有全部完整的功能。
- * @see hal/tim/hal_tim.h  HAL 层接口
- *@=========================================================================================================================*/
+ *   TIM和I2C SPI
+ *   这些需要总线的设备不同,不需要挂载到总线,直接挂载到VFS层,通过文件操作接口进行操作。和gpio类似,TIM和GPIO都是通过文件操作接口进行操作。
+ *   并且TIM不需要上层抽象,所以.c中几乎全为static函数,probe和remove函数也是static函数。但是和gpio一样的是我会提供2个路径：一个是有lifeycle的,
+ *   一个是没有lifeycle的.h内联版本。但是open和close必须走life版本因为这是和速度无关的。只是初始化不存在所谓冷热问题。基础定时器也是默认走life版本。
+ *   只有pwm这一类和速度相关的需要走inline版本。inline是残缺的函数,我只会实现部分功能。而life是完整的函数我会全部实现,有全部完整的功能。
+ *   @see hal/tim/hal_tim.h  HAL 层接口
+ *   @=========================================================================================================================
+ */
+
 #ifndef VFS_TIM_H
 #define VFS_TIM_H
 #ifdef __cplusplus

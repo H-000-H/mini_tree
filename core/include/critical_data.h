@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * critical_data — 关键安全变量双重反码存储防护
- *
- * 关键变量存正码+反码两份, 每次读取校验, 应对掉电/位翻转
- * 提供 C 宏 CRITICAL_VAR_* 与 C++ CriticalStorage 模板 (≤32 位 POD)
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file critical_data.h
+ *@brief critical data 头文件
+ *@author H-000-H
+ *@details
+ *   critical_data — 关键安全变量双重反码存储防护
+ *   关键变量存正码+反码两份, 每次读取校验, 应对掉电/位翻转
+ *   提供 C 宏 CRITICAL_VAR_* 与 C++ CriticalStorage 模板 (≤32 位 POD)
  */
+
 #pragma once
 
 #include "compiler_compat.h"

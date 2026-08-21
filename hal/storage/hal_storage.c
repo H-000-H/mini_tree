@@ -1,4 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_storage.c
+ *@brief hal storage 实现
+ *@author H-000-H
+
+ */
+
 #include "hal_storage.h"
 
 #include "compiler_compat.h"

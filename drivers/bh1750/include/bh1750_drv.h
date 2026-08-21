@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file bh1750_drv.h
- * @brief BH1750 数字光照传感器驱动 ioctl 命令
- *
- * 挂在 I2C 总线 client 下的 VFS 设备驱动；
- * 业务经 device_open/ioctl/close 访问，不直接操作 I2C 总线。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file bh1750_drv.h
+ *@brief BH1750 数字光照传感器驱动 ioctl 命令
+ *@author H-000-H
+ *@details
+ *   挂在 I2C 总线 client 下的 VFS 设备驱动；
+ *   业务经 device_open/ioctl/close 访问，不直接操作 I2C 总线。
  */
+
 #ifndef BH1750_DRV_H
 #define BH1750_DRV_H
 

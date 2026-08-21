@@ -1,24 +1,27 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * dev_lifecycle.c — 设备 I/O 生命周期状态机 (CAS 哨兵版, 无锁)
- *
- * opens / io_active 使用 -1 哨兵表示 "teardown 已锁定".
- * remove_drain: CAS opens 0→-1, 成功后保持锁定并 CAS io_active 0→-1,
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file dev_lifecycle.c
+ *@brief dev lifecycle 实现
+ *@author H-000-H
+ *@details
+ *   dev_lifecycle.c — 设备 I/O 生命周期状态机 (CAS 哨兵版, 无锁)
+ *   opens / io_active 使用 -1 哨兵表示 "teardown 已锁定".
+ *   remove_drain: CAS opens 0→-1, 成功后保持锁定并 CAS io_active 0→-1,
  *   两阶段全部成功才返回. 第一阶段失败 (opens 临时 +1) 重试等待稳定归零;
  *   第二阶段失败不触碰 opens (opens 保持 -1 锁定), 仅继续重试 io_active.
  *   退避由 timeout_ms + 1 ms 周期驱动.
- * open_begin / io_begin: CAS 循环递增, 遇 -1 直接拒绝.
- *
- * - 状态机门控: remove_drain 进入前提 state == REMOVING; 期间 open_begin /
+ *   open_begin / io_begin: CAS 循环递增, 遇 -1 直接拒绝.
+ *   - 状态机门控: remove_drain 进入前提 state == REMOVING; 期间 open_begin /
  *   io_begin 均检查 state == LIVE (见 open_begin/io_begin 的 state 门控),
  *   因此 REMOVING 下不会有新的 open/io 计数递增.
- * - 单调锁定: opens 一旦经 CAS 0→-1 成功即保持 -1, 绝不回滚到 0 (避免把
+ *   - 单调锁定: opens 一旦经 CAS 0→-1 成功即保持 -1, 绝不回滚到 0 (避免把
  *   opens 短暂暴露为 0 的窗口); io_active 在 opens 锁定后反复 CAS 0→-1 直到
  *   归零. 期间 open/io 见 -1 或 state != LIVE 立即拒绝.
- * - 内存序: load 用 ACQUIRE 看见 state/计数; CAS 用 ACQ_REL 与失败路径的
+ *   - 内存序: load 用 ACQUIRE 看见 state/计数; CAS 用 ACQ_REL 与失败路径的
  *   RELAXED 配对; 写终态用 RELEASE 配 ACQUIRE.
- * - 无 ABA: 单调递增/递减 + -1 
+ *   - 无 ABA: 单调递增/递减 + -1
  */
+
 #include "dev_lifecycle.h"
 
 #include "osal.h"
@@ -229,8 +232,7 @@ int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
                                       COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
                     return VFS_OK;
 
-                if (timeout_ms != OSAL_WAIT_FOREVER &&
-                    (osal_time_ms() - start_ms) >= timeout_ms)
+                if (timeout_ms != OSAL_WAIT_FOREVER && (osal_time_ms() - start_ms) >= timeout_ms)
                     return VFS_ERR_TIMEOUT;
 
                 osal_delay_ms(1);

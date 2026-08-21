@@ -1,19 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * UART BUS 实现 — UART 总线子系统 bus 层
- *
- * 静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) + s_uart_clients[CLIENT_MAX]
- * 数据流: VFS → uart_bus_open/close/read/write/transfer → uart_client_from_device → hal_uart_*
- *
- * HAL 直接调用 (无 vtable): host_init→hal_uart_dev_init, register→hw_open,
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file uart_bus.c
+ *@brief uart bus 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   UART BUS 实现 — UART 总线子系统 bus 层
+ *   静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) + s_uart_clients[CLIENT_MAX]
+ *   数据流: VFS → uart_bus_open/close/read/write/transfer → uart_client_from_device → hal_uart_*
+ *   HAL 直接调用 (无 vtable): host_init→hal_uart_dev_init, register→hw_open,
  *   unregister→hw_close, write/read/transfer→hal_uart_write/read
- *
- * controller_ops 表注册到 bus_controller_bind_full
- * 引用计数: register/unregister 改 ref_count (open/close 只 IO gate); deinit >0 拒绝销毁
- *
- * 平台中立: 本文件不引用任何厂商 SDK, 所有硬件细节由 HAL 实现 (hal_uart_*.c) 承载。
- * bus 层仅持有 hal_uart_bus_host (嵌入 host), 透传 hal_uart_config (VFS 从 DTSI 硬件直投填充)。
- *@=========================================================================================================================*/
+ *   controller_ops 表注册到 bus_controller_bind_full
+ *   引用计数: register/unregister 改 ref_count (open/close 只 IO gate); deinit >0 拒绝销毁
+ *   平台中立: 本文件不引用任何厂商 SDK, 所有硬件细节由 HAL 实现 (hal_uart_*.c) 承载。
+ *   bus 层仅持有 hal_uart_bus_host (嵌入 host), 透传 hal_uart_config (VFS 从 DTSI 硬件直投填充)。
+ *   @=========================================================================================================================
+ */
+
 #define UART_BUS_IMPL
 #include "uart_bus.h"
 

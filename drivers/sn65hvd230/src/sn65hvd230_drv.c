@@ -1,11 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file sn65hvd230_drv.c
- * @brief SN65HVD230 CAN 收发器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
- *
- * 静态池: s_sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令见 sn65hvd230_drv.h。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file sn65hvd230_drv.c
+ *@brief SN65HVD230 CAN 收发器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令见 sn65hvd230_drv.h。
  */
+
 #include "sn65hvd230_drv.h"
 
 #include "compiler_compat.h"
@@ -59,7 +61,8 @@ static struct sn65hvd230_device* sn65hvd230_get_drvdata(struct device* pdev)
 /**
  * @brief 打开 GPIO 设备并绑定参数（失败回滚关闭）
  */
-static int sn65hvd230_gpio_on(struct sn65hvd230_device* dev, struct device* g, struct vfs_gpio_arg* a)
+static int sn65hvd230_gpio_on(struct sn65hvd230_device* dev, struct device* g,
+                              struct vfs_gpio_arg* a)
 {
     int ret = device_open(g, NULL);
     if (ret != VFS_OK)

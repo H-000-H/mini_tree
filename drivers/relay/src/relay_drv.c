@@ -1,11 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file relay_drv.c
- * @brief 继电器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
- *
- * 静态池: s_relay_pool[RELAY_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令见 relay_drv.h。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file relay_drv.c
+ *@brief 继电器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_relay_pool[RELAY_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令见 relay_drv.h。
  */
+
 #include "relay_drv.h"
 
 #include "compiler_compat.h"

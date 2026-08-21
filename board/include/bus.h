@@ -1,18 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * BUS CORE — 总线子系统通用框架层
- *
- * 三层架构: VFS (file_operations + dev_lifecycle + DTS) → Bus (host/client 池,
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file bus.h
+ *@brief bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   BUS CORE — 总线子系统通用框架层
+ *   三层架构: VFS (file_operations + dev_lifecycle + DTS) → Bus (host/client 池,
  *   atomic ref_count, controller_ops) → HAL (寄存器/DMA/中断, opaque handle)
- *
- * 隔离 (#pragma GCC poison 强制): bus 外禁止调 hal 符号, vfs 外禁止调 bus 符号
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY;
+ *   隔离 (#pragma GCC poison 强制): bus 外禁止调 hal 符号, vfs 外禁止调 bus 符号
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY;
  *   state 变更由上层 (board_device.c) 序列化
- *
- * controller_ops (host 级): init/deinit/role/client_register/client_unregister;
+ *   controller_ops (host 级): init/deinit/role/client_register/client_unregister;
  *   client 级 I/O 由 bus_xxx_open/close/read/write 直接处理, 不经 ops 表
- *@=========================================================================================================================*/
+ *   @=========================================================================================================================
+ */
+
 #ifndef BUS_H
 #define BUS_H
 

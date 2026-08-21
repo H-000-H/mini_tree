@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file xpt2046_drv.c
- * @brief XPT2046 电阻触摸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_xpt2046_pool[XPT2046_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 xpt2046_drv.h。
- *
- * 数据流: VFS ioctl → xpt2046_cmd_xy → SPI transfer（vfs-spi）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file xpt2046_drv.c
+ *@brief XPT2046 电阻触摸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_xpt2046_pool[XPT2046_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 xpt2046_drv.h。
+ *   数据流: VFS ioctl → xpt2046_cmd_xy → SPI transfer（vfs-spi）→ HAL
  */
+
 #include "xpt2046_drv.h"
 
 #include "compiler_compat.h"
@@ -175,7 +176,8 @@ static int xpt2046_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*xpt2046_ioctl_fn_t)(struct xpt2046_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*xpt2046_ioctl_fn_t)(struct xpt2046_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct xpt2046_ioctl_map
 {
     xpt2046_ioctl_fn_t handler;

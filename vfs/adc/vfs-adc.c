@@ -1,18 +1,21 @@
-/** * @license SPDX-License-Identifier: Apache-2.0
- * @file vfs_adc.c
- * @brief ADC VFS 实现 — ADC 总线子系统 VFS 层实现文件
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs_adc.c
+ *@brief ADC VFS 实现 — ADC 总线子系统 VFS 层实现文件
+ *@author H-000-H
+
  */
+
 #define VFS_ADC_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #define ADC_VFS_IMPL
 
 /* 生成宏头置前: DTC_GEN_* 先于 hal_adc.h 可见; 板级配置见 board_define_adc.h */
-#include "dt_config_gen.h"
-#include "board_define_adc.h"
-
 #include "vfs-adc.h"
 
+#include "board_define_adc.h"
 #include "device.h"
 #include "driver.h"
+#include "dt_config_gen.h"
 #include "interrupt.h"
 #include "osal.h"
 #include "system_log.h"
@@ -169,8 +172,7 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_init()
 {
     COMPAT_IGNORE_RESULT(
         osal_pool_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
 }
 
 /**
@@ -253,7 +255,8 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
     cfg->config.sw_trigger = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==VFS_ADC_PIN_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==
+        VFS_ADC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
         cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
@@ -267,7 +270,8 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     else
         return VFS_ERR_INVAL;
 
-    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) ==VFS_ADC_MULTI_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) ==
+        VFS_ADC_MULTI_FIELD_COUNT)
     {
         cfg->multi_cfg->multimode = (uint32_t)multi_arr[0];
         cfg->multi_cfg->common_clock = (uint32_t)multi_arr[1];

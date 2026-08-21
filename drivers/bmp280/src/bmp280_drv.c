@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file bmp280_drv.c
- * @brief BMP280 气压/温度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_bmp280_pool[BMP280_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 bmp280_drv.h，寄存器定义见 bmp280_regs.h。
- *
- * 数据流: VFS ioctl → bmp280_cmd_read → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file bmp280_drv.c
+ *@brief BMP280 气压/温度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_bmp280_pool[BMP280_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 bmp280_drv.h，寄存器定义见 bmp280_regs.h。
+ *   数据流: VFS ioctl → bmp280_cmd_read → device_read/write(I2C) → HAL
  */
+
 #include "bmp280_drv.h"
 
 #include "bmp280_regs.h"
@@ -83,7 +84,8 @@ static struct bmp280_device* bmp280_get_drvdata(struct device* pdev)
  * @param timeout_ms 超时（ms）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -155,10 +157,10 @@ static int32_t bmp280_compensate_t(struct bmp280_device* dev, int32_t adc_t)
     int32_t var1;
     int32_t var2;
     var1 = ((((adc_t >> 3) - ((int32_t)dev->dig_T1 << 1))) * ((int32_t)dev->dig_T2)) >> 11;
-    var2 =
-        (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >> 12) *
-         ((int32_t)dev->dig_T3)) >>
-        14;
+    var2 = (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >>
+             12) *
+            ((int32_t)dev->dig_T3)) >>
+           14;
     dev->t_fine = var1 + var2;
     return (dev->t_fine * 5 + 128) >> 8; /* 0.01°C */
 }

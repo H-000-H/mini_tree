@@ -101,6 +101,7 @@ choice
 
 config OSAL_FREERTOS
     bool "FreeRTOS"
+    select USB_TUSB_OS_FREERTOS
     help
       使用仓库内置或项目自带的 FreeRTOS。
 
@@ -108,6 +109,7 @@ config OSAL_FREERTOS
 
 config OSAL_RTTHREAD
     bool "RT-Thread"
+    select USB_TUSB_OS_RTTHREAD
     help
       使用 RT-Thread 内核作为 OSAL 后端。
 
@@ -115,6 +117,7 @@ config OSAL_RTTHREAD
 
 config OSAL_THREADX
     bool "Eclipse ThreadX"
+    select USB_TUSB_OS_THREADX
     help
       使用 Eclipse ThreadX (v6.5.1) 作为 OSAL 后端。
       许可 MIT (Eclipse 基金会托管, 商用友好)。
@@ -136,8 +139,10 @@ config OSAL_THREADX
 
 config OSAL_UCOS_III
     bool "uC/OS-III"
+    select USB_TUSB_OS_NONE
     help
       使用 Micrium uC/OS-III (V3.08.02) 作为 OSAL 后端。
+      注意: TinyUSB 无 uC/OS 适配层, CFG_TUSB_OS 自动回退 None (裸机互斥)。
       许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
       依赖 lib/uC-CPU + lib/uC-LIB (需随仓克隆, weston-embedded);
       项目配置副本 lib/uC-OS3/Cfg/ (os_cfg.h: DBG=1, 任务名入 TCB;
@@ -157,8 +162,10 @@ config OSAL_UCOS_III
 
 config OSAL_UCOS_II
     bool "uC/OS-II"
+    select USB_TUSB_OS_NONE
     help
       使用 Micrium uC/OS-II (V2.93.01) 作为 OSAL 后端。
+      注意: TinyUSB 无 uC/OS 适配层, CFG_TUSB_OS 自动回退 None (裸机互斥)。
       许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
       注意: 每优先级仅允许一个任务 (0~63; 61/62/63 保留给 tmr/stat/idle),
       任务句柄即优先级号。项目配置副本 lib/uC-OS2/Cfg/
@@ -181,6 +188,7 @@ config OSAL_UCOS_II
 
 config OSAL_NULL
     bool "None (bare-metal)"
+    select USB_TUSB_OS_NONE
     help
       无 RTOS。队列使用环形缓冲 + 忙等待。
 
@@ -621,6 +629,170 @@ config USB
       (docs/usb_tusb_port.md) and link TinyUSB DCD itself; setting it
       "not set" excludes the whole USB path and TinyUSB (CMake trims by
       .config; unset is treated as enabled by default).
+
+    menu "TinyUSB 适配层"
+
+        config USB_TUSB_MCU
+            int "TinyUSB MCU target (OPT_MCU_* value)"
+            default 901
+            depends on USB
+            help
+              TinyUSB 编译期芯片目标, 直接填 tusb_option.h 的 OPT_MCU_* 数值
+              (tusb_config.h 里 #define CFG_TUSB_MCU CONFIG_USB_TUSB_MCU):
+                900 ESP32-S2   901 ESP32-S3   903 ESP32-C3
+                304 STM32F4    306 STM32H7    1100 RP2040
+              其他芯片查 lib/tinyusb/src/tusb_option.h 第 62-150 行的 OPT_MCU_*。
+
+        choice
+            prompt "TinyUSB OS port (auto-follow OSAL)"
+            default USB_TUSB_OS_NONE
+            depends on USB
+            help
+              由 OSAL Backend 自动派生 (select 联动), 无需手填。
+              对应 tusb_option.h 的 OPT_OS_*:
+                NONE=1 / FREERTOS=2 / RTTHREAD=3 / THREADX=4
+              注意: 选 uC/OS 时 TinyUSB 无对应适配, 自动回退 NONE。
+
+            config USB_TUSB_OS_NONE
+                bool "None (bare-metal)"
+            config USB_TUSB_OS_FREERTOS
+                bool "FreeRTOS"
+            config USB_TUSB_OS_RTTHREAD
+                bool "RT-Thread"
+            config USB_TUSB_OS_THREADX
+                bool "ThreadX"
+        endchoice
+
+        config USB_TUSB_DEBUG
+            bool "TinyUSB debug output (CFG_TUSB_DEBUG)"
+            default n
+            depends on USB
+            help
+              使能 TinyUSB 内部调试打印 (CFG_TUSB_DEBUG=1)。
+              生产固件建议关闭。
+
+        choice
+            prompt "USB port0 role"
+            default USB_RHPORT0_DEVICE
+            depends on USB
+            help
+              USB 端口0 角色 (CFG_TUSB_RHPORT0_MODE 的模式位)。
+
+            config USB_RHPORT0_DEVICE
+                bool "Device"
+            config USB_RHPORT0_HOST
+                bool "Host"
+        endchoice
+
+        choice
+            prompt "USB port0 max speed"
+            default USB_RHPORT0_SPEED_FULL
+            depends on USB
+            help
+              USB 端口0 最大速度 (CFG_TUSB_RHPORT0_MODE 的速度位)。
+
+            config USB_RHPORT0_SPEED_DEFAULT
+                bool "Default (MCU max)"
+            config USB_RHPORT0_SPEED_FULL
+                bool "Full speed"
+            config USB_RHPORT0_SPEED_HIGH
+                bool "High speed"
+        endchoice
+
+        config USB_MSC
+            bool "USB MSC class"
+            default n
+            depends on USB
+            help
+              大容量存储 class (CFG_TUD_MSC)。
+
+        config USB_HID
+            bool "USB HID class"
+            default n
+            depends on USB
+            help
+              人机交互 class (CFG_TUD_HID)。
+
+        config USB_VENDOR
+            bool "USB Vendor class"
+            default n
+            depends on USB
+            help
+              厂商自定义 class (CFG_TUD_VENDOR)。
+
+        config USB_CDC
+            bool "USB CDC class"
+            default n
+            depends on USB
+            help
+              通信设备 class (虚拟串口, CFG_TUD_CDC)。
+
+        config USB_CDC_RX_BUFSIZE
+            int "USB CDC RX buffer size (bytes)"
+            default 256
+            range 64 2048
+            depends on USB_CDC
+            help
+              CFG_TUD_CDC_RX_BUFSIZE: 主机→设备 FIFO 大小。
+
+        config USB_CDC_TX_BUFSIZE
+            int "USB CDC TX buffer size (bytes)"
+            default 256
+            range 64 2048
+            depends on USB_CDC
+            help
+              CFG_TUD_CDC_TX_BUFSIZE: 设备→主机 FIFO 大小。
+
+        config USB_CDC_EP_BUFSIZE
+            int "USB CDC endpoint buffer size (bytes)"
+            default 64
+            range 8 512
+            depends on USB_CDC
+            help
+              CFG_TUD_CDC_EP_BUFSIZE: CDC 端点传输缓冲 (对齐端点最大包)。
+
+        config USB_NET
+            bool "USB network class (ECM/RNDIS/NCM)"
+            default y
+            depends on USB
+            help
+              网络 class (net_device): 虚拟网卡数据面
+              (usb_net_frame_push_tx/pop_rx + tud_network_* 回调)。
+              lwIP 侧由 net/port/usbethif.c 经 usb_bus_ecm_* 接入。
+
+        choice
+            prompt "USB network protocol (RNDIS / NCM)"
+            default USB_NET_RNDIS
+            depends on USB_NET
+            help
+              网络 class 协议二选一 (net_device.h 禁止同时开):
+                RNDIS: CFG_TUD_ECM_RNDIS 1, 兼容 Windows/Linux;
+                NCM  : CFG_TUD_NCM 1, 需新主机 (Win10+/Linux 新内核)。
+
+            config USB_NET_RNDIS
+                bool "RNDIS"
+            config USB_NET_NCM
+                bool "NCM"
+        endchoice
+
+        config USB_NET_DEPTH
+            int "USB net rx frame queue depth (power of 2)"
+            default 4
+            range 2 8
+            depends on USB_NET
+            help
+              收帧 SPSC 队列深度 (2/4/8), 必须为 2 的幂
+              (algorithm/buffer 的 fifo_init 要求)。
+
+        config USB_NET_MTU
+            int "USB net MTU (incl. ethernet header)"
+            default 1514
+            range 1514 1600
+            depends on USB_NET
+            help
+              以太网帧总长 = lwIP MTU(1500) + 14 字节 ethhdr。
+              默认 1514, 对齐 TinyUSB CFG_TUD_NET_MTU。
+        endmenu
 endmenu
 
 menu "Board Features"

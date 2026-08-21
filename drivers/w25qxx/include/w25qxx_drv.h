@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file w25qxx_drv.h
- * @brief W25Qxx SPI NOR Flash 驱动 ioctl 命令与 JEDEC ID 结构
- *
- * 挂在 SPI 总线 client 下的 VFS 设备驱动；
- * 业务经 device_open/ioctl/close 访问。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file w25qxx_drv.h
+ *@brief W25Qxx SPI NOR Flash 驱动 ioctl 命令与 JEDEC ID 结构
+ *@author H-000-H
+ *@details
+ *   挂在 SPI 总线 client 下的 VFS 设备驱动；
+ *   业务经 device_open/ioctl/close 访问。
  */
+
 #ifndef W25QXX_DRV_H
 #define W25QXX_DRV_H
 #include "compiler_compat.h"

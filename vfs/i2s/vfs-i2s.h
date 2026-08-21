@@ -1,17 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * I2S VFS — I2S 总线子系统 VFS 层
- *
- * 架构位置: [VFS Layer (本文件)] → Bus Layer → HAL Layer
- * 职责: file_operations + dev_lifecycle + DTS; I/O 走 i2s_bus。
- * 隔离: 定义 I2S_VFS_IMPL 可调 i2s_bus_*; 其他文件包含本头时相关符号被 #pragma GCC poison。
- *
- * sync: POLL / DMA NORMAL / AUTO; circular+fifo_spsc 经 CIRC_* ioctl。
- * HT/TC irq_mode 与 async 经 ioctl; 虚拟中断在 i2s_bus_open 注册 (对齐 ADC, 不进 ioctl)。
- *
- * @see bus/i2s/i2s_bus.h
- * @see hal/i2s/hal_i2s.h
- *@=========================================================================================================================*/
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-i2s.h
+ *@brief vfs-i2s 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   I2S VFS — I2S 总线子系统 VFS 层
+ *   架构位置: [VFS Layer (本文件)] → Bus Layer → HAL Layer
+ *   职责: file_operations + dev_lifecycle + DTS; I/O 走 i2s_bus。
+ *   隔离: 定义 I2S_VFS_IMPL 可调 i2s_bus_*; 其他文件包含本头时相关符号被 #pragma GCC poison。
+ *   sync: POLL / DMA NORMAL / AUTO; circular+fifo_spsc 经 CIRC_* ioctl。
+ *   HT/TC irq_mode 与 async 经 ioctl; 虚拟中断在 i2s_bus_open 注册 (对齐 ADC, 不进 ioctl)。
+ *   @see bus/i2s/i2s_bus.h
+ *   @see hal/i2s/hal_i2s.h
+ *   @=========================================================================================================================
+ */
+
 #ifndef VFS_I2S_H
 #define VFS_I2S_H
 

@@ -1,14 +1,17 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * CAN BUS 实现 — CAN 总线子系统 bus 层 (平台中立共享代码)
- *
- * 静态池: s_can_hosts[HOST_MAX] (含 hal_host, ref_count) + s_can_clients[DEV_ID_COUNT]
- *
- * 数据流:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file can_bus.c
+ *@brief can bus 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   CAN BUS 实现 — CAN 总线子系统 bus 层 (平台中立共享代码)
+ *   静态池: s_can_hosts[HOST_MAX] (含 hal_host, ref_count) + s_can_clients[DEV_ID_COUNT]
+ *   数据流:
  *   同步: VFS → can_bus_open/close/transmit|receive|filter → hal_can_*
- *
- * controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
- *@=========================================================================================================================*/
+ *   controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
+ *   @=========================================================================================================================
+ */
 
 #define CAN_BUS_IMPL
 #include "can_bus.h"
@@ -314,10 +317,7 @@ static void can_client_unregister_impl(struct device* pdev)
  * @brief 注销 CAN client (公开包装, vfs 层调用)
  * @param pdev client device 指针
  */
-void can_bus_client_unregister(struct device* pdev)
-{
-    can_client_unregister_impl(pdev);
-}
+void can_bus_client_unregister(struct device* pdev) { can_client_unregister_impl(pdev); }
 
 /**
  * @brief 打开 CAN client 硬件 (HAL init + hw_open)

@@ -1,17 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * I2C BUS — I2C 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL; hal_i2c_bus_host 嵌入 i2c_bus_host (无 vtable)
- * 职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file i2c_bus.h
+ *@brief i2c bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   I2C BUS — I2C 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL; hal_i2c_bus_host 嵌入 i2c_bus_host (无 vtable)
+ *   职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
  *   client I/O (open/close/transfer/read/write) + 同步传输 (poll/DMA via xfer_mode)
- *
- * 隔离: 未定义 I2C_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_i2c_*;
+ *   隔离: 未定义 I2C_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_i2c_*;
  *   允许 config 类型供 VFS 填充, 强制走 i2c_bus API
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
- * @see bus/bus.h  通用总线框架
- *@=========================================================================================================================*/
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
+ *   @see bus/bus.h  通用总线框架
+ *   @=========================================================================================================================
+ */
+
 #ifndef I2C_BUS_H
 #define I2C_BUS_H
 

@@ -1,14 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file rs485_modbus_drv.c
- * @brief RS485 Modbus RTU 驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_rs485_modbus_pool[RS485_MODBUS_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 rs485_modbus_drv.h。
- *
- * 数据流: VFS ioctl → rs485_modbus_cmd_* → rs485_modbus_uart_xchg（DE 切换 + device_write/read）→
- * HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file rs485_modbus_drv.c
+ *@brief RS485 Modbus RTU 驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_rs485_modbus_pool[RS485_MODBUS_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 rs485_modbus_drv.h。
+ *   数据流: VFS ioctl → rs485_modbus_cmd_* → rs485_modbus_uart_xchg（DE 切换 + device_write/read）→
+ *   HAL
  */
+
 #include "rs485_modbus_drv.h"
 
 #include "compiler_compat.h"
@@ -134,8 +135,7 @@ static int rs485_modbus_hw_create(struct rs485_modbus_device* dev)
         ret = device_open(dev->de_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret =
-            device_ioctl(dev->de_dev, GPIO_CMD_GET_LEVEL, &dev->de_gpio, sizeof(dev->de_gpio), 0);
+        ret = device_ioctl(dev->de_dev, GPIO_CMD_GET_LEVEL, &dev->de_gpio, sizeof(dev->de_gpio), 0);
         if (ret != VFS_OK)
             return ret;
     }
@@ -231,7 +231,8 @@ struct rs485_modbus_ioctl_map
 /**
  * @brief RS485_MODBUS_CMD_READ_HOLDING 实现：03 功能码读保持寄存器并回填
  */
-static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, size_t len,
+                                 uint32_t timeout_ms)
 {
     struct modbus_read* rd = (struct modbus_read*)arg;
     uint8_t req[8];
@@ -261,7 +262,8 @@ static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, siz
 /**
  * @brief RS485_MODBUS_CMD_WRITE_SINGLE 实现：06 功能码写单寄存器
  */
-static int rs485_modbus_cmd_write(struct rs485_modbus_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int rs485_modbus_cmd_write(struct rs485_modbus_device* dev, void* arg, size_t len,
+                                  uint32_t timeout_ms)
 {
     struct modbus_write* wr = (struct modbus_write*)arg;
     uint8_t req[8];

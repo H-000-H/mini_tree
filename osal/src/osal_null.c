@@ -1,18 +1,21 @@
 /**
- * @license SPDX-License-Identifier: Apache-2.0
- * @file osal_null.c
- * @brief 裸机适配层 (无 RTOS) 实现
- * @details 裸机适配层 (无 RTOS) 实现 主要实现裸机适配层的函数
- * @note 裸机任务和os的task不同 裸机任务是裸机任务
- * 不是os的task是基于侵入式链表的包装和os一样但是参数不一样而且没有优先级和栈大小而且复杂任务必须走状态机和任务切换(日常就os吧省心省力,除非内存紧张或者对效率要求极高))
- * @note 裸机信号量互斥锁和os的semaphore不同 裸机信号量是裸机信号量
- * 不是os的信号量和互斥锁和是基于原子操作的而且没有优先级和栈大小
- * 互斥锁有两套一套关中断(一般这个)一套原子(amp才用这个(smp老老实实去上os别玩什么裸机))
- * @note
- * 时基系统是复用xtask的时基系统因为xtask的时基就是统一的时基没有xtask的时基系统无法正常运行而且由于xtask的时基中断是虚拟中断所以修改也很容易
- * @note
- * 当然如果不用任务模式也可以自实现时基系统只需要将xtask的时基系统替换为自实现时基系统(定时器虚拟中断帮你写好了自己修改一下数值就行),裸机这边对接osal的task是直接用不了的若你要用请在我的兼容层上自实现休息链表加运行链表
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file osal_null.c
+ *@brief 裸机适配层 (无 RTOS) 实现
+ *@author H-000-H
+ *@details
+ *   @details 裸机适配层 (无 RTOS) 实现 主要实现裸机适配层的函数
+ *   @note 裸机任务和os的task不同 裸机任务是裸机任务
+ *   不是os的task是基于侵入式链表的包装和os一样但是参数不一样而且没有优先级和栈大小而且复杂任务必须走状态机和任务切换(日常就os吧省心省力,除非内存紧张或者对效率要求极高))
+ *   @note 裸机信号量互斥锁和os的semaphore不同 裸机信号量是裸机信号量
+ *   不是os的信号量和互斥锁和是基于原子操作的而且没有优先级和栈大小
+ *   互斥锁有两套一套关中断(一般这个)一套原子(amp才用这个(smp老老实实去上os别玩什么裸机))
+ *   @note
+ *   时基系统是复用xtask的时基系统因为xtask的时基就是统一的时基没有xtask的时基系统无法正常运行而且由于xtask的时基中断是虚拟中断所以修改也很容易
+ *   @note
+ *   当然如果不用任务模式也可以自实现时基系统只需要将xtask的时基系统替换为自实现时基系统(定时器虚拟中断帮你写好了自己修改一下数值就行),裸机这边对接osal的task是直接用不了的若你要用请在我的兼容层上自实现休息链表加运行链表
  */
+
 #ifdef CONFIG_OSAL_NULL
 
 #define ALLOW_HEAP_ALLOC
@@ -31,6 +34,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "compiler_compat_poison.h"
 /**
  * @brief 队列最大数量与单队列缓冲区字节大小 (Kconfig CONFIG_OSAL_NULL_* 控制)
@@ -75,10 +79,7 @@ static uint8_t s_queue_used[OSAL_NULL_QUEUE_POOL_SIZE] COMPAT_ALIGNED(4); /**<�
 static osal_pool_t s_queue_pool_ctrl COMPAT_ALIGNED(4); /**<队列池控制句柄*/
 
 /** @brief 取队列池第 idx 个对象 (池为 0 时恒 NULL) */
-COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
-{
-    return &s_queues[idx];
-}
+COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx) { return &s_queues[idx]; }
 #else
 COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
 {
@@ -810,7 +811,8 @@ __attribute__((unused)) static void osal_periodic_task_stub(void* param)
  * @param core_id 忽略
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,osal_task_entry_t entry, void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
+                     osal_task_entry_t entry, void* param, int core_id)
 {
     COMPAT_UNUSED_PARAM(name);
     COMPAT_UNUSED_PARAM(stack_size);
@@ -832,7 +834,9 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,os
  * @param out_handle 输出
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,osal_task_entry_t entry, void* param, int core_id,osal_task_handle_t* out_handle)
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
+                            osal_task_entry_t entry, void* param, int core_id,
+                            osal_task_handle_t* out_handle)
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;

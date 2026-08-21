@@ -1,22 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file sh1106_drv.c
- * @brief SH1106 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 sh1106_drv.h，寄存器定义见 sh1106_regs.h。
- *
- * 数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file sh1106_drv.c
+ *@brief SH1106 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 sh1106_drv.h，寄存器定义见 sh1106_regs.h。
+ *   数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
  */
-#include "display_drv.h"
-#include "sh1106_regs.h"
 
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
+#include "display_drv.h"
 #include "driver.h"
 #include "dt_config_gen.h"
 #include "osal.h"
+#include "sh1106_regs.h"
 #include "status.h"
 #include "system_log.h"
 #include "vfs-i2c.h"
@@ -66,7 +66,8 @@ static struct sh1106_device* sh1106_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int sh1106_i2c_wr(struct sh1106_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int sh1106_i2c_wr(struct sh1106_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -176,7 +177,8 @@ struct sh1106_ioctl_map
 /**
  * @brief 写 1B 命令/数据（ctrl 字节 + 值）
  */
-static int sh1106_cmd_byte(struct sh1106_device* dev, uint8_t ctrl, uint8_t val, uint32_t timeout_ms)
+static int sh1106_cmd_byte(struct sh1106_device* dev, uint8_t ctrl, uint8_t val,
+                           uint32_t timeout_ms)
 {
     uint8_t buf[2] = {ctrl, val};
     return sh1106_i2c_wr(dev, buf, 2, timeout_ms);
@@ -188,12 +190,12 @@ static int sh1106_cmd_byte(struct sh1106_device* dev, uint8_t ctrl, uint8_t val,
 static int sh1106_set_page_col(struct sh1106_device* dev, uint8_t page, uint32_t timeout_ms)
 {
     uint8_t col = SH1106_COL_OFFSET;
-    int ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)),
-                            timeout_ms);
+    int ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD,
+                              (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)), timeout_ms);
     if (ret != VFS_OK)
         return ret;
-    ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)),
-                        timeout_ms);
+    ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD,
+                          (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)), timeout_ms);
     if (ret != VFS_OK)
         return ret;
     return sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD,
@@ -232,7 +234,8 @@ static int sh1106_cmd_clear(struct sh1106_device* dev, void* arg, size_t len, ui
 /**
  * @brief DISPLAY_CMD_GET_INFO 实现：返回面板几何与像素格式
  */
-static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len,
+                               uint32_t timeout_ms)
 {
     struct display_info_arg* info = (struct display_info_arg*)arg;
     COMPAT_IGNORE_RESULT(dev);
@@ -248,7 +251,8 @@ static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len,
 /**
  * @brief DISPLAY_CMD_FILL_RECT 实现：单色屏仅支持全屏矩形
  */
-static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len,
+                                uint32_t timeout_ms)
 {
     const struct display_rect_arg* darg = (const struct display_rect_arg*)arg;
     struct display_clear_arg clear_arg;
@@ -263,7 +267,8 @@ static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len
 /**
  * @brief DISPLAY_CMD_DRAW_AREA 实现：单色屏仅支持整帧 page-major 位图
  */
-static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len,
+                                uint32_t timeout_ms)
 {
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
     int page;
@@ -310,7 +315,8 @@ static int sh1106_cmd_flush(struct sh1106_device* dev, void* arg, size_t len, ui
 /**
  * @brief DISPLAY_CMD_SET_BRIGHTNESS 实现：亮度映射为对比度
  */
-static int sh1106_cmd_set_brightness(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int sh1106_cmd_set_brightness(struct sh1106_device* dev, void* arg, size_t len,
+                                     uint32_t timeout_ms)
 {
     const struct display_bright_arg* darg = (const struct display_bright_arg*)arg;
     uint32_t to_ms = timeout_ms ? timeout_ms : 100U;

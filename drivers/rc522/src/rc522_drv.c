@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file rc522_drv.c
- * @brief RC522 RFID 读卡驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_rc522_pool[RC522_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 rc522_drv.h，寄存器定义见 rc522_regs.h。
- *
- * 数据流: VFS ioctl → rc522_cmd_* → rc522_to_card → SPI transfer（vfs-spi）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file rc522_drv.c
+ *@brief RC522 RFID 读卡驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_rc522_pool[RC522_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 rc522_drv.h，寄存器定义见 rc522_regs.h。
+ *   数据流: VFS ioctl → rc522_cmd_* → rc522_to_card → SPI transfer（vfs-spi）→ HAL
  */
+
 #include "rc522_drv.h"
 
 #include "compiler_compat.h"
@@ -234,8 +235,8 @@ static int rc522_clr_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, u
  * @param back 回读缓冲（可空）
  * @param back_len 回读比特数（可空）
  */
-static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send, uint8_t send_len,
-                         uint8_t* back, uint8_t* back_len, uint32_t timeout_ms)
+static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send,
+                         uint8_t send_len, uint8_t* back, uint8_t* back_len, uint32_t timeout_ms)
 {
     uint8_t irq_en = 0;
     uint8_t wait_irq = 0;

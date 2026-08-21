@@ -1,17 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * SPI BUS — SPI 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL; hal_spi_bus_host 嵌入 spi_bus_host (无 vtable)
- * 职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file spi_bus.h
+ *@brief spi bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   SPI BUS — SPI 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL; hal_spi_bus_host 嵌入 spi_bus_host (无 vtable)
+ *   职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
  *   client I/O (open/close/transfer) + 同步传输 (poll, master)
- *
- * 隔离: 未定义 SPI_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_spi_* 与 spi_sync;
+ *   隔离: 未定义 SPI_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_spi_* 与 spi_sync;
  *   允许 config 类型供 VFS 填充, 强制走 spi_bus API
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
- * @see bus/bus.h  通用总线框架
- *@=========================================================================================================================*/
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
+ *   @see bus/bus.h  通用总线框架
+ *   @=========================================================================================================================
+ */
+
 #ifndef SPI_BUS_H
 #define SPI_BUS_H
 

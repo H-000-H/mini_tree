@@ -1,4 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_amp.c
+ *@brief hal amp 实现
+ *@author H-000-H
+
+ */
+
 #include "hal_amp.h"
 
 #include "compiler_compat.h"

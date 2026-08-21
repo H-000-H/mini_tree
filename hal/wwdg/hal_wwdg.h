@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        hal_wwdg.h
- * @brief       WWDG HAL — 窗口看门狗 (PCLK1), 两层模型无 bus
- * @note        喂狗必须在窗口内写 T; 由上层保证时机。启动后 close 不关硬件。
- * @note        超时约: t = (T[5:0]+1) * 4096 * 2^WDGTB / PCLK1
- * @note        文件约定: 返回值用 int + status.h 错误码; 禁止 enum。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_wwdg.h
+ *@brief WWDG HAL — 窗口看门狗 (PCLK1), 两层模型无 bus
+ *@author H-000-H
+ *@details
+ *   @note        喂狗必须在窗口内写 T; 由上层保证时机。启动后 close 不关硬件。
+ *   @note        超时约: t = (T[5:0]+1) * 4096 * 2^WDGTB / PCLK1
+ *   @note        文件约定: 返回值用 int + status.h 错误码; 禁止 enum。
  */
+
 #ifndef HAL_WWDG_H
 #define HAL_WWDG_H
 

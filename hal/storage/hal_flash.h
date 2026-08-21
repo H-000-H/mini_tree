@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * Flash HAL — 只读巡检与应用地址查询
- *
- * 提供 hal_flash_read 用于 CRC 校验与镜像巡检
- * 暴露应用程序起始地址与大小供引导/校验使用
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_flash.h
+ *@brief hal flash 头文件
+ *@author H-000-H
+ *@details
+ *   Flash HAL — 只读巡检与应用地址查询
+ *   提供 hal_flash_read 用于 CRC 校验与镜像巡检
+ *   暴露应用程序起始地址与大小供引导/校验使用
  */
+
 #ifndef HAL_FLASH_H
 #define HAL_FLASH_H
 

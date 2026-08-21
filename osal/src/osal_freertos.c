@@ -1,27 +1,30 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * osal_freertos.c — OSAL FreeRTOS 后端实现
- *
- * 将 OSAL API 映射到 xSemaphore/xQueue/xTaskCreate 等 FreeRTOS 原语
- * 静态互斥锁/信号量池 + 槽位池 (osal_pool), ISR 临界区用
- * taskENTER_CRITICAL_FROM_ISR / taskEXIT_CRITICAL_FROM_ISR
- * ESP32 (ESP-IDF) 平台额外嵌入 portMUX 适配, 由 ESP-IDF 自带
- * FreeRTOS 提供, 项目侧勿重复 vendor
- *
- * 关键差异 (参考基准, 其他后端差异以此对齐):
- * 1. ISR 临界区用 taskENTER/EXIT_CRITICAL_FROM_ISR; ESP-IDF 下等价于
- *    portMUX 自旋锁 (portTICK_RATE_MS 1 ms tick), 退出自动让出;
- * 2. 互斥锁 xSemaphoreCreateMutex 自带优先级继承 (避免优先级反转),
- *    OSAL_MUTEX_PLAIN 的"二次获取阻塞"语义由本层自实现 (递归计数包装)
- *    确保 OSAL_ERR_TIMEOUT 一致返回;
- * 3. 信号量是计数的 — 本层用 posted 标志保证"多次 post 合并计数 ≤ 1"
- *    实现严格二值语义;
- * 4. 任务删除自身 vTaskDelete(NULL) 真返回 (与 ThreadX 不同),
- *    任务控制块/栈可被 idle 回收;
- * 5. ISR 出口 osal_yield_from_isr 调用 portYIELD_FROM_ISR 触发 PendSV;
- * 6. 栈水位依赖 configCHECK_FOR_STACK_OVERFLOW > 0; 无运行时栈高水位查询
- *    (FreeRTOS 不暴露), 仅靠 overflow hook 检测.
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file osal_freertos.c
+ *@brief osal freertos 实现
+ *@author H-000-H
+ *@details
+ *   osal_freertos.c — OSAL FreeRTOS 后端实现
+ *   将 OSAL API 映射到 xSemaphore/xQueue/xTaskCreate 等 FreeRTOS 原语
+ *   静态互斥锁/信号量池 + 槽位池 (osal_pool), ISR 临界区用
+ *   taskENTER_CRITICAL_FROM_ISR / taskEXIT_CRITICAL_FROM_ISR
+ *   ESP32 (ESP-IDF) 平台额外嵌入 portMUX 适配, 由 ESP-IDF 自带
+ *   FreeRTOS 提供, 项目侧勿重复 vendor
+ *   关键差异 (参考基准, 其他后端差异以此对齐):
+ *   1. ISR 临界区用 taskENTER/EXIT_CRITICAL_FROM_ISR; ESP-IDF 下等价于
+ *   portMUX 自旋锁 (portTICK_RATE_MS 1 ms tick), 退出自动让出;
+ *   2. 互斥锁 xSemaphoreCreateMutex 自带优先级继承 (避免优先级反转),
+ *   OSAL_MUTEX_PLAIN 的"二次获取阻塞"语义由本层自实现 (递归计数包装)
+ *   确保 OSAL_ERR_TIMEOUT 一致返回;
+ *   3. 信号量是计数的 — 本层用 posted 标志保证"多次 post 合并计数 ≤ 1"
+ *   实现严格二值语义;
+ *   4. 任务删除自身 vTaskDelete(NULL) 真返回 (与 ThreadX 不同),
+ *   任务控制块/栈可被 idle 回收;
+ *   5. ISR 出口 osal_yield_from_isr 调用 portYIELD_FROM_ISR 触发 PendSV;
+ *   6. 栈水位依赖 configCHECK_FOR_STACK_OVERFLOW > 0; 无运行时栈高水位查询
+ *   (FreeRTOS 不暴露), 仅靠 overflow hook 检测.
  */
+
 #ifdef CONFIG_OSAL_FREERTOS
 
 #define ALLOW_HEAP_ALLOC

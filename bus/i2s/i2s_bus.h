@@ -1,17 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * I2S BUS — I2S 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL; hal_i2s_bus_host 嵌入 i2s_bus_host
- * 职责: host/client 池 + ref_count + open/close/transfer; sync/poll/DMA + circular +
- * irq_mode/async。 open: 若 it_enable, 注册 VIRQ(i2s, hw_idx) + NVIC (对齐 ADC probe; 不进 ioctl)。
- *
- * 隔离: 未定义 I2S_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_i2s_*;
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file i2s_bus.h
+ *@brief i2s bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   I2S BUS — I2S 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL; hal_i2s_bus_host 嵌入 i2s_bus_host
+ *   职责: host/client 池 + ref_count + open/close/transfer; sync/poll/DMA + circular +
+ *   irq_mode/async。 open: 若 it_enable, 注册 VIRQ(i2s, hw_idx) + NVIC (对齐 ADC probe; 不进 ioctl)。
+ *   隔离: 未定义 I2S_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_i2s_*;
  *   允许 config 类型供 VFS 填充, 强制走 i2s_bus API。
- *
- * @see bus/bus.h  通用总线框架
- * @see hal/i2s/hal_i2s.h
- *@=========================================================================================================================*/
+ *   @see bus/bus.h  通用总线框架
+ *   @see hal/i2s/hal_i2s.h
+ *   @=========================================================================================================================
+ */
+
 #ifndef I2S_BUS_H
 #define I2S_BUS_H
 

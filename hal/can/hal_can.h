@@ -1,14 +1,17 @@
 /**
- * @license: SPDX-License-Identifier: Apache-2.0
- * @file: hal_can.h
- * @brief: CAN HAL 层 — 硬件抽象接口,硬件直投层
- * @note 所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
- * @note SocketCAN 风格 can_frame；DTSI 提供厂商宏值, HAL 零翻译透传给底层驱动
- * @note F4 bxCAN 无 DMA；厂商句柄不透明嵌入 hcan_storage, 仅在平台 .c 内解释
- * @note 文件约定：返回值不允许void，必须使用int，并且错误码必须使用 status.h (VFS_ERR_*)
- * @note 接收的参数必须为指针，并且必须为合法的指针，不能为空指针
- * @note 禁止使用enum,enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_can.h
+ *@brief hal can 头文件
+ *@author H-000-H
+ *@details
+ *   @note 所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ *   @note SocketCAN 风格 can_frame；DTSI 提供厂商宏值, HAL 零翻译透传给底层驱动
+ *   @note F4 bxCAN 无 DMA；厂商句柄不透明嵌入 hcan_storage, 仅在平台 .c 内解释
+ *   @note 文件约定：返回值不允许void，必须使用int，并且错误码必须使用 status.h (VFS_ERR_*)
+ *   @note 接收的参数必须为指针，并且必须为合法的指针，不能为空指针
+ *   @note 禁止使用enum,enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
+
 #ifndef HAL_CAN_H
 #define HAL_CAN_H
 

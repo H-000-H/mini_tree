@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file a7670_drv.c
- * @brief A7670 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_a7670_pool[A7670_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 a7670_drv.h。
- *
- * 数据流: VFS ioctl → a7670_cmd_send/recv → device_read/write(UART) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file a7670_drv.c
+ *@brief A7670 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_a7670_pool[A7670_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 a7670_drv.h。
+ *   数据流: VFS ioctl → a7670_cmd_send/recv → device_read/write(UART) → HAL
  */
+
 #include "a7670_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct a7670_device* a7670_get_drvdata(struct device* pdev)
  * @brief 向 UART 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;

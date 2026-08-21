@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        circle_fifo_buffer.c
- * @brief       环形 FIFO SPSC 无锁缓冲区实现
- * @note        acquire/release 内存序保证单生产者单消费者安全; 见 buffer.h
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file circle_fifo_buffer.c
+ *@brief 环形 FIFO SPSC 无锁缓冲区实现
+ *@author H-000-H
+ *@details
+ *   @note        acquire/release 内存序保证单生产者单消费者安全; 见 buffer.h
  */
+
 #include "buffer.h"
 
 #define FIFO_LOAD_ACQUIRE(ptr) __atomic_load_n(&((ptr)), __ATOMIC_ACQUIRE)

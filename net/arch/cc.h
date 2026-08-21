@@ -1,14 +1,18 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * net/arch/cc.h
- * lwIP 移植层编译器/平台抽象头 (mini_tree 适配)
- *
- * 职责 (对应 lwip/arch.h 约定, 不得放进 lwipopts.h):
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file cc.h
+ *@brief cc 头文件
+ *@author H-000-H
+ *@details
+ *   net/arch/cc.h
+ *   lwIP 移植层编译器/平台抽象头 (mini_tree 适配)
+ *   职责 (对应 lwip/arch.h 约定, 不得放进 lwipopts.h):
  *   - 平台字节序 BYTE_ORDER
  *   - 诊断输出 LWIP_PLATFORM_DIAG / 断言 LWIP_PLATFORM_ASSERT
  *   - 结构体紧凑打包 (网络协议头)
  *   - 随机数 LWIP_RAND()
  */
+
 #ifndef LWIP_ARCH_CC_H
 #define LWIP_ARCH_CC_H
 

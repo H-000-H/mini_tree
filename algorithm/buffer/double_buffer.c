@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        double_buffer.c
- * @brief       双缓冲实现 — 读写分离, swap 切换
- * @note        适用于 DMA 采集 + CPU 处理并行场景; 见 buffer.h
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file double_buffer.c
+ *@brief 双缓冲实现 — 读写分离, swap 切换
+ *@author H-000-H
+ *@details
+ *   @note        适用于 DMA 采集 + CPU 处理并行场景; 见 buffer.h
  */
+
 #include "buffer.h"
 
 /**

@@ -1,4 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file can_hook.c
+ *@brief can hook 实现
+ *@author H-000-H
+
+ */
+
 #include "can_hook.h"
 
 #include "device.h"

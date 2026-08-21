@@ -1,21 +1,24 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * SPI BUS 实现 — SPI 总线子系统 bus 层 (平台中立共享代码)
- *
- * 静态池: s_spi_hosts[HOST_MAX] (含 hal_host, ref_count) + s_spi_clients[DEV_ID_COUNT] +
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file spi_bus.c
+ *@brief spi bus 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   SPI BUS 实现 — SPI 总线子系统 bus 层 (平台中立共享代码)
+ *   静态池: s_spi_hosts[HOST_MAX] (含 hal_host, ref_count) + s_spi_clients[DEV_ID_COUNT] +
  *   s_bridge_pool[DEV_ID_COUNT][HAL_SPI_MAX_ASYNC] (async bridge, 防 ISR UAF)
- *
- * 数据流:
+ *   数据流:
  *   同步: VFS → spi_bus_open/close/transfer → hal_spi_*
  *   异步: VFS → transfer_async → bridge 池 → hal → ISR cb → bridge 释放 (poll 无需 bridge)
- *
- * controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
- * 引用计数: register/unregister 改 ref_count (open/close 不改); deinit >0 拒绝销毁
- * 异步: in_use 单字节写 ISR/任务无竞态; trans/bridge 池按 idx 分组避免跨设备争用
- *
- * 平台中立: 本文件不做任何 #ifdef 平台区分, async/slave 路径直接转发到 HAL 函数。
- * 各平台 HAL .c 决定是否支持: 不支持则返回 VFS_ERR_NOTSUPP, 支持则真实实现。
- *@=========================================================================================================================*/
+ *   controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
+ *   引用计数: register/unregister 改 ref_count (open/close 不改); deinit >0 拒绝销毁
+ *   异步: in_use 单字节写 ISR/任务无竞态; trans/bridge 池按 idx 分组避免跨设备争用
+ *   平台中立: 本文件不做任何 #ifdef 平台区分, async/slave 路径直接转发到 HAL 函数。
+ *   各平台 HAL .c 决定是否支持: 不支持则返回 VFS_ERR_NOTSUPP, 支持则真实实现。
+ *   @=========================================================================================================================
+ */
+
 #define SPI_BUS_IMPL
 #include "spi_bus.h"
 
@@ -368,10 +371,7 @@ static void spi_client_unregister_impl(struct device* pdev)
  * @brief 注销 SPI client (公开包装, vfs 层调用)
  * @param pdev client device 指针
  */
-void spi_bus_client_unregister(struct device* pdev)
-{
-    spi_client_unregister_impl(pdev);
-}
+void spi_bus_client_unregister(struct device* pdev) { spi_client_unregister_impl(pdev); }
 
 /*===========================================================================================================================================================*/
 

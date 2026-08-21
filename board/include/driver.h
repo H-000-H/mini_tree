@@ -1,11 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * driver.h — 板级驱动核心头文件
- *
- * 声明 board_driver_probe_all/remove_all 按 probe 顺序遍历设备匹配驱动,
- * 提供 DRIVER_REGISTER 宏 (dtc-lite 编译期扫描生成 probe/remove 函数表).
- * 定义安全停机回调注册接口 (仅 probe 阶段可注册, 运行期不可追加).
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file driver.h
+ *@brief driver 头文件
+ *@author H-000-H
+ *@details
+ *   driver.h — 板级驱动核心头文件
+ *   声明 board_driver_probe_all/remove_all 按 probe 顺序遍历设备匹配驱动,
+ *   提供 DRIVER_REGISTER 宏 (dtc-lite 编译期扫描生成 probe/remove 函数表).
+ *   定义安全停机回调注册接口 (仅 probe 阶段可注册, 运行期不可追加).
  */
+
 #ifndef BOARD_DRIVER_H
 #define BOARD_DRIVER_H
 

@@ -1,7 +1,9 @@
 /**
- * @license SPDX-License-Identifier: Apache-2.0
- * @file net/lwipopts.h
- * @brief lwIP 配置选项 (mini_tree 依赖, 由具体数值从 kconfig 导入)
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file net/lwipopts.h
+ *@brief lwIP 配置选项 (mini_tree 依赖, 由具体数值从 kconfig 导入)
+ *@author H-000-H
+
  */
 
 #ifndef LWIPOPTS_H
@@ -70,10 +72,10 @@ extern "C"
  *----------------------------------------------------------*/
 #define LWIP_ETHERNET CONFIG_LWIP_ETHERNET /* 是否启用以太网支持 */
 #define LWIP_CHECKSUM_CTRL_PER_NETIF                                                               \
-    CONFIG_LWIP_CHECKSUM_CTRL_PER_NETIF /* 每网口独立校验和控制                                  \
+    CONFIG_LWIP_CHECKSUM_CTRL_PER_NETIF /* 每网口独立校验和控制                          \
                                          */
 #define LWIP_NETIF_STATUS_CALLBACK                                                                 \
-    CONFIG_LWIP_NETIF_STATUS_CALLBACK /* 是否启用网络接口状态回调                                \
+    CONFIG_LWIP_NETIF_STATUS_CALLBACK /* 是否启用网络接口状态回调                      \
                                        */
 #define LWIP_NETIF_LINK_CALLBACK CONFIG_LWIP_NETIF_LINK_CALLBACK /* 是否启用网络接口链路回调 */
 #define LWIP_NETIF_API CONFIG_LWIP_NETIF_API /* 是否启用 netif API */

@@ -1,11 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file drv8833_drv.c
- * @brief DRV8833 双路电机驱动实现 — 挂在 GPIO（AIN1/2、BIN1/2）下的 VFS 设备驱动
- *
- * 静态池: s_drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 drv8833_drv.h。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file drv8833_drv.c
+ *@brief DRV8833 双路电机驱动实现 — 挂在 GPIO（AIN1/2、BIN1/2）下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 drv8833_drv.h。
  */
+
 #include "drv8833_drv.h"
 
 #include "compiler_compat.h"
@@ -171,7 +173,8 @@ static int drv8833_close(struct device* pdev)
     return VFS_OK;
 }
 
-typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct drv8833_ioctl_map
 {
     drv8833_ioctl_fn_t handler;
@@ -263,7 +266,8 @@ static int drv8833_probe(struct device* pdev)
     dev->ain2_dev = device_get_phandle_dev(pdev, "ain2-gpio");
     dev->bin1_dev = device_get_phandle_dev(pdev, "bin1-gpio");
     dev->bin2_dev = device_get_phandle_dev(pdev, "bin2-gpio");
-    if (IS_ERR(dev->ain1_dev) || IS_ERR(dev->ain2_dev) || IS_ERR(dev->bin1_dev) || IS_ERR(dev->bin2_dev))
+    if (IS_ERR(dev->ain1_dev) || IS_ERR(dev->ain2_dev) || IS_ERR(dev->bin1_dev) ||
+        IS_ERR(dev->bin2_dev))
     {
         ret = VFS_ERR_INVAL;
         goto err;

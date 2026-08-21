@@ -1,30 +1,33 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * SPI VFS 实现 — SPI 总线子系统 VFS 层
- *
- * 两层结构:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-spi.c
+ *@brief vfs-spi 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   SPI VFS 实现 — SPI 总线子系统 VFS 层
+ *   两层结构:
  *   - Host VFS:   DTS 解析 + spi_bus_host_init (controller driver)
  *   - Client VFS: spi_bus_client_register + fops 挂载 (master+slave 统一, role 分派)
- *
- * 生命周期 (dev_lifecycle): open/close 引用计数, io 门控 (dev_lc_io_*), remove drain。
- * I/O 按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync。
- *
- * DTS 三层嵌套 (Linux 风格):
+ *   生命周期 (dev_lifecycle): open/close 引用计数, io 门控 (dev_lc_io_*), remove drain。
+ *   I/O 按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync。
+ *   DTS 三层嵌套 (Linux 风格):
  *   spi@1 (spi-master)                                ← host controller
  *   └── spi-master@0 (heterogeneous,spi-master-client) ← bus client (spi_vfs)
- *       └── w25qxx@5 (winbond,w25qxx)                 ← leaf device (w25qxx)
- *
+ *   └── w25qxx@5 (winbond,w25qxx)                 ← leaf device (w25qxx)
  *   w25qxx_probe: device_get_parent(pdev) → client (有 fops) → device_ioctl(SPI_CMD_TRANSFER)
- *@=========================================================================================================================*/
+ *   @=========================================================================================================================
+ */
+
 #define SPI_VFS_IMPL
 #include "vfs-spi.h"
 
+#include "board_define_spi.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_spi.h"
 #include "osal.h"
 #include "spi_bus.h"
 #include "status.h"

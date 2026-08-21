@@ -1,15 +1,19 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * net/sys/sys_arch.c
- * lwIP 操作系统抽象移植层实现 (mini_tree 适配)
- *
- * 双模式:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file sys_arch.c
+ *@brief sys arch 实现
+ *@author H-000-H
+ *@details
+ *   net/sys/sys_arch.c
+ *   lwIP 操作系统抽象移植层实现 (mini_tree 适配)
+ *   双模式:
  *   NO_SYS == 0 (RTOS 后端: FreeRTOS / RT-Thread 等): 提供完整 sys_sem /
- *     sys_mutex / sys_mbox / sys_thread_new 等原语, 桥接到 OSAL。
+ *   sys_mutex / sys_mbox / sys_thread_new 等原语, 桥接到 OSAL。
  *   NO_SYS == 1 (裸机后端: OSAL_NULL + xtask): lwIP 自带空桩, 本文件仅提供
- *     裸机必需的 sys_init / sys_now / sys_arch_protect / sys_arch_unprotect
- *     (SYS_LIGHTWEIGHT_PROT 用关中断临界区) 与诊断输出。
+ *   裸机必需的 sys_init / sys_now / sys_arch_protect / sys_arch_unprotect
+ *   (SYS_LIGHTWEIGHT_PROT 用关中断临界区) 与诊断输出。
  */
+
 #include "arch/sys_arch.h"
 
 #include "lwip/sys.h"

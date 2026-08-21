@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * CAN VFS — SocketCAN 风格帧 + 现有 host/client
- *
- * Driver: can-host / heterogeneous,can-client
- * write/read: struct can_frame; ioctl: TRANSFER / SET_FILTER / GET_STATE
- *@=========================================================================================================================*/
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-can.h
+ *@brief vfs-can 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   CAN VFS — SocketCAN 风格帧 + 现有 host/client
+ *   Driver: can-host / heterogeneous,can-client
+ *   write/read: struct can_frame; ioctl: TRANSFER / SET_FILTER / GET_STATE
+ *   @=========================================================================================================================
+ */
+
 #ifndef CAN_VFS_H
 #define CAN_VFS_H
 

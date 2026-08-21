@@ -1,24 +1,27 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * UART HAL 层 — 硬件抽象接口 (跨平台统一头)
- *
- * 设计: 硬件直投, DTSI 提供厂商宏值, HAL 零翻译透传给 LL 库/标准外设库/ESP-IDF driver。
- * - STM32: uart-base = <UART4_BASE>, uart-clk = <LL_APB1_GRP1_PERIPH_UART4>,
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_uart.h
+ *@brief hal uart 头文件
+ *@author H-000-H
+ *@details
+ *   UART HAL 层 — 硬件抽象接口 (跨平台统一头)
+ *   设计: 硬件直投, DTSI 提供厂商宏值, HAL 零翻译透传给 LL 库/标准外设库/ESP-IDF driver。
+ *   - STM32: uart-base = <UART4_BASE>, uart-clk = <LL_APB1_GRP1_PERIPH_UART4>,
  *   tx-port = <GPIOC_BASE>, tx-pin = <GPIO_PIN_10>,
  *   tx-clk  = <LL_AHB1_GRP1_PERIPH_GPIOC>, tx-af = <GPIO_AF8_UART4>
- * - WCH: uart-base = <USART1_BASE>, uart-clk = <RCC_APB2Periph_USART1>,
+ *   - WCH: uart-base = <USART1_BASE>, uart-clk = <RCC_APB2Periph_USART1>,
  *   tx-port = <GPIOA_BASE>, tx-pin = <GPIO_Pin_9>,
  *   tx-clk  = <RCC_APB2Periph_GPIOA>, tx-af = <GPIO_Mode_AF_PP>
  *   (WCH 的 af 字段承载 GPIOMode_TypeDef, mode+af 编码在一起)
- * - ESP32: uart-base = <UART_NUM_1>, uart-clk = <0>,
+ *   - ESP32: uart-base = <UART_NUM_1>, uart-clk = <0>,
  *   tx-port = <0>, tx-pin = <43>, tx-clk = <0>, tx-af = <0>
  *   (ESP32 无 port/clk/af 概念, pin 为 SoC GPIO 编号)
- * - hal_uart_bus_host 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理, 无 vtable
- * - HAL 层不分配数据缓冲区, tx/rx 指针由调用者提供
- *
- * 头中立化: 本头不暴露任何 vendor 类型, 只用 uintptr_t/int/void*。
- * vendor 头由 hal_uart_*.c 内部 include。
+ *   - hal_uart_bus_host 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理, 无 vtable
+ *   - HAL 层不分配数据缓冲区, tx/rx 指针由调用者提供
+ *   头中立化: 本头不暴露任何 vendor 类型, 只用 uintptr_t/int/void*。
+ *   vendor 头由 hal_uart_*.c 内部 include。
  */
+
 #ifndef HAL_UART_H
 #define HAL_UART_H
 

@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file aht20_drv.c
- * @brief AHT20 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_aht20_pool[AHT20_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 aht20_drv.h。
- *
- * 数据流: VFS ioctl → aht20_cmd_read → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file aht20_drv.c
+ *@brief AHT20 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_aht20_pool[AHT20_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 aht20_drv.h。
+ *   数据流: VFS ioctl → aht20_cmd_read → device_read/write(I2C) → HAL
  */
+
 #include "aht20_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct aht20_device* aht20_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int aht20_i2c_wr(struct aht20_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int aht20_i2c_wr(struct aht20_device* dev, const uint8_t* tx, size_t len,
+                        uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;

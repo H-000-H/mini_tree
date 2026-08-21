@@ -1,16 +1,20 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * UART BUS — UART 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL; hal_uart_bus_host 嵌入 uart_bus_host (无 vtable)
- * 职责: host/client 池 + atomic ref_count + controller_ops + client I/O (open/close/read/write)
- *
- * 隔离: 未定义 UART_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_uart_*;
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file uart_bus.h
+ *@brief uart bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   UART BUS — UART 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL; hal_uart_bus_host 嵌入 uart_bus_host (无 vtable)
+ *   职责: host/client 池 + atomic ref_count + controller_ops + client I/O (open/close/read/write)
+ *   隔离: 未定义 UART_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_uart_*;
  *   允许 hal_uart_config 供 VFS 填充, 强制走 uart_bus API
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
- * @see bus/bus.h  通用总线框架
- *@=========================================================================================================================*/
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
+ *   @see bus/bus.h  通用总线框架
+ *   @=========================================================================================================================
+ */
+
 #ifndef UART_BUS_H
 #define UART_BUS_H
 

@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file nrf24l01_regs.h
- * @brief NRF24L01 SPI 操作码 / 常量
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file nrf24l01_regs.h
+ *@brief NRF24L01 SPI 操作码 / 常量
+ *@author H-000-H
+
  */
+
 #ifndef NRF24L01_REGS_H
 #define NRF24L01_REGS_H
 

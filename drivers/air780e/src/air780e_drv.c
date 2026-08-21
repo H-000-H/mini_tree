@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file air780e_drv.c
- * @brief Air780E 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 air780e_drv.h。
- *
- * 数据流: VFS ioctl → air780e_cmd_send/recv → device_read/write(UART) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file air780e_drv.c
+ *@brief Air780E 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 air780e_drv.h。
+ *   数据流: VFS ioctl → air780e_cmd_send/recv → device_read/write(UART) → HAL
  */
+
 #include "air780e_drv.h"
 
 #include "compiler_compat.h"
@@ -171,7 +172,8 @@ static int air780e_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*air780e_ioctl_fn_t)(struct air780e_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*air780e_ioctl_fn_t)(struct air780e_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct air780e_ioctl_map
 {
     air780e_ioctl_fn_t handler;

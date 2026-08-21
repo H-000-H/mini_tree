@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * status.h — 栈公共状态码与指针错误编码 (层无关)
- *
- * HAL / bus / VFS / OSAL 共用。HAL 不得依赖 VFS.h；需要错误码时包含本头。
- * VFS.h 为兼容包装，转发到本文件。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file status.h
+ *@brief status 头文件
+ *@author H-000-H
+ *@details
+ *   status.h — 栈公共状态码与指针错误编码 (层无关)
+ *   HAL / bus / VFS / OSAL 共用。HAL 不得依赖 VFS.h；需要错误码时包含本头。
+ *   VFS.h 为兼容包装，转发到本文件。
  */
+
 #ifndef STATUS_H
 #define STATUS_H
 

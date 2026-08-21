@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * task_utils.c — 板级任务创建包装实现
- *
- * board_task_create 封装 osal_task_create_handle,
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file task_utils.c
+ *@brief task utils 实现
+ *@author H-000-H
+ *@details
+ *   task_utils.c — 板级任务创建包装实现
+ *   board_task_create 封装 osal_task_create_handle,
  *   透传名称/栈/优先级/入口/参数/核心, 成功返回任务句柄, 失败返回 NULL.
  */
+
 #include "task_utils.h"
 
 #include "osal.h"

@@ -1,19 +1,20 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file st7789_core.c
- * @brief ST7789 公共核心 — 有 CS / 无 CS 两个入口共用（probe/remove/ioctl 全量实现）
- *
- * SPI: device_get_parent → SPI_CMD_TRANSFER / device_write。
- * DC/RST: vfs-gpio；背光: vfs-tim（LEDC 后端）。禁止厂商 SDK。
- *
- * 静态池: s_st7789_pool[ST7789_COUNT]（有 CS + 无 CS 两路 DTS 节点数量之和）
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file st7789_core.c
+ *@brief ST7789 公共核心 — 有 CS / 无 CS 两个入口共用（probe/remove/ioctl 全量实现）
+ *@author H-000-H
+ *@details
+ *   SPI: device_get_parent → SPI_CMD_TRANSFER / device_write。
+ *   DC/RST: vfs-gpio；背光: vfs-tim（LEDC 后端）。禁止厂商 SDK。
+ *   静态池: s_st7789_pool[ST7789_COUNT]（有 CS + 无 CS 两路 DTS 节点数量之和）
  */
+
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
+#include "display_drv.h"
 #include "dt_config_gen.h"
 #include "osal.h"
-#include "display_drv.h"
 #include "st7789_regs.h"
 #include "status.h"
 #include "system_log.h"

@@ -1,4 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file system_init.h
+ *@brief system init 头文件
+ *@author H-000-H
+
+ */
+
 #pragma once
 
 /*

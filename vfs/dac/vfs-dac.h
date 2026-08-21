@@ -1,17 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * DAC VFS — DAC 子系统 VFS 层
- *
- * 架构位置: [VFS Layer (本文件)] → HAL Layer
- * 职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 HAL 层。
- * 隔离: 本文件定义 DAC_VFS_IMPL 可调 hal_dac API; 其他文件包含本头时 hal_dac 慢路径符号被 #pragma
- * GCC poison。
- *
- * Driver 注册:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-dac.h
+ *@brief vfs-dac 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   DAC VFS — DAC 子系统 VFS 层
+ *   架构位置: [VFS Layer (本文件)] → HAL Layer
+ *   职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 HAL 层。
+ *   隔离: 本文件定义 DAC_VFS_IMPL 可调 hal_dac API; 其他文件包含本头时 hal_dac 慢路径符号被 #pragma
+ *   GCC poison。
+ *   Driver 注册:
  *   - vfs_dac_priv: "dac"
- * DAC 与 TIM/GPIO 类似, 直接挂载到 VFS 层, 通过文件操作接口进行操作。
- * @see hal/dac/hal_dac.h  HAL 层接口
- *@=========================================================================================================================*/
+ *   DAC 与 TIM/GPIO 类似, 直接挂载到 VFS 层, 通过文件操作接口进行操作。
+ *   @see hal/dac/hal_dac.h  HAL 层接口
+ *   @=========================================================================================================================
+ */
+
 #ifndef VFS_DAC_H
 #define VFS_DAC_H
 

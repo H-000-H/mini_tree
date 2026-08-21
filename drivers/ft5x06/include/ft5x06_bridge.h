@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file ft5x06_bridge.h
- * @brief FT5x06 ↔ LVGL indev 读点薄封装（不依赖 lvgl.h）
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file ft5x06_bridge.h
+ *@brief FT5x06 ↔ LVGL indev 读点薄封装（不依赖 lvgl.h）
+ *@author H-000-H
+
  */
+
 #ifndef FT5X06_BRIDGE_H
 #define FT5X06_BRIDGE_H
 

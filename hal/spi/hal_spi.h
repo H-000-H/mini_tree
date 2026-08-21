@@ -1,14 +1,17 @@
 /**
- * @license: SPDX-License-Identifier: Apache-2.0
- * @file: hal_spi.h
- * @brief: SPI HAL 层 — 硬件抽象接口,硬件直投层
- * @note 所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
- * @note 由于SPI是快速热路径外设所以SPI的初始化与配置应该尽量在硬件直投层完成
- * @note 文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
- * @note 返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
- * @note 接收的参数必须为指针，并且必须为合法的指针，不能为空指针
- * @note 禁止使用enum,enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_spi.h
+ *@brief hal spi 头文件
+ *@author H-000-H
+ *@details
+ *   @note 所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ *   @note 由于SPI是快速热路径外设所以SPI的初始化与配置应该尽量在硬件直投层完成
+ *   @note 文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
+ *   @note 返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
+ *   @note 接收的参数必须为指针，并且必须为合法的指针，不能为空指针
+ *   @note 禁止使用enum,enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
+
 #ifndef HAL_SPI_H
 #define HAL_SPI_H
 

@@ -1,26 +1,30 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * UART VFS 实现 — UART 总线子系统 VFS 层
- *
- * 两层结构:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-uart.c
+ *@brief vfs-uart 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   UART VFS 实现 — UART 总线子系统 VFS 层
+ *   两层结构:
  *   - Host VFS:   DTS 解析 + uart_bus_host_init (controller driver)
  *   - Client VFS: uart_bus_client_register + fops 挂载 (bus client driver)
- *
- * 生命周期 (dev_lifecycle): open/close 引用计数, io 门控 (dev_lc_io_*), remove drain。
- * I/O: read/write 走 uart_bus_*; ioctl(TRANSFER) 走 uart_bus_transfer (先写后读)。
- * Host remove 安全: host_deinit 返回 BUSY 时 remove 拒绝销毁, 防 client 仍 open 时 host UAF。
- *
- * @see bus/uart/uart_bus.h  bus 层接口
- *@=========================================================================================================================*/
+ *   生命周期 (dev_lifecycle): open/close 引用计数, io 门控 (dev_lc_io_*), remove drain。
+ *   I/O: read/write 走 uart_bus_*; ioctl(TRANSFER) 走 uart_bus_transfer (先写后读)。
+ *   Host remove 安全: host_deinit 返回 BUSY 时 remove 拒绝销毁, 防 client 仍 open 时 host UAF。
+ *   @see bus/uart/uart_bus.h  bus 层接口
+ *   @=========================================================================================================================
+ */
+
 #define UART_VFS_IMPL
 #include "vfs-uart.h"
 
+#include "board_define_uart.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_uart.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"

@@ -1,17 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * USB BUS — USB 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL(基建) + TinyUSB(协议/端点)
- * 职责: host/client 池 + atomic ref_count + controller_ops +
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file usb_bus.h
+ *@brief usb bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   USB BUS — USB 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL(基建) + TinyUSB(协议/端点)
+ *   职责: host/client 池 + atomic ref_count + controller_ops +
  *   CDC/ECM/HID 分类 I/O; TinyUSB 经 usb_tusb_port 调用 (与 mini_tree osal 隔离)
- *
- * 隔离: 未定义 USB_BUS_IMPL 时 #pragma GCC poison 禁止外部调本层符号;
+ *   隔离: 未定义 USB_BUS_IMPL 时 #pragma GCC poison 禁止外部调本层符号;
  *   允许 config 类型供 VFS 填充, 强制走 usb_bus API
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
- * @see bus/bus.h  通用总线框架
- *@=========================================================================================================================*/
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
+ *   @see bus/bus.h  通用总线框架
+ *   @=========================================================================================================================
+ */
+
 #ifndef USB_BUS_H
 #define USB_BUS_H
 

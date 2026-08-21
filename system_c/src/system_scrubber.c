@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * system_scrubber (C 实现) — Flash bit-rot CRC32 巡检任务
- *
- * 256 项查表 CRC32, 按 chunk 扫描 app 分区, 与构建期基线比对。
- * 失配即 enter_safe_state, 防止固件位翻转静默运行。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file system_scrubber.c
+ *@brief system scrubber 实现
+ *@author H-000-H
+ *@details
+ *   system_scrubber (C 实现) — Flash bit-rot CRC32 巡检任务
+ *   256 项查表 CRC32, 按 chunk 扫描 app 分区, 与构建期基线比对。
+ *   失配即 enter_safe_state, 防止固件位翻转静默运行。
  */
+
 #include "system_scrubber.h"
 
 #include "hal_flash.h"

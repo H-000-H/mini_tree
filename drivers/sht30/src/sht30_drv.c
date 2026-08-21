@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file sht30_drv.c
- * @brief SHT30 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_sht30_pool[SHT30_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 sht30_drv.h。
- *
- * 数据流: VFS ioctl → sht30_cmd_read → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file sht30_drv.c
+ *@brief SHT30 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_sht30_pool[SHT30_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 sht30_drv.h。
+ *   数据流: VFS ioctl → sht30_cmd_read → device_read/write(I2C) → HAL
  */
+
 #include "sht30_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct sht30_device* sht30_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int sht30_i2c_wr(struct sht30_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int sht30_i2c_wr(struct sht30_device* dev, const uint8_t* tx, size_t len,
+                        uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;

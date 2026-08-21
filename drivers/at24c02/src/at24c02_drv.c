@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file at24c02_drv.c
- * @brief AT24C02 EEPROM 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_at24c02_pool[AT24C02_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 at24c02_drv.h。
- *
- * 数据流: VFS ioctl → at24c02_cmd_read/write → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file at24c02_drv.c
+ *@brief AT24C02 EEPROM 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_at24c02_pool[AT24C02_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 at24c02_drv.h。
+ *   数据流: VFS ioctl → at24c02_cmd_read/write → device_read/write(I2C) → HAL
  */
+
 #include "at24c02_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct at24c02_device* at24c02_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int at24c02_i2c_wr(struct at24c02_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int at24c02_i2c_wr(struct at24c02_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -176,7 +178,8 @@ static int at24c02_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*at24c02_ioctl_fn_t)(struct at24c02_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*at24c02_ioctl_fn_t)(struct at24c02_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct at24c02_ioctl_map
 {
     at24c02_ioctl_fn_t handler;

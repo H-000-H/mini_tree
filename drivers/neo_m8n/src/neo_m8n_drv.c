@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file neo_m8n_drv.c
- * @brief NEO-M8N GPS 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_neo_m8n_pool[NEO_M8N_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 neo_m8n_drv.h。
- *
- * 数据流: VFS ioctl → neo_m8n_cmd_nmea → device_read(UART) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file neo_m8n_drv.c
+ *@brief NEO-M8N GPS 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_neo_m8n_pool[NEO_M8N_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 neo_m8n_drv.h。
+ *   数据流: VFS ioctl → neo_m8n_cmd_nmea → device_read(UART) → HAL
  */
+
 #include "neo_m8n_drv.h"
 
 #include "compiler_compat.h"
@@ -172,7 +173,8 @@ static int neo_m8n_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*neo_m8n_ioctl_fn_t)(struct neo_m8n_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*neo_m8n_ioctl_fn_t)(struct neo_m8n_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct neo_m8n_ioctl_map
 {
     neo_m8n_ioctl_fn_t handler;

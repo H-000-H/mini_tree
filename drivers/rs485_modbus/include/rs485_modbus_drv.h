@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file rs485_modbus_drv.h
- * @brief RS485 Modbus RTU 驱动 ioctl 命令与读写参数结构
- *
- * 挂在 UART 总线 client 下的 VFS 设备驱动；
- * 业务经 device_open/ioctl/close 访问。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file rs485_modbus_drv.h
+ *@brief RS485 Modbus RTU 驱动 ioctl 命令与读写参数结构
+ *@author H-000-H
+ *@details
+ *   挂在 UART 总线 client 下的 VFS 设备驱动；
+ *   业务经 device_open/ioctl/close 访问。
  */
+
 #ifndef RS485_MODBUS_DRV_H
 #define RS485_MODBUS_DRV_H
 #include "compiler_compat.h"

@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file pn532_drv.c
- * @brief PN532 NFC 模块驱动实现 — 挂在 UART（HSU）总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 pn532_drv.h。
- *
- * 数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file pn532_drv.c
+ *@brief PN532 NFC 模块驱动实现 — 挂在 UART（HSU）总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 pn532_drv.h。
+ *   数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
  */
+
 #include "pn532_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct pn532_device* pn532_get_drvdata(struct device* pdev)
  * @brief 向 UART 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int pn532_uart_wr(struct pn532_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int pn532_uart_wr(struct pn532_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;

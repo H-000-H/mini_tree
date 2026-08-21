@@ -1,15 +1,20 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * GPIO VFS — 通用 IO 口 VFS 层
- *
- * 架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
- * 职责: file_operations + dev_lifecycle + DTS; ioctl 电平读/写/翻转。
- * 中断: open 时若 gpio-intr 非 disable，HAL 路由到 VIRQ(gpio, virq-idx)；
- *       业务上下半部由产品驱动 interrupt_virtual_register，不经本层 ioctl。
- *
- * @see hal/gpio/hal_gpio.h
- * @see interrupt/interrupt.h
- *@=========================================================================================================================*/
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-gpio.h
+ *@brief vfs-gpio 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   GPIO VFS — 通用 IO 口 VFS 层
+ *   架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
+ *   职责: file_operations + dev_lifecycle + DTS; ioctl 电平读/写/翻转。
+ *   中断: open 时若 gpio-intr 非 disable，HAL 路由到 VIRQ(gpio, virq-idx)；
+ *   业务上下半部由产品驱动 interrupt_virtual_register，不经本层 ioctl。
+ *   @see hal/gpio/hal_gpio.h
+ *   @see interrupt/interrupt.h
+ *   @=========================================================================================================================
+ */
+
 #ifndef VFS_GPIO_H
 #define VFS_GPIO_H
 

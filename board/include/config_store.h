@@ -1,11 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * config_store.h — 键值配置存储头文件
- *
- * 声明 bool/int/float/string 四类配置的 get/set API 与 commit 持久化接口.
- * 提供 config_store_bind_source 绑定 JSON 工厂默认值缓冲区 (init 前调用).
- * 支持 factory_reset 恢复出厂与 register_write_hook 注入持久化后端.
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file config_store.h
+ *@brief config store 头文件
+ *@author H-000-H
+ *@details
+ *   config_store.h — 键值配置存储头文件
+ *   声明 bool/int/float/string 四类配置的 get/set API 与 commit 持久化接口.
+ *   提供 config_store_bind_source 绑定 JSON 工厂默认值缓冲区 (init 前调用).
+ *   支持 factory_reset 恢复出厂与 register_write_hook 注入持久化后端.
  */
+
 #ifndef CONFIG_STORE_H
 #define CONFIG_STORE_H
 

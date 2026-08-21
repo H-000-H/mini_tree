@@ -1,12 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @License: Apache-2.0
- * @file osal_null.h
- * @brief 裸机后端移植辅助接口
- * @details 仅 CONFIG_OSAL_NULL 后端使用, 提供 ISR 入口/出口
- * @details osal_null_isr_enter/exit 维护 ISR 嵌套计数, 驱动 osal_in_isr() 判定
- * @details 单调 ms 时钟由 time_slice/task 的 scheduler tick_count 提供
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file osal_null.h
+ *@brief 裸机后端移植辅助接口
+ *@author H-000-H
+ *@details
+ *   @details 仅 CONFIG_OSAL_NULL 后端使用, 提供 ISR 入口/出口
+ *   @details osal_null_isr_enter/exit 维护 ISR 嵌套计数, 驱动 osal_in_isr() 判定
+ *   @details 单调 ms 时钟由 time_slice/task 的 scheduler tick_count 提供
  */
+
 #ifndef OSAL_NULL_H
 #define OSAL_NULL_H
 
@@ -14,9 +16,9 @@
 #error "osal_null.h requires CONFIG_OSAL_NULL"
 #endif
 
+#include "compiler_compat.h"
+#include "compiler_inline.h"
 #include <stdint.h>
-#include "compiler_inline.h"  
-#include "compiler_compat.h"   
 
 /* 前置声明: osal_periodic_task_wrap 仅持有 TCB 指针, 无需完整 xtask.h */
 struct x_task;
@@ -62,12 +64,12 @@ extern "C"
         __asm__ volatile("mrs %0, primask\ncpsid i" : "=r"(primask)::"memory");
         return primask;
 #elif defined(__riscv)
-        uintptr_t mstatus;
-        __asm__ volatile("csrr %0, mstatus" : "=r"(mstatus));
-        __asm__ volatile("csrci mstatus, 8" ::: "memory");
-        return (uint32_t)mstatus;
+    uintptr_t mstatus;
+    __asm__ volatile("csrr %0, mstatus" : "=r"(mstatus));
+    __asm__ volatile("csrci mstatus, 8" ::: "memory");
+    return (uint32_t)mstatus;
 #else
-        return 0U;
+    return 0U;
 #endif
     }
 
@@ -81,10 +83,10 @@ extern "C"
     defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
         __asm__ volatile("msr primask, %0" ::"r"(state) : "memory");
 #elif defined(__riscv)
-        if (state & 8U)
-            __asm__ volatile("csrsi mstatus, 8" ::: "memory");
+    if (state & 8U)
+        __asm__ volatile("csrsi mstatus, 8" ::: "memory");
 #else
-        COMPAT_UNUSED_PARAM(state);
+    COMPAT_UNUSED_PARAM(state);
 #endif
     }
 
@@ -109,7 +111,10 @@ extern "C"
  * 入口函数签名与 xtask 回调一致 (void(*)(x_task*), 参数为 x_task* TCB 本身), 无需任何函数指针转换.
  *
  * 协调式: period 参数为任务周期 (ms), 无优先级概念. */
-etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t period, void (*entry)(x_task*),void* param1, void* param2=nullptr, int core_id=-1);
+etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,
+                                                uint32_t period, void (*entry)(x_task*),
+                                                void* param1, void* param2 = nullptr,
+                                                int core_id = -1);
 #else
 /* ── 裸机专用 C++ 重载: osal_task_create (抢占式, 定义见 osal_task.cpp) ──
  * 参数语义 (对齐 OSAL C API 的 priority 位置):
@@ -119,22 +124,25 @@ etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack
  *   entry     void(*)(x_task*) 回调, 与 xtask 一致
  *   param1    忽略 (抢占式任务池内部自分配)
  * 入口 void(*)(x_task*) 与 xtask 回调一致. */
-etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, void (*entry)(x_task*),void* param1, void* param2=nullptr, int core_id=-1);
+etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,
+                                                uint32_t priority, void (*entry)(x_task*),
+                                                void* param1, void* param2 = nullptr,
+                                                int core_id = -1);
 #endif /* CONFIG_XTASK_PREEMPT */
 #endif /* CONFIG_OSAL_NULL_TASK_CPP */
 #endif /* __cplusplus */
 
 #ifdef CONFIG_XTASK_COROUTINE
-    /**
-     * @brief 协程让出式延时 (osal 命名宏别名)
-     * @param task 任务 TCB 指针 (x_task*)
-     * @param ms 延时毫秒数
-     * @note 仅任务回调内可用, 本质为 PT_DELAY 宏转发: 挂起当前任务到到期时刻,
-     *       其他任务继续跑, 到期后从让出点恢复。
-     * @note 必须用宏 (非函数) 才能在调用处展开 case __LINE__ 让出点;
-     *       主循环 / 非协程上下文请用 osal_delay_ms(ms) (WFI 忙等)。
-     */
-#define osal_delay_coro(task, ms)       PT_DELAY((task), (ms))
+/**
+ * @brief 协程让出式延时 (osal 命名宏别名)
+ * @param task 任务 TCB 指针 (x_task*)
+ * @param ms 延时毫秒数
+ * @note 仅任务回调内可用, 本质为 PT_DELAY 宏转发: 挂起当前任务到到期时刻,
+ *       其他任务继续跑, 到期后从让出点恢复。
+ * @note 必须用宏 (非函数) 才能在调用处展开 case __LINE__ 让出点;
+ *       主循环 / 非协程上下文请用 osal_delay_ms(ms) (WFI 忙等)。
+ */
+#define osal_delay_coro(task, ms) PT_DELAY((task), (ms))
 #endif /* CONFIG_XTASK_COROUTINE */
 
 #endif /* OSAL_NULL_H */

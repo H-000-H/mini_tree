@@ -1,23 +1,24 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file epaper_drv.c
- * @brief 电子纸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 epaper_drv.h。
- *
- * 引脚: DC/RST/BUSY 均为 GPIO（phandle: dc-gpio / reset-gpio / busy-gpio）；
- * 数据流: VFS ioctl → epaper_cmd_* → SPI transfer（vfs-spi）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file epaper_drv.c
+ *@brief 电子纸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 epaper_drv.h。
+ *   引脚: DC/RST/BUSY 均为 GPIO（phandle: dc-gpio / reset-gpio / busy-gpio）；
+ *   数据流: VFS ioctl → epaper_cmd_* → SPI transfer（vfs-spi）→ HAL
  */
-#include "display_drv.h"
+
 #include "epaper_drv.h"
-#include "epaper_regs.h"
 
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
+#include "display_drv.h"
 #include "driver.h"
 #include "dt_config_gen.h"
+#include "epaper_regs.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"
@@ -144,13 +145,15 @@ static int epaper_hw_create(struct epaper_device* dev)
         ret = device_open(dev->rst_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret = device_ioctl(dev->rst_dev, GPIO_CMD_GET_LEVEL, &dev->rst_gpio, sizeof(dev->rst_gpio), 0);
+        ret = device_ioctl(dev->rst_dev, GPIO_CMD_GET_LEVEL, &dev->rst_gpio, sizeof(dev->rst_gpio),
+                           0);
         if (ret != VFS_OK)
             return ret;
         ret = device_open(dev->busy_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret = device_ioctl(dev->busy_dev, GPIO_CMD_GET_LEVEL, &dev->busy_gpio, sizeof(dev->busy_gpio), 0);
+        ret = device_ioctl(dev->busy_dev, GPIO_CMD_GET_LEVEL, &dev->busy_gpio,
+                           sizeof(dev->busy_gpio), 0);
         if (ret != VFS_OK)
             return ret;
     }

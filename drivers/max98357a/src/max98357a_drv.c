@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file max98357a_drv.c
- * @brief MAX98357A 功放驱动实现 — SDN 经 vfs-gpio（禁止厂商 SDK）
- *
- * 静态池: s_max98357a_pool[MAX98357A_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令见 max98357a_drv.h。
- *
- * PCM 走 I2S 总线，本驱动仅控 SDN 引脚；支持挂起/恢复回调。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file max98357a_drv.c
+ *@brief MAX98357A 功放驱动实现 — SDN 经 vfs-gpio（禁止厂商 SDK）
+ *@author H-000-H
+ *@details
+ *   静态池: s_max98357a_pool[MAX98357A_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令见 max98357a_drv.h。
+ *   PCM 走 I2S 总线，本驱动仅控 SDN 引脚；支持挂起/恢复回调。
  */
+
 #include "max98357a_drv.h"
 
 #include "compiler_compat.h"

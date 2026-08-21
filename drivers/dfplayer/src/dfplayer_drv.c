@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file dfplayer_drv.c
- * @brief DFPlayer MP3 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_dfplayer_pool[DFPLAYER_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 dfplayer_drv.h，帧格式见 dfplayer_regs.h。
- *
- * 数据流: VFS ioctl → dfplayer_cmd_* → dfplayer_frame → device_write(UART) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file dfplayer_drv.c
+ *@brief DFPlayer MP3 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_dfplayer_pool[DFPLAYER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 dfplayer_drv.h，帧格式见 dfplayer_regs.h。
+ *   数据流: VFS ioctl → dfplayer_cmd_* → dfplayer_frame → device_write(UART) → HAL
  */
+
 #include "dfplayer_drv.h"
 
 #include "compiler_compat.h"
@@ -67,7 +68,8 @@ static struct dfplayer_device* dfplayer_get_drvdata(struct device* pdev)
  * @brief 向 UART 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int dfplayer_uart_wr(struct dfplayer_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int dfplayer_uart_wr(struct dfplayer_device* dev, const uint8_t* tx, size_t len,
+                            uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -77,7 +79,8 @@ static int dfplayer_uart_wr(struct dfplayer_device* dev, const uint8_t* tx, size
  * @brief 从 UART 总线读数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int dfplayer_uart_rd(struct dfplayer_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
+static int dfplayer_uart_rd(struct dfplayer_device* dev, uint8_t* rx, size_t len,
+                            uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !rx || len == 0U)
         return VFS_ERR_INVAL;
@@ -185,7 +188,8 @@ struct dfplayer_ioctl_map
 /**
  * @brief 组装并发送一帧命令（起始/版本/长度/反馈 + 参数 + 校验 + 结束）
  */
-static int dfplayer_frame(struct dfplayer_device* dev, uint8_t cmd, uint16_t param, uint32_t timeout_ms)
+static int dfplayer_frame(struct dfplayer_device* dev, uint8_t cmd, uint16_t param,
+                          uint32_t timeout_ms)
 {
     uint8_t frame[10];
     uint16_t sum;
@@ -196,7 +200,8 @@ static int dfplayer_frame(struct dfplayer_device* dev, uint8_t cmd, uint16_t par
     frame[4] = DFPLAYER_FRAME_FEEDBACK;
     frame[5] = (uint8_t)(param >> 8);
     frame[6] = (uint8_t)param;
-    sum = (uint16_t)(0xFFFF - (frame[1] + frame[2] + frame[3] + frame[4] + frame[5] + frame[6]) + 1);
+    sum =
+        (uint16_t)(0xFFFF - (frame[1] + frame[2] + frame[3] + frame[4] + frame[5] + frame[6]) + 1);
     frame[7] = (uint8_t)(sum >> 8);
     frame[8] = (uint8_t)sum;
     frame[9] = DFPLAYER_FRAME_END;
@@ -206,7 +211,8 @@ static int dfplayer_frame(struct dfplayer_device* dev, uint8_t cmd, uint16_t par
 /**
  * @brief DFPLAYER_CMD_PLAY 实现：播放指定曲目
  */
-static int dfplayer_cmd_play(struct dfplayer_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int dfplayer_cmd_play(struct dfplayer_device* dev, void* arg, size_t len,
+                             uint32_t timeout_ms)
 {
     struct dfplayer_track* a = (struct dfplayer_track*)arg;
     if (!dev->hw_ready || !a || len != sizeof(*a))

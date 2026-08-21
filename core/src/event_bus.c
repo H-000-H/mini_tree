@@ -1,13 +1,17 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * event_bus.c — 轻量事件通知总线
- *
- * 设计约束:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file event_bus.c
+ *@brief event bus 实现
+ *@author H-000-H
+ *@details
+ *   event_bus.c — 轻量事件通知总线
+ *   设计约束:
  *   - 单例, 纯 C 实现, 无全局构造函数/析构函数 (SIOF 安全)
  *   - 发布-订阅模式, 单个分派任务(FIFO 队列)
  *   - 封表后 ISR 可安全 post (遍历只读快照副本)
  *   - 回调中不得阻塞 I/O 或长时间计算
  */
+
 #include "event_bus.h"
 
 #include "compiler_compat.h"

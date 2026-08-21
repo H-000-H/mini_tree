@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * compiler_compat — 编译器兼容性抽象层
- *
- * 统一 GCC/Clang 的 __attribute__ 与内置函数差异, 功能受 Kconfig 开关控制
- * 提供 warn_unused_result、format、container_of、likely/unlikely、RAM_EXEC 等通用宏
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file compiler_compat.h
+ *@brief compiler compat 头文件
+ *@author H-000-H
+ *@details
+ *   compiler_compat — 编译器兼容性抽象层
+ *   统一 GCC/Clang 的 __attribute__ 与内置函数差异, 功能受 Kconfig 开关控制
+ *   提供 warn_unused_result、format、container_of、likely/unlikely、RAM_EXEC 等通用宏
  */
+
 #ifndef COMPILER_COMPAT_H
 #define COMPILER_COMPAT_H
 
@@ -170,7 +174,7 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void COMPAT_TRAP(void) { __builtin_trap(); 
  * @return 末尾零位个数; x 为 0 时返回 32
  */
 #if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS)
-COMPAT_STATIC_INLINE uint32_t COMPAT_CTZ(uint32_t x)/*二分查找*/
+COMPAT_STATIC_INLINE uint32_t COMPAT_CTZ(uint32_t x) /*二分查找*/
 {
     if (x == 0)
         return 32; // 0无定义，自定义返回32做异常标记
@@ -333,7 +337,7 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
     X(MAX7219, 0x35)                                                                               \
     X(PN532, 0x37)                                                                                 \
     X(DFPLAYER, 0x38)                                                                              \
-    X(DISPLAY, 0x39)                                                                                \
+    X(DISPLAY, 0x39)                                                                               \
     X(MODEM, 0x3A)
 
 /**
@@ -463,7 +467,8 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void unreachable(void) { __builtin_unreacha
 
 /* ── pre_execution 启动优先级 ──────────────────────────────────────────────
  * constructor 实际优先级 = 基数 + 100; 数值越小越先执行。
- * 依赖链: 总线/OSAL 资源池(150) → 信号量/队列池(151/152) → 驱动池(160) → 调度器(161) → 中断下半部池(170)。 */
+ * 依赖链: 总线/OSAL 资源池(150) → 信号量/队列池(151/152) → 驱动池(160) → 调度器(161) →
+ * 中断下半部池(170)。 */
 #define PRE_EXEC_PRIO_RES_POOL 150 /* 总线池 / VFS 私有池 / OSAL 互斥锁池 */
 #define PRE_EXEC_PRIO_SEM_POOL 151 /* OSAL 信号量池 / DAC 私有池 */
 #define PRE_EXEC_PRIO_QUEUE_POOL 152 /* OSAL 队列池 (osal_null) */
@@ -512,7 +517,7 @@ COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
  * @note  平台无关的 WFI 封装: Cortex-M 用 __WFI, RISCV 用 wfi;
  *        调用方需保证随后确有中断到达, 否则 CPU 睡死.
  */
-#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) || \
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) ||                    \
     defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7)
 #define COMPAT_WFI() __WFI()
 #elif defined(__riscv)
@@ -646,10 +651,7 @@ COMPAT_STATIC_INLINE void COMPAT_REG_WRITE16(uintptr_t addr, uint16_t val)
 }
 
 /** @brief 读 8 位寄存器 */
-COMPAT_STATIC_INLINE uint8_t COMPAT_REG_READ8(uintptr_t addr)
-{
-    return *(volatile uint8_t*)addr;
-}
+COMPAT_STATIC_INLINE uint8_t COMPAT_REG_READ8(uintptr_t addr) { return *(volatile uint8_t*)addr; }
 
 /** @brief 写 8 位寄存器 */
 COMPAT_STATIC_INLINE void COMPAT_REG_WRITE8(uintptr_t addr, uint8_t val)
@@ -665,7 +667,8 @@ COMPAT_STATIC_INLINE void COMPAT_REG_WRITE8(uintptr_t addr, uint8_t val)
  * @note 同一地址并发 RMW 需要调用方保护临界区 (关中断 / spinlock);
  *       需要原子 RMW 时改用 COMPAT_ATOMIC_*.
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask, uint32_t set_mask)
+COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask,
+                                              uint32_t set_mask)
 {
     uint32_t v = COMPAT_REG_READ32(addr);
     v = (v & ~clear_mask) | set_mask;

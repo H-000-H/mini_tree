@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file xpt2046_bridge.h
- * @brief XPT2046 ↔ LVGL indev 读点薄封装（不依赖 lvgl.h）
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file xpt2046_bridge.h
+ *@brief XPT2046 ↔ LVGL indev 读点薄封装（不依赖 lvgl.h）
+ *@author H-000-H
+
  */
+
 #ifndef XPT2046_BRIDGE_H
 #define XPT2046_BRIDGE_H
 

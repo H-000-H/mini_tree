@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * Production Log — 量产日志环形缓冲区实现
- *
- * 启用 CONFIG_PRODUCTION_LOG 时以 blob 形式持久化到 hal_storage, 掉电可恢复
- * ISR 中跳过持久化写 (存储可能阻塞), 仅更新内存环形缓冲
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file production_log.c
+ *@brief production log 实现
+ *@author H-000-H
+ *@details
+ *   Production Log — 量产日志环形缓冲区实现
+ *   启用 CONFIG_PRODUCTION_LOG 时以 blob 形式持久化到 hal_storage, 掉电可恢复
+ *   ISR 中跳过持久化写 (存储可能阻塞), 仅更新内存环形缓冲
  */
+
 #include "production_log.h"
 
 #include "config.h"

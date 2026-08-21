@@ -1,9 +1,12 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file max98357a_drv.h
- * @brief MAX98357A 功放 SDN 控制 — 应用层接口
- * @note open → ioctl(SET_ENABLE) → close；PCM 走 I2S 总线，本驱动仅控 SDN GPIO
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file max98357a_drv.h
+ *@brief MAX98357A 功放 SDN 控制 — 应用层接口
+ *@author H-000-H
+ *@details
+ *   @note open → ioctl(SET_ENABLE) → close；PCM 走 I2S 总线，本驱动仅控 SDN GPIO
  */
+
 #ifndef MAX98357A_DRV_H
 #define MAX98357A_DRV_H
 

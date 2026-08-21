@@ -1,5 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* Weak empty HAL stub — board overrides. */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_adc.c
+ *@brief hal adc 实现
+ *@author H-000-H
+ *@details
+ *   Weak empty HAL stub — board overrides.
+ */
+
 #include "hal_adc.h"
 
 #include "compiler_compat.h"

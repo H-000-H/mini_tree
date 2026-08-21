@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file pcf8574_drv.c
- * @brief PCF8574 GPIO 扩展芯片驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_pcf8574_pool[PCF8574_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令见 pcf8574_drv.h。
- *
- * 数据流: VFS ioctl → pcf8574_cmd_* → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file pcf8574_drv.c
+ *@brief PCF8574 GPIO 扩展芯片驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_pcf8574_pool[PCF8574_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令见 pcf8574_drv.h。
+ *   数据流: VFS ioctl → pcf8574_cmd_* → device_read/write(I2C) → HAL
  */
+
 #include "pcf8574_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct pcf8574_device* pcf8574_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int pcf8574_i2c_wr(struct pcf8574_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int pcf8574_i2c_wr(struct pcf8574_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -176,7 +178,8 @@ static int pcf8574_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*pcf8574_ioctl_fn_t)(struct pcf8574_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*pcf8574_ioctl_fn_t)(struct pcf8574_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct pcf8574_ioctl_map
 {
     pcf8574_ioctl_fn_t handler;

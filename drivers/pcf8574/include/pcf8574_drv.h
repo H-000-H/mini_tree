@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file pcf8574_drv.h
- * @brief PCF8574 GPIO 扩展芯片驱动 ioctl 命令
- *
- * 挂在 I2C 总线 client 下的 VFS 设备驱动；
- * 业务经 device_open/ioctl/close 访问。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file pcf8574_drv.h
+ *@brief PCF8574 GPIO 扩展芯片驱动 ioctl 命令
+ *@author H-000-H
+ *@details
+ *   挂在 I2C 总线 client 下的 VFS 设备驱动；
+ *   业务经 device_open/ioctl/close 访问。
  */
+
 #ifndef PCF8574_DRV_H
 #define PCF8574_DRV_H
 #include "compiler_compat.h"

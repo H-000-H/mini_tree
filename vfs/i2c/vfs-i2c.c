@@ -1,21 +1,27 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * I2C VFS 实现 : Host + Client, master/slave 分 compatible
- *
- * DTS:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-i2c.c
+ *@brief vfs-i2c 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   I2C VFS 实现 : Host + Client, master/slave 分 compatible
+ *   DTS:
  *   i2c@n (i2c-master / i2c-slave)              ← host
  *   └── i2c-*-client (heterogeneous,i2c-*-client) ← client (fops)
- *       └── sensor@addr                           ← leaf driver
- *@=========================================================================================================================*/
+ *   └── sensor@addr                           ← leaf driver
+ *   @=========================================================================================================================
+ */
+
 #define I2C_VFS_IMPL
 #include "vfs-i2c.h"
 
+#include "board_define_i2c.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_i2c.h"
 #include "i2c_bus.h"
 #include "osal.h"
 #include "status.h"

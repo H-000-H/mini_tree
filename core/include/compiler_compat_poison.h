@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * compiler_compat_poison — 禁止堆分配与 stdio 输出的 GCC poison 层
- *
- * 在标准头之后 include, 将 malloc/free/printf 等标记为毒死符号,
- * 嵌入式全栈禁止动态内存与标准 IO; 豁免宏: ALLOW_HEAP_ALLOC / ALLOW_STDIO_OUTPUT。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file compiler_compat_poison.h
+ *@brief compiler compat poison 头文件
+ *@author H-000-H
+ *@details
+ *   compiler_compat_poison — 禁止堆分配与 stdio 输出的 GCC poison 层
+ *   在标准头之后 include, 将 malloc/free/printf 等标记为毒死符号,
+ *   嵌入式全栈禁止动态内存与标准 IO; 豁免宏: ALLOW_HEAP_ALLOC / ALLOW_STDIO_OUTPUT。
  */
+
 #ifndef COMPILER_COMPAT_POISON_H
 #define COMPILER_COMPAT_POISON_H
 

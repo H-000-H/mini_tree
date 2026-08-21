@@ -1,14 +1,17 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * ADC VFS 板级配置宏 (vfs/adc) — 中间件默认值 + 板级覆盖入口
- *
- * 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
- * 字段宽度宏须与板级 DTS 属性数组实际元素数一致, 否则读取越界。
- *
- * Board config macros for ADC VFS — middleware defaults, board override
- * by editing this file or -D<NAME>=<N>. Field-width macros must match
- * the actual element counts in the board DTS property arrays.
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_define_adc.h
+ *@brief board define adc 头文件
+ *@author H-000-H
+ *@details
+ *   ADC VFS 板级配置宏 (vfs/adc) — 中间件默认值 + 板级覆盖入口
+ *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+ *   字段宽度宏须与板级 DTS 属性数组实际元素数一致, 否则读取越界。
+ *   Board config macros for ADC VFS — middleware defaults, board override
+ *   by editing this file or -D<NAME>=<N>. Field-width macros must match
+ *   the actual element counts in the board DTS property arrays.
  */
+
 #ifndef BOARD_DEFINE_ADC_H
 #define BOARD_DEFINE_ADC_H
 

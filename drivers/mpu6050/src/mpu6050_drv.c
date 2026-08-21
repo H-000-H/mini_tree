@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file mpu6050_drv.c
- * @brief MPU6050 六轴 IMU 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 mpu6050_drv.h。
- *
- * 数据流: VFS ioctl → mpu6050_cmd_read → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file mpu6050_drv.c
+ *@brief MPU6050 六轴 IMU 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 mpu6050_drv.h。
+ *   数据流: VFS ioctl → mpu6050_cmd_read → device_read/write(I2C) → HAL
  */
+
 #include "mpu6050_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct mpu6050_device* mpu6050_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int mpu6050_i2c_wr(struct mpu6050_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int mpu6050_i2c_wr(struct mpu6050_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -176,7 +178,8 @@ static int mpu6050_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct mpu6050_ioctl_map
 {
     mpu6050_ioctl_fn_t handler;

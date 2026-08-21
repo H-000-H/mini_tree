@@ -1,14 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file vl53l0x_drv.c
- * @brief VL53L0X 激光测距传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_vl53l0x_pool[VL53L0X_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 vl53l0x_drv.h。
- *
- * 数据流: VFS ioctl → vl53l0x_cmd_read → device_read/write(I2C) → HAL
- * 注: 采用 Pololu/ST 精简 dataInit 片段（非完整 ST API 校准）
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vl53l0x_drv.c
+ *@brief VL53L0X 激光测距传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_vl53l0x_pool[VL53L0X_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 vl53l0x_drv.h。
+ *   数据流: VFS ioctl → vl53l0x_cmd_read → device_read/write(I2C) → HAL
+ *   注: 采用 Pololu/ST 精简 dataInit 片段（非完整 ST API 校准）
  */
+
 #include "vl53l0x_drv.h"
 
 #include "compiler_compat.h"
@@ -66,7 +67,8 @@ static struct vl53l0x_device* vl53l0x_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int vl53l0x_i2c_wr(struct vl53l0x_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int vl53l0x_i2c_wr(struct vl53l0x_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -264,7 +266,8 @@ static int vl53l0x_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*vl53l0x_ioctl_fn_t)(struct vl53l0x_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*vl53l0x_ioctl_fn_t)(struct vl53l0x_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct vl53l0x_ioctl_map
 {
     vl53l0x_ioctl_fn_t handler;

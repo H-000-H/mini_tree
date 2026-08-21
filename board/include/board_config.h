@@ -1,4 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_config.h
+ *@brief board config 头文件
+ *@author H-000-H
+
+ */
+
 #ifndef BOARD_CONFIG_H
 #define BOARD_CONFIG_H
 

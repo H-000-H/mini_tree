@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file ds18b20_regs.h
- * @brief DS18B20 单总线 ROM/功能命令与温度换算常量
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file ds18b20_regs.h
+ *@brief DS18B20 单总线 ROM/功能命令与温度换算常量
+ *@author H-000-H
+
  */
+
 #ifndef DS18B20_REGS_H
 #define DS18B20_REGS_H
 

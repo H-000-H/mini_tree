@@ -1,12 +1,15 @@
 /**
- * @license: SPDX-License-Identifier: Apache-2.0
- * @file: buffer.h
- * @brief: 环形FIFO SPSC无锁缓冲区实现
- * @note: 使用编译器原生对齐标签替代硬编码 Padding。
- * @note: 针对主流嵌入式核心（Cortex-M7/A、ESP32双核等），Cache Line 一般为 32 或 64
- * 字节，这里强制对齐 64 字节。
- * @warning: 本文件不允许引入 mini_tree 的其他文件。且允许不遵守 VFS 的警告规则。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file buffer.h
+ *@brief buffer 头文件
+ *@author H-000-H
+ *@details
+ *   @note: 使用编译器原生对齐标签替代硬编码 Padding。
+ *   @note: 针对主流嵌入式核心（Cortex-M7/A、ESP32双核等），Cache Line 一般为 32 或 64
+ *   字节，这里强制对齐 64 字节。
+ *   @warning: 本文件不允许引入 mini_tree 的其他文件。且允许不遵守 VFS 的警告规则。
  */
+
 #ifndef BUFFER_H
 #define BUFFER_H
 

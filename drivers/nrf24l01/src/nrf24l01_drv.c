@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file nrf24l01_drv.c
- * @brief NRF24L01 2.4G 无线驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_nrf24l01_pool[NRF24L01_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 nrf24l01_drv.h，操作码定义见 nrf24l01_regs.h。
- *
- * 数据流: VFS ioctl → nrf24l01_cmd_* → SPI transfer（vfs-spi）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file nrf24l01_drv.c
+ *@brief NRF24L01 2.4G 无线驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_nrf24l01_pool[NRF24L01_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 nrf24l01_drv.h，操作码定义见 nrf24l01_regs.h。
+ *   数据流: VFS ioctl → nrf24l01_cmd_* → SPI transfer（vfs-spi）→ HAL
  */
+
 #include "nrf24l01_drv.h"
 
 #include "compiler_compat.h"
@@ -67,8 +68,8 @@ static struct nrf24l01_device* nrf24l01_get_drvdata(struct device* pdev)
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int nrf24l01_spi_xfer(struct nrf24l01_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                             uint32_t timeout_ms)
+static int nrf24l01_spi_xfer(struct nrf24l01_device* dev, const uint8_t* tx, uint8_t* rx,
+                             size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -184,7 +185,8 @@ struct nrf24l01_ioctl_map
 /**
  * @brief NRF24L01_CMD_WRITE_REG 实现：写寄存器
  */
-static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len,
+                             uint32_t timeout_ms)
 {
     struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
     uint8_t tx[2];
@@ -198,7 +200,8 @@ static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len,
 /**
  * @brief NRF24L01_CMD_READ_REG 实现：读寄存器并回填 val
  */
-static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len,
+                             uint32_t timeout_ms)
 {
     struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
     uint8_t tx[2] = {0};
@@ -217,7 +220,8 @@ static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len,
 /**
  * @brief NRF24L01_CMD_SEND 实现：写 TX 载荷（超长截断）
  */
-static int nrf24l01_cmd_send(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int nrf24l01_cmd_send(struct nrf24l01_device* dev, void* arg, size_t len,
+                             uint32_t timeout_ms)
 {
     struct nrf24l01_payload* p = (struct nrf24l01_payload*)arg;
     uint8_t tx[NRF24L01_MAX_PAYLOAD + 1U];

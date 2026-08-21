@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file ds18b20_drv.c
- * @brief DS18B20 单总线温度传感器驱动实现 — 挂在 GPIO 单总线（OW）下的 VFS 设备驱动
- *
- * 静态池: s_ds18b20_pool[DS18B20_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令见 ds18b20_drv.h，单总线命令定义见 ds18b20_regs.h。
- *
- * 数据流: VFS ioctl → ds18b20_cmd_temp → GPIO 位时序（vfs_gpio_*）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file ds18b20_drv.c
+ *@brief DS18B20 单总线温度传感器驱动实现 — 挂在 GPIO 单总线（OW）下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_ds18b20_pool[DS18B20_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令见 ds18b20_drv.h，单总线命令定义见 ds18b20_regs.h。
+ *   数据流: VFS ioctl → ds18b20_cmd_temp → GPIO 位时序（vfs_gpio_*）→ HAL
  */
+
 #include "ds18b20_drv.h"
 
 #include "compiler_compat.h"
@@ -177,7 +178,8 @@ static int ds18b20_hw_create(struct ds18b20_device* dev)
         int ret = device_open(dev->data_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret = device_ioctl(dev->data_dev, GPIO_CMD_GET_LEVEL, &dev->data_gpio, sizeof(dev->data_gpio), 0);
+        ret = device_ioctl(dev->data_dev, GPIO_CMD_GET_LEVEL, &dev->data_gpio,
+                           sizeof(dev->data_gpio), 0);
         if (ret != VFS_OK)
             return ret;
     }
@@ -259,7 +261,8 @@ static int ds18b20_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct ds18b20_ioctl_map
 {
     ds18b20_ioctl_fn_t handler;

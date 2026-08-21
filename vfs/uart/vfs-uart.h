@@ -1,19 +1,23 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * UART VFS — UART 总线子系统 VFS 层
- *
- * 架构位置: [VFS Layer (本文件)] → Bus Layer → HAL Layer
- * 职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 bus 层。
- * 隔离: 本文件定义 UART_VFS_IMPL 可调 uart_bus API; 其他文件包含本头时 uart_bus 符号被 #pragma GCC
- * poison。
- *
- * Driver 注册:
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-uart.h
+ *@brief vfs-uart 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   UART VFS — UART 总线子系统 VFS 层
+ *   架构位置: [VFS Layer (本文件)] → Bus Layer → HAL Layer
+ *   职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 bus 层。
+ *   隔离: 本文件定义 UART_VFS_IMPL 可调 uart_bus API; 其他文件包含本头时 uart_bus 符号被 #pragma GCC
+ *   poison。
+ *   Driver 注册:
  *   - vfs_uart_priv: "uart" (host)
  *   - uart_vfs:      "uart-client" (client)
- *
- * @see bus/uart/uart_bus.h  bus 层接口
- * @see bus/bus.h           通用总线框架
- *@=========================================================================================================================*/
+ *   @see bus/uart/uart_bus.h  bus 层接口
+ *   @see bus/bus.h           通用总线框架
+ *   @=========================================================================================================================
+ */
+
 #ifndef UART_VFS_H
 #define UART_VFS_H
 

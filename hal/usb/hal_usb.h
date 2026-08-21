@@ -1,11 +1,14 @@
 /**
- * @license: SPDX-License-Identifier: Apache-2.0
- * @file: hal_usb.h
- * @brief: USB HAL — OTG 板级基建与传输路径选择
- * @note 本层只做 RCC / GPIO AF / NVIC; 协议与端点由 TinyUSB DWC2 DCD 负责。
- * @note 不含 Cube PCD/USBD。OTG 使用控制器内建 DMA (DWC2), 无 DMA1/DMA2 stream。
- * @note DTSI 属性直投; dma-enable + xfer_mode 运行时决定 AUTO/POLL/DMA。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_usb.h
+ *@brief hal usb 头文件
+ *@author H-000-H
+ *@details
+ *   @note 本层只做 RCC / GPIO AF / NVIC; 协议与端点由 TinyUSB DWC2 DCD 负责。
+ *   @note 不含 Cube PCD/USBD。OTG 使用控制器内建 DMA (DWC2), 无 DMA1/DMA2 stream。
+ *   @note DTSI 属性直投; dma-enable + xfer_mode 运行时决定 AUTO/POLL/DMA。
  */
+
 #ifndef HAL_USB_H
 #define HAL_USB_H
 

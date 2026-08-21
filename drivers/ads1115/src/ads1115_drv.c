@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file ads1115_drv.c
- * @brief ADS1115 16bit ADC 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_ads1115_pool[ADS1115_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 ads1115_drv.h。
- *
- * 数据流: VFS ioctl → ads1115_cmd_read → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file ads1115_drv.c
+ *@brief ADS1115 16bit ADC 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_ads1115_pool[ADS1115_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 ads1115_drv.h。
+ *   数据流: VFS ioctl → ads1115_cmd_read → device_read/write(I2C) → HAL
  */
+
 #include "ads1115_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct ads1115_device* ads1115_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ads1115_i2c_wr(struct ads1115_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int ads1115_i2c_wr(struct ads1115_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -176,7 +178,8 @@ static int ads1115_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ads1115_ioctl_fn_t)(struct ads1115_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ads1115_ioctl_fn_t)(struct ads1115_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct ads1115_ioctl_map
 {
     ads1115_ioctl_fn_t handler;

@@ -1,19 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        vfs-gpio.c
- * @brief       GPIO VFS 实现 — open/close 引用计数 + ioctl 电平读写/翻转
- * @note        DTS 解析 gpio-port/pin/clk/mode/pull 等; 两层模型无 bus
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-gpio.c
+ *@brief GPIO VFS 实现 — open/close 引用计数 + ioctl 电平读写/翻转
+ *@author H-000-H
+ *@details
+ *   @note        DTS 解析 gpio-port/pin/clk/mode/pull 等; 两层模型无 bus
  */
+
 #define VFS_GPIO_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */
 #include "vfs-gpio.h"
 
 #include "board_config.h"
+#include "board_define_gpio.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_gpio.h"
 #include "hal_gpio.h"
 #include "interrupt.h"
 #include "osal.h"

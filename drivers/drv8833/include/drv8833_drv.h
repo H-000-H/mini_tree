@@ -1,11 +1,13 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file drv8833_drv.h
- * @brief DRV8833 双路电机驱动 ioctl 命令与参数结构
- *
- * 挂在 GPIO 或 TIM（PWM）下的 VFS 设备驱动；
- * 业务经 device_open/ioctl/close 访问。
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file drv8833_drv.h
+ *@brief DRV8833 双路电机驱动 ioctl 命令与参数结构
+ *@author H-000-H
+ *@details
+ *   挂在 GPIO 或 TIM（PWM）下的 VFS 设备驱动；
+ *   业务经 device_open/ioctl/close 访问。
  */
+
 #ifndef DRV8833_DRV_H
 #define DRV8833_DRV_H
 #include "compiler_compat.h"

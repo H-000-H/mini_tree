@@ -1,18 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        hal_adc.h
- * @brief       通用 ADC 硬件直投层(HAL)接口定义和 ADC 用法扩展说明
- * @note        和 ADC 相关的配置和操作都放在 hal_adc.h 和 hal_adc.c 中
- * @details     本文件定义了 ADC 在热路径(Hot-Path)下的高效率配置接口。
- * @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
- * @note        由于 ADC 是快速热路径外设所以 ADC 的初始化与配置应该尽量在硬件直投层完成
- * @note        vfs 层只负责拉取 ADC 的配置并传递给 HAL 层并且对 hal 层提供的 api 进行内联封装
- * @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
- * @note        获取参数不能直接返回，必须通过指针参数传递
- * @note
- * adc不走函数指针init或者close,因为adc和tim不一样，adc的模式没有tim那么多，所以不需要像tim那样走函数指针
- * @note        平台相关的不允许出现在 hal.h 中，必须出现在 hal.c 中
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_adc.h
+ *@brief 通用 ADC 硬件直投层(HAL)接口定义和 ADC 用法扩展说明
+ *@author H-000-H
+ *@details
+ *   @note        和 ADC 相关的配置和操作都放在 hal_adc.h 和 hal_adc.c 中
+ *   @details     本文件定义了 ADC 在热路径(Hot-Path)下的高效率配置接口。
+ *   @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ *   @note        由于 ADC 是快速热路径外设所以 ADC 的初始化与配置应该尽量在硬件直投层完成
+ *   @note        vfs 层只负责拉取 ADC 的配置并传递给 HAL 层并且对 hal 层提供的 api 进行内联封装
+ *   @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
+ *   @note        获取参数不能直接返回，必须通过指针参数传递
+ *   @note
+ *   adc不走函数指针init或者close,因为adc和tim不一样，adc的模式没有tim那么多，所以不需要像tim那样走函数指针
+ *   @note        平台相关的不允许出现在 hal.h 中，必须出现在 hal.c 中
  */
+
 #ifndef HAL_ADC_H
 #define HAL_ADC_H
 

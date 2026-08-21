@@ -1,19 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        vfs-i2s.c
- * @brief       I2S VFS — Host/Client + sync DMA/poll + circular + HT/TC/async ioctl
- * @note        虚拟中断在 i2s_bus_open 注册 (对齐 ADC probe), 不进 ioctl
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-i2s.c
+ *@brief I2S VFS — Host/Client + sync DMA/poll + circular + HT/TC/async ioctl
+ *@author H-000-H
+ *@details
+ *   @note        虚拟中断在 i2s_bus_open 注册 (对齐 ADC probe), 不进 ioctl
  */
+
 #define I2S_VFS_IMPL
 #include "vfs-i2s.h"
 
+#include "board_define_i2s.h"
 #include "buffer.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_i2s.h"
 #include "i2s_bus.h"
 #include "osal.h"
 #include "status.h"

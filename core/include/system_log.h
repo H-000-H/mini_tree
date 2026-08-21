@@ -1,9 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * system_log — 系统日志宏统一入口 (OSAL / ESP-IDF / RT-Thread 三后端)
- *
- * 根据 Kconfig CONFIG_SYS_LOG_USE_* 选择后端, 提供 SYS_LOGI/W/E 三级宏。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file system_log.h
+ *@brief system log 头文件
+ *@author H-000-H
+ *@details
+ *   system_log — 系统日志宏统一入口 (OSAL / ESP-IDF / RT-Thread 三后端)
+ *   根据 Kconfig CONFIG_SYS_LOG_USE_* 选择后端, 提供 SYS_LOGI/W/E 三级宏。
  */
+
 #ifndef SYSTEM_LOG_H
 #define SYSTEM_LOG_H
 

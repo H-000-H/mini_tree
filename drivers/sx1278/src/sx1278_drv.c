@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file sx1278_drv.c
- * @brief SX1278 LoRa 模块驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_sx1278_pool[SX1278_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 sx1278_drv.h。
- *
- * 数据流: VFS ioctl → sx1278_cmd_* → SPI transfer（vfs-spi）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file sx1278_drv.c
+ *@brief SX1278 LoRa 模块驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_sx1278_pool[SX1278_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 sx1278_drv.h。
+ *   数据流: VFS ioctl → sx1278_cmd_* → SPI transfer（vfs-spi）→ HAL
  */
+
 #include "sx1278_drv.h"
 
 #include "compiler_compat.h"

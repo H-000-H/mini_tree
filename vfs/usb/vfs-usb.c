@@ -1,20 +1,26 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * USB VFS 实现 — host + CDC/ECM/HID clients
- *
- * Host: 解析 DTSI → usb_bus_host_init
- * Client: 注册 fops; write/read 带 xfer_mode; ioctl 切换 AUTO/POLL/DMA
- *@=========================================================================================================================*/
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-usb.c
+ *@brief vfs-usb 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   USB VFS 实现 — host + CDC/ECM/HID clients
+ *   Host: 解析 DTSI → usb_bus_host_init
+ *   Client: 注册 fops; write/read 带 xfer_mode; ioctl 切换 AUTO/POLL/DMA
+ *   @=========================================================================================================================
+ */
+
 #define USB_VFS_IMPL
 #define USB_BUS_IMPL
 #include "vfs-usb.h"
 
+#include "board_define_usb.h"
 #include "compiler_compat.h"
 #include "dev_lifecycle.h"
 #include "device.h"
 #include "driver.h"
 #include "dt_config_gen.h"
-#include "board_define_usb.h"
 #include "osal.h"
 #include "status.h"
 #include "system_log.h"

@@ -1,4 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file pppif.h
+ *@brief pppif 头文件
+ *@author H-000-H
+ */
+
 #ifndef PPPIF_H
 #define PPPIF_H
 #ifdef __cplusplus

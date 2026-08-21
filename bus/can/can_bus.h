@@ -1,17 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * CAN BUS — CAN 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL; hal_can_bus_host 嵌入 can_bus_host (无 vtable)
- * 职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file can_bus.h
+ *@brief can bus 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   CAN BUS — CAN 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL; hal_can_bus_host 嵌入 can_bus_host (无 vtable)
+ *   职责: host/client 池 + atomic ref_count + controller_ops (host 生命周期) +
  *   client I/O (open/close/transmit/receive/filter)
- *
- * 隔离: 未定义 CAN_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_can_*;
+ *   隔离: 未定义 CAN_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_can_*;
  *   允许 config 类型供 VFS 填充, 强制走 can_bus API
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
- * @see bus/bus.h  通用总线框架
- *@=========================================================================================================================*/
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
+ *   @see bus/bus.h  通用总线框架
+ *   @=========================================================================================================================
+ */
+
 #ifndef CAN_BUS_H
 #define CAN_BUS_H
 

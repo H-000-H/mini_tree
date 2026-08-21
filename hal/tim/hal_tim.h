@@ -1,18 +1,21 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file        hal_tim.h
- * @brief       通用定时器硬件直投层(HAL)接口定义和tim用法扩展说明
- * @note
- * 和定时器相关的配置和操作都放在hal_tim.h和hal_tim.c中,不区分PWM,输入捕获,输出比较,编码器,hall传感器
- * @note        不同模式是需要你去dtsi中自己去选择不同的模式,hal只是提供一个统一的接口让你去使用
- * @details     本文件定义了定时器在热路径(Hot-Path)下的高效率配置接口。
- * @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
- * @note        由于TIM是快速热路径外设所以TIM的初始化与配置应该尽量在硬件直投层完成
- * @note        vfs  层只负责拉取TIM的配置并传递给HAL层并且对hal层提供的api进行内联封装
- * @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
- * @note        获取参数不能直接返回，必须通过指针参数传递
- * @note        平台相关的不允许出现在hal.h中，必须出现在hal.c中
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_tim.h
+ *@brief 通用定时器硬件直投层(HAL)接口定义和tim用法扩展说明
+ *@author H-000-H
+ *@details
+ *   @note
+ *   和定时器相关的配置和操作都放在hal_tim.h和hal_tim.c中,不区分PWM,输入捕获,输出比较,编码器,hall传感器
+ *   @note        不同模式是需要你去dtsi中自己去选择不同的模式,hal只是提供一个统一的接口让你去使用
+ *   @details     本文件定义了定时器在热路径(Hot-Path)下的高效率配置接口。
+ *   @note        所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
+ *   @note        由于TIM是快速热路径外设所以TIM的初始化与配置应该尽量在硬件直投层完成
+ *   @note        vfs  层只负责拉取TIM的配置并传递给HAL层并且对hal层提供的api进行内联封装
+ *   @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
+ *   @note        获取参数不能直接返回，必须通过指针参数传递
+ *   @note        平台相关的不允许出现在hal.h中，必须出现在hal.c中
  */
+
 #ifndef HAL_TIM_H
 #define HAL_TIM_H
 

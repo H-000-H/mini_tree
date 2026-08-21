@@ -1,8 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * USB VFS 板级配置宏 (vfs/usb) — 中间件默认值 + 板级覆盖入口
- * 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_define_usb.h
+ *@brief board define usb 头文件
+ *@author H-000-H
+ *@details
+ *   USB VFS 板级配置宏 (vfs/usb) — 中间件默认值 + 板级覆盖入口
+ *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
  */
+
 #ifndef BOARD_DEFINE_USB_H
 #define BOARD_DEFINE_USB_H
 
@@ -25,8 +30,8 @@
 #define DTC_GEN_COUNT_HETEROGENEOUS_USB_HID 1
 #endif
 #ifndef USB_VFS_CLIENT_COUNT
-#define USB_VFS_CLIENT_COUNT \
-    (DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ACM + DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ECM + \
+#define USB_VFS_CLIENT_COUNT                                                                       \
+    (DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ACM + DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ECM +           \
      DTC_GEN_COUNT_HETEROGENEOUS_USB_HID)
 #endif
 

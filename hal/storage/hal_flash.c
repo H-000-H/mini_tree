@@ -1,4 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file hal_flash.c
+ *@brief hal flash 实现
+ *@author H-000-H
+
+ */
+
 #include "hal_flash.h"
 
 #include "compiler_compat.h"

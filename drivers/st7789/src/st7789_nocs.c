@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file st7789_nocs.c
- * @brief ST7789 无 CS 驱动入口 — 父 SPI client cs-pin = -1（软件不驱动片选）
- * @note compatible: sitronix,st7789-nocs
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file st7789_nocs.c
+ *@brief ST7789 无 CS 驱动入口 — 父 SPI client cs-pin = -1（软件不驱动片选）
+ *@author H-000-H
+ *@details
+ *   @note compatible: sitronix,st7789-nocs
  */
+
 #include "driver.h"
 #include "st7789_regs.h"
 

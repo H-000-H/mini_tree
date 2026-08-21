@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file bh1750_drv.c
- * @brief BH1750 光照传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_bh1750_pool[BH1750_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令见 bh1750_drv.h。
- *
- * 数据流: VFS ioctl → bh1750_cmd_lux → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file bh1750_drv.c
+ *@brief BH1750 光照传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_bh1750_pool[BH1750_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令见 bh1750_drv.h。
+ *   数据流: VFS ioctl → bh1750_cmd_lux → device_read/write(I2C) → HAL
  */
+
 #include "bh1750_drv.h"
 
 #include "compiler_compat.h"
@@ -65,7 +66,8 @@ static struct bh1750_device* bh1750_get_drvdata(struct device* pdev)
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int bh1750_i2c_wr(struct bh1750_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int bh1750_i2c_wr(struct bh1750_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -192,7 +194,8 @@ static int bh1750_cmd_lux(struct bh1750_device* dev, void* arg, size_t len, uint
     int* lux = (int*)arg;
     if (!dev->hw_ready || !lux || len != sizeof(int))
         return VFS_ERR_INVAL;
-    if (bh1750_i2c_wr(dev, &on, 1, timeout_ms) != VFS_OK || bh1750_i2c_wr(dev, &cont, 1, timeout_ms) != VFS_OK)
+    if (bh1750_i2c_wr(dev, &on, 1, timeout_ms) != VFS_OK ||
+        bh1750_i2c_wr(dev, &cont, 1, timeout_ms) != VFS_OK)
         return VFS_ERR_IO;
     osal_delay_ms(120);
     if (bh1750_i2c_rd(dev, raw, 2, timeout_ms) != VFS_OK)

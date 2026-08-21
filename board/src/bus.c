@@ -1,13 +1,18 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * BUS CORE 实现 — 总线子系统通用框架
- *
- * 静态表: s_controllers[DEV_ID_COUNT] (按 device_id 索引) + s_controller_used[] 位图
- * 查找: device_get_name → board_dev_find → device_id → s_controllers[id]
- *
- * 线程安全: 本层无锁 (写入由上层 probe/remove 序列化); ref_count 在 bus_xxx 层用
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file bus.c
+ *@brief bus 实现
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   BUS CORE 实现 — 总线子系统通用框架
+ *   静态表: s_controllers[DEV_ID_COUNT] (按 device_id 索引) + s_controller_used[] 位图
+ *   查找: device_get_name → board_dev_find → device_id → s_controllers[id]
+ *   线程安全: 本层无锁 (写入由上层 probe/remove 序列化); ref_count 在 bus_xxx 层用
  *   atomic_int 保护; 并发 client_register 需在 bus_xxx 层加 mutex
- *@=========================================================================================================================*/
+ *   @=========================================================================================================================
+ */
+
 #include "bus.h"
 
 #include "board_devtable.h"

@@ -1,16 +1,20 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * IWDG VFS — 独立看门狗 VFS 层
- *
- * 架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
- * 职责: file_operations + dev_lifecycle + DTS timeout-ms; open 首次启动 IWDG, ioctl 喂狗/改超时。
- * 隔离: 定义 IWDG_VFS_IMPL 可调 hal_iwdg_*; 其他文件包含本头时 hal_iwdg_* 被 #pragma GCC poison。
- *
- * Driver 注册: vfs_iwdg / "iwdg"
- * 约束: IWDG 一旦启动硬件不可真正关闭; close 仅释放 lifecycle。
- *
- * @see hal/iwdg/hal_iwdg.h
- *@=========================================================================================================================*/
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-iwdg.h
+ *@brief vfs-iwdg 头文件
+ *@author H-000-H
+ *@details
+ *   @=========================================================================================================================*
+ *   IWDG VFS — 独立看门狗 VFS 层
+ *   架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
+ *   职责: file_operations + dev_lifecycle + DTS timeout-ms; open 首次启动 IWDG, ioctl 喂狗/改超时。
+ *   隔离: 定义 IWDG_VFS_IMPL 可调 hal_iwdg_*; 其他文件包含本头时 hal_iwdg_* 被 #pragma GCC poison。
+ *   Driver 注册: vfs_iwdg / "iwdg"
+ *   约束: IWDG 一旦启动硬件不可真正关闭; close 仅释放 lifecycle。
+ *   @see hal/iwdg/hal_iwdg.h
+ *   @=========================================================================================================================
+ */
+
 #ifndef VFS_IWDG_H
 #define VFS_IWDG_H
 #include "compiler_compat.h"

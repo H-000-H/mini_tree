@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file max7219_drv.c
- * @brief MAX7219 LED 点阵驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_max7219_pool[MAX7219_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与参数结构见 max7219_drv.h，寄存器定义见 max7219_regs.h。
- *
- * 数据流: VFS ioctl → max7219_cmd_* → SPI transfer（vfs-spi）→ HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file max7219_drv.c
+ *@brief MAX7219 LED 点阵驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_max7219_pool[MAX7219_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与参数结构见 max7219_drv.h，寄存器定义见 max7219_regs.h。
+ *   数据流: VFS ioctl → max7219_cmd_* → SPI transfer（vfs-spi）→ HAL
  */
+
 #include "max7219_drv.h"
 
 #include "compiler_compat.h"
@@ -172,7 +173,8 @@ static int max7219_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*max7219_ioctl_fn_t)(struct max7219_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*max7219_ioctl_fn_t)(struct max7219_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct max7219_ioctl_map
 {
     max7219_ioctl_fn_t handler;
@@ -242,7 +244,8 @@ static int max7219_cmd_clear(struct max7219_device* dev, void* arg, size_t len, 
 /**
  * @brief MAX7219_CMD_FLUSH_FB 实现：整帧逐位写入
  */
-static int max7219_cmd_flush_fb(struct max7219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int max7219_cmd_flush_fb(struct max7219_device* dev, void* arg, size_t len,
+                                uint32_t timeout_ms)
 {
     struct max7219_fb* a = (struct max7219_fb*)arg;
     int i;

@@ -1,7 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * system_wdt (C) — IWDG 喂狗与栈水位监控
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file system_wdt.c
+ *@brief system wdt 实现
+ *@author H-000-H
+ *@details
+ *   system_wdt (C) — IWDG 喂狗与栈水位监控
  */
+
 #include "system_wdt.h"
 
 #include "board_config.h"
