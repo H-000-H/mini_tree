@@ -3,6 +3,5 @@
  *@file usbethif.c
  *@brief usbethif 实现
  *@author H-000-H
-
  */
 
