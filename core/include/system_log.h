@@ -14,8 +14,19 @@
 /* Kconfig 生成的配置 — 见 tools/genconfig.py */
 #include "config.h"
 
-#if defined(CONFIG_SYS_LOG_USE_OSAL)
-#include "osal.h"
+#ifndef OSAL_LOG_LEVEL_T_DEFINED
+#define OSAL_LOG_LEVEL_T_DEFINED
+typedef enum
+{
+    OSAL_LOG_ERROR = 0,
+    OSAL_LOG_WARN,
+    OSAL_LOG_INFO,
+    OSAL_LOG_DEBUG,
+} osal_log_level_t;
+#endif
+
+#if defined(CONFIG_SYS_LOG_USE_OSAL) || defined(CONFIG_SYS_LOG_USE_PRINTF)
+void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...);
 #define SYS_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
 #define SYS_LOGW(tag, fmt, ...) osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__)
 #define SYS_LOGE(tag, fmt, ...) osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__)
@@ -25,17 +36,17 @@
 #define SYS_LOGI ESP_LOGI
 #define SYS_LOGW ESP_LOGW
 #define SYS_LOGE ESP_LOGE
-
-#elif defined(CONFIG_SYS_LOG_USE_PRINTF)
-#include "osal.h"
-#define SYS_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
-#define SYS_LOGW(tag, fmt, ...) osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__)
-#define SYS_LOGE(tag, fmt, ...) osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__)
+#define DRV_LOGE ESP_LOGE
+#define DRV_LOGW ESP_LOGW
+#define DRV_LOGI ESP_LOGI
+#define DRV_LOGD ESP_LOGD
+#define DRV_LOGV ESP_LOGD
 
 #else
 #error "SYS_LOG backend not configured — choose one in Kconfig"
 #endif
 
+#if defined(CONFIG_SYS_LOG_USE_OSAL) || defined(CONFIG_SYS_LOG_USE_PRINTF)
 /* ── 驱动日志宏 (DRV_LOG) ──
  * 原位于 osal.h, 提升至 middleware 层以消除层级倒置.
  * 依赖 production_log 的变体 (LOGE/LOGW) 推送至黑匣子环形缓冲区.
@@ -57,5 +68,6 @@
 #define DRV_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
 #define DRV_LOGD(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)
 #define DRV_LOGV(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)
+#endif
 
 #endif /* SYSTEM_LOG_H */

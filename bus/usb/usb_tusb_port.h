@@ -27,7 +27,7 @@ extern "C"
 
     /* TinyUSB 粘合：协议栈入口（tusb_init / tud_task / tud_int_handler） */
     bool usb_tusb_init(uint8_t rhport);
-    void usb_tusb_task(void);
+    void usb_tusb_task(void);/*必须实现的*/
     void usb_tusb_int_handler(uint8_t rhport);
 
     /* CDC ACM 数据通路 */

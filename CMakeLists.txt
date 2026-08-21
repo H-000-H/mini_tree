@@ -267,6 +267,7 @@ set(DRIVER_SRCS
 
 if(MINI_TREE_USB)
     list(APPEND DRIVER_SRCS "bus/usb/usb_bus.c")
+    list(APPEND DRIVER_SRCS "bus/usb/usb_net_cb.c")
 endif()
 
 set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
@@ -550,6 +551,12 @@ target_compile_options(mini_tree PRIVATE -Wno-unused-value)
 mini_tree_link_etl(mini_tree)
 add_custom_target(mini_tree_gen DEPENDS "${KCONFIG_OUT}" ${GEN_SRCS} ${GEN_HDRS} "${SCRUBBER_CRC_HDR}")
 add_dependencies(mini_tree mini_tree_gen)
+
+# TinyUSB: 仅 USB 使能时链接。usb_net_cb.c / usb_bus.c 需要 tusb.h 的
+# include 路径 (lib/tinyusb/src), 且 TINYUSB_OS 与 OSAL 联动 (Kconfig select)。
+if(MINI_TREE_USB)
+    mini_tree_link_tinyusb(mini_tree)
+endif()
 
 # lwIP 移植层 (net/) 是否编入, 由 Kconfig 总开关 CONFIG_LWIP 桥接决定。
 # 仿照仓库既有 file(STRINGS KCONFIG_DOT ...) 范式, 从 .config 提取开关,

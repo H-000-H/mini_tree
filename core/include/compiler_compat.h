@@ -818,6 +818,9 @@ COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, ui
 
 #define COMPAT_ATOMIC_INT int
 #define COMPAT_ATOMIC_UINT uint32_t
+#define COMPAT_ATOMIC_UINT16 uint16_t
+#define COMPAT_ATOMIC_UINT8 uint8_t
+#define COMPAT_ATOMIC_UINT32 uint32_t
 #define COMPAT_ATOMIC_BOOL bool
 #define COMPAT_ATOMIC_INIT(val)                                                                    \
     (val) /* 声明期初值: COMPAT_ATOMIC_INT x = COMPAT_ATOMIC_INIT(0);                         \

@@ -110,7 +110,7 @@ extern "C" {
 #define CFG_TUD_ECM_RNDIS           0
 #define CFG_TUD_NCM                 1
 #endif
-#define CFG_TUD_NET_MTU             CONFIG_USB_NET_MTU
+#define CFG_TUD_NET_MTU             CONFIG_USB_NET_MTU/*单帧以太网数据包最大缓冲区大小*/
 #else
 #define CFG_TUD_ECM_RNDIS           0
 #define CFG_TUD_NCM                 0

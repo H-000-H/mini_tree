@@ -49,6 +49,8 @@ extern "C"
      * 切换 RTOS 后端时需留意优先级数值含义的差异.
      */
 
+#ifndef OSAL_LOG_LEVEL_T_DEFINED
+#define OSAL_LOG_LEVEL_T_DEFINED
     typedef enum
     {
         OSAL_LOG_ERROR = 0,
@@ -56,6 +58,7 @@ extern "C"
         OSAL_LOG_INFO,
         OSAL_LOG_DEBUG,
     } osal_log_level_t;
+#endif
     /*===========================================================================================================================================================*/
 
     /*时间 API*/
