@@ -203,6 +203,62 @@ static int air780e_cmd_recv(struct air780e_device* dev, void* arg, size_t len, u
     a->rx_len = (size_t)ret;
     return VFS_OK;
 }
+
+/**
+ * @brief fops.write：裸字节流写（PPP 透传通道）
+ * @note PPP 适配层经 device_write() 直写字节, 绕过 AT 命令语义;
+ *       超时语义与底层 UART device_write 一致。
+ */
+static int air780e_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
+{
+    struct air780e_device* dev;
+    struct dev_lifecycle* lc;
+    int ret;
+    if (!pdev || !pdev->ops || !buffer || len == 0U)
+        return VFS_ERR_INVAL;
+    dev = air780e_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
+    if (!dev->hw_ready || !dev->uart_dev)
+        return VFS_ERR_IO;
+    lc = device_lc(pdev);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
+    ret = dev_lc_io_begin(lc);
+    if (ret != VFS_OK)
+        return ret;
+    ret = device_write(dev->uart_dev, buffer, len, timeout_ms);
+    dev_lc_io_end(lc);
+    return ret;
+}
+
+/**
+ * @brief fops.read：裸字节流读（PPP 透传通道）
+ * @note PPP 适配层经 device_read() 直读字节 (pppos_input 喂给 lwIP);
+ *       返回实际读取字节数, 无数据超时返回负错误码由调用方处理。
+ */
+static int air780e_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
+{
+    struct air780e_device* dev;
+    struct dev_lifecycle* lc;
+    int ret;
+    if (!pdev || !pdev->ops || !buffer || len == 0U)
+        return VFS_ERR_INVAL;
+    dev = air780e_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
+    if (!dev->hw_ready || !dev->uart_dev)
+        return VFS_ERR_IO;
+    lc = device_lc(pdev);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
+    ret = dev_lc_io_begin(lc);
+    if (ret != VFS_OK)
+        return ret;
+    ret = device_read(dev->uart_dev, buffer, len, timeout_ms);
+    dev_lc_io_end(lc);
+    return ret;
+}
 static const struct air780e_ioctl_map s_air780e_map[AIR780E_CMD_COUNT] = {
     [AIR780E_CMD_AT_SEND - AIR780E_CMD_BASE - 1] = {air780e_cmd_send},
     [AIR780E_CMD_AT_RECV - AIR780E_CMD_BASE - 1] = {air780e_cmd_recv},
@@ -240,6 +296,8 @@ static int air780e_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 static const struct file_operations air780e_fops = {
     .open = air780e_open,
     .close = air780e_close,
+    .read = air780e_read,
+    .write = air780e_write,
     .ioctl = air780e_ioctl,
 };
 

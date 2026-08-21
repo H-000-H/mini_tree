@@ -39,7 +39,7 @@ if(ESP_PLATFORM)
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/esp_idf.cmake")
     return()
 endif()
-
+option(MINI_TREE_LWIP "Enable lwIP TCP/IP stack (mini_tree_net port layer)" OFF)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/dep_fetch.cmake")
@@ -545,3 +545,12 @@ target_compile_options(mini_tree PRIVATE -Wno-unused-value)
 mini_tree_link_etl(mini_tree)
 add_custom_target(mini_tree_gen DEPENDS "${KCONFIG_OUT}" ${GEN_SRCS} ${GEN_HDRS} "${SCRUBBER_CRC_HDR}")
 add_dependencies(mini_tree mini_tree_gen)
+
+# lwIP 移植层 (net/) 是否编入, 由 Kconfig 总开关 CONFIG_LWIP 桥接决定。
+# 仿照仓库既有 file(STRINGS KCONFIG_DOT ...) 范式, 从 .config 提取开关,
+# 避免直接引用 Kconfig 未回流到 CMake 的 CONFIG_* 宏。
+file(STRINGS "${KCONFIG_DOT}" MINI_TREE_LWIP_ON REGEX "^CONFIG_LWIP=y$")
+if(MINI_TREE_LWIP_ON)
+    add_subdirectory(net)
+    target_link_libraries(mini_tree PUBLIC mini_tree_net)
+endif()

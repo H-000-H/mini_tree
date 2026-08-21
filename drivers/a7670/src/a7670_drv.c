@@ -208,6 +208,62 @@ static int a7670_cmd_recv(struct a7670_device* dev, void* arg, size_t len, uint3
     return VFS_OK;
 }
 
+/**
+ * @brief fops.write：裸字节流写（PPP 透传通道）
+ * @note PPP 适配层经 device_write() 直写字节, 绕过 AT 命令语义;
+ *       超时语义与底层 UART device_write 一致。
+ */
+static int a7670_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
+{
+    struct a7670_device* dev;
+    struct dev_lifecycle* lc;
+    int ret;
+    if (!pdev || !pdev->ops || !buffer || len == 0U)
+        return VFS_ERR_INVAL;
+    dev = a7670_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
+    if (!dev->hw_ready)
+        return VFS_ERR_IO;
+    lc = device_lc(pdev);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
+    ret = dev_lc_io_begin(lc);
+    if (ret != VFS_OK)
+        return ret;
+    ret = a7670_uart_wr(dev, (const uint8_t*)buffer, len, timeout_ms);
+    dev_lc_io_end(lc);
+    return ret;
+}
+
+/**
+ * @brief fops.read：裸字节流读（PPP 透传通道）
+ * @note PPP 适配层经 device_read() 直读字节 (pppos_input 喂给 lwIP);
+ *       返回实际读取字节数, 无数据超时返回负错误码由调用方处理。
+ */
+static int a7670_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
+{
+    struct a7670_device* dev;
+    struct dev_lifecycle* lc;
+    int ret;
+    if (!pdev || !pdev->ops || !buffer || len == 0U)
+        return VFS_ERR_INVAL;
+    dev = a7670_get_drvdata(pdev);
+    if (IS_ERR(dev))
+        return PTR_ERR(dev);
+    if (!dev->hw_ready)
+        return VFS_ERR_IO;
+    lc = device_lc(pdev);
+    if (IS_ERR(lc))
+        return PTR_ERR(lc);
+    ret = dev_lc_io_begin(lc);
+    if (ret != VFS_OK)
+        return ret;
+    ret = a7670_uart_rd(dev, (uint8_t*)buffer, len, timeout_ms);
+    dev_lc_io_end(lc);
+    return ret;
+}
+
 static const struct a7670_ioctl_map s_a7670_map[A7670_CMD_COUNT] = {
     [A7670_CMD_AT_SEND - A7670_CMD_BASE - 1] = {a7670_cmd_send},
     [A7670_CMD_AT_RECV - A7670_CMD_BASE - 1] = {a7670_cmd_recv},
@@ -245,6 +301,8 @@ static int a7670_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
 static const struct file_operations a7670_fops = {
     .open = a7670_open,
     .close = a7670_close,
+    .read = a7670_read,
+    .write = a7670_write,
     .ioctl = a7670_ioctl,
 };
 

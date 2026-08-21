@@ -10,7 +10,6 @@
  *   - CONFIG_XTASK_PREEMPT 已定义: 抢占式分支 (stack_size 位复用为周期, 有 priority)
  *
  * 注意: 本文件顶部不能判断 CONFIG_OSAL_NULL_TASK_CPP —— 它来自生成的 config.h,
- *       而 config.h 在 include osal_null.h (经 xtask.h→compiler_compat.h) 后才可见.
  */
 #ifdef CONFIG_OSAL_NULL
 

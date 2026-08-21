@@ -5,6 +5,12 @@
  *
  * 挂在 UART 总线 client 下的 VFS 设备驱动；
  * 业务经 device_open/ioctl/close 访问。
+ *
+ * 通道划分:
+ *   - ioctl AT_SEND/AT_RECV: AT 命令模式 (配置 APN / 拨号 ATD*99# 前置)。
+ *   - fops read/write: 裸字节流透传 (PPP 模式)。拨号后模组进入 PPP 数据态,
+ *     pppif 适配层经 device_read/device_write 直收发字节流, 喂给 lwIP pppos。
+ *     AT 态与 PPP 态共用同一 UART(由调用方状态机保证)。
  */
 #ifndef A7670_DRV_H
 #define A7670_DRV_H

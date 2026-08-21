@@ -14,8 +14,12 @@
 #error "osal_null.h requires CONFIG_OSAL_NULL"
 #endif
 
-#include "xtask.h"
 #include <stdint.h>
+#include "compiler_inline.h"  
+#include "compiler_compat.h"   
+
+/* 前置声明: osal_periodic_task_wrap 仅持有 TCB 指针, 无需完整 xtask.h */
+struct x_task;
 #ifdef __cplusplus
 extern "C"
 {
@@ -27,8 +31,8 @@ extern "C"
      */
     struct osal_periodic_task_wrap
     {
-        void (*orig_callback)(x_task*); /**< 原始的回调函数(x_task*) */
-        x_task* x_task; /**< 对应的任务控制块指针 */
+        void (*orig_callback)(struct x_task*); /**< 原始的回调函数(x_task*) */
+        struct x_task* x_task; /**< 对应的任务控制块指针 */
         uint32_t period_ms; /**< 周期时间 */
     };
     /**
@@ -88,7 +92,13 @@ extern "C"
 }
 #endif
 
-#if defined(__cplusplus) && defined(CONFIG_OSAL_NULL_TASK_CPP)
+#if defined(__cplusplus)
+/* C++ 下必须提供 x_task_handle_t / x_task* (osal_task.cpp 与 osal_task_create
+ * 重载声明依赖); 纯 C 文件 (如 lwIP sys_arch.c) 不进此段, 不会拉入
+ * xtask -> hal 整条依赖链。 */
+#include "xtask.h"
+
+#if defined(CONFIG_OSAL_NULL_TASK_CPP)
 #include "etl/optional.h"
 
 #ifndef CONFIG_XTASK_PREEMPT
@@ -110,8 +120,9 @@ etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack
  *   param1    忽略 (抢占式任务池内部自分配)
  * 入口 void(*)(x_task*) 与 xtask 回调一致. */
 etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, void (*entry)(x_task*),void* param1, void* param2=nullptr, int core_id=-1);
-#endif
-#endif
+#endif /* CONFIG_XTASK_PREEMPT */
+#endif /* CONFIG_OSAL_NULL_TASK_CPP */
+#endif /* __cplusplus */
 
 #ifdef CONFIG_XTASK_COROUTINE
     /**

@@ -844,4 +844,484 @@ config BUILD_DISASM
       Build-time artifact only; does not affect Flash/RAM usage.
 endmenu
 
+menu "lwIP (TCP/IP Stack)"
+    # lwIP 移植层配置。net/lwipopts.h 直接引用本菜单生成的 CONFIG_* 宏。
+    # 端口头文件位置约定 (lwIP 内部固定 include):
+    #   net/lwipopts.h       <- lwip/opt.h 引用 ("lwipopts.h")
+    #   net/arch/cc.h        <- lwip/arch.h 引用 ("arch/cc.h")
+    #   net/arch/sys_arch.h  <- lwip/sys.h  引用 ("arch/sys_arch.h")
+    # bool 选中 => config.h 生成 "#define CONFIG_XXX 1"; 未选中 => 宏不存在
+    #   (lwIP 中 #if XXX 将未定义视为  ert0, 即功能关闭)。
+
+    config LWIP
+        bool "Enable lwIP TCP/IP stack"
+        default y
+        help
+          lwIP 协议栈总开关。选中后 net/ 端口层 (sys_arch.c) 会被编入, 且
+          应用工程需调用 mini_tree_link_lwip() 拉取 lwIP 源码。关闭则端口层
+          与 lwIP 均不编译 (不占 Flash/RAM)。CMake 经 .config 的 CONFIG_LWIP
+          桥接决定是否 add_subdirectory(net)。
+
+    config SYS
+        bool "lwIP NO_SYS mode (bare-metal polling)"
+        default y if OSAL_NULL
+        default n
+        help
+          lwIP 的 NO_SYS 开关。选中 (=y) 时 NO_SYS=1, lwIP 以裸机轮询模式运行
+          (不依赖任何 OS 原语, 不创建 tcpip 线程; 应用在主循环轮询
+          sys_check_timeouts() 与网卡收包); 未选中时 NO_SYS=0, lwIP 创建
+          tcpip 内核线程, 依赖"可阻塞切换的真 RTOS 线程"语义。
+
+          硬约束: OSAL 后端为裸机 (OSAL_NULL + xtask 协调/抢占调度器) 时
+          必须保持 y。xtask 任务是裸机协程, osal_queue/osal_sem 在裸机后端
+          是环形缓冲 + 忙等, 没有"阻塞即切换线程"的语义——裸机下强行
+          NO_SYS=0 会导致 tcpip 线程死锁或永不推进。默认值已按后端自动
+          选择: OSAL_NULL => y, RTOS (FreeRTOS/RT-Thread/ThreadX/uC-OS) => n。
+
+          Hard constraint: keep this enabled on bare-metal (OSAL_NULL).
+          xtask tasks are bare-metal coroutines; osal_queue/osal_sem busy-wait
+          with no block-and-switch semantics, so NO_SYS=0 would deadlock the
+          tcpip thread. The default follows the OSAL backend automatically.
+
+    config SYS_LIGHTWEIGHT_PROT
+        bool "Lightweight protection (critical section via IRQ lock)"
+        default y
+        depends on SYS
+        help
+          NO_SYS=1 (裸机) 时用关中断 (SYS_ARCH_PROTECT) 保护 lwIP 内存分配等
+          临界区, 单核裸机下安全且开销最小。
+          NO_SYS=0 (RTOS) 模式下本选项不可见: 临界区由 sys_mutex 保护,
+          本移植不提供 RTOS 模式下的轻量保护实现。
+
+    config LWIP_COMPAT_MUTEX
+        bool "Compat mutex (emulate sys_mutex_t with sys_sem_t)"
+        default n
+        help
+          0 = 使用原生 sys_mutex_t (OSAL mutex); 1 = 用 sys_sem_t 模拟互斥锁。
+          本移植提供原生 mutex, 保持默认 0。
+
+    menu "TCP/IP Core Thread"
+        # 仅 RTOS 后端可见: tcpip 内核线程需要"可阻塞切换"的真线程语义
+        depends on !SYS && !OSAL_NULL
+
+        config TCPIP_THREAD_NAME
+            string "tcpip thread name"
+            default "tcpip_thread"
+
+        config TCPIP_THREAD_STACKSIZE
+            int "tcpip thread stack size (bytes)"
+            default 1024
+            range 512 16384
+
+        config TCPIP_THREAD_PRIO
+            int "tcpip thread priority"
+            default 6
+            range 0 31
+            help
+              优先级数值含义随 OSAL 后端翻转, 切后端时须重新评估:
+              FreeRTOS 数大优先高; RT-Thread 数小优先高;
+              ThreadX / uC-OS 数小优先高。裸机 (OSAL_NULL) 下本项不可见。
+
+        config TCPIP_MBOX_SIZE
+            int "tcpip core mailbox size"
+            default 8
+            range 1 64
+    endmenu
+
+    menu "Default Receive Mailbox Sizes"
+        # 仅 RTOS 后端可见: netconn/socket 接收邮箱依赖阻塞式 mbox
+        depends on !SYS && !OSAL_NULL
+
+        config DEFAULT_RAW_RECVMBOX_SIZE
+            int "RAW recv mbox size"
+            default 8
+            range 1 64
+
+        config DEFAULT_UDP_RECVMBOX_SIZE
+            int "UDP recv mbox size"
+            default 8
+            range 1 64
+
+        config DEFAULT_TCP_RECVMBOX_SIZE
+            int "TCP recv mbox size"
+            default 8
+            range 1 64
+
+        config DEFAULT_ACCEPTMBOX_SIZE
+            int "TCP accept mbox size"
+            default 8
+            range 1 64
+    endmenu
+
+    menu "Memory"
+        config MEM_ALIGNMENT
+            int "Memory alignment (bytes)"
+            default 4
+            range 1 16
+            help
+              内存对齐字节数, 通常 4 (32-bit) 或 8。
+
+        config MEM_SIZE
+            int "lwIP heap size (bytes)"
+            default 16384
+            range 1024 1048576
+            help
+              lwIP 内部内存池 (mem.c) 总大小。0 表示不内置堆
+              (配合 MEM_LIBC_MALLOC 使用系统 malloc)。
+
+        config MEM_LIBC_MALLOC
+            bool "Use system malloc instead of lwIP pool"
+            default n
+            help
+              0 = 使用 lwIP 内部内存池 (裸机推荐); 1 = 使用系统 malloc/free。
+
+        config MEMP_NUM_PBUF
+            int "Number of pbuf structs"
+            default 16
+            range 1 512
+
+        config MEMP_NUM_TCP_PCB
+            int "Number of TCP PCBs"
+            default 5
+            range 1 64
+
+        config MEMP_NUM_UDP_PCB
+            int "Number of UDP PCBs"
+            default 4
+            range 1 64
+
+        config MEMP_NUM_TCP_PCB_LISTEN
+            int "Number of listening TCP PCBs"
+            default 4
+            range 1 64
+
+        config MEMP_NUM_TCP_SEG
+            int "Number of TCP segments"
+            default 16
+            range 1 512
+
+        config MEMP_NUM_SYS_TIMEOUT
+            int "Number of active timeouts"
+            default 10
+            range 1 128
+    endmenu
+
+    menu "PBUF Pool"
+        config PBUF_POOL_SIZE
+            int "Number of pbufs in pool"
+            default 16
+            range 1 512
+
+        config PBUF_POOL_BUFSIZE
+            int "Size of each pbuf in pool (bytes)"
+            default 592
+            range 64 2048
+    endmenu
+
+    menu "Protocols"
+        config LWIP_RAW
+            bool "RAW API"
+            default n
+
+        config LWIP_TIMERS
+            bool "Protocol timers"
+            default y
+
+        config LWIP_UDP
+            bool "UDP protocol"
+            default y
+
+        config UDP_TTL
+            int "UDP default TTL"
+            default 255
+            range 1 255
+
+        config LWIP_TCP
+            bool "TCP protocol"
+            default y
+
+        config TCP_TTL
+            int "TCP default TTL"
+            default 255
+            range 1 255
+
+        config TCP_MSS
+            int "TCP maximum segment size"
+            default 536
+            range 64 1460
+
+        config TCP_WND
+            int "TCP receive window"
+            default 2048
+            range 256 65535
+
+        config TCP_SND_BUF
+            int "TCP send buffer"
+            default 2048
+            range 256 65535
+
+        config LWIP_ETHERNET
+            bool "Ethernet support"
+            default y
+
+        config LWIP_CHECKSUM_CTRL_PER_NETIF
+            bool "Per-netif checksum control"
+            default n
+
+        config LWIP_NETIF_STATUS_CALLBACK
+            bool "Netif status callback"
+            default y
+
+        config LWIP_NETIF_LINK_CALLBACK
+            bool "Netif link callback"
+            default y
+
+        config LWIP_NETIF_API
+            bool "Netif API"
+            default n
+
+        config LWIP_ICMP
+            bool "ICMPv4"
+            default y
+
+        config LWIP_ICMP6
+            bool "ICMPv6"
+            default n
+
+        config LWIP_ARP
+            bool "ARP"
+            default y
+
+        config ARP_TABLE_SIZE
+            int "ARP table size"
+            default 10
+            range 1 128
+
+        config LWIP_IPV4
+            bool "IPv4"
+            default y
+
+        config LWIP_IPV6
+            bool "IPv6"
+            default n
+
+        config IP_REASSEMBLY
+            bool "IP reassembly"
+            default y
+
+        config IP_FRAG
+            bool "IP fragmentation"
+            default y
+
+        config IP_FRAG_USES_STATIC_BUF
+            bool "IP frag uses static buffer"
+            default n
+
+        config LWIP_DHCP
+            bool "DHCP client"
+            default y
+
+        config LWIP_AUTOIP
+            bool "AutoIP (APIPA)"
+            default n
+
+        config LWIP_DNS
+            bool "DNS resolver"
+            default y
+            depends on LWIP_UDP
+            help
+              DNS 解析器基于 UDP, 需先启用 LWIP_UDP。
+    endmenu
+
+    menu "PPP (4G/Modem over Serial)"
+        depends on LWIP
+
+        config PPP_SUPPORT
+            bool "Enable PPP (Point-to-Point Protocol)"
+            default n
+            help
+              lwIP PPP 协议总开关。4G 模组 (a7670/air780e 等) 通过串口 PPP
+              (pppos) 接入互联网时必选。PPP 依赖 TCP 与 IPv4, 拨号后由运营商
+              分配 IP。HTTP/MQTT 等应用层库在 PPP netif 之上工作, 与链路无关。
+
+        config PPPOS_SUPPORT
+            bool "Enable PPP over Serial (pppos)"
+            default y if PPP_SUPPORT
+            default n
+            depends on PPP_SUPPORT
+            help
+              PPP over Serial: 把串口裸字节流封装为 PPP 帧。pppif 适配层通过
+              pppos_create() 创建 netif, 输出回调把 PPP 帧写入模组串口, 串口
+              收包方向每收到一字节调用 pppos_input() 喂给协议栈。
+
+        config PAP_SUPPORT
+            bool "Enable PAP authentication"
+            default y if PPP_SUPPORT
+            default n
+            depends on PPP_SUPPORT
+            help
+              明文 PAP 认证。多数 4G 模组拨号 (ATD*99#) 不需要用户名密码, 但
+              部分运营商 APN 需 PAP/CHAP。按需开启。
+
+        config CHAP_SUPPORT
+            bool "Enable CHAP authentication"
+            default y if PPP_SUPPORT
+            default n
+            depends on PPP_SUPPORT
+            help
+              加密 CHAP 认证。比 PAP 更安全, 同上按需开启。
+
+        config PPP_IPV6_SUPPORT
+            bool "Enable PPP IPv6 (IPV6CP)"
+            default y if PPP_SUPPORT && LWIP_IPV6
+            default n
+            depends on PPP_SUPPORT
+            help
+              PPP 链路上的 IPv6 (IPV6CP) 协商。仅当 LWIP_IPV6=y 且运营商支持
+              双栈时开启。默认跟随 IPv6 总开关。
+
+        config PPP_INPROC_IRQ_SAFE
+            bool "PPP input from ISR-safe context"
+            default n
+            depends on PPP_SUPPORT
+            help
+              允许在中断上下文调用 pppos_input() (裸机/ISR 收包时)。开启会增加
+              少量开销换取 ISR 直收。NO_SYS=1 裸机轮询模式若由 UART ISR 直接
+              喂字节, 建议开启; RTOS 模式一般无需。
+
+        config PPP_MAXMRU
+            int "PPP MRU (max receive unit)"
+            default 1500
+            range 128 1500
+            depends on PPP_SUPPORT
+            help
+              PPP 最大接收单元。需 >= 链路 MTU, 一般 1500 对齐以太网帧。
+
+        config PPP_MAXMTU
+            int "PPP MTU (max transmit unit)"
+            default 1500
+            range 128 1500
+            depends on PPP_SUPPORT
+            help
+              PPP 最大发送单元。与运营商协商, 一般 1500。
+    endmenu
+
+    menu "Checksum"
+        config CHECKSUM_GEN_IP
+            bool "Generate IP checksum"
+            default y
+
+        config CHECKSUM_GEN_UDP
+            bool "Generate UDP checksum"
+            default y
+
+        config CHECKSUM_GEN_TCP
+            bool "Generate TCP checksum"
+            default y
+
+        config CHECKSUM_CHECK_IP
+            bool "Verify incoming IP checksum"
+            default y
+
+        config CHECKSUM_CHECK_UDP
+            bool "Verify incoming UDP checksum"
+            default y
+
+        config CHECKSUM_CHECK_TCP
+            bool "Verify incoming TCP checksum"
+            default y
+    endmenu
+
+    menu "Socket / Netconn API"
+        # 仅 RTOS 后端可见: netconn/socket API 阻塞语义依赖真线程
+        depends on !SYS && !OSAL_NULL
+
+        config LWIP_NETCONN
+            bool "Netconn API"
+            default y
+            help
+              Netconn 顺序 API, Socket API 的底层。关闭后 Socket 亦不可用。
+
+        config LWIP_SOCKET
+            bool "BSD Socket API"
+            default y
+            depends on LWIP_NETCONN
+            help
+              BSD Socket API, 建立在 Netconn 之上, 需先启用 LWIP_NETCONN。
+
+        config LWIP_NETCONN_RECVTIMEO
+            bool "Netconn recv timeout"
+            default y
+            depends on LWIP_NETCONN
+
+        config LWIP_SO_RCVTIMEO
+            bool "SO_RCVTIMEO support"
+            default y
+            depends on LWIP_SOCKET
+
+        config LWIP_SO_SNDTIMEO
+            bool "SO_SNDTIMEO support"
+            default y
+            depends on LWIP_SOCKET
+
+        config LWIP_SO_RCVBUF
+            bool "SO_RCVBUF support"
+            default n
+            depends on LWIP_SOCKET
+
+        config LWIP_TIMEVAL_PRIVATE
+            bool "Private struct timeval"
+            default y
+            depends on LWIP_SOCKET
+            help
+              1 = 使用 lwIP 内置 struct timeval (裸机无 <sys/time.h>, 必须开启);
+              0 = 使用系统 <sys/time.h> 的 timeval (仅宿主/ Linux 构建适用)。
+
+        config LWIP_POSIX_SOCKETS_IO_NAMES
+            bool "Map read/write/close to socket API"
+            default y
+            depends on LWIP_SOCKET
+    endmenu
+
+    menu "Socket/Netconn Memory Pools"
+        # 仅 RTOS 后端可见: 与 Socket/Netconn API 同生命周期
+        depends on !SYS && !OSAL_NULL
+
+        config MEMP_NUM_NETCONN
+            int "Number of netconns"
+            default 8
+            range 1 128
+
+        config MEMP_NUM_NETBUF
+            int "Number of netbufs"
+            default 8
+            range 1 128
+
+        config MEMP_NUM_SELECT_CB
+            int "Number of select callbacks"
+            default 4
+            range 1 64
+
+        config MEMP_NUM_TCPIP_MSG_API
+            int "Number of tcpip API messages"
+            default 16
+            range 1 256
+
+        config MEMP_NUM_TCPIP_MSG_INPKT
+            int "Number of tcpip input-packet messages"
+            default 16
+            range 1 256
+    endmenu
+
+    menu "Debug"
+        config LWIP_DEBUG
+            bool "lwIP debug output"
+            default n
+
+        config LWIP_STATS
+            bool "lwIP statistics"
+            default n
+    endmenu
+endmenu
+
 endmenu
