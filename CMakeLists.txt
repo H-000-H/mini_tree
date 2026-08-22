@@ -121,7 +121,7 @@ endif()
 
 # 裸机调度器三态 (choice: XTASK_NONE / XTASK_COOP / XTASK_PREEMPT)：
 #   - 显式 "CONFIG_XTASK_COOP=y"  → 协调式
-#   - 显式 "CONFIG_XTASK_PREEMPT=y" → 抢占式 (实验性)
+#   - 显式 "CONFIG_XTASK_PREEMPT=y" → 抢占式 (已完工可编译)
 #   - 均未显式 =y → 无调度器 (XTASK_NONE, 应用层自写 while 循环)
 file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_COOP_ON REGEX "^CONFIG_XTASK_COOP=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_PREEMPT_ON REGEX "^CONFIG_XTASK_PREEMPT=y$")

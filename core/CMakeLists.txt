@@ -22,8 +22,15 @@ endif()
 add_library(core STATIC
     "src/event_bus.cpp"
     "src/production_log.c"
-    "src/buffer_pool.c"
 )
+
+# ── buffer pool 门控: CONFIG_BUFFER_POOL=y 才编入 (默认关) ──
+if(EXISTS "${_MINI_TREE_CONFIG}")
+    file(STRINGS "${_MINI_TREE_CONFIG}" _bp_match REGEX "^CONFIG_BUFFER_POOL=y$")
+    if(_bp_match)
+        target_sources(core PRIVATE "src/buffer_pool.c")
+    endif()
+endif()
 
 target_include_directories(core
     PUBLIC
@@ -31,9 +38,6 @@ target_include_directories(core
         "${KCONFIG_GEN_DIR}"
     PRIVATE
         "${PROJECT_SOURCE_DIR}/system_cpp/include"
-        "${PROJECT_SOURCE_DIR}/hal_bus/include"
-        "${PROJECT_SOURCE_DIR}/hal_inst/include"
-        "${PROJECT_SOURCE_DIR}/hal_if/include"
 )
 
 # core ↔ system 存在循环符号依赖（event_bus ↔ safe_state/wdt），

@@ -904,6 +904,77 @@ config EVENT_BUS_DISPATCH_STACK
     range 512 8192
     depends on EVENT_BUS
 
+config BUFFER_POOL
+    bool "Buffer pool (free-list + dual-pointer block allocator)"
+    default n
+    help
+      Buffer Pool 总开关，默认关闭。
+      空闲链表(双向) + 双指针块分配器：从静态池按调用方指定大小切块，
+      每个分配出来的小内存池内部用双指针(head/tail)管理内容。
+      模式由下方 choice 二选一（Kconfig 编译期决定）：
+        · 静态优先 (默认)：先由空闲链表从静态池切块，用尽后回退动态分配；
+        · 全动态：静态池直接屏蔽，分配一律走动态内存。
+      关闭后 core/src/buffer_pool.c 不编入，buffer_pool_* / buffer_block_*
+      API 不可用。
+
+      Master switch for the buffer pool, off by default.
+      Free-list (doubly-linked) + dual-pointer block allocator: cuts
+      caller-sized blocks from a static pool; each allocated block
+      manages its contents via head/tail pointers. One of two modes
+      below (fixed at Kconfig time):
+        · static-first (default): the free list cuts blocks from the
+          static pool, falling back to dynamic allocation when exhausted;
+        · dynamic-only: the static pool is disabled, allocation goes
+          straight to dynamic memory.
+      When off, core/src/buffer_pool.c is not compiled and the
+      buffer_pool_* / buffer_block_* APIs are unavailable.
+
+choice
+    prompt "Allocation mode"
+    default BUFFER_POOL_STATIC_THEN_DYNAMIC
+    depends on BUFFER_POOL
+    help
+      选择 Buffer Pool 分配模式（编译期固定）。
+
+      Select the buffer pool allocation mode (fixed at build time).
+
+config BUFFER_POOL_DYNAMIC_ONLY
+    bool "Dynamic only (static pool disabled)"
+    help
+      全动态模式：静态池屏蔽，buffer_pool_alloc 一律走动态分配
+      (osal_calloc/osal_free)。适合堆充足、无需静态规划的场合。
+      裸机/无堆平台需确保 libc 堆可用或自定义 osal_calloc。
+
+      Dynamic-only mode: the static pool is disabled and every
+      buffer_pool_alloc goes to dynamic allocation (osal_calloc/free).
+      For targets with ample heap. Bare-metal/no-heap targets must
+      provide a working heap or override osal_calloc.
+
+config BUFFER_POOL_STATIC_THEN_DYNAMIC
+    bool "Static pool first, then dynamic"
+    help
+      静态优先模式：空闲链表先从静态池切块，池用尽后回退动态分配。
+      静态池大小见 BUFFER_POOL_SIZE。
+
+      Static-first mode: the free list cuts blocks from the static
+      pool first, falling back to dynamic allocation when exhausted.
+      See BUFFER_POOL_SIZE for the static pool size.
+
+endchoice
+
+config BUFFER_POOL_SIZE
+    int "Static pool size (bytes)"
+    default 4096
+    range 256 65536
+    depends on BUFFER_POOL && BUFFER_POOL_STATIC_THEN_DYNAMIC
+    help
+      静态池默认大小（字节）。调用方未提供 static_mem 时按此大小内部
+      分配；提供 static_mem 时以 config.static_len 为准。
+
+      Default static pool size in bytes. Used for internal allocation
+      when the caller does not supply static_mem; config.static_len
+      wins when static_mem is provided.
+
 config VIRQ
     bool "Virtual IRQ + bottom-half framework (VIRQ)"
     default y
@@ -940,7 +1011,7 @@ config VIRQ
         · board/driver ISRs must not call interrupt_virtual_dispatch() /
           interrupt_virtual_register() or the link fails — trim board ISR
           code accordingly.
-      Memory saving ≈ 1.3 KB RAM + 1 KB Flash, see docs/memory_footprint.md §3.6.
+      Memory saving ≈ 1.3 KB RAM + 1 KB Flash, see docs/memory_footprint.md.
 
 config BOTTOM_HALF_QUEUE_DEPTH
     int "Interrupt bottom-half queue depth (power of two)"

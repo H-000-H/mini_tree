@@ -1,340 +1,651 @@
-/**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file buffer_pool.c
- *@brief buffer pool 实现
- *@author H-000-H
- *@details
- *   Buffer Pool — 预分配定长缓冲区池实现
- *   位图 + 原子 CAS 实现 O(1) 无锁分配/释放, ISR 安全
- *   ARMv6-M 无 LDREX/STREX 退化到关中断原子; 内存 32 字节对齐保证 DMA 安全
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * @file buffer_pool.c
  */
 
 #include "buffer_pool.h"
 
-#include "compiler_compat.h"
-#include "osal.h"
+#include <errno.h> /* EINVAL */
+#include <stdlib.h> /* calloc/free */
+#include <string.h> 
+#define CONFIG_BUFFER_POOL 1 /* force enable for standalone build */
+#ifdef CONFIG_BUFFER_POOL
 
-#include "compiler_compat_poison.h"
+#ifndef CONFIG_BUFFER_POOL_SIZE
+#define CONFIG_BUFFER_POOL_SIZE 4096u /* default static pool bytes when not injected */
+#endif
 
-/* ── 内部常量 ── */
-#define BP_FREE_ALL 0xFFFFFFFFu
+#if defined(CONFIG_BUFFER_POOL_DYNAMIC_ONLY)
+#define BUFFER_POOL_DYNAMIC_ONLY 1
+#else
+#define BUFFER_POOL_DYNAMIC_ONLY 0
+#endif
 
 /* ═══════════════════════════════════════════════════════════════
- *  原子操作抽象层
- * ═══════════════════════════════════════════════════════════════
- *  ARMv6-M (Cortex-M0/M0+) / ARMv8-M Baseline (Cortex-M23) 匮乏
- *  LDREX/STREX 指令, 使用关中断实现原子操作.
- *  其它架构 (ARMv7-M+, RISC-V) 直接使用 GCC __atomic 内置函数.
- */
+ * Atomic / critical-section wrappers (no architecture-provided atomics)
+ * ARMv6-M (Cortex-M0/M0+) and ARMv8-M Baseline (Cortex-M23) lack
+ * LDREX/STREX, so interrupts are masked; other architectures use
+ * GCC __atomic builtins.
+ * ═══════════════════════════════════════════════════════════════ */
+
 #if defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
 
-/**
- * @brief 关中断并保存 PRIMASK (ARMv6-M 原子退化路径)
- * @return 进入临界区前的 PRIMASK
- */
-COMPAT_STATIC_INLINE uint32_t bp_critical_enter(void)
+static inline uint32_t BUFF_POOL_CRITICAL_ENTER(void)
 {
     uint32_t primask;
     __asm__ volatile("mrs %0, PRIMASK\n\tcpsid i" : "=r"(primask)::"memory");
     return primask;
 }
 
-/**
- * @brief 恢复 PRIMASK
- * @param[in] primask bp_critical_enter 返回的 PRIMASK
- */
-COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask) { __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory"); }
+static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask) { __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory"); }
 
-#define BP_CAS(addr, exp, des)                                                                                                                                                                         \
-    ({                                                                                                                                                                                                 \
-        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
-        bool _m = (*(addr) == *(exp));                                                                                                                                                                 \
-        if (_m)                                                                                                                                                                                        \
-            *(addr) = (des);                                                                                                                                                                           \
-        else                                                                                                                                                                                           \
-            *(exp) = *(addr);                                                                                                                                                                          \
-        bp_critical_exit(_p);                                                                                                                                                                          \
-        _m;                                                                                                                                                                                            \
-    })
+#define BUFF_POOL_ATOMIC_LOAD(p) (*(p))
+#define BUFF_POOL_ATOMIC_STORE(p, v) (*(p) = (v))
+#define BUFF_POOL_ATOMIC_ADD_FETCH(p, v) (*(p) += (v))
+#define BUFF_POOL_ATOMIC_SUB_FETCH(p, v) (*(p) -= (v))
 
-#define BP_ADD_FETCH(addr, val)                                                                                                                                                                        \
-    ({                                                                                                                                                                                                 \
-        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
-        *(addr) += (val);                                                                                                                                                                              \
-        uint32_t _r = *(addr);                                                                                                                                                                         \
-        bp_critical_exit(_p);                                                                                                                                                                          \
-        _r;                                                                                                                                                                                            \
-    })
+#else /* ARMv7-M+ / RISC-V / others: hardware atomics */
 
-#define BP_SUB_FETCH(addr, val)                                                                                                                                                                        \
-    ({                                                                                                                                                                                                 \
-        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
-        *(addr) -= (val);                                                                                                                                                                              \
-        uint32_t _r = *(addr);                                                                                                                                                                         \
-        bp_critical_exit(_p);                                                                                                                                                                          \
-        _r;                                                                                                                                                                                            \
-    })
+#define BUFF_POOL_ATOMIC_LOAD(p) __atomic_load_n((p), __ATOMIC_RELAXED)
+#define BUFF_POOL_ATOMIC_STORE(p, v) __atomic_store_n((p), (v), __ATOMIC_RELAXED)
+#define BUFF_POOL_ATOMIC_ADD_FETCH(p, v) __atomic_add_fetch((p), (v), __ATOMIC_RELAXED)
+#define BUFF_POOL_ATOMIC_SUB_FETCH(p, v) __atomic_sub_fetch((p), (v), __ATOMIC_RELAXED)
+#define BUFF_POOL_ATOMIC_CAS(p, e, d) __atomic_compare_exchange_n((p), (e), (d), 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
 
-#define BP_OR(addr, val)                                                                                                                                                                               \
-    do                                                                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
-        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
-        *(addr) |= (val);                                                                                                                                                                              \
-        bp_critical_exit(_p);                                                                                                                                                                          \
-    } while (0)
-
-#define BP_LOAD(addr) (*(addr))
-#define BP_STORE(addr, val) (*(addr) = (val))
-
-#else
-/* ARMv7-M+, RISC-V: 硬件原子指令 */
-#define BP_CAS(addr, exp, des) __atomic_compare_exchange_n(addr, exp, des, 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
-#define BP_ADD_FETCH(addr, val) __atomic_add_fetch(addr, val, __ATOMIC_RELAXED)
-#define BP_SUB_FETCH(addr, val) __atomic_sub_fetch(addr, val, __ATOMIC_RELAXED)
-#define BP_OR(addr, val) (void)__atomic_fetch_or(addr, val, __ATOMIC_RELEASE)
-#define BP_LOAD(addr) __atomic_load_n(addr, __ATOMIC_RELAXED)
-#define BP_STORE(addr, val) __atomic_store_n(addr, val, __ATOMIC_RELAXED)
 #endif
 
-/* ── 缓存行大小 (GCC 内置) ── */
-#ifndef BP_CACHE_LINE
-#if defined(__GNUC__) && defined(__CHAR_BIT__) && defined(__SIZEOF_POINTER__)
-#define BP_CACHE_LINE (__CHAR_BIT__ * __SIZEOF_POINTER__)
-#else
-#define BP_CACHE_LINE 32
-#endif
-#endif
+/* ── Alignment and minimum block ── */
+#define BUFF_POOL_ALIGN_SIZE 8u /* alignment granularity for blocks and data */
+#define BUFF_POOL_MIN_BLOCK 16u /* do not split when the remainder is below this */
 
-#define BP_IS_POW2(n) ((n) & ((n) - 1))
-#define BP_ALIGN_UP(n, a) (((size_t)(n) + (size_t)(a) - 1) & ~((size_t)(a) - 1))
+#define BUFF_POOL_ALIGN_UP(x, a) (((x) + ((a) - 1u)) & ~((a) - 1u))
 
-/**
- * @brief 按对齐要求向上取整缓冲区大小
- * @param[in] size 原始字节数
- * @param[in] align 对齐类型 (BP_ALIGN_DMA / BP_ALIGN_CACHE 等)
- * @return 对齐后的字节数
- */
-COMPAT_STATIC_INLINE size_t align_buf_size(size_t size, bp_align_t align)
+/* ── Free block header (embedded in pool memory; shares the header area
+ *    with the allocated block metadata) ── */
+struct buff_pool_free_block
 {
-    size_t alignment = 1;
-    switch (align)
-    {
-    case BP_ALIGN_DMA:
-        alignment = 32;
-        break;
-    case BP_ALIGN_CACHE:
-        alignment = (size_t)BP_CACHE_LINE;
-        break;
-    default:
-        alignment = 1;
-        break;
-    }
-    return (alignment <= 1) ? size : BP_ALIGN_UP(size, alignment);
-}
-
-/* ── Pool 控制块 ── */
-struct bp_pool
-{
-    const char* name; /**< 调试标识名 */
-    uint8_t* pool_mem; /**< 缓冲区内存基址 (32 字节对齐, DMA 安全) */
-    void* pool_mem_raw; /**< 原始分配地址 (os_free 用) */
-    size_t buf_size; /**< 对齐后的 buf 大小 */
-    uint32_t buf_count; /**< buffer 数量 */
-    uint32_t free_mask; /**< 位图: 1=空闲, 0=已分配 */
-    uint32_t used; /**< 当前已分配数 */
-    uint32_t peak; /**< 峰值已分配数 */
-    uint8_t owned : 1; /**< pool_mem 由本池管理, 需释放 */
+    struct buff_pool_free_block* prev;
+    struct buff_pool_free_block* next;
+    size_t size; /**< data bytes of this free block */
 };
 
-_Static_assert(BP_MAX_BUFS <= sizeof(uint32_t) * 8, "BP_MAX_BUFS exceeds free_mask width");
+/* Unified header size: free_block when free, buffer_block_t when allocated */
+#define BUFF_POOL_HEAD_SIZE (BUFF_POOL_ALIGN_UP((sizeof(struct buff_pool_free_block) > sizeof(buffer_block_t) ? sizeof(struct buff_pool_free_block) : sizeof(buffer_block_t)), BUFF_POOL_ALIGN_SIZE))
 
-/* ── 位图操作 ── */
+#define BUFF_POOL_MAX_SEGS 4u /* maximum number of pool segments (initial + expands) */
 
-/**
- * @brief 原子查找并分配一个空闲位
- * @param[in] mask 空闲位掩码 (1 表示可用)
- * @return 分配到的位索引; 无空闲时返回 BP_MAX_BUFS
- */
-static uint32_t bitmap_alloc(volatile uint32_t* mask)
+/* One pool segment (initial pool or an appended expansion segment) */
+struct buff_pool_seg
 {
-    uint32_t old, new_mask;
-    int bit;
+    uint8_t* base;
+    size_t len; /**< segment bytes */
+};
 
-    do
+struct buffer_pool
+{
+    const char* name;
+    buff_pool_atomic_uint_t lock; /**< pool lock (self-wrapped test-and-set / irq mask) */
+    bool use_static; /**< static pool enabled (static-first mode with a pool) */
+    uint8_t* pool_base; /**< initial static pool base */
+    size_t pool_size; /**< initial static pool bytes */
+    bool pool_owned; /**< true = pool memory allocated by this pool (freed on destroy) */
+    struct buff_pool_free_block* free_list; /**< free list head */
+    size_t total_size; /**< cumulative size of all segments */
+    struct buff_pool_seg segs[BUFF_POOL_MAX_SEGS]; /**< segment table, sorted by len asc */
+    uint32_t seg_count; /**< number of registered segments */
+    buff_pool_atomic_uint_t used_count; /**< currently allocated blocks */
+    buff_pool_atomic_uint_t peak; /**< peak usage */
+};
+
+/* Register a segment, keeping the table sorted by length ascending.
+ * Returns 0 on success, -1 when the table is full. */
+static int buff_pool_seg_add(struct buffer_pool* pool, uint8_t* base, size_t len)
+{
+    uint32_t i, j;
+    if (pool->seg_count >= BUFF_POOL_MAX_SEGS)
+        return -1;
+    for (i = 0; i < pool->seg_count; i++)
     {
-        old = *mask;
-        if (old == 0)
-            return BP_MAX_BUFS;
-        bit = COMPAT_CTZ(old); /* 找最低位 1 → 第一个空闲 */
-        new_mask = old & ~(1u << bit);
-    } while (!BP_CAS(mask, &old, new_mask));
-    return (uint32_t)bit;
+        if (len < pool->segs[i].len)
+            break;
+    }
+    for (j = pool->seg_count; j > i; j--)
+        pool->segs[j] = pool->segs[j - 1];
+    pool->segs[i].base = base;
+    pool->segs[i].len = len;
+    pool->seg_count++;
+    return 0;
 }
 
-/**
- * @brief 原子释放一个已分配的位
- * @param[in] mask 空闲位掩码
- * @param[in] bit 待释放的位索引
- */
-static void bitmap_free(volatile uint32_t* mask, uint32_t bit) { BP_OR(mask, 1u << bit); }
+/* ── Pool critical section (lock) ── */
 
-/* ═══════════════════════════════════════════════════════════════════════
- *  公共接口
- * ═══════════════════════════════════════════════════════════════════════ */
-
-/**
- * @brief 创建位图式定长缓冲区池
- * @param config 池配置 (名称/块大小/数量/对齐/静态或堆内存)
- * @return 池指针; 参数无效或分配失败返回 NULL
- */
-struct bp_pool* bp_create(const struct bp_config* config)
+static void buff_pool_lock_enter(buffer_pool_t* pool, uint32_t* state)
 {
-    if (!config || !config->name || config->buf_count == 0 || config->buf_count > BP_MAX_BUFS || config->buf_size == 0)
-        return NULL;
+#if defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
+    /* Masking interrupts is the critical section (single-core safe) */
+    (void)pool;
+    *state = BUFF_POOL_CRITICAL_ENTER();
+#else
+    uint32_t expected = 0u;
+    (void)state;
+    while (!BUFF_POOL_ATOMIC_CAS(&pool->lock, &expected, 1u))
+        expected = 0u; /* spin-wait */
+#endif
+}
 
-    size_t real_bs = align_buf_size(config->buf_size, config->align);
-    size_t total = real_bs * config->buf_count;
+static void buff_pool_lock_exit(buffer_pool_t* pool, uint32_t state)
+{
+#if defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
+    (void)pool;
+    BUFF_POOL_CRITICAL_EXIT(state);
+#else
+    (void)state;
+    BUFF_POOL_ATOMIC_STORE(&pool->lock, 0u);
+#endif
+}
 
-    /* 分配控制块 */
-    struct bp_pool* pool = (struct bp_pool*)osal_calloc(1, sizeof(struct bp_pool));
-    if (!pool)
-        return NULL;
+/* ── Free-list operations (caller must hold the pool lock) ── */
 
-    /* 分配或引用缓冲区内存 */
-    if (config->use_static && config->static_mem)
-    {
-        if (config->static_len < total)
-        {
-            osal_free(pool);
-            return NULL;
-        }
-        COMPAT_MEM_SET(config->static_mem, 0, config->static_len);
-        pool->pool_mem = (uint8_t*)config->static_mem;
-        pool->pool_mem_raw = NULL;
-        pool->owned = 0;
-    }
+static void buff_pool_freelist_push(struct buffer_pool* pool, struct buff_pool_free_block* blk)
+{
+    blk->prev = NULL;
+    blk->next = pool->free_list;
+    if (pool->free_list != NULL)
+        pool->free_list->prev = blk;
+    pool->free_list = blk;
+}
+
+static void buff_pool_freelist_remove(struct buffer_pool* pool, struct buff_pool_free_block* blk)
+{
+    if (blk->prev != NULL)
+        blk->prev->next = blk->next;
     else
+        pool->free_list = blk->next;
+    if (blk->next != NULL)
+        blk->next->prev = blk->prev;
+    blk->prev = NULL;
+    blk->next = NULL;
+}
+
+/* Return a block to the list, coalescing with adjacent free blocks
+ * (contiguous addresses).
+ * Strategy: absorb any adjacent free block into blk (removing it from the
+ * list), then insert blk once at the end. blk is never part of the list
+ * during traversal, so no self-linking can occur. */
+static void buff_pool_freelist_merge(struct buffer_pool* pool, struct buff_pool_free_block* blk)
+{
+    struct buff_pool_free_block* it = pool->free_list;
+    blk->prev = NULL;
+    blk->next = NULL;
+    while (it != NULL)
     {
-        /* 多分配 31 字节, 向上对齐到 32 字节保证 DMA 安全 */
-        void* raw = osal_calloc(1, total + 31);
-        if (!raw)
+        struct buff_pool_free_block* next = it->next;
+        uint8_t* it_end = (uint8_t*)it + BUFF_POOL_HEAD_SIZE + it->size;
+        uint8_t* blk_end = (uint8_t*)blk + BUFF_POOL_HEAD_SIZE + blk->size;
+
+        if (it_end == (uint8_t*)blk) /* it immediately precedes blk */
         {
-            osal_free(pool);
+            it->size += BUFF_POOL_HEAD_SIZE + blk->size;
+            buff_pool_freelist_remove(pool, it);
+            blk = it; /* blk grows backwards to cover it; it is now off-list */
+        }
+        else if (blk_end == (uint8_t*)it) /* blk immediately precedes it */
+        {
+            blk->size += BUFF_POOL_HEAD_SIZE + it->size;
+            buff_pool_freelist_remove(pool, it);
+        }
+        it = next;
+    }
+    buff_pool_freelist_push(pool, blk);
+}
+
+/* First-fit: find a free block with data >= size; split and keep the remainder.
+ * If seg != NULL, only free blocks located inside that segment are considered
+ * (address range check). The chosen block is REMOVED from the list and handed
+ * to the caller; the remainder (split) stays in the list where the block was. */
+static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool* pool, size_t size, const struct buff_pool_seg* seg)
+{
+    struct buff_pool_free_block* it = pool->free_list;
+    uint8_t* s_base = seg ? seg->base : NULL;
+    uint8_t* s_end = seg ? seg->base + seg->len : NULL;
+    size = BUFF_POOL_ALIGN_UP(size, BUFF_POOL_ALIGN_SIZE);
+    while (it != NULL)
+    {
+        struct buff_pool_free_block* next = it->next;
+        if (seg != NULL)
+        {
+            if ((uint8_t*)it < s_base || (uint8_t*)it >= s_end)
+            {
+                it = next; /* block lies outside this segment */
+                continue;
+            }
+        }
+        if (it->size >= size)
+        {
+            size_t remain = it->size - size;
+            if (remain >= BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
+            {
+                struct buff_pool_free_block* split = (struct buff_pool_free_block*)((uint8_t*)it + BUFF_POOL_HEAD_SIZE + size);
+                buff_pool_freelist_remove(pool, it);
+                split->prev = NULL;
+                split->next = NULL;
+                split->size = remain - BUFF_POOL_HEAD_SIZE;
+                buff_pool_freelist_push(pool, split); /* remainder stays in the list */
+                it->size = size; /* shrink the chosen block (now off-list) */
+            }
+            else
+            {
+                buff_pool_freelist_remove(pool, it);
+            }
+            return it;
+        }
+        it = next;
+    }
+    return NULL;
+}
+
+/* Largest single free block inside one segment (caller holds the lock) */
+static size_t buff_pool_seg_max_free(const struct buffer_pool* pool, const struct buff_pool_seg* seg)
+{
+    const struct buff_pool_free_block* it = pool->free_list;
+    uint8_t* s_base = seg->base;
+    uint8_t* s_end = seg->base + seg->len;
+    size_t maxf = 0u;
+    while (it != NULL)
+    {
+        if ((uint8_t*)it >= s_base && (uint8_t*)it < s_end && it->size > maxf)
+            maxf = it->size;
+        it = it->next;
+    }
+    return maxf;
+}
+
+/* Largest single free block across all segments */
+static size_t buff_pool_total_max_free(const struct buffer_pool* pool)
+{
+    size_t maxf = 0u;
+    uint32_t s;
+    for (s = 0; s < pool->seg_count; s++)
+    {
+        size_t m = buff_pool_seg_max_free(pool, &pool->segs[s]);
+        if (m > maxf)
+            maxf = m;
+    }
+    return maxf;
+}
+
+/* Cut a block from the static pool.
+ * Segments are tried from the SMALLEST upwards (table is sorted by len asc):
+ * the smallest segment is drained first, larger segments only after it can
+ * no longer satisfy the request. Returns NULL when no segment fits. */
+static buffer_block_t* buff_pool_alloc_static_impl(struct buffer_pool* pool, size_t size)
+{
+    uint32_t s;
+    struct buff_pool_free_block* f;
+    buffer_block_t* blk;
+    if (pool->pool_base == NULL || pool->seg_count == 0u)
+        return NULL;
+    for (s = 0; s < pool->seg_count; s++)
+    {
+        struct buff_pool_seg* seg = &pool->segs[s];
+        if (buff_pool_seg_max_free(pool, seg) < size)
+            continue; /* this segment cannot satisfy; move up */
+        f = buff_pool_freelist_alloc(pool, size, seg);
+        if (f == NULL)
+            continue; /* fragmented; try the next segment */
+        {
+            size_t cap = f->size;
+            blk = (buffer_block_t*)f;
+            blk->raw = (uint8_t*)f;
+            blk->data = (uint8_t*)f + BUFF_POOL_HEAD_SIZE;
+            blk->capacity = cap;
+            BUFF_POOL_ATOMIC_STORE(&blk->head, 0u);
+            BUFF_POOL_ATOMIC_STORE(&blk->tail, 0u);
+            blk->from_static = true;
+        }
+        return blk;
+    }
+    return NULL;
+}
+
+/* Dynamic allocation: block metadata and data area are allocated together */
+static buffer_block_t* buff_pool_alloc_dynamic(size_t size)
+{
+    buffer_block_t* blk;
+    size = BUFF_POOL_ALIGN_UP(size, BUFF_POOL_ALIGN_SIZE);
+    blk = (buffer_block_t*)calloc(1u, BUFF_POOL_HEAD_SIZE + size);
+    if (blk == NULL)
+        return NULL;
+    blk->raw = (uint8_t*)blk;
+    blk->data = (uint8_t*)blk + BUFF_POOL_HEAD_SIZE;
+    blk->capacity = size;
+    BUFF_POOL_ATOMIC_STORE(&blk->head, 0u);
+    BUFF_POOL_ATOMIC_STORE(&blk->tail, 0u);
+    blk->from_static = false;
+    return blk;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * Public API
+ * ═══════════════════════════════════════════════════════════════ */
+
+buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config)
+{
+    buffer_pool_t* pool;
+    if (config == NULL)
+        return NULL;
+    pool = (buffer_pool_t*)calloc(1u, sizeof(*pool));
+    if (pool == NULL)
+        return NULL;
+    pool->name = config->name;
+    BUFF_POOL_ATOMIC_STORE(&pool->lock, 0u);
+
+#if BUFFER_POOL_DYNAMIC_ONLY
+    /* Dynamic-only mode: the static pool is disabled */
+    pool->use_static = false;
+#else
+    /* Static-first mode: enable the static pool (caller-provided or internal) */
+    if (config->use_static)
+    {
+        size_t total = config->static_len;
+        if (total == 0u)
+            total = CONFIG_BUFFER_POOL_SIZE;
+        if (total < BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
+        {
+            free(pool);
             return NULL;
         }
-        pool->pool_mem = (uint8_t*)BP_ALIGN_UP((uintptr_t)raw, 32);
-        pool->pool_mem_raw = raw;
-        pool->owned = 1;
+        if (config->static_mem != NULL)
+        {
+            pool->pool_base = (uint8_t*)config->static_mem;
+            pool->pool_owned = false;
+        }
+        else
+        {
+            pool->pool_base = (uint8_t*)calloc(1u, total);
+            if (pool->pool_base == NULL)
+            {
+                free(pool);
+                return NULL;
+            }
+            pool->pool_owned = true;
+        }
+        pool->pool_size = total;
+        pool->total_size = total;
+        /* Register the initial segment */
+        if (buff_pool_seg_add(pool, pool->pool_base, total) != 0)
+        {
+            if (pool->pool_owned)
+                free(pool->pool_base);
+            free(pool);
+            return NULL;
+        }
+        /* The whole pool becomes a single free block */
+        {
+            struct buff_pool_free_block* whole = (struct buff_pool_free_block*)pool->pool_base;
+            whole->prev = NULL;
+            whole->next = NULL;
+            whole->size = total - BUFF_POOL_HEAD_SIZE;
+            pool->free_list = whole;
+        }
+        pool->use_static = true;
     }
-
-    pool->name = config->name;
-    pool->buf_size = real_bs;
-    pool->buf_count = config->buf_count;
-    pool->free_mask = (config->buf_count == 32) ? BP_FREE_ALL : ((1u << config->buf_count) - 1);
-    pool->used = 0;
-    pool->peak = 0;
-
+#endif /* BUFFER_POOL_DYNAMIC_ONLY */
     return pool;
 }
 
-/**
- * @brief 分配缓冲区
- * @param[in] pool 池
- * @return 指针或 NULL
- */
-void* bp_alloc(struct bp_pool* pool)
+void buffer_pool_destroy(buffer_pool_t* pool)
 {
-    if (!pool)
-        return NULL;
+    if (pool == NULL)
+        return;
+    if (pool->pool_owned && pool->pool_base != NULL)
+        free(pool->pool_base);
+    free(pool);
+}
 
-    uint32_t idx = bitmap_alloc(&pool->free_mask);
-    if (idx >= pool->buf_count)
-        return NULL;
-
-    uint32_t u = BP_ADD_FETCH(&pool->used, 1);
-    /* 更新峰值 (无锁 CAS) */
+/* Bookkeeping for a successful allocation (caller holds the lock) */
+static void buff_pool_count_alloc(buffer_pool_t* pool, buffer_block_t* blk)
+{
+    uint32_t used = BUFF_POOL_ATOMIC_ADD_FETCH(&pool->used_count, 1u);
     uint32_t p;
+    blk->pool = pool;
     do
     {
-        p = pool->peak;
-        if (u <= p)
+        p = BUFF_POOL_ATOMIC_LOAD(&pool->peak);
+        if (used <= p)
             break;
-    } while (!BP_CAS(&pool->peak, &p, u));
-
-    return pool->pool_mem + idx * pool->buf_size;
+    } while (!BUFF_POOL_ATOMIC_CAS(&pool->peak, &p, used));
 }
 
-/**
- * @brief ISR 分配
- * @param[in] pool 池
- * @return 指针或 NULL
- */
-void* bp_alloc_isr(struct bp_pool* pool) { return bp_alloc(pool); }
-
-/**
- * @brief 释放缓冲区
- * @param[in] pool 池
- * @param[in] buf 指针
- */
-void bp_free(struct bp_pool* pool, void* buf)
+buffer_block_t* buffer_pool_alloc_static(buffer_pool_t* pool, size_t size)
 {
-    if (!pool || !buf)
-        return;
-
-    uintptr_t base = (uintptr_t)pool->pool_mem;
-    uintptr_t off = (uintptr_t)buf - base;
-    uint32_t idx = (uint32_t)(off / pool->buf_size);
-
-    /* 越界检查: 防止野指针破坏池 */
-    if (off >= pool->buf_size * pool->buf_count || off % pool->buf_size != 0)
-        return;
-
-    bitmap_free(&pool->free_mask, idx);
-    BP_SUB_FETCH(&pool->used, 1);
+    buffer_block_t* blk;
+    uint32_t lock_state;
+    if (pool == NULL || size == 0u)
+        return NULL;
+    buff_pool_lock_enter(pool, &lock_state);
+    blk = buff_pool_alloc_static_impl(pool, size);
+    if (blk != NULL)
+        buff_pool_count_alloc(pool, blk);
+    buff_pool_lock_exit(pool, lock_state);
+    return blk;
 }
 
-/**
- * @brief ISR 释放
- * @param[in] pool 池
- * @param[in] buf 指针
- */
-void bp_free_isr(struct bp_pool* pool, void* buf) { bp_free(pool, buf); }
-
-/**
- * @brief 当前已用数
- * @param[in] pool 池
- * @return 数量
- */
-uint32_t bp_used(const struct bp_pool* pool) { return pool ? BP_LOAD(&((struct bp_pool*)pool)->used) : 0; }
-
-/**
- * @brief 峰值
- * @param[in] pool 池
- * @return 峰值
- */
-uint32_t bp_peak(const struct bp_pool* pool) { return pool ? BP_LOAD(&((struct bp_pool*)pool)->peak) : 0; }
-
-/**
- * @brief 重置峰值
- * @param[in] pool 池
- */
-void bp_reset_peak(struct bp_pool* pool)
+buffer_block_t* buffer_pool_alloc(buffer_pool_t* pool, size_t size)
 {
-    if (!pool)
-        return;
-    uint32_t cur = BP_LOAD(&pool->used);
-    BP_STORE(&pool->peak, cur);
+    buffer_block_t* blk;
+    uint32_t lock_state;
+    if (pool == NULL || size == 0u)
+        return NULL;
+    buff_pool_lock_enter(pool, &lock_state);
+    /* Threshold: if the request exceeds the largest single free block in ANY
+     * segment, the static pool cannot satisfy it — go straight to dynamic. */
+    if (size > buff_pool_total_max_free(pool))
+    {
+        blk = buff_pool_alloc_dynamic(size);
+    }
+    else
+    {
+        blk = buff_pool_alloc_static_impl(pool, size);
+        if (blk == NULL)
+            blk = buff_pool_alloc_dynamic(size);
+    }
+    if (blk != NULL)
+        buff_pool_count_alloc(pool, blk);
+    buff_pool_lock_exit(pool, lock_state);
+    return blk;
 }
 
-/**
- * @brief 销毁池
- * @param[in] pool 池
- */
-void bp_destroy(struct bp_pool* pool)
+int buffer_pool_expand(buffer_pool_t* pool, void* mem, size_t len)
 {
-    if (!pool)
-        return;
-    if (pool->owned)
-        osal_free(pool->pool_mem_raw);
-    osal_free(pool);
+    struct buff_pool_free_block* seg;
+    uint32_t lock_state;
+    if (pool == NULL || mem == NULL || len < BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
+        return -EINVAL;
+    buff_pool_lock_enter(pool, &lock_state);
+    if (buff_pool_seg_add(pool, (uint8_t*)mem, len) != 0) /* segment table full */
+    {
+        buff_pool_lock_exit(pool, lock_state);
+        return -ENOSPC;
+    }
+    seg = (struct buff_pool_free_block*)mem;
+    seg->prev = NULL;
+    seg->next = NULL;
+    seg->size = len - BUFF_POOL_HEAD_SIZE;
+    buff_pool_freelist_merge(pool, seg); /* coalesces with adjacent free blocks */
+    pool->total_size += len;
+    buff_pool_lock_exit(pool, lock_state);
+    return 0;
 }
+
+void buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block)
+{
+    uint32_t lock_state;
+    if (pool == NULL || block == NULL)
+        return;
+    buff_pool_lock_enter(pool, &lock_state);
+    if (block->from_static)
+    {
+        /* buffer_block_t.data overwrites the free_block.size offset at
+         * allocation time, so restore size from block->capacity before
+         * returning the block to the free list. */
+        struct buff_pool_free_block* f = (struct buff_pool_free_block*)block->raw;
+        f->size = block->capacity;
+        buff_pool_freelist_merge(pool, f);
+    }
+    else
+    {
+        free(block->raw);
+    }
+    if (BUFF_POOL_ATOMIC_LOAD(&pool->used_count) > 0u)
+        BUFF_POOL_ATOMIC_SUB_FETCH(&pool->used_count, 1u);
+    buff_pool_lock_exit(pool, lock_state);
+}
+
+buffer_block_t* buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size) { return buffer_pool_alloc(pool, size); }
+
+void buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block) { buffer_pool_free(pool, block); }
+
+/* ── Block content management (dual pointers, ring read/write;
+ *    SPSC semantics, head/tail atomic) ── */
+
+size_t buffer_block_used(const buffer_block_t* block)
+{
+    uint32_t head;
+    uint32_t tail;
+    if (block == NULL || block->capacity == 0u)
+        return 0u;
+    head = BUFF_POOL_ATOMIC_LOAD(&block->head);
+    tail = BUFF_POOL_ATOMIC_LOAD(&block->tail);
+    return (size_t)((head + (uint32_t)block->capacity - tail) % (uint32_t)block->capacity);
+}
+
+size_t buffer_block_space(const buffer_block_t* block)
+{
+    if (block == NULL)
+        return 0u;
+    return block->capacity - buffer_block_used(block);
+}
+
+int buffer_block_write(buffer_block_t* block, const void* src, size_t len, size_t* actual)
+{
+    const uint8_t* s = (const uint8_t*)src;
+    size_t space;
+    size_t first;
+    uint32_t head;
+    if (block == NULL || src == NULL || len == 0u)
+    {
+        if (actual != NULL)
+            *actual = 0u;
+        return -EINVAL;
+    }
+    space = buffer_block_space(block);
+    if (len > space)
+        len = space;
+    if (len == 0u)
+    {
+        if (actual != NULL)
+            *actual = 0u;
+        return 0; /* block full, truncated to 0, still success */
+    }
+    head = BUFF_POOL_ATOMIC_LOAD(&block->head);
+    first = block->capacity - (size_t)head;
+    if (first > len)
+        first = len;
+    memcpy(&block->data[head], s, first);
+    if (len > first)
+        memcpy(block->data, &s[first], len - first);
+    BUFF_POOL_ATOMIC_STORE(&block->head, (head + (uint32_t)len) % (uint32_t)block->capacity);
+    if (actual != NULL)
+        *actual = len;
+    return 0;
+}
+
+int buffer_block_read(buffer_block_t* block, void* dst, size_t len, size_t* actual)
+{
+    uint8_t* d = (uint8_t*)dst;
+    size_t used;
+    size_t first;
+    uint32_t tail;
+    if (block == NULL || dst == NULL || len == 0u)
+    {
+        if (actual != NULL)
+            *actual = 0u;
+        return -EINVAL;
+    }
+    used = buffer_block_used(block);
+    if (len > used)
+        len = used;
+    if (len == 0u)
+    {
+        if (actual != NULL)
+            *actual = 0u;
+        return 0; /* empty, truncated to 0, still success */
+    }
+    tail = BUFF_POOL_ATOMIC_LOAD(&block->tail);
+    first = block->capacity - (size_t)tail;
+    if (first > len)
+        first = len;
+    memcpy(d, &block->data[tail], first);
+    if (len > first)
+        memcpy(&d[first], block->data, len - first);
+    BUFF_POOL_ATOMIC_STORE(&block->tail, (tail + (uint32_t)len) % (uint32_t)block->capacity);
+    if (actual != NULL)
+        *actual = len;
+    return 0;
+}
+
+void buffer_block_reset(buffer_block_t* block)
+{
+    if (block != NULL)
+    {
+        BUFF_POOL_ATOMIC_STORE(&block->head, 0u);
+        BUFF_POOL_ATOMIC_STORE(&block->tail, 0u);
+    }
+}
+
+/* ── Statistics / diagnostics ── */
+
+size_t buffer_pool_size(const buffer_pool_t* pool)
+{
+    if (pool == NULL)
+        return 0u;
+    return pool->total_size;
+}
+
+size_t buffer_pool_free_space(const buffer_pool_t* pool)
+{
+    const struct buff_pool_free_block* it;
+    size_t total = 0u;
+    uint32_t lock_state;
+    if (pool == NULL || pool->pool_base == NULL)
+        return 0u;
+    /* Walk the free list under the lock to avoid concurrent mutation */
+    buff_pool_lock_enter((buffer_pool_t*)pool, &lock_state);
+    for (it = pool->free_list; it != NULL; it = it->next)
+        total += BUFF_POOL_HEAD_SIZE + it->size;
+    buff_pool_lock_exit((buffer_pool_t*)pool, lock_state);
+    return total;
+}
+
+uint32_t buffer_pool_used(const buffer_pool_t* pool)
+{
+    if (pool == NULL)
+        return 0u;
+    return BUFF_POOL_ATOMIC_LOAD(&pool->used_count);
+}
+
+uint32_t buffer_pool_peak(const buffer_pool_t* pool)
+{
+    if (pool == NULL)
+        return 0u;
+    return BUFF_POOL_ATOMIC_LOAD(&pool->peak);
+}
+
+void buffer_pool_reset_peak(buffer_pool_t* pool)
+{
+    if (pool != NULL)
+        BUFF_POOL_ATOMIC_STORE(&pool->peak, BUFF_POOL_ATOMIC_LOAD(&pool->used_count));
+}
+
+#endif /* CONFIG_BUFFER_POOL */
