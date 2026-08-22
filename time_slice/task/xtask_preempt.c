@@ -92,14 +92,14 @@ x_task* x_scheduler_current(void) { return s_current_task; }
 
 /**
  * @brief 计算优先级所在组
- * @param priority 优先级
+ * @param[in] priority 优先级
  * @return 组号
  */
 static uint32_t prio_group(uint32_t priority) { return priority / X_PREEMPT_PRIO_PER_GROUP; }
 
 /**
  * @brief 就绪链表: 组内按优先级降序插入
- * @param t 任务
+ * @param[in] t 任务
  */
 static void ready_insert(struct x_preempt_task* task)
 {
@@ -120,7 +120,7 @@ static void ready_insert(struct x_preempt_task* task)
 
 /**
  * @brief 就绪链表: 摘下任务, 组空则清位图
- * @param t 任务
+ * @param[in] t 任务
  */
 static void ready_remove(struct x_preempt_task* task)
 {
@@ -132,7 +132,7 @@ static void ready_remove(struct x_preempt_task* task)
 
 /**
  * @brief 休眠链表: 按到期时刻升序插入
- * @param t 任务
+ * @param[in] t 任务
  */
 static void sleep_insert(struct x_preempt_task* task)
 {
@@ -142,8 +142,7 @@ static void sleep_insert(struct x_preempt_task* task)
     while (pos != head)
     {
         struct x_preempt_task* cur = container_of(pos, struct x_preempt_task, sleep_node);
-        if (COMPAT_ATOMIC_LOAD(&cur->task.next_running, COMPAT_MO_RELAXED) >
-            COMPAT_ATOMIC_LOAD(&task->task.next_running, COMPAT_MO_RELAXED))
+        if (COMPAT_ATOMIC_LOAD(&cur->task.next_running, COMPAT_MO_RELAXED) > COMPAT_ATOMIC_LOAD(&task->task.next_running, COMPAT_MO_RELAXED))
             break;
         pos = pos->next;
     }
@@ -167,10 +166,8 @@ static void wakeup_due(void)
 {
     while (!list_empty(&s_priv.sleep_head))
     {
-        struct x_preempt_task* task =
-            container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
-        if ((int32_t)(COMPAT_ATOMIC_LOAD(&task->task.next_running, COMPAT_MO_RELAXED) -
-                      s_priv.tick_count) > 0)
+        struct x_preempt_task* task = container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
+        if ((int32_t)(COMPAT_ATOMIC_LOAD(&task->task.next_running, COMPAT_MO_RELAXED) - s_priv.tick_count) > 0)
             break; /* 表头未到期, 有序性保证后续全未到期 */
         list_del(&task->sleep_node);
         ready_insert(task);
@@ -190,10 +187,8 @@ static void idle_wfi(void)
     if (list_empty(&s_priv.sleep_head) || s_priv.tim == NULL)
         return;
 
-    struct x_preempt_task* next =
-        container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
-    uint32_t remaining =
-        COMPAT_ATOMIC_LOAD(&next->task.next_running, COMPAT_MO_RELAXED) - s_priv.tick_count;
+    struct x_preempt_task* next = container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
+    uint32_t remaining = COMPAT_ATOMIC_LOAD(&next->task.next_running, COMPAT_MO_RELAXED) - s_priv.tick_count;
     uint32_t arr = s_priv.tick_period * remaining;
     if (arr == 0)
         return;
@@ -272,22 +267,18 @@ void xscheduler_start(void)
  * @brief SysTick 中断业务钩子 (强符号覆盖 hal_systick 的 weak 空实现)
  * @note  仅 SysTick 作为默认 tick 源时由硬件中断调用; 累加系统滴答并唤醒到期任务。
  */
-void hal_systick_irq_handler(void)
-{
-    x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay);
-}
+void hal_systick_irq_handler(void) { x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay); }
 
 /**
  * @brief 创建抢占式任务 (任务池自分配)
- * @param name 任务名
- * @param period_ms 周期 (ms)
- * @param priority 优先级, 越大越优先
- * @param cb 回调
- * @param param 透传参数 (忽略)
+ * @param[in] name 任务名
+ * @param[in] period_ms 周期 (ms)
+ * @param[in] priority 优先级, 越大越优先
+ * @param[in] cb 回调
+ * @param[in] param 透传参数 (忽略)
  * @return 任务句柄; 池满/非法返回 0
  */
-x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, uint32_t priority,
-                                        void (*cb)(x_task*), void* param)
+x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, uint32_t priority, void (*cb)(x_task*), void* param)
 {
     COMPAT_IGNORE_RESULT(param);
     if (!cb || !name || priority >= X_PREEMPT_PRIO_LEVELS)
@@ -328,8 +319,8 @@ x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, ui
 
 /**
  * @brief TIM 上半部: 清 update flag + 累加 tick
- * @param arg 指向 x_preempt_priv
- * @param irq_num 中断号
+ * @param[in] arg 指向 x_preempt_priv
+ * @param[in] irq_num 中断号
  * @return VFS_OK
  */
 int scheduler_tim_isr_top(void* context, uint16_t irq_num)
@@ -348,8 +339,8 @@ int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 
 /**
  * @brief 累加系统滴答并唤醒到期任务
- * @param sched 忽略 (preempt 用全局 s_priv)
- * @param ms 滴答增量
+ * @param[in] sched 忽略 (preempt 用全局 s_priv)
+ * @param[in] ms 滴答增量
  * @return VFS_OK
  */
 int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
@@ -365,7 +356,7 @@ int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 
 /**
  * @brief 抢占式调度核心: 运行最高优先级任务, 无任务时精确 WFI
- * @param sched 忽略 (preempt 用全局 s_priv)
+ * @param[in] sched 忽略 (preempt 用全局 s_priv)
  * @return VFS_OK
  */
 int x_task_run_preempt(x_scheduler* sched)
@@ -394,14 +385,12 @@ int x_task_run_preempt(x_scheduler* sched)
         if (task->task.pt_line == 0)
         {
             /* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
-            COMPAT_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period,
-                                COMPAT_MO_RELAXED);
+            COMPAT_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period, COMPAT_MO_RELAXED);
         }
         /* else: 协程挂起中, PT_DELAY 已设 next_running, sleep_insert 按到期排序 */
 #else
         task->task.xTask_cb(&task->task);
-        COMPAT_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period,
-                            COMPAT_MO_RELAXED);
+        COMPAT_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period, COMPAT_MO_RELAXED);
 #endif
     }
     /* 与 tick 中断互斥: wakeup_due 可能正从休眠链表摘节点 */

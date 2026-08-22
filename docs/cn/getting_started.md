@@ -81,7 +81,7 @@ python3 tools/genconfig.py Kconfig build/generated/kconfig/mini_tree --config .c
 | :--- | :--- | :--- |
 | Platform | `PLATFORM_ARM_CM4F` 等 | 架构提示（与工具链配合） |
 | Multi-core | `CPU_CORES` / `AMP_MODE` | 1=单核；2=AMP |
-| OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | 运行时后端：裸机协作 / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
+| OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | 运行时后端：裸机 / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
 | OSAL 容量 | `OSAL_NULL_MAX_QUEUES`（基础队列数，EventBus 开自动 +1）/ `OSAL_NULL_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | 队列/堆内存（仅对应后端可见） |
 | System | `SYSTEM` / `SYSTEM_CPP` / `SYSTEM_C` | 总开关（默认自开）+ 语言后端 |
 | Log | `SYS_LOG_USE_PRINTF` / `OSAL` | `SYS_LOG*` 后端 |

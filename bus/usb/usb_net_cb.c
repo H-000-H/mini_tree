@@ -16,11 +16,11 @@
  *   注意: 本文件不 include system_log.h, 避免引入 mini_tree 的 osal.h
  *   与 TinyUSB 的 osal/osal.h (guard 不同名) 在同一编译单元冲突。
  */
+#include "class/net/net_device.h"
 #include "compiler_compat.h"
+#include "device/usbd.h"
 #include "status.h"
 #include "usb_tusb_port.h"
-#include "class/net/net_device.h"
-#include "device/usbd.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -31,33 +31,33 @@ extern void osal_delay_ms(uint32_t ms);
 
 /** @brief 接收队列深度 必须为 2 的幂次 */
 #ifndef CONFIG_USB_NET_DEPTH
-#define CONFIG_USB_NET_DEPTH        4U
+#define CONFIG_USB_NET_DEPTH 4U
 #endif
-#define USB_NET_QUEUE_DEPTH         CONFIG_USB_NET_DEPTH
-#define USB_NET_QUEUE_MASK          (USB_NET_QUEUE_DEPTH - 1U)
+#define USB_NET_QUEUE_DEPTH CONFIG_USB_NET_DEPTH
+#define USB_NET_QUEUE_MASK (USB_NET_QUEUE_DEPTH - 1U)
 
 /** @brief 先保障2的x次方不然后面的代码都没意义 */
-_Static_assert((USB_NET_QUEUE_DEPTH & USB_NET_QUEUE_MASK) == 0U,"CONFIG_USB_NET_DEPTH must be a power of 2");
-_Static_assert(CFG_TUD_NET_MTU<UINT16_MAX,"CFG_TUD_NET_MTU must lower than UINT16_MAX");
+_Static_assert((USB_NET_QUEUE_DEPTH & USB_NET_QUEUE_MASK) == 0U, "CONFIG_USB_NET_DEPTH must be a power of 2");
+_Static_assert(CFG_TUD_NET_MTU < UINT16_MAX, "CFG_TUD_NET_MTU must lower than UINT16_MAX");
 #ifndef CONFIG_USB_NET_TX_TIMEOUT_MS
 #define USB_NET_TX_TIMEOUT_MS 50U
 #else
-#define USB_NET_TX_TIMEOUT_MS  CONFIG_USB_NET_TX_TIMEOUT_MS
-#endif 
+#define USB_NET_TX_TIMEOUT_MS CONFIG_USB_NET_TX_TIMEOUT_MS
+#endif
 
 /** @brief 接收以太网帧对象 */
 struct ubs_net_rx_frame
 {
-    uint8_t data[CFG_TUD_NET_MTU];  /**< 帧数据区 */
-    uint16_t len ;                  /**< 帧有效长度 */
+    uint8_t data[CFG_TUD_NET_MTU]; /**< 帧数据区 */
+    uint16_t len; /**< 帧有效长度 */
 };
 
 /** @brief 静态接收帧环形缓冲区 */
-static struct ubs_net_rx_frame s_rx_ring[USB_NET_QUEUE_DEPTH]COMPAT_ALIGNED(4);
+static struct ubs_net_rx_frame s_rx_ring[USB_NET_QUEUE_DEPTH] COMPAT_ALIGNED(4);
 
 /*内部已经原子了这里只是做标记*/
-static COMPAT_ATOMIC_UINT16 s_rx_head;/**< 生产者写入(仅 tud_network_recv_cb 修改) */
-static COMPAT_ATOMIC_UINT16 s_rx_tail;/**< 消费者读取 (仅 usb_net_frame_pop_rx 修改)*/
+static COMPAT_ATOMIC_UINT16 s_rx_head; /**< 生产者写入(仅 tud_network_recv_cb 修改) */
+static COMPAT_ATOMIC_UINT16 s_rx_tail; /**< 消费者读取 (仅 usb_net_frame_pop_rx 修改)*/
 
 static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] COMPAT_ALIGNED(4);
 
@@ -68,8 +68,8 @@ uint8_t tud_network_mac_address[6] = {0x02, 0x02, 0x84, 0x6A, 0x96, 0x00};
 
 void tud_network_init_cb()
 {
-    COMPAT_ATOMIC_RUNTIME_INIT(&s_rx_head,0);
-    COMPAT_ATOMIC_RUNTIME_INIT(&s_rx_tail,0);
+    COMPAT_ATOMIC_RUNTIME_INIT(&s_rx_head, 0);
+    COMPAT_ATOMIC_RUNTIME_INIT(&s_rx_tail, 0);
 }
 
 /**
@@ -94,7 +94,7 @@ bool tud_network_recv_cb(const uint8_t* src, uint16_t size)
     /* 读消费者读指针, 判满 (next_head 追上 tail = 满) */
     tail = COMPAT_ATOMIC_LOAD(&s_rx_tail, COMPAT_MO_ACQUIRE);
     if (next_head == tail)
-        return false;   /* 环形满, 拒绝 */
+        return false; /* 环形满, 拒绝 */
 
     /* 先拷数据, 再发布 len 和 head */
     COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(s_rx_ring[head].data, src, size));
@@ -112,7 +112,7 @@ bool tud_network_recv_cb(const uint8_t* src, uint16_t size)
  */
 uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
 {
-    if (!dst||!ref||arg==0)
+    if (!dst || !ref || arg == 0)
         return 0;
 
     COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(dst, ref, arg));
@@ -120,12 +120,6 @@ uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
     return arg;
 }
 
-/**
- * @brief 向 USB 网卡通道压入待发送以太网帧
- * @param[in] frame 待发送以太网帧首地址 (如 lwIP 拼装好的报文)
- * @param[in] len 帧长度 (字节)
- * @return 成功返回已发送字节数，失败返回错误码 (VFS_ERR_*)
- */
 int usb_net_frame_push_tx(const void* frame, size_t len)
 {
     uint32_t start_time;
@@ -135,28 +129,22 @@ int usb_net_frame_push_tx(const void* frame, size_t len)
     start_time = osal_time_ms();
 
     /* 等待 USB 枚举就绪且硬件端点可发 */
-    while (!tud_ready() || !tud_network_can_xmit((uint16_t)len)) 
+    while (!tud_ready() || !tud_network_can_xmit((uint16_t)len))
     {
-        if((osal_time_ms()-start_time)>USB_NET_TX_TIMEOUT_MS)
+        if ((osal_time_ms() - start_time) > USB_NET_TX_TIMEOUT_MS)
             return VFS_ERR_TIMEOUT;
-        #if defined (NO_SYS)&&(NO_SYS==1)
-            usb_tusb_task();
-        #else
-            osal_delay_ms(1);
-        #endif
-    }   
+#if defined(NO_SYS) && (NO_SYS == 1)
+        usb_tusb_task();
+#else
+        osal_delay_ms(1);
+#endif
+    }
     /* 发送到缓存并通过参数直接传递至回调函数 */
     COMPAT_MEM_COPY(s_tx_buffer, frame, len);
     tud_network_xmit(s_tx_buffer, (uint16_t)len);
     return (int)len;
 }
 
-/**
- * @brief 从 USB 网卡接收队接收出一帧数据 非阻塞，供 lwIP 接收任务读取
- * @param[out] frame 接收缓冲区首地址
- * @param[in]  len 接收缓冲区最大可用空间
- * @return 实际读取到的字节数 (0: 当前无数据; <0: 错误码)
- */
 int usb_net_frame_pop_rx(void* frame, size_t len)
 {
     uint16_t tail;

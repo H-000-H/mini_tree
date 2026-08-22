@@ -53,20 +53,14 @@ static const char* const k_tag = "drv8833";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void drv8833_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void drv8833_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct drv8833_device* drv8833_get_drvdata(struct device* pdev)
-{
-    return (struct drv8833_device*)device_get_priv(pdev);
-}
+static struct drv8833_device* drv8833_get_drvdata(struct device* pdev) { return (struct drv8833_device*)device_get_priv(pdev); }
 
 /**
  * @brief 首次 open 时打开四路输入 GPIO 并绑定参数
@@ -173,8 +167,7 @@ static int drv8833_close(struct device* pdev)
     return VFS_OK;
 }
 
-typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*drv8833_ioctl_fn_t)(struct drv8833_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct drv8833_ioctl_map
 {
     drv8833_ioctl_fn_t handler;
@@ -266,8 +259,7 @@ static int drv8833_probe(struct device* pdev)
     dev->ain2_dev = device_get_phandle_dev(pdev, "ain2-gpio");
     dev->bin1_dev = device_get_phandle_dev(pdev, "bin1-gpio");
     dev->bin2_dev = device_get_phandle_dev(pdev, "bin2-gpio");
-    if (IS_ERR(dev->ain1_dev) || IS_ERR(dev->ain2_dev) || IS_ERR(dev->bin1_dev) ||
-        IS_ERR(dev->bin2_dev))
+    if (IS_ERR(dev->ain1_dev) || IS_ERR(dev->ain2_dev) || IS_ERR(dev->bin1_dev) || IS_ERR(dev->bin2_dev))
     {
         ret = VFS_ERR_INVAL;
         goto err;

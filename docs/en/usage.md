@@ -33,7 +33,7 @@
 | **HW pass-through** | DTSI macro values enter the config struct; HAL does zero translation | HAL header field comments |
 | **Bus poison** | calling `hal_*` is forbidden until `*_BUS_IMPL` is defined | `bus/*/*_bus.h` |
 | **VFS (this repo)** | the device `file_operations` layer — **not** the Linux-kernel VFS | `vfs/*` |
-| **OSAL** | OS abstraction, three backends: bare-metal cooperative / FreeRTOS v11.3.0 / RT-Thread v5.3.0 | `osal/` |
+| **OSAL** | OS abstraction, three backends: bare-metal (cooperative / preemptive) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 | `osal/` |
 | **VIRQ** | virtual IRQ number + top/bottom halves | `interrupt/` |
 | **status / VFS_ERR_*** | unified error codes | `core/include/status.h` |
 | **Brick** | optional open-source capability block (GUI/network/FS…) | [ecosystem.md](ecosystem.md); `mini_tree_link_*` |

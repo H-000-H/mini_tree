@@ -47,27 +47,20 @@ static const char* const k_tag = "a7670";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void a7670_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_a7670_pool_ctrl, s_a7670_used, A7670_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void a7670_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_a7670_pool_ctrl, s_a7670_used, A7670_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct a7670_device* a7670_get_drvdata(struct device* pdev)
-{
-    return (struct a7670_device*)device_get_priv(pdev);
-}
+static struct a7670_device* a7670_get_drvdata(struct device* pdev) { return (struct a7670_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 UART 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;

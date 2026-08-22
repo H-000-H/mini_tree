@@ -84,7 +84,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `osal/` | locks, queues, tasks, time | `osal_mutex_lock` |
 | `interrupt/` | VIRQ, top/bottom halves | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | startup, WDT, scrubber, safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
-| `time_slice/` | bare-metal scheduling — cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, experimental) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
+| `time_slice/` | bare-metal scheduling — selected by the `Kconfig.mini_tree` tri-state choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`); cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, N+1 multi-priority) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake (`MINI_TREE_XTASK_*`) + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
 | `drivers/<chip>/` | product drivers (37, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
 | `can_hook/` | CAN hook extensions | — |
 | `lib/` + `cmake/*.cmake` | vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP / cJSON are config-time FetchContent, the rest link-time | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |

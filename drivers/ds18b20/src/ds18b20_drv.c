@@ -49,20 +49,14 @@ static const char* const k_tag = "ds18b20";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ds18b20_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_ds18b20_pool_ctrl, s_ds18b20_used, DS18B20_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ds18b20_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_ds18b20_pool_ctrl, s_ds18b20_used, DS18B20_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct ds18b20_device* ds18b20_get_drvdata(struct device* pdev)
-{
-    return (struct ds18b20_device*)device_get_priv(pdev);
-}
+static struct ds18b20_device* ds18b20_get_drvdata(struct device* pdev) { return (struct ds18b20_device*)device_get_priv(pdev); }
 
 /**
  * @brief 微秒延时（OSAL 转发）
@@ -110,7 +104,7 @@ static int ds18b20_write_bit(struct ds18b20_device* dev, int bit)
 
 /**
  * @brief 读 1bit（拉低 3us 后释放，采样电平）
- * @param bit 输出读到的位
+ * @param[in] bit 输出读到的位
  */
 static int ds18b20_read_bit(struct ds18b20_device* dev, int* bit)
 {
@@ -146,7 +140,7 @@ static int ds18b20_write_byte(struct ds18b20_device* dev, uint8_t val)
 
 /**
  * @brief 读 1B（LSB 先行）
- * @param val 输出读到的字节
+ * @param[in] val 输出读到的字节
  */
 static int ds18b20_read_byte(struct ds18b20_device* dev, uint8_t* val)
 {
@@ -178,8 +172,7 @@ static int ds18b20_hw_create(struct ds18b20_device* dev)
         int ret = device_open(dev->data_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret = device_ioctl(dev->data_dev, GPIO_CMD_GET_LEVEL, &dev->data_gpio,
-                           sizeof(dev->data_gpio), 0);
+        ret = device_ioctl(dev->data_dev, GPIO_CMD_GET_LEVEL, &dev->data_gpio, sizeof(dev->data_gpio), 0);
         if (ret != VFS_OK)
             return ret;
     }
@@ -261,8 +254,7 @@ static int ds18b20_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*ds18b20_ioctl_fn_t)(struct ds18b20_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct ds18b20_ioctl_map
 {
     ds18b20_ioctl_fn_t handler;

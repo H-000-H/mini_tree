@@ -42,10 +42,8 @@
 #define HAL_SYSTICK_LOAD_MASK 0xFFFFFFu /* LOAD 24 位最大值 */
 
 /* 同时覆盖 CMSIS 宏 (__CORTEX_M*) 与编译器宏 (__ARM_ARCH_*): 各工具链均能正确判定 */
-#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) ||                    \
-    defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7) ||                       \
-    defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) ||           \
-    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) || defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7) || defined(__ARM_ARCH_6M__) ||                   \
+    defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
 
 int hal_systick_init(uint32_t tick_hz)
 {
@@ -66,9 +64,7 @@ int hal_systick_init(uint32_t tick_hz)
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, 0u);
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, reload);
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, HAL_SYSTICK_CTRL_CLKSOURCE |
-                                                                    HAL_SYSTICK_CTRL_TICKINT |
-                                                                    HAL_SYSTICK_CTRL_ENABLE);
+    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, HAL_SYSTICK_CTRL_CLKSOURCE | HAL_SYSTICK_CTRL_TICKINT | HAL_SYSTICK_CTRL_ENABLE);
     return VFS_OK;
 }
 

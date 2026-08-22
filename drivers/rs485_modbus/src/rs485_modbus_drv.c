@@ -53,19 +53,15 @@ static const char* const k_tag = "rs485_modbus";
  */
 pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void rs485_modbus_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_rs485_modbus_pool_ctrl, s_rs485_modbus_used, RS485_MODBUS_POOL_COUNT));
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_rs485_modbus_pool_ctrl, s_rs485_modbus_used, RS485_MODBUS_POOL_COUNT));
 }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct rs485_modbus_device* rs485_modbus_get_drvdata(struct device* pdev)
-{
-    return (struct rs485_modbus_device*)device_get_priv(pdev);
-}
+static struct rs485_modbus_device* rs485_modbus_get_drvdata(struct device* pdev) { return (struct rs485_modbus_device*)device_get_priv(pdev); }
 
 /**
  * @brief 切换 DE/RE 方向（1=发送，0=接收）
@@ -78,16 +74,15 @@ static int rs485_de(struct rs485_modbus_device* dev, int tx)
 
 /**
  * @brief RS485 半双工帧交换（DE 拉高发送 → DE 拉低接收）
- * @param dev   驱动实例
- * @param tx  发送帧（含 CRC）
- * @param tx_len 发送长度
- * @param rx  接收缓冲（NULL 则不接收）
- * @param rx_len 期望接收长度
- * @param timeout_ms  超时 ms
+ * @param[in] dev   驱动实例
+ * @param[in] tx  发送帧（含 CRC）
+ * @param[in] tx_len 发送长度
+ * @param[out] rx  接收缓冲（NULL 则不接收）
+ * @param[out] rx_len 期望接收长度
+ * @param[in] timeout_ms  超时 ms
  * @return 实际接收字节数（>=0），或 VFS_ERR_*
  */
-static int rs485_modbus_uart_xchg(struct rs485_modbus_device* dev, const uint8_t* tx, size_t tx_len,
-                                  uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
+static int rs485_modbus_uart_xchg(struct rs485_modbus_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
 {
     int count;
     if (!dev || !dev->uart_dev || !tx || tx_len == 0)
@@ -221,8 +216,7 @@ static int rs485_modbus_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*rs485_modbus_ioctl_fn_t)(struct rs485_modbus_device* dev, void* arg, size_t arg_len,
-                                       uint32_t ms);
+typedef int (*rs485_modbus_ioctl_fn_t)(struct rs485_modbus_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct rs485_modbus_ioctl_map
 {
     rs485_modbus_ioctl_fn_t handler;
@@ -231,8 +225,7 @@ struct rs485_modbus_ioctl_map
 /**
  * @brief RS485_MODBUS_CMD_READ_HOLDING 实现：03 功能码读保持寄存器并回填
  */
-static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, size_t len,
-                                 uint32_t timeout_ms)
+static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct modbus_read* rd = (struct modbus_read*)arg;
     uint8_t req[8];
@@ -262,8 +255,7 @@ static int rs485_modbus_cmd_read(struct rs485_modbus_device* dev, void* arg, siz
 /**
  * @brief RS485_MODBUS_CMD_WRITE_SINGLE 实现：06 功能码写单寄存器
  */
-static int rs485_modbus_cmd_write(struct rs485_modbus_device* dev, void* arg, size_t len,
-                                  uint32_t timeout_ms)
+static int rs485_modbus_cmd_write(struct rs485_modbus_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct modbus_write* wr = (struct modbus_write*)arg;
     uint8_t req[8];

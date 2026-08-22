@@ -31,15 +31,12 @@ static const char* k_tag = "vfs_iwdg";
 /**
  * @brief IWDG VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1)); }
 
 /**
  * @brief IWDG 打开: 引用计数, 首次打开时调用 hal_iwdg_start 启动独立看门狗
- * @param pdev 设备对象指针
- * @param arg 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_iwdg_open(struct device* pdev, void* arg)
@@ -71,7 +68,7 @@ static int vfs_iwdg_open(struct device* pdev, void* arg)
 
 /**
  * @brief IWDG 关闭: 仅递减 lifecycle 引用, 不停止硬件 (IWDG 启动后不可关闭)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_iwdg_close(struct device* pdev)
@@ -93,11 +90,11 @@ static int vfs_iwdg_close(struct device* pdev)
 
 /**
  * @brief IWDG ioctl: 喂狗, 设置/恢复超时
- * @param pdev 设备对象指针
- * @param cmd 控制命令 (IWDG_CMD_*)
- * @param arg 命令参数指针 (IWDG_CMD_SET_TIMEOUT 时为 iwdg_timeout_arg)
- * @param arg_len 参数长度
- * @param to 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令 (IWDG_CMD_*)
+ * @param[in] arg 命令参数指针 (IWDG_CMD_SET_TIMEOUT 时为 iwdg_timeout_arg)
+ * @param[in] arg_len 参数长度
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
 static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t to)
@@ -123,8 +120,7 @@ static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     case IWDG_CMD_SET_TIMEOUT:
     {
         const struct iwdg_timeout_arg* a = arg;
-        ret = (!a || arg_len != sizeof(*a)) ? VFS_ERR_INVAL :
-                                              hal_iwdg_set_timeout_ms(&priv->iwdg, a->timeout_ms);
+        ret = (!a || arg_len != sizeof(*a)) ? VFS_ERR_INVAL : hal_iwdg_set_timeout_ms(&priv->iwdg, a->timeout_ms);
         break;
     }
     case IWDG_CMD_SET_LONG:
@@ -149,7 +145,7 @@ static const struct file_operations s_fops = {
 
 /**
  * @brief IWDG 设备探测: 解析 timeout-ms, hal_iwdg_init, 注册 fops
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_iwdg_probe(struct device* pdev)
@@ -186,7 +182,7 @@ static int vfs_iwdg_probe(struct device* pdev)
 
 /**
  * @brief IWDG 设备移除: 注销 fops 并释放私有池 (不停止硬件, 不做 lifecycle drain)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK
  */
 static int vfs_iwdg_remove(struct device* pdev)

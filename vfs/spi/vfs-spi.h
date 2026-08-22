@@ -42,8 +42,8 @@ extern "C"
 #define SPI_CMD_TRANSFER SPI_CMD_BASE + 0x01 /**< Master 同步全双工 (arg.xfer_mode 可选路径) */
 #define SPI_CMD_QUEUE_TX SPI_CMD_BASE + 0x02 /**< Slave: 入队发送 */
 #define SPI_CMD_GET_TRANS_RESULT SPI_CMD_BASE + 0x03 /**< Slave: 取传输结果 */
-#define SPI_CMD_SET_XFER_MODE                                                                      \
-    SPI_CMD_BASE + 0x04 /**< 设置后续 write/read/transfer 的 xfer_mode                        \
+#define SPI_CMD_SET_XFER_MODE                                                                                                                                                                          \
+    SPI_CMD_BASE + 0x04 /**< 设置后续 write/read/transfer 的 xfer_mode                                                                                                                            \
                          */
 #define SPI_CMD_GET_XFER_MODE SPI_CMD_BASE + 0x05 /**< 查询当前 xfer_mode */
 #define SPI_CMD_TRANSFER_ASYNC SPI_CMD_BASE + 0x06 /**< Master 异步提交 (完成走 cb, 非阻塞) */

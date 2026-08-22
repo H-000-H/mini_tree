@@ -37,7 +37,7 @@ AllowShortFunctionsOnASingleLine: All
 AllowShortBlocksOnASingleLine: Never
 
 # ── 行宽 ──
-ColumnLimit: 100
+ColumnLimit: 200
 
 # ── 指针 / 引用 ──
 DerivePointerAlignment: false

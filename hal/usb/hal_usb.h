@@ -76,39 +76,37 @@ extern "C"
     /*===========================================================================================================================================================*/
     /**
      * @brief 初始化 OTG 时钟、DP/DM AF、NVIC 优先级 (不启 Cube PCD)
-     * @param host host 对象
-     * @param cfg  DTSI 直投配置
+     * @param[in] host host 对象
+     * @param[in] cfg  DTSI 直投配置
      * @return VFS_OK 或 VFS_ERR_*
      */
-    int hal_usb_bus_host_init(struct hal_usb_bus_host* host,
-                              const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_usb_bus_host_init(struct hal_usb_bus_host* host, const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化: 关 IRQ、关时钟、恢复 GPIO
-     * @param host host 对象
+     * @param[in] host host 对象
      * @return VFS_OK 或 VFS_ERR_*
      */
     int hal_usb_bus_host_deinit(struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 使能 OTG NVIC 中断
-     * @param host host 对象
+     * @param[in] host host 对象
      * @return VFS_OK 成功; 负的 VFS_ERR_* 表示失败
      */
     int hal_usb_irq_enable(const struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 禁止 OTG NVIC 中断
-     * @param host host 对象
+     * @param[in] host host 对象
      * @return VFS_OK 成功; 负的 VFS_ERR_* 表示失败
      */
     int hal_usb_irq_disable(const struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 按 dma_enable 与请求模式解析实际传输路径
-     * @param host      已 init 的 host
-     * @param xfer_mode HAL_USB_XFER_AUTO / POLL / DMA
+     * @param[in] host      已 init 的 host
+     * @param[in] xfer_mode HAL_USB_XFER_AUTO / POLL / DMA
      * @return HAL_USB_XFER_POLL / HAL_USB_XFER_DMA, 或负数 VFS_ERR_*
      */
-    int hal_usb_resolve_xfer_mode(const struct hal_usb_bus_host* host,
-                                  uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int hal_usb_resolve_xfer_mode(const struct hal_usb_bus_host* host, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

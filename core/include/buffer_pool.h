@@ -70,20 +70,63 @@ extern "C"
     struct bp_pool;
 
     /* ── 生命周期 ── */
+    /**
+     * @brief 创建定长缓冲区池 (初始化时一次性分配, 运行时零 malloc)
+     * @param[in] config 池配置 (name/buf_size/buf_count/align/静态内存)
+     * @return 池对象指针; 配置非法或资源不足返回 NULL
+     */
     struct bp_pool* bp_create(const struct bp_config* config) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 销毁缓冲区池并释放资源
+     * @param[in] pool 池对象指针 (可为 NULL)
+     */
     void bp_destroy(struct bp_pool* pool);
 
     /* ── 分配/释放 ── */
+    /**
+     * @brief 从池中分配一个缓冲区 (O(1) 位图+CLZ, ISR 安全)
+     * @param[in] pool 池对象指针
+     * @return 缓冲区指针; 池满返回 NULL
+     */
     void* bp_alloc(struct bp_pool* pool) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 归还缓冲区到池
+     * @param[in] pool 池对象指针
+     * @param[in] buf 待释放缓冲区指针 (须由本池 bp_alloc 分配)
+     */
     void bp_free(struct bp_pool* pool, void* buf);
 
     /* ISR 安全版本 (实际与普通版本相同, 原子操作本身 ISR 安全) */
+    /**
+     * @brief ISR 上下文分配缓冲区 (同 bp_alloc, 原子操作天然 ISR 安全)
+     * @param[in] pool 池对象指针
+     * @return 缓冲区指针; 池满返回 NULL
+     */
     void* bp_alloc_isr(struct bp_pool* pool) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief ISR 上下文归还缓冲区 (同 bp_free)
+     * @param[in] pool 池对象指针
+     * @param[in] buf 待释放缓冲区指针
+     */
     void bp_free_isr(struct bp_pool* pool, void* buf);
 
     /* ── 统计诊断 ── */
+    /**
+     * @brief 查询当前已分配缓冲区数
+     * @param[in] pool 池对象指针
+     * @return 已分配数量
+     */
     uint32_t bp_used(const struct bp_pool* pool);
+    /**
+     * @brief 查询历史峰值占用 (调试/认证用)
+     * @param[in] pool 池对象指针
+     * @return 峰值占用数量
+     */
     uint32_t bp_peak(const struct bp_pool* pool);
+    /**
+     * @brief 重置峰值计数器
+     * @param[in] pool 池对象指针
+     */
     void bp_reset_peak(struct bp_pool* pool);
 
 #ifdef __cplusplus

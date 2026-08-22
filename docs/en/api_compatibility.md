@@ -17,7 +17,7 @@
 | `DRIVER_REGISTER(name, compat, probe, remove)` shape | macro arg order & symbol rules |
 | `status.h` `VFS_OK` / `VFS_ERR_*` semantics | values may map through errno; semantics hold |
 | `osal.h` public function set | common surface across three backends |
-| `osal_null.h` C++ overload `osal_task_create` (bare-metal cooperative only) | only `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus` + **`!CONFIG_XTASK_PREEMPT`**; `period` in ms, `param1` is `x_task*` TCB |
+| `osal_null.h` C++ overload `osal_task_create` (bare-metal only) | only `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus`; **cooperative** (`CONFIG_XTASK_COOP`): `period` in ms, `param1` is `x_task*` TCB; **preemptive** (`CONFIG_XTASK_PREEMPT`): 3rd arg reinterpreted as `priority` (higher = more urgent) |
 | HAL function & config-field names | platforms implement per header |
 
 ---

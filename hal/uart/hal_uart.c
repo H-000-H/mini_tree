@@ -35,8 +35,7 @@ COMPAT_WEAK int hal_uart_dev_hw_close(struct hal_uart_bus_host* host)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len,
-                               uint32_t timeout_ms)
+COMPAT_WEAK int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)data;
@@ -45,8 +44,7 @@ COMPAT_WEAK int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, s
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len,
-                              uint32_t timeout_ms)
+COMPAT_WEAK int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)data;
@@ -55,8 +53,7 @@ COMPAT_WEAK int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t l
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len,
-                                   uint32_t timeout_ms)
+COMPAT_WEAK int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)data;

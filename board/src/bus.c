@@ -27,7 +27,7 @@ static uint8_t s_controller_used[DEV_ID_COUNT] COMPAT_ALIGNED(4);
 
 /**
  * @brief 将 device 转换为 device_id (通过 board_dev_find 线性扫描)
- * @param pdev 输入的 device 指针
+ * @param[in] pdev 输入的 device 指针
  * @return 找到返回 device_id, 未找到返回 (device_id_t)-1
  */
 static device_id_t device_to_id(const struct device* pdev)
@@ -39,14 +39,13 @@ static device_id_t device_to_id(const struct device* pdev)
 
 /**
  * @brief 绑定 device 到总线控制器静态表
- * @param pdev controller device 指针
- * @param type 总线类型
- * @param ctlr_ops 控制器操作表
- * @param hw_ctx 硬件上下文指针
+ * @param[in] pdev controller device 指针
+ * @param[in] type 总线类型
+ * @param[in] ctlr_ops 控制器操作表
+ * @param[in] hw_ctx 硬件上下文指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-int bus_controller_bind_full(struct device* pdev, bus_type_t type,
-                             const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
+int bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
 {
     device_id_t id;
 
@@ -66,8 +65,8 @@ int bus_controller_bind_full(struct device* pdev, bus_type_t type,
 
 /**
  * @brief 获取 device 自身绑定的总线控制器
- * @param pdev device 指针
- * @param out 输出 bus_controller 指针
+ * @param[in] pdev device 指针
+ * @param[out] out 输出 bus_controller 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int bus_controller_get(const struct device* pdev, struct bus_controller** out)
@@ -90,8 +89,8 @@ int bus_controller_get(const struct device* pdev, struct bus_controller** out)
 
 /**
  * @brief 获取 device 父节点绑定的总线控制器 (client 查 host)
- * @param pdev client device 指针
- * @param out 输出 bus_controller 指针
+ * @param[in] pdev client device 指针
+ * @param[out] out 输出 bus_controller 指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 int bus_controller_of(const struct device* pdev, struct bus_controller** out)
@@ -120,7 +119,7 @@ int bus_controller_of(const struct device* pdev, struct bus_controller** out)
 
 /**
  * @brief 解绑 device 的总线控制器并清零槽位
- * @param pdev controller device 指针
+ * @param[in] pdev controller device 指针
  */
 void bus_controller_unbind(struct device* pdev)
 {
@@ -166,13 +165,12 @@ struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, 
 
 /**
  * @brief 绑定异步桥接槽位到用户回调
- * @param bridge bridge 指针
- * @param pdev 关联 device 指针
- * @param cb 用户完成回调
- * @param userdata 回调用户数据
+ * @param[in] bridge bridge 指针
+ * @param[in] pdev 关联 device 指针
+ * @param[in] cb 用户完成回调
+ * @param[in] userdata 回调用户数据
  */
-void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev,
-                           bus_async_user_cb_t cb, void* userdata)
+void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev, bus_async_user_cb_t cb, void* userdata)
 {
     if (!bridge)
         return;

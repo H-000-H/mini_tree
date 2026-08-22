@@ -44,16 +44,12 @@ static uint8_t s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE]
 /**
  * @brief GPIO VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT)); }
 
 /**
  * @brief GPIO 设备打开操作 (引用计数, 首次打开时调用 HAL 初始化)
- * @param pdev 设备对象指针
- * @param arg 打开参数 (未使用)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 打开参数 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_gpio_open(struct device* pdev, void* arg)
@@ -110,7 +106,7 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
 
 /**
  * @brief GPIO 设备关闭操作 (引用计数, 末次关闭时调用 HAL 反初始化)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_gpio_close(struct device* pdev)
@@ -153,9 +149,9 @@ typedef struct
 
 /**
  * @brief GPIO 命令处理: 翻转电平
- * @param priv GPIO VFS 私有数据指针
- * @param arg 命令参数指针 (vfs_gpio_arg)
- * @param arg_len 参数长度
+ * @param[in] priv GPIO VFS 私有数据指针
+ * @param[in] arg 命令参数指针 (vfs_gpio_arg)
+ * @param[in] arg_len 参数长度
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int gpio_cmd_toggle(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
@@ -168,9 +164,9 @@ static int gpio_cmd_toggle(struct vfs_gpio_priv* priv, void* arg, size_t arg_len
 
 /**
  * @brief GPIO 命令处理: 设置电平
- * @param priv GPIO VFS 私有数据指针
- * @param arg 命令参数指针 (vfs_gpio_arg)
- * @param arg_len 参数长度
+ * @param[in] priv GPIO VFS 私有数据指针
+ * @param[in] arg 命令参数指针 (vfs_gpio_arg)
+ * @param[in] arg_len 参数长度
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int gpio_cmd_set_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
@@ -184,9 +180,9 @@ static int gpio_cmd_set_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_
 
 /**
  * @brief GPIO 命令处理: 获取电平 (回写 obj 供快路径复用)
- * @param priv GPIO VFS 私有数据指针
- * @param arg 命令参数指针 (vfs_gpio_arg, 输出 level 与 obj)
- * @param arg_len 参数长度
+ * @param[in] priv GPIO VFS 私有数据指针
+ * @param[in] arg 命令参数指针 (vfs_gpio_arg, 输出 level 与 obj)
+ * @param[in] arg_len 参数长度
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int gpio_cmd_get_level(struct vfs_gpio_priv* priv, void* arg, size_t arg_len)
@@ -209,15 +205,14 @@ static const gpio_ioctl_map_t s_gpio_ioctl_map[GPIO_CMD_COUNT] = {
 
 /**
  * @brief GPIO 设备 ioctl 控制 (命令映射表 O(1) 派发)
- * @param pdev 设备对象指针
- * @param cmd 控制命令 (GPIO_CMD_*)
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (未使用)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令 (GPIO_CMD_*)
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                          uint32_t timeout_ms)
+static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct vfs_gpio_priv* priv;
     struct dev_lifecycle* lc;
@@ -269,7 +264,7 @@ static const struct file_operations gpio_fops = {
 
 /**
  * @brief GPIO 设备探测: 申请池槽, 解析 DTS 硬件直投值, 绑定 fops 与生命周期
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_gpio_probe(struct device* pdev)
@@ -297,11 +292,8 @@ static int vfs_gpio_probe(struct device* pdev)
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (device_get_prop_int(pdev, "gpio-port", &port_val) != VFS_OK ||
-        device_get_prop_int(pdev, "gpio-pin", &pin_val) != VFS_OK ||
-        device_get_prop_int(pdev, "gpio-clk", &clk_val) != VFS_OK ||
-        device_get_prop_int(pdev, "gpio-mode", &mode_val) != VFS_OK ||
-        device_get_prop_int(pdev, "gpio-pull", &pull_val) != VFS_OK)
+    if (device_get_prop_int(pdev, "gpio-port", &port_val) != VFS_OK || device_get_prop_int(pdev, "gpio-pin", &pin_val) != VFS_OK || device_get_prop_int(pdev, "gpio-clk", &clk_val) != VFS_OK ||
+        device_get_prop_int(pdev, "gpio-mode", &mode_val) != VFS_OK || device_get_prop_int(pdev, "gpio-pull", &pull_val) != VFS_OK)
     {
         ret = VFS_ERR_INVAL;
         goto err_pool;
@@ -339,8 +331,7 @@ static int vfs_gpio_probe(struct device* pdev)
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "default-level", &default_level));
     priv->default_level = default_level;
 
-    if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx],
-                                 sizeof(s_gpio_mutex_storage[pool_idx])) != 0)
+    if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx], sizeof(s_gpio_mutex_storage[pool_idx])) != 0)
     {
         ret = VFS_ERR_NOMEM;
         goto err_pool;
@@ -356,8 +347,7 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_mutex;
     }
 
-    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val,
-             (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
+    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
     return VFS_OK;
 
 err_mutex:
@@ -373,7 +363,7 @@ err_pool:
 
 /**
  * @brief GPIO 设备移除: 拒新 IO, 等待已有 IO 排空, 释放池槽与互斥锁
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_gpio_remove(struct device* pdev)

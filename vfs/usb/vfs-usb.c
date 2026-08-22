@@ -43,27 +43,24 @@ static uint8_t s_usb_priv_used[USB_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t s_usb_priv_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_host_tag = "usb_host_vfs";
 
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
-}
+/** 资源池初始化 (pre_execution 阶段, 供 device 池复用) */
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT)); }
 
+/**
+ * @brief 从 device 树解析 USB 主机硬件配置 (DTSI 直投到 hal_usb_bus_config)
+ * @param[in] pdev device 指针
+ * @param[out] cfg 回传解析后的 USB 主机配置
+ * @return 成功返回 VFS_OK, 关键属性缺失返回 VFS_ERR_INVAL
+ */
 static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config* cfg)
 {
     int usb_base = 0, rhport = 0, irqn = 0, vbus = 0, dma_en = 0;
     int dp_port = 0, dp_pin = 0, dp_af = 0;
     int dm_port = 0, dm_pin = 0, dm_af = 0;
 
-    if (device_get_prop_int(pdev, "usb-base", &usb_base) != VFS_OK ||
-        device_get_prop_int(pdev, "rhport", &rhport) != VFS_OK ||
-        device_get_prop_int(pdev, "irqn", &irqn) != VFS_OK ||
-        device_get_prop_int(pdev, "dp-port", &dp_port) != VFS_OK ||
-        device_get_prop_int(pdev, "dp-pin", &dp_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "dp-af", &dp_af) != VFS_OK ||
-        device_get_prop_int(pdev, "dm-port", &dm_port) != VFS_OK ||
-        device_get_prop_int(pdev, "dm-pin", &dm_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "dm-af", &dm_af) != VFS_OK)
+    if (device_get_prop_int(pdev, "usb-base", &usb_base) != VFS_OK || device_get_prop_int(pdev, "rhport", &rhport) != VFS_OK || device_get_prop_int(pdev, "irqn", &irqn) != VFS_OK ||
+        device_get_prop_int(pdev, "dp-port", &dp_port) != VFS_OK || device_get_prop_int(pdev, "dp-pin", &dp_pin) != VFS_OK || device_get_prop_int(pdev, "dp-af", &dp_af) != VFS_OK ||
+        device_get_prop_int(pdev, "dm-port", &dm_port) != VFS_OK || device_get_prop_int(pdev, "dm-pin", &dm_pin) != VFS_OK || device_get_prop_int(pdev, "dm-af", &dm_af) != VFS_OK)
         return VFS_ERR_INVAL;
 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "vbus-sense", &vbus));
@@ -84,6 +81,11 @@ static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config
     return VFS_OK;
 }
 
+/**
+ * @brief USB 主机 device probe: 解析 DTS + 初始化总线 + 绑定私有数据
+ * @param[in] pdev device 指针
+ * @return 成功返回 VFS_OK, 资源不足返回 VFS_ERR_NOMEM, 失败返回负数错误码
+ */
 static int vfs_usb_priv_probe(struct device* pdev)
 {
     struct vfs_usb_priv* priv;
@@ -124,6 +126,11 @@ err_pool:
     return ret;
 }
 
+/**
+ * @brief USB 主机 device remove: 排空生命周期后反初始化总线并释放池槽
+ * @param[in] pdev device 指针
+ * @return 成功返回 VFS_OK, 排空/反初始化失败返回负数错误码
+ */
 static int vfs_usb_priv_remove(struct device* pdev)
 {
     struct vfs_usb_priv* priv;
@@ -179,19 +186,36 @@ static uint8_t s_client_used[USB_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_client_tag = "usb_client_vfs";
 
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT));
-}
+/** 客户端池初始化 (pre_execution 阶段) */
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT)); }
 
+/**
+ * @brief VFS open 回调: 打开 USB 总线 (引用计数 +1)
+ * @param[in] pdev device 指针
+ * @param[in] arg 打开参数 (未用)
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int usb_vfs_open(struct device* pdev, void* arg)
 {
     COMPAT_IGNORE_RESULT(arg);
     return usb_bus_open(pdev);
 }
 
+/**
+ * @brief VFS close 回调: 关闭 USB 总线 (引用计数 -1)
+ * @param[in] pdev device 指针
+ * @return 成功返回 VFS_OK, 失败返回负数错误码
+ */
 static int usb_vfs_close(struct device* pdev) { return usb_bus_close(pdev); }
 
+/**
+ * @brief VFS write 回调: 按客户端类型分发 CDC/ECM/HID 写
+ * @param[in] pdev device 指针
+ * @param[in] buffer 发送缓冲区
+ * @param[in] len 发送长度
+ * @param[in] timeout_ms 超时毫秒数
+ * @return 成功返回 VFS_OK, 客户端类型非法返回 VFS_ERR_INVAL
+ */
 static int usb_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct usb_vfs_client* priv;
@@ -213,6 +237,14 @@ static int usb_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
     }
 }
 
+/**
+ * @brief VFS read 回调: 按客户端类型分发 CDC/ECM 读 (HID 不支持读)
+ * @param[in] pdev device 指针
+ * @param[out] buffer 接收缓冲区
+ * @param[in] len 接收长度
+ * @param[in] timeout_ms 超时毫秒数
+ * @return 成功返回 VFS_OK, 客户端类型非法返回 VFS_ERR_INVAL, HID 返回 VFS_ERR_NOTSUPP
+ */
 static int usb_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct usb_vfs_client* priv;
@@ -234,6 +266,13 @@ static int usb_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t 
     }
 }
 
+/**
+ * @brief ioctl USB_SET_XFER_MODE: 设置客户端传输模式 (含 DMA 能力校验)
+ * @param[in] pdev device 指针
+ * @param[in] arg usb_xfer_mode_arg 参数包
+ * @param[in] arg_len 参数长度
+ * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+ */
 static int usb_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
 {
     struct usb_vfs_client* priv;
@@ -255,6 +294,13 @@ static int usb_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
     return VFS_OK;
 }
 
+/**
+ * @brief ioctl USB_GET_XFER_MODE: 读取客户端当前传输模式
+ * @param[in] pdev device 指针
+ * @param[out] arg usb_xfer_mode_arg 参数包 (回传 xfer_mode)
+ * @param[in] arg_len 参数长度
+ * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+ */
 static int usb_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
 {
     struct usb_vfs_client* priv;
@@ -267,8 +313,16 @@ static int usb_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
     return VFS_OK;
 }
 
-static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+/**
+ * @brief VFS ioctl 回调: 分派 USB_CMD_SET/GET_XFER_MODE
+ * @param[in] pdev device 指针
+ * @param[in] cmd ioctl 命令
+ * @param[in] arg 命令参数
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时毫秒数 (未用)
+ * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_NOTSUPP
+ */
+static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (cmd == USB_CMD_SET_XFER_MODE)
@@ -286,6 +340,12 @@ static const struct file_operations s_usb_fops_template = {
     .ioctl = usb_vfs_ioctl,
 };
 
+/**
+ * @brief 注册指定 USB 客户端类 (CDC/ECM/HID): 申请池槽 + 绑定 bus client
+ * @param[in] pdev device 指针
+ * @param[in] cls 客户端类 (USB_CLIENT_*)
+ * @return 成功返回 VFS_OK, 资源不足返回 VFS_ERR_NOMEM, 失败返回负数错误码
+ */
 static int usb_vfs_client_probe_cls(struct device* pdev, enum usb_client_class cls)
 {
     struct usb_vfs_client* priv;
@@ -328,6 +388,11 @@ err_pool:
     return ret;
 }
 
+/**
+ * @brief USB 客户端 device remove: 注销 bus client + 排空生命周期 + 释放池槽
+ * @param[in] pdev device 指针
+ * @return 成功返回 VFS_OK, 排空失败返回负数错误码
+ */
 static int usb_vfs_client_remove(struct device* pdev)
 {
     struct usb_vfs_client* priv;
@@ -358,18 +423,12 @@ static int usb_vfs_client_remove(struct device* pdev)
     return VFS_OK;
 }
 
-static int usb_cdc_probe(struct device* pdev)
-{
-    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_CDC);
-}
-static int usb_ecm_probe(struct device* pdev)
-{
-    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_ECM);
-}
-static int usb_hid_probe(struct device* pdev)
-{
-    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID);
-}
+/** CDC ACM 客户端 probe (DRIVER_REGISTER) */
+static int usb_cdc_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_CDC); }
+/** CDC-ECM 客户端 probe (DRIVER_REGISTER) */
+static int usb_ecm_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_ECM); }
+/** HID 客户端 probe (DRIVER_REGISTER) */
+static int usb_hid_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID); }
 
 DRIVER_REGISTER(usb_otg_host, "usb-otg-host", vfs_usb_priv_probe, vfs_usb_priv_remove)
 DRIVER_REGISTER(usb_cdc_acm, "heterogeneous,usb-cdc-acm", usb_cdc_probe, usb_vfs_client_remove)

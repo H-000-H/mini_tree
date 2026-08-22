@@ -36,7 +36,7 @@ extern "C"
 
     /**
      * @brief 初始化链表节点 (自环)
-     * @param node 节点
+     * @param[in] node 节点
      */
     COMPAT_STATIC_INLINE int list_init(list_node* node)
     {
@@ -47,9 +47,9 @@ extern "C"
 
     /**
      * @brief 将 new_node 插入到 next 与 prev 之间
-     * @param new_node 新节点
-     * @param next 后继
-     * @param prev 前驱
+     * @param[in] new_node 新节点
+     * @param[in] next 后继
+     * @param[in] prev 前驱
      */
     COMPAT_STATIC_INLINE int list_add(list_node* new_node, list_node* next, list_node* prev)
     {
@@ -62,17 +62,14 @@ extern "C"
 
     /**
      * @brief 尾插 (即头节点前)
-     * @param new_node 新节点
-     * @param head 链表头
+     * @param[in] new_node 新节点
+     * @param[in] head 链表头
      */
-    COMPAT_STATIC_INLINE int list_add_tail(list_node* new_node, list_node* head)
-    {
-        return list_add(new_node, head, head->prev);
-    }
+    COMPAT_STATIC_INLINE int list_add_tail(list_node* new_node, list_node* head) { return list_add(new_node, head, head->prev); }
 
     /**
      * @brief 从链表摘下节点 (自我删除)
-     * @param node 节点
+     * @param[in] node 节点
      */
     COMPAT_STATIC_INLINE void list_del(list_node* node)
     {
@@ -84,7 +81,7 @@ extern "C"
 
     /**
      * @brief 链表是否为空
-     * @param head 链表头
+     * @param[in] head 链表头
      * @return true 空; false 非空
      */
     COMPAT_STATIC_INLINE bool list_empty(const list_node* head) { return head->next == head; }
@@ -116,7 +113,7 @@ extern "C"
 
     /**
      * @brief 初始化调度器
-     * @param sched 调度器
+     * @param[in] sched 调度器
      */
     COMPAT_STATIC_INLINE void x_scheduler_init(x_scheduler* sched)
     {
@@ -126,8 +123,8 @@ extern "C"
 
     /**
      * @brief 累加系统滴答
-     * @param sched 调度器
-     * @param ms 滴答增量
+     * @param[in] sched 调度器
+     * @param[in] ms 滴答增量
      * @return VFS_OK / VFS_ERR_INVAL
      */
     int x_scheduler_tick(x_scheduler* sched, unsigned int ms);
@@ -142,59 +139,57 @@ extern "C"
     /* ── protothread 协程 (PT_*) ──────────────────────────────────────── */
     /**
      * @brief 任务回调内的轻量协程宏 (无堆、无独立栈, 用 switch-case 状态机恢复让出点)
-     * @param task 任务 TCB 指针 (x_task*)
+     * @param[in] task 任务 TCB 指针 (x_task*)
      *
      * 用法: 回调内以 PT_BEGIN 开头、PT_END 结尾; 中间用 PT_YIELD / PT_WAIT_UNTIL /
      *       PT_DELAY 让出执行权, 调度器到期后重入回调并从让出点继续。
      * 注意: 跨让出点的局部变量不保留, 需存 TCB 或静态量。
      *       任务创建时 pt_line 须为 0 (首次进入 case 0)。
      */
-#define PT_BEGIN(task)                                                                             \
-    {                                                                                              \
-        switch ((task)->pt_line)                                                                   \
-        {                                                                                          \
+#define PT_BEGIN(task)                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        switch ((task)->pt_line)                                                                                                                                                                       \
+        {                                                                                                                                                                                              \
         case 0:
-#define PT_YIELD(task)                                                                             \
-    (task)->pt_line = __LINE__;                                                                    \
-    COMPAT_FALLTHROUGH;                                                                            \
+#define PT_YIELD(task)                                                                                                                                                                                 \
+    (task)->pt_line = __LINE__;                                                                                                                                                                        \
+    COMPAT_FALLTHROUGH;                                                                                                                                                                                \
     case __LINE__:
-#define PT_WAIT_UNTIL(task, cond)                                                                  \
-    do                                                                                             \
-    {                                                                                              \
-        (task)->pt_line = __LINE__;                                                                \
-        COMPAT_FALLTHROUGH;                                                                        \
-    case __LINE__:                                                                                 \
-        if (!(cond))                                                                               \
-        {                                                                                          \
-            return;                                                                                \
-        }                                                                                          \
+#define PT_WAIT_UNTIL(task, cond)                                                                                                                                                                      \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        (task)->pt_line = __LINE__;                                                                                                                                                                    \
+        COMPAT_FALLTHROUGH;                                                                                                                                                                            \
+    case __LINE__:                                                                                                                                                                                     \
+        if (!(cond))                                                                                                                                                                                   \
+        {                                                                                                                                                                                              \
+            return;                                                                                                                                                                                    \
+        }                                                                                                                                                                                              \
     } while (0)
-#define PT_DELAY(task, ms)                                                                         \
-    do                                                                                             \
-    {                                                                                              \
-        COMPAT_ATOMIC_STORE(&(task)->next_running, x_scheduler_now() + (ms), COMPAT_MO_RELAXED);   \
-        (task)->pt_line = __LINE__;                                                                \
-        COMPAT_FALLTHROUGH;                                                                        \
-    case __LINE__:                                                                                 \
-        if ((int32_t)(x_scheduler_now() -                                                          \
-                      COMPAT_ATOMIC_LOAD(&(task)->next_running, COMPAT_MO_RELAXED)) < 0)           \
-        {                                                                                          \
-            return;                                                                                \
-        }                                                                                          \
+#define PT_DELAY(task, ms)                                                                                                                                                                             \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        COMPAT_ATOMIC_STORE(&(task)->next_running, x_scheduler_now() + (ms), COMPAT_MO_RELAXED);                                                                                                       \
+        (task)->pt_line = __LINE__;                                                                                                                                                                    \
+        COMPAT_FALLTHROUGH;                                                                                                                                                                            \
+    case __LINE__:                                                                                                                                                                                     \
+        if ((int32_t)(x_scheduler_now() - COMPAT_ATOMIC_LOAD(&(task)->next_running, COMPAT_MO_RELAXED)) < 0)                                                                                           \
+        {                                                                                                                                                                                              \
+            return;                                                                                                                                                                                    \
+        }                                                                                                                                                                                              \
     } while (0)
-#define PT_END(task)                                                                               \
-    }                                                                                              \
-    (task)->pt_line = 0;                                                                           \
+#define PT_END(task)                                                                                                                                                                                   \
+    }                                                                                                                                                                                                  \
+    (task)->pt_line = 0;                                                                                                                                                                               \
     }
 #endif /* CONFIG_XTASK_COROUTINE */
 
 #ifdef CONFIG_XTASK_PREEMPT
     /** @brief 创建抢占式任务 (任务池自分配)
-     * @param priority 优先级, 越大越优先
+     * @param[in] priority 优先级, 越大越优先
      * @return 任务句柄; 池满/非法返回 0
      */
-    x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, uint32_t priority,
-                                            void (*cb)(x_task*), void* param);
+    x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, uint32_t priority, void (*cb)(x_task*), void* param);
 
     /** @brief 抢占式调度核心 (主循环调用, 无任务时精确 WFI) */
     int x_task_run_preempt(x_scheduler* sched);
@@ -205,8 +200,7 @@ extern "C"
 /** @brief 创建协调式任务 (TCB 由调用方静态分配)
  * @return 任务句柄; 非法参数返回 0
  */
-x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*),
-                                       unsigned int period_ms);
+x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms);
 
 /** @brief 协调式调度核心 (轮询到期任务) */
 int x_task_run(x_scheduler* sched);

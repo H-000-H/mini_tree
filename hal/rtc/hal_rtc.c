@@ -55,8 +55,7 @@ COMPAT_WEAK int hal_rtc_get_time(struct hal_rtc_dev* pdev, struct hal_rtc_time* 
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm,
-                                  hal_rtc_alarm_cb_t cb, void* user)
+COMPAT_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm, hal_rtc_alarm_cb_t cb, void* user)
 {
     (void)pdev;
     (void)alarm;

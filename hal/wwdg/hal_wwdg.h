@@ -44,23 +44,22 @@ extern "C"
 
     /**
      * @brief 初始化 WWDG 软件对象 (不启动硬件)
-     * @param pdev 设备对象
-     * @param cfg  配置 (校验 counter/window 范围)
+     * @param[in] pdev 设备对象
+     * @param[in] cfg  配置 (校验 counter/window 范围)
      * @return VFS_OK 或 VFS_ERR_INVAL
      */
-    int hal_wwdg_init(struct hal_wwdg_dev* pdev,
-                      const struct hal_wwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_wwdg_init(struct hal_wwdg_dev* pdev, const struct hal_wwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 使能 APB1 时钟并启动 WWDG (置 WDGA)
-     * @param pdev 设备对象
+     * @param[in] pdev 设备对象
      * @return VFS_OK 或 VFS_ERR_INVAL
      */
     int hal_wwdg_start(struct hal_wwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 窗口内喂狗 (重写 CR 的 T 字段)
-     * @param pdev 设备对象 (须已 start); 调用方负责窗口时机
+     * @param[in] pdev 设备对象 (须已 start); 调用方负责窗口时机
      * @return VFS_OK 或 VFS_ERR_NODEV
      */
     int hal_wwdg_feed(struct hal_wwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;

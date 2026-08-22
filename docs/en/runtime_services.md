@@ -91,7 +91,7 @@ Master switch `CONFIG_VIRQ` (on by default); when off, `interrupt/interrupt.c` i
 | GPIO HW-interrupt routing | the virq_idx slot goes inert |
 | Board/driver ISR | must not call `interrupt_virtual_dispatch()` / `interrupt_virtual_register()` or the link fails |
 
-**Memory saving ≈ 1.3 KB RAM + 1 KB Flash** (three VIRQ tables 864 B + bottom-half poller 320 B + work item; FIFO depth `CONFIG_BOTTOM_HALF_QUEUE_DEPTH` costs 4 B/slot). See [memory_footprint.md](memory_footprint.md) §3.6.
+**Memory saving ≈ 1.3 KB RAM + 1 KB Flash** (three VIRQ tables 864 B + bottom-half poller 320 B + work item; FIFO depth `CONFIG_BOTTOM_HALF_QUEUE_DEPTH` costs 4 B/slot). See [memory_footprint.md](memory_footprint.md).
 
 ---
 

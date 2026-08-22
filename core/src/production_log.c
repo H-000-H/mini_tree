@@ -57,9 +57,9 @@ int production_log_init(void)
 
 /**
  * @brief 追加日志并持久化
- * @param level 级别
- * @param tag 标签
- * @param msg 消息
+ * @param[in] level 级别
+ * @param[in] tag 标签
+ * @param[in] msg 消息
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
@@ -88,9 +88,9 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
 
 /**
  * @brief 格式化追加
- * @param level 级别
- * @param tag 标签
- * @param fmt 格式
+ * @param[in] level 级别
+ * @param[in] tag 标签
+ * @param[in] fmt 格式
  * @param ... 参数
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
@@ -110,15 +110,14 @@ void production_log_push_fmt(prod_log_level_t level, const char* tag, const char
 int production_log_count(void)
 {
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
-        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 &&
-            s_state.ring[i].msg[0] == '\0')
+        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 && s_state.ring[i].msg[0] == '\0')
             return i;
     return PROD_LOG_SLOT_COUNT;
 }
 
 /**
  * @brief 按索引读
- * @param index 索引
+ * @param[in] index 索引
  * @return 条目或 NULL
  */
 const struct prod_log_entry* production_log_get(int index)
@@ -130,7 +129,7 @@ const struct prod_log_entry* production_log_get(int index)
 
 /**
  * @brief dump 到 sink
- * @param sink 行回调
+ * @param[in] sink 行回调
  */
 void production_log_dump(void (*sink)(const char* line))
 {
@@ -162,8 +161,7 @@ void production_log_dump(void (*sink)(const char* line))
             break;
         }
 
-        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)e->seq, lvl_str, e->tag,
-                 e->msg);
+        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)e->seq, lvl_str, e->tag, e->msg);
         sink(buf);
     }
     sink("=== END ===");
@@ -179,9 +177,9 @@ int production_log_init(void) { return 0; }
 
 /**
  * @brief stub: 忽略日志写入
- * @param level 级别 (忽略)
- * @param tag 标签 (忽略)
- * @param msg 消息 (忽略)
+ * @param[in] level 级别 (忽略)
+ * @param[in] tag 标签 (忽略)
+ * @param[in] msg 消息 (忽略)
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
@@ -192,9 +190,9 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
 
 /**
  * @brief stub: 忽略格式化日志
- * @param level 级别 (忽略)
- * @param tag 标签 (忽略)
- * @param fmt 格式 (忽略)
+ * @param[in] level 级别 (忽略)
+ * @param[in] tag 标签 (忽略)
+ * @param[in] fmt 格式 (忽略)
  * @param ... 参数 (忽略)
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
@@ -212,7 +210,7 @@ int production_log_count(void) { return 0; }
 
 /**
  * @brief stub: 无条目可读
- * @param index 索引 (忽略)
+ * @param[in] index 索引 (忽略)
  * @return NULL
  */
 const struct prod_log_entry* production_log_get(int index)
@@ -223,7 +221,7 @@ const struct prod_log_entry* production_log_get(int index)
 
 /**
  * @brief stub: 输出占位行
- * @param sink 行回调
+ * @param[in] sink 行回调
  */
 void production_log_dump(void (*sink)(const char* line))
 {

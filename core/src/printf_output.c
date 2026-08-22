@@ -19,7 +19,7 @@
 
 /**
  * @brief vprintf 输出
- * @param fmt 格式
+ * @param[in] fmt 格式
  * @param ... 参数
  */
 void my_printf_output(const char* fmt, ...)

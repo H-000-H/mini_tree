@@ -47,14 +47,15 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 | Backend | Model | Dependency |
 |:---|:---|:---|
-| `CONFIG_OSAL_NULL` | Cooperative Time-Slice | None |
+| `CONFIG_OSAL_NULL` | Cooperative Time-Slice / Preemptive (bare-metal) | None |
 | `CONFIG_OSAL_FREERTOS` | Preemptive | FreeRTOS v11.3.0 |
 | `CONFIG_OSAL_RTTHREAD` | Preemptive | RT-Thread v5.3.0 |
 
-The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task schedulers under `time_slice/task/`, gated by `CONFIG_XTASK_PREEMPT` (mutual-exclusive at both CMake and `#ifdef` level, sharing the same `xtask.h` API surface — caller code unchanged):
+The bare-metal backend (`CONFIG_OSAL_NULL`) picks one scheduler from the `Kconfig.mini_tree` "bare-metal scheduler" choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`, default `XTASK_COOP`). Both implementations share the same `xtask.h` API surface and are mutually exclusive at both CMake (`MINI_TREE_XTASK_*`) and `#ifdef` level — caller code switches transparently:
 
-- `xtask_coop.c` (cooperative / round-robin, default) — `CONFIG_XTASK_PREEMPT=n`
-- `xtask_preempt.c` (preemptive, experimental) — `CONFIG_XTASK_PREEMPT=y`
+- `XTASK_NONE` — no scheduler; write your own `while(1)` loop
+- `xtask_coop.c` (cooperative / round-robin, default) — `XTASK_COOP`
+- `xtask_preempt.c` (preemptive, N+1 linked-list multi-priority, finished & compilable) — `XTASK_PREEMPT`
 
 ---
 
@@ -73,7 +74,7 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable task sched
 - **CMake ≥ 3.16** — `add_subdirectory(mini_tree)` + `mini_tree_link_*` on-demand linking; generic chip-agnostic path.
 - **Kconfig** — `.config` → `genconfig.py` → `config.h`; interactive configuration via `menuconfig.py`. Official kconfiglib (by Ulf Magnusson, ISC license) is vendored under `tools/_vendor/` — no `pip install` needed; prepended to `sys.path` by `tools/_vendor_loader.py`. The three `.py` files stay in sync with upstream, unmodified.
 - **dtc-lite** — Lightweight DTS compiler (`pip install lark`), auto-generating probe tables & board headers.
-- **Coding style** — `.clang-format` (Allman, no braces for single statements, one-line short functions, 4-space, 100 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
+- **Coding style** — `.clang-format` (Allman, no braces for single statements, one-line short functions, 4-space, 200 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
 - **Targets** — ARM Cortex-M0 / M0+ / M3 / M4F / M7, RISC-V 32-bit; dual-core heterogeneous AMP supported — covered by all three OSAL backends (Bare-Metal / FreeRTOS / RT-Thread).
 
 ---

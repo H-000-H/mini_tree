@@ -59,16 +59,13 @@ static const char* const k_tag = "i2c_bus";
 /**
  * @brief I2C Host 池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX)); }
 /*===========================================================================================================================================================*/
 /* Host pool helpers */
 /*===========================================================================================================================================================*/
 /**
  * @brief 通过 device 指针查找对应的 i2c_bus_host
- * @param pdev host device 指针
+ * @param[in] pdev host device 指针
  * @return 找到返回 host 指针, 未找到返回 NULL
  */
 static struct i2c_bus_host* i2c_host_from_device(struct device* pdev)
@@ -81,7 +78,7 @@ static struct i2c_bus_host* i2c_host_from_device(struct device* pdev)
 
 /**
  * @brief 通过 device 指针查找对应的 i2c_bus_client
- * @param pdev client device 指针
+ * @param[in] pdev client device 指针
  * @return 找到返回 client 指针, 未找到返回 NULL
  */
 static struct i2c_bus_client* i2c_client_from_device(struct device* pdev)
@@ -116,8 +113,8 @@ static const struct bus_controller_ops s_i2c_controller_ops = {
 
 /**
  * @brief I2C 总线主机初始化实现
- * @param pdev host device 指针
- * @param cfg host 配置指针
+ * @param[in] pdev host device 指针
+ * @param[in] cfg host 配置指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_host_init_impl(struct device* pdev, const void* cfg)
@@ -167,20 +164,11 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
     return VFS_OK;
 }
 
-/**
- * @brief 初始化 I2C host 并绑定总线控制器
- * @param pdev host device 指针
- * @param cfg host 配置 (struct hal_i2c_bus_config*)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg)
-{
-    return i2c_host_init_impl(pdev, cfg);
-}
+int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg) { return i2c_host_init_impl(pdev, cfg); }
 
 /**
  * @brief I2C 总线主机销毁实现
- * @param pdev host device 指针
+ * @param[in] pdev host device 指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_host_deinit_impl(struct device* pdev)
@@ -198,8 +186,7 @@ static int i2c_host_deinit_impl(struct device* pdev)
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
-        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
-                 COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return VFS_ERR_BUSY;
     }
 
@@ -215,16 +202,11 @@ static int i2c_host_deinit_impl(struct device* pdev)
     return ret;
 }
 
-/**
- * @brief 反初始化 I2C host 并释放对象池槽位
- * @param pdev host device 指针
- * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回负数错误码
- */
 int i2c_bus_host_deinit(struct device* pdev) { return i2c_host_deinit_impl(pdev); }
 
 /**
  * @brief 查询 host 角色 (支持传 host 或 client device)
- * @param pdev host 或 client device 指针
+ * @param[in] pdev host 或 client device 指针
  * @return I2C_BUS_ROLE_MASTER 或 I2C_BUS_ROLE_SLAVE, 失败返回 -1
  */
 static int i2c_host_role_impl(struct device* pdev)
@@ -248,22 +230,16 @@ static int i2c_host_role_impl(struct device* pdev)
     if (!host)
         return -1;
 
-    return host->hal_host.cfg.bus_role == HAL_I2C_BUS_ROLE_MASTER ? I2C_BUS_ROLE_MASTER :
-                                                                    I2C_BUS_ROLE_SLAVE;
+    return host->hal_host.cfg.bus_role == HAL_I2C_BUS_ROLE_MASTER ? I2C_BUS_ROLE_MASTER : I2C_BUS_ROLE_SLAVE;
 }
 
-/**
- * @brief 查询 I2C host 总线角色 (master/slave)
- * @param pdev host 或 client device 指针
- * @return I2C_BUS_ROLE_MASTER 或 I2C_BUS_ROLE_SLAVE, 失败返回 -1
- */
 int i2c_bus_host_role(struct device* pdev) { return i2c_host_role_impl(pdev); }
 
 /**
  * @brief I2C 总线客户端注册实现
- * @param pdev client device 指针
- * @param cfg client 配置指针
- * @param out 输出 client 指针
+ * @param[in] pdev client device 指针
+ * @param[in] cfg client 配置指针
+ * @param[out] out 输出 client 指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_client_register_impl(struct device* pdev, const void* cfg, void** out)
@@ -311,22 +287,11 @@ static int i2c_client_register_impl(struct device* pdev, const void* cfg, void**
     return VFS_OK;
 }
 
-/**
- * @brief 注册 I2C client 并增加 host 引用计数
- * @param pdev client device 指针
- * @param cfg client 配置 (struct hal_i2c_device_config*)
- * @param out 输出 client 私有上下文指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg,
-                            struct i2c_bus_client** out)
-{
-    return i2c_client_register_impl(pdev, cfg, (void**)out);
-}
+int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg, struct i2c_bus_client** out) { return i2c_client_register_impl(pdev, cfg, (void**)out); }
 
 /**
  * @brief I2C 总线客户端销毁实现 (关 hw / 减 host 引用 / 清槽)
- * @param pdev client device 指针
+ * @param[in] pdev client device 指针
  */
 static void i2c_client_unregister_impl(struct device* pdev)
 {
@@ -351,17 +316,8 @@ static void i2c_client_unregister_impl(struct device* pdev)
     COMPAT_MEM_SET(client, 0, sizeof(*client));
 }
 
-/**
- * @brief 注销 I2C client (公开包装, vfs 层调用)
- * @param pdev client device 指针
- */
 void i2c_bus_client_unregister(struct device* pdev) { i2c_client_unregister_impl(pdev); }
 
-/**
- * @brief 打开 I2C client 硬件 (HAL init + hw_open)
- * @param pdev client device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int i2c_bus_open(struct device* pdev)
 {
     struct i2c_bus_client* client;
@@ -383,11 +339,6 @@ int i2c_bus_open(struct device* pdev)
     return VFS_OK;
 }
 
-/**
- * @brief 关闭 I2C client 硬件
- * @param pdev client device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int i2c_bus_close(struct device* pdev)
 {
     struct i2c_bus_client* client;
@@ -406,15 +357,14 @@ int i2c_bus_close(struct device* pdev)
 
 /**
  * @brief master 写: 按 xfer_mode 选 poll / DMA / AUTO
- * @param client I2C client 指针
- * @param tx 发送缓冲区
- * @param len 字节数
- * @param timeout_ms 超时 (ms)
- * @param xfer_mode 传输模式 (POLL / DMA / AUTO)
+ * @param[in] client I2C client 指针
+ * @param[in] tx 发送缓冲区
+ * @param[in] len 字节数
+ * @param[in] timeout_ms 超时 (ms)
+ * @param[in] xfer_mode 传输模式 (POLL / DMA / AUTO)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* tx, size_t len,
-                                 uint32_t timeout_ms, uint32_t xfer_mode)
+static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     if (xfer_mode > HAL_I2C_XFER_DMA)
         return VFS_ERR_INVAL;
@@ -437,15 +387,14 @@ static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* t
 
 /**
  * @brief master 读: 按 xfer_mode 选 poll / DMA / AUTO
- * @param client I2C client 指针
- * @param rx 接收缓冲区
- * @param len 字节数
- * @param timeout_ms 超时 (ms)
- * @param xfer_mode 传输模式 (POLL / DMA / AUTO)
+ * @param[in] client I2C client 指针
+ * @param[out] rx 接收缓冲区
+ * @param[in] len 字节数
+ * @param[in] timeout_ms 超时 (ms)
+ * @param[in] xfer_mode 传输模式 (POLL / DMA / AUTO)
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
-static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size_t len,
-                                uint32_t timeout_ms, uint32_t xfer_mode)
+static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     if (xfer_mode > HAL_I2C_XFER_DMA)
         return VFS_ERR_INVAL;
@@ -465,18 +414,7 @@ static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size
     return hal_i2c_read(&client->hal_dev, rx, len, timeout_ms);
 }
 
-/**
- * @brief I2C 传输 (master 写/读/写后读, slave 走 slave_sync)
- * @param pdev client device 指针
- * @param tx 发送缓冲 (可为 NULL)
- * @param rx 接收缓冲 (可为 NULL)
- * @param len 字节数
- * @param timeout_ms 超时 (毫秒)
- * @param xfer_mode 传输模式 (POLL/DMA/AUTO)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                     uint32_t timeout_ms, uint32_t xfer_mode)
+int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct i2c_bus_client* client;
     int role;
@@ -502,8 +440,7 @@ int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t
         if (xfer_mode == HAL_I2C_XFER_DMA)
             return hal_i2c_dma_write_then_read(&client->hal_dev, tx, rx, len, timeout_ms);
         /* AUTO: DMA 可用则走 DMA 组合, 否则 poll */
-        if (client->host->hal_host.cfg.dma_tx.dma_enable &&
-            (len == 1U || client->host->hal_host.cfg.dma_rx.dma_enable))
+        if (client->host->hal_host.cfg.dma_tx.dma_enable && (len == 1U || client->host->hal_host.cfg.dma_rx.dma_enable))
         {
             int ret = hal_i2c_dma_write_then_read(&client->hal_dev, tx, rx, len, timeout_ms);
             if (ret != VFS_ERR_NOTSUPP)
@@ -516,17 +453,7 @@ int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t
     return i2c_master_read_mode(client, rx, len, timeout_ms, xfer_mode);
 }
 
-/**
- * @brief I2C master 写
- * @param pdev client device 指针
- * @param tx 发送缓冲
- * @param len 字节数
- * @param timeout_ms 超时 (毫秒)
- * @param xfer_mode 传输模式 (POLL/DMA/AUTO)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms,
-                  uint32_t xfer_mode)
+int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct i2c_bus_client* client;
 
@@ -543,17 +470,7 @@ int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t t
     return i2c_master_write_mode(client, tx, len, timeout_ms, xfer_mode);
 }
 
-/**
- * @brief I2C master 读
- * @param pdev client device 指针
- * @param rx 接收缓冲
- * @param len 字节数
- * @param timeout_ms 超时 (毫秒)
- * @param xfer_mode 传输模式 (POLL/DMA/AUTO)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms,
-                 uint32_t xfer_mode)
+int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct i2c_bus_client* client;
 
@@ -573,17 +490,7 @@ int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_
 /*===========================================================================================================================================================*/
 /* Slave API — 故意空壳: STM32 路径固定返回 NOTSUPP */
 /*===========================================================================================================================================================*/
-/**
- * @brief I2C slave 同步传输 (当前平台未实现)
- * @param pdev client device 指针
- * @param tx 发送缓冲 (可为 NULL)
- * @param rx 接收缓冲 (可为 NULL)
- * @param len 字节数
- * @param timeout_ms 超时 (毫秒)
- * @return 固定返回 VFS_ERR_NOTSUPP
- */
-int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                       uint32_t timeout_ms)
+int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(tx);
@@ -593,16 +500,7 @@ int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size
     return VFS_ERR_NOTSUPP;
 }
 
-/**
- * @brief I2C slave 排队发送 (当前平台未实现)
- * @param pdev client device 指针
- * @param data 发送缓冲
- * @param len 字节数
- * @param timeout_ms 超时 (毫秒)
- * @return 固定返回 VFS_ERR_NOTSUPP
- */
-int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
-                           uint32_t timeout_ms)
+int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(data);
@@ -611,17 +509,7 @@ int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
     return VFS_ERR_NOTSUPP;
 }
 
-/**
- * @brief 获取 I2C slave 传输结果 (当前平台未实现)
- * @param pdev client device 指针
- * @param rx_data 接收缓冲
- * @param rx_cap 接收缓冲容量
- * @param trans_len 输出实际传输长度
- * @param timeout_ms 超时 (毫秒)
- * @return 固定返回 VFS_ERR_NOTSUPP
- */
-int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap,
-                                   size_t* trans_len, uint32_t timeout_ms)
+int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(rx_data);

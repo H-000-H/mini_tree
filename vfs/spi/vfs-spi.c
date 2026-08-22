@@ -53,17 +53,13 @@ static const char* const k_host_tag = "spi_vfs_host";
 /**
  * @brief SPI Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT)); }
 
 /**
  * @brief 解析 SPI Host DTS 属性 (硬件直投值), 填入 hal_spi_bus_config
- * @param pdev 设备对象指针
- * @param cfg 配置结构指针
- * @param bus_role 总线角色 (MASTER/SLAVE)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 配置结构指针
+ * @param[in] bus_role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config* cfg, int bus_role)
@@ -76,20 +72,11 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
     int sclk_port = 0, sclk_pin = 0, sclk_clk = 0, sclk_af = 0;
     int sclk_output_type = 0, sclk_speed = 0, sclk_mode = 0, sclk_pull = 0;
 
-    if (device_get_prop_int(pdev, "spi-base", &spi_base) != VFS_OK ||
-        device_get_prop_int(pdev, "spi-clk", &spi_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-port", &mosi_port) != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-pin", &mosi_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-clk", &mosi_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "mosi-af", &mosi_af) != VFS_OK ||
-        device_get_prop_int(pdev, "miso-port", &miso_port) != VFS_OK ||
-        device_get_prop_int(pdev, "miso-pin", &miso_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "miso-clk", &miso_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "miso-af", &miso_af) != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-port", &sclk_port) != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-pin", &sclk_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-clk", &sclk_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "sclk-af", &sclk_af) != VFS_OK)
+    if (device_get_prop_int(pdev, "spi-base", &spi_base) != VFS_OK || device_get_prop_int(pdev, "spi-clk", &spi_clk) != VFS_OK || device_get_prop_int(pdev, "mosi-port", &mosi_port) != VFS_OK ||
+        device_get_prop_int(pdev, "mosi-pin", &mosi_pin) != VFS_OK || device_get_prop_int(pdev, "mosi-clk", &mosi_clk) != VFS_OK || device_get_prop_int(pdev, "mosi-af", &mosi_af) != VFS_OK ||
+        device_get_prop_int(pdev, "miso-port", &miso_port) != VFS_OK || device_get_prop_int(pdev, "miso-pin", &miso_pin) != VFS_OK || device_get_prop_int(pdev, "miso-clk", &miso_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "miso-af", &miso_af) != VFS_OK || device_get_prop_int(pdev, "sclk-port", &sclk_port) != VFS_OK || device_get_prop_int(pdev, "sclk-pin", &sclk_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "sclk-clk", &sclk_clk) != VFS_OK || device_get_prop_int(pdev, "sclk-af", &sclk_af) != VFS_OK)
     {
         return VFS_ERR_INVAL;
     }
@@ -156,8 +143,7 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
         int max_transfer_sz = 0;
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-trans-buffer", &max_transfer_sz));
         if (max_transfer_sz <= 0)
-            COMPAT_IGNORE_RESULT(
-                device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
+            COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
     }
 
@@ -218,8 +204,8 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
 
 /**
  * @brief SPI Host VFS 探测实现: 申请池槽, 解析 DTS, 调用 spi_bus_host_init
- * @param pdev 设备对象指针
- * @param bus_role 总线角色 (MASTER/SLAVE)
+ * @param[in] pdev 设备对象指针
+ * @param[in] bus_role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
@@ -253,8 +239,7 @@ static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
-             bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev), bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
     return VFS_OK;
 
 err_bus:
@@ -266,27 +251,21 @@ err_pool:
 
 /**
  * @brief SPI Host Master 角色探测入口
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_spi_priv_probe_master(struct device* pdev)
-{
-    return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_MASTER);
-}
+static int vfs_spi_priv_probe_master(struct device* pdev) { return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_MASTER); }
 
 /**
  * @brief SPI Host Slave 角色探测入口
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_spi_priv_probe_slave(struct device* pdev)
-{
-    return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_SLAVE);
-}
+static int vfs_spi_priv_probe_slave(struct device* pdev) { return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_SLAVE); }
 
 /**
  * @brief SPI Host 设备移除: remove_start → ops_unregister → remove_drain → host_deinit → 释放池槽
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_spi_priv_remove(struct device* pdev)
@@ -321,8 +300,7 @@ static int vfs_spi_priv_remove(struct device* pdev)
     ret = spi_bus_host_deinit(pdev);
     if (ret != VFS_OK)
     {
-        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d) — keeping resources",
-                 device_get_name(pdev), ret);
+        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d) — keeping resources", device_get_name(pdev), ret);
         dev_lc_remove_finish(lc);
         return ret;
     }
@@ -355,18 +333,15 @@ static const char* const k_client_tag = "spi_vfs_client";
 /**
  * @brief SPI Client VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT)); }
 
 /*===========================================================================================================================================================*/
 /*open / close (master/slave 统一)*/
 /*===========================================================================================================================================================*/
 /**
  * @brief SPI Client 设备打开操作 (引用计数, 首次打开时调用 spi_bus_open)
- * @param pdev 设备对象指针
- * @param arg 命令参数指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_open(struct device* pdev, void* arg)
@@ -403,7 +378,7 @@ static int spi_vfs_open(struct device* pdev, void* arg)
 
 /**
  * @brief SPI Client 设备关闭操作 (引用计数, 末次关闭时调用 spi_bus_close)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_close(struct device* pdev)
@@ -434,10 +409,10 @@ static int spi_vfs_close(struct device* pdev)
 /*===========================================================================================================================================================*/
 /**
  * @brief SPI Client 设备写操作 (按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync)
- * @param pdev 设备对象指针
- * @param buffer 发送数据缓冲
- * @param len 数据长度 (字节, 0 直接返回成功)
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buffer 发送数据缓冲
+ * @param[in] len 数据长度 (字节, 0 直接返回成功)
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
@@ -470,8 +445,7 @@ static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
     }
 
     if (priv->role == SPI_BUS_ROLE_MASTER)
-        ret =
-            spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
+        ret = spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
     else
         ret = spi_bus_slave_sync(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms);
 
@@ -481,10 +455,10 @@ static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
 
 /**
  * @brief SPI Client 设备读操作 (按 role 分派: master=spi_bus_transfer, slave=spi_bus_slave_sync)
- * @param pdev 设备对象指针
- * @param buffer 接收数据缓冲
- * @param len 数据长度 (字节, 0 直接返回成功)
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buffer 接收数据缓冲
+ * @param[in] len 数据长度 (字节, 0 直接返回成功)
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
@@ -537,10 +511,10 @@ struct spi_ioctl_map
 
 /**
  * @brief SPI 命令处理: 全双工传输
- * @param pdev 设备对象指针
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -563,14 +537,13 @@ static int spi_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
 
 /**
  * @brief 设置 write/read/默认 transfer 的传输路径偏好
- * @param pdev 设备对象指针
- * @param arg 命令参数指针 (spi_xfer_mode_arg)
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (未使用)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针 (spi_xfer_mode_arg)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct spi_xfer_mode_arg* ma = (const struct spi_xfer_mode_arg*)arg;
     struct spi_vfs_client* priv;
@@ -588,14 +561,13 @@ static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
 
 /**
  * @brief 查询当前传输路径偏好
- * @param pdev 设备对象指针
- * @param arg 命令参数指针 (spi_xfer_mode_arg, 输出 xfer_mode)
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (未使用)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针 (spi_xfer_mode_arg, 输出 xfer_mode)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct spi_xfer_mode_arg* ma = (struct spi_xfer_mode_arg*)arg;
     struct spi_vfs_client* priv;
@@ -611,14 +583,13 @@ static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
 
 /**
  * @brief Master 异步提交: 立即返回, 完成经 cb (可能在 ISR)
- * @param pdev 设备对象指针
- * @param arg 命令参数指针 (spi_transfer_async_arg)
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (未使用)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针 (spi_transfer_async_arg)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len,
-                                  uint32_t timeout_ms)
+static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct spi_transfer_async_arg* aa = (const struct spi_transfer_async_arg*)arg;
 
@@ -633,10 +604,10 @@ static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len
 
 /**
  * @brief 等待异步传输完成 (timeout_ms 来自 ioctl)
- * @param pdev 设备对象指针
- * @param arg 命令参数指针 (未使用)
- * @param arg_len 参数长度 (未使用)
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针 (未使用)
+ * @param[in] arg_len 参数长度 (未使用)
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -650,10 +621,10 @@ static int spi_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, ui
 
 /**
  * @brief Slave 发送队列入队
- * @param pdev 设备对象指针
- * @param arg 命令参数指针 (spi_queue_arg)
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针 (spi_queue_arg)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -666,14 +637,13 @@ static int spi_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
 
 /**
  * @brief 获取 Slave 传输结果
- * @param pdev 设备对象指针
- * @param arg 命令参数指针 (spi_trans_result_arg)
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针 (spi_trans_result_arg)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct spi_trans_result_arg* tra = (const struct spi_trans_result_arg*)arg;
     if (!tra || arg_len != sizeof(*tra))
@@ -693,15 +663,14 @@ static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
 
 /**
  * @brief SPI Client 设备 ioctl 控制 (命令映射表 O(1) 派发)
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;
@@ -741,8 +710,8 @@ static const struct file_operations spi_vfs_fops = {
 /*===========================================================================================================================================================*/
 /**
  * @brief 解析 SPI Client DTS 属性 (硬件直投值), 填入 hal_spi_device_config
- * @param pdev 设备对象指针
- * @param cfg 配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 配置结构指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* cfg)
@@ -750,11 +719,8 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
     int cs_port = 0, cs_pin = 0, cs_clk = 0;
     int mode = 0, freq = 0;
 
-    if (device_get_prop_int(pdev, "cs-port", &cs_port) != VFS_OK ||
-        device_get_prop_int(pdev, "cs-pin", &cs_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "cs-clk", &cs_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "spi-mode", &mode) != VFS_OK ||
-        device_get_prop_int(pdev, "spi-max-frequency", &freq) != VFS_OK)
+    if (device_get_prop_int(pdev, "cs-port", &cs_port) != VFS_OK || device_get_prop_int(pdev, "cs-pin", &cs_pin) != VFS_OK || device_get_prop_int(pdev, "cs-clk", &cs_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "spi-mode", &mode) != VFS_OK || device_get_prop_int(pdev, "spi-max-frequency", &freq) != VFS_OK)
     {
         return VFS_ERR_INVAL;
     }
@@ -796,7 +762,7 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
 /*===========================================================================================================================================================*/
 /**
  * @brief SPI Client 设备探测: 获取 role, 申请池槽, 解析 DTS, 注册 client, 绑定 fops
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_probe(struct device* pdev)
@@ -845,9 +811,7 @@ static int spi_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d", device_get_name(pdev),
-             role == SPI_BUS_ROLE_MASTER ? "master" : "slave", priv->cfg.mode,
-             priv->cfg.clock_speed_hz);
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d", device_get_name(pdev), role == SPI_BUS_ROLE_MASTER ? "master" : "slave", priv->cfg.mode, priv->cfg.clock_speed_hz);
     return VFS_OK;
 
 err_pool:
@@ -862,7 +826,7 @@ err_pool:
 /*===========================================================================================================================================================*/
 /**
  * @brief SPI Client 设备移除: 拒新 IO, 排空已有 IO, 注销 client, 释放池槽
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int spi_vfs_remove(struct device* pdev)

@@ -60,27 +60,20 @@ static const char* const k_tag = "epaper";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void epaper_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void epaper_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct epaper_device* epaper_get_drvdata(struct device* pdev)
-{
-    return (struct epaper_device*)device_get_priv(pdev);
-}
+static struct epaper_device* epaper_get_drvdata(struct device* pdev) { return (struct epaper_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int epaper_spi_xfer(struct epaper_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms)
+static int epaper_spi_xfer(struct epaper_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -145,15 +138,13 @@ static int epaper_hw_create(struct epaper_device* dev)
         ret = device_open(dev->rst_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret = device_ioctl(dev->rst_dev, GPIO_CMD_GET_LEVEL, &dev->rst_gpio, sizeof(dev->rst_gpio),
-                           0);
+        ret = device_ioctl(dev->rst_dev, GPIO_CMD_GET_LEVEL, &dev->rst_gpio, sizeof(dev->rst_gpio), 0);
         if (ret != VFS_OK)
             return ret;
         ret = device_open(dev->busy_dev, NULL);
         if (ret != VFS_OK)
             return ret;
-        ret = device_ioctl(dev->busy_dev, GPIO_CMD_GET_LEVEL, &dev->busy_gpio,
-                           sizeof(dev->busy_gpio), 0);
+        ret = device_ioctl(dev->busy_dev, GPIO_CMD_GET_LEVEL, &dev->busy_gpio, sizeof(dev->busy_gpio), 0);
         if (ret != VFS_OK)
             return ret;
     }
@@ -268,14 +259,12 @@ static int epaper_cmd_clear(struct epaper_device* dev, void* arg, size_t len, ui
 static int epaper_cmd_draw(struct epaper_device* dev, void* arg, size_t len, uint32_t ms)
 {
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
-    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
-        !darg->data)
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
         return VFS_ERR_INVAL;
     if (darg->x != 0 || darg->y != 0 || darg->w != dev->width || darg->h != dev->height)
         return VFS_ERR_INVAL;
     epaper_dc(dev, 1);
-    if (epaper_spi_xfer(dev, darg->data, NULL, (size_t)dev->width * (size_t)dev->height / 8U, ms) !=
-        VFS_OK)
+    if (epaper_spi_xfer(dev, darg->data, NULL, (size_t)dev->width * (size_t)dev->height / 8U, ms) != VFS_OK)
         return VFS_ERR_IO;
     return epaper_wait_busy(dev, ms ? ms : dev->busy_timeout_ms);
 }
@@ -320,12 +309,9 @@ static int epaper_cmd_set_brightness(struct epaper_device* dev, void* arg, size_
     return VFS_ERR_NOTSUPP;
 }
 static const struct epaper_ioctl_map s_epaper_map[DISPLAY_CMD_COUNT] = {
-    [DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1] = {epaper_cmd_get_info},
-    [DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1] = {epaper_cmd_clear},
-    [DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1] = {epaper_cmd_fill_rect},
-    [DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1] = {epaper_cmd_draw},
-    [DISPLAY_CMD_FLUSH - DISPLAY_CMD_BASE - 1] = {epaper_cmd_draw},
-    [DISPLAY_CMD_SET_BRIGHTNESS - DISPLAY_CMD_BASE - 1] = {epaper_cmd_set_brightness},
+    [DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1] = {epaper_cmd_get_info},   [DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1] = {epaper_cmd_clear},
+    [DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1] = {epaper_cmd_fill_rect}, [DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1] = {epaper_cmd_draw},
+    [DISPLAY_CMD_FLUSH - DISPLAY_CMD_BASE - 1] = {epaper_cmd_draw},          [DISPLAY_CMD_SET_BRIGHTNESS - DISPLAY_CMD_BASE - 1] = {epaper_cmd_set_brightness},
 };
 
 /**
@@ -398,8 +384,7 @@ static int epaper_probe(struct device* pdev)
     }
 
     /* 几何参数走 DTS（必填），不依赖驱动内部默认常量 */
-    if (device_get_prop_int(pdev, "width", &width) != VFS_OK ||
-        device_get_prop_int(pdev, "height", &height) != VFS_OK || width <= 0 || height <= 0)
+    if (device_get_prop_int(pdev, "width", &width) != VFS_OK || device_get_prop_int(pdev, "height", &height) != VFS_OK || width <= 0 || height <= 0)
     {
         SYS_LOGE(k_tag, "probe requires width/height in DTS");
         ret = VFS_ERR_INVAL;

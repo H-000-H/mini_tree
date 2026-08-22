@@ -38,7 +38,7 @@
 | Priority | Registration point | Initialization |
 | :---: | :--- | :--- |
 | `170` | `interrupt/interrupt.c` | Global bottom-half poller (FIFO + pending_drain) |
-| `161` | `time_slice/task/xtask_preempt.c` | N+1 preemptive scheduler array (experimental, incomplete) |
+| `161` | `time_slice/task/xtask_preempt.c` | N+1 preemptive scheduler (grouped priority + CLZ lookup, delayable/sleepable/preemptible, precise WFI when idle) |
 | `160` | `time_slice/task/xtask_coop.c` | Cooperative scheduler `g_scheduler` (default) |
 | `152` | `osal/src/osal_null.c` | Bare-metal queue pool |
 | `151` | `osal/src/osal_null.c` | Bare-metal semaphore pool |
@@ -175,7 +175,7 @@ Under cooperative scheduling all callbacks run **serially**, so this must hold:
 | 20 ms | ≤ 5 ms | state-machine advancement, protocol polling |
 | 100 ms | ≤ 20 ms | slow peripheral scans, watchdog feeding |
 
-When over budget, prefer in order: shorten blocking inside the callback (use a state machine, §8) → split tasks → move to `CONFIG_OSAL_FREERTOS` preemption (see `osal_switching.md`). The preemptive `xtask_preempt.c` (`CONFIG_XTASK_PREEMPT`) is experimental and incomplete; use an RTOS in production.
+When over budget, prefer in order: shorten blocking inside the callback (use a state machine, §8) → split tasks → move to `CONFIG_OSAL_FREERTOS` preemption (see `osal_switching.md`) or the bare-metal preemptive `xtask_preempt.c` (`XTASK_PREEMPT`, N+1 multi-priority, finished & compilable).
 
 ### protothread coroutine delays (PT_DELAY)
 

@@ -9,7 +9,7 @@
 
 ---
 
-## 0. 项目一句话
+## 0. 前言
 
 - **中文**：平台无关的嵌入式中间件，采用 Linux 风格设备树与驱动模型，统一裸机 / FreeRTOS / RT-Thread 上的外设访问；不绑定任何厂商 SDK。
 
@@ -49,7 +49,7 @@
 | :--- | :--- | :---: | :--- |
 | `service_spec.md` | 应用层允许/禁止；`device_find` 返回 `ERR_PTR` 须用 `IS_ERR` 判错；两段式启动挂载 | **P0** | [cn](service_spec.md) |
 | `app_cpp_guide.md` | 应用层 C++ 限制（ETL 容器、编码分档、禁则） | P1（C++） | [cn](app_cpp_guide.md) |
-| `coding_style.md` | `.clang-format`（LLVM/Allman/单语句去括号/`PointerAlignment: Left`/100 列）+ 分层 `.clang-tidy` + `compiler_compat_poison.h`（默认生效，靠 `ALLOW_*` 豁免） | **P0** | [cn](coding_style.md) |
+| `coding_style.md` | `.clang-format`（LLVM/Allman/单语句去括号/`PointerAlignment: Left`/200 列）+ 分层 `.clang-tidy` + `compiler_compat_poison.h`（默认生效，靠 `ALLOW_*` 豁免） | **P0** | [cn](coding_style.md) |
 | `runtime_services.md` | EventBus / VIRQ / SYSTEM_C·CPP / BufferPool | P1 | [cn](runtime_services.md) |
 | `fast_path.md` | ISR / 热路径红线（禁 printf/mutex/malloc/长逻辑） | **P0**（驱动） | [cn](fast_path.md) |
 | `can_hook.md` | CAN 协议超集钩子 | P2 | [cn](can_hook.md) |
@@ -91,7 +91,7 @@
 | 主题 | 中文 |
 | :--- | :--- |
 | 产品驱动 | 37 个，在 `drivers/<chip>/{include,src}`，GLOB 扫描；唯一树外例外 `driver_ws2812`（WHOLE_ARCHIVE） |
-| OSAL 后端 | `CONFIG_OSAL_NULL`（裸机协作，默认）/ `FREERTOS`（v11.3.0）/ `RTTHREAD`（v5.3.0） |
+| OSAL 后端 | `CONFIG_OSAL_NULL`（裸机，默认）/ `FREERTOS`（v11.3.0）/ `RTTHREAD`（v5.3.0） |
 | 目标架构 | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · 双核 AMP |
 | 外设覆盖 | 总线层 6（SPI/I2C/I2S/UART/CAN/USB）· 无总线层 7（GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG）· HAL-Only：AMP/Storage/Platform Safety/**SDIO（预留 reserved）** |
 | 错误码 | `VFS_OK=0`；`VFS_ERR_*`（全名，见 `status.h`）；`device_find` 失败返回 `ERR_PTR` 而非 `NULL` |

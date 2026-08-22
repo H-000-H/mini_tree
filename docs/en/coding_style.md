@@ -43,7 +43,7 @@ Root `.clang-format`:
 | Braces | Allman (next line) |
 | AllowShortBlocksOnASingleLine | `true` (drop `{}` for single-statement `if/for/while`) |
 | Indent | 4 spaces |
-| ColumnLimit | 100 |
+| ColumnLimit | 200 |
 | Pointer/reference alignment | left (`int *p`) |
 
 A platform project may copy and tweak `ColumnLimit`, but must **not** break the Allman / 4-space spine.

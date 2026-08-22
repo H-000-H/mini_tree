@@ -53,17 +53,14 @@ static const char* const k_tag = "can_bus";
 /**
  * @brief CAN Host 池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX)); }
 
 /*===========================================================================================================================================================*/
 /* Host pool helpers */
 /*===========================================================================================================================================================*/
 /**
  * @brief 通过 device 指针查找对应的 can_bus_host
- * @param pdev host device 指针
+ * @param[in] pdev host device 指针
  * @return 找到返回 host 指针, 未找到返回 NULL
  */
 static struct can_bus_host* can_host_from_device(struct device* pdev)
@@ -76,7 +73,7 @@ static struct can_bus_host* can_host_from_device(struct device* pdev)
 
 /**
  * @brief 通过 device 指针查找对应的 can_bus_client
- * @param pdev client device 指针
+ * @param[in] pdev client device 指针
  * @return 找到返回 client 指针, 未找到返回 NULL
  */
 static struct can_bus_client* can_client_from_device(struct device* pdev)
@@ -109,8 +106,8 @@ static const struct bus_controller_ops s_can_controller_ops = {
 
 /**
  * @brief CAN 总线主机初始化实现
- * @param pdev host device 指针
- * @param cfg host 配置指针
+ * @param[in] pdev host device 指针
+ * @param[in] cfg host 配置指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
 static int can_host_init_impl(struct device* pdev, const void* cfg)
@@ -160,20 +157,11 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
     return VFS_OK;
 }
 
-/**
- * @brief 初始化 CAN host 并绑定总线控制器
- * @param pdev host device 指针
- * @param cfg host 配置 (struct hal_can_bus_config*)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg)
-{
-    return can_host_init_impl(pdev, cfg);
-}
+int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg) { return can_host_init_impl(pdev, cfg); }
 
 /**
  * @brief CAN 总线主机销毁实现
- * @param pdev host device 指针
+ * @param[in] pdev host device 指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
 static int can_host_deinit_impl(struct device* pdev)
@@ -191,8 +179,7 @@ static int can_host_deinit_impl(struct device* pdev)
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
-        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
-                 COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return VFS_ERR_BUSY;
     }
 
@@ -208,16 +195,11 @@ static int can_host_deinit_impl(struct device* pdev)
     return ret;
 }
 
-/**
- * @brief 反初始化 CAN host 并释放对象池槽位
- * @param pdev host device 指针
- * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回负数错误码
- */
 int can_bus_host_deinit(struct device* pdev) { return can_host_deinit_impl(pdev); }
 
 /**
  * @brief 查询 host 角色 (CAN 无 master/slave, 固定返回 0)
- * @param pdev host 或 client device 指针
+ * @param[in] pdev host 或 client device 指针
  * @return 固定返回 0 (CAN 为对等总线)
  */
 static int can_host_role_impl(struct device* pdev)
@@ -228,9 +210,9 @@ static int can_host_role_impl(struct device* pdev)
 
 /**
  * @brief CAN 总线客户端注册实现
- * @param pdev client device 指针
- * @param cfg 未使用 (CAN 无设备级配置)
- * @param out 输出 client 指针
+ * @param[in] pdev client device 指针
+ * @param[in] cfg 未使用 (CAN 无设备级配置)
+ * @param[out] out 输出 client 指针
  * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
  */
 static int can_client_register_impl(struct device* pdev, const void* cfg, void** out)
@@ -276,20 +258,11 @@ static int can_client_register_impl(struct device* pdev, const void* cfg, void**
     return VFS_OK;
 }
 
-/**
- * @brief 注册 CAN client 并增加 host 引用计数
- * @param pdev client device 指针
- * @param out 输出 client 私有上下文指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
-int can_bus_client_register(struct device* pdev, struct can_bus_client** out)
-{
-    return can_client_register_impl(pdev, NULL, (void**)out);
-}
+int can_bus_client_register(struct device* pdev, struct can_bus_client** out) { return can_client_register_impl(pdev, NULL, (void**)out); }
 
 /**
  * @brief CAN 总线客户端销毁实现 (关 hw / 减 host 引用 / 清槽)
- * @param pdev client device 指针
+ * @param[in] pdev client device 指针
  */
 static void can_client_unregister_impl(struct device* pdev)
 {
@@ -313,17 +286,8 @@ static void can_client_unregister_impl(struct device* pdev)
     COMPAT_MEM_SET(client, 0, sizeof(*client));
 }
 
-/**
- * @brief 注销 CAN client (公开包装, vfs 层调用)
- * @param pdev client device 指针
- */
 void can_bus_client_unregister(struct device* pdev) { can_client_unregister_impl(pdev); }
 
-/**
- * @brief 打开 CAN client 硬件 (HAL init + hw_open)
- * @param pdev client device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int can_bus_open(struct device* pdev)
 {
     struct can_bus_client* client;
@@ -345,11 +309,6 @@ int can_bus_open(struct device* pdev)
     return VFS_OK;
 }
 
-/**
- * @brief 关闭 CAN client 硬件
- * @param pdev client device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int can_bus_close(struct device* pdev)
 {
     struct can_bus_client* client;
@@ -366,13 +325,6 @@ int can_bus_close(struct device* pdev)
     return VFS_OK;
 }
 
-/**
- * @brief CAN 发送一帧
- * @param pdev client device 指针
- * @param frame 待发送帧
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_t timeout_ms)
 {
     struct can_bus_client* client;
@@ -387,16 +339,7 @@ int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_
     return hal_can_transmit(&client->hal_dev, frame, timeout_ms);
 }
 
-/**
- * @brief CAN 从指定 FIFO 接收一帧
- * @param pdev client device 指针
- * @param frame 输出帧
- * @param fifo 接收 FIFO 编号 (0 / 1)
- * @param timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, 失败返回负数错误码
- */
-int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
-                    uint32_t timeout_ms)
+int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
 {
     struct can_bus_client* client;
 
@@ -410,12 +353,6 @@ int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
     return hal_can_receive(&client->hal_dev, frame, fifo, timeout_ms);
 }
 
-/**
- * @brief 配置 CAN 过滤器
- * @param pdev client device 指针
- * @param filter 过滤器配置
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int can_bus_filter_config(struct device* pdev, const struct hal_can_filter_config* filter)
 {
     struct can_bus_client* client;
@@ -430,9 +367,6 @@ int can_bus_filter_config(struct device* pdev, const struct hal_can_filter_confi
     return hal_can_filter_config(&client->host->hal_host, filter);
 }
 
-/**
- * @brief 查询 CAN 控制器状态
- */
 int can_bus_get_state(struct device* pdev, uint32_t* out_state)
 {
     struct can_bus_client* client;

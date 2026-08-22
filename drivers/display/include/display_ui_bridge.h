@@ -28,16 +28,14 @@ extern "C"
 
     /**
      * @brief LVGL flush_cb 用：刷新一个区域（含端点坐标，对齐 lv_area_t）
-     * @param disp 屏幕 device（应用将 struct device* 强转为 void* 传入）
-     * @param x1/y1/x2/y2 区域（含端点）
-     * @param px 像素缓冲（RGB565 或单色，取决于 format）
-     * @param format enum display_color_format
-     * @param timeout_ms 超时（ms）
+     * @param[in] disp 屏幕 device（应用将 struct device* 强转为 void* 传入）
+     * @param[in] x1/y1/x2/y2 区域（含端点）
+     * @param[in] px 像素缓冲（RGB565 或单色，取决于 format）
+     * @param[in] format enum display_color_format
+     * @param[in] timeout_ms 超时（ms）
      * @return VFS_OK 或 VFS_ERR_*
      */
-    COMPAT_STATIC_INLINE int display_lvgl_flush_cb(void* disp, int16_t x1, int16_t y1, int16_t x2,
-                                                   int16_t y2, const void* px, uint8_t format,
-                                                   uint32_t timeout_ms)
+    COMPAT_STATIC_INLINE int display_lvgl_flush_cb(void* disp, int16_t x1, int16_t y1, int16_t x2, int16_t y2, const void* px, uint8_t format, uint32_t timeout_ms)
     {
         int16_t w = (int16_t)(x2 - x1 + 1);
         int16_t h = (int16_t)(y2 - y1 + 1);
@@ -51,28 +49,25 @@ extern "C"
         draw_arg.h = h;
         draw_arg.format = format;
         draw_arg.data = (const uint8_t*)px;
-        return device_ioctl((struct device*)disp, DISPLAY_CMD_FLUSH, &draw_arg, sizeof(draw_arg),
-                            timeout_ms);
+        return device_ioctl((struct device*)disp, DISPLAY_CMD_FLUSH, &draw_arg, sizeof(draw_arg), timeout_ms);
     }
 
     /**
      * @brief u8g2 SendBuffer 后调用：整帧单色位图刷新
-     * @param disp 屏幕 device（void*）
-     * @param fb 整帧缓冲（page-major 单色）
-     * @param len 缓冲长度（应为 w*h/8）
-     * @param timeout_ms 超时（ms）
+     * @param[in] disp 屏幕 device（void*）
+     * @param[in] fb 整帧缓冲（page-major 单色）
+     * @param[in] len 缓冲长度（应为 w*h/8）
+     * @param[in] timeout_ms 超时（ms）
      * @return VFS_OK 或 VFS_ERR_*
      */
-    COMPAT_STATIC_INLINE int display_u8g2_flush_fb(void* disp, const uint8_t* fb, size_t len,
-                                                   uint32_t timeout_ms)
+    COMPAT_STATIC_INLINE int display_u8g2_flush_fb(void* disp, const uint8_t* fb, size_t len, uint32_t timeout_ms)
     {
         struct display_info_arg info;
         struct display_draw_arg draw_arg;
 
         if (!disp || !fb || len == 0U)
             return VFS_ERR_INVAL;
-        if (device_ioctl((struct device*)disp, DISPLAY_CMD_GET_INFO, &info, sizeof(info), 0) !=
-            VFS_OK)
+        if (device_ioctl((struct device*)disp, DISPLAY_CMD_GET_INFO, &info, sizeof(info), 0) != VFS_OK)
             return VFS_ERR_IO;
         if (info.format != DISPLAY_FMT_MONO_1BPP)
             return VFS_ERR_NOTSUPP;
@@ -84,8 +79,7 @@ extern "C"
         draw_arg.h = (int16_t)info.height;
         draw_arg.format = info.format;
         draw_arg.data = fb;
-        return device_ioctl((struct device*)disp, DISPLAY_CMD_FLUSH, &draw_arg, sizeof(draw_arg),
-                            timeout_ms);
+        return device_ioctl((struct device*)disp, DISPLAY_CMD_FLUSH, &draw_arg, sizeof(draw_arg), timeout_ms);
     }
 
 #ifdef __cplusplus

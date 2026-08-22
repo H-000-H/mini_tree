@@ -42,19 +42,18 @@ extern "C"
      *   }
      */
 
-#define CRITICAL_VAR_DECL(type, name)                                                              \
-    volatile type name;                                                                            \
+#define CRITICAL_VAR_DECL(type, name)                                                                                                                                                                  \
+    volatile type name;                                                                                                                                                                                \
     volatile type name##_inv
 
-#define CRITICAL_VAR_WRITE(name, val)                                                              \
-    do                                                                                             \
-    {                                                                                              \
-        (name) = (val);                                                                            \
-        (name##_inv) = ~(val);                                                                     \
+#define CRITICAL_VAR_WRITE(name, val)                                                                                                                                                                  \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        (name) = (val);                                                                                                                                                                                \
+        (name##_inv) = ~(val);                                                                                                                                                                         \
     } while (0)
 
-#define CRITICAL_VAR_READ(name, out)                                                               \
-    (((name) == ~(name##_inv)) ? ((void)(*(out) = (name)), true) : (false))
+#define CRITICAL_VAR_READ(name, out) (((name) == ~(name##_inv)) ? ((void)(*(out) = (name)), true) : (false))
 
 #ifdef __cplusplus
 }

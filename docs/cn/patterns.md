@@ -150,7 +150,7 @@ board_driver_probe_all()
 任务模型（`time_slice/task/xtask.h`）：
 
 - `x_task`：侵入式链表节点，字段 `name` / `xTask_cb` / `period` / `next_running` / `is_running`。
-- `xscheduler_task_create(sched, task, name, cb, period_ms)`：尾插链表，`next_running = 当前tick + period`。
+- `xscheduler_task_create(task, name, cb, period_ms)`：尾插链表，`next_running = 当前tick + period`。
 - `x_task_run()`（主循环 `x_scheduler_poll()` 调用）：遍历链表，`is_running` 为假才进入；`(int32_t)(now - next_running) >= 0`（**有符号比较防 uint32 回绕**）判定到期 → 执行回调 → `next_running = now + period`。
 
 ### 为什么这么设计
@@ -175,7 +175,7 @@ board_driver_probe_all()
 | 20 ms | ≤ 5 ms | 状态机推进、协议轮询 |
 | 100 ms | ≤ 20 ms | 慢速外设巡检、看门狗喂狗 |
 
-预算超支时优先：**缩短回调内阻塞**（改状态机，见 §8）→ 拆任务 → 换 `CONFIG_OSAL_FREERTOS` 抢占式（`osal_switching.md`）。抢占式 `xtask_preempt.c`（`CONFIG_XTASK_PREEMPT`）为实验性未完工，生产环境走 RTOS。
+预算超支时优先：**缩短回调内阻塞**（改状态机，见 §8）→ 拆任务 → 换 `CONFIG_OSAL_FREERTOS` 抢占式（`osal_switching.md`）或裸机抢占式 `xtask_preempt.c`（`XTASK_PREEMPT`，N+1 多优先级，已完工可编译）。
 
 ### protothread 协程延时（PT_DELAY）
 

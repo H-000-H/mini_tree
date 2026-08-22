@@ -77,7 +77,7 @@ Conventions:
 - Create tasks via `osal_task_create` / `osal_task_create_handle` (never raw `xTaskCreate`).
   Bare-metal exception: the C API always returns `OSAL_ERR_NOTSUPP`; create tasks through the
   C++ overload in `osal_null.h` (`CONFIG_OSAL_NULL_TASK_CPP`, on by default) or `xscheduler_task_create` directly.
-  **Under preemptive (`CONFIG_XTASK_PREEMPT=y`)**: the cooperative C++ overload is closed; use `xscheduler_task_create` directly (shared `xtask.h`).
+  **Under preemptive (`XTASK_PREEMPT=y`)**: the C++ overload is still provided but switches to the `priority` branch (`stack_size` reused as the period); you may also use `xscheduler_task_create` directly (shared `xtask.h`).
 - Priority-value semantics **depend on the OSAL backend** (see [osal_switching.md](osal_switching.md)).
 - Device locks are held by the `device_*` wrappers; don't stack a deadlock-prone lock order on the same device.
 - ISRs do short work only; hand the rest to EventBus / bottom halves / tasks.

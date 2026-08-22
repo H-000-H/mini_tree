@@ -23,6 +23,7 @@ extern "C"
 
     /*总线宽度与速度枚举*/
     /*===========================================================================================================================================================*/
+    /** @brief SDIO 总线宽度 */
     typedef enum
     {
         HAL_SDIO_BUS_1BIT, /* 1-bit 模式 */
@@ -30,6 +31,7 @@ extern "C"
         HAL_SDIO_BUS_8BIT, /* 8-bit 模式 */
     } hal_sdio_bus_width_t;
 
+    /** @brief SDIO 时钟速度模式 */
     typedef enum
     {
         HAL_SDIO_SPEED_DEFAULT, /* 默认速度 */
@@ -69,20 +71,27 @@ extern "C"
     struct hal_sdio
     {
         int (*init)(struct hal_sdio* sdio, const struct hal_sdio_config* cfg); /**< 初始化 */
-        int (*read)(struct hal_sdio* sdio, uint8_t* buf, uint32_t sector,
-                    size_t count); /**< 按扇区读 */
-        int (*write)(struct hal_sdio* sdio, const uint8_t* buf, uint32_t sector,
-                     size_t count); /**< 按扇区写 */
+        int (*read)(struct hal_sdio* sdio, uint8_t* buf, uint32_t sector, size_t count); /**< 按扇区读 */
+        int (*write)(struct hal_sdio* sdio, const uint8_t* buf, uint32_t sector, size_t count); /**< 按扇区写 */
         int (*get_info)(struct hal_sdio* sdio, struct hal_sdio_info* info); /**< 查询卡信息 */
         int (*deinit)(struct hal_sdio* sdio); /**< 反初始化 */
         void* _impl; /**< 平台私有实现指针 */
     };
 
+    /**
+     * @brief 初始化 SDIO 操作表 (零初始化后由平台实现填充函数指针)
+     * @param[in] sdio SDIO 实体指针
+     * @return 成功返回 VFS_OK, sdio 为空返回 VFS_ERR_INVAL
+     */
     int hal_sdio_init_struct(struct hal_sdio* sdio) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
 
     /*安全停机*/
     /*===========================================================================================================================================================*/
+    /**
+     * @brief 强制停止 SDIO 控制器 (安全停机/断电保护)
+     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     */
     int hal_sdio_force_stop(void) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
 

@@ -41,49 +41,46 @@ COMPAT_STATIC_INLINE uint32_t bp_critical_enter(void)
 
 /**
  * @brief 恢复 PRIMASK
- * @param primask bp_critical_enter 返回的 PRIMASK
+ * @param[in] primask bp_critical_enter 返回的 PRIMASK
  */
-COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask)
-{
-    __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory");
-}
+COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask) { __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory"); }
 
-#define BP_CAS(addr, exp, des)                                                                     \
-    ({                                                                                             \
-        uint32_t _p = bp_critical_enter();                                                         \
-        bool _m = (*(addr) == *(exp));                                                             \
-        if (_m)                                                                                    \
-            *(addr) = (des);                                                                       \
-        else                                                                                       \
-            *(exp) = *(addr);                                                                      \
-        bp_critical_exit(_p);                                                                      \
-        _m;                                                                                        \
+#define BP_CAS(addr, exp, des)                                                                                                                                                                         \
+    ({                                                                                                                                                                                                 \
+        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
+        bool _m = (*(addr) == *(exp));                                                                                                                                                                 \
+        if (_m)                                                                                                                                                                                        \
+            *(addr) = (des);                                                                                                                                                                           \
+        else                                                                                                                                                                                           \
+            *(exp) = *(addr);                                                                                                                                                                          \
+        bp_critical_exit(_p);                                                                                                                                                                          \
+        _m;                                                                                                                                                                                            \
     })
 
-#define BP_ADD_FETCH(addr, val)                                                                    \
-    ({                                                                                             \
-        uint32_t _p = bp_critical_enter();                                                         \
-        *(addr) += (val);                                                                          \
-        uint32_t _r = *(addr);                                                                     \
-        bp_critical_exit(_p);                                                                      \
-        _r;                                                                                        \
+#define BP_ADD_FETCH(addr, val)                                                                                                                                                                        \
+    ({                                                                                                                                                                                                 \
+        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
+        *(addr) += (val);                                                                                                                                                                              \
+        uint32_t _r = *(addr);                                                                                                                                                                         \
+        bp_critical_exit(_p);                                                                                                                                                                          \
+        _r;                                                                                                                                                                                            \
     })
 
-#define BP_SUB_FETCH(addr, val)                                                                    \
-    ({                                                                                             \
-        uint32_t _p = bp_critical_enter();                                                         \
-        *(addr) -= (val);                                                                          \
-        uint32_t _r = *(addr);                                                                     \
-        bp_critical_exit(_p);                                                                      \
-        _r;                                                                                        \
+#define BP_SUB_FETCH(addr, val)                                                                                                                                                                        \
+    ({                                                                                                                                                                                                 \
+        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
+        *(addr) -= (val);                                                                                                                                                                              \
+        uint32_t _r = *(addr);                                                                                                                                                                         \
+        bp_critical_exit(_p);                                                                                                                                                                          \
+        _r;                                                                                                                                                                                            \
     })
 
-#define BP_OR(addr, val)                                                                           \
-    do                                                                                             \
-    {                                                                                              \
-        uint32_t _p = bp_critical_enter();                                                         \
-        *(addr) |= (val);                                                                          \
-        bp_critical_exit(_p);                                                                      \
+#define BP_OR(addr, val)                                                                                                                                                                               \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        uint32_t _p = bp_critical_enter();                                                                                                                                                             \
+        *(addr) |= (val);                                                                                                                                                                              \
+        bp_critical_exit(_p);                                                                                                                                                                          \
     } while (0)
 
 #define BP_LOAD(addr) (*(addr))
@@ -91,8 +88,7 @@ COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask)
 
 #else
 /* ARMv7-M+, RISC-V: 硬件原子指令 */
-#define BP_CAS(addr, exp, des)                                                                     \
-    __atomic_compare_exchange_n(addr, exp, des, 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
+#define BP_CAS(addr, exp, des) __atomic_compare_exchange_n(addr, exp, des, 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
 #define BP_ADD_FETCH(addr, val) __atomic_add_fetch(addr, val, __ATOMIC_RELAXED)
 #define BP_SUB_FETCH(addr, val) __atomic_sub_fetch(addr, val, __ATOMIC_RELAXED)
 #define BP_OR(addr, val) (void)__atomic_fetch_or(addr, val, __ATOMIC_RELEASE)
@@ -114,8 +110,8 @@ COMPAT_STATIC_INLINE void bp_critical_exit(uint32_t primask)
 
 /**
  * @brief 按对齐要求向上取整缓冲区大小
- * @param size 原始字节数
- * @param align 对齐类型 (BP_ALIGN_DMA / BP_ALIGN_CACHE 等)
+ * @param[in] size 原始字节数
+ * @param[in] align 对齐类型 (BP_ALIGN_DMA / BP_ALIGN_CACHE 等)
  * @return 对齐后的字节数
  */
 COMPAT_STATIC_INLINE size_t align_buf_size(size_t size, bp_align_t align)
@@ -156,7 +152,7 @@ _Static_assert(BP_MAX_BUFS <= sizeof(uint32_t) * 8, "BP_MAX_BUFS exceeds free_ma
 
 /**
  * @brief 原子查找并分配一个空闲位
- * @param mask 空闲位掩码 (1 表示可用)
+ * @param[in] mask 空闲位掩码 (1 表示可用)
  * @return 分配到的位索引; 无空闲时返回 BP_MAX_BUFS
  */
 static uint32_t bitmap_alloc(volatile uint32_t* mask)
@@ -177,8 +173,8 @@ static uint32_t bitmap_alloc(volatile uint32_t* mask)
 
 /**
  * @brief 原子释放一个已分配的位
- * @param mask 空闲位掩码
- * @param bit 待释放的位索引
+ * @param[in] mask 空闲位掩码
+ * @param[in] bit 待释放的位索引
  */
 static void bitmap_free(volatile uint32_t* mask, uint32_t bit) { BP_OR(mask, 1u << bit); }
 
@@ -193,11 +189,8 @@ static void bitmap_free(volatile uint32_t* mask, uint32_t bit) { BP_OR(mask, 1u 
  */
 struct bp_pool* bp_create(const struct bp_config* config)
 {
-    if (!config || !config->name || config->buf_count == 0 || config->buf_count > BP_MAX_BUFS ||
-        config->buf_size == 0)
-    {
+    if (!config || !config->name || config->buf_count == 0 || config->buf_count > BP_MAX_BUFS || config->buf_size == 0)
         return NULL;
-    }
 
     size_t real_bs = align_buf_size(config->buf_size, config->align);
     size_t total = real_bs * config->buf_count;
@@ -246,7 +239,7 @@ struct bp_pool* bp_create(const struct bp_config* config)
 
 /**
  * @brief 分配缓冲区
- * @param pool 池
+ * @param[in] pool 池
  * @return 指针或 NULL
  */
 void* bp_alloc(struct bp_pool* pool)
@@ -273,15 +266,15 @@ void* bp_alloc(struct bp_pool* pool)
 
 /**
  * @brief ISR 分配
- * @param pool 池
+ * @param[in] pool 池
  * @return 指针或 NULL
  */
 void* bp_alloc_isr(struct bp_pool* pool) { return bp_alloc(pool); }
 
 /**
  * @brief 释放缓冲区
- * @param pool 池
- * @param buf 指针
+ * @param[in] pool 池
+ * @param[in] buf 指针
  */
 void bp_free(struct bp_pool* pool, void* buf)
 {
@@ -302,34 +295,28 @@ void bp_free(struct bp_pool* pool, void* buf)
 
 /**
  * @brief ISR 释放
- * @param pool 池
- * @param buf 指针
+ * @param[in] pool 池
+ * @param[in] buf 指针
  */
 void bp_free_isr(struct bp_pool* pool, void* buf) { bp_free(pool, buf); }
 
 /**
  * @brief 当前已用数
- * @param pool 池
+ * @param[in] pool 池
  * @return 数量
  */
-uint32_t bp_used(const struct bp_pool* pool)
-{
-    return pool ? BP_LOAD(&((struct bp_pool*)pool)->used) : 0;
-}
+uint32_t bp_used(const struct bp_pool* pool) { return pool ? BP_LOAD(&((struct bp_pool*)pool)->used) : 0; }
 
 /**
  * @brief 峰值
- * @param pool 池
+ * @param[in] pool 池
  * @return 峰值
  */
-uint32_t bp_peak(const struct bp_pool* pool)
-{
-    return pool ? BP_LOAD(&((struct bp_pool*)pool)->peak) : 0;
-}
+uint32_t bp_peak(const struct bp_pool* pool) { return pool ? BP_LOAD(&((struct bp_pool*)pool)->peak) : 0; }
 
 /**
  * @brief 重置峰值
- * @param pool 池
+ * @param[in] pool 池
  */
 void bp_reset_peak(struct bp_pool* pool)
 {
@@ -341,7 +328,7 @@ void bp_reset_peak(struct bp_pool* pool)
 
 /**
  * @brief 销毁池
- * @param pool 池
+ * @param[in] pool 池
  */
 void bp_destroy(struct bp_pool* pool)
 {

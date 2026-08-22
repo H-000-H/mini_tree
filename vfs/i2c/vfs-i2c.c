@@ -47,17 +47,13 @@ static const char* const k_host_tag = "i2c_vfs_host";
 /**
  * @brief I2C Host 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT)); }
 
 /**
  * @brief 解析 I2C Host DTS 属性, 填入 hal_i2c_bus_config
- * @param pdev 设备对象指针
- * @param cfg 配置结构指针
- * @param bus_role 总线角色 (MASTER/SLAVE)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 配置结构指针
+ * @param[in] bus_role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config* cfg, int bus_role)
@@ -68,15 +64,9 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
     int scl_output_type = 0, scl_speed = 0, scl_mode = 0, scl_pull = 0;
     int sda_output_type = 0, sda_speed = 0, sda_mode = 0, sda_pull = 0;
 
-    if (device_get_prop_int(pdev, "i2c-base", &i2c_base) != VFS_OK ||
-        device_get_prop_int(pdev, "i2c-clk", &i2c_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "scl-port", &scl_port) != VFS_OK ||
-        device_get_prop_int(pdev, "scl-pin", &scl_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "scl-clk", &scl_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "scl-af", &scl_af) != VFS_OK ||
-        device_get_prop_int(pdev, "sda-port", &sda_port) != VFS_OK ||
-        device_get_prop_int(pdev, "sda-pin", &sda_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "sda-clk", &sda_clk) != VFS_OK ||
+    if (device_get_prop_int(pdev, "i2c-base", &i2c_base) != VFS_OK || device_get_prop_int(pdev, "i2c-clk", &i2c_clk) != VFS_OK || device_get_prop_int(pdev, "scl-port", &scl_port) != VFS_OK ||
+        device_get_prop_int(pdev, "scl-pin", &scl_pin) != VFS_OK || device_get_prop_int(pdev, "scl-clk", &scl_clk) != VFS_OK || device_get_prop_int(pdev, "scl-af", &scl_af) != VFS_OK ||
+        device_get_prop_int(pdev, "sda-port", &sda_port) != VFS_OK || device_get_prop_int(pdev, "sda-pin", &sda_pin) != VFS_OK || device_get_prop_int(pdev, "sda-clk", &sda_clk) != VFS_OK ||
         device_get_prop_int(pdev, "sda-af", &sda_af) != VFS_OK)
         return VFS_ERR_INVAL;
 
@@ -161,8 +151,8 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
 
 /**
  * @brief I2C Host 探测公共实现: 分配私有池, 解析 DTS, 初始化总线
- * @param pdev 设备对象指针
- * @param bus_role 总线角色 (MASTER/SLAVE)
+ * @param[in] pdev 设备对象指针
+ * @param[in] bus_role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
@@ -196,8 +186,7 @@ static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
-             bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev), bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
     return VFS_OK;
 
 err_bus:
@@ -209,27 +198,21 @@ err_pool:
 
 /**
  * @brief I2C Master Host 驱动 probe 入口
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_i2c_priv_probe_master(struct device* pdev)
-{
-    return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_MASTER);
-}
+static int vfs_i2c_priv_probe_master(struct device* pdev) { return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_MASTER); }
 
 /**
  * @brief I2C Slave Host 驱动 probe 入口
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int vfs_i2c_priv_probe_slave(struct device* pdev)
-{
-    return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_SLAVE);
-}
+static int vfs_i2c_priv_probe_slave(struct device* pdev) { return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_SLAVE); }
 
 /**
  * @brief I2C Host 移除: remove_start → 排空 IO → host_deinit → 释放私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_i2c_priv_remove(struct device* pdev)
@@ -297,15 +280,12 @@ static const char* const k_client_tag = "i2c_vfs_client";
 /**
  * @brief I2C Client 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT)); }
 
 /**
  * @brief I2C Client 打开: 引用计数, 首次打开时调用 i2c_bus_open
- * @param pdev 设备对象指针
- * @param arg 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2c_vfs_open(struct device* pdev, void* arg)
@@ -340,7 +320,7 @@ static int i2c_vfs_open(struct device* pdev, void* arg)
 
 /**
  * @brief I2C Client 关闭: 引用计数, 末次关闭时调用 i2c_bus_close
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2c_vfs_close(struct device* pdev)
@@ -367,10 +347,10 @@ static int i2c_vfs_close(struct device* pdev)
 
 /**
  * @brief I2C Client 写: Master 走 i2c_bus_write, Slave 走 i2c_bus_slave_sync (当前固定 NOTSUPP)
- * @param pdev 设备对象指针
- * @param buffer 待发送数据缓冲区
- * @param len 请求写入字节数 (len==0 返回 VFS_OK)
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buffer 待发送数据缓冲区
+ * @param[in] len 请求写入字节数 (len==0 返回 VFS_OK)
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return Master 成功返回实际传输字节数; Slave 返回 VFS_ERR_NOTSUPP; 失败返回负数错误码
  */
 static int i2c_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
@@ -413,10 +393,10 @@ static int i2c_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
 
 /**
  * @brief I2C Client 读: Master 走 i2c_bus_read, Slave 走 i2c_bus_slave_sync (当前固定 NOTSUPP)
- * @param pdev 设备对象指针
- * @param buffer 接收数据缓冲区
- * @param len 请求读取字节数 (len==0 返回 VFS_OK)
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buffer 接收数据缓冲区
+ * @param[in] len 请求读取字节数 (len==0 返回 VFS_OK)
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return Master 成功返回实际传输字节数; Slave 返回 VFS_ERR_NOTSUPP; 失败返回负数错误码
  */
 static int i2c_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
@@ -467,10 +447,10 @@ struct i2c_ioctl_map
 
 /**
  * @brief I2C 命令: 全双工/半双工传输
- * @param pdev 设备对象指针
- * @param arg i2c_transfer_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2c_transfer_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回实际传输字节数, 失败返回负数错误码
  */
 static int i2c_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -494,14 +474,13 @@ static int i2c_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
 
 /**
  * @brief I2C 命令: 设置默认传输模式 (POLL/DMA/AUTO)
- * @param pdev 设备对象指针
- * @param arg i2c_xfer_mode_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2c_xfer_mode_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct i2c_xfer_mode_arg* ma = (const struct i2c_xfer_mode_arg*)arg;
     struct i2c_vfs_client* priv;
@@ -519,14 +498,13 @@ static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
 
 /**
  * @brief I2C 命令: 读取当前默认传输模式
- * @param pdev 设备对象指针
- * @param arg i2c_xfer_mode_arg 输出参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2c_xfer_mode_arg 输出参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct i2c_xfer_mode_arg* ma = (struct i2c_xfer_mode_arg*)arg;
     struct i2c_vfs_client* priv;
@@ -542,10 +520,10 @@ static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
 
 /**
  * @brief I2C 命令: Slave 模式预入队发送 (STM32 路径当前固定返回 VFS_ERR_NOTSUPP)
- * @param pdev 设备对象指针
- * @param arg i2c_queue_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2c_queue_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 未实现或失败返回负数错误码
  */
 static int i2c_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -558,14 +536,13 @@ static int i2c_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
 
 /**
  * @brief I2C 命令: Slave 模式获取本次传输结果 (STM32 路径当前固定返回 VFS_ERR_NOTSUPP)
- * @param pdev 设备对象指针
- * @param arg i2c_trans_result_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2c_trans_result_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 未实现或失败返回负数错误码
  */
-static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct i2c_trans_result_arg* tra = (const struct i2c_trans_result_arg*)arg;
     if (!tra || arg_len != sizeof(*tra))
@@ -583,15 +560,14 @@ static const struct i2c_ioctl_map s_i2c_ioctl_map[I2C_CMD_COUNT] = {
 
 /**
  * @brief I2C Client ioctl 派发入口
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒, 部分命令透传)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒, 部分命令透传)
  * @return 成功返回 VFS_OK 或实际传输字节数, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
-static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;
@@ -628,8 +604,8 @@ static const struct file_operations i2c_vfs_fops = {
 
 /**
  * @brief 解析 I2C Client DTS 属性 (地址, 时钟频率等)
- * @param pdev 设备对象指针
- * @param cfg 输出的设备配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 输出的设备配置结构指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2c_vfs_parse_dts(struct device* pdev, struct hal_i2c_device_config* cfg)
@@ -656,7 +632,7 @@ static int i2c_vfs_parse_dts(struct device* pdev, struct hal_i2c_device_config* 
 
 /**
  * @brief I2C Client 探测: 注册 fops 并绑定总线客户端
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2c_vfs_probe(struct device* pdev)
@@ -705,8 +681,7 @@ static int i2c_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev),
-             role == I2C_BUS_ROLE_MASTER ? "master" : "slave", (unsigned)priv->cfg.address,
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev), role == I2C_BUS_ROLE_MASTER ? "master" : "slave", (unsigned)priv->cfg.address,
              (unsigned)priv->cfg.clock_speed_hz);
     return VFS_OK;
 
@@ -719,7 +694,7 @@ err_pool:
 
 /**
  * @brief I2C Client 移除: remove_start → 排空 IO → unregister → 释放私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2c_vfs_remove(struct device* pdev)

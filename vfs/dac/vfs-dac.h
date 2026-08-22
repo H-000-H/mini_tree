@@ -42,6 +42,9 @@ extern "C"
 
     /**
      * @brief Fast Path: 单点写入 DAC 输出值
+     * @param[in] pdev DAC 设备指针
+     * @param[in] value 目标输出值 (0..4095 对应 12 位分辨率)
+     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_write_dac_value(hal_dac_device* pdev, uint32_t value)
     {
@@ -52,6 +55,9 @@ extern "C"
 
     /**
      * @brief Fast Path: 读取当前 DAC 寄存器锁存值
+     * @param[in] pdev DAC 设备指针
+     * @param[out] out_val 回传当前输出值
+     * @return 成功返回 VFS_OK, pdev 或 out_val 为空返回 VFS_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_read_dac_value(hal_dac_device* pdev, uint32_t* out_val)
     {

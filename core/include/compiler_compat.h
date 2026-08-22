@@ -22,7 +22,7 @@
 
 /**
  * @brief 获取表达式的类型
- * @param expr 表达式
+ * @param[in] expr 表达式
  */
 #ifdef __cplusplus
 #define TYPEOF(expr) decltype(expr)
@@ -48,7 +48,7 @@
 
 /**
  * @brief 功能开关宏
- * @param sym 功能开关名称 (不含 CONFIG_ 前缀)
+ * @param[in] sym 功能开关名称 (不含 CONFIG_ 前缀)
  */
 #define COMPAT_CFG_ENABLED(sym) ((!COMPAT_HAVE_KCONFIG) || defined(CONFIG_##sym))
 
@@ -90,7 +90,10 @@
 
 /* ── 基础属性 ───────────────────────────────────────────────────────────── */
 
-/** @brief 对齐属性 @param n 对齐字节数 */
+/**
+ * @brief 对齐属性
+ * @param[in] n 对齐字节数
+ */
 #define COMPAT_ALIGNED(n) __attribute__((aligned(n)))
 /** @brief 弱符号属性 */
 #define COMPAT_WEAK __attribute__((weak))
@@ -138,8 +141,8 @@
 
 /**
  * @brief 静态断言
- * @param cond 断言条件
- * @param msg  断言消息
+ * @param[in] cond 断言条件
+ * @param[in] msg  断言消息
  */
 #if defined(__cplusplus) && __cplusplus >= 201103L
 #define COMPAT_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
@@ -151,7 +154,7 @@
 
 /**
  * @brief 编译期错误属性 (触发时直接编译失败)
- * @param msg 编译期错误消息
+ * @param[in] msg 编译期错误消息
  */
 #if COMPAT_GNU_EXT_OK
 #define COMPAT_COMPILE_ERROR(msg) __attribute__((error(msg)))
@@ -170,7 +173,7 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void COMPAT_TRAP(void) { __builtin_trap(); 
 
 /**
  * @brief 计算 x 的末尾零位 (count trailing zeros)
- * @param x 32 位无符号整数
+ * @param[in] x 32 位无符号整数
  * @return 末尾零位个数; x 为 0 时返回 32
  */
 #if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS)
@@ -200,7 +203,7 @@ COMPAT_STATIC_INLINE uint32_t COMPAT_CTZ(uint32_t x)
 #endif
 /**
  * @brief 计算 x 的前导零位 (count leading zeros)
- * @param x 32 位无符号整数
+ * @param[in] x 32 位无符号整数
  * @return 前导零位个数; x 为 0 时返回 32
  */
 
@@ -232,36 +235,30 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_CLZ(uint32_t x)
 #endif
 /**
  * @brief 计算 x 的置位个数 (population count)
- * @param x 32 位无符号整数
+ * @param[in] x 32 位无符号整数
  * @return 置位个数
  */
-COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_POPCOUNT(uint32_t x)
-{
-    return (uint32_t)__builtin_popcount(x);
-}
+COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_POPCOUNT(uint32_t x) { return (uint32_t)__builtin_popcount(x); }
 
 /**
  * @brief 返回最低置位的位号 (find first set)
- * @param x 32 位无符号整数
+ * @param[in] x 32 位无符号整数
  * @return 最低置位位号 (1-based); x 为 0 时返回 0
  */
-COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
-{
-    return (uint32_t)__builtin_ffs(x);
-}
+COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x) { return (uint32_t)__builtin_ffs(x); }
 
 /**
  * @brief 预取内存到缓存
- * @param addr     目标地址
- * @param rw       0=读, 1=写
- * @param locality 时间局部性 0~3
+ * @param[in] addr     目标地址
+ * @param[in] rw       0=读, 1=写
+ * @param[in] locality 时间局部性 0~3
  */
 #define COMPAT_PREFETCH(addr, rw, locality) __builtin_prefetch((addr), (rw), (locality))
 
 /**
  * @brief 假设指针对齐
- * @param ptr 指针
- * @param n   对齐字节数
+ * @param[in] ptr 指针
+ * @param[in] n   对齐字节数
  */
 #if COMPAT_GNU_EXT_OK
 #define COMPAT_ASSUME_ALIGNED(ptr, n) __builtin_assume_aligned((ptr), (n))
@@ -271,7 +268,7 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
 
 /**
  * @brief 编译期判断表达式是否为常量 (用于优化分支选择)
- * @param expr 待判断表达式
+ * @param[in] expr 待判断表达式
  */
 #define COMPAT_CONSTANT_P(expr) __builtin_constant_p(expr)
 
@@ -281,72 +278,71 @@ COMPAT_STATIC_INLINE COMPAT_CONST_FUNC uint32_t COMPAT_FFS(uint32_t x)
 #define COMPAT_MAGIC_SLOT_STRIDE 0x100u
 
 /** @brief 设备魔法槽 X-Macro 表 */
-#define COMPAT_MAGIC_TABLE(X)                                                                      \
-    X(SPI, 0x00)                                                                                   \
-    X(UART, 0x01)                                                                                  \
-    X(I2C, 0x02)                                                                                   \
-    X(I2S, 0x03)                                                                                   \
-    X(USB, 0x04)                                                                                   \
-    X(CAN, 0x05)                                                                                   \
-    X(ETH, 0x06)                                                                                   \
-    X(GPIO, 0x07)                                                                                  \
-    X(SDIO, 0x08)                                                                                  \
-    X(W25Q64, 0x09)                                                                                \
-    X(TIM, 0x0A)                                                                                   \
-    X(ADC, 0x0B)                                                                                   \
-    X(DAC, 0x0C)                                                                                   \
-    X(RTC, 0x0D)                                                                                   \
-    X(IWDG, 0x0E)                                                                                  \
-    X(WWDG, 0x0F)                                                                                  \
-    X(WS2812, 0x10)                                                                                \
-    X(ST7789, 0x11)                                                                                \
-    X(MAX98357A, 0x12)                                                                             \
-    X(GPIOKEY, 0x13)                                                                               \
-    X(LIGHT, 0x14)                                                                                 \
-    X(PWMBL, 0x15)                                                                                 \
-    X(SHT30, 0x16)                                                                                 \
-    X(MPU6050, 0x17)                                                                               \
-    X(AT24C02, 0x18)                                                                               \
-    X(SSD1306, 0x19)                                                                               \
-    X(BH1750, 0x1A)                                                                                \
-    X(BME280, 0x1B)                                                                                \
-    X(FT5X06, 0x1C)                                                                                \
-    X(XPT2046, 0x1D)                                                                               \
-    X(SX1278, 0x1E)                                                                                \
-    X(EPAPER, 0x1F)                                                                                \
-    X(NEO_M8N, 0x20)                                                                               \
-    X(HC05, 0x22)                                                                                  \
-    X(RS485_MODBUS, 0x23)                                                                          \
-    X(DRV8833, 0x24)                                                                               \
-    X(SG90, 0x25)                                                                                  \
-    X(BUZZER, 0x26)                                                                                \
-    X(RELAY, 0x27)                                                                                 \
-    X(DS18B20, 0x28)                                                                               \
-    X(SN65HVD230, 0x29)                                                                            \
-    X(W25QXX, 0x2A)                                                                                \
-    X(AHT20, 0x2B)                                                                                 \
-    X(SHT40, 0x2C)                                                                                 \
-    X(BMP280, 0x2D)                                                                                \
-    X(VL53L0X, 0x2E)                                                                               \
-    X(PCF8574, 0x2F)                                                                               \
-    X(ADS1115, 0x30)                                                                               \
-    X(INA219, 0x31)                                                                                \
-    X(SH1106, 0x32)                                                                                \
-    X(NRF24L01, 0x33)                                                                              \
-    X(RC522, 0x34)                                                                                 \
-    X(MAX7219, 0x35)                                                                               \
-    X(PN532, 0x37)                                                                                 \
-    X(DFPLAYER, 0x38)                                                                              \
-    X(DISPLAY, 0x39)                                                                               \
+#define COMPAT_MAGIC_TABLE(X)                                                                                                                                                                          \
+    X(SPI, 0x00)                                                                                                                                                                                       \
+    X(UART, 0x01)                                                                                                                                                                                      \
+    X(I2C, 0x02)                                                                                                                                                                                       \
+    X(I2S, 0x03)                                                                                                                                                                                       \
+    X(USB, 0x04)                                                                                                                                                                                       \
+    X(CAN, 0x05)                                                                                                                                                                                       \
+    X(ETH, 0x06)                                                                                                                                                                                       \
+    X(GPIO, 0x07)                                                                                                                                                                                      \
+    X(SDIO, 0x08)                                                                                                                                                                                      \
+    X(W25Q64, 0x09)                                                                                                                                                                                    \
+    X(TIM, 0x0A)                                                                                                                                                                                       \
+    X(ADC, 0x0B)                                                                                                                                                                                       \
+    X(DAC, 0x0C)                                                                                                                                                                                       \
+    X(RTC, 0x0D)                                                                                                                                                                                       \
+    X(IWDG, 0x0E)                                                                                                                                                                                      \
+    X(WWDG, 0x0F)                                                                                                                                                                                      \
+    X(WS2812, 0x10)                                                                                                                                                                                    \
+    X(ST7789, 0x11)                                                                                                                                                                                    \
+    X(MAX98357A, 0x12)                                                                                                                                                                                 \
+    X(GPIOKEY, 0x13)                                                                                                                                                                                   \
+    X(LIGHT, 0x14)                                                                                                                                                                                     \
+    X(PWMBL, 0x15)                                                                                                                                                                                     \
+    X(SHT30, 0x16)                                                                                                                                                                                     \
+    X(MPU6050, 0x17)                                                                                                                                                                                   \
+    X(AT24C02, 0x18)                                                                                                                                                                                   \
+    X(SSD1306, 0x19)                                                                                                                                                                                   \
+    X(BH1750, 0x1A)                                                                                                                                                                                    \
+    X(BME280, 0x1B)                                                                                                                                                                                    \
+    X(FT5X06, 0x1C)                                                                                                                                                                                    \
+    X(XPT2046, 0x1D)                                                                                                                                                                                   \
+    X(SX1278, 0x1E)                                                                                                                                                                                    \
+    X(EPAPER, 0x1F)                                                                                                                                                                                    \
+    X(NEO_M8N, 0x20)                                                                                                                                                                                   \
+    X(HC05, 0x22)                                                                                                                                                                                      \
+    X(RS485_MODBUS, 0x23)                                                                                                                                                                              \
+    X(DRV8833, 0x24)                                                                                                                                                                                   \
+    X(SG90, 0x25)                                                                                                                                                                                      \
+    X(BUZZER, 0x26)                                                                                                                                                                                    \
+    X(RELAY, 0x27)                                                                                                                                                                                     \
+    X(DS18B20, 0x28)                                                                                                                                                                                   \
+    X(SN65HVD230, 0x29)                                                                                                                                                                                \
+    X(W25QXX, 0x2A)                                                                                                                                                                                    \
+    X(AHT20, 0x2B)                                                                                                                                                                                     \
+    X(SHT40, 0x2C)                                                                                                                                                                                     \
+    X(BMP280, 0x2D)                                                                                                                                                                                    \
+    X(VL53L0X, 0x2E)                                                                                                                                                                                   \
+    X(PCF8574, 0x2F)                                                                                                                                                                                   \
+    X(ADS1115, 0x30)                                                                                                                                                                                   \
+    X(INA219, 0x31)                                                                                                                                                                                    \
+    X(SH1106, 0x32)                                                                                                                                                                                    \
+    X(NRF24L01, 0x33)                                                                                                                                                                                  \
+    X(RC522, 0x34)                                                                                                                                                                                     \
+    X(MAX7219, 0x35)                                                                                                                                                                                   \
+    X(PN532, 0x37)                                                                                                                                                                                     \
+    X(DFPLAYER, 0x38)                                                                                                                                                                                  \
+    X(DISPLAY, 0x39)                                                                                                                                                                                   \
     X(MODEM, 0x3A)
 
 /**
  * @brief 魔法槽枚举生成器
- * @param name 设备名称
- * @param slot 槽序号
+ * @param[in] name 设备名称
+ * @param[in] slot 槽序号
  */
-#define COMPAT_MAGIC_ENUM(name, slot)                                                              \
-    COMPAT_MAGIC_##name = (uint32_t)((slot) * COMPAT_MAGIC_SLOT_STRIDE),
+#define COMPAT_MAGIC_ENUM(name, slot) COMPAT_MAGIC_##name = (uint32_t)((slot) * COMPAT_MAGIC_SLOT_STRIDE),
 
 /** @brief 设备魔法槽枚举 */
 enum
@@ -358,7 +354,7 @@ enum
 
 /**
  * @brief 获取设备魔法槽常量
- * @param x 设备名称 (SPI, UART, ...)
+ * @param[in] x 设备名称 (SPI, UART, ...)
  */
 #define COMPAT_MAGIC(x) COMPAT_MAGIC_##x
 
@@ -392,14 +388,14 @@ enum
 
 /**
  * @brief 显式丢弃 warn_unused_result 标注函数的返回值
- * @param expr 表达式
+ * @param[in] expr 表达式
  * @details GCC 14+ 下 (void)expr 对 warn_unused_result 无效, 须用此宏
  */
 #if COMPAT_WUR_ATTR_OK
-#define COMPAT_IGNORE_RESULT(expr)                                                                 \
-    do                                                                                             \
-    {                                                                                              \
-        TYPEOF(expr) _compat_ign_ __attribute__((unused)) = (expr);                                \
+#define COMPAT_IGNORE_RESULT(expr)                                                                                                                                                                     \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        TYPEOF(expr) _compat_ign_ __attribute__((unused)) = (expr);                                                                                                                                    \
     } while (0)
 #else
 #define COMPAT_IGNORE_RESULT(expr) ((void)(expr))
@@ -409,12 +405,11 @@ enum
 
 /**
  * @brief format 属性, 用 __printf__ 避免 poison printf 后属性标识符报错
- * @param fmt_arg   格式化字符串参数序号 (从 1 起)
- * @param first_var 第一个可变参数序号
+ * @param[in] fmt_arg   格式化字符串参数序号 (从 1 起)
+ * @param[in] first_var 第一个可变参数序号
  */
 #if defined(__GNUC__)
-#define COMPAT_FMT_PRINTF(fmt_arg, first_var)                                                      \
-    __attribute__((format(__printf__, (fmt_arg), (first_var))))
+#define COMPAT_FMT_PRINTF(fmt_arg, first_var) __attribute__((format(__printf__, (fmt_arg), (first_var))))
 #else
 #define COMPAT_FMT_PRINTF(fmt_arg, first_var)
 #endif
@@ -423,16 +418,16 @@ enum
 
 /**
  * @brief Linux 风格 container_of — 从成员指针反推结构体指针
- * @param ptr    成员指针
- * @param type   结构体类型
- * @param member 成员名
+ * @param[in] ptr    成员指针
+ * @param[in] type   结构体类型
+ * @param[in] member 成员名
  */
 #if COMPAT_GNU_EXT_OK
 #undef container_of
-#define container_of(ptr, type, member)                                                            \
-    ({                                                                                             \
-        const TYPEOF(((type*)0)->member)* __mptr = (ptr);                                          \
-        (type*)((char*)__mptr - __builtin_offsetof(type, member));                                 \
+#define container_of(ptr, type, member)                                                                                                                                                                \
+    ({                                                                                                                                                                                                 \
+        const TYPEOF(((type*)0)->member)* __mptr = (ptr);                                                                                                                                              \
+        (type*)((char*)__mptr - __builtin_offsetof(type, member));                                                                                                                                     \
     })
 #else
 #ifndef container_of
@@ -450,13 +445,13 @@ enum
 
 /**
  * @brief 分支预测: 条件很可能为真
- * @param x 表达式
+ * @param[in] x 表达式
  */
 #define likely(x) __builtin_expect(!!(x), 1)
 
 /**
  * @brief 分支预测: 条件很可能为假
- * @param x 表达式
+ * @param[in] x 表达式
  */
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
@@ -478,7 +473,7 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void unreachable(void) { __builtin_unreacha
 
 /**
  * @brief 静态池在 main 之前自动执行
- * @param x 优先级基数 (建议用 PRE_EXEC_PRIO_* 常量) — pre_execution(150) 实际为 constructor(250)
+ * @param[in] x 优先级基数 (建议用 PRE_EXEC_PRIO_* 常量) — pre_execution(150) 实际为 constructor(250)
  * @details 高级用法: 用于 pre_execution 启动钩子
  */
 #define pre_execution(x) __attribute__((constructor((x) + 100)))
@@ -486,7 +481,7 @@ COMPAT_STATIC_INLINE COMPAT_NORETURN void unreachable(void) { __builtin_unreacha
 #ifdef AUTO_FREE_PTR
 /**
  * @brief cleanup 回调: 自动释放堆指针
- * @param ptr cleanup 传入的指针地址
+ * @param[in] ptr cleanup 传入的指针地址
  */
 COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
 {
@@ -517,8 +512,7 @@ COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
  * @note  平台无关的 WFI 封装: Cortex-M 用 __WFI, RISCV 用 wfi;
  *        调用方需保证随后确有中断到达, 否则 CPU 睡死.
  */
-#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) ||                    \
-    defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7)
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) || defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7)
 #define COMPAT_WFI() __WFI()
 #elif defined(__riscv)
 #define COMPAT_WFI() __asm__ volatile("wfi")
@@ -530,9 +524,9 @@ COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
 
 /**
  * @brief 内存设置 (带空指针检查)
- * @param dest 目标内存地址
- * @param src  填充字节值
- * @param size 内存大小
+ * @param[in] dest 目标内存地址
+ * @param[in] src  填充字节值
+ * @param[in] size 内存大小
  * @return VFS_OK 成功, VFS_ERR_INVAL 参数无效
  */
 COMPAT_STATIC_INLINE int COMPAT_MEM_SET(void* dest, int src, size_t size)
@@ -552,9 +546,9 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_SET(void* dest, int src, size_t size)
 
 /**
  * @brief 内存复制 (带空指针检查)
- * @param dest 目标内存地址
- * @param src  源内存地址
- * @param size 内存大小
+ * @param[in] dest 目标内存地址
+ * @param[in] src  源内存地址
+ * @param[in] size 内存大小
  * @return VFS_OK 成功, VFS_ERR_INVAL 参数无效
  */
 COMPAT_STATIC_INLINE int COMPAT_MEM_COPY(void* dest, const void* src, size_t size)
@@ -574,9 +568,9 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_COPY(void* dest, const void* src, size_t siz
 
 /**
  * @brief 内存移动 (带空指针检查, 支持重叠区域)
- * @param dest 目标内存地址
- * @param src  源内存地址
- * @param size 内存大小
+ * @param[in] dest 目标内存地址
+ * @param[in] src  源内存地址
+ * @param[in] size 内存大小
  * @return VFS_OK 成功, VFS_ERR_INVAL 参数无效
  */
 COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t size)
@@ -607,68 +601,46 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
  */
 
 /** @brief 读 32 位寄存器 */
-COMPAT_STATIC_INLINE uint32_t COMPAT_REG_READ32(uintptr_t addr)
-{
-    return *(volatile uint32_t*)addr;
-}
+COMPAT_STATIC_INLINE uint32_t COMPAT_REG_READ32(uintptr_t addr) { return *(volatile uint32_t*)addr; }
 
 /** @brief 写 32 位寄存器 */
-COMPAT_STATIC_INLINE void COMPAT_REG_WRITE32(uintptr_t addr, uint32_t val)
-{
-    *(volatile uint32_t*)addr = val;
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE32(uintptr_t addr, uint32_t val) { *(volatile uint32_t*)addr = val; }
 
 /**
  * @brief 读 64 位寄存器
  * @note 在 32 位 MCU 上 64 位访问由两次 32 位总线事务组成, 非原子;
  *       如需原子读请用两个 COMPAT_REG_READ32 并在临界区内组合.
  */
-COMPAT_STATIC_INLINE uint64_t COMPAT_REG_READ64(uintptr_t addr)
-{
-    return *(volatile uint64_t*)addr;
-}
+COMPAT_STATIC_INLINE uint64_t COMPAT_REG_READ64(uintptr_t addr) { return *(volatile uint64_t*)addr; }
 
 /**
  * @brief 写 64 位寄存器
  * @note 在 32 位 MCU 上 64 位访问由两次 32 位总线事务组成, 非原子;
  *       如需原子写请用两个 COMPAT_REG_WRITE32 并在临界区内组合.
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_WRITE64(uintptr_t addr, uint64_t val)
-{
-    *(volatile uint64_t*)addr = val;
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE64(uintptr_t addr, uint64_t val) { *(volatile uint64_t*)addr = val; }
 
 /** @brief 读 16 位寄存器 */
-COMPAT_STATIC_INLINE uint16_t COMPAT_REG_READ16(uintptr_t addr)
-{
-    return *(volatile uint16_t*)addr;
-}
+COMPAT_STATIC_INLINE uint16_t COMPAT_REG_READ16(uintptr_t addr) { return *(volatile uint16_t*)addr; }
 
 /** @brief 写 16 位寄存器 */
-COMPAT_STATIC_INLINE void COMPAT_REG_WRITE16(uintptr_t addr, uint16_t val)
-{
-    *(volatile uint16_t*)addr = val;
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE16(uintptr_t addr, uint16_t val) { *(volatile uint16_t*)addr = val; }
 
 /** @brief 读 8 位寄存器 */
 COMPAT_STATIC_INLINE uint8_t COMPAT_REG_READ8(uintptr_t addr) { return *(volatile uint8_t*)addr; }
 
 /** @brief 写 8 位寄存器 */
-COMPAT_STATIC_INLINE void COMPAT_REG_WRITE8(uintptr_t addr, uint8_t val)
-{
-    *(volatile uint8_t*)addr = val;
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_WRITE8(uintptr_t addr, uint8_t val) { *(volatile uint8_t*)addr = val; }
 
 /**
  * @brief 读-改-写 32 位寄存器 (非原子)
- * @param addr       寄存器地址
- * @param clear_mask 先清零的位掩码 (1 = 清零)
- * @param set_mask   再置位的位掩码 (1 = 置位)
+ * @param[in] addr       寄存器地址
+ * @param[in] clear_mask 先清零的位掩码 (1 = 清零)
+ * @param[in] set_mask   再置位的位掩码 (1 = 置位)
  * @note 同一地址并发 RMW 需要调用方保护临界区 (关中断 / spinlock);
  *       需要原子 RMW 时改用 COMPAT_ATOMIC_*.
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask,
-                                              uint32_t set_mask)
+COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask, uint32_t set_mask)
 {
     uint32_t v = COMPAT_REG_READ32(addr);
     v = (v & ~clear_mask) | set_mask;
@@ -679,7 +651,7 @@ COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mas
 
 /**
  * @brief 生成位掩码: COMPAT_BIT(n) = 1U << n
- * @param n 位序号 (0..31)
+ * @param[in] n 位序号 (0..31)
  * @return (1U << n)
  * @note 宏 + __typeof__ 编译期类型检查:
  *       - GCC/Clang (C): 用 __builtin_types_compatible_p 断言 n 为整数类型,
@@ -691,43 +663,34 @@ COMPAT_STATIC_INLINE void COMPAT_REG_MODIFY32(uintptr_t addr, uint32_t clear_mas
 #if defined(__cplusplus)
 #define COMPAT_BIT(n) (1UL << (n))
 #elif defined(__GNUC__) || defined(__clang__)
-#define COMPAT_BIT(n)                                                                              \
-    __builtin_choose_expr(__builtin_types_compatible_p(TYPEOF(n), unsigned int) ||                 \
-                              __builtin_types_compatible_p(TYPEOF(n), int) ||                      \
-                              __builtin_types_compatible_p(TYPEOF(n), unsigned long) ||            \
-                              __builtin_types_compatible_p(TYPEOF(n), long),                       \
-                          (1UL << (n)),                                                            \
-                          ((void)0)) /* 非整数类型: 结果 void, 用于值上下文即编译错误 */
+#define COMPAT_BIT(n)                                                                                                                                                                                  \
+    __builtin_choose_expr(__builtin_types_compatible_p(TYPEOF(n), unsigned int) || __builtin_types_compatible_p(TYPEOF(n), int) || __builtin_types_compatible_p(TYPEOF(n), unsigned long) ||           \
+                              __builtin_types_compatible_p(TYPEOF(n), long),                                                                                                                           \
+                          (1UL << (n)), ((void)0)) /* 非整数类型: 结果 void, 用于值上下文即编译错误 */
 #else
 #define COMPAT_BIT(n) (1UL << (n))
 #endif
 
 /**
  * @brief 置位寄存器中的若干位 (read-modify-write, 非原子)
- * @param addr 寄存器地址
- * @param mask 置位掩码 (1 = 置位, 等价 reg |= mask)
+ * @param[in] addr 寄存器地址
+ * @param[in] mask 置位掩码 (1 = 置位, 等价 reg |= mask)
  * @note 等价于 `reg |= mask`; 并发 RMW 需调用方保护临界区
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_SET_BITS(uintptr_t addr, uint32_t mask)
-{
-    COMPAT_REG_MODIFY32(addr, 0U, mask);
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_SET_BITS(uintptr_t addr, uint32_t mask) { COMPAT_REG_MODIFY32(addr, 0U, mask); }
 
 /**
  * @brief 清位寄存器中的若干位 (read-modify-write, 非原子)
- * @param addr 寄存器地址
- * @param mask 清位掩码 (1 = 清零, 等价 reg &= ~mask)
+ * @param[in] addr 寄存器地址
+ * @param[in] mask 清位掩码 (1 = 清零, 等价 reg &= ~mask)
  * @note 等价于 `reg &= ~mask`; 并发 RMW 需调用方保护临界区
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_CLR_BITS(uintptr_t addr, uint32_t mask)
-{
-    COMPAT_REG_MODIFY32(addr, mask, 0U);
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_CLR_BITS(uintptr_t addr, uint32_t mask) { COMPAT_REG_MODIFY32(addr, mask, 0U); }
 
 /**
  * @brief 翻转寄存器中的若干位 (read-modify-write, 非原子)
- * @param addr 寄存器地址
- * @param mask 翻转掩码 (1 = 取反, 等价 reg ^= mask)
+ * @param[in] addr 寄存器地址
+ * @param[in] mask 翻转掩码 (1 = 取反, 等价 reg ^= mask)
  * @note 等价于 `reg ^= mask`; 并发 RMW 需调用方保护临界区
  */
 COMPAT_STATIC_INLINE void COMPAT_REG_TOGGLE_BITS(uintptr_t addr, uint32_t mask)
@@ -739,70 +702,51 @@ COMPAT_STATIC_INLINE void COMPAT_REG_TOGGLE_BITS(uintptr_t addr, uint32_t mask)
 
 /**
  * @brief 置位寄存器中的单个位
- * @param addr 寄存器地址
- * @param n    位序号 (0..31)
+ * @param[in] addr 寄存器地址
+ * @param[in] n    位序号 (0..31)
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_SET_BIT(uintptr_t addr, uint32_t n)
-{
-    COMPAT_REG_SET_BITS(addr, COMPAT_BIT(n));
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_SET_BIT(uintptr_t addr, uint32_t n) { COMPAT_REG_SET_BITS(addr, COMPAT_BIT(n)); }
 
 /**
  * @brief 清位寄存器中的单个位
- * @param addr 寄存器地址
- * @param n    位序号 (0..31)
+ * @param[in] addr 寄存器地址
+ * @param[in] n    位序号 (0..31)
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_CLR_BIT(uintptr_t addr, uint32_t n)
-{
-    COMPAT_REG_CLR_BITS(addr, COMPAT_BIT(n));
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_CLR_BIT(uintptr_t addr, uint32_t n) { COMPAT_REG_CLR_BITS(addr, COMPAT_BIT(n)); }
 
 /**
  * @brief 翻转寄存器中的单个位
- * @param addr 寄存器地址
- * @param n    位序号 (0..31)
+ * @param[in] addr 寄存器地址
+ * @param[in] n    位序号 (0..31)
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_TOGGLE_BIT(uintptr_t addr, uint32_t n)
-{
-    COMPAT_REG_TOGGLE_BITS(addr, COMPAT_BIT(n));
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_TOGGLE_BIT(uintptr_t addr, uint32_t n) { COMPAT_REG_TOGGLE_BITS(addr, COMPAT_BIT(n)); }
 
 /**
  * @brief 读取寄存器中若干位 (掩码提取, 不右移)
- * @param addr 寄存器地址
- * @param mask 要提取的位掩码
+ * @param[in] addr 寄存器地址
+ * @param[in] mask 要提取的位掩码
  * @return reg & mask
  */
-COMPAT_STATIC_INLINE uint32_t COMPAT_REG_GET_BITS(uintptr_t addr, uint32_t mask)
-{
-    return COMPAT_REG_READ32(addr) & mask;
-}
+COMPAT_STATIC_INLINE uint32_t COMPAT_REG_GET_BITS(uintptr_t addr, uint32_t mask) { return COMPAT_REG_READ32(addr) & mask; }
 
 /**
  * @brief 提取寄存器字段并右移对齐到 0 位
- * @param addr  寄存器地址
- * @param mask  字段掩码 (如 0x0F00)
- * @param shift 字段低位偏移 (如 8)
+ * @param[in] addr  寄存器地址
+ * @param[in] mask  字段掩码 (如 0x0F00)
+ * @param[in] shift 字段低位偏移 (如 8)
  * @return (reg & mask) >> shift
  */
-COMPAT_STATIC_INLINE uint32_t COMPAT_REG_FIELD_GET(uintptr_t addr, uint32_t mask, uint32_t shift)
-{
-    return (COMPAT_REG_READ32(addr) & mask) >> shift;
-}
+COMPAT_STATIC_INLINE uint32_t COMPAT_REG_FIELD_GET(uintptr_t addr, uint32_t mask, uint32_t shift) { return (COMPAT_REG_READ32(addr) & mask) >> shift; }
 
 /**
  * @brief 更新寄存器字段 (读-改-写, 非原子)
- * @param addr  寄存器地址
- * @param mask  字段掩码 (如 0x0F00)
- * @param shift 字段低位偏移 (如 8)
- * @param val   字段新值 (未预移位, 函数内自动左移)
+ * @param[in] addr  寄存器地址
+ * @param[in] mask  字段掩码 (如 0x0F00)
+ * @param[in] shift 字段低位偏移 (如 8)
+ * @param[in] val   字段新值 (未预移位, 函数内自动左移)
  * @note 等价于 reg = (reg & ~mask) | ((val << shift) & mask); 并发 RMW 需临界区
  */
-COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32_t shift,
-                                               uint32_t val)
-{
-    COMPAT_REG_MODIFY32(addr, mask, (val << shift) & mask);
-}
+COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32_t shift, uint32_t val) { COMPAT_REG_MODIFY32(addr, mask, (val << shift) & mask); }
 
 /** @} */
 
@@ -822,8 +766,8 @@ COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, ui
 #define COMPAT_ATOMIC_UINT8 uint8_t
 #define COMPAT_ATOMIC_UINT32 uint32_t
 #define COMPAT_ATOMIC_BOOL bool
-#define COMPAT_ATOMIC_INIT(val)                                                                    \
-    (val) /* 声明期初值: COMPAT_ATOMIC_INT x = COMPAT_ATOMIC_INIT(0);                         \
+#define COMPAT_ATOMIC_INIT(val)                                                                                                                                                                        \
+    (val) /* 声明期初值: COMPAT_ATOMIC_INT x = COMPAT_ATOMIC_INIT(0);                                                                                                                             \
            */
 
 #define COMPAT_MO_RELAXED __ATOMIC_RELAXED
@@ -840,8 +784,7 @@ COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, ui
 #define COMPAT_ATOMIC_FETCH_SUB(p, v, m) __atomic_fetch_sub((p), (v), (m))
 #define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) __atomic_compare_exchange_n((p), (e), (d), 0, (ms), (mf))
 #define COMPAT_ATOMIC_EXCHANGE(p, v, m) __atomic_exchange_n((p), (v), (m))
-#define COMPAT_ATOMIC_RUNTIME_INIT(p, val)                                                         \
-    COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED) /* 运行期初值, 等价 C11 atomic_init */
+#define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED) /* 运行期初值, 等价 C11 atomic_init */
 
 /** @} */
 
@@ -872,8 +815,7 @@ COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, ui
 #define COMPAT_ATOMIC_SUB_FETCH(p, v, m) (std::atomic_fetch_sub_explicit((p), (v), (m)) - (v))
 #define COMPAT_ATOMIC_FETCH_ADD(p, v, m) std::atomic_fetch_add_explicit((p), (v), (m))
 #define COMPAT_ATOMIC_FETCH_SUB(p, v, m) std::atomic_fetch_sub_explicit((p), (v), (m))
-#define COMPAT_ATOMIC_CAS(p, e, d, ms, mf)                                                         \
-    std::atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
+#define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) std::atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
 #define COMPAT_ATOMIC_EXCHANGE(p, v, m) std::atomic_exchange_explicit((p), (v), (m))
 #define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)
 
@@ -906,8 +848,7 @@ COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, ui
 #define COMPAT_ATOMIC_SUB_FETCH(p, v, m) (atomic_fetch_sub_explicit((p), (v), (m)) - (v))
 #define COMPAT_ATOMIC_FETCH_ADD(p, v, m) atomic_fetch_add_explicit((p), (v), (m))
 #define COMPAT_ATOMIC_FETCH_SUB(p, v, m) atomic_fetch_sub_explicit((p), (v), (m))
-#define COMPAT_ATOMIC_CAS(p, e, d, ms, mf)                                                         \
-    atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
+#define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
 #define COMPAT_ATOMIC_EXCHANGE(p, v, m) atomic_exchange_explicit((p), (v), (m))
 #define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)
 
@@ -936,24 +877,24 @@ COMPAT_STATIC_INLINE void COMPAT_REG_FIELD_SET(uintptr_t addr, uint32_t mask, ui
 #define COMPAT_ATOMIC_LOAD(p, m) (*(p))
 #define COMPAT_ATOMIC_ADD_FETCH(p, v, m) (*(p) += (v), *(p))
 #define COMPAT_ATOMIC_SUB_FETCH(p, v, m) (*(p) -= (v), *(p))
-#define COMPAT_ATOMIC_FETCH_ADD(p, v, m)                                                           \
-    __extension__({                                                                                \
-        __typeof__(*(p)) _o = *(p);                                                                \
-        *(p) += (v);                                                                               \
-        _o;                                                                                        \
+#define COMPAT_ATOMIC_FETCH_ADD(p, v, m)                                                                                                                                                               \
+    __extension__({                                                                                                                                                                                    \
+        __typeof__(*(p)) _o = *(p);                                                                                                                                                                    \
+        *(p) += (v);                                                                                                                                                                                   \
+        _o;                                                                                                                                                                                            \
     })
-#define COMPAT_ATOMIC_FETCH_SUB(p, v, m)                                                           \
-    __extension__({                                                                                \
-        __typeof__(*(p)) _o = *(p);                                                                \
-        *(p) -= (v);                                                                               \
-        _o;                                                                                        \
+#define COMPAT_ATOMIC_FETCH_SUB(p, v, m)                                                                                                                                                               \
+    __extension__({                                                                                                                                                                                    \
+        __typeof__(*(p)) _o = *(p);                                                                                                                                                                    \
+        *(p) -= (v);                                                                                                                                                                                   \
+        _o;                                                                                                                                                                                            \
     })
 #define COMPAT_ATOMIC_CAS(p, e, d, ms, mf) ((*(p) == *(e)) ? (*(p) = (d), 1) : (*(e) = *(p), 0))
-#define COMPAT_ATOMIC_EXCHANGE(p, v, m)                                                            \
-    __extension__({                                                                                \
-        __typeof__(*(p)) _o = *(p);                                                                \
-        *(p) = (v);                                                                                \
-        _o;                                                                                        \
+#define COMPAT_ATOMIC_EXCHANGE(p, v, m)                                                                                                                                                                \
+    __extension__({                                                                                                                                                                                    \
+        __typeof__(*(p)) _o = *(p);                                                                                                                                                                    \
+        *(p) = (v);                                                                                                                                                                                    \
+        _o;                                                                                                                                                                                            \
     })
 #define COMPAT_ATOMIC_RUNTIME_INIT(p, val) COMPAT_ATOMIC_STORE((p), (val), COMPAT_MO_RELAXED)
 

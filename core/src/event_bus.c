@@ -72,7 +72,7 @@ static struct event_bus s_bus = {0};
 /* ── 分派任务 (静态函数, 仅内部使用) ── */
 /**
  * @brief EventBus 后台分派任务: 从队列取事件并回调匹配订阅者
- * @param param OSAL 任务入口参数 (未使用)
+ * @param[in] param OSAL 任务入口参数 (未使用)
  */
 static void event_bus_dispatch_task(void* param)
 {
@@ -136,9 +136,7 @@ bool event_bus_init(void)
         return false;
     }
 
-    if (osal_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage,
-                                 sizeof(s_bus.sub_lock_storage)) != 0 ||
-        s_bus.sub_lock == NULL)
+    if (osal_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage, sizeof(s_bus.sub_lock_storage)) != 0 || s_bus.sub_lock == NULL)
     {
         SYS_LOGE(K_TAG, "FATAL: mutex create failed");
         osal_queue_delete(s_bus.queue);
@@ -153,14 +151,13 @@ bool event_bus_init(void)
 
 /**
  * @brief 订阅事件 ID 区间 (封表前可用, 持锁写入订阅表)
- * @param id_min 最小事件 ID (含)
- * @param id_max 最大事件 ID (含)
- * @param callback 匹配时回调
- * @param user_data 传给 callback 的用户数据
+ * @param[in] id_min 最小事件 ID (含)
+ * @param[in] id_max 最大事件 ID (含)
+ * @param[in] callback 匹配时回调
+ * @param[in] user_data 传给 callback 的用户数据
  * @return true 订阅成功; false 封表/ISR/参数无效/表满/锁超时
  */
-bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback,
-                         void* user_data)
+bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback, void* user_data)
 {
     if (osal_in_isr())
         return false;
@@ -196,14 +193,13 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t call
 
 /**
  * @brief 事件投递内部实现 (任务态 / ISR 共用)
- * @param id 事件 ID
- * @param arg 事件参数
- * @param from_isr 为 true 时走 ISR 安全入队路径
- * @param px_yield_required ISR 路径下输出是否需要 yield (可为 NULL)
+ * @param[in] id 事件 ID
+ * @param[in] arg 事件参数
+ * @param[in] from_isr 为 true 时走 ISR 安全入队路径
+ * @param[in] px_yield_required ISR 路径下输出是否需要 yield (可为 NULL)
  * @return true 入队成功, false 总线未初始化或队列满
  */
-static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
-                                    bool* px_yield_required)
+static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
 {
     if (s_bus.queue == NULL || !s_bus.inited)
         return false;
@@ -235,8 +231,8 @@ static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
 
 /**
  * @brief 任务态 post
- * @param id 事件 ID
- * @param arg 参数
+ * @param[in] id 事件 ID
+ * @param[in] arg 参数
  * @return true
  */
 bool event_bus_post(uint32_t id, uintptr_t arg)
@@ -249,15 +245,12 @@ bool event_bus_post(uint32_t id, uintptr_t arg)
 
 /**
  * @brief ISR post
- * @param id 事件 ID
- * @param arg 参数
- * @param px_yield_required yield
+ * @param[in] id 事件 ID
+ * @param[in] arg 参数
+ * @param[in] px_yield_required yield
  * @return true
  */
-bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
-{
-    return event_bus_post_internal(id, arg, true, px_yield_required);
-}
+bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required) { return event_bus_post_internal(id, arg, true, px_yield_required); }
 
 /**
  * @brief 丢弃计数
@@ -273,9 +266,7 @@ void event_bus_start(void)
     if (s_bus.task != NULL || s_bus.queue == NULL)
         return;
 
-    if (osal_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO,
-                                event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 ||
-        s_bus.task == NULL)
+    if (osal_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO, event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 || s_bus.task == NULL)
     {
         SYS_LOGW(K_TAG, "dispatch task create failed");
         return;

@@ -35,8 +35,7 @@ extern "C"
 #define HAL_SPI_XFER_DMA 2U /**< 强制 DMA, 不可用则返回 NOTSUPP */
 
 #ifndef HAL_SPI_MAX_TRANSFER_BYTES
-#define HAL_SPI_MAX_TRANSFER_BYTES                                                                 \
-    2048 /**< 历史/平台上限占位; STM32 路径实际以 HAL_SPI_MAX_XFER 为准 */
+#define HAL_SPI_MAX_TRANSFER_BYTES 2048 /**< 历史/平台上限占位; STM32 路径实际以 HAL_SPI_MAX_XFER 为准 */
 #endif
 
 #ifndef HAL_SPI_HOST_MAX
@@ -48,9 +47,6 @@ extern "C"
 
     /**
      * @brief SPI 设备对象
-     * @param ctlr SPI 控制器对象指针
-     * @param cfg SPI 设备配置
-     * @param hw_open 设备是否打开
      */
     struct hal_spi_dev;
 
@@ -70,8 +66,7 @@ extern "C"
         uint32_t dma_mode; /**< DMA 模式 (LL_DMA_MODE_NORMAL/CIRCULAR) */
         uint32_t dma_periph_inc; /**< DMA 外设地址递增 (LL_DMA_PERIPH_INCREMENT/NOINCREMENT) */
         uint32_t dma_mem_inc; /**< DMA 内存地址递增 (LL_DMA_MEMORY_INCREMENT/NOINCREMENT) */
-        uint32_t
-            dma_periph_data_size; /**< DMA 外设数据宽度 (LL_DMA_PDATAALIGN_BYTE/HALFWORD/WORD) */
+        uint32_t dma_periph_data_size; /**< DMA 外设数据宽度 (LL_DMA_PDATAALIGN_BYTE/HALFWORD/WORD) */
         uint32_t dma_fifo_mode; /**< DMA FIFO 模式 (LL_DMA_FIFOMODE_ENABLE/DISABLE) */
         uint32_t dma_fifo_threshold; /**< DMA FIFO 阈值 (LL_DMA_FIFOTHRESHOLD_1_4/1_2/3_4/FULL) */
         uint32_t dma_mem_burst; /**< DMA 内存突发 (LL_DMA_MBURST_SINGLE/INCR4/INCR8/INCR16) */
@@ -81,22 +76,14 @@ extern "C"
     /**
      * @brief SPI 传输完成 callback (ISR 上下文)
      * @note  STM32/WCH 不支持 async, 类型签名保持跨平台一致。
-     * @param pdev SPI 设备对象指针
-     * @param trans 传输数据
-     * @param userdata 用户数据指针
+     * @param[in] pdev SPI 设备对象指针
+     * @param[in] trans 传输数据
+     * @param[in] userdata 用户数据指针
      */
     typedef void (*hal_spi_callback_t)(struct hal_spi_dev* pdev, const void* trans, void* userdata);
 
     /**
      * @brief SPI 引脚配置
-     * @param port 端口
-     * @param pin 引脚
-     * @param clk_bus 该引脚所属的外设时钟总线
-     * @param af 复用功能,用于配置引脚的复用功能
-     * @param output_type 引脚输出类型
-     * @param speed 引脚速度
-     * @param mode 引脚模式
-     * @param pull 引脚上拉/下拉
      */
     struct hal_spi_pin_cfg
     {
@@ -112,15 +99,6 @@ extern "C"
 
     /**
      * @brief SPI 总线配置
-     * @param spi SPI 基地址
-     * @param spi_clk_periph RCC 外设时钟使能位 (LL_APBx_GRPy_PERIPH_SPIx)
-     * @param mosi MOSI 引脚配置
-     * @param miso MISO 引脚配置
-     * @param sclk SCLK 引脚配置
-     * @param max_transfer_sz 最大传输字节数
-     * @param dma_tx TX DMA 配置 (硬件直投, 仿 ADC)
-     * @param dma_rx RX DMA 配置 (硬件直投, 仿 ADC)
-     * @param bus_role 总线角色
      */
     struct hal_spi_bus_config
     {
@@ -140,11 +118,6 @@ extern "C"
 
     /**
      * @brief SPI 设备配置
-     * @param mode 模式
-     * @param clock_speed_hz 时钟速度
-     * @param cs_port CS 引脚端口
-     * @param cs_pin CS 引脚
-     * @param cs_clk_periph CS 引脚所属 GPIO 的 RCC 时钟使能位
      */
     struct hal_spi_device_config
     {
@@ -164,10 +137,6 @@ extern "C"
 
     /**
      * @brief SPI 总线主机对象
-     * @param cfg 总线配置
-     * @param active_cfg 当前生效的设备配置
-     * @param spi 缓存 cfg.spi, fast path
-     * @param hw_idx dummy buffer / HW slot 索引
      */
     struct hal_spi_bus_host
     {
@@ -182,9 +151,6 @@ extern "C"
 
     /**
      * @brief SPI 设备对象
-     * @param ctlr 总线控制器对象指针
-     * @param cfg 设备配置
-     * @param hw_open 设备是否打开
      */
     struct hal_spi_dev
     {
@@ -195,112 +161,104 @@ extern "C"
 
     /**
      * @brief 初始化 SPI 总线主机
-     * @param host 总线主机对象指针
-     * @param hw_idx dummy buffer / HW slot 索引
-     * @param cfg 总线配置
+     * @param[in] host 总线主机对象指针
+     * @param[in] hw_idx dummy buffer / HW slot 索引
+     * @param[in] cfg 总线配置
      */
-    int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,
-                              const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx, const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 释放 SPI 总线主机
-     * @param host 总线主机对象指针
+     * @param[in] host 总线主机对象指针
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
     int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 初始化 SPI 设备
-     * @param pdev 设备对象指针
-     * @param host 总线控制器对象指针
-     * @param dev_cfg 设备配置
+     * @param[in] pdev 设备对象指针
+     * @param[in] host 总线控制器对象指针
+     * @param[in] dev_cfg 设备配置
      */
-    int hal_spi_dev_init(struct hal_spi_dev* pdev, struct hal_spi_bus_host* host,
-                         const struct hal_spi_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_dev_init(struct hal_spi_dev* pdev, struct hal_spi_bus_host* host, const struct hal_spi_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 打开 SPI 设备
-     * @param pdev 设备对象指针
+     * @param[in] pdev 设备对象指针
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
     int hal_spi_dev_hw_open(struct hal_spi_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 关闭 SPI 设备
-     * @param pdev 设备对象指针
+     * @param[in] pdev 设备对象指针
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
     int hal_spi_dev_hw_close(struct hal_spi_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 同步传输
-     * @param pdev 设备对象指针
-     * @param tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
-     * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
-     * @param len 传输字节数
-     * @param timeout_ms 超时 (ms)
-     * @param xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
+     * @param[in] pdev 设备对象指针
+     * @param[in] tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
+     * @param[out] rx 接收缓冲区 (可为 NULL, 仅丢弃)
+     * @param[in] len 传输字节数
+     * @param[in] timeout_ms 超时 (ms)
+     * @param[in] xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
      */
-    int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                     uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 异步传输
-     * @param pdev 设备对象指针
-     * @param tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
-     * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
-     * @param len 传输字节数
-     * @param cb 回调函数
-     * @param userdata 用户数据指针
+     * @param[in] pdev 设备对象指针
+     * @param[in] tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
+     * @param[out] rx 接收缓冲区 (可为 NULL, 仅丢弃)
+     * @param[in] len 传输字节数
+     * @param[in] cb 回调函数
+     * @param[in] userdata 用户数据指针
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                               hal_spi_callback_t cb, void* userdata) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, hal_spi_callback_t cb, void* userdata) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 异步传输轮询
-     * @param pdev 设备对象指针
-     * @param timeout_ms 超时 (ms)
+     * @param[in] pdev 设备对象指针
+     * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int hal_spi_transfer_poll(struct hal_spi_dev* pdev,
-                              uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_transfer_poll(struct hal_spi_dev* pdev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 获取传输结果
-     * @param pdev 设备对象指针
-     * @param rx_data 接收缓冲区
-     * @param rx_cap 接收缓冲区容量
-     * @param trans_len 传输字节数
-     * @param timeout_ms 超时 (ms)
+     * @param[in] pdev 设备对象指针
+     * @param[out] rx_data 接收缓冲区
+     * @param[out] rx_cap 接收缓冲区容量
+     * @param[out] trans_len 传输字节数
+     * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int hal_spi_get_trans_result(struct hal_spi_dev* pdev, uint8_t* rx_data, size_t rx_cap,
-                                 size_t* trans_len, uint32_t timeout_ms);
+    int hal_spi_get_trans_result(struct hal_spi_dev* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms);
 
     /**
      * @brief SPI 从机同步传输
-     * @param pdev 设备对象指针
-     * @param tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
-     * @param rx 接收缓冲区 (可为 NULL, 仅丢弃)
-     * @param len 传输字节数
-     * @param timeout_ms 超时 (ms)
+     * @param[in] pdev 设备对象指针
+     * @param[in] tx 发送缓冲区 (可为 NULL, 内部填 0xFF/dummy)
+     * @param[out] rx 接收缓冲区 (可为 NULL, 仅丢弃)
+     * @param[in] len 传输字节数
+     * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 从机队列传输
-     * @param pdev 设备对象指针
-     * @param data 发送缓冲区
-     * @param len 传输字节数
-     * @param timeout_ms 超时 (ms)
+     * @param[in] pdev 设备对象指针
+     * @param[in] data 发送缓冲区
+     * @param[in] len 传输字节数
+     * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
      */
-    int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len,
-                               uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

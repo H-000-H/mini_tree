@@ -48,27 +48,20 @@ static const char* const k_tag = "rc522";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void rc522_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_rc522_pool_ctrl, s_rc522_used, RC522_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void rc522_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_rc522_pool_ctrl, s_rc522_used, RC522_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct rc522_device* rc522_get_drvdata(struct device* pdev)
-{
-    return (struct rc522_device*)device_get_priv(pdev);
-}
+static struct rc522_device* rc522_get_drvdata(struct device* pdev) { return (struct rc522_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int rc522_spi_xfer(struct rc522_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                          uint32_t timeout_ms)
+static int rc522_spi_xfer(struct rc522_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -191,7 +184,7 @@ static int rc522_wreg(struct rc522_device* dev, uint8_t reg, uint8_t val, uint32
 
 /**
  * @brief 读寄存器（带读标志位）
- * @param val 输出寄存器值
+ * @param[in] val 输出寄存器值
  */
 static int rc522_rreg(struct rc522_device* dev, uint8_t reg, uint8_t* val, uint32_t timeout_ms)
 {
@@ -230,13 +223,12 @@ static int rc522_clr_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, u
 
 /**
  * @brief 与卡片收发（FIFO 装载 → 命令执行 → 等中断 → 读回数据/错误）
- * @param cmd 命令（TRANSCEIVE / MF_AUTHENT）
- * @param send 发送缓冲
- * @param back 回读缓冲（可空）
- * @param back_len 回读比特数（可空）
+ * @param[in] cmd 命令（TRANSCEIVE / MF_AUTHENT）
+ * @param[in] send 发送缓冲
+ * @param[in] back 回读缓冲（可空）
+ * @param[in] back_len 回读比特数（可空）
  */
-static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send,
-                         uint8_t send_len, uint8_t* back, uint8_t* back_len, uint32_t timeout_ms)
+static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send, uint8_t send_len, uint8_t* back, uint8_t* back_len, uint32_t timeout_ms)
 {
     uint8_t irq_en = 0;
     uint8_t wait_irq = 0;

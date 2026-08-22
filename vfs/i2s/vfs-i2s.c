@@ -66,9 +66,9 @@ pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void pools(void)
 
 /**
  * @brief 解析 dma-tx/rx-cfg 元组到 hal_i2s_dma_config
- * @param pdev 设备对象指针
- * @param prop DTS 属性名 (如 "dma-tx-cfg")
- * @param d 输出的 DMA 配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] prop DTS 属性名 (如 "dma-tx-cfg")
+ * @param[in] d 输出的 DMA 配置结构指针
  * @return 成功返回 VFS_OK (属性缺失或不足 6 元视为可选, 不报错)
  */
 static int parse_dma_tuple(struct device* pdev, const char* prop, struct hal_i2s_dma_config* d)
@@ -103,16 +103,15 @@ static int parse_dma_tuple(struct device* pdev, const char* prop, struct hal_i2s
 
 /**
  * @brief 解析一组 I2S 引脚属性 (port/pin/clk/af 键名由调用方指定)
- * @param pdev 设备对象指针
- * @param port_k port 属性键名
- * @param pin_k pin 属性键名
- * @param clk_k clk 属性键名
- * @param af_k af 属性键名
- * @param out 输出的引脚配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] port_k port 属性键名
+ * @param[in] pin_k pin 属性键名
+ * @param[in] clk_k clk 属性键名
+ * @param[in] af_k af 属性键名
+ * @param[out] out 输出的引脚配置结构指针
  * @return 成功返回 VFS_OK (port 缺失时 out 清零且不报错)
  */
-static int parse_one_pin(struct device* pdev, const char* port_k, const char* pin_k,
-                         const char* clk_k, const char* af_k, struct hal_i2s_pin_cfg* out)
+static int parse_one_pin(struct device* pdev, const char* port_k, const char* pin_k, const char* clk_k, const char* af_k, struct hal_i2s_pin_cfg* out)
 {
     int v;
 
@@ -132,9 +131,9 @@ static int parse_one_pin(struct device* pdev, const char* port_k, const char* pi
 
 /**
  * @brief 解析 Host DTSI 属性, 填入 hal_i2s_bus_config
- * @param pdev 设备对象指针
- * @param cfg 输出的总线配置结构指针
- * @param role 总线角色 (MASTER/SLAVE)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 输出的总线配置结构指针
+ * @param[in] role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int parse_host(struct device* pdev, struct hal_i2s_bus_config* cfg, uint32_t role)
@@ -150,8 +149,7 @@ static int parse_host(struct device* pdev, struct hal_i2s_bus_config* cfg, uint3
     cfg->irqn = -1;
     cfg->irqn_rx = -1;
 
-    if (device_get_prop_int(pdev, "spi-base", &v) != VFS_OK &&
-        device_get_prop_int(pdev, "hw-instance", &v) != VFS_OK)
+    if (device_get_prop_int(pdev, "spi-base", &v) != VFS_OK && device_get_prop_int(pdev, "hw-instance", &v) != VFS_OK)
         return VFS_ERR_INVAL;
     cfg->spi = (uintptr_t)v;
 
@@ -183,8 +181,8 @@ static int parse_host(struct device* pdev, struct hal_i2s_bus_config* cfg, uint3
 
 /**
  * @brief 解析 Client DTSI 属性, 填入 hal_i2s_device_config (字段均为可选, 缺省为 0)
- * @param pdev 设备对象指针
- * @param cfg 输出的设备配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 输出的设备配置结构指针
  * @return 成功返回 VFS_OK
  */
 static int parse_client(struct device* pdev, struct hal_i2s_device_config* cfg)
@@ -207,8 +205,8 @@ static int parse_client(struct device* pdev, struct hal_i2s_device_config* cfg)
 
 /**
  * @brief Host 探测: 申请池槽, 解析 DTSI, 初始化环缓, 调用 i2s_bus_host_init
- * @param pdev 设备对象指针
- * @param role 总线角色 (MASTER/SLAVE)
+ * @param[in] pdev 设备对象指针
+ * @param[in] role 总线角色 (MASTER/SLAVE)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  * @note 虚拟中断不在此处注册 (尚无 hal_i2s_dev); 见 i2s_bus_open
  */
@@ -247,9 +245,7 @@ static int host_probe(struct device* pdev, uint32_t role)
         goto err;
     }
 
-    SYS_LOGI(k_host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev),
-             (unsigned)priv->cfg.dma_tx.dma_enable, (unsigned)priv->cfg.dma_rx.dma_enable,
-             (unsigned)priv->cfg.it_enable);
+    SYS_LOGI(k_host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev), (unsigned)priv->cfg.dma_tx.dma_enable, (unsigned)priv->cfg.dma_rx.dma_enable, (unsigned)priv->cfg.it_enable);
     return VFS_OK;
 
 err:
@@ -259,7 +255,7 @@ err:
 
 /**
  * @brief Host 移除: i2s_bus_host_deinit 后归还私有池 (不做 lifecycle drain)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int host_remove(struct device* pdev)
@@ -281,22 +277,22 @@ static int host_remove(struct device* pdev)
 
 /**
  * @brief Host Master 角色探测入口
- * @param p 设备对象指针
+ * @param[in] p 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int host_probe_master(struct device* p) { return host_probe(p, I2S_BUS_ROLE_MASTER); }
 
 /**
  * @brief Host Slave 角色探测入口
- * @param p 设备对象指针
+ * @param[in] p 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int host_probe_slave(struct device* p) { return host_probe(p, I2S_BUS_ROLE_SLAVE); }
 
 /**
  * @brief Client 打开: 引用计数, 首次打开时调用 i2s_bus_open (含虚拟中断注册)
- * @param pdev 设备对象指针
- * @param arg 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_open(struct device* pdev, void* arg)
@@ -328,7 +324,7 @@ static int i2s_open(struct device* pdev, void* arg)
 
 /**
  * @brief Client 关闭: 引用计数, 末次关闭时调用 i2s_bus_close
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_close(struct device* pdev)
@@ -351,10 +347,10 @@ static int i2s_close(struct device* pdev)
 
 /**
  * @brief Client 写: 同步 TX, 路径由 priv->xfer_mode 决定
- * @param pdev 设备对象指针
- * @param buf 待发送采样缓冲区 (16-bit)
- * @param len 请求写入字节数 (内部按 sizeof(uint16_t) 换算采样数)
- * @param to 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buf 待发送采样缓冲区 (16-bit)
+ * @param[in] len 请求写入字节数 (内部按 sizeof(uint16_t) 换算采样数)
+ * @param[in] to 超时 (毫秒)
  * @return 成功返回 (int)len (实际写入字节数), 失败返回负数错误码
  */
 static int i2s_write(struct device* pdev, const void* buf, size_t len, uint32_t to)
@@ -384,10 +380,10 @@ static int i2s_write(struct device* pdev, const void* buf, size_t len, uint32_t 
 
 /**
  * @brief Client 读: 同步 RX, 路径由 priv->xfer_mode 决定
- * @param pdev 设备对象指针
- * @param buf 接收采样缓冲区 (16-bit)
- * @param len 请求读取字节数 (内部按 sizeof(uint16_t) 换算采样数)
- * @param to 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buf 接收采样缓冲区 (16-bit)
+ * @param[in] len 请求读取字节数 (内部按 sizeof(uint16_t) 换算采样数)
+ * @param[in] to 超时 (毫秒)
  * @return 成功返回 (int)len (实际读取字节数), 失败返回负数错误码
  */
 static int i2s_read(struct device* pdev, void* buf, size_t len, uint32_t to)
@@ -427,10 +423,10 @@ struct i2s_ioctl_map
 
 /**
  * @brief I2S 命令: 同步传输 (samples 为 16-bit 采样数; arg.xfer_mode==AUTO 用 client 偏好)
- * @param pdev 设备对象指针
- * @param arg i2s_transfer_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_transfer_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -452,14 +448,13 @@ static int i2s_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
 
 /**
  * @brief I2S 命令: 设置 write/read/默认 transfer 的传输路径偏好
- * @param pdev 设备对象指针
- * @param arg i2s_xfer_mode_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_xfer_mode_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct i2s_xfer_mode_arg* a = (const struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
@@ -475,14 +470,13 @@ static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
 
 /**
  * @brief I2S 命令: 查询当前 xfer_mode
- * @param pdev 设备对象指针
- * @param arg i2s_xfer_mode_arg 输出参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_xfer_mode_arg 输出参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
-                                 uint32_t timeout_ms)
+static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct i2s_xfer_mode_arg* a = (struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
@@ -498,14 +492,13 @@ static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
 
 /**
  * @brief I2S 命令: 异步提交 (总线层当前忽略 cb/userdata, 占位路径; 完成需 I2S_CMD_ASYNC_WAIT)
- * @param pdev 设备对象指针
- * @param arg i2s_transfer_async_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_transfer_async_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len,
-                                  uint32_t timeout_ms)
+static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct i2s_transfer_async_arg* a = (const struct i2s_transfer_async_arg*)arg;
 
@@ -520,10 +513,10 @@ static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len
 
 /**
  * @brief I2S 命令: 等待异步传输完成
- * @param pdev 设备对象指针
- * @param arg 未使用
- * @param arg_len 未使用
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -537,10 +530,10 @@ static int i2s_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, ui
 
 /**
  * @brief I2S 命令: 启动 DMA circular (TX/RX 由 arg 选择)
- * @param pdev 设备对象指针
- * @param arg i2s_circ_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_circ_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_cmd_circ_start(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -555,10 +548,10 @@ static int i2s_cmd_circ_start(struct device* pdev, void* arg, size_t arg_len, ui
 
 /**
  * @brief I2S 命令: 停止 DMA circular
- * @param pdev 设备对象指针
- * @param arg 未使用
- * @param arg_len 未使用
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_cmd_circ_stop(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -573,10 +566,10 @@ static int i2s_cmd_circ_stop(struct device* pdev, void* arg, size_t arg_len, uin
 
 /**
  * @brief I2S 命令: 向 circular 环缓写入采样
- * @param pdev 设备对象指针
- * @param arg i2s_circ_buf_arg 参数指针 (含 data/samples)
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_circ_buf_arg 参数指针 (含 data/samples)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_cmd_circ_write(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -591,10 +584,10 @@ static int i2s_cmd_circ_write(struct device* pdev, void* arg, size_t arg_len, ui
 
 /**
  * @brief I2S 命令: 从 circular 环缓读取采样
- * @param pdev 设备对象指针
- * @param arg i2s_circ_buf_arg 参数指针 (含 data/samples)
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_circ_buf_arg 参数指针 (含 data/samples)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_cmd_circ_read(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -609,14 +602,13 @@ static int i2s_cmd_circ_read(struct device* pdev, void* arg, size_t arg_len, uin
 
 /**
  * @brief I2S 命令: 设置 DMA HT/TC 中断模式
- * @param pdev 设备对象指针
- * @param arg i2s_dma_irq_mode_arg 参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_dma_irq_mode_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct i2s_dma_irq_mode_arg* a = (const struct i2s_dma_irq_mode_arg*)arg;
 
@@ -628,14 +620,13 @@ static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_l
 
 /**
  * @brief I2S 命令: 查询 DMA HT/TC 中断模式
- * @param pdev 设备对象指针
- * @param arg i2s_dma_irq_mode_arg 输出参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg i2s_dma_irq_mode_arg 输出参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct i2s_dma_irq_mode_arg* a = (struct i2s_dma_irq_mode_arg*)arg;
 
@@ -661,11 +652,11 @@ static const struct i2s_ioctl_map s_i2s_ioctl_map[I2S_CMD_COUNT] = {
 
 /**
  * @brief I2S Client ioctl: 命令映射表 O(1) 派发 (对齐 SPI)
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param to 超时 (毫秒, 部分命令透传)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] to 超时 (毫秒, 部分命令透传)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int i2s_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t to)
@@ -705,7 +696,7 @@ static const struct file_operations s_fops = {
 
 /**
  * @brief Client 探测: 申请池槽, 解析 DTSI, 注册 bus client, 绑定 fops 与 lifecycle
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int client_probe(struct device* pdev)
@@ -756,7 +747,7 @@ err:
 
 /**
  * @brief Client 移除: remove_start → 排空 IO → unregister → 归还私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int client_remove(struct device* pdev)

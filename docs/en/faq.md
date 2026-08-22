@@ -73,7 +73,7 @@ Clean the build directory, make sure CMake depends on that `.c`, and let dtc-lit
 
 ### Bare-metal has no scheduling
 
-Under `CONFIG_OSAL_NULL`, use `mini_tree_system_loop` + the bare-metal scheduler (`x_scheduler` / `x_task`, see `time_slice/task/xtask.h`; cooperative `xtask_coop.c` and preemptive `xtask_preempt.c` are mutually exclusive, gated by `CONFIG_XTASK_PREEMPT`); do not call `vTaskStartScheduler`.
+Under `CONFIG_OSAL_NULL`, use `mini_tree_system_loop` + the bare-metal scheduler (`x_scheduler` / `x_task`, see `time_slice/task/xtask.h`). The scheduler is picked by the `Kconfig.mini_tree` "bare-metal scheduler" choice: `XTASK_NONE` (write your own `while(1)`) / `XTASK_COOP` (cooperative `xtask_coop.c`, default) / `XTASK_PREEMPT` (preemptive `xtask_preempt.c`, finished & compilable). Do not call `vTaskStartScheduler`.
 
 ### Priority behavior is inverted after switching RTOS
 

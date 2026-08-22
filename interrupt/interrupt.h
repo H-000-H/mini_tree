@@ -32,15 +32,15 @@ extern "C"
 #define VIRTUAL_IRQ_BLOCK_SIZE 8U /**<可以改但是必须 2 的 x 次方 */
 
 /**< 虚拟中断块表 */
-#define VIRTUAL_IRQ_BLOCK_TABLE(X)                                                                 \
-    X(system)                                                                                      \
-    X(tim)                                                                                         \
-    X(gpio)                                                                                        \
-    X(adc)                                                                                         \
-    X(uart)                                                                                        \
-    X(spi)                                                                                         \
-    X(i2c)                                                                                         \
-    X(i2s)                                                                                         \
+#define VIRTUAL_IRQ_BLOCK_TABLE(X)                                                                                                                                                                     \
+    X(system)                                                                                                                                                                                          \
+    X(tim)                                                                                                                                                                                             \
+    X(gpio)                                                                                                                                                                                            \
+    X(adc)                                                                                                                                                                                             \
+    X(uart)                                                                                                                                                                                            \
+    X(spi)                                                                                                                                                                                             \
+    X(i2c)                                                                                                                                                                                             \
+    X(i2s)                                                                                                                                                                                             \
     X(user)
 
 /**< 阶段一：自动生成索引序号 */
@@ -52,13 +52,11 @@ extern "C"
 #undef BLOCK_INDEX_ENUM
 
 /**< 阶段二：生成基地址枚举 */
-#define VIRTUAL_IRQ_BLOCK_ENUM(name)                                                               \
-    VIRTUAL_IRQ_##name = (uint32_t)(VIRTUAL_BLOCK_IDX_##name * VIRTUAL_IRQ_BLOCK_SIZE),
+#define VIRTUAL_IRQ_BLOCK_ENUM(name) VIRTUAL_IRQ_##name = (uint32_t)(VIRTUAL_BLOCK_IDX_##name * VIRTUAL_IRQ_BLOCK_SIZE),
 
     typedef enum
     {
-        VIRTUAL_IRQ_BLOCK_TABLE(VIRTUAL_IRQ_BLOCK_ENUM) VIRTUAL_IRQ_MAX_BASE =
-            (uint32_t)(VIRTUAL_BLOCK_COUNT * VIRTUAL_IRQ_BLOCK_SIZE)
+        VIRTUAL_IRQ_BLOCK_TABLE(VIRTUAL_IRQ_BLOCK_ENUM) VIRTUAL_IRQ_MAX_BASE = (uint32_t)(VIRTUAL_BLOCK_COUNT * VIRTUAL_IRQ_BLOCK_SIZE)
     } virtual_irq_base_t;
 #undef VIRTUAL_IRQ_BLOCK_ENUM
 
@@ -91,14 +89,64 @@ extern "C"
      * @note  上半部约定: 返回 VFS_IRQ_ENTRY_BOTTOM(1) = 需要 submit 下半部;
      *        VFS_IRQ_ENTRY_NOBOTTOM(0) = 不需要。
      */
+    /**
+     * @brief ADC VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief I2S VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief SPI VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief CAN VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief DAC VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief TIM VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief UART VIRQ 上半部钩子 (板级以强符号覆盖)
+     * @param[in] arg 中断上下文参数
+     * @param[in] irq_num 虚拟中断号
+     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     */
     int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num);
+    /**
+     * @brief ADC DMA 下半部处理函数 (hal_adc.c 初始化时绑定到 g_adc_dma_bottom_half_work)
+     * @param[in] arg 下半部参数
+     */
     void hal_adc_dma_bottom_half_handler(void* arg);
+    /**
+     * @brief I2S DMA 下半部处理函数 (板级 hal_i2s 初始化时绑定到 g_i2s_bottom_half_work)
+     * @param[in] arg 下半部参数
+     */
     void hal_i2s_dma_bottom_half_handler(void* arg);
 
 /*=======================================================================================================================================================*/
@@ -142,16 +190,9 @@ extern "C"
         COMPAT_ATOMIC_BOOL rerun; /**< fn() 执行期间再次 trigger, run_pending 结束后补跑 */
     };
 
-#define BOTTOM_HALF_WORK_INIT(work_fn, work_arg)                                                   \
-    {.fn = (work_fn),                                                                              \
-     .arg = (work_arg),                                                                            \
-     .pending = COMPAT_ATOMIC_INIT(false),                                                         \
-     .executing = COMPAT_ATOMIC_INIT(false),                                                       \
-     .rerun = COMPAT_ATOMIC_INIT(false)}
+#define BOTTOM_HALF_WORK_INIT(work_fn, work_arg) {.fn = (work_fn), .arg = (work_arg), .pending = COMPAT_ATOMIC_INIT(false), .executing = COMPAT_ATOMIC_INIT(false), .rerun = COMPAT_ATOMIC_INIT(false)}
 
-    COMPAT_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) &&
-                             ((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U),
-                         "BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
+    COMPAT_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) && ((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U), "BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
 
     /**
      * @brief 判断当前是否在中断上下文
@@ -160,17 +201,15 @@ extern "C"
 
     /**
      * @brief 补跑入队 (内部使用)
-     * @param fifo  fifo_spsc 指针
-     * @param work  工作项指针
+     * @param[in] fifo  fifo_spsc 指针
+     * @param[in] work  工作项指针
      * @return true 成功; false 队列满
      */
-    COMPAT_STATIC_INLINE bool bottom_half_submit_rerun(struct fifo_spsc* fifo,
-                                                       struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE bool bottom_half_submit_rerun(struct fifo_spsc* fifo, struct bottom_half_work* work)
     {
         bool expected = false;
 
-        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL,
-                               COMPAT_MO_RELAXED))
+        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
             return true;
 
         if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work))
@@ -182,21 +221,19 @@ extern "C"
 
     /**
      * @brief ISR 侧入队 (裸机 / OS 共用)
-     * @param fifo  fifo_spsc 指针
-     * @param work  工作项指针
+     * @param[in] fifo  fifo_spsc 指针
+     * @param[in] work  工作项指针
      * @return true 已入队 / 已在队列 / 已记 rerun; false 队列满 (work 被丢弃)
      * @note   本函数不执行 work->fn(); 调用方 return-from-ISR 后由消费者 run_pending
      */
-    COMPAT_STATIC_INLINE bool bottom_half_submit_from_isr(struct fifo_spsc* fifo,
-                                                          struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE bool bottom_half_submit_from_isr(struct fifo_spsc* fifo, struct bottom_half_work* work)
     {
         bool expected = false;
 
         if (!fifo || !work || !work->fn)
             return false;
 
-        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL,
-                               COMPAT_MO_RELAXED))
+        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
         {
             if (COMPAT_ATOMIC_LOAD(&work->executing, COMPAT_MO_ACQUIRE))
                 COMPAT_ATOMIC_STORE(&work->rerun, true, COMPAT_MO_RELEASE);
@@ -231,6 +268,7 @@ extern "C"
 
     /**
      * @brief 初始化裸机下半部轮询器
+     * @param[in] poller 轮询器指针
      */
     COMPAT_STATIC_INLINE void bottom_half_poller_init(struct bottom_half_poller* poller)
     {
@@ -242,10 +280,12 @@ extern "C"
 
     /**
      * @brief ISR 调: 仅入队 + 置 pending_drain, 不执行 fn
+     * @param[in] poller 轮询器指针
+     * @param[in] work 工作项指针
      * @note   return-from-ISR 后, 主循环 bottom_half_poller_run() 才 run_pending
+     * @return 成功入队返回 true, 队列满返回 false
      */
-    COMPAT_STATIC_INLINE bool bottom_half_poller_submit(struct bottom_half_poller* poller,
-                                                        struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE bool bottom_half_poller_submit(struct bottom_half_poller* poller, struct bottom_half_work* work)
     {
         if (!poller)
             return false;
@@ -274,8 +314,13 @@ extern "C"
         struct osal_sem* sem; /**< 二值信号量 (唤醒下半部任务) */
     };
 
-    COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task,
-                                                   struct osal_sem* sem)
+    /**
+     * @brief 初始化下半部任务适配器 (绑定二值信号量)
+     * @param[in] task 任务适配器指针
+     * @param[in] sem 二值信号量 (ISR 入队后用于唤醒)
+     * @return 成功返回 0, 参数非法返回 -1
+     */
+    COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task, struct osal_sem* sem)
     {
         if (!task || !sem)
             return -1;
@@ -286,11 +331,12 @@ extern "C"
 
     /**
      * @brief ISR 调: 入队 + post 二值信号量
-     * @param px_yield_required ISR 出口是否需要 yield
+     * @param[in] task 任务适配器指针
+     * @param[in] work 工作项指针
+     * @param[out] px_yield_required ISR 出口是否需要 yield
+     * @return 成功入队返回 true, 队列满返回 false
      */
-    COMPAT_STATIC_INLINE bool bottom_half_task_submit_from_isr(struct bottom_half_task* task,
-                                                               struct bottom_half_work* work,
-                                                               bool* px_yield_required)
+    COMPAT_STATIC_INLINE bool bottom_half_task_submit_from_isr(struct bottom_half_task* task, struct bottom_half_work* work, bool* px_yield_required)
     {
         if (!task || !task->sem)
             return false;
@@ -305,9 +351,11 @@ extern "C"
 
     /**
      * @brief 任务上下文: 入队 + post 二值信号量
+     * @param[in] task 任务适配器指针
+     * @param[in] work 工作项指针
+     * @return 成功入队返回 true, 队列满或在 ISR 中调用返回 false
      */
-    COMPAT_STATIC_INLINE bool bottom_half_task_submit(struct bottom_half_task* task,
-                                                      struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE bool bottom_half_task_submit(struct bottom_half_task* task, struct bottom_half_work* work)
     {
         if (!task || !task->sem || bottom_half_in_isr())
             return false;
@@ -322,6 +370,7 @@ extern "C"
 
     /**
      * @brief 下半部专用任务入口
+     * @param[in] arg 指向 struct bottom_half_task 的指针
      * @note  sem wait 返回时已脱离中断; 随后 run_pending 执行下半部
      */
     COMPAT_STATIC_INLINE void bottom_half_task_entry(void* arg)
@@ -338,14 +387,19 @@ extern "C"
         }
     }
 
-    COMPAT_STATIC_INLINE int bottom_half_task_start(struct bottom_half_task* task, const char* name,
-                                                    uint32_t stack_size, uint32_t priority)
+    /**
+     * @brief 创建并启动下半部专用任务
+     * @param[in] task 任务适配器指针
+     * @param[in] name 任务名 (NULL 用默认)
+     * @param[in] stack_size 栈大小 (0 用默认)
+     * @param[in] priority 优先级
+     * @return 成功返回 VFS_OK, 创建失败返回负数错误码
+     */
+    COMPAT_STATIC_INLINE int bottom_half_task_start(struct bottom_half_task* task, const char* name, uint32_t stack_size, uint32_t priority)
     {
         if (!task)
             return -1;
-        return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME,
-                                stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority,
-                                bottom_half_task_entry, task, 0);
+        return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME, stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority, bottom_half_task_entry, task, 0);
     }
 #endif /* CONFIG_OSAL_NULL */
 
@@ -354,18 +408,17 @@ extern "C"
     /*=======================================================================================================================================================*/
     /**
      * @brief 注册虚拟中断的上半部回调与下半部工作
-     * @param virq_num  VIRQ(block, idx) 计算的虚拟中断号
-     * @param top_half  上半部回调 (在 ISR 内执行, 必须轻量; NULL 表示无上半部)
-     * @param work      下半部工作 (NULL 表示无下半部; 非 NULL 时由 dispatch 自动 submit)
-     * @param arg       传递给上半部回调和下半部 work 的参数 (ISR 调 dispatch 时从表读取)
+     * @param[in] virq_num  VIRQ(block, idx) 计算的虚拟中断号
+     * @param[in] top_half  上半部回调 (在 ISR 内执行, 必须轻量; NULL 表示无上半部)
+     * @param[in] work      下半部工作 (NULL 表示无下半部; 非 NULL 时由 dispatch 自动 submit)
+     * @param[in] arg       传递给上半部回调和下半部 work 的参数 (ISR 调 dispatch 时从表读取)
      * @note  top_half 返回非零表示需要 submit 下半部; 返回零表示不需要
      */
-    void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half,
-                                    struct bottom_half_work* work, void* arg);
+    void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half, struct bottom_half_work* work, void* arg);
 
     /**
      * @brief 虚拟中断调度入口 (ISR 内调用)
-     * @param virq_num 虚拟中断号
+     * @param[in] virq_num 虚拟中断号
      * @note  内部自动衔接: 调完上半部后根据返回值决定是否 submit 下半部
      * @note  arg 由 register 时存入表, dispatch 从表读取 — ISR 不再传 arg
      */
@@ -381,8 +434,8 @@ extern "C"
     /*=======================================================================================================================================================*/
     /**
      * @brief 使能硬件中断 (NVIC / intr_alloc)
-     * @param irqn      硬件中断号 (来自 DTS)
-     * @param priority  抢占优先级 (0=最高, 数值越大优先级越低)
+     * @param[in] irqn      硬件中断号 (来自 DTS)
+     * @param[in] priority  抢占优先级 (0=最高, 数值越大优先级越低)
      * @note  STM32/CH32: NVIC_SetPriority + NVIC_EnableIRQ
      * @note  ESP32: esp_intr_alloc (priority 语义不同, 由实现适配)
      */
@@ -390,13 +443,13 @@ extern "C"
 
     /**
      * @brief 关闭硬件中断
-     * @param irqn 硬件中断号
+     * @param[in] irqn 硬件中断号
      */
     void interrupt_hw_disable(int irqn);
 
     /**
      * @brief ISR 入队接口 (一般由 dispatch 自动调用, 也可手动调用)
-     * @param work 工作项指针
+     * @param[in] work 工作项指针
      * @return true 成功; false 队列满
      */
     bool interrupt_bottom_half_submit(struct bottom_half_work* work);

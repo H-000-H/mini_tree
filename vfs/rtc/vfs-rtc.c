@@ -37,15 +37,12 @@ static const char* const k_tag = "vfs_rtc";
 /**
  * @brief RTC VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool_ctrl, s_used, RTC_VFS_POOL)); }
 
 /**
  * @brief RTC 设备打开: 引用计数, 首次打开时调用 hal_rtc_open
- * @param pdev 设备对象指针
- * @param arg 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_rtc_open(struct device* pdev, void* arg)
@@ -78,7 +75,7 @@ static int vfs_rtc_open(struct device* pdev, void* arg)
 
 /**
  * @brief RTC 设备关闭: 引用计数, 末次关闭时调用 hal_rtc_close
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_rtc_close(struct device* pdev)
@@ -104,10 +101,10 @@ static int vfs_rtc_close(struct device* pdev)
 
 /**
  * @brief RTC 命令: 设置当前时间
- * @param priv RTC 私有数据指针
- * @param arg rtc_time_arg 参数指针
- * @param arg_len 参数长度
- * @param to 未使用
+ * @param[in] priv RTC 私有数据指针
+ * @param[in] arg rtc_time_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int rtc_cmd_set_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -121,10 +118,10 @@ static int rtc_cmd_set_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len
 
 /**
  * @brief RTC 命令: 读取当前时间
- * @param priv RTC 私有数据指针
- * @param arg rtc_time_arg 输出参数指针
- * @param arg_len 参数长度
- * @param to 未使用
+ * @param[in] priv RTC 私有数据指针
+ * @param[in] arg rtc_time_arg 输出参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int rtc_cmd_get_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -138,10 +135,10 @@ static int rtc_cmd_get_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len
 
 /**
  * @brief RTC 命令: 设置闹钟 (回调固定为 NULL)
- * @param priv RTC 私有数据指针
- * @param arg rtc_time_arg 参数指针
- * @param arg_len 参数长度
- * @param to 未使用
+ * @param[in] priv RTC 私有数据指针
+ * @param[in] arg rtc_time_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int rtc_cmd_set_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -155,10 +152,10 @@ static int rtc_cmd_set_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_le
 
 /**
  * @brief RTC 命令: 取消闹钟
- * @param priv RTC 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
- * @param to 未使用
+ * @param[in] priv RTC 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int rtc_cmd_cancel_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -171,10 +168,10 @@ static int rtc_cmd_cancel_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg
 
 /**
  * @brief RTC 命令: 设置唤醒定时器
- * @param priv RTC 私有数据指针
- * @param arg rtc_wakeup_arg 参数指针
- * @param arg_len 参数长度
- * @param to 未使用
+ * @param[in] priv RTC 私有数据指针
+ * @param[in] arg rtc_wakeup_arg 参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int rtc_cmd_set_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -188,10 +185,10 @@ static int rtc_cmd_set_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_l
 
 /**
  * @brief RTC 命令: 取消唤醒定时器
- * @param priv RTC 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
- * @param to 未使用
+ * @param[in] priv RTC 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int rtc_cmd_cancel_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -204,10 +201,10 @@ static int rtc_cmd_cancel_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t ar
 
 /**
  * @brief RTC 命令: 全局强制停止 RTC 硬件 (不依赖 priv 实例)
- * @param priv 未使用
- * @param arg 未使用
- * @param arg_len 未使用
- * @param to 未使用
+ * @param[in] priv 未使用
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK
  */
 static int rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
@@ -222,26 +219,21 @@ static int rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_l
 
 typedef int (*rtc_ioctl_fn)(struct vfs_rtc_priv*, void*, size_t, uint32_t);
 static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
-    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,
-    [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,
-    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,
-    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm,
-    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup,
-    [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
+    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,         [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,     [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,
+    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm, [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup, [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
     [RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1] = rtc_cmd_force_stop,
 };
 
 /**
  * @brief RTC ioctl 派发入口
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用 (透传给子命令)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用 (透传给子命令)
  * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct vfs_rtc_priv* priv;
     struct dev_lifecycle* lc;
@@ -274,8 +266,8 @@ static const struct file_operations s_rtc_fops = {
 
 /**
  * @brief 解析 RTC DTS 属性, 填入 hal_rtc_config
- * @param pdev 设备对象指针
- * @param cfg 输出的 RTC 配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 输出的 RTC 配置结构指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_rtc_parse_dts(struct device* pdev, struct hal_rtc_config* cfg)
@@ -302,7 +294,7 @@ static int vfs_rtc_parse_dts(struct device* pdev, struct hal_rtc_config* cfg)
 
 /**
  * @brief RTC 设备探测: 解析 DTS, hal_rtc_init, 注册 fops
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_rtc_probe(struct device* pdev)
@@ -343,7 +335,7 @@ err:
 
 /**
  * @brief RTC 设备移除: remove_start → 排空 IO → hal_rtc_deinit → 释放私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_rtc_remove(struct device* pdev)

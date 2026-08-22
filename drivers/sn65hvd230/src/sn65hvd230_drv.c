@@ -47,22 +47,19 @@ static const char* const k_tag = "sn65hvd230";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sn65hvd230_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_sn65hvd230_pool_ctrl, s_sn65hvd230_used, SN65HVD230_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sn65hvd230_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_sn65hvd230_pool_ctrl, s_sn65hvd230_used, SN65HVD230_POOL_COUNT)); }
 
-static struct sn65hvd230_device* sn65hvd230_get_drvdata(struct device* pdev)
-{
-    return (struct sn65hvd230_device*)device_get_priv(pdev);
-}
+/**
+ * @brief 从 device 获取驱动私有数据 (drvdata)
+ * @param[in] pdev device 指针
+ * @return sn65hvd230_device 私有数据指针
+ */
+static struct sn65hvd230_device* sn65hvd230_get_drvdata(struct device* pdev) { return (struct sn65hvd230_device*)device_get_priv(pdev); }
 
 /**
  * @brief 打开 GPIO 设备并绑定参数（失败回滚关闭）
  */
-static int sn65hvd230_gpio_on(struct sn65hvd230_device* dev, struct device* g,
-                              struct vfs_gpio_arg* a)
+static int sn65hvd230_gpio_on(struct sn65hvd230_device* dev, struct device* g, struct vfs_gpio_arg* a)
 {
     int ret = device_open(g, NULL);
     if (ret != VFS_OK)
@@ -167,8 +164,7 @@ static int sn65hvd230_close(struct device* pdev)
     return VFS_OK;
 }
 
-typedef int (*sn65hvd230_ioctl_fn_t)(struct sn65hvd230_device* dev, void* arg, size_t arg_len,
-                                     uint32_t ms);
+typedef int (*sn65hvd230_ioctl_fn_t)(struct sn65hvd230_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct sn65hvd230_ioctl_map
 {
     sn65hvd230_ioctl_fn_t handler;

@@ -199,6 +199,12 @@ extern "C"
     /* HAL 设备获取 — 供调度器等外部模块从 device 拿 hal_tim_device (用于 ISR top_half 清 flag) */
     /*===========================================================================================================================================================*/
     struct device;
+    /**
+     * @brief 从 device 获取 hal_tim_device (供调度器等外部模块用)
+     * @param[in] pdev device 指针 (TIM VFS 设备)
+     * @return hal_tim_device 指针; pdev 非法返回 NULL
+     * @note 典型用途: ISR top_half 清 update flag
+     */
     hal_tim_device* vfs_tim_get_hal_dev(struct device* pdev);
 
 #ifdef __cplusplus

@@ -34,13 +34,23 @@ extern "C"
 {
 #endif
 
+    /**
+     * @brief 系统初始化前置阶段 (调度器启动前: 板级外设/驱动注册/静态分配)
+     */
     void mini_tree_pre_os_init(void);
+    /**
+     * @brief 启动框架任务 (EventBus 分发、下半部任务等)
+     */
     void mini_tree_start_tasks(void);
 
-    /* 裸机 super-loop 入口; OS 后端由内核调度, 通常不调用 */
+    /**
+     * @brief 裸机 super-loop 入口 (OS 后端由内核调度, 通常不调用)
+     */
     void mini_tree_system_loop(void);
 
-    /* 初始化完成 — 释放全局中断 (启动调度器 / 进入 while 前调用) */
+    /**
+     * @brief 系统初始化完成 — 释放全局中断 (启动调度器 / 进入 while 前调用)
+     */
     void system_init_complete(void);
 
 #ifdef __cplusplus

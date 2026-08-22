@@ -51,11 +51,14 @@ static struct usb_bus_client s_usb_clients[DEV_ID_COUNT];
 static struct usb_bus_host* s_irq_host;
 static const char* const k_tag = "usb_bus";
 
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
-}
+/** host 池初始化 (pre_execution 阶段, 供 device 池复用) */
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX)); }
 
+/**
+ * @brief 通过 device 查找 USB host 实例 (线性扫描池)
+ * @param[in] pdev device 指针
+ * @return host 实例指针; 未找到返回 NULL
+ */
 static struct usb_bus_host* usb_host_from_device(struct device* pdev)
 {
     for (int i = 0; i < USB_BUS_HOST_MAX; i++)
@@ -64,6 +67,11 @@ static struct usb_bus_host* usb_host_from_device(struct device* pdev)
     return NULL;
 }
 
+/**
+ * @brief 通过 device 查找 USB client 实例 (按 device ID 索引)
+ * @param[in] pdev device 指针
+ * @return client 实例指针; 未找到返回 NULL
+ */
 static struct usb_bus_client* usb_client_from_device(struct device* pdev)
 {
     int id = (int)board_dev_find(device_get_name(pdev));
@@ -86,6 +94,12 @@ static const struct bus_controller_ops s_usb_controller_ops = {
     .client_unregister = usb_client_unregister_impl,
 };
 
+/**
+ * @brief USB 主机初始化实现: 解析 cfg + 池分配 + 绑定 controller_ops
+ * @param[in] pdev host device 指针
+ * @param[in] cfg host 配置指针
+ * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM, 失败返回负数错误码
+ */
 static int usb_host_init_impl(struct device* pdev, const void* cfg)
 {
     const struct hal_usb_bus_config* host_cfg;
@@ -141,11 +155,13 @@ fail_pool:
     return ret;
 }
 
-int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg)
-{
-    return usb_host_init_impl(pdev, cfg);
-}
+int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg) { return usb_host_init_impl(pdev, cfg); }
 
+/**
+ * @brief USB 主机反初始化实现: 校验 ref_count + 解绑 + 释放池槽
+ * @param[in] pdev host device 指针
+ * @return 成功返回 VFS_OK, 引用未归零返回 VFS_ERR_BUSY, 未找到返回 VFS_ERR_NODEV
+ */
 static int usb_host_deinit_impl(struct device* pdev)
 {
     struct usb_bus_host* host;
@@ -174,12 +190,24 @@ static int usb_host_deinit_impl(struct device* pdev)
 
 int usb_bus_host_deinit(struct device* pdev) { return usb_host_deinit_impl(pdev); }
 
+/**
+ * @brief USB 主机角色查询实现 (USB 固定为 host, 恒返回 0)
+ * @param[in] pdev host device 指针
+ * @return 0 (USB 恒为主机角色)
+ */
 static int usb_host_role_impl(struct device* pdev)
 {
     COMPAT_IGNORE_RESULT(pdev);
     return 0;
 }
 
+/**
+ * @brief USB client 注册实现: 校验主机 + 绑定 client (按 device ID 索引)
+ * @param[in] pdev client device 指针
+ * @param[in] cfg 客户端类配置 (enum usb_client_class*)
+ * @param[out] out 回传已绑定 client 指针
+ * @return 成功返回 VFS_OK, 占用冲突返回 VFS_ERR_BUSY, 参数非法返回 VFS_ERR_INVAL
+ */
 static int usb_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
     struct bus_controller* ctlr;
@@ -220,12 +248,12 @@ static int usb_client_register_impl(struct device* pdev, const void* cfg, void**
     return VFS_OK;
 }
 
-int usb_bus_client_register(struct device* pdev, enum usb_client_class cls,
-                            struct usb_bus_client** out)
-{
-    return usb_client_register_impl(pdev, &cls, (void**)out);
-}
+int usb_bus_client_register(struct device* pdev, enum usb_client_class cls, struct usb_bus_client** out) { return usb_client_register_impl(pdev, &cls, (void**)out); }
 
+/**
+ * @brief USB client 注销实现: 释放 client 槽并递减主机引用
+ * @param[in] pdev client device 指针
+ */
 static void usb_client_unregister_impl(struct device* pdev)
 {
     struct usb_bus_client* client = usb_client_from_device(pdev);
@@ -285,8 +313,7 @@ void usb_bus_task(void)
         usb_tusb_task();
 }
 
-int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms,
-                      uint32_t xfer_mode)
+int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
@@ -321,8 +348,7 @@ int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t
     return (int)done;
 }
 
-int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms,
-                     uint32_t xfer_mode)
+int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
@@ -358,8 +384,7 @@ int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeou
     return (int)done;
 }
 
-int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms,
-                      uint32_t xfer_mode)
+int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     int mode;
@@ -375,8 +400,7 @@ int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32
     return usb_net_frame_push_tx(frame, len);
 }
 
-int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms,
-                     uint32_t xfer_mode)
+int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
@@ -403,8 +427,7 @@ int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t time
     }
 }
 
-int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms,
-                      uint32_t xfer_mode)
+int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     int mode;

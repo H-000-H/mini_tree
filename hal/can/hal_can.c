@@ -16,8 +16,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx,
-                                      const struct hal_can_bus_config* cfg)
+COMPAT_WEAK int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx, const struct hal_can_bus_config* cfg)
 {
     (void)host;
     (void)hw_idx;
@@ -56,8 +55,7 @@ COMPAT_WEAK int hal_can_dev_deinit(struct hal_can_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame,
-                                 uint32_t timeout_ms)
+COMPAT_WEAK int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)frame;
@@ -65,8 +63,7 @@ COMPAT_WEAK int hal_can_transmit(struct hal_can_dev* pdev, const struct can_fram
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo,
-                                uint32_t timeout_ms)
+COMPAT_WEAK int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)frame;
@@ -75,8 +72,7 @@ COMPAT_WEAK int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* fram
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_can_filter_config(struct hal_can_bus_host* host,
-                                      const struct hal_can_filter_config* filter)
+COMPAT_WEAK int hal_can_filter_config(struct hal_can_bus_host* host, const struct hal_can_filter_config* filter)
 {
     (void)host;
     (void)filter;

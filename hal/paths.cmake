@@ -6,7 +6,6 @@ set(HAL_INCLUDE_DIRS
     "${_HAL_ROOT}/tim"
     "${_HAL_ROOT}/adc"
     "${_HAL_ROOT}/dac"
-    "${_HAL_ROOT}/analog"
     "${_HAL_ROOT}/storage"
     "${_HAL_ROOT}/system"
     "${_HAL_ROOT}/rtc"

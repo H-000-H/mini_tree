@@ -48,27 +48,20 @@ static const char* const k_tag = "vl53l0x";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vl53l0x_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_vl53l0x_pool_ctrl, s_vl53l0x_used, VL53L0X_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vl53l0x_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_vl53l0x_pool_ctrl, s_vl53l0x_used, VL53L0X_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct vl53l0x_device* vl53l0x_get_drvdata(struct device* pdev)
-{
-    return (struct vl53l0x_device*)device_get_priv(pdev);
-}
+static struct vl53l0x_device* vl53l0x_get_drvdata(struct device* pdev) { return (struct vl53l0x_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int vl53l0x_i2c_wr(struct vl53l0x_device* dev, const uint8_t* tx, size_t len,
-                          uint32_t timeout_ms)
+static int vl53l0x_i2c_wr(struct vl53l0x_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -96,7 +89,7 @@ static int vl53l0x_wr8(struct vl53l0x_device* dev, uint8_t reg, uint8_t val, uin
 
 /**
  * @brief 读 1B 寄存器
- * @param val 输出寄存器值
+ * @param[in] val 输出寄存器值
  */
 static int vl53l0x_rd8(struct vl53l0x_device* dev, uint8_t reg, uint8_t* val, uint32_t timeout_ms)
 {
@@ -108,7 +101,7 @@ static int vl53l0x_rd8(struct vl53l0x_device* dev, uint8_t reg, uint8_t* val, ui
 
 /**
  * @brief 读 16bit 大端寄存器
- * @param val 输出寄存器值
+ * @param[in] val 输出寄存器值
  */
 static int vl53l0x_rd16(struct vl53l0x_device* dev, uint8_t reg, uint16_t* val, uint32_t timeout_ms)
 {
@@ -266,8 +259,7 @@ static int vl53l0x_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*vl53l0x_ioctl_fn_t)(struct vl53l0x_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*vl53l0x_ioctl_fn_t)(struct vl53l0x_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct vl53l0x_ioctl_map
 {
     vl53l0x_ioctl_fn_t handler;

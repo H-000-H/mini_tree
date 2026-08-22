@@ -23,7 +23,7 @@ static bool s_iwdg_active = false;
 
 /**
  * @brief 启动 IWDG
- * @param timeout_ms 超时
+ * @param[in] timeout_ms 超时
  * @return true
  */
 bool system_wdt_init_iwdg(uint32_t timeout_ms)
@@ -88,8 +88,8 @@ static size_t s_stack_entry_count = 0;
 
 /**
  * @brief 注册栈监控
- * @param task 任务
- * @param alarm_threshold_bytes 阈值
+ * @param[in] task 任务
+ * @param[in] alarm_threshold_bytes 阈值
  * @return true
  */
 bool system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes)
@@ -123,29 +123,20 @@ void system_wdt_stack_check_all(void)
 
         if (wm_bytes == 0)
         {
-            SYS_LOGE(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!",
-                     osal_task_get_name(entry->task));
+            SYS_LOGE(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!", osal_task_get_name(entry->task));
             continue;
         }
 
         if (wm_bytes < entry->alarm_threshold_bytes)
-        {
-            SYS_LOGE(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u",
-                     osal_task_get_name(entry->task), (unsigned)wm_bytes,
-                     (unsigned)entry->alarm_threshold_bytes);
-        }
+            SYS_LOGE(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u", osal_task_get_name(entry->task), (unsigned)wm_bytes, (unsigned)entry->alarm_threshold_bytes);
         else if (wm_bytes < entry->alarm_threshold_bytes * 2)
-        {
-            SYS_LOGW(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)",
-                     osal_task_get_name(entry->task), (unsigned)wm_bytes,
-                     (unsigned)entry->alarm_threshold_bytes);
-        }
+            SYS_LOGW(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)", osal_task_get_name(entry->task), (unsigned)wm_bytes, (unsigned)entry->alarm_threshold_bytes);
     }
 }
 
 /**
  * @brief TWDT 占位
- * @param timeout_ms 忽略
+ * @param[in] timeout_ms 忽略
  * @return true
  */
 bool system_wdt_init(uint32_t timeout_ms)
@@ -160,14 +151,14 @@ bool system_wdt_init(uint32_t timeout_ms)
 
 /**
  * @brief TWDT 订阅
- * @param task 任务
+ * @param[in] task 任务
  * @return true
  */
 bool system_wdt_subscribe(osal_task_handle_t task) { return s_initialized && task != NULL; }
 
 /**
  * @brief TWDT 取消
- * @param task 任务
+ * @param[in] task 任务
  * @return true
  */
 bool system_wdt_unsubscribe(osal_task_handle_t task) { return s_initialized && task != NULL; }

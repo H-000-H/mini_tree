@@ -33,10 +33,7 @@
 /* -------------------------------------------------------------------------- */
 /* 通用: 初始化 / 时钟 / 诊断                                                 */
 /* -------------------------------------------------------------------------- */
-void sys_init(void)
-{
-    /*lwip必须tcpip第一步调用,但是系统两阶段初始化已经将 OSAL 初始化完成 此处什么都不需要做*/
-}
+void sys_init(void) { /*lwip必须tcpip第一步调用,但是系统两阶段初始化已经将 OSAL 初始化完成 此处什么都不需要做*/ }
 
 u32_t sys_now(void) { return (u32_t)osal_time_ms(); }
 
@@ -187,8 +184,7 @@ void sys_mbox_free(sys_mbox_t* mbox)
 /* Thread                                                                     */
 /* -------------------------------------------------------------------------- */
 /*裸机不可能线程不需要想为什么我调度器有了两个但是依然只有os的时候才有这个东西*/
-sys_thread_t sys_thread_new(const char* name, lwip_thread_fn thread, void* arg, int stacksize,
-                            int prio)
+sys_thread_t sys_thread_new(const char* name, lwip_thread_fn thread, void* arg, int stacksize, int prio)
 {
     osal_task_handle_t task_handle = NULL;
     int ret = osal_task_create_handle(name, stacksize, prio, thread, arg, -1, &task_handle);

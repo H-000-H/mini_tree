@@ -47,20 +47,14 @@ static const char* const k_tag = "relay";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void relay_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_relay_pool_ctrl, s_relay_used, RELAY_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void relay_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_relay_pool_ctrl, s_relay_used, RELAY_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct relay_device* relay_get_drvdata(struct device* pdev)
-{
-    return (struct relay_device*)device_get_priv(pdev);
-}
+static struct relay_device* relay_get_drvdata(struct device* pdev) { return (struct relay_device*)device_get_priv(pdev); }
 
 /**
  * @brief 打开 GPIO 设备并绑定参数（失败回滚关闭）

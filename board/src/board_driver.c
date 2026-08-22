@@ -52,8 +52,8 @@ static int g_safety_cb_count;
 
 /**
  * @brief 注册安全停机 GPIO 引脚及安全电平
- * @param pin GPIO 引脚编号
- * @param safe_level 安全态电平 (0/1)
+ * @param[in] pin GPIO 引脚编号
+ * @param[in] safe_level 安全态电平 (0/1)
  */
 void board_safety_add_pin(int pin, int safe_level)
 {
@@ -67,7 +67,7 @@ void board_safety_add_pin(int pin, int safe_level)
 
 /**
  * @brief 注册安全停机回调 (probe 前调用)
- * @param fn 停机回调函数, NULL 忽略
+ * @param[in] fn 停机回调函数, NULL 忽略
  */
 void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 {
@@ -78,7 +78,7 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 /* ── 安全硬件伪驱动: 读取 DTS pin_N / safe_level_N 列表 ── */
 /**
  * @brief 从 DTS 属性注册安全停机 GPIO 引脚
- * @param pdev 安全硬件 device 指针
+ * @param[in] pdev 安全硬件 device 指针
  * @return 成功返回 VFS_OK
  */
 static int board_safety_hw_probe(struct device* pdev)
@@ -103,7 +103,7 @@ static int board_safety_hw_probe(struct device* pdev)
 
 /**
  * @brief 清除已注册的安全停机引脚与回调
- * @param pdev device 指针 (未使用)
+ * @param[in] pdev device 指针 (未使用)
  * @return 成功返回 VFS_OK
  */
 static int board_safety_hw_remove(struct device* pdev)
@@ -120,8 +120,8 @@ DRIVER_REGISTER(board_safety_hw, "board,safety-hw", board_safety_hw_probe, board
 
 /**
  * @brief 注册安全停机 GPIO 引脚 (CONFIG_SAFETY_SHUTDOWN 未启用时为 no-op)
- * @param pin GPIO 引脚编号
- * @param safe_level 安全态电平
+ * @param[in] pin GPIO 引脚编号
+ * @param[in] safe_level 安全态电平
  */
 void board_safety_add_pin(int pin, int safe_level)
 {
@@ -131,7 +131,7 @@ void board_safety_add_pin(int pin, int safe_level)
 
 /**
  * @brief 注册安全停机回调 (CONFIG_SAFETY_SHUTDOWN 未启用时为 no-op)
- * @param fn 停机回调函数
+ * @param[in] fn 停机回调函数
  */
 void board_safety_register_shutdown(safety_shutdown_fn_t fn) { COMPAT_UNUSED_PARAM(fn); }
 
@@ -139,7 +139,7 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn) { COMPAT_UNUSED_PAR
 
 /**
  * @brief 检查设备依赖是否不可用或已出错
- * @param pdev 待检查 device 指针
+ * @param[in] pdev 待检查 device 指针
  * @return 1 表示存在缺失/ERROR/REMOVED 依赖, 0 表示依赖均可用
  */
 static int device_dependency_not_ready(const struct device* pdev)
@@ -166,7 +166,7 @@ static int device_dependency_not_ready(const struct device* pdev)
 
 /**
  * @brief 检查设备依赖是否尚未 probe 完成
- * @param pdev 待检查 device 指针
+ * @param[in] pdev 待检查 device 指针
  * @return 1 表示存在缺失或未 PROBED/RUNNING/SUSPENDED 的依赖, 0 表示依赖均已就绪
  */
 static int device_dependency_pending(const struct device* pdev)
@@ -185,19 +185,16 @@ static int device_dependency_pending(const struct device* pdev)
             continue;
 
         enum device_status status = device_get_status(dep);
-        if (status != DEVICE_STATUS_PROBED && status != DEVICE_STATUS_RUNNING &&
-            status != DEVICE_STATUS_SUSPENDED)
-        {
+        if (status != DEVICE_STATUS_PROBED && status != DEVICE_STATUS_RUNNING && status != DEVICE_STATUS_SUSPENDED)
             return 1;
-        }
     }
     return 0;
 }
 
 /**
  * @brief 按设备 criticality 分级处理 probe 失败
- * @param pdev probe 失败的 device 指针
- * @param id 设备 ID (未使用, 保留供扩展)
+ * @param[in] pdev probe 失败的 device 指针
+ * @param[in] id 设备 ID (未使用, 保留供扩展)
  */
 static void handle_probe_failure(struct device* pdev, device_id_t id)
 {
@@ -205,8 +202,7 @@ static void handle_probe_failure(struct device* pdev, device_id_t id)
     switch (crit)
     {
     case DEVICE_CRIT_FATAL:
-        DRV_LOGE(k_tag, "FATAL: '%s' probe failed — initiating safe shutdown",
-                 device_get_name(pdev));
+        DRV_LOGE(k_tag, "FATAL: '%s' probe failed — initiating safe shutdown", device_get_name(pdev));
         OSAL_PANIC("FATAL device '%s' probe failed", device_get_name(pdev));
         break;
     case DEVICE_CRIT_IGNORE:
@@ -220,7 +216,7 @@ static void handle_probe_failure(struct device* pdev, device_id_t id)
 
 /**
  * @brief 级联禁用依赖失败设备的所有子设备
- * @param failed_id probe 失败的设备 ID
+ * @param[in] failed_id probe 失败的设备 ID
  */
 static void disable_dependents(device_id_t failed_id)
 {
@@ -238,14 +234,13 @@ static void disable_dependents(device_id_t failed_id)
         if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED)
             continue;
         COMPAT_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
-        DRV_LOGW(k_tag, "cascade: '%s' disabled (dependency '%s' failed)", device_get_name(child),
-                 device_get_name(board_dev_get(failed_id)));
+        DRV_LOGW(k_tag, "cascade: '%s' disabled (dependency '%s' failed)", device_get_name(child), device_get_name(board_dev_get(failed_id)));
     }
 }
 
 /**
  * @brief 系统安全硬件停机 (回调/PWM/GPIO/CPU 紧急停机)
- * @param reason 停机原因字符串 (可为 NULL)
+ * @param[in] reason 停机原因字符串 (可为 NULL)
  */
 void system_safety_hardware_shutdown(const char* reason)
 {
@@ -338,8 +333,7 @@ int board_driver_probe_all(void)
                 DRV_LOGV(k_tag, "skip probe: '%s' (direct)", device_get_name(pdev));
                 continue;
             }
-            if (device_get_status(pdev) == DEVICE_STATUS_PROBED ||
-                device_get_status(pdev) == DEVICE_STATUS_RUNNING)
+            if (device_get_status(pdev) == DEVICE_STATUS_PROBED || device_get_status(pdev) == DEVICE_STATUS_RUNNING)
                 continue;
 
             if (device_dependency_not_ready(pdev))
@@ -351,8 +345,7 @@ int board_driver_probe_all(void)
                 }
                 COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_DISABLED));
                 fail++;
-                DRV_LOGW(k_tag, "skip '%s': dependency permanently unavailable",
-                         device_get_name(pdev));
+                DRV_LOGW(k_tag, "skip '%s': dependency permanently unavailable", device_get_name(pdev));
                 continue;
             }
 
@@ -365,8 +358,7 @@ int board_driver_probe_all(void)
                     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_DISABLED));
                     continue;
                 }
-                DRV_LOGW(k_tag, "no generated probe for '%s' (compat=%s)", name,
-                         device_get_compatible(pdev));
+                DRV_LOGW(k_tag, "no generated probe for '%s' (compat=%s)", name, device_get_compatible(pdev));
                 COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_DISABLED));
                 handle_probe_failure(pdev, id);
                 disable_dependents(id);
@@ -374,8 +366,7 @@ int board_driver_probe_all(void)
                 continue;
             }
 
-            DRV_LOGI(k_tag, "probing '%s' (%s) ...", device_get_name(pdev),
-                     device_get_compatible(pdev));
+            DRV_LOGI(k_tag, "probing '%s' (%s) ...", device_get_name(pdev), device_get_compatible(pdev));
             int ret = probe(pdev);
             if (ret == VFS_OK)
             {
@@ -386,8 +377,7 @@ int board_driver_probe_all(void)
                 if (open_ret != VFS_OK)
                 {
                     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_ERROR));
-                    DRV_LOGE(k_tag, "device_open FAILED: %s (ret=%d)", device_get_name(pdev),
-                             open_ret);
+                    DRV_LOGE(k_tag, "device_open FAILED: %s (ret=%d)", device_get_name(pdev), open_ret);
                     handle_probe_failure(pdev, id);
                     disable_dependents(id);
                     fail++;
@@ -397,8 +387,7 @@ int board_driver_probe_all(void)
             }
             else if (ret == VFS_ERR_DEFER)
             {
-                DRV_LOGI(k_tag, "DEFER '%s': phandle dependency not yet probed",
-                         device_get_name(pdev));
+                DRV_LOGI(k_tag, "DEFER '%s': phandle dependency not yet probed", device_get_name(pdev));
                 deferred++;
             }
             else
@@ -415,20 +404,16 @@ int board_driver_probe_all(void)
             break;
         if (deferred == deferred_prev)
         {
-            DRV_LOGE(k_tag, "EPROBE_DEFER stall: %d devices stuck after %d passes", (int)deferred,
-                     (int)pass + 1);
+            DRV_LOGE(k_tag, "EPROBE_DEFER stall: %d devices stuck after %d passes", (int)deferred, (int)pass + 1);
             for (volatile int i = 0; i < count; i++)
             {
                 device_id_t id = board_probe_order_at(i);
                 struct device* pdev = board_dev_get(id);
-                if (!IS_ERR_OR_NULL(pdev) && device_get_status(pdev) != DEVICE_STATUS_PROBED &&
-                    device_get_status(pdev) != DEVICE_STATUS_RUNNING &&
-                    device_dependency_pending(pdev))
+                if (!IS_ERR_OR_NULL(pdev) && device_get_status(pdev) != DEVICE_STATUS_PROBED && device_get_status(pdev) != DEVICE_STATUS_RUNNING && device_dependency_pending(pdev))
                 {
                     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_DISABLED));
                     fail++;
-                    DRV_LOGE(k_tag, "DEFER stall: '%s' permanently disabled",
-                             device_get_name(pdev));
+                    DRV_LOGE(k_tag, "DEFER stall: '%s' permanently disabled", device_get_name(pdev));
                 }
             }
             break;
@@ -460,11 +445,8 @@ int board_driver_remove_all(void)
             continue;
 
         enum device_status status = device_get_status(pdev);
-        if (status != DEVICE_STATUS_PROBED && status != DEVICE_STATUS_RUNNING &&
-            status != DEVICE_STATUS_SUSPENDED)
-        {
+        if (status != DEVICE_STATUS_PROBED && status != DEVICE_STATUS_RUNNING && status != DEVICE_STATUS_SUSPENDED)
             continue;
-        }
 
         remove_fn_t remove_fn = board_remove_get_fn(id);
         if (remove_fn)
@@ -472,8 +454,7 @@ int board_driver_remove_all(void)
             int ret = remove_fn(pdev);
             if (ret != VFS_OK)
             {
-                DRV_LOGE(k_tag, "remove FAILED: %s (ret=%d) — keeping ERROR state",
-                         device_get_name(pdev), ret);
+                DRV_LOGE(k_tag, "remove FAILED: %s (ret=%d) — keeping ERROR state", device_get_name(pdev), ret);
                 COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_ERROR));
                 continue;
             }

@@ -48,28 +48,20 @@ static const char* const k_tag = "nrf24l01";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void nrf24l01_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_nrf24l01_pool_ctrl, s_nrf24l01_used, NRF24L01_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void nrf24l01_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_nrf24l01_pool_ctrl, s_nrf24l01_used, NRF24L01_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct nrf24l01_device* nrf24l01_get_drvdata(struct device* pdev)
-{
-    return (struct nrf24l01_device*)device_get_priv(pdev);
-}
+static struct nrf24l01_device* nrf24l01_get_drvdata(struct device* pdev) { return (struct nrf24l01_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int nrf24l01_spi_xfer(struct nrf24l01_device* dev, const uint8_t* tx, uint8_t* rx,
-                             size_t len, uint32_t timeout_ms)
+static int nrf24l01_spi_xfer(struct nrf24l01_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -175,8 +167,7 @@ static int nrf24l01_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*nrf24l01_ioctl_fn_t)(struct nrf24l01_device* dev, void* arg, size_t arg_len,
-                                   uint32_t ms);
+typedef int (*nrf24l01_ioctl_fn_t)(struct nrf24l01_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct nrf24l01_ioctl_map
 {
     nrf24l01_ioctl_fn_t handler;
@@ -185,8 +176,7 @@ struct nrf24l01_ioctl_map
 /**
  * @brief NRF24L01_CMD_WRITE_REG 实现：写寄存器
  */
-static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len,
-                             uint32_t timeout_ms)
+static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
     uint8_t tx[2];
@@ -200,8 +190,7 @@ static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len,
 /**
  * @brief NRF24L01_CMD_READ_REG 实现：读寄存器并回填 val
  */
-static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len,
-                             uint32_t timeout_ms)
+static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
     uint8_t tx[2] = {0};
@@ -220,8 +209,7 @@ static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len,
 /**
  * @brief NRF24L01_CMD_SEND 实现：写 TX 载荷（超长截断）
  */
-static int nrf24l01_cmd_send(struct nrf24l01_device* dev, void* arg, size_t len,
-                             uint32_t timeout_ms)
+static int nrf24l01_cmd_send(struct nrf24l01_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct nrf24l01_payload* p = (struct nrf24l01_payload*)arg;
     uint8_t tx[NRF24L01_MAX_PAYLOAD + 1U];

@@ -79,9 +79,9 @@ static struct pppif_context s_pppif_context = {0};
 
 /**
  * @brief AT 指令交互：发送指令并阻塞匹配期望返回关键字
- * @param cmd 发送的 AT 命令字符串 (需包含 \\r 结尾)
- * @param expect_resp 期望匹配的关键响应 (如 "OK", "CONNECT")
- * @param timeout_ms 指令整体执行超时时间 (ms)
+ * @param[in] cmd 发送的 AT 命令字符串 (需包含 \\r 结尾)
+ * @param[in] expect_resp 期望匹配的关键响应 (如 "OK", "CONNECT")
+ * @param[in] timeout_ms 指令整体执行超时时间 (ms)
  * @return 成功返回 VFS_OK，超时或失败返回对应错误码
  */
 static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32_t timeout_ms)
@@ -101,8 +101,7 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
     at_buf.rx_cap = sizeof(resp_buf) - 1U;
     at_buf.rx_len = 0;
 
-    ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf),
-                       timeout_ms);
+    ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf), timeout_ms);
 
     if (ret != VFS_OK)
         return ret;
@@ -114,8 +113,7 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
         at_buf.rx = &resp_buf[total_receive];
         at_buf.rx_cap = sizeof(resp_buf) - 1 - total_receive;
         at_buf.rx_len = 0;
-        ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf, sizeof(at_buf),
-                           PPPIF_AT_RECV_CHUNK_MS);
+        ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf, sizeof(at_buf), PPPIF_AT_RECV_CHUNK_MS);
         if (ret == VFS_OK && at_buf.rx_len > 0)
         {
             total_receive += at_buf.rx_len;
@@ -124,8 +122,7 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
             if (strstr((const char*)resp_buf, expect_resp) != NULL)
                 return VFS_OK;
 
-            if (strcmp(expect_resp, "CONNECT") != 0 &&
-                strstr((const char*)resp_buf, "ERROR") != NULL)
+            if (strcmp(expect_resp, "CONNECT") != 0 && strstr((const char*)resp_buf, "ERROR") != NULL)
                 return VFS_ERR_IO;
         }
     } while ((osal_time_ms() - start_time) < timeout_ms);
@@ -135,7 +132,7 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
 
 /**
  * @brief 模组拨号控制流程：握手 -> 关回显 -> 设置 APN -> 进入数据透传态
- * @param apn 运营商接入点名称
+ * @param[in] apn 运营商接入点名称
  * @return 成功返回 VFS_OK，失败返回错误码
  */
 static int pppif_modem_dial(const char* apn)
@@ -178,10 +175,10 @@ static int pppif_modem_dial(const char* apn)
 
 /**
  * @brief PPPoS 发送输出回调函数 (对接 lwIP 官方签名: u32_t (*)(ppp_pcb*, u8_t*, u32_t, void*))
- * @param pcb PPP 控制块
- * @param data 待发送的 PPP 报文指针
- * @param len 数据长度
- * @param ctx 用户上下文指针
+ * @param[in] pcb PPP 控制块
+ * @param[in] data 待发送的 PPP 报文指针
+ * @param[in] len 数据长度
+ * @param[in] ctx 用户上下文指针
  * @return 实际写入的字节数，失败返回 0
  */
 static uint32_t pppif_output_callback(ppp_pcb* pcb, const void* data, uint32_t len, void* ctx)
@@ -197,9 +194,9 @@ static uint32_t pppif_output_callback(ppp_pcb* pcb, const void* data, uint32_t l
 
 /**
  * @brief PPP 状态变更与链路生命周期回调
- * @param pcb PPP 控制块
- * @param err_code 错误码/状态码 (PPPERR_NONE, PPPERR_USER 等)
- * @param ctx 用户上下文指针
+ * @param[in] pcb PPP 控制块
+ * @param[in] err_code 错误码/状态码 (PPPERR_NONE, PPPERR_USER 等)
+ * @param[in] ctx 用户上下文指针
  */
 static void pppif_link_status_callback(ppp_pcb* pcb, int err_code, void* ctx)
 {
@@ -211,15 +208,12 @@ static void pppif_link_status_callback(ppp_pcb* pcb, int err_code, void* ctx)
     {
         /*ppp成功获得IP*/
         p_ctx->is_link_up = true;
-        SYS_LOGI(k_tag, "PPP link up. IP: %s, GW: %s, MASK: %s",
-                 ip4addr_ntoa(netif_ip4_addr(ppp_netif)), ip4addr_ntoa(netif_ip4_gw(ppp_netif)),
-                 ip4addr_ntoa(netif_ip4_netmask(ppp_netif)));
+        SYS_LOGI(k_tag, "PPP link up. IP: %s, GW: %s, MASK: %s", ip4addr_ntoa(netif_ip4_addr(ppp_netif)), ip4addr_ntoa(netif_ip4_gw(ppp_netif)), ip4addr_ntoa(netif_ip4_netmask(ppp_netif)));
 #if LWIP_DNS
         /* 打印 DNS 地址 */
         const ip_addr_t* primary_dns = dns_getserver(0);
         const ip_addr_t* secondary_dns = dns_getserver(1);
-        SYS_LOGI(k_tag, "DNS Server: 1: %s, 2: %s", ipaddr_ntoa(primary_dns),
-                 ipaddr_ntoa(secondary_dns));
+        SYS_LOGI(k_tag, "DNS Server: 1: %s, 2: %s", ipaddr_ntoa(primary_dns), ipaddr_ntoa(secondary_dns));
 #endif
         netif_set_link_up(ppp_netif);
         netif_set_up(ppp_netif);
@@ -247,7 +241,7 @@ static void pppif_link_status_callback(ppp_pcb* pcb, int err_code, void* ctx)
 #if !NO_SYS
 /**
  * @brief PPPoS 数据流后台接收线程入口(仅 RTOS 模式, 就是一个任务)
- * @param arg 用户上下文参数
+ * @param[in] arg 用户上下文参数
  */
 static void pppif_rx_thread_entry(void* param)
 {
@@ -262,8 +256,7 @@ static void pppif_rx_thread_entry(void* param)
             osal_delay_ms(10);
             continue;
         }
-        receive_len = device_read(p_ctx->modem_dev, p_ctx->rx_buf, sizeof(p_ctx->rx_buf),
-                                  PPPIF_UART_TIMEOUT_MS);
+        receive_len = device_read(p_ctx->modem_dev, p_ctx->rx_buf, sizeof(p_ctx->rx_buf), PPPIF_UART_TIMEOUT_MS);
         if (receive_len > 0)
             pppos_input(p_ctx->ppp_pcb, p_ctx->rx_buf, receive_len);
     }
@@ -284,8 +277,7 @@ int pppif_poll(void)
     if (!s_pppif_context.modem_dev || !s_pppif_context.ppp_pcb)
         return VFS_ERR_INVAL;
 
-    receive_len = device_read(s_pppif_context.modem_dev, s_pppif_context.rx_buf,
-                              sizeof(s_pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
+    receive_len = device_read(s_pppif_context.modem_dev, s_pppif_context.rx_buf, sizeof(s_pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
     if (receive_len > 0)
         pppos_input(s_pppif_context.ppp_pcb, s_pppif_context.rx_buf, receive_len);
 
@@ -295,10 +287,10 @@ int pppif_poll(void)
 
 /**
  * @brief PPP 拨号与网络协议栈接入初始化
- * @param modem_label 模组设备在 VFS 中的注册标签 (如 "a7670", "air780e")
- * @param apn 接入点 APN (可为 NULL)
- * @param username PAP/CHAP 认证账号 (可为 NULL)
- * @param password PAP/CHAP 认证密码 (可为 NULL)
+ * @param[in] modem_label 模组设备在 VFS 中的注册标签 (如 "a7670", "air780e")
+ * @param[in] apn 接入点 APN (可为 NULL)
+ * @param[in] username PAP/CHAP 认证账号 (可为 NULL)
+ * @param[in] password PAP/CHAP 认证密码 (可为 NULL)
  * @return 成功返回 VFS_OK，失败返回对应错误码
  */
 int pppif_init(const char* modem_label, const char* apn, const char* username, const char* password)
@@ -333,8 +325,7 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
         goto err_clean_device;
 
     /* 创建 lwIP PPPoS 控制块 */
-    s_pppif_context.ppp_pcb = pppos_create(&s_pppif_context.ppp_netif, pppif_output_callback,
-                                           pppif_link_status_callback, &s_pppif_context);
+    s_pppif_context.ppp_pcb = pppos_create(&s_pppif_context.ppp_netif, pppif_output_callback, pppif_link_status_callback, &s_pppif_context);
     if (!s_pppif_context.ppp_pcb)
     {
         ret = VFS_ERR_NOMEM;
@@ -350,9 +341,7 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
 #if !NO_SYS
     /* 创建后台接收数据处理任务 (RTOS 模式) */
     s_pppif_context.is_running = true;
-    ret = osal_task_create_handle("pppos_rx", PPPIF_RX_TASK_STACK_SIZE, PPPIF_RX_TASK_PRIO,
-                                  pppif_rx_thread_entry, &s_pppif_context, (int)-1,
-                                  &s_pppif_context.rx_thread);
+    ret = osal_task_create_handle("pppos_rx", PPPIF_RX_TASK_STACK_SIZE, PPPIF_RX_TASK_PRIO, pppif_rx_thread_entry, &s_pppif_context, (int)-1, &s_pppif_context.rx_thread);
     if (ret != 0 || !s_pppif_context.rx_thread)
     {
         ret = VFS_ERR_NOMEM;

@@ -49,7 +49,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | :--- | :--- | :---: | :--- |
 | `service_spec.md` | App-layer do's/don'ts; `device_find` returns `ERR_PTR` → use `IS_ERR`; two-phase boot | **P0** | [en](service_spec.md) |
 | `app_cpp_guide.md` | Upper-layer C++ restrictions (ETL containers, tiers, forbidden) | P1 (C++) | [en](app_cpp_guide.md) |
-| `coding_style.md` | `.clang-format` (LLVM/Allman/RemoveBracesLLVM/Left pointer/100 cols) + layered `.clang-tidy` + `compiler_compat_poison.h` (on by default, `ALLOW_*` opt-out) | **P0** | [en](coding_style.md) |
+| `coding_style.md` | `.clang-format` (LLVM/Allman/RemoveBracesLLVM/Left pointer/200 cols) + layered `.clang-tidy` + `compiler_compat_poison.h` (on by default, `ALLOW_*` opt-out) | **P0** | [en](coding_style.md) |
 | `runtime_services.md` | EventBus / VIRQ / SYSTEM_C·CPP / BufferPool | P1 | [en](runtime_services.md) |
 | `fast_path.md` | ISR / hot-path red lines (no printf/mutex/malloc/heavy logic) | **P0** (drivers) | [en](fast_path.md) |
 | `can_hook.md` | CAN protocol superset hooks | P2 | [en](can_hook.md) |
@@ -91,7 +91,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | Topic | English |
 | :--- | :--- |
 | Product drivers | 37, in `drivers/<chip>/{include,src}`, GLOB-scanned; the only out-of-tree exception is `driver_ws2812` (WHOLE_ARCHIVE) |
-| OSAL backends | `CONFIG_OSAL_NULL` (bare-metal cooperative, default) / `FREERTOS` (v11.3.0) / `RTTHREAD` (v5.3.0) |
+| OSAL backends | `CONFIG_OSAL_NULL` (bare-metal, default) / `FREERTOS` (v11.3.0) / `RTTHREAD` (v5.3.0) |
 | Targets | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · dual-core AMP |
 | Peripheral coverage | Bus-based 6 (SPI/I2C/I2S/UART/CAN/USB) · Bus-less 7 (GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG) · HAL-Only: AMP/Storage/Platform Safety/**SDIO (reserved)** |
 | Error codes | `VFS_OK=0`; `VFS_ERR_*` (full name, see `status.h`); `device_find` failure returns `ERR_PTR` not `NULL` |

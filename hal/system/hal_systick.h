@@ -39,7 +39,7 @@ extern "C"
     /*===========================================================================================================================================================*/
     /**
      * @brief 初始化并启动 SysTick
-     * @param tick_hz tick 中断频率 (Hz), 来自 DTS chosen tick-rate (DTC_GEN_TICK_RATE_HZ)
+     * @param[in] tick_hz tick 中断频率 (Hz), 来自 DTS chosen tick-rate (DTC_GEN_TICK_RATE_HZ)
      * @return VFS_OK 成功; VFS_ERR_NOTSUPP 平台无 SysTick (非 Cortex-M); 负的 VFS_ERR_* 配置失败
      * @note  CPU 主频从 DTS /cpus/cpu@0 clock-frequency (DTC_GEN_CPU_CLOCK_HZ) 读取,
      *        由此计算 LOAD 装载值; 非 Cortex-M 平台返回 VFS_ERR_NOTSUPP, 调度器回退 DTS chosen

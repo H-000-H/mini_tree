@@ -47,27 +47,20 @@ static const char* const k_tag = "ads1115";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ads1115_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_ads1115_pool_ctrl, s_ads1115_used, ADS1115_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ads1115_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_ads1115_pool_ctrl, s_ads1115_used, ADS1115_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct ads1115_device* ads1115_get_drvdata(struct device* pdev)
-{
-    return (struct ads1115_device*)device_get_priv(pdev);
-}
+static struct ads1115_device* ads1115_get_drvdata(struct device* pdev) { return (struct ads1115_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int ads1115_i2c_wr(struct ads1115_device* dev, const uint8_t* tx, size_t len,
-                          uint32_t timeout_ms)
+static int ads1115_i2c_wr(struct ads1115_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return VFS_ERR_INVAL;
@@ -178,8 +171,7 @@ static int ads1115_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ads1115_ioctl_fn_t)(struct ads1115_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*ads1115_ioctl_fn_t)(struct ads1115_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct ads1115_ioctl_map
 {
     ads1115_ioctl_fn_t handler;

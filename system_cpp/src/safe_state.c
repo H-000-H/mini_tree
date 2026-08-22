@@ -51,7 +51,7 @@ void safe_state_clear_bootloop(void) { s_panic_counter = 0; }
 
 /**
  * @brief 进入不可恢复的安全状态 (硬件闭锁 → 冻结调度 → 关中断 → 死循环)
- * @param reason 触发原因描述 (当前忽略, 预留日志)
+ * @param[in] reason 触发原因描述 (当前忽略, 预留日志)
  */
 void enter_safe_state(const char* reason)
 {

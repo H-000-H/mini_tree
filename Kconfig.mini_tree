@@ -271,15 +271,15 @@ config XTASK_NONE
 config XTASK_COOP
     bool "协调式时间片 (xtask_coop.c) / Cooperative round-robin"
     help
-      普通 (裸机) 协调式时间片调度器 (time_slice/task/xtask_coop.c +
-      time_slice/time)。提供 xscheduler_task_create() / x_scheduler_poll()
+      普通 (裸机) 协调式时间片调度器 (time_slice/task/xtask_coop.c)。
+      提供 xscheduler_task_create() / x_scheduler_poll()
       等原生 API, 也是 OSAL_NULL_TASK_CPP C++ 封装 (osal_task.cpp) 的底层。
       默认 tick 源为 Cortex-M SysTick (内核异常, 不经 VIRQ), 关闭 VIRQ 时
       SysTick 路径照常 tick; 仅当 DTS 显式配 chosen TIM (走通用 TIM + VIRQ)
       时, 关闭 VIRQ 才导致该 TIM 中断无法路由、调度器无 tick。
 
       Bare-metal cooperative round-robin time-slice scheduler
-      (time_slice/task/xtask_coop.c + time_slice/time). Exposes the
+      (time_slice/task/xtask_coop.c). Exposes the
       native xscheduler_task_create() / x_scheduler_poll() APIs that the
       OSAL_NULL_TASK_CPP C++ wrapper (osal_task.cpp) builds on.
       The default tick source is the Cortex-M SysTick (core exception, not
@@ -288,24 +288,27 @@ config XTASK_COOP
       VIRQ break TIM IRQ routing and leave the scheduler with no tick.
 
 config XTASK_PREEMPT
-    bool "抢占式 (xtask_preempt.c, 实验性) / Preemptive (experimental)"
+    bool "抢占式 (xtask_preempt.c) / Preemptive"
     help
       N+1 链表多优先级抢占式调度器 (可延迟/可休眠/可抢占), 独立编译为
       time_slice/task/xtask_preempt.c, 与协调式 xtask_coop.c 共用 xtask.h。
       开启后**替换**协调式 (xtask_coop.c 不再编入), 两套实现提供同一套
       对外 API (xscheduler_task_create / x_scheduler_poll / xscheduler_start 等),
       调用方代码无需任何改动。
-      实验性, 默认关闭; 代码尚未完工, 开启后可能编不过 (g_scheduler_arr 等
-      待修)。仅当你在裸机上需要更接近 RTOS 的调度体验时再开启。
-      Experimental N+1 linked-list multi-priority preemptive scheduler
+      已完工可编译 (分组优先级 + CLZ 定位最高就绪, O(1); 无就绪任务时精确
+      WFI 到最早到期时刻)。choice 默认仍是 XTASK_COOP, 需要更接近 RTOS 的
+      调度体验时切换到本项。
+      N+1 linked-list multi-priority preemptive scheduler
       (delayable / sleepable / preemptive), compiled separately as
       time_slice/task/xtask_preempt.c, sharing xtask.h with the basic
       round-robin xtask_coop.c. When enabled, it REPLACES xtask_coop.c
       (the cooperative version is no longer compiled); both implementations
       expose the same API (xscheduler_task_create / x_scheduler_poll /
       xscheduler_start, etc.), so caller code needs no changes.
-      Off by default; not finished yet — enabling may fail to compile.
-      Turn on only if you need a more RTOS-like scheduling experience on bare-metal.
+      Finished & compilable (grouped priorities + CLZ for O(1) highest-ready
+      selection; precise WFI to the earliest deadline when idle). The choice
+      still defaults to XTASK_COOP; pick this one when you want a more
+      RTOS-like scheduling experience on bare-metal.
 
 endchoice
 
@@ -909,7 +912,7 @@ config VIRQ
       包含 VIRQ 号分配、上/下半部框架与全局下半部轮询器。
       关闭后 interrupt/interrupt.c 不编入，系统主循环不再 poll 下半部。
       关闭前请确认以下功能不需要（关闭后不可用，板级/驱动需同步裁剪）：
-        · 裸机时间片调度器 (time_slice/xtask)：默认 SysTick 路径 (内核异常,
+        · 裸机时间片调度器 (time_slice/task/xtask)：默认 SysTick 路径 (内核异常,
           不经 VIRQ) 关闭 VIRQ 不受影响, 仍照常 tick; 仅当 DTS 显式配 chosen
           TIM (走通用 TIM + VIRQ) 时, 关闭 VIRQ 后该 TIM 中断无法路由, 调度器
           无 tick 源, x_scheduler_poll() 永不调度任务；
@@ -919,14 +922,14 @@ config VIRQ
         · 板级/驱动侧 ISR 不得再调用 interrupt_virtual_dispatch() /
           interrupt_virtual_register()，否则链接失败——关 VIRQ 时板级
           ISR 代码须同步裁剪。
-      内存收益约 1.3 KB RAM + 1 KB Flash，详见 docs/memory_footprint.md §3.6。
+      内存收益约 1.3 KB RAM + 1 KB Flash，详见 docs/memory_footprint.md。
 
       Master switch for the Virtual IRQ + bottom-half framework, on by default.
       When off, interrupt/interrupt.c is not compiled, drivers skip VIRQ
       registration, and the system loop stops polling the bottom half.
       Confirm these become unavailable before disabling (trim board/driver
       code accordingly):
-        · bare-metal time-slice scheduler (time_slice/xtask): the default SysTick
+        · bare-metal time-slice scheduler (time_slice/task/xtask): the default SysTick
           path (core exception, not via VIRQ) keeps ticking with VIRQ off; only
           when DTS explicitly sets chosen TIM (generic TIM + VIRQ) does disabling
           VIRQ break TIM IRQ routing — no tick source, tasks never run;

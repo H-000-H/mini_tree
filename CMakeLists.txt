@@ -529,7 +529,6 @@ target_include_directories(mini_tree
 if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
     target_include_directories(mini_tree PUBLIC
         "${CMAKE_CURRENT_LIST_DIR}/time_slice/task"
-        "${CMAKE_CURRENT_LIST_DIR}/time_slice/time"
     )
 endif()
 

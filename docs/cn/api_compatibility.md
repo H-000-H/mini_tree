@@ -17,7 +17,7 @@
 | `DRIVER_REGISTER(name, compat, probe, remove)` 形态 | 宏参数顺序与生成符号规则 |
 | `status.h` 中 `VFS_OK` / `VFS_ERR_*` 语义 | 数值可能随 errno 映射，语义保持 |
 | `osal.h` 公共函数集 | 三后端共同表面 |
-| `osal_null.h` 的 C++ 重载 `osal_task_create`（裸机协调式专属） | 仅 `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus` + **`!CONFIG_XTASK_PREEMPT`**；`period` 为周期 ms、`param1` 为 `x_task*` TCB |
+| `osal_null.h` 的 C++ 重载 `osal_task_create`（裸机专属） | 仅 `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus`；**协调式**（`CONFIG_XTASK_COOP`）时 `period` 为周期 ms、`param1` 为 `x_task*` TCB；**抢占式**（`CONFIG_XTASK_PREEMPT`）时第三参重解释为 `priority`（数值越大越优先） |
 | HAL **函数名**与配置结构体**字段名** | 平台按头文件实现 |
 
 ---

@@ -35,17 +35,6 @@
 extern "C"
 {
 #endif
-
-    /*============================================================================*/
-    /*                              DMA 配置 (硬件直投, 仿 ADC)                    */
-    /*============================================================================*/
-    /* 纯数据实体: 所有字段由 DTSI 提供厂商宏值, HAL 零计算直接灌入 LL_DMA。
-     * - dma_handle: DMA 控制器寄存器基址 (DMA1_BASE / DMA2_BASE)
-     * - dma_stream: DMA 流编号 (LL_DMA_STREAM_0..7)
-     * - dma_channel: DMA 通道编号 (LL_DMA_CHANNEL_0..7)
-     * - dma_enable: 0=不使用 DMA, 1=使用 DMA
-     * - 其余字段为 LL_DMA 厂商宏值
-     */
     struct hal_uart_dma_config
     {
         uint32_t dma_enable; /**< DMA 使能: 0=禁用, 1=启用 */
@@ -64,17 +53,6 @@ extern "C"
         uint32_t dma_mem_burst; /**< DMA 内存突发 */
         uint32_t dma_periph_burst; /**< DMA 外设突发 */
     };
-
-    /*============================================================================*/
-    /*                              引脚配置 (硬件直投)                            */
-    /*============================================================================*/
-    /* 纯数据实体: 所有字段由 DTSI 提供厂商宏值, HAL 零计算直接灌入 LL 库/标准外设库。
-     * TX/RX 均用此结构体 (含 af)。
-     * - STM32: af = GPIO_AF8_UART4 等 (LL_GPIO AF 选择)
-     * - WCH: af = GPIO_Mode_AF_PP / GPIO_Mode_IN_FLOATING 等 (GPIOMode_TypeDef)
-     * - ESP32: port=0, clk_bus=0, af=0, output_type=0, speed=0, mode=0, pull=0,
-     *   pin=SoC GPIO 编号 (无 AF 概念)
-     */
     struct hal_uart_pin_cfg
     {
         uintptr_t port; /**< GPIOx_BASE */
@@ -86,10 +64,6 @@ extern "C"
         uint32_t mode; /**< LL_GPIO_MODE_* */
         uint32_t pull; /**< LL_GPIO_PULL_* */
     };
-
-    /*============================================================================*/
-    /*                              UART 配置 (硬件直投)                           */
-    /*============================================================================*/
     struct hal_uart_config
     {
         uintptr_t uart; /**< STM32/WCH: 基地址; ESP32: (uintptr_t)uart_host */
@@ -109,15 +83,6 @@ extern "C"
         struct hal_uart_dma_config dma_cfg; /**< DMA 配置 (dma_enable=0 时不使用 DMA) */
     };
 
-    /*============================================================================*/
-    /*                              Host / Device 对象                            */
-    /*============================================================================*/
-    /*
-     * hal_uart_bus_host 嵌入 bus 层 uart_bus_host (非指针), HAL 无池管理, 无 vtable。
-     * 跨平台字段说明:
-     * - uart: STM32/WCH 缓存 cfg.uart (fast path); ESP32 缓存 (uintptr_t)uart_host
-     * - uart_queue: ESP32 FreeRTOS QueueHandle_t (头中立用 void*); STM32/WCH 为 NULL
-     */
     struct hal_uart_bus_host
     {
         struct hal_uart_config cfg; /**< UART 配置 (DTSI 直投) */
@@ -136,29 +101,61 @@ extern "C"
         int hw_open; /**< 硬件打开计数 */
     };
 
-    /*============================================================================*/
-    /*                              Device 管理 API                               */
-    /*============================================================================*/
-    int hal_uart_dev_init(struct hal_uart_bus_host* host,
-                          const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 绑定 UART 主机并应用 DTSI 配置 (零计算直投)
+     * @param[in] host UART 主机对象指针 (非 NULL)
+     * @param[in] cfg UART 配置指针 (DTSI 直投, 生命周期由调用方持有)
+     * @return 成功返回 VFS_OK, host 或 cfg 为空返回 VFS_ERR_INVAL
+     */
+    int hal_uart_dev_init(struct hal_uart_bus_host* host, const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 打开 UART 硬件 (引用计数 +1, 首次触发底层 init)
+     * @param[in] host UART 主机对象指针
+     * @return 成功返回 VFS_OK, host 为空返回 VFS_ERR_INVAL
+     */
     int hal_uart_dev_hw_open(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 关闭 UART 硬件 (引用计数 -1, 归零触发底层 deinit)
+     * @param[in] host UART 主机对象指针
+     * @return 成功返回 VFS_OK, host 为空返回 VFS_ERR_INVAL
+     */
     int hal_uart_dev_hw_close(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 
-    /*============================================================================*/
-    /*                              同步传输                                       */
-    /*============================================================================*/
-    int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len,
-                       uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
-    int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len,
-                      uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 同步阻塞发送 (polling/中断, 按 it_enable 决定)
+     * @param[in] pdev UART 设备对象指针
+     * @param[in] data 发送缓冲区
+     * @param[in] len 发送字节数
+     * @param[in] timeout_ms 超时毫秒数 (0=不等待)
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_* (超时 VFS_ERR_TIMEOUT)
+     */
+    int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 同步阻塞接收 (polling/中断, 按 it_enable 决定)
+     * @param[in] pdev UART 设备对象指针
+     * @param[out] data 接收缓冲区
+     * @param[in] len 接收字节数
+     * @param[in] timeout_ms 超时毫秒数 (0=不等待)
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_* (超时 VFS_ERR_TIMEOUT)
+     */
+    int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
-    /*============================================================================*/
-    /*                              DMA 传输 (STM32/WCH 支持, ESP32 返回 NOTSUPP)  */
-    /*============================================================================*/
     /* DMA 配置由 host->cfg.dma_cfg 提供 (硬件直投, 仿 ADC), 无需外部传入通道句柄。
      * dma_enable=0 时返回 VFS_ERR_NOTSUPP。 */
-    int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len,
-                           uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief DMA 异步发送 (无 OS 等待, 依赖 DMA TC 中断)
+     * @param[in] pdev UART 设备对象指针
+     * @param[in] data 发送缓冲区 (DMA 期间须保持有效)
+     * @param[in] len 发送字节数
+     * @param[in] timeout_ms 超时毫秒数 (0=不等待)
+     * @return 成功返回 VFS_OK, DMA 不可用返回 VFS_ERR_NOTSUPP, 失败返回 VFS_ERR_*
+     */
+    int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    /**
+     * @brief 终止正在进行的 UART DMA 传输
+     * @param[in] pdev UART 设备对象指针
+     * @return 成功返回 VFS_OK, 无进行中传输返回 VFS_ERR_INVAL
+     */
     int hal_uart_dma_abort(struct hal_uart_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus

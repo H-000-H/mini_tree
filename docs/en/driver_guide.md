@@ -114,7 +114,7 @@ Rules:
 - `compatible`: **exactly** matches the DTS node's `compatible = "..."`
 - `probe`/`remove`: return `VFS_OK` or `VFS_ERR_*`
 
-Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-identifier-naming`): `x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::`, etc.; `.clang-format` uses Allman braces, no braces on single statements, 4-space indent, 100 columns. Recommended at `app`, mandatory below `app`.
+Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-identifier-naming`): `x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::`, etc.; `.clang-format` uses Allman braces, no braces on single statements, 4-space indent, 200 columns. Recommended at `app`, mandatory below `app`.
 
 ---
 

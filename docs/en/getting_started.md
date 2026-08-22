@@ -81,7 +81,7 @@ The root `CMakeLists.txt` runs the same logic during the configure stage (the ES
 | :--- | :--- | :--- |
 | Platform | `PLATFORM_ARM_CM4F` etc. | architecture hint (paired with the toolchain) |
 | Multi-core | `CPU_CORES` / `AMP_MODE` | 1=single core; 2=AMP |
-| OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | runtime backend: bare-metal cooperative / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
+| OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | runtime backend: bare-metal (cooperative / preemptive) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
 | OSAL Capacity | `OSAL_NULL_MAX_QUEUES` (base queue count, +1 auto when EventBus on) / `OSAL_NULL_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | queue & heap RAM (backend-scoped) |
 | System | `SYSTEM` / `SYSTEM_CPP` / `SYSTEM_C` | master switch (default on) + language backend |
 | Log | `SYS_LOG_USE_PRINTF` / `OSAL` | `SYS_LOG*` backend |
@@ -216,7 +216,7 @@ system_init_complete();
 > `period` is the task period in ms, `param1` is a caller-provided static `x_task*` TCB);
 > C projects call `xscheduler_task_create` directly (see `time_slice/task/xtask.h`). No such limit on OS backends.
 >
-> **Preemptive note (`CONFIG_XTASK_PREEMPT=y`)**: the cooperative C++ overload is closed entirely via `#ifndef CONFIG_XTASK_PREEMPT`; C++ projects must also fall back to the native `xscheduler_task_create` API; the scheduler implementation switches to `xtask_preempt.c` (experimental, unfinished — may fail to compile when enabled).
+> **Preemptive note (`XTASK_PREEMPT=y`)**: the C++ overload is still provided but switches to the `priority` branch (`stack_size` is reused as the period on bare metal); you may also call the native `xscheduler_task_create` API (shared `xtask.h`). The scheduler implementation switches to `xtask_preempt.c` (N+1 multi-priority, finished & compilable).
 
 Phase meanings are in [architecture.md §3](architecture.md#3-startup-sequence-two-phase-ignition).
 

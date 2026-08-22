@@ -49,17 +49,46 @@ extern "C"
         char msg[PROD_LOG_MSG_LEN]; /**< 消息内容 */
     };
 
+    /**
+     * @brief 初始化量产日志环形缓冲 (含持久化后端时恢复历史)
+     * @return 成功返回 VFS_OK, 初始化失败返回 VFS_ERR_*
+     */
     int production_log_init(void);
 
+    /**
+     * @brief 追加一条量产日志
+     * @param[in] level 日志级别 (PROD_LOG_*)
+     * @param[in] tag 标签 (截断至 PROD_LOG_TAG_LEN)
+     * @param[in] msg 消息内容 (截断至 PROD_LOG_MSG_LEN)
+     */
     void production_log_push(prod_log_level_t level, const char* tag, const char* msg);
 
-    void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
-        COMPAT_FMT_PRINTF(3, 4);
+    /**
+     * @brief 追加一条格式化量产日志
+     * @param[in] level 日志级别 (PROD_LOG_*)
+     * @param[in] tag 标签
+     * @param[in] fmt printf 格式串
+     * @param[in] ... 格式化参数
+     */
+    void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...) COMPAT_FMT_PRINTF(3, 4);
 
+    /**
+     * @brief 查询当前累计日志条数
+     * @return 日志条数
+     */
     int production_log_count(void);
 
+    /**
+     * @brief 按索引读取一条日志 (环形缓冲, 索引取模)
+     * @param[in] index 日志索引 (0 起)
+     * @return 日志条目指针; 索引越界返回 NULL
+     */
     const struct prod_log_entry* production_log_get(int index);
 
+    /**
+     * @brief 导出全部日志到回调 (产线现场打印用)
+     * @param[in] sink 逐行输出回调
+     */
     void production_log_dump(void (*sink)(const char* line));
 
 #ifdef __cplusplus

@@ -24,7 +24,7 @@
    Docs and code go in the same PR: at least update [docs/file_index.md](docs/cn/file_index.md) or the corresponding `docs/*`; new open-source components also update [docs/ecosystem.md](docs/cn/ecosystem.md) + [NOTICE](NOTICE) (version, copyright holder, license).
 6. 遵守 [docs/fast_path.md](docs/cn/fast_path.md) 与分层 poison。  
    Follow [docs/fast_path.md](docs/cn/fast_path.md) and the layered poison.
-7. **语言规范**：`.clang-format`（Allman 大括号、单语句 if/for/while 去括号、4 空格缩进、100 列、指针靠左）+ 分层 `.clang-tidy`（根 = 内核区，全小写无前缀；`app/`、`system_cpp/` = Google 区，类型 PascalCase + `s_`/`g_`/`k_` 前缀）；app 层为建议、app 以下为强规定；命名由 `.clang-tidy` 强制、格式由 `.clang-format` 强制。详见 [docs/coding_style.md](docs/cn/coding_style.md)。  
+7. **语言规范**：`.clang-format`（Allman 大括号、单语句 if/for/while 去括号、4 空格缩进、200 列、指针靠左）+ 分层 `.clang-tidy`（根 = 内核区，全小写无前缀；`app/`、`system_cpp/` = Google 区，类型 PascalCase + `s_`/`g_`/`k_` 前缀）；app 层为建议、app 以下为强规定；命名由 `.clang-tidy` 强制、格式由 `.clang-format` 强制。详见 [docs/coding_style.md](docs/cn/coding_style.md)。  
    **Coding style**: `.clang-format` (Allman braces, no braces around single-statement if/for/while, 4-space indent, 100 columns, pointer-on-left) plus layered `.clang-tidy` (root = kernel zone, all-lowercase without prefixes; `app/`, `system_cpp/` = Google zone, PascalCase types + `s_`/`g_`/`k_` prefixes); advisory in `app/`, mandatory below `app/`; naming enforced by `.clang-tidy`, formatting by `.clang-format`. See [docs/coding_style.md](docs/cn/coding_style.md).
 
 ---

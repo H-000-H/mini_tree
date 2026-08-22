@@ -50,16 +50,12 @@ static const char* const k_host_tag = "uart_host_vfs";
 /**
  * @brief UART Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT)); }
 
 /**
  * @brief 解析 UART Host DTS 属性 (硬件直投值), 填入 hal_uart_config
- * @param pdev 设备对象指针
- * @param cfg 配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 配置结构指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* cfg)
@@ -74,20 +70,11 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
     int rx_port = 0, rx_pin = 0, rx_clk = 0, rx_af = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "uart-base", &uart_base) != VFS_OK ||
-        device_get_prop_int(pdev, "uart-clk", &uart_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "uart-baud", &uart_baud) != VFS_OK ||
-        device_get_prop_int(pdev, "data-width", &data_width) != VFS_OK ||
-        device_get_prop_int(pdev, "parity", &parity) != VFS_OK ||
-        device_get_prop_int(pdev, "stop-bits", &stop_bits) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-af", &rx_af) != VFS_OK)
+    if (device_get_prop_int(pdev, "uart-base", &uart_base) != VFS_OK || device_get_prop_int(pdev, "uart-clk", &uart_clk) != VFS_OK || device_get_prop_int(pdev, "uart-baud", &uart_baud) != VFS_OK ||
+        device_get_prop_int(pdev, "data-width", &data_width) != VFS_OK || device_get_prop_int(pdev, "parity", &parity) != VFS_OK || device_get_prop_int(pdev, "stop-bits", &stop_bits) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK || device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK || device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK || device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK || device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK || device_get_prop_int(pdev, "rx-af", &rx_af) != VFS_OK)
     {
         return VFS_ERR_INVAL;
     }
@@ -177,7 +164,7 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
 
 /**
  * @brief UART Host 设备探测: 申请池槽, 解析 DTS, 调用 uart_bus_host_init
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_uart_priv_probe(struct device* pdev)
@@ -214,8 +201,7 @@ static int vfs_uart_priv_probe(struct device* pdev)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev),
-             (unsigned long)priv->cfg.baud_rate);
+    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev), (unsigned long)priv->cfg.baud_rate);
     return VFS_OK;
 
 err_bus:
@@ -227,7 +213,7 @@ err_pool:
 
 /**
  * @brief UART Host 设备移除: remove_start → ops_unregister → remove_drain → host_deinit → 释放池槽
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_uart_priv_remove(struct device* pdev)
@@ -293,15 +279,12 @@ static const char* const k_tag = "uart_vfs";
 /**
  * @brief UART Client VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT)); }
 
 /**
  * @brief UART Client 设备打开操作 (引用计数, 首次打开时调用 uart_bus_open)
- * @param pdev 设备对象指针
- * @param arg 命令参数指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int uart_vfs_open(struct device* pdev, void* arg)
@@ -336,7 +319,7 @@ static int uart_vfs_open(struct device* pdev, void* arg)
 
 /**
  * @brief UART Client 设备关闭操作 (引用计数, 末次关闭时调用 uart_bus_close)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int uart_vfs_close(struct device* pdev)
@@ -364,10 +347,10 @@ static int uart_vfs_close(struct device* pdev)
 
 /**
  * @brief UART Client 设备写操作 (dev_lc_io 门控, 调用 uart_bus_write)
- * @param pdev 设备对象指针
- * @param buf 数据缓冲
- * @param len 数据长度 (字节)
- * @param timeout_ms 超时 (毫秒, 0=平台默认)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buf 数据缓冲
+ * @param[in] len 数据长度 (字节)
+ * @param[in] timeout_ms 超时 (毫秒, 0=平台默认)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
@@ -394,10 +377,10 @@ static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint
 
 /**
  * @brief UART Client 设备读操作 (dev_lc_io 门控, 调用 uart_bus_read)
- * @param pdev 设备对象指针
- * @param buf 数据缓冲
- * @param len 数据长度 (字节)
- * @param timeout_ms 超时 (毫秒, 0=平台默认)
+ * @param[in] pdev 设备对象指针
+ * @param[in] buf 数据缓冲
+ * @param[in] len 数据长度 (字节)
+ * @param[in] timeout_ms 超时 (毫秒, 0=平台默认)
  * @return 成功返回已读字节数, 失败返回负数错误码
  */
 static int uart_vfs_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
@@ -434,10 +417,10 @@ struct uart_ioctl_map
 
 /**
  * @brief UART 命令处理: 半双工传输 (先写后读)
- * @param pdev 设备对象指针
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int uart_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
@@ -456,15 +439,14 @@ static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
 
 /**
  * @brief UART Client 设备 ioctl 控制 (命令映射表 O(1) 派发)
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 超时 (毫秒)
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
-static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                          uint32_t timeout_ms)
+static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;
@@ -499,11 +481,6 @@ static const struct file_operations uart_vfs_fops = {
     .ioctl = uart_vfs_ioctl,
 };
 
-/**
- * @brief UART Client VFS probe: 注册 bus client 并挂载 fops
- * @param pdev client device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int uart_vfs_probe(struct device* pdev)
 {
     struct uart_vfs_client* priv;
@@ -546,11 +523,6 @@ err_pool:
     return ret;
 }
 
-/**
- * @brief UART Client VFS remove: drain 生命周期并注销 bus client
- * @param pdev client device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
- */
 int uart_vfs_remove(struct device* pdev)
 {
     struct uart_vfs_client* priv;

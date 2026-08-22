@@ -27,8 +27,8 @@ static const char* k_tag = "vfs_wwdg";
 
 /**
  * @brief WWDG 打开: 引用计数, 首次打开时调用 hal_wwdg_start 启动窗口看门狗
- * @param pdev 设备对象指针
- * @param arg 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_wwdg_open(struct device* pdev, void* arg)
@@ -60,7 +60,7 @@ static int vfs_wwdg_open(struct device* pdev, void* arg)
 
 /**
  * @brief WWDG 关闭: 仅递减 lifecycle 引用, 不调用 hal 停止 (硬件可能仍在运行)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_wwdg_close(struct device* pdev)
@@ -81,11 +81,11 @@ static int vfs_wwdg_close(struct device* pdev)
 
 /**
  * @brief WWDG ioctl: 窗口内喂狗 (WWDG_CMD_FEED)
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 未使用
- * @param arg_len 未使用
- * @param to 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
+ * @param[in] to 未使用
  * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
 static int vfs_wwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t to)
@@ -118,7 +118,7 @@ static const struct file_operations s_fops = {
 
 /**
  * @brief WWDG 设备探测: 解析 window/counter/prescaler, hal_wwdg_init, 注册 fops
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_wwdg_probe(struct device* pdev)
@@ -150,7 +150,7 @@ static int vfs_wwdg_probe(struct device* pdev)
 
 /**
  * @brief WWDG 设备移除: 注销 fops (不停止硬件, 不做 lifecycle drain)
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK
  */
 static int vfs_wwdg_remove(struct device* pdev)

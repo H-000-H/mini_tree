@@ -70,10 +70,27 @@ public:
     bool subscribe(uint32_t id_min, uint32_t id_max, EventCallback callback,
                    void* user_data = nullptr);
 
-    bool post(uint32_t id, uintptr_t arg = 0); /**< 发布事件 (任务上下文) */
+    /**
+     * @brief 发布事件 (任务上下文)
+     * @param[in] id 事件 ID (框架级或用户自定义)
+     * @param[in] arg 事件参数 (指针或整数值)
+     * @return 成功返回 true, 队列满返回 false
+     */
+    bool post(uint32_t id, uintptr_t arg = 0);
+    /**
+     * @brief 发布事件 (ISR 上下文, 不内部 yield)
+     * @param[in] id 事件 ID
+     * @param[in] arg 事件参数
+     * @param[out] px_yield_required ISR 出口是否需要上下文切换 (可为 nullptr)
+     * @return 成功返回 true, 队列满返回 false
+     */
     bool post_from_isr(uint32_t id, uintptr_t arg,
-                       bool* px_yield_required); /**< 发布事件 (ISR 上下文) */
-    size_t dropped_count() const; /**< 累计丢弃事件数 (队列溢出) */
+                       bool* px_yield_required);
+    /**
+     * @brief 查询累计丢弃事件数 (队列溢出)
+     * @return 丢弃事件数
+     */
+    size_t dropped_count() const;
     /** 启动事件分发任务.
      *  分发任务优先级: FreeRTOS 后端 = 30, RT-Thread 后端 = 1.
      *  在两套后端语义下均为框架内最高任务优先级, 确保事件队列快速排空.

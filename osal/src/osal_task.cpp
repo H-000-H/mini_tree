@@ -23,13 +23,13 @@ using osal_task_handle_t = x_task_handle_t;
 
 /**
  * @brief 创建协调式任务 (C++ 重载)
- * @param name 任务名 (仅调试)
- * @param stack_size 忽略 (TCB 由调用方静态分配)
- * @param period 任务周期 (ms)
- * @param entry 回调, 签名 void(*)(x_task*), 与 xtask 一致; 参数即 TCB
- * @param param1 调用方静态分配的 x_task* TCB (必须非空)
- * @param param2 忽略
- * @param core_id 忽略 (保持与 C API 形状一致)
+ * @param[in] name 任务名 (仅调试)
+ * @param[in] stack_size 忽略 (TCB 由调用方静态分配)
+ * @param[in] period 任务周期 (ms)
+ * @param[in] entry 回调, 签名 void(*)(x_task*), 与 xtask 一致; 参数即 TCB
+ * @param[in] param1 调用方静态分配的 x_task* TCB (必须非空)
+ * @param[in] param2 忽略
+ * @param[in] core_id 忽略 (保持与 C API 形状一致)
  * @return 任务句柄 (x_task*); 失败返回 etl::nullopt
  */
 etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t period, void (*entry)(x_task*),void* param1, void* param2, int core_id)
@@ -52,13 +52,13 @@ etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t st
 
 /**
  * @brief 创建抢占式任务 (C++ 重载)
- * @param name 任务名
- * @param stack_size 复用为任务周期 (ms) (裸机忽略栈)
- * @param priority 优先级, 越大越优先
- * @param entry 回调, 签名 void(*)(x_task*)
- * @param param1 忽略 (任务池在调度器内部自分配)
- * @param param2 忽略
- * @param core_id 忽略
+ * @param[in] name 任务名
+ * @param[in] stack_size 复用为任务周期 (ms) (裸机忽略栈)
+ * @param[in] priority 优先级, 越大越优先
+ * @param[in] entry 回调, 签名 void(*)(x_task*)
+ * @param[in] param1 忽略 (任务池在调度器内部自分配)
+ * @param[in] param2 忽略
+ * @param[in] core_id 忽略
  * @return 任务句柄; 失败返回 etl::nullopt
  */
 etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, void (*entry)(x_task*),void* param1, void* param2, int core_id)

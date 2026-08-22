@@ -26,13 +26,14 @@
 
 | Macro | Implementation | Link deps | Task model |
 | :--- | :--- | :--- | :--- |
-| `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp` (when `CONFIG_OSAL_NULL_TASK_CPP=y` **and** `CONFIG_XTASK_PREEMPT=n`) | `time_slice/task` (`xtask_coop.c` or `xtask_preempt.c`, picked by `CONFIG_XTASK_PREEMPT`; shares `xtask.h` API) | Cooperative time slices (bare-metal, default)<br>**or** N+1 preemptive (experimental, `CONFIG_XTASK_PREEMPT=y`) |
+| `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp` (when `CONFIG_OSAL_NULL_TASK_CPP=y` **and** `!XTASK_NONE`) | `time_slice/task` (`xtask_coop.c` or `xtask_preempt.c`, picked by the `Kconfig.mini_tree` bare-metal scheduler choice `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; shares `xtask.h` API) | No scheduler (`XTASK_NONE`, hand-written `while(1)`) <br>**or** cooperative round-robin (default, `XTASK_COOP`)<br>**or** N+1 preemptive multi-priority (`XTASK_PREEMPT`) |
 | `CONFIG_OSAL_FREERTOS` | `osal/src/osal_freertos.c` | `lib/freeRTOS` (v11.3.0) | Preemptive |
 | `CONFIG_OSAL_RTTHREAD` | `osal/src/osal_rtthread.c` | `lib/rtthread` (v5.3.0) | Preemptive |
 
-The bare-metal backend (`CONFIG_OSAL_NULL`) ships two interchangeable schedulers under `time_slice/task/`, gated by `CONFIG_XTASK_PREEMPT` (mutual-exclusive at both CMake and `#ifdef` level, sharing the same `xtask.h` API — caller code unchanged):
-- **Cooperative** (default, `CONFIG_XTASK_PREEMPT=n`) — `xtask_coop.c`, round-robin, non-preemptive.
-- **Preemptive** (experimental, `CONFIG_XTASK_PREEMPT=y`) — `xtask_preempt.c`, N+1 linked-list multi-priority; **not finished yet — may fail to compile.**
+The bare-metal backend (`CONFIG_OSAL_NULL`) picks one scheduler from the "bare-metal scheduler" choice in `Kconfig.mini_tree` (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`); CMake injects `MINI_TREE_XTASK_*` macros to decide whether `xtask_coop.c` or `xtask_preempt.c` is compiled, with `#ifdef` as a second gate:
+- **No scheduler** (`XTASK_NONE`) — nothing is compiled in; write your own `while(1)` loop. `OSAL_NULL_TASK_CPP` is auto-disabled by Kconfig, and the osal/system layer cannot link against xtask interfaces — the firmware degrades to a bare closure.
+- **Cooperative** (default, `XTASK_COOP`) — `time_slice/task/xtask_coop.c`, round-robin time slices, non-preemptive.
+- **Preemptive** (`XTASK_PREEMPT`) — `time_slice/task/xtask_preempt.c`, N+1 linked-list multi-priority (grouped priority + CLZ lookup; delayable / sleepable / preemptible; precise WFI to the earliest deadline when idle); **finished & compilable.**
 
 The public surface is `osal/include/osal.h`. Business code and VFS should depend on this header only.
 
@@ -56,15 +57,17 @@ Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** a
 | :--- | :--- |
 | FreeRTOS | **Higher** number = higher priority |
 | RT-Thread | **Lower** number = higher priority |
-| NULL (cooperative) | C API ignores priority arguments |
-| NULL (preemptive, `CONFIG_XTASK_PREEMPT=y`) | N+1 linked-list multi-priority (not finished yet) |
+| NULL (cooperative, `XTASK_COOP`) | C API ignores priority arguments |
+| NULL (preemptive, `XTASK_PREEMPT`) | N+1 linked-list multi-priority; higher number = higher priority |
 
-Bare-metal task creation is controlled by `CONFIG_OSAL_NULL_TASK_CPP` (depends on `SYSTEM_CPP`, on by default):
-- **On (unified path)**: the C++ overload `osal_task_create` in `osal_null.h`; its `period` parameter is the task period in ms (bare-metal has no priority concept — the argument is **reinterpreted** as period).
-- **Off (raw xtask)**: the wrapper is not compiled; call `xscheduler_task_create` / `x_scheduler_poll` directly.
+Bare-metal task creation is controlled by `CONFIG_OSAL_NULL_TASK_CPP` (depends on `SYSTEM_CPP && !XTASK_NONE`, on by default):
+- **On (unified path)**: the C++ overload `osal_task_create` in `osal_null.h`.
+  - Cooperative: `period` is the task period in ms (bare metal has no priority concept — the argument is **reinterpreted** as period).
+  - Preemptive: the same overload gains a `priority` parameter (higher = more urgent); `stack_size` is reused as the period on bare metal.
+- **Off (raw xtask, or forced under `XTASK_NONE`)**: the wrapper is not compiled; call `xscheduler_task_create` / `x_scheduler_poll` directly.
 - The bare-metal C API `osal_task_create` / `osal_task_create_handle` always returns `OSAL_ERR_NOTSUPP`.
 
-> **When `CONFIG_XTASK_PREEMPT=y`**: the cooperative overload (`osal_task.cpp` + the C++ declaration in `osal_null.h`) is closed entirely via `#ifndef CONFIG_XTASK_PREEMPT`, because preemptive scheduling introduces priority and the `period` argument's semantics change. A preemptive-specific overload is not yet provided; C projects must call `xscheduler_task_create` and other native APIs directly (shared via `xtask.h`).
+> **When `XTASK_PREEMPT=y`**: the C++ overload is still provided but switches to the `priority` branch (the cooperative/preemptive branches are split by `CONFIG_XTASK_PREEMPT` inside `osal_task.cpp` — no caller change needed). You may also use `XTASK_NONE` and write a raw `while` loop.
 
 The same business constants **must** be re-mapped when switching backends, or you get "high-priority starvation" or inverted priorities.
 
@@ -103,9 +106,9 @@ Don't link or call RTOS scheduler entry points under a NULL configuration.
 
 - [ ] `.config` and the generated `config.h` agree
 - [ ] No two OSAL `.c` files compiled at once
-- [ ] Under bare-metal, `CONFIG_XTASK_PREEMPT` matches expectations (cooperative vs preemptive are mutually exclusive; `xtask_coop.c` and `xtask_preempt.c` never compile together)
-- [ ] Priority table re-mapped for the backend
-- [ ] Bare-metal task-creation path is as intended (`CONFIG_OSAL_NULL_TASK_CPP`: unified C++ overload or raw xtask; note the C++ overload is closed when `CONFIG_XTASK_PREEMPT=y`)
+- [ ] Under bare-metal, the "bare-metal scheduler" choice matches expectations (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`; `xtask_coop.c` and `xtask_preempt.c` are mutually exclusive)
+- [ ] Priority table re-mapped for the backend (NULL preemptive: higher number = higher priority)
+- [ ] Bare-metal task-creation path is as intended (`CONFIG_OSAL_NULL_TASK_CPP`: unified C++ overload or raw xtask; forced off under `XTASK_NONE`; preemptive overload has the `priority` branch)
 - [ ] Startup path matches the backend
 - [ ] Log backend (PRINTF/OSAL) still behaves as expected
 

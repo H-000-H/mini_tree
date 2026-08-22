@@ -36,7 +36,7 @@ static const char* const k_tag = "vfs-tim-host";
 
 /**
  * @brief 获取 TIM VFS 设备关联的 HAL 定时器句柄
- * @param pdev TIM device 指针
+ * @param[in] pdev TIM device 指针
  * @return 成功返回 hal_tim_device 指针, 失败返回 NULL
  */
 hal_tim_device* vfs_tim_get_hal_dev(struct device* pdev)
@@ -51,9 +51,9 @@ hal_tim_device* vfs_tim_get_hal_dev(struct device* pdev)
 
 /**
  * @brief TIM Ioctl 命令处理函数指针类型
- * @param priv TIM 私有数据指针
- * @param arg 命令参数指针
- * @param arg_len 参数长度
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 typedef int (*tim_cmd_handler_t)(struct vfs_tim_priv* priv, void* arg, size_t arg_len);
@@ -69,9 +69,9 @@ typedef struct
 
 /**
  * @brief TIM 命令: 强制停止定时器
- * @param priv TIM 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -83,9 +83,9 @@ static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 
 /**
  * @brief TIM 命令: 暂停定时器计数 (base_stop)
- * @param priv TIM 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -97,9 +97,9 @@ static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 
 /**
  * @brief TIM 命令: 恢复定时器计数 (base_start)
- * @param priv TIM 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_resume(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -111,9 +111,9 @@ static int tim_cmd_resume(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 
 /**
  * @brief TIM 命令: 读取当前计数值
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -125,9 +125,9 @@ static int tim_cmd_get_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_
 
 /**
  * @brief TIM 命令: 设置当前计数值
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 设定值指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 设定值指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -139,9 +139,9 @@ static int tim_cmd_set_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_
 
 /**
  * @brief TIM 命令: 更新 PWM 通道占空比 (ARR/CCR)
- * @param priv TIM 私有数据指针
- * @param arg vfs_tim_arg 参数指针
- * @param arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg vfs_tim_arg 参数指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -154,9 +154,9 @@ static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_l
 
 /**
  * @brief TIM 命令: 读取输入捕获值
- * @param priv TIM 私有数据指针
- * @param arg vfs_tim_arg 参数指针 (channel 入, value 出)
- * @param arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg vfs_tim_arg 参数指针 (channel 入, value 出)
+ * @param[in] arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -169,9 +169,9 @@ static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_
 
 /**
  * @brief TIM 命令: 读取编码器计数值
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_encoder(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -183,9 +183,9 @@ static int tim_cmd_get_encoder(struct vfs_tim_priv* priv, void* arg, size_t arg_
 
 /**
  * @brief TIM 命令: 读取霍尔传感器计数值
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_hall(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -197,9 +197,9 @@ static int tim_cmd_get_hall(struct vfs_tim_priv* priv, void* arg, size_t arg_len
 
 /**
  * @brief TIM 命令: 设置自动重装载值 (ARR)
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 设定值指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 设定值指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_autoreload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -211,9 +211,9 @@ static int tim_cmd_set_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
 
 /**
  * @brief TIM 命令: 读取自动重装载值 (ARR)
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -225,9 +225,9 @@ static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
 
 /**
  * @brief TIM 命令: 清更新标志 (ISR 上半部用, 无参数)
- * @param priv TIM 私有数据指针
- * @param arg 忽略 (可为 NULL)
- * @param arg_len 忽略
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 忽略 (可为 NULL)
+ * @param[in] arg_len 忽略
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_clear_update_flag(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -239,9 +239,9 @@ static int tim_cmd_clear_update_flag(struct vfs_tim_priv* priv, void* arg, size_
 
 /**
  * @brief TIM 命令: 设置预分频系数
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 设定值指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 设定值指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_prescaler(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -253,9 +253,9 @@ static int tim_cmd_set_prescaler(struct vfs_tim_priv* priv, void* arg, size_t ar
 
 /**
  * @brief TIM 命令: 读取预分频系数
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_prescaler(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -267,9 +267,9 @@ static int tim_cmd_get_prescaler(struct vfs_tim_priv* priv, void* arg, size_t ar
 
 /**
  * @brief TIM 命令: 设置时钟分频
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 设定值指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 设定值指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_clock_division(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -281,9 +281,9 @@ static int tim_cmd_set_clock_division(struct vfs_tim_priv* priv, void* arg, size
 
 /**
  * @brief TIM 命令: 读取时钟分频
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_clock_division(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -295,9 +295,9 @@ static int tim_cmd_get_clock_division(struct vfs_tim_priv* priv, void* arg, size
 
 /**
  * @brief TIM 命令: 设置计数模式
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 设定值指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 设定值指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -309,9 +309,9 @@ static int tim_cmd_set_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
 
 /**
  * @brief TIM 命令: 读取计数模式
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 输出缓冲区指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 输出缓冲区指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -323,9 +323,9 @@ static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
 
 /**
  * @brief TIM 命令: 启用 ARR 预装载
- * @param priv TIM 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -337,9 +337,9 @@ static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size
 
 /**
  * @brief TIM 命令: 禁用 ARR 预装载
- * @param priv TIM 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_disable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -351,9 +351,9 @@ static int tim_cmd_disable_arr_preload(struct vfs_tim_priv* priv, void* arg, siz
 
 /**
  * @brief TIM 命令: 配置定时器中断掩码
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 中断掩码指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 中断掩码指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_interrupt(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -365,9 +365,9 @@ static int tim_cmd_set_interrupt(struct vfs_tim_priv* priv, void* arg, size_t ar
 
 /**
  * @brief TIM 命令: 启动编码器模式
- * @param priv TIM 私有数据指针
- * @param arg uint32_t 编码器参数指针
- * @param arg_len 参数长度 (需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg uint32_t 编码器参数指针
+ * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -379,9 +379,9 @@ static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t ar
 
 /**
  * @brief TIM 命令: 启动霍尔传感器模式
- * @param priv TIM 私有数据指针
- * @param arg 未使用
- * @param arg_len 未使用
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg 未使用
+ * @param[in] arg_len 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -393,9 +393,9 @@ static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_l
 
 /**
  * @brief TIM 命令: 按 cfg.mode 启动定时器 (encoder 需 arg 为 uint32_t; hall/default 忽略 arg)
- * @param priv TIM 私有数据指针
- * @param arg encoder 模式下为 uint32_t 参数指针; 其他模式未使用
- * @param arg_len 参数长度 (encoder 模式需 >= sizeof(uint32_t))
+ * @param[in] priv TIM 私有数据指针
+ * @param[in] arg encoder 模式下为 uint32_t 参数指针; 其他模式未使用
+ * @param[in] arg_len 参数长度 (encoder 模式需 >= sizeof(uint32_t))
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int tim_cmd_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
@@ -450,17 +450,13 @@ static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
 /**
  * @brief TIM Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init()
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_tim_priv_pool_ctrl, s_tim_priv_used, TIM_VFS_PRIV_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init() { COMPAT_IGNORE_RESULT(osal_pool_init(&s_tim_priv_pool_ctrl, s_tim_priv_used, TIM_VFS_PRIV_COUNT)); }
 
 /**
  * @brief   解析 TIM Host DTS 属性 (硬件直投值), 填入 hal_tim_host_config
  * @note    unique不在此处解析因为unique属于特殊变量在probe解析
- * @param   pdev 设备对象指针
- * @param   cfg 输出的 HAL 总线配置结构
+ * @param[in]   pdev 设备对象指针
+ * @param[in]   cfg 输出的 HAL 总线配置结构
  * @return  成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_config* cfg)
@@ -473,16 +469,13 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
     cfg->mode = (uint32_t)tim_mode;
 
     /* 基础时基 — 必填, 缺任一即失败 */
-    if (device_get_prop_int(pdev, "prescaler", (int*)&cfg->base.prescaler) != VFS_OK ||
-        device_get_prop_int(pdev, "counter-mode", (int*)&cfg->base.counter_mode) != VFS_OK ||
+    if (device_get_prop_int(pdev, "prescaler", (int*)&cfg->base.prescaler) != VFS_OK || device_get_prop_int(pdev, "counter-mode", (int*)&cfg->base.counter_mode) != VFS_OK ||
         device_get_prop_int(pdev, "autoreload", (int*)&cfg->base.autoreload) != VFS_OK)
         return VFS_ERR_INVAL;
 
     /* 选填字段 — 属性不存在时字段保持 0 */
-    COMPAT_IGNORE_RESULT(
-        device_get_prop_int(pdev, "clock-division", (int*)&cfg->base.clock_division));
-    COMPAT_IGNORE_RESULT(
-        device_get_prop_int(pdev, "repetition-counter", (int*)&cfg->base.repetition_counter));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clock-division", (int*)&cfg->base.clock_division));
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "repetition-counter", (int*)&cfg->base.repetition_counter));
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "active-chn-mask", (int*)&cfg->active_chn_mask));
 
     /* 宽容解析: 缺字段记 warn, 用默认值 0, 不 fail 整个初始化 */
@@ -493,12 +486,8 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
 
     case HAL_TIM_MODE_OC:
     {
-        static const char* const fmt[] = {
-            "oc%d-compare-value", "oc%d-oc-mode",         "oc%d-oc-state",
-            "oc%d-oc-polarity",   "oc%d-oc-idle-state",   "oc%d-oc-n-state",
-            "oc%d-oc-n-polarity", "oc%d-oc-n-idle-state", "oc%d-channel-id",
-            "oc%d-chn-mode",      "oc%d-chn-polarity",    "oc%d-chn-filter",
-            "oc%d-chn-prescaler", "oc%d-chn-enable-comp"};
+        static const char* const fmt[] = {"oc%d-compare-value",   "oc%d-oc-mode",    "oc%d-oc-state", "oc%d-oc-polarity",  "oc%d-oc-idle-state", "oc%d-oc-n-state",    "oc%d-oc-n-polarity",
+                                          "oc%d-oc-n-idle-state", "oc%d-channel-id", "oc%d-chn-mode", "oc%d-chn-polarity", "oc%d-chn-filter",    "oc%d-chn-prescaler", "oc%d-chn-enable-comp"};
         for (int i = 0; i < HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS; i++)
         {
             if (!(cfg->active_chn_mask & (1u << i)))
@@ -508,13 +497,8 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             hal_tim_channel_config* ch = &cfg->oc_mode.channel[i];
             hal_tim_pin_config* p = &cfg->oc_mode.pin[i];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
-            int* dst[] = {(int*)&c->compare_value, (int*)&c->oc_mode,
-                          (int*)&c->oc_state,      (int*)&c->oc_polarity,
-                          (int*)&c->oc_idle_state, (int*)&c->oc_n_state,
-                          (int*)&c->oc_n_polarity, (int*)&c->oc_n_idle_state,
-                          (int*)&ch->channel_id,   (int*)&ch->mode,
-                          (int*)&ch->polarity,     (int*)&ch->filter,
-                          (int*)&ch->prescaler,    (int*)&ch->enable_complementary};
+            int* dst[] = {(int*)&c->compare_value,   (int*)&c->oc_mode,     (int*)&c->oc_state, (int*)&c->oc_polarity, (int*)&c->oc_idle_state, (int*)&c->oc_n_state, (int*)&c->oc_n_polarity,
+                          (int*)&c->oc_n_idle_state, (int*)&ch->channel_id, (int*)&ch->mode,    (int*)&ch->polarity,   (int*)&ch->filter,       (int*)&ch->prescaler, (int*)&ch->enable_complementary};
             for (int j = 0; j < (int)(sizeof(fmt) / sizeof(fmt[0])); j++)
             {
                 snprintf(k, sizeof(k), fmt[j], i);
@@ -522,8 +506,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                     osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
             }
             snprintf(k, sizeof(k), "oc%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
-                VFS_TIM_PIN_FIELD_COUNT)
+            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) == VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
                 p->pin = (uint16_t)pin_arr[1];
@@ -542,10 +525,8 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
 
     case HAL_TIM_MODE_IC:
     {
-        static const char* const fmt[] = {
-            "ic%d-polarity",      "ic%d-filter",         "ic%d-prescaler",    "ic%d-active-input",
-            "ic%d-channel-id",    "ic%d-chn-mode",       "ic%d-chn-polarity", "ic%d-chn-filter",
-            "ic%d-chn-prescaler", "ic%d-chn-enable-comp"};
+        static const char* const fmt[] = {"ic%d-polarity", "ic%d-filter",       "ic%d-prescaler",  "ic%d-active-input",  "ic%d-channel-id",
+                                          "ic%d-chn-mode", "ic%d-chn-polarity", "ic%d-chn-filter", "ic%d-chn-prescaler", "ic%d-chn-enable-comp"};
         for (int i = 0; i < HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS; i++)
         {
             if (!(cfg->active_chn_mask & (1u << i)))
@@ -555,11 +536,8 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             hal_tim_channel_config* ch = &cfg->ic_mode.channel[i];
             hal_tim_pin_config* p = &cfg->ic_mode.pin[i];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
-            int* dst[] = {(int*)&c->polarity,    (int*)&c->filter,
-                          (int*)&c->prescaler,   (int*)&c->active_input,
-                          (int*)&ch->channel_id, (int*)&ch->mode,
-                          (int*)&ch->polarity,   (int*)&ch->filter,
-                          (int*)&ch->prescaler,  (int*)&ch->enable_complementary};
+            int* dst[] = {(int*)&c->polarity, (int*)&c->filter,    (int*)&c->prescaler, (int*)&c->active_input, (int*)&ch->channel_id,
+                          (int*)&ch->mode,    (int*)&ch->polarity, (int*)&ch->filter,   (int*)&ch->prescaler,   (int*)&ch->enable_complementary};
             for (int j = 0; j < (int)(sizeof(fmt) / sizeof(fmt[0])); j++)
             {
                 snprintf(k, sizeof(k), fmt[j], i);
@@ -567,8 +545,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                     osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
             }
             snprintf(k, sizeof(k), "ic%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
-                VFS_TIM_PIN_FIELD_COUNT)
+            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) == VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
                 p->pin = (uint16_t)pin_arr[1];
@@ -588,17 +565,9 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
     case HAL_TIM_MODE_ENCODER:
     {
         hal_encoder_cfg* h = &cfg->encoder_mode.config.hw_cfg;
-        static const char* const cfg_keys[] = {"encoder-mode",
-                                               "encoder-period",
-                                               "encoder-ic1-active-input",
-                                               "encoder-ic1-polarity",
-                                               "encoder-ic1-filter",
-                                               "encoder-ic1-prescaler",
-                                               "encoder-ic2-active-input",
-                                               "encoder-ic2-polarity",
-                                               "encoder-ic2-filter",
-                                               "encoder-ic2-prescaler",
-                                               "encoder-pulse-per-rev"};
+        static const char* const cfg_keys[] = {"encoder-mode",       "encoder-period",        "encoder-ic1-active-input", "encoder-ic1-polarity",
+                                               "encoder-ic1-filter", "encoder-ic1-prescaler", "encoder-ic2-active-input", "encoder-ic2-polarity",
+                                               "encoder-ic2-filter", "encoder-ic2-prescaler", "encoder-pulse-per-rev"};
         int* cfg_dst[] = {(int*)&h->mode,
                           (int*)&h->period,
                           (int*)&h->ic1_active_input,
@@ -614,17 +583,14 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             if (device_get_prop_int(pdev, cfg_keys[j], cfg_dst[j]) != VFS_OK)
                 osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", cfg_keys[j]);
 
-        static const char* const ch_fmt[] = {"encoder-ch%d-channel-id", "encoder-ch%d-chn-mode",
-                                             "encoder-ch%d-chn-polarity", "encoder-ch%d-chn-filter",
-                                             "encoder-ch%d-chn-prescaler"};
+        static const char* const ch_fmt[] = {"encoder-ch%d-channel-id", "encoder-ch%d-chn-mode", "encoder-ch%d-chn-polarity", "encoder-ch%d-chn-filter", "encoder-ch%d-chn-prescaler"};
         for (int i = 0; i < HAL_ENCODER_TIM_MAX_CHANNELS; i++)
         {
             char k[VFS_TIM_KEY_MAX];
             hal_tim_channel_config* ch = &cfg->encoder_mode.channel[i];
             hal_tim_pin_config* p = &cfg->encoder_mode.pin[i];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
-            int* dst[] = {(int*)&ch->channel_id, (int*)&ch->mode, (int*)&ch->polarity,
-                          (int*)&ch->filter, (int*)&ch->prescaler};
+            int* dst[] = {(int*)&ch->channel_id, (int*)&ch->mode, (int*)&ch->polarity, (int*)&ch->filter, (int*)&ch->prescaler};
             for (int j = 0; j < (int)(sizeof(ch_fmt) / sizeof(ch_fmt[0])); j++)
             {
                 snprintf(k, sizeof(k), ch_fmt[j], i);
@@ -632,8 +598,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                     osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
             }
             snprintf(k, sizeof(k), "encoder-ch%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
-                VFS_TIM_PIN_FIELD_COUNT)
+            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) == VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
                 p->pin = (uint16_t)pin_arr[1];
@@ -653,15 +618,8 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
     case HAL_TIM_MODE_HALLSENSOR:
     {
         hal_hall_config* c = &cfg->hall_mode.config;
-        static const char* const keys[] = {"hall-polarity",
-                                           "hall-filter-time",
-                                           "hall-prescaler",
-                                           "hall-commutation-delay-time",
-                                           "hall-capture-channel-id",
-                                           "hall-capture-chn-mode",
-                                           "hall-capture-chn-polarity",
-                                           "hall-capture-chn-filter",
-                                           "hall-capture-chn-prescaler"};
+        static const char* const keys[] = {"hall-polarity",         "hall-filter-time",          "hall-prescaler",          "hall-commutation-delay-time", "hall-capture-channel-id",
+                                           "hall-capture-chn-mode", "hall-capture-chn-polarity", "hall-capture-chn-filter", "hall-capture-chn-prescaler"};
         int* dst[] = {(int*)&c->hall_polarity,
                       (int*)&c->hall_filter_time,
                       (int*)&c->hall_prescaler,
@@ -680,8 +638,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             hal_tim_pin_config* p = &cfg->hall_mode.phase_pins[i];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
             snprintf(k, sizeof(k), "hall-phase%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
-                VFS_TIM_PIN_FIELD_COUNT)
+            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) == VFS_TIM_PIN_FIELD_COUNT)
             {
                 p->port = (uintptr_t)pin_arr[0];
                 p->pin = (uint16_t)pin_arr[1];
@@ -704,13 +661,10 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
 
     /* BDTR — 选填, 仅高级定时器生效 */
     {
-        static const char* const keys[] = {
-            "bdtr-automatic-output", "bdtr-break-state", "bdtr-break-polarity", "bdtr-break-filter",
-            "bdtr-ossi-state",       "bdtr-ossr-state",  "bdtr-dead-time",      "bdtr-lock-level"};
-        int* dst[] = {(int*)&cfg->bdtr.automatic_output, (int*)&cfg->bdtr.break_state,
-                      (int*)&cfg->bdtr.break_polarity,   (int*)&cfg->bdtr.break_filter,
-                      (int*)&cfg->bdtr.ossi_state,       (int*)&cfg->bdtr.ossr_state,
-                      (int*)&cfg->bdtr.dead_time,        (int*)&cfg->bdtr.lock_level};
+        static const char* const keys[] = {"bdtr-automatic-output", "bdtr-break-state", "bdtr-break-polarity", "bdtr-break-filter",
+                                           "bdtr-ossi-state",       "bdtr-ossr-state",  "bdtr-dead-time",      "bdtr-lock-level"};
+        int* dst[] = {(int*)&cfg->bdtr.automatic_output, (int*)&cfg->bdtr.break_state, (int*)&cfg->bdtr.break_polarity, (int*)&cfg->bdtr.break_filter,
+                      (int*)&cfg->bdtr.ossi_state,       (int*)&cfg->bdtr.ossr_state,  (int*)&cfg->bdtr.dead_time,      (int*)&cfg->bdtr.lock_level};
         for (int j = 0; j < (int)(sizeof(keys) / sizeof(keys[0])); j++)
             if (device_get_prop_int(pdev, keys[j], dst[j]) != VFS_OK)
                 osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[j]);
@@ -721,8 +675,8 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
 
 /**
  * @brief TIM Client 打开: 引用计数, 首次打开时调用 hal_tim_open
- * @param pdev 设备对象指针
- * @param arg 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] arg 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_open(struct device* pdev, void* arg)
@@ -758,7 +712,7 @@ static int vfs_tim_open(struct device* pdev, void* arg)
 
 /**
  * @brief TIM Client 关闭: 引用计数, 末次关闭时调用 hal_tim_close
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_close(struct device* pdev)
@@ -787,15 +741,14 @@ static int vfs_tim_close(struct device* pdev)
 
 /**
  * @brief TIM Client ioctl: 命令映射表派发
- * @param pdev 设备对象指针
- * @param cmd 控制命令
- * @param arg 命令参数指针
- * @param arg_len 参数长度
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] cmd 控制命令
+ * @param[in] arg 命令参数指针
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     if (!pdev || !pdev->ops)
         return VFS_ERR_INVAL;
@@ -837,10 +790,10 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 
 /**
  * @brief TIM Client 读: 仅读取当前计数值到 buf
- * @param pdev 设备对象指针
- * @param buf uint32_t 输出缓冲区指针
- * @param len 未使用
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] buf uint32_t 输出缓冲区指针
+ * @param[in] len 未使用
+ * @param[in] timeout_ms 未使用
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_base_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
@@ -868,10 +821,10 @@ static int vfs_tim_base_read(struct device* pdev, void* buf, size_t len, uint32_
 
 /**
  * @brief TIM Client 写: 仅设置计数值 (buf 为 vfs_tim_arg, 使用 value 字段)
- * @param pdev 设备对象指针
- * @param buf vfs_tim_arg 参数指针
- * @param len 未使用
- * @param timeout_ms 未使用
+ * @param[in] pdev 设备对象指针
+ * @param[in] buf vfs_tim_arg 参数指针
+ * @param[in] len 未使用
+ * @param[in] timeout_ms 未使用
  * @return 固定返回 VFS_OK (不传播 hal_tim_set_counter 错误)
  */
 static int vfs_tim_base_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
@@ -901,7 +854,7 @@ static int vfs_tim_base_write(struct device* pdev, const void* buf, size_t len, 
 
 /**
  * @brief TIM Client 挂起: 调用 hal_tim_base_stop 暂停计数
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, IO 门控失败返回 VFS_ERR_IO, 其他失败返回负数错误码
  */
 static int vfs_tim_base_suspend(struct device* pdev)
@@ -932,7 +885,7 @@ static int vfs_tim_base_suspend(struct device* pdev)
 
 /**
  * @brief TIM Client 恢复: 调用 hal_tim_base_start 恢复计数
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 固定返回 VFS_OK (不传播 hal_tim_base_start 错误)
  */
 static int vfs_tim_base_resume(struct device* pdev)
@@ -975,7 +928,7 @@ static const struct file_operations fops = {
 
 /**
  * @brief TIM 设备探测: 解析 DTS, hal_tim_device_init, 注册 fops
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_probe(struct device* pdev)
@@ -1051,7 +1004,7 @@ err_pool:
 
 /**
  * @brief TIM 设备移除: remove_start → 排空 IO → hal 释放 → 归还私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_tim_remove(struct device* pdev)

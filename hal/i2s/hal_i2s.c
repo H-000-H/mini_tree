@@ -16,8 +16,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
-                                      const struct hal_i2s_bus_config* cfg)
+COMPAT_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx, const struct hal_i2s_bus_config* cfg)
 {
     (void)host;
     (void)hw_idx;
@@ -31,8 +30,7 @@ COMPAT_WEAK int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host,
-                                 const struct hal_i2s_device_config* cfg)
+COMPAT_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host, const struct hal_i2s_device_config* cfg)
 {
     (void)pdev;
     (void)host;
@@ -58,8 +56,7 @@ COMPAT_WEAK int hal_i2s_dev_hw_close(struct hal_i2s_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
-                             size_t samples, uint32_t timeout_ms, uint32_t xfer_mode)
+COMPAT_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx, size_t samples, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     (void)pdev;
     (void)tx;
@@ -98,8 +95,7 @@ COMPAT_WEAK int hal_i2s_dma_circ_stop(struct hal_i2s_dev* pdev)
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data,
-                                       uint32_t samples)
+COMPAT_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data, uint32_t samples)
 {
     (void)pdev;
     (void)data;
@@ -115,8 +111,7 @@ COMPAT_WEAK int hal_i2s_dma_circ_read(struct hal_i2s_dev* pdev, uint16_t* data, 
     return VFS_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
-                                       size_t samples, hal_i2s_callback_t cb, void* userdata)
+COMPAT_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx, size_t samples, hal_i2s_callback_t cb, void* userdata)
 {
     (void)pdev;
     (void)tx;

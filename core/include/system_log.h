@@ -26,6 +26,13 @@ typedef enum
 #endif
 
 #if defined(CONFIG_SYS_LOG_USE_OSAL) || defined(CONFIG_SYS_LOG_USE_PRINTF)
+/**
+ * @brief 分级日志输出 (OSAL 后端, 完整声明见 osal.h)
+ * @param[in] level 日志级别 (OSAL_LOG_*)
+ * @param[in] tag 日志标签
+ * @param[in] fmt printf 格式串
+ * @param[in] ... 格式化参数
+ */
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...);
 #define SYS_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
 #define SYS_LOGW(tag, fmt, ...) osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__)
@@ -53,17 +60,17 @@ void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...);
  */
 #include "production_log.h" /* IWYU pragma: keep */
 
-#define DRV_LOGE(tag, fmt, ...)                                                                    \
-    do                                                                                             \
-    {                                                                                              \
-        osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__);                                         \
-        production_log_push_fmt(0, tag, fmt, ##__VA_ARGS__);                                       \
+#define DRV_LOGE(tag, fmt, ...)                                                                                                                                                                        \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__);                                                                                                                                             \
+        production_log_push_fmt(0, tag, fmt, ##__VA_ARGS__);                                                                                                                                           \
     } while (0)
-#define DRV_LOGW(tag, fmt, ...)                                                                    \
-    do                                                                                             \
-    {                                                                                              \
-        osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__);                                          \
-        production_log_push_fmt(1, tag, fmt, ##__VA_ARGS__);                                       \
+#define DRV_LOGW(tag, fmt, ...)                                                                                                                                                                        \
+    do                                                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+        osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__);                                                                                                                                              \
+        production_log_push_fmt(1, tag, fmt, ##__VA_ARGS__);                                                                                                                                           \
     } while (0)
 #define DRV_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
 #define DRV_LOGD(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)

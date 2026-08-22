@@ -49,16 +49,12 @@ static const char* const k_host_tag = "can_vfs_host";
 /**
  * @brief CAN Host 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_can_priv_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(
-        osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_can_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT)); }
 
 /**
  * @brief 解析 CAN Host DTS 属性, 填入 hal_can_bus_config
- * @param pdev 设备对象指针
- * @param cfg 配置结构指针
+ * @param[in] pdev 设备对象指针
+ * @param[in] cfg 配置结构指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config* cfg)
@@ -69,15 +65,9 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
     int tx_output_type = 0, tx_speed = 0, tx_mode = 0, tx_pull = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "can-base", &can_base) != VFS_OK ||
-        device_get_prop_int(pdev, "can-clk", &can_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK ||
+    if (device_get_prop_int(pdev, "can-base", &can_base) != VFS_OK || device_get_prop_int(pdev, "can-clk", &can_clk) != VFS_OK || device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK ||
+        device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK || device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK || device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK ||
+        device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK || device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK || device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK ||
         device_get_prop_int(pdev, "rx-af", &rx_af) != VFS_OK)
         return VFS_ERR_INVAL;
 
@@ -156,7 +146,7 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
 
 /**
  * @brief CAN Host 探测: 分配私有池, 解析 DTS, 初始化总线
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_can_priv_probe(struct device* pdev)
@@ -202,7 +192,7 @@ err_pool:
 
 /**
  * @brief CAN Host 移除: remove_start → 排空 IO → host_deinit → 释放私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int vfs_can_priv_remove(struct device* pdev)
@@ -267,10 +257,7 @@ static const char* const k_client_tag = "can_vfs_client";
 /**
  * @brief CAN Client 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void can_vfs_client_pool_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, CAN_VFS_CLIENT_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void can_vfs_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, CAN_VFS_CLIENT_COUNT)); }
 
 /**
  * @brief CAN Client 打开: bus_open → can_hook_on_open (弱钩子, 无覆盖即透传)
@@ -380,8 +367,7 @@ static int can_vfs_do_tx(struct device* pdev, struct can_frame* frame, uint32_t 
 }
 
 /** RX: bus_receive → filter_match → on_rx */
-static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t fifo,
-                         uint32_t timeout_ms)
+static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
 {
     int ret;
 
@@ -471,6 +457,14 @@ struct can_ioctl_map
     can_ioctl_fn_t handler;
 };
 
+/**
+ * @brief ioctl CAN_CMD_TRANSFER: 发送一帧并可选择接收应答帧
+ * @param[in] pdev CAN 设备指针
+ * @param[in] arg can_transfer_arg 参数包
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时毫秒数
+ * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+ */
 static int can_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct can_transfer_arg* ta = (struct can_transfer_arg*)arg;
@@ -489,6 +483,14 @@ static int can_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
     return ret;
 }
 
+/**
+ * @brief ioctl CAN_CMD_SET_FILTER: 配置接收过滤器
+ * @param[in] pdev CAN 设备指针
+ * @param[in] arg can_filter_arg 参数包
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时毫秒数 (未用)
+ * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+ */
 static int can_cmd_set_filter(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct can_filter_arg* fa = (struct can_filter_arg*)arg;
@@ -500,6 +502,14 @@ static int can_cmd_set_filter(struct device* pdev, void* arg, size_t arg_len, ui
     return can_bus_filter_config(pdev, &fa->filter);
 }
 
+/**
+ * @brief ioctl CAN_CMD_GET_STATE: 读取总线状态 (错误计数/模式)
+ * @param[in] pdev CAN 设备指针
+ * @param[out] arg can_state_arg 参数包 (回传 state)
+ * @param[in] arg_len 参数长度
+ * @param[in] timeout_ms 超时毫秒数 (未用)
+ * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+ */
 static int can_cmd_get_state(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct can_state_arg* sa = (struct can_state_arg*)arg;
@@ -520,8 +530,7 @@ static const struct can_ioctl_map s_can_ioctl_map[CAN_CMD_COUNT] = {
 /**
  * @brief CAN Client ioctl 派发入口
  */
-static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;
@@ -558,7 +567,7 @@ static const struct file_operations can_vfs_fops = {
 
 /**
  * @brief CAN Client 探测: 注册 fops 并绑定总线客户端
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int can_vfs_probe(struct device* pdev)
@@ -605,7 +614,7 @@ err_pool:
 
 /**
  * @brief CAN Client 移除: remove_start → 排空 IO → unregister → 释放私有池
- * @param pdev 设备对象指针
+ * @param[in] pdev 设备对象指针
  * @return 成功返回 VFS_OK, 失败返回负数错误码
  */
 static int can_vfs_remove(struct device* pdev)

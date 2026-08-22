@@ -48,27 +48,20 @@ static const char* const k_tag = "neo_m8n";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void neo_m8n_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_neo_m8n_pool_ctrl, s_neo_m8n_used, NEO_M8N_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void neo_m8n_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_neo_m8n_pool_ctrl, s_neo_m8n_used, NEO_M8N_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct neo_m8n_device* neo_m8n_get_drvdata(struct device* pdev)
-{
-    return (struct neo_m8n_device*)device_get_priv(pdev);
-}
+static struct neo_m8n_device* neo_m8n_get_drvdata(struct device* pdev) { return (struct neo_m8n_device*)device_get_priv(pdev); }
 
 /**
  * @brief UART 双向传输（UART_CMD_TRANSFER）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int neo_m8n_uart_xchg(struct neo_m8n_device* dev, const uint8_t* tx, size_t tx_len,
-                             uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
+static int neo_m8n_uart_xchg(struct neo_m8n_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
 {
     struct uart_transfer_arg arg;
     if (!dev || !dev->uart_dev)
@@ -173,8 +166,7 @@ static int neo_m8n_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*neo_m8n_ioctl_fn_t)(struct neo_m8n_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*neo_m8n_ioctl_fn_t)(struct neo_m8n_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct neo_m8n_ioctl_map
 {
     neo_m8n_ioctl_fn_t handler;

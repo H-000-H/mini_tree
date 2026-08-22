@@ -50,20 +50,14 @@ static const char* const k_tag = "max98357a";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void max98357a_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_max98357a_pool_ctrl, s_max98357a_used, MAX98357A_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void max98357a_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_max98357a_pool_ctrl, s_max98357a_used, MAX98357A_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct max98357a_device* max98357a_get_drvdata(struct device* pdev)
-{
-    return (struct max98357a_device*)device_get_priv(pdev);
-}
+static struct max98357a_device* max98357a_get_drvdata(struct device* pdev) { return (struct max98357a_device*)device_get_priv(pdev); }
 
 /**
  * @brief 设置 SDN 电平（按有效极性换算）
@@ -201,8 +195,7 @@ static int max98357a_close(struct device* pdev)
 /**
  * @brief MAX98357A_CMD_SET_ENABLE 实现：功放使能/关闭
  */
-static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!amp || !arg || arg_len != sizeof(int))
@@ -215,8 +208,7 @@ static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, siz
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*max98357a_ioctl_fn_t)(struct max98357a_device* amp, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms);
+typedef int (*max98357a_ioctl_fn_t)(struct max98357a_device* amp, void* arg, size_t arg_len, uint32_t timeout_ms);
 
 struct max98357a_ioctl_map
 {
@@ -230,8 +222,7 @@ static const struct max98357a_ioctl_map s_max98357a_ioctl_map[MAX98357A_CMD_COUN
 /**
  * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
  */
-static int max98357a_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                           uint32_t timeout_ms)
+static int max98357a_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct max98357a_device* amp;
     struct dev_lifecycle* lc;
@@ -334,8 +325,7 @@ static int max98357a_probe(struct device* pdev)
     amp->ops = max98357a_fops;
     pdev->ops = &amp->ops;
 
-    SYS_LOGI(k_tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev),
-             amp->active_level);
+    SYS_LOGI(k_tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev), amp->active_level);
     return VFS_OK;
 
 err_pool:

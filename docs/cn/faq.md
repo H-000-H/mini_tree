@@ -86,7 +86,7 @@ FreeRTOS 经 `FreeRTOSConfig.h` 的 `vPortSVCHandler` / `xPortPendSVHandler` 宏
 
 ### 裸机无调度
 
-`CONFIG_OSAL_NULL` 下用 `mini_tree_system_loop` + 裸机调度器（`x_scheduler` / `x_task`，见 `time_slice/task/xtask.h`；协调式 `xtask_coop.c` 与抢占式 `xtask_preempt.c` 二选一，由 `CONFIG_XTASK_PREEMPT` 控制），不要调用 `vTaskStartScheduler`。
+`CONFIG_OSAL_NULL` 下用 `mini_tree_system_loop` + 裸机调度器（`x_scheduler` / `x_task`，见 `time_slice/task/xtask.h`）。调度器由 `Kconfig.mini_tree` 的「裸机调度器」choice 三选一：`XTASK_NONE`（自写 `while(1)`）/ `XTASK_COOP`（协调式 `xtask_coop.c`，默认）/ `XTASK_PREEMPT`（抢占式 `xtask_preempt.c`，已完工可编译）。不要调用 `vTaskStartScheduler`。
 
 ### 切 RTOS 后优先级行为相反
 

@@ -71,11 +71,11 @@ extern "C"
  * 以太网 / 网络接口 (netif)
  *----------------------------------------------------------*/
 #define LWIP_ETHERNET CONFIG_LWIP_ETHERNET /* 是否启用以太网支持 */
-#define LWIP_CHECKSUM_CTRL_PER_NETIF                                                               \
-    CONFIG_LWIP_CHECKSUM_CTRL_PER_NETIF /* 每网口独立校验和控制                          \
+#define LWIP_CHECKSUM_CTRL_PER_NETIF                                                                                                                                                                   \
+    CONFIG_LWIP_CHECKSUM_CTRL_PER_NETIF /* 每网口独立校验和控制                                                                                                                              \
                                          */
-#define LWIP_NETIF_STATUS_CALLBACK                                                                 \
-    CONFIG_LWIP_NETIF_STATUS_CALLBACK /* 是否启用网络接口状态回调                      \
+#define LWIP_NETIF_STATUS_CALLBACK                                                                                                                                                                     \
+    CONFIG_LWIP_NETIF_STATUS_CALLBACK /* 是否启用网络接口状态回调                                                                                                                          \
                                        */
 #define LWIP_NETIF_LINK_CALLBACK CONFIG_LWIP_NETIF_LINK_CALLBACK /* 是否启用网络接口链路回调 */
 #define LWIP_NETIF_API CONFIG_LWIP_NETIF_API /* 是否启用 netif API */
@@ -131,10 +131,8 @@ extern "C"
 #define LWIP_SO_RCVTIMEO CONFIG_LWIP_SO_RCVTIMEO /* 是否支持 SO_RCVTIMEO 接收超时 */
 #define LWIP_SO_SNDTIMEO CONFIG_LWIP_SO_SNDTIMEO /* 是否支持 SO_SNDTIMEO 发送超时 */
 #define LWIP_SO_RCVBUF CONFIG_LWIP_SO_RCVBUF /* 是否支持 SO_RCVBUF 接收缓冲调节 */
-#define LWIP_TIMEVAL_PRIVATE                                                                       \
-    CONFIG_LWIP_TIMEVAL_PRIVATE /* 0=使用系统 struct timeval, 1=lwIP 内置 */
-#define LWIP_POSIX_SOCKETS_IO_NAMES                                                                \
-    CONFIG_LWIP_POSIX_SOCKETS_IO_NAMES /* 是否映射 read/write/close */
+#define LWIP_TIMEVAL_PRIVATE CONFIG_LWIP_TIMEVAL_PRIVATE /* 0=使用系统 struct timeval, 1=lwIP 内置 */
+#define LWIP_POSIX_SOCKETS_IO_NAMES CONFIG_LWIP_POSIX_SOCKETS_IO_NAMES /* 是否映射 read/write/close */
 
 /*-----------------------------------------------------------
  * Socket / Netconn 配套内存池

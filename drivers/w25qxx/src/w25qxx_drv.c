@@ -47,27 +47,20 @@ static const char* const k_tag = "w25qxx";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void w25qxx_pool_boot_init(void)
-{
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_w25qxx_pool_ctrl, s_w25qxx_used, W25QXX_POOL_COUNT));
-}
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void w25qxx_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_w25qxx_pool_ctrl, s_w25qxx_used, W25QXX_POOL_COUNT)); }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct w25qxx_device* w25qxx_get_drvdata(struct device* pdev)
-{
-    return (struct w25qxx_device*)device_get_priv(pdev);
-}
+static struct w25qxx_device* w25qxx_get_drvdata(struct device* pdev) { return (struct w25qxx_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return VFS_OK 或 VFS_ERR_*
  */
-static int w25qxx_spi_xfer(struct w25qxx_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms)
+static int w25qxx_spi_xfer(struct w25qxx_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)

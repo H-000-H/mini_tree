@@ -49,9 +49,6 @@ extern "C"
     /**
      * @brief Host 级控制器操作表 — 管理控制器生命周期与 client 挂载
      *
-     * @param pdev  controller device (host)
-     * @param cfg  host/client 配置 (struct hal_spi_bus_config / hal_uart_config 等)
-     * @param out  client_register 输出 client 私有上下文 (可 NULL)
      *
      * @return 成功返回 0, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
      */
@@ -60,8 +57,7 @@ extern "C"
         int (*init)(struct device* pdev, const void* cfg); /**< 初始化 host */
         int (*deinit)(struct device* pdev); /**< 反初始化 host (返回 int, BUSY 时不销毁) */
         int (*role)(struct device* pdev); /**< 查询角色 (MASTER/SLAVE) */
-        int (*client_register)(struct device* pdev, const void* cfg,
-                               void** out); /**< 注册 client */
+        int (*client_register)(struct device* pdev, const void* cfg, void** out); /**< 注册 client */
         void (*client_unregister)(struct device* pdev); /**< 注销 client */
     };
     /*===========================================================================================================================================================*/
@@ -93,22 +89,22 @@ extern "C"
      * 将 host device 注册为总线控制器, 存入 s_controllers[device_id].
      * 后续 bus_controller_of 通过 device parent 查找 controller.
      *
-     * @param pdev       controller device (host)
-     * @param type      总线类型 (BUS_TYPE_SPI 等)
-     * @param ctlr_ops  host 级 ops
-     * @param hw_ctx    host 私有上下文 (struct xxx_bus_host*)
+     * @param[in] pdev       controller device (host)
+     * @param[in] type      总线类型 (BUS_TYPE_SPI 等)
+     * @param[in] ctlr_ops  host 级 ops
+     * @param[in] hw_ctx    host 私有上下文 (struct xxx_bus_host*)
      *
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
      */
-    int bus_controller_bind_full(struct device* pdev, bus_type_t type,
-                                 const struct bus_controller_ops* ctlr_ops,
-                                 void* hw_ctx) COMPAT_WARN_UNUSED_RESULT;
+    int bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查找 device 自身绑定的 controller (传 host)
+     * @param[in] pdev controller device (host)
+     * @param[out] out 回传 bus_controller 指针
+     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
      */
-    int bus_controller_get(const struct device* pdev,
-                           struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
+    int bus_controller_get(const struct device* pdev, struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查找 client 所属的 controller
@@ -116,19 +112,19 @@ extern "C"
      * 通过 device_get_parent(pdev) 找到 host, 再从 s_controllers 取出 bus_controller.
      * 用于 client device 探测其所属 host.
      *
-     * @param pdev  client device
-     * @param out  输出 bus_controller 指针
+     * @param[in] pdev  client device
+     * @param[out] out  输出 bus_controller 指针
      *
      * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
      */
-    int bus_controller_of(const struct device* pdev,
-                          struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
+    int bus_controller_of(const struct device* pdev, struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 解绑 controller
      *
      * 清空 s_controllers[device_id], 不检查 ref_count.
      * 调用者 (bus_xxx_host_deinit) 应先检查 ref_count > 0 拒绝解绑.
+     * @param[in] pdev controller device (host)
      */
     void bus_controller_unbind(struct device* pdev);
 
@@ -156,27 +152,31 @@ extern "C"
 
     /**
      * @brief 从 slots[0..slot_count) 申请一个空闲桥接槽
+     * @param[in] slots 桥接槽数组
+     * @param[in] slot_count 槽位数量
      * @return 成功返回 bridge 指针, 池满返回 NULL
      */
-    struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots,
-                                                    size_t slot_count);
+    struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, size_t slot_count);
 
     /**
      * @brief 绑定 device / 用户回调 / userdata (claim 之后调用)
+     * @param[in] bridge 桥接槽指针
+     * @param[in] pdev 关联设备
+     * @param[in] cb 用户完成回调
+     * @param[in] userdata 用户私有数据
      */
-    void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev,
-                               bus_async_user_cb_t cb, void* userdata);
+    void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev, bus_async_user_cb_t cb, void* userdata);
 
     /**
      * @brief 释放槽位 (HAL 提交失败时立即调用, 不触发用户 cb)
-     * @param bridge bridge 指针
+     * @param[in] bridge bridge 指针
      */
     void bus_async_bridge_release(struct bus_async_bridge* bridge);
 
     /**
      * @brief ISR 安全完成: 调用户 cb 后释放 in_use
-     * @param userdata 必须为 struct bus_async_bridge*
-     * @param trans    传给用户 cb 的传输描述符 (可为 NULL)
+     * @param[in] userdata 必须为 struct bus_async_bridge*
+     * @param[in] trans    传给用户 cb 的传输描述符 (可为 NULL)
      */
     void bus_async_bridge_complete(void* userdata, const void* trans);
     /*===========================================================================================================================================================*/
