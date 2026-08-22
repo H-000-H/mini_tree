@@ -1,5 +1,6 @@
 /**
  * @copyright SPDX-License-Identifier: Apache-2.0
+ * @author H-000-H
  * @file tcp_server.c
  * @brief TCP Server 多客户端支持 (lwIP Raw API 驱动)
  * @note 每个连接独立分配一个 SPSC 无锁统一 FIFO，保证多客户端并发时数据完全隔离、不串流。
@@ -9,6 +10,7 @@
 #include "tcp_server.h"
 
 #include "buffer.h"
+#include "compiler_compat.h"
 #include "string.h"
 #include "system_log.h"
 
@@ -21,7 +23,7 @@ _Static_assert((CLIENT_RX_BUF_SIZE & (CLIENT_RX_BUF_SIZE - 1U)) == 0U, "CONFIG_T
 
 /**
  * @brief 单个客户端会话结构体
- * @note rx_fifo 为 SPSC: 生产者 = lwIP tcpip 线程 (server_recv),
+ * @note rx_fifo 为 SPSC: 生产者 = lwIP tcpip 线程 (tcp_server_receive_callback),
  *       消费者 = 调用 get_tcp_data_by_session 的应用线程 (仅限一个)
  */
 struct client_session
@@ -63,7 +65,7 @@ static void release_session(struct client_session* session, bool pcb_alive)
  * @param[in] err lwIP 错误码
  * @note 发生错误时，lwIP 内部已自动释放该 pcb，此回调中绝对不能再调用 tcp_close()
  */
-static void server_err(void* arg, err_t err)
+static void tcp_server_error_callback(void* arg, err_t err)
 {
     struct client_session* session = (struct client_session*)arg;
     if (session != NULL)
@@ -83,7 +85,7 @@ static void server_err(void* arg, err_t err)
  * @param[in] err 接收错误码
  * @return ERR_OK 处理成功, 其它为 lwIP 错误码
  */
-static err_t server_recv(void* arg, struct tcp_pcb* pcb, struct pbuf* buf, err_t err)
+static err_t tcp_server_receive_callback(void* arg, struct tcp_pcb* pcb, struct pbuf* buf, err_t err)
 {
     struct client_session* session = (struct client_session*)arg;
 
@@ -99,7 +101,8 @@ static err_t server_recv(void* arg, struct tcp_pcb* pcb, struct pbuf* buf, err_t
     {
         SYS_LOGI(k_tag, "session [%d] client disconnected\r\n", session->id);
         release_session(session, true); /* 先解绑回调: tcp_close 可能当场释放 pcb */
-        tcp_close(pcb);
+        if (tcp_close(pcb) != ERR_OK)
+            tcp_abort(pcb); /* 关闭失败(极少见)时中止, 防止 PCB 悬挂泄漏 */
         return ERR_OK;
     }
 
@@ -145,7 +148,7 @@ static err_t server_recv(void* arg, struct tcp_pcb* pcb, struct pbuf* buf, err_t
  * @param[in] err 连接错误码
  * @return ERR_OK 接受连接, ERR_ABRT 连接已满拒绝, 其它为错误拒绝
  */
-static err_t server_accept(void* arg, struct tcp_pcb* newpcb, err_t err)
+static err_t tcp_server_accept_callback(void* arg, struct tcp_pcb* newpcb, err_t err)
 {
     COMPAT_IGNORE_RESULT(arg);
 
@@ -171,17 +174,17 @@ static err_t server_accept(void* arg, struct tcp_pcb* newpcb, err_t err)
         return ERR_ABRT;
     }
 
-    /* 初始化当前会话 */
-    free_session->is_used = true;
+    /* 初始化当前会话: 先就绪 pcb 与 FIFO, 最后置位 is_used, 避免读者看到已占用但 FIFO 未初始化 */
     free_session->pcb = newpcb;
     fifo_uni_init(&free_session->rx_fifo, free_session->rx_buf, 1U, CLIENT_RX_BUF_SIZE);
+    free_session->is_used = true;
 
     SYS_LOGI(k_tag, "new client accepted -> session [%d]\r\n", free_session->id);
 
     /* 绑定 session 实例到 lwIP 回调上下文 arg */
     tcp_arg(newpcb, free_session);
-    tcp_recv(newpcb, server_recv);
-    tcp_err(newpcb, server_err);
+    tcp_recv(newpcb, tcp_server_receive_callback);
+    tcp_err(newpcb, tcp_server_error_callback);
 
     return ERR_OK;
 }
@@ -221,7 +224,7 @@ int tcp_server_init(int port)
         return ERR_MEM;
     }
 
-    tcp_accept(s_listen_pcb, server_accept);
+    tcp_accept(s_listen_pcb, tcp_server_accept_callback);
     SYS_LOGI(k_tag, "TCP server listening on port %d (Max clients: %d)\r\n", port, MAX_CLIENT_COUNT);
 
     return ERR_OK;
@@ -277,7 +280,8 @@ int close_session(int session_id)
     {
         struct tcp_pcb* pcb = session->pcb;
         release_session(session, true); /* 先解绑回调并复位状态, 防 close 挥手期回调误入已复用槽位 */
-        tcp_close(pcb);
+        if (tcp_close(pcb) != ERR_OK)
+            tcp_abort(pcb); /* 关闭失败(有未发数据)时中止, 防止 PCB 悬挂泄漏 */
     }
 
     return ERR_OK;

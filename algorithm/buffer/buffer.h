@@ -315,8 +315,8 @@ uint16_t double_buffer_get_count(struct double_buffer_spsc* handle);
  * - size:    单个缓冲区容量 (元素个数, 须为 2 的幂)
  * - item_size: 单个元素宽度 (字节)
  * - mask:    掩码 (size - 1)
- * - w1/r1:   缓冲区 1 的写/读指针 
- * - w2/r2:   缓冲区 2 的写/读指针 
+ * - w1/r1:   缓冲区 1 的写/读指针
+ * - w2/r2:   缓冲区 2 的写/读指针
  * - active_w/active_r: 当前活跃写/读缓冲索引 (0=buf1, 1=buf2)
  */
 struct dual_buffer_spsc
