@@ -1,7 +1,7 @@
 /**
  *@copyright SPDX-License-Identifier: Apache-2.0
  *@file circle_fifo_buffer.c
- *@brief 环形 FIFO SPSC 无锁缓冲区实现
+ *@brief 环形FIFO SPSC无锁缓冲区实现
  *@author H-000-H
  *@details
  *   @note        acquire/release 内存序保证单生产者单消费者安全; 见 buffer.h
@@ -9,9 +9,7 @@
 
 #include "buffer.h"
 
-#define FIFO_LOAD_ACQUIRE(ptr) __atomic_load_n(&((ptr)), __ATOMIC_ACQUIRE)
-#define FIFO_LOAD_RELAXED(ptr) __atomic_load_n(&((ptr)), __ATOMIC_RELAXED)
-#define FIFO_STORE_RELEASE(ptr, val) __atomic_store_n(&((ptr)), (val), __ATOMIC_RELEASE)
+/* 原子操作原语统一由 buffer.h 的 BUFF_LOAD_xxx / BUFF_STORE_xxx 宏提供 (带降级) */
 
 void fifo_init(struct fifo_spsc* handle, fifo_data_type* buf, uint16_t size)
 {
@@ -23,14 +21,14 @@ void fifo_init(struct fifo_spsc* handle, fifo_data_type* buf, uint16_t size)
     handle->size = size;
     handle->mask = (uint16_t)(size - 1);
 
-    FIFO_STORE_RELEASE(handle->w_ptr, 0);
-    FIFO_STORE_RELEASE(handle->r_ptr, 0);
+    BUFF_STORE_RELEASE(handle->w_ptr, 0);
+    BUFF_STORE_RELEASE(handle->r_ptr, 0);
 }
 
 bool fifo_write_data(struct fifo_spsc* handle, fifo_data_type data)
 {
-    uint16_t r = FIFO_LOAD_ACQUIRE(handle->r_ptr);
-    uint16_t w = FIFO_LOAD_RELAXED(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
 
     /**< 利用 uint16_t 溢出特性，已用空间就是纯粹的 w - r */
     if ((uint16_t)(w - r) >= handle->size)
@@ -40,7 +38,7 @@ bool fifo_write_data(struct fifo_spsc* handle, fifo_data_type data)
     handle->buf[w & handle->mask] = data;
 
     /**< 指针自增，不执行提前裁剪 */
-    FIFO_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + 1));
+    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + 1));
     return true;
 }
 
@@ -49,8 +47,8 @@ uint16_t fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data
     if (!handle || !p_data || len == 0)
         return 0;
 
-    uint16_t r = FIFO_LOAD_ACQUIRE(handle->r_ptr);
-    uint16_t w = FIFO_LOAD_RELAXED(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
 
     uint16_t free_len = handle->size - (uint16_t)(w - r);
 
@@ -65,15 +63,15 @@ uint16_t fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data
 
     if (space_to_end >= len)
     {
-        __builtin_memcpy(&handle->buf[w_idx], p_data, len * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(&handle->buf[w_idx], p_data, len * sizeof(fifo_data_type));
     }
     else
     {
-        __builtin_memcpy(&handle->buf[w_idx], p_data, space_to_end * sizeof(fifo_data_type));
-        __builtin_memcpy(&handle->buf[0], p_data + space_to_end, (len - space_to_end) * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(&handle->buf[w_idx], p_data, space_to_end * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(&handle->buf[0], p_data + space_to_end, (len - space_to_end) * sizeof(fifo_data_type));
     }
 
-    FIFO_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + len));
+    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + len));
     return len;
 }
 
@@ -82,13 +80,13 @@ bool fifo_read_data(struct fifo_spsc* handle, fifo_data_type* p_data)
     if (!handle || !p_data)
         return false;
 
-    uint16_t w = FIFO_LOAD_ACQUIRE(handle->w_ptr);
-    uint16_t r = FIFO_LOAD_RELAXED(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
     if (r == w)
         return false;
 
     *p_data = handle->buf[r & handle->mask];
-    FIFO_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + 1));
+    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + 1));
     return true;
 }
 
@@ -97,8 +95,8 @@ uint16_t fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint1
     if (!handle || !p_data || len == 0)
         return 0;
 
-    uint16_t w = FIFO_LOAD_ACQUIRE(handle->w_ptr);
-    uint16_t r = FIFO_LOAD_RELAXED(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
 
     uint16_t count = (uint16_t)(w - r);
     if (len > count)
@@ -111,15 +109,15 @@ uint16_t fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint1
 
     if (space_to_end >= len)
     {
-        __builtin_memcpy(p_data, &handle->buf[r_idx], len * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(p_data, &handle->buf[r_idx], len * sizeof(fifo_data_type));
     }
     else
     {
-        __builtin_memcpy(p_data, &handle->buf[r_idx], space_to_end * sizeof(fifo_data_type));
-        __builtin_memcpy(p_data + space_to_end, &handle->buf[0], (len - space_to_end) * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(p_data, &handle->buf[r_idx], space_to_end * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(p_data + space_to_end, &handle->buf[0], (len - space_to_end) * sizeof(fifo_data_type));
     }
 
-    FIFO_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + len));
+    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + len));
     return len;
 }
 
@@ -127,8 +125,8 @@ uint16_t fifo_get_count(struct fifo_spsc* handle)
 {
     if (!handle)
         return 0;
-    uint16_t w = FIFO_LOAD_ACQUIRE(handle->w_ptr);
-    uint16_t r = FIFO_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
     return (uint16_t)(w - r);
 }
 
@@ -136,8 +134,8 @@ bool fifo_isempty(struct fifo_spsc* handle)
 {
     if (!handle)
         return true;
-    uint16_t r = FIFO_LOAD_RELAXED(handle->r_ptr);
-    uint16_t w = FIFO_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
     return r == w;
 }
 
@@ -145,7 +143,168 @@ bool fifo_isfull(struct fifo_spsc* handle)
 {
     if (!handle)
         return false;
-    uint16_t r = FIFO_LOAD_ACQUIRE(handle->r_ptr);
-    uint16_t w = FIFO_LOAD_RELAXED(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
+    return (uint16_t)(w - r) >= handle->size;
+}
+
+/*=================================================================================================================================================*/
+/* 统一环形缓冲区 SPSC无锁实现 (BUFF: 元素宽度可指定, 字节流/帧/任意定长项) */
+/*=================================================================================================================================================*/
+
+void fifo_uni_init(struct fifo_uni_spsc* handle, void* buf, uint16_t item_size, uint16_t item_count)
+{
+    /**< 防御性空指针 / 零宽度 / 2的幂次方 拦截 */
+    if (!handle || !buf || item_size == 0 || item_count == 0 || (item_count & (item_count - 1)) != 0)
+        return;
+
+    handle->buf = (uint8_t*)buf;
+    handle->size = item_count;
+    handle->item_size = item_size;
+    handle->mask = (uint16_t)(item_count - 1);
+
+    BUFF_STORE_RELEASE(handle->w_ptr, 0);
+    BUFF_STORE_RELEASE(handle->r_ptr, 0);
+}
+
+uint16_t fifo_uni_write_block(struct fifo_uni_spsc* handle, const void* p_data, uint16_t count)
+{
+    if (!handle || !p_data || count == 0)
+        return 0;
+
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
+
+    uint16_t free_count = handle->size - (uint16_t)(w - r);
+
+    if (count > free_count)
+        count = free_count;
+    if (count == 0)
+        return 0;
+
+    /**< 计算物理字节偏移以及映射到连续线性末尾的实际空间 (字节) */
+    uint32_t bytes = (uint32_t)count * handle->item_size;
+    uint32_t w_off = (uint32_t)(w & handle->mask) * handle->item_size;
+    uint32_t space_to_end = ((uint32_t)handle->size * handle->item_size) - w_off;
+
+    if (space_to_end >= bytes)
+    {
+        BUFF_MEM_COPY(&handle->buf[w_off], p_data, bytes);
+    }
+    else
+    {
+        BUFF_MEM_COPY(&handle->buf[w_off], p_data, space_to_end);
+        BUFF_MEM_COPY(&handle->buf[0], (const uint8_t*)p_data + space_to_end, bytes - space_to_end);
+    }
+
+    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + count));
+    return count;
+}
+
+uint16_t fifo_uni_read_block(struct fifo_uni_spsc* handle, void* p_data, uint16_t count)
+{
+    if (!handle || !p_data || count == 0)
+        return 0;
+
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
+
+    uint16_t avail = (uint16_t)(w - r);
+    if (count > avail)
+        count = avail;
+    if (count == 0)
+        return 0;
+
+    /**< 计算物理字节偏移以及映射到连续线性末尾的实际空间 (字节) */
+    uint32_t bytes = (uint32_t)count * handle->item_size;
+    uint32_t r_off = (uint32_t)(r & handle->mask) * handle->item_size;
+    uint32_t space_to_end = ((uint32_t)handle->size * handle->item_size) - r_off;
+
+    if (space_to_end >= bytes)
+    {
+        BUFF_MEM_COPY(p_data, &handle->buf[r_off], bytes);
+    }
+    else
+    {
+        BUFF_MEM_COPY(p_data, &handle->buf[r_off], space_to_end);
+        BUFF_MEM_COPY((uint8_t*)p_data + space_to_end, &handle->buf[0], bytes - space_to_end);
+    }
+
+    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + count));
+    return count;
+}
+
+void* fifo_uni_write_acquire(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return NULL;
+
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
+
+    /**< 利用 uint16_t 溢出特性，已用空间就是纯粹的 w - r */
+    if ((uint16_t)(w - r) >= handle->size)
+        return NULL;
+
+    /**< 不推进写指针, 与 fifo_uni_write_commit 配对发布 */
+    return &handle->buf[(uint32_t)(w & handle->mask) * handle->item_size];
+}
+
+void fifo_uni_write_commit(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return;
+
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
+    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + 1));
+}
+
+void* fifo_uni_read_peek(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return NULL;
+
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
+    if (r == w)
+        return NULL;
+
+    /**< 不推进读指针, 与 fifo_uni_read_release 配对消费 */
+    return &handle->buf[(uint32_t)(r & handle->mask) * handle->item_size];
+}
+
+void fifo_uni_read_release(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return;
+
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
+    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + 1));
+}
+
+uint16_t fifo_uni_get_count(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return 0;
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    return (uint16_t)(w - r);
+}
+
+bool fifo_uni_isempty(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return true;
+    uint16_t r = BUFF_LOAD_RELAXED(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_ACQUIRE(handle->w_ptr);
+    return r == w;
+}
+
+bool fifo_uni_isfull(struct fifo_uni_spsc* handle)
+{
+    if (!handle)
+        return false;
+    uint16_t r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    uint16_t w = BUFF_LOAD_RELAXED(handle->w_ptr);
     return (uint16_t)(w - r) >= handle->size;
 }

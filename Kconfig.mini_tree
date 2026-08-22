@@ -1306,6 +1306,24 @@ menu "lwIP (TCP/IP Stack)"
             default 2048
             range 256 65535
 
+        config TCP_SERVER_MAX_CLIENTS
+            int "TCP server max concurrent clients"
+            default 4
+            range 1 16
+            depends on LWIP_TCP
+            help
+              TCP 服务端 (net/port/tcp/tcp_server.c) 最大并发客户端数。
+              每个连接占用一个 session 槽位与独立接收缓冲。
+
+        config TCP_RX_BUF_SIZE
+            int "TCP server per-session RX FIFO size (bytes)"
+            default 2048
+            range 256 8192
+            depends on LWIP_TCP
+            help
+              TCP 服务端每个 session 的接收环形缓冲大小 (bytes), 必须为 2 的幂。
+              静态分配, 总内存占用 = TCP_SERVER_MAX_CLIENTS x 本值。
+
         config LWIP_ETHERNET
             bool "Ethernet support"
             default y

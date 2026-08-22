@@ -6,6 +6,7 @@
 
 add_library(algorithm STATIC
     "buffer/circle_fifo_buffer.c"
+    "buffer/double_buffer.c"
 )
 
 target_include_directories(algorithm

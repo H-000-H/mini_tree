@@ -7,7 +7,7 @@
 
 #include <errno.h> /* EINVAL */
 #include <stdlib.h> /* calloc/free */
-#include <string.h> 
+#include <string.h>
 #define CONFIG_BUFFER_POOL 1 /* force enable for standalone build */
 #ifdef CONFIG_BUFFER_POOL
 
@@ -105,10 +105,8 @@ static int buff_pool_seg_add(struct buffer_pool* pool, uint8_t* base, size_t len
     if (pool->seg_count >= BUFF_POOL_MAX_SEGS)
         return -1;
     for (i = 0; i < pool->seg_count; i++)
-    {
         if (len < pool->segs[i].len)
             break;
-    }
     for (j = pool->seg_count; j > i; j--)
         pool->segs[j] = pool->segs[j - 1];
     pool->segs[i].base = base;

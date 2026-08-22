@@ -1,6 +1,7 @@
 file(GLOB MINI_TREE_NET_PORT_SRCS 
     "${CMAKE_CURRENT_SOURCE_DIR}/port/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/port/pppif/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/port/tcp/*.c"
 )
 
 add_library(mini_tree_net STATIC
@@ -16,6 +17,7 @@ target_include_directories(mini_tree_net PUBLIC
     "${CMAKE_SOURCE_DIR}/lib/lwip/src/include"
     "${CMAKE_SOURCE_DIR}/osal/include"
     "${CMAKE_SOURCE_DIR}/core/include"
+    "${CMAKE_SOURCE_DIR}/algorithm/buffer"
     "${CMAKE_SOURCE_DIR}/board/include"
     "${CMAKE_SOURCE_DIR}/hal/gpio"
     "${CMAKE_SOURCE_DIR}/system_c/include"

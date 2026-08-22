@@ -6,16 +6,17 @@
  *@details
  *   usb_net_cb.c — TinyUSB 网络 class (ECM/RNDIS) 板级数据面
  *   实现 bus/usb 契约头 usb_tusb_port.h 的帧符号:
- *   1. SPSC 环形缓冲：
- *      - 采用直接头尾游标（head/tail）管理结构体数组，消除辅助索引队列与查找循环。
+ *   1. SPSC 帧队列：
+ *      - 复用 buffer.h 统一 FIFO (fifo_uni, item_size=帧, 零拷贝 acquire/commit + peek/release)。
  *      - 中断上下文中入队时间确定（Deterministic O(1)）。
  *   2. DMA 内存安全：
- *      - 接收与发送静态缓冲区严格按照 4 字节对齐（TU_ATTR_ALIGNED(4)）。
+ *      - 接收缓冲静态分配且 4 字节对齐, 帧宽 sizeof(帧) 为 4 的倍数, 逐槽对齐成立。
  *   3. 回调传参：
  *      - 利用 tud_network_xmit 传递上下文参数，消除全局状态耦合。
  *   注意: 本文件不 include system_log.h, 避免引入 mini_tree 的 osal.h
  *   与 TinyUSB 的 osal/osal.h (guard 不同名) 在同一编译单元冲突。
  */
+#include "buffer.h"
 #include "class/net/net_device.h"
 #include "compiler_compat.h"
 #include "device/usbd.h"
@@ -52,12 +53,9 @@ struct ubs_net_rx_frame
     uint16_t len; /**< 帧有效长度 */
 };
 
-/** @brief 静态接收帧环形缓冲区 */
-static struct ubs_net_rx_frame s_rx_ring[USB_NET_QUEUE_DEPTH] COMPAT_ALIGNED(4);
-
-/*内部已经原子了这里只是做标记*/
-static COMPAT_ATOMIC_UINT16 s_rx_head; /**< 生产者写入(仅 tud_network_recv_cb 修改) */
-static COMPAT_ATOMIC_UINT16 s_rx_tail; /**< 消费者读取 (仅 usb_net_frame_pop_rx 修改)*/
+/** @brief 静态接收帧队列: 统一 FIFO, 元素 = 完整帧 (SPSC: 生产 = tud_network_recv_cb, 消费 = usb_net_frame_pop_rx) */
+static struct fifo_uni_spsc s_rx_fifo;
+static uint8_t s_rx_ring[USB_NET_QUEUE_DEPTH * sizeof(struct ubs_net_rx_frame)] COMPAT_ALIGNED(4);
 
 static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] COMPAT_ALIGNED(4);
 
@@ -66,11 +64,7 @@ static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] COMPAT_ALIGNED(4);
  */
 uint8_t tud_network_mac_address[6] = {0x02, 0x02, 0x84, 0x6A, 0x96, 0x00};
 
-void tud_network_init_cb()
-{
-    COMPAT_ATOMIC_RUNTIME_INIT(&s_rx_head, 0);
-    COMPAT_ATOMIC_RUNTIME_INIT(&s_rx_tail, 0);
-}
+void tud_network_init_cb() { fifo_uni_init(&s_rx_fifo, s_rx_ring, (uint16_t)sizeof(struct ubs_net_rx_frame), USB_NET_QUEUE_DEPTH); }
 
 /**
  * @brief TinyUSB 接收数据包回调函数 (中断 / 核心任务上下文)
@@ -80,26 +74,18 @@ void tud_network_init_cb()
  */
 bool tud_network_recv_cb(const uint8_t* src, uint16_t size)
 {
-    uint16_t head;
-    uint16_t next_head;
-    uint16_t tail;
-
     if (!src || size == 0U || size > (uint16_t)CFG_TUD_NET_MTU)
         return false;
 
-    /* 读当前写指针 (生产者私有) */
-    head = COMPAT_ATOMIC_LOAD(&s_rx_head, COMPAT_MO_RELAXED);
-    next_head = (uint16_t)((head + 1U) & USB_NET_QUEUE_MASK);
+    /* 零拷贝获取可写帧槽, 队列满则拒收 */
+    struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)fifo_uni_write_acquire(&s_rx_fifo);
+    if (slot == NULL)
+        return false;
 
-    /* 读消费者读指针, 判满 (next_head 追上 tail = 满) */
-    tail = COMPAT_ATOMIC_LOAD(&s_rx_tail, COMPAT_MO_ACQUIRE);
-    if (next_head == tail)
-        return false; /* 环形满, 拒绝 */
-
-    /* 先拷数据, 再发布 len 和 head */
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(s_rx_ring[head].data, src, size));
-    COMPAT_ATOMIC_STORE(&s_rx_ring[head].len, size, COMPAT_MO_RELEASE);
-    COMPAT_ATOMIC_STORE(&s_rx_head, next_head, COMPAT_MO_RELEASE);
+    /* 先拷数据与长度, 再 commit 发布 (release 内存序由 fifo 内部保证) */
+    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(slot->data, src, size));
+    slot->len = size;
+    fifo_uni_write_commit(&s_rx_fifo);
     return true;
 }
 
@@ -147,28 +133,23 @@ int usb_net_frame_push_tx(const void* frame, size_t len)
 
 int usb_net_frame_pop_rx(void* frame, size_t len)
 {
-    uint16_t tail;
-    uint16_t head;
-    uint16_t frame_len;
-    uint16_t next_tail;
-
     if (!frame || len == 0U)
         return VFS_ERR_INVAL;
 
-    tail = COMPAT_ATOMIC_LOAD(&s_rx_tail, COMPAT_MO_RELAXED);
-    head = COMPAT_ATOMIC_LOAD(&s_rx_head, COMPAT_MO_ACQUIRE);
-    if (tail == head)
+    /* 零拷贝察视可读帧槽, 队列空直接返回 */
+    struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)fifo_uni_read_peek(&s_rx_fifo);
+    if (slot == NULL)
         return 0;
 
-    frame_len = COMPAT_ATOMIC_LOAD(&s_rx_ring[tail].len, COMPAT_MO_RELAXED);
-    next_tail = (uint16_t)((tail + 1U) & USB_NET_QUEUE_MASK);
+    uint16_t frame_len = slot->len;
     if ((size_t)frame_len > len)
     {
-        COMPAT_ATOMIC_STORE(&s_rx_tail, next_tail, COMPAT_MO_RELEASE);
+        /* 调用方缓冲放不下: 丢弃该帧避免死队, 调用方应加大接收缓冲 */
+        fifo_uni_read_release(&s_rx_fifo);
         return VFS_ERR_NOSPC;
     }
 
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(frame, s_rx_ring[tail].data, frame_len));
-    COMPAT_ATOMIC_STORE(&s_rx_tail, next_tail, COMPAT_MO_RELEASE);
+    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(frame, slot->data, frame_len));
+    fifo_uni_read_release(&s_rx_fifo);
     return (int)frame_len;
 }
