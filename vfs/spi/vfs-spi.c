@@ -53,7 +53,11 @@ static const char* const k_host_tag = "spi_vfs_host";
 /**
  * @brief SPI Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT));
+}
 
 /**
  * @brief 解析 SPI Host DTS 属性 (硬件直投值), 填入 hal_spi_bus_config
@@ -72,11 +76,20 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
     int sclk_port = 0, sclk_pin = 0, sclk_clk = 0, sclk_af = 0;
     int sclk_output_type = 0, sclk_speed = 0, sclk_mode = 0, sclk_pull = 0;
 
-    if (device_get_prop_int(pdev, "spi-base", &spi_base) != MINI_OK || device_get_prop_int(pdev, "spi-clk", &spi_clk) != MINI_OK || device_get_prop_int(pdev, "mosi-port", &mosi_port) != MINI_OK ||
-        device_get_prop_int(pdev, "mosi-pin", &mosi_pin) != MINI_OK || device_get_prop_int(pdev, "mosi-clk", &mosi_clk) != MINI_OK || device_get_prop_int(pdev, "mosi-af", &mosi_af) != MINI_OK ||
-        device_get_prop_int(pdev, "miso-port", &miso_port) != MINI_OK || device_get_prop_int(pdev, "miso-pin", &miso_pin) != MINI_OK || device_get_prop_int(pdev, "miso-clk", &miso_clk) != MINI_OK ||
-        device_get_prop_int(pdev, "miso-af", &miso_af) != MINI_OK || device_get_prop_int(pdev, "sclk-port", &sclk_port) != MINI_OK || device_get_prop_int(pdev, "sclk-pin", &sclk_pin) != MINI_OK ||
-        device_get_prop_int(pdev, "sclk-clk", &sclk_clk) != MINI_OK || device_get_prop_int(pdev, "sclk-af", &sclk_af) != MINI_OK)
+    if (device_get_prop_int(pdev, "spi-base", &spi_base) != MINI_OK ||
+        device_get_prop_int(pdev, "spi-clk", &spi_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "mosi-port", &mosi_port) != MINI_OK ||
+        device_get_prop_int(pdev, "mosi-pin", &mosi_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "mosi-clk", &mosi_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "mosi-af", &mosi_af) != MINI_OK ||
+        device_get_prop_int(pdev, "miso-port", &miso_port) != MINI_OK ||
+        device_get_prop_int(pdev, "miso-pin", &miso_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "miso-clk", &miso_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "miso-af", &miso_af) != MINI_OK ||
+        device_get_prop_int(pdev, "sclk-port", &sclk_port) != MINI_OK ||
+        device_get_prop_int(pdev, "sclk-pin", &sclk_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "sclk-clk", &sclk_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "sclk-af", &sclk_af) != MINI_OK)
     {
         return MINI_ERR_INVAL;
     }
@@ -143,7 +156,8 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
         int max_transfer_sz = 0;
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-trans-buffer", &max_transfer_sz));
         if (max_transfer_sz <= 0)
-            COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
+            COMPAT_IGNORE_RESULT(
+                device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
     }
 
@@ -239,7 +253,8 @@ static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev), bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
+             bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
     return MINI_OK;
 
 err_bus:
@@ -254,14 +269,20 @@ err_pool:
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_spi_priv_probe_master(struct device* pdev) { return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_MASTER); }
+static int vfs_spi_priv_probe_master(struct device* pdev)
+{
+    return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_MASTER);
+}
 
 /**
  * @brief SPI Host Slave 角色探测入口
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_spi_priv_probe_slave(struct device* pdev) { return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_SLAVE); }
+static int vfs_spi_priv_probe_slave(struct device* pdev)
+{
+    return vfs_spi_priv_probe_impl(pdev, SPI_BUS_ROLE_SLAVE);
+}
 
 /**
  * @brief SPI Host 设备移除: remove_start → ops_unregister → remove_drain → host_deinit → 释放池槽
@@ -300,7 +321,8 @@ static int vfs_spi_priv_remove(struct device* pdev)
     ret = spi_bus_host_deinit(pdev);
     if (ret != MINI_OK)
     {
-        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d) — keeping resources", device_get_name(pdev), ret);
+        SYS_LOGE(k_host_tag, "host remove busy: %s (ret=%d) — keeping resources",
+                 device_get_name(pdev), ret);
         dev_lc_remove_finish(lc);
         return ret;
     }
@@ -333,7 +355,10 @@ static const char* const k_client_tag = "spi_vfs_client";
 /**
  * @brief SPI Client VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT));
+}
 
 /*===========================================================================================================================================================*/
 /*open / close (master/slave 统一)*/
@@ -445,7 +470,8 @@ static int spi_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
     }
 
     if (priv->role == SPI_BUS_ROLE_MASTER)
-        ret = spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
+        ret =
+            spi_bus_transfer(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms, priv->xfer_mode);
     else
         ret = spi_bus_slave_sync(pdev, (const uint8_t*)buffer, NULL, len, timeout_ms);
 
@@ -543,7 +569,8 @@ static int spi_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
  * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     const struct spi_xfer_mode_arg* ma = (const struct spi_xfer_mode_arg*)arg;
     struct spi_vfs_client* priv;
@@ -567,7 +594,8 @@ static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     struct spi_xfer_mode_arg* ma = (struct spi_xfer_mode_arg*)arg;
     struct spi_vfs_client* priv;
@@ -589,7 +617,8 @@ static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len,
+                                  uint32_t timeout_ms)
 {
     const struct spi_transfer_async_arg* aa = (const struct spi_transfer_async_arg*)arg;
 
@@ -643,7 +672,8 @@ static int spi_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     const struct spi_trans_result_arg* tra = (const struct spi_trans_result_arg*)arg;
     if (!tra || arg_len != sizeof(*tra))
@@ -670,7 +700,8 @@ static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int spi_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;
@@ -719,11 +750,12 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
     int cs_port = 0, cs_pin = 0, cs_clk = 0;
     int mode = 0, freq = 0;
 
-    if (device_get_prop_int(pdev, "cs-port", &cs_port) != MINI_OK || device_get_prop_int(pdev, "cs-pin", &cs_pin) != MINI_OK || device_get_prop_int(pdev, "cs-clk", &cs_clk) != MINI_OK ||
-        device_get_prop_int(pdev, "spi-mode", &mode) != MINI_OK || device_get_prop_int(pdev, "spi-max-frequency", &freq) != MINI_OK)
-    {
+    if (device_get_prop_int(pdev, "cs-port", &cs_port) != MINI_OK ||
+        device_get_prop_int(pdev, "cs-pin", &cs_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "cs-clk", &cs_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "spi-mode", &mode) != MINI_OK ||
+        device_get_prop_int(pdev, "spi-max-frequency", &freq) != MINI_OK)
         return MINI_ERR_INVAL;
-    }
 
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
     cfg->cs_port = (uintptr_t)cs_port;
@@ -811,7 +843,9 @@ static int spi_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d", device_get_name(pdev), role == SPI_BUS_ROLE_MASTER ? "master" : "slave", priv->cfg.mode, priv->cfg.clock_speed_hz);
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d", device_get_name(pdev),
+             role == SPI_BUS_ROLE_MASTER ? "master" : "slave", priv->cfg.mode,
+             priv->cfg.clock_speed_hz);
     return MINI_OK;
 
 err_pool:

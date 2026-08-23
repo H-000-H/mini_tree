@@ -61,7 +61,8 @@ extern "C"
         bool dma_it_enable; /**< DMA 中断模式使能标志 */
         uint16_t dma_raw_data_buf[DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 原始采样缓冲区 */
         struct fifo_spsc dma_buffer_handle; /**< DMA 中断 FIFO 句柄 */
-        fifo_data_type dma_data_buf[DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 中断 FIFO 数据缓冲区 */
+        fifo_data_type
+            dma_data_buf[DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 中断 FIFO 数据缓冲区 */
     };
 
     /*===========================================================================================================================================================*/
@@ -212,7 +213,9 @@ extern "C"
      * @param[in] host 主机配置指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_device_init(hal_adc_device* pdev, hal_adc_platform_unique_config* unique_cfg, hal_adc_host_config* host);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_device_init(hal_adc_device* pdev,
+                                                      hal_adc_platform_unique_config* unique_cfg,
+                                                      hal_adc_host_config* host);
 
     /**
      * @brief 释放 ADC 设备运行时资源
@@ -239,7 +242,8 @@ extern "C"
      * @param[in] channel_id 硬件通道号
      * @return 成功返回 MINI_OK, 通道无效返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_deinit_adcx_channel(hal_adc_device* pdev, uint32_t channel_id);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_deinit_adcx_channel(hal_adc_device* pdev,
+                                                              uint32_t channel_id);
     /**
      * @brief 启动 ADC 连续/单次转换
      * @param[in] pdev ADC 设备指针
@@ -259,14 +263,16 @@ extern "C"
      * @param[out] out_val 回传转换结果 (12/16 位, 取决于 resolution)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num, uint16_t* out_val);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num,
+                                                     uint16_t* out_val);
     /**
      * @brief 轮询等待 ADC 转换完成
      * @param[in] pdev ADC 设备指针
      * @param[out] out_status 回传转换完成状态 (非 0=完成)
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_poll_for_conversion(hal_adc_device* pdev, uint32_t* out_status);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_poll_for_conversion(hal_adc_device* pdev,
+                                                              uint32_t* out_status);
     /**
      * @brief 获取 ADC 设备有效通道数量
      * @param[in] pdev ADC 设备指针
@@ -281,7 +287,8 @@ extern "C"
      * @param[out] channel_id 回传硬件通道号
      * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t* channel_id);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_id(hal_adc_device* pdev, int index,
+                                                         uint32_t* channel_id);
     /**
      * @brief 获取 ADC 设备指定索引通道的采样时间
      * @param[in] pdev ADC 设备指针
@@ -289,7 +296,8 @@ extern "C"
      * @param[out] sample_time 回传硬件采样周期时间
      * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index, uint32_t* sample_time);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index,
+                                                                  uint32_t* sample_time);
     /**
      * @brief 启动 ADC DMA 传输 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev ADC 设备指针
@@ -308,7 +316,8 @@ extern "C"
      * @param[out] out_val 回传转换结果
      * @return 成功返回 MINI_OK, 数据未就绪返回 MINI_ERR_AGAIN, 失败返回 VFS_ERR_*
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_it_read_value(hal_adc_device* pdev, uint16_t* out_val);
+    int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_it_read_value(hal_adc_device* pdev,
+                                                            uint16_t* out_val);
     /**
      * @brief 读取 DMA 模式下的转换值
      * @param[in] pdev ADC 设备指针

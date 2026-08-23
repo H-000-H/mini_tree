@@ -49,7 +49,8 @@ extern "C"
      * @param[in] cfg  配置 (timeout_ms 不可为 0)
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_iwdg_init(struct hal_iwdg_dev* pdev, const struct hal_iwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_iwdg_init(struct hal_iwdg_dev* pdev,
+                      const struct hal_iwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 写入 PR/RLR 并启动 IWDG (之后不可真正关闭)
@@ -71,7 +72,8 @@ extern "C"
      * @param[in] timeout_ms  新超时 (ms, 不可为 0; 超出硬件范围时落到最接近档)
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_iwdg_set_timeout_ms(struct hal_iwdg_dev* pdev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_iwdg_set_timeout_ms(struct hal_iwdg_dev* pdev,
+                                uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 拉长超时至硬件上限 (~32768ms), 供 OTA 等长耗时场景

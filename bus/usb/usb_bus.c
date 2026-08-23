@@ -52,7 +52,10 @@ static struct usb_bus_host* s_irq_host;
 static const char* const k_tag = "usb_bus";
 
 /** host 池初始化 (pre_execution 阶段, 供 device 池复用) */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
+}
 
 /**
  * @brief 通过 device 查找 USB host 实例 (线性扫描池)
@@ -127,7 +130,7 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     if (ret != MINI_OK)
         goto fail_pool;
 
-        if (usb_tusb_init(host->rhport) != MINI_OK)
+    if (usb_tusb_init(host->rhport) != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
         ret = MINI_ERR_IO;
@@ -155,7 +158,10 @@ fail_pool:
     return ret;
 }
 
-int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg) { return usb_host_init_impl(pdev, cfg); }
+int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg)
+{
+    return usb_host_init_impl(pdev, cfg);
+}
 
 /**
  * @brief USB 主机反初始化实现: 校验 ref_count + 解绑 + 释放池槽
@@ -248,7 +254,11 @@ static int usb_client_register_impl(struct device* pdev, const void* cfg, void**
     return MINI_OK;
 }
 
-int usb_bus_client_register(struct device* pdev, enum usb_client_class cls, struct usb_bus_client** out) { return usb_client_register_impl(pdev, &cls, (void**)out); }
+int usb_bus_client_register(struct device* pdev, enum usb_client_class cls,
+                            struct usb_bus_client** out)
+{
+    return usb_client_register_impl(pdev, &cls, (void**)out);
+}
 
 /**
  * @brief USB client 注销实现: 释放 client 槽并递减主机引用
@@ -313,7 +323,8 @@ void usb_bus_task(void)
         usb_tusb_task();
 }
 
-int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
@@ -348,7 +359,8 @@ int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t
     return (int)done;
 }
 
-int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms,
+                     uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
@@ -384,7 +396,8 @@ int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeou
     return (int)done;
 }
 
-int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     int mode;
@@ -400,7 +413,8 @@ int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32
     return usb_net_frame_push_tx(frame, len);
 }
 
-int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms,
+                     uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     uint32_t start;
@@ -427,7 +441,8 @@ int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t time
     }
 }
 
-int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     int mode;

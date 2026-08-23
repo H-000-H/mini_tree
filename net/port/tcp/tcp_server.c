@@ -19,7 +19,8 @@ static const char* const k_tag = "tcp_server";
 #define MAX_CLIENT_COUNT CONFIG_TCP_SERVER_MAX_CLIENTS
 #define CLIENT_RX_BUF_SIZE CONFIG_TCP_RX_BUF_SIZE
 
-_Static_assert((CLIENT_RX_BUF_SIZE & (CLIENT_RX_BUF_SIZE - 1U)) == 0U, "CONFIG_TCP_RX_BUF_SIZE must be power of 2");
+_Static_assert((CLIENT_RX_BUF_SIZE & (CLIENT_RX_BUF_SIZE - 1U)) == 0U,
+               "CONFIG_TCP_RX_BUF_SIZE must be power of 2");
 
 /**
  * @brief 单个客户端会话结构体
@@ -85,7 +86,8 @@ static void tcp_server_error_callback(void* arg, err_t err)
  * @param[in] err 接收错误码
  * @return ERR_OK 处理成功, 其它为 lwIP 错误码
  */
-static err_t tcp_server_receive_callback(void* arg, struct tcp_pcb* pcb, struct pbuf* buf, err_t err)
+static err_t tcp_server_receive_callback(void* arg, struct tcp_pcb* pcb, struct pbuf* buf,
+                                         err_t err)
 {
     struct client_session* session = (struct client_session*)arg;
 
@@ -124,11 +126,13 @@ static err_t tcp_server_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
         if (q->len > 0)
         {
             uint16_t written = 0;
-            COMPAT_IGNORE_RESULT(fifo_uni_write_block(&session->rx_fifo, q->payload, q->len, &written));
+            COMPAT_IGNORE_RESULT(
+                fifo_uni_write_block(&session->rx_fifo, q->payload, q->len, &written));
             total_written = (uint16_t)(total_written + written);
 
             if (written < q->len)
-                SYS_LOGW(k_tag, "session [%d] FIFO full, dropped %u bytes\r\n", session->id, (unsigned int)(q->len - written));
+                SYS_LOGW(k_tag, "session [%d] FIFO full, dropped %u bytes\r\n", session->id,
+                         (unsigned int)(q->len - written));
         }
         q = q->next;
     }
@@ -177,7 +181,8 @@ static err_t tcp_server_accept_callback(void* arg, struct tcp_pcb* newpcb, err_t
 
     /* 初始化当前会话: 先就绪 pcb 与 FIFO, 最后置位 is_used, 避免读者看到已占用但 FIFO 未初始化 */
     free_session->pcb = newpcb;
-    COMPAT_IGNORE_RESULT(fifo_uni_init(&free_session->rx_fifo, free_session->rx_buf, 1U, CLIENT_RX_BUF_SIZE));
+    COMPAT_IGNORE_RESULT(
+        fifo_uni_init(&free_session->rx_fifo, free_session->rx_buf, 1U, CLIENT_RX_BUF_SIZE));
     free_session->is_used = true;
 
     SYS_LOGI(k_tag, "new client accepted -> session [%d]\r\n", free_session->id);
@@ -226,7 +231,8 @@ int tcp_server_init(int port)
     }
 
     tcp_accept(s_listen_pcb, tcp_server_accept_callback);
-    SYS_LOGI(k_tag, "TCP server listening on port %d (Max clients: %d)\r\n", port, MAX_CLIENT_COUNT);
+    SYS_LOGI(k_tag, "TCP server listening on port %d (Max clients: %d)\r\n", port,
+             MAX_CLIENT_COUNT);
 
     return ERR_OK;
 }
@@ -246,7 +252,8 @@ int get_tcp_data_by_session(int session_id, char* buf, int len, int* recv_len)
 
     uint16_t bytes_read = 0;
 
-    COMPAT_IGNORE_RESULT(fifo_uni_read_block(&session->rx_fifo, (uint8_t*)buf, (uint16_t)len, &bytes_read));
+    COMPAT_IGNORE_RESULT(
+        fifo_uni_read_block(&session->rx_fifo, (uint8_t*)buf, (uint16_t)len, &bytes_read));
     *recv_len = (int)bytes_read;
 
     return ERR_OK;
@@ -282,7 +289,8 @@ int close_session(int session_id)
     if (session->is_used && session->pcb != NULL)
     {
         struct tcp_pcb* pcb = session->pcb;
-        release_session(session, true); /* 先解绑回调并复位状态, 防 close 挥手期回调误入已复用槽位 */
+        release_session(session,
+                        true); /* 先解绑回调并复位状态, 防 close 挥手期回调误入已复用槽位 */
         if (tcp_close(pcb) != ERR_OK)
             tcp_abort(pcb); /* 关闭失败(有未发数据)时中止, 防止 PCB 悬挂泄漏 */
     }

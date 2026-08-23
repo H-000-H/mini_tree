@@ -53,7 +53,10 @@ static const char* const k_tag = "can_bus";
 /**
  * @brief CAN Host 池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX));
+}
 
 /*===========================================================================================================================================================*/
 /* Host pool helpers */
@@ -157,7 +160,10 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
     return MINI_OK;
 }
 
-int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg) { return can_host_init_impl(pdev, cfg); }
+int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg)
+{
+    return can_host_init_impl(pdev, cfg);
+}
 
 /**
  * @brief CAN 总线主机销毁实现
@@ -179,7 +185,8 @@ static int can_host_deinit_impl(struct device* pdev)
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
-        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
+                 COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return MINI_ERR_BUSY;
     }
 
@@ -258,7 +265,10 @@ static int can_client_register_impl(struct device* pdev, const void* cfg, void**
     return MINI_OK;
 }
 
-int can_bus_client_register(struct device* pdev, struct can_bus_client** out) { return can_client_register_impl(pdev, NULL, (void**)out); }
+int can_bus_client_register(struct device* pdev, struct can_bus_client** out)
+{
+    return can_client_register_impl(pdev, NULL, (void**)out);
+}
 
 /**
  * @brief CAN 总线客户端销毁实现 (关 hw / 减 host 引用 / 清槽)
@@ -339,7 +349,8 @@ int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_
     return hal_can_transmit(&client->hal_dev, frame, timeout_ms);
 }
 
-int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
+int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
+                    uint32_t timeout_ms)
 {
     struct can_bus_client* client;
 

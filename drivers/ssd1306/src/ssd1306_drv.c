@@ -47,20 +47,27 @@ static const char* const k_tag = "ssd1306";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ssd1306_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_ssd1306_pool_ctrl, s_ssd1306_used, SSD1306_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ssd1306_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_ssd1306_pool_ctrl, s_ssd1306_used, SSD1306_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct ssd1306_device* ssd1306_get_drvdata(struct device* pdev) { return (struct ssd1306_device*)device_get_priv(pdev); }
+static struct ssd1306_device* ssd1306_get_drvdata(struct device* pdev)
+{
+    return (struct ssd1306_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int ssd1306_i2c_wr(struct ssd1306_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int ssd1306_i2c_wr(struct ssd1306_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -160,7 +167,8 @@ static int ssd1306_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ssd1306_ioctl_fn_t)(struct ssd1306_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*ssd1306_ioctl_fn_t)(struct ssd1306_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct ssd1306_ioctl_map
 {
     ssd1306_ioctl_fn_t handler;
@@ -169,7 +177,8 @@ struct ssd1306_ioctl_map
 /**
  * @brief 写 1B 命令/数据（ctrl 字节 + 值）
  */
-static int ssd1306_wr_ctrl(struct ssd1306_device* dev, uint8_t ctrl, uint8_t val, uint32_t timeout_ms)
+static int ssd1306_wr_ctrl(struct ssd1306_device* dev, uint8_t ctrl, uint8_t val,
+                           uint32_t timeout_ms)
 {
     uint8_t tx[2] = {ctrl, val};
     return ssd1306_i2c_wr(dev, tx, 2, timeout_ms);
@@ -194,11 +203,14 @@ static int ssd1306_cmd_clear(struct ssd1306_device* dev, void* arg, size_t len, 
         page_buf[i] = fill_val;
     for (page = 0; page < SSD1306_PAGES; page++)
     {
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page), timeout_ms) != MINI_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),
+                            timeout_ms) != MINI_OK)
             return MINI_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) != MINI_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) !=
+            MINI_OK)
             return MINI_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) != MINI_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) !=
+            MINI_OK)
             return MINI_ERR_IO;
         if (ssd1306_i2c_wr(dev, page_buf, sizeof(page_buf), timeout_ms) != MINI_OK)
             return MINI_ERR_IO;
@@ -245,7 +257,8 @@ static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t l
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
     int page;
     uint32_t timeout_ms = ms ? ms : 100U;
-    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
+        !darg->data)
         return MINI_ERR_INVAL;
     if (darg->x != 0 || darg->y != 0 || darg->w != SSD1306_WIDTH || darg->h != SSD1306_HEIGHT)
         return MINI_ERR_INVAL;
@@ -253,11 +266,14 @@ static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t l
     {
         uint8_t chunk[1 + 64];
         size_t off = 0;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page), timeout_ms) != MINI_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),
+                            timeout_ms) != MINI_OK)
             return MINI_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) != MINI_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_LO, timeout_ms) !=
+            MINI_OK)
             return MINI_ERR_IO;
-        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) != MINI_OK)
+        if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, SSD1306_REG_SET_COL_HI, timeout_ms) !=
+            MINI_OK)
             return MINI_ERR_IO;
         chunk[0] = SSD1306_I2C_CTRL_DATA;
         while (off < SSD1306_WIDTH)
@@ -265,7 +281,8 @@ static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t l
             size_t chunk_len = SSD1306_WIDTH - off;
             if (chunk_len > 64U)
                 chunk_len = 64U;
-            COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&chunk[1], &darg->data[page * SSD1306_WIDTH + off], chunk_len));
+            COMPAT_IGNORE_RESULT(
+                COMPAT_MEM_COPY(&chunk[1], &darg->data[page * SSD1306_WIDTH + off], chunk_len));
             if (ssd1306_i2c_wr(dev, chunk, chunk_len + 1U, timeout_ms) != MINI_OK)
                 return MINI_ERR_IO;
             off += chunk_len;
@@ -280,7 +297,8 @@ static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t l
 static int ssd1306_cmd_flush(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
-    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
+        !darg->data)
         return MINI_ERR_INVAL;
     return ssd1306_cmd_draw_area(dev, (void*)darg, sizeof(*darg), ms);
 }
@@ -288,7 +306,8 @@ static int ssd1306_cmd_flush(struct ssd1306_device* dev, void* arg, size_t len, 
 /**
  * @brief DISPLAY_CMD_SET_BRIGHTNESS 实现：亮度映射为对比度
  */
-static int ssd1306_cmd_set_brightness(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
+static int ssd1306_cmd_set_brightness(struct ssd1306_device* dev, void* arg, size_t len,
+                                      uint32_t ms)
 {
     const struct display_bright_arg* darg = (const struct display_bright_arg*)arg;
     uint32_t timeout_ms = ms ? ms : 100U;
@@ -300,9 +319,12 @@ static int ssd1306_cmd_set_brightness(struct ssd1306_device* dev, void* arg, siz
 }
 
 static const struct ssd1306_ioctl_map s_ssd1306_map[DISPLAY_CMD_COUNT] = {
-    [DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_get_info},   [DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_clear},
-    [DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_fill_rect}, [DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_draw_area},
-    [DISPLAY_CMD_FLUSH - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_flush},         [DISPLAY_CMD_SET_BRIGHTNESS - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_set_brightness},
+    [DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_get_info},
+    [DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_clear},
+    [DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_fill_rect},
+    [DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_draw_area},
+    [DISPLAY_CMD_FLUSH - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_flush},
+    [DISPLAY_CMD_SET_BRIGHTNESS - DISPLAY_CMD_BASE - 1] = {ssd1306_cmd_set_brightness},
 };
 
 /**

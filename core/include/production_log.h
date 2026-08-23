@@ -70,7 +70,8 @@ extern "C"
      * @param[in] fmt printf 格式串
      * @param[in] ... 格式化参数
      */
-    void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...) COMPAT_FMT_PRINTF(3, 4);
+    void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
+        COMPAT_FMT_PRINTF(3, 4);
 
     /**
      * @brief 查询当前累计日志条数

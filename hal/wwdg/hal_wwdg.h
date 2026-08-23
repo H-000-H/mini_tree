@@ -48,7 +48,8 @@ extern "C"
      * @param[in] cfg  配置 (校验 counter/window 范围)
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_wwdg_init(struct hal_wwdg_dev* pdev, const struct hal_wwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_wwdg_init(struct hal_wwdg_dev* pdev,
+                      const struct hal_wwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 使能 APB1 时钟并启动 WWDG (置 WDGA)

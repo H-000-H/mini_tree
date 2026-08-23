@@ -48,14 +48,20 @@ static const char* const k_tag = "sg90";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sg90_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_sg90_pool_ctrl, s_sg90_used, SG90_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sg90_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_sg90_pool_ctrl, s_sg90_used, SG90_POOL_COUNT));
+}
 
 /**
  * @brief 从 device 获取驱动私有数据 (drvdata)
  * @param[in] pdev device 指针
  * @return sg90_device 私有数据指针
  */
-static struct sg90_device* sg90_get_drvdata(struct device* pdev) { return (struct sg90_device*)device_get_priv(pdev); }
+static struct sg90_device* sg90_get_drvdata(struct device* pdev)
+{
+    return (struct sg90_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 首次 open 时打开 TIM 并下发初始 PWM

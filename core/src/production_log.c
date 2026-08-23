@@ -83,7 +83,8 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     if (osal_in_isr())
         return;
 
-    COMPAT_IGNORE_RESULT(hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state)));
+    COMPAT_IGNORE_RESULT(
+        hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state)));
 }
 
 /**
@@ -110,7 +111,8 @@ void production_log_push_fmt(prod_log_level_t level, const char* tag, const char
 int production_log_count(void)
 {
     for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
-        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 && s_state.ring[i].msg[0] == '\0')
+        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 &&
+            s_state.ring[i].msg[0] == '\0')
             return i;
     return PROD_LOG_SLOT_COUNT;
 }
@@ -161,7 +163,8 @@ void production_log_dump(void (*sink)(const char* line))
             break;
         }
 
-        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)e->seq, lvl_str, e->tag, e->msg);
+        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)e->seq, lvl_str, e->tag,
+                 e->msg);
         sink(buf);
     }
     sink("=== END ===");

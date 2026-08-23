@@ -47,20 +47,27 @@ static const char* const k_tag = "bh1750";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void bh1750_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_bh1750_pool_ctrl, s_bh1750_used, BH1750_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void bh1750_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_bh1750_pool_ctrl, s_bh1750_used, BH1750_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct bh1750_device* bh1750_get_drvdata(struct device* pdev) { return (struct bh1750_device*)device_get_priv(pdev); }
+static struct bh1750_device* bh1750_get_drvdata(struct device* pdev)
+{
+    return (struct bh1750_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bh1750_i2c_wr(struct bh1750_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int bh1750_i2c_wr(struct bh1750_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -187,7 +194,8 @@ static int bh1750_cmd_lux(struct bh1750_device* dev, void* arg, size_t len, uint
     int* lux = (int*)arg;
     if (!dev->hw_ready || !lux || len != sizeof(int))
         return MINI_ERR_INVAL;
-    if (bh1750_i2c_wr(dev, &on, 1, timeout_ms) != MINI_OK || bh1750_i2c_wr(dev, &cont, 1, timeout_ms) != MINI_OK)
+    if (bh1750_i2c_wr(dev, &on, 1, timeout_ms) != MINI_OK ||
+        bh1750_i2c_wr(dev, &cont, 1, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
     osal_delay_ms(120);
     if (bh1750_i2c_rd(dev, raw, 2, timeout_ms) != MINI_OK)

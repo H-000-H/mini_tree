@@ -35,7 +35,8 @@ extern "C"
 #define HAL_SPI_XFER_DMA 2U /**< 强制 DMA, 不可用则返回 NOTSUPP */
 
 #ifndef HAL_SPI_MAX_TRANSFER_BYTES
-#define HAL_SPI_MAX_TRANSFER_BYTES 2048 /**< 历史/平台上限占位; STM32 路径实际以 HAL_SPI_MAX_XFER 为准 */
+#define HAL_SPI_MAX_TRANSFER_BYTES                                                                 \
+    2048 /**< 历史/平台上限占位; STM32 路径实际以 HAL_SPI_MAX_XFER 为准 */
 #endif
 
 #ifndef HAL_SPI_HOST_MAX
@@ -66,7 +67,8 @@ extern "C"
         uint32_t dma_mode; /**< DMA 模式 (LL_DMA_MODE_NORMAL/CIRCULAR) */
         uint32_t dma_periph_inc; /**< DMA 外设地址递增 (LL_DMA_PERIPH_INCREMENT/NOINCREMENT) */
         uint32_t dma_mem_inc; /**< DMA 内存地址递增 (LL_DMA_MEMORY_INCREMENT/NOINCREMENT) */
-        uint32_t dma_periph_data_size; /**< DMA 外设数据宽度 (LL_DMA_PDATAALIGN_BYTE/HALFWORD/WORD) */
+        uint32_t
+            dma_periph_data_size; /**< DMA 外设数据宽度 (LL_DMA_PDATAALIGN_BYTE/HALFWORD/WORD) */
         uint32_t dma_fifo_mode; /**< DMA FIFO 模式 (LL_DMA_FIFOMODE_ENABLE/DISABLE) */
         uint32_t dma_fifo_threshold; /**< DMA FIFO 阈值 (LL_DMA_FIFOTHRESHOLD_1_4/1_2/3_4/FULL) */
         uint32_t dma_mem_burst; /**< DMA 内存突发 (LL_DMA_MBURST_SINGLE/INCR4/INCR8/INCR16) */
@@ -165,7 +167,8 @@ extern "C"
      * @param[in] hw_idx dummy buffer / HW slot 索引
      * @param[in] cfg 总线配置
      */
-    int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx, const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,
+                              const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 释放 SPI 总线主机
@@ -180,7 +183,8 @@ extern "C"
      * @param[in] host 总线控制器对象指针
      * @param[in] dev_cfg 设备配置
      */
-    int hal_spi_dev_init(struct hal_spi_dev* pdev, struct hal_spi_bus_host* host, const struct hal_spi_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_dev_init(struct hal_spi_dev* pdev, struct hal_spi_bus_host* host,
+                         const struct hal_spi_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 打开 SPI 设备
@@ -206,7 +210,8 @@ extern "C"
      * @param[in] xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                     uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 异步传输
@@ -218,7 +223,8 @@ extern "C"
      * @param[in] userdata 用户数据指针
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, hal_spi_callback_t cb, void* userdata) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                               hal_spi_callback_t cb, void* userdata) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 异步传输轮询
@@ -226,7 +232,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_transfer_poll(struct hal_spi_dev* pdev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_transfer_poll(struct hal_spi_dev* pdev,
+                              uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 获取传输结果
@@ -237,7 +244,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_get_trans_result(struct hal_spi_dev* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms);
+    int hal_spi_get_trans_result(struct hal_spi_dev* pdev, uint8_t* rx_data, size_t rx_cap,
+                                 size_t* trans_len, uint32_t timeout_ms);
 
     /**
      * @brief SPI 从机同步传输
@@ -248,7 +256,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                           uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 从机队列传输
@@ -258,7 +267,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (ms)
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len,
+                               uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

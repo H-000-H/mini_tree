@@ -52,7 +52,8 @@ typedef uintptr_t fifo_data_type;
 #define BUFF_LOAD_RELAXED(ptr) __atomic_load_n(&(ptr), __ATOMIC_RELAXED)
 #define BUFF_STORE_RELEASE(ptr, val) __atomic_store_n(&(ptr), (val), __ATOMIC_RELEASE)
 #else
-/* 降级: 非 GCC/Clang 无 __atomic/__typeof__, 退化为普通读写 (需配合 volatile 全局变量或单核场景使用) */
+/* 降级: 非 GCC/Clang 无 __atomic/__typeof__, 退化为普通读写 (需配合 volatile
+ * 全局变量或单核场景使用) */
 #define BUFF_LOAD_ACQUIRE(ptr) (ptr)
 #define BUFF_LOAD_RELAXED(ptr) (ptr)
 #define BUFF_STORE_RELEASE(ptr, val) ((ptr) = (val))
@@ -117,18 +118,22 @@ int fifo_read_data(struct fifo_spsc* handle, fifo_data_type* p_data);
  * @param[in] p_data 源缓冲区
  * @param[in] len 写入元素个数
  * @param[out] p_actual 可选: 实际写入元素个数 (≤ len), 可传 NULL
- * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 无可写空间 (*p_actual = 0)
+ * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 无可写空间
+ * (*p_actual = 0)
  */
-int fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data, uint16_t len, uint16_t* p_actual);
+int fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data, uint16_t len,
+                     uint16_t* p_actual);
 /**
  * @brief 读取块数据
  * @param[in] handle FIFO 句柄
  * @param[out] p_data 目标缓冲区
  * @param[in] len 期望读取元素个数
  * @param[out] p_actual 可选: 实际读取元素个数 (≤ len), 可传 NULL
- * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 无可读数据 (*p_actual = 0)
+ * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 无可读数据
+ * (*p_actual = 0)
  */
-int fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint16_t len, uint16_t* p_actual);
+int fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint16_t len,
+                    uint16_t* p_actual);
 /**
  * @brief 查询 FIFO 是否已满
  * @param[in] handle FIFO 句柄
@@ -189,18 +194,22 @@ int fifo_uni_init(struct fifo_uni_spsc* handle, void* buf, uint16_t item_size, u
  * @param[in] p_data 源缓冲区 (元素数组)
  * @param[in] count 写入元素个数 (item_size=1 时即字节数)
  * @param[out] p_actual 可选: 实际写入元素个数 (≤ count), 可传 NULL
- * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 无可写空间 (*p_actual = 0)
+ * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 无可写空间
+ * (*p_actual = 0)
  */
-int fifo_uni_write_block(struct fifo_uni_spsc* handle, const void* p_data, uint16_t count, uint16_t* p_actual);
+int fifo_uni_write_block(struct fifo_uni_spsc* handle, const void* p_data, uint16_t count,
+                         uint16_t* p_actual);
 /**
  * @brief 读取元素块 (按元素宽度拷贝)
  * @param[in] handle FIFO 句柄
  * @param[out] p_data 目标缓冲区 (元素数组)
  * @param[in] count 期望读取元素个数 (item_size=1 时即字节数)
  * @param[out] p_actual 可选: 实际读取元素个数 (≤ count), 可传 NULL
- * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 无可读数据 (*p_actual = 0)
+ * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 无可读数据
+ * (*p_actual = 0)
  */
-int fifo_uni_read_block(struct fifo_uni_spsc* handle, void* p_data, uint16_t count, uint16_t* p_actual);
+int fifo_uni_read_block(struct fifo_uni_spsc* handle, void* p_data, uint16_t count,
+                        uint16_t* p_actual);
 /**
  * @brief 生产者获取下一个可写槽位 (零拷贝, 不推进写指针)
  * @param[in] handle FIFO 句柄
@@ -278,7 +287,8 @@ struct double_buffer_spsc
  * @param[in] size 每缓冲容量 (须为 2 的幂)
  * @return BUFF_OK 成功; BUFF_ERR_INVAL 入参非法
  */
-int double_buffer_init(struct double_buffer_spsc* handle, double_buffer_data_type* buf1, double_buffer_data_type* buf2, uint16_t size);
+int double_buffer_init(struct double_buffer_spsc* handle, double_buffer_data_type* buf1,
+                       double_buffer_data_type* buf2, uint16_t size);
 /**
  * @brief 写入单个数据
  * @param[in] handle 双缓冲句柄
@@ -299,18 +309,23 @@ int double_buffer_read_data(struct double_buffer_spsc* handle, double_buffer_dat
  * @param[in] p_data 源缓冲区
  * @param[in] len 写入元素个数
  * @param[out] p_actual 可选: 实际写入元素个数 (≤ len), 可传 NULL
- * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 无可写空间 (*p_actual = 0)
+ * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 无可写空间
+ * (*p_actual = 0)
  */
-int double_buffer_write_block(struct double_buffer_spsc* handle, const double_buffer_data_type* p_data, uint16_t len, uint16_t* p_actual);
+int double_buffer_write_block(struct double_buffer_spsc* handle,
+                              const double_buffer_data_type* p_data, uint16_t len,
+                              uint16_t* p_actual);
 /**
  * @brief 读取块数据
  * @param[in] handle 双缓冲句柄
  * @param[out] p_data 目标缓冲区
  * @param[in] len 期望读取元素个数
  * @param[out] p_actual 可选: 实际读取元素个数 (≤ len), 可传 NULL
- * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 无可读数据 (*p_actual = 0)
+ * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 无可读数据
+ * (*p_actual = 0)
  */
-int double_buffer_read_block(struct double_buffer_spsc* handle, double_buffer_data_type* p_data, uint16_t len, uint16_t* p_actual);
+int double_buffer_read_block(struct double_buffer_spsc* handle, double_buffer_data_type* p_data,
+                             uint16_t len, uint16_t* p_actual);
 /**
  * @brief 查询双缓冲是否已满
  * @param[in] handle 双缓冲句柄
@@ -381,7 +396,8 @@ struct dual_buffer_spsc
  * @param item_count 单个缓冲区容量 (元素个数, 须为 2 的幂)
  * @return BUFF_OK 成功; BUFF_ERR_INVAL 入参非法
  */
-int dual_buffer_init(struct dual_buffer_spsc* handle, void* buffer1, void* buffer2, uint16_t item_size, uint16_t item_count);
+int dual_buffer_init(struct dual_buffer_spsc* handle, void* buffer1, void* buffer2,
+                     uint16_t item_size, uint16_t item_count);
 
 /**
  * @brief 块写入双缓冲 (轮流写两个, 无阻塞, 满则切到另一个)
@@ -390,9 +406,11 @@ int dual_buffer_init(struct dual_buffer_spsc* handle, void* buffer1, void* buffe
  * @param p_data   待写入数据数组 (元素个数 >= count)
  * @param count    待写入元素个数 (>0)
  * @param p_actual 可选: 实际写入元素个数 (≤ count), 可传 NULL
- * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 两缓冲都满 (*p_actual = 0)
+ * @return BUFF_OK 成功 (空间不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_FULL 两缓冲都满
+ * (*p_actual = 0)
  */
-int dual_buffer_write_block(struct dual_buffer_spsc* handle, const void* p_data, uint16_t count, uint16_t* p_actual);
+int dual_buffer_write_block(struct dual_buffer_spsc* handle, const void* p_data, uint16_t count,
+                            uint16_t* p_actual);
 
 /**
  * @brief 块读取双缓冲 (轮流读两个, 无阻塞, 空则切到另一个)
@@ -401,9 +419,11 @@ int dual_buffer_write_block(struct dual_buffer_spsc* handle, const void* p_data,
  * @param p_data   读取目标数组 (元素个数 >= count)
  * @param count    待读取元素个数 (>0)
  * @param p_actual 可选: 实际读取元素个数 (≤ count), 可传 NULL
- * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 两缓冲都空 (*p_actual = 0)
+ * @return BUFF_OK 成功 (数据不足时截断); BUFF_ERR_INVAL 入参非法; BUFF_ERR_EMPTY 两缓冲都空
+ * (*p_actual = 0)
  */
-int dual_buffer_read_block(struct dual_buffer_spsc* handle, void* p_data, uint16_t count, uint16_t* p_actual);
+int dual_buffer_read_block(struct dual_buffer_spsc* handle, void* p_data, uint16_t count,
+                           uint16_t* p_actual);
 
 /**
  * @brief 查询双缓冲是否全部写满 (两个都满)

@@ -75,6 +75,10 @@ function(mini_tree_link_lwip target)
             ${LWIP_DIR}/src/core/altcp.c
             ${LWIP_DIR}/src/core/altcp_alloc.c
             ${LWIP_DIR}/src/core/altcp_tcp.c
+            # altcp TLS 层: 文件内部按 LWIP_ALTCP / LWIP_ALTCP_TLS 守卫, 关闭时为空翻译单元;
+            # 启用时需链接 mbedtls (见 cmake/mbedtls.cmake 与 net/CMakeLists.txt)
+            ${LWIP_DIR}/src/apps/altcp_tls/altcp_tls_mbedtls.c
+            ${LWIP_DIR}/src/apps/altcp_tls/altcp_tls_mbedtls_mem.c
             ${LWIP_DIR}/src/core/tcp.c
             ${LWIP_DIR}/src/core/tcp_in.c
             ${LWIP_DIR}/src/core/tcp_out.c

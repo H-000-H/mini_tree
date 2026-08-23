@@ -30,20 +30,21 @@
 #endif
 
 /* ── 启动期全局中断控制 ── */
-#if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
+#if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) ||                \
+    defined(__ARM_ARCH_8M_BASE__)
 #define IRQ_DISABLE() __asm__ volatile("cpsid i" ::: "memory")
 #define IRQ_ENABLE() __asm__ volatile("cpsie i" ::: "memory")
 #elif defined(__riscv)
 #define IRQ_DISABLE() __asm__ volatile("csrci mstatus, 8" ::: "memory")
 #define IRQ_ENABLE() __asm__ volatile("csrsi mstatus, 8" ::: "memory")
 #else
-#define IRQ_DISABLE()                                                                                                                                                                                  \
-    do                                                                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
+#define IRQ_DISABLE()                                                                              \
+    do                                                                                             \
+    {                                                                                              \
     } while (0)
-#define IRQ_ENABLE()                                                                                                                                                                                   \
-    do                                                                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
+#define IRQ_ENABLE()                                                                               \
+    do                                                                                             \
+    {                                                                                              \
     } while (0)
 #endif
 

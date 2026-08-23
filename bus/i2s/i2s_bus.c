@@ -54,7 +54,10 @@ static const char* k_tag = "i2s_bus";
 /**
  * @brief 初始化 I2S 总线 host 对象池
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool, s_host_used, I2S_BUS_HOST_MAX)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool, s_host_used, I2S_BUS_HOST_MAX));
+}
 
 /**
  * @brief 根据 device 查找已注册的 I2S host
@@ -244,13 +247,20 @@ static void i2s_client_unregister_impl(struct device* pdev)
     COMPAT_MEM_SET(client, 0, sizeof(*client));
 }
 
-int i2s_bus_host_init(struct device* pdev, const struct hal_i2s_bus_config* cfg) { return i2s_host_init_impl(pdev, cfg); }
+int i2s_bus_host_init(struct device* pdev, const struct hal_i2s_bus_config* cfg)
+{
+    return i2s_host_init_impl(pdev, cfg);
+}
 
 int i2s_bus_host_deinit(struct device* pdev) { return i2s_host_deinit_impl(pdev); }
 
 int i2s_bus_host_role(struct device* pdev) { return i2s_host_role_impl(pdev); }
 
-int i2s_bus_client_register(struct device* pdev, const struct hal_i2s_device_config* cfg, struct i2s_bus_client** out) { return i2s_client_register_impl(pdev, cfg, (void**)out); }
+int i2s_bus_client_register(struct device* pdev, const struct hal_i2s_device_config* cfg,
+                            struct i2s_bus_client** out)
+{
+    return i2s_client_register_impl(pdev, cfg, (void**)out);
+}
 
 void i2s_bus_client_unregister(struct device* pdev) { i2s_client_unregister_impl(pdev); }
 
@@ -282,7 +292,8 @@ int i2s_bus_open(struct device* pdev)
      */
     if (host->cfg.it_enable)
     {
-        interrupt_virtual_register(VIRQ(i2s, host->hw_idx), hal_virtual_i2s_irq_callback, &g_i2s_bottom_half_work, &client->hal_i2s_dev);
+        interrupt_virtual_register(VIRQ(i2s, host->hw_idx), hal_virtual_i2s_irq_callback,
+                                   &g_i2s_bottom_half_work, &client->hal_i2s_dev);
         interrupt_hw_enable((int)host->cfg.irqn, host->cfg.irq_priority);
         interrupt_hw_enable((int)host->cfg.irqn_rx, host->cfg.irq_priority);
     }
@@ -305,7 +316,8 @@ int i2s_bus_close(struct device* pdev)
     return MINI_OK;
 }
 
-int i2s_bus_transfer(struct device* pdev, const uint16_t* tx, uint16_t* rx, size_t samples, uint32_t timeout_ms, uint32_t xfer_mode)
+int i2s_bus_transfer(struct device* pdev, const uint16_t* tx, uint16_t* rx, size_t samples,
+                     uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct i2s_bus_client* client = client_from_dev(pdev);
     if (!client || !client->hw_open)
@@ -313,7 +325,8 @@ int i2s_bus_transfer(struct device* pdev, const uint16_t* tx, uint16_t* rx, size
     return hal_i2s_sync(&client->hal_i2s_dev, tx, rx, samples, timeout_ms, xfer_mode);
 }
 
-int i2s_bus_transfer_async(struct device* pdev, const uint16_t* tx, uint16_t* rx, size_t samples, void (*cb)(struct device*, const void*, void*), void* userdata)
+int i2s_bus_transfer_async(struct device* pdev, const uint16_t* tx, uint16_t* rx, size_t samples,
+                           void (*cb)(struct device*, const void*, void*), void* userdata)
 {
     struct i2s_bus_client* client = client_from_dev(pdev);
     COMPAT_IGNORE_RESULT(cb);

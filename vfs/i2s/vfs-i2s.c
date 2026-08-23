@@ -111,7 +111,8 @@ static int parse_dma_tuple(struct device* pdev, const char* prop, struct hal_i2s
  * @param[out] out 输出的引脚配置结构指针
  * @return 成功返回 MINI_OK (port 缺失时 out 清零且不报错)
  */
-static int parse_one_pin(struct device* pdev, const char* port_k, const char* pin_k, const char* clk_k, const char* af_k, struct hal_i2s_pin_cfg* out)
+static int parse_one_pin(struct device* pdev, const char* port_k, const char* pin_k,
+                         const char* clk_k, const char* af_k, struct hal_i2s_pin_cfg* out)
 {
     int v;
 
@@ -149,7 +150,8 @@ static int parse_host(struct device* pdev, struct hal_i2s_bus_config* cfg, uint3
     cfg->irqn = -1;
     cfg->irqn_rx = -1;
 
-    if (device_get_prop_int(pdev, "spi-base", &v) != MINI_OK && device_get_prop_int(pdev, "hw-instance", &v) != MINI_OK)
+    if (device_get_prop_int(pdev, "spi-base", &v) != MINI_OK &&
+        device_get_prop_int(pdev, "hw-instance", &v) != MINI_OK)
         return MINI_ERR_INVAL;
     cfg->spi = (uintptr_t)v;
 
@@ -249,7 +251,9 @@ static int host_probe(struct device* pdev, uint32_t role)
         goto err;
     }
 
-    SYS_LOGI(k_host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev), (unsigned)priv->cfg.dma_tx.dma_enable, (unsigned)priv->cfg.dma_rx.dma_enable, (unsigned)priv->cfg.it_enable);
+    SYS_LOGI(k_host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev),
+             (unsigned)priv->cfg.dma_tx.dma_enable, (unsigned)priv->cfg.dma_rx.dma_enable,
+             (unsigned)priv->cfg.it_enable);
     return MINI_OK;
 
 err:
@@ -458,7 +462,8 @@ static int i2s_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     const struct i2s_xfer_mode_arg* a = (const struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
@@ -480,7 +485,8 @@ static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     struct i2s_xfer_mode_arg* a = (struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
@@ -502,7 +508,8 @@ static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len,
+                                  uint32_t timeout_ms)
 {
     const struct i2s_transfer_async_arg* a = (const struct i2s_transfer_async_arg*)arg;
 
@@ -612,7 +619,8 @@ static int i2s_cmd_circ_read(struct device* pdev, void* arg, size_t arg_len, uin
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     const struct i2s_dma_irq_mode_arg* a = (const struct i2s_dma_irq_mode_arg*)arg;
 
@@ -630,7 +638,8 @@ static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_l
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     struct i2s_dma_irq_mode_arg* a = (struct i2s_dma_irq_mode_arg*)arg;
 

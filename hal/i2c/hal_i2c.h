@@ -133,7 +133,8 @@ extern "C"
      * @param[in] cfg 总线配置 (DTSI 直投, 生命周期由调用方持有)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int hal_i2c_bus_host_init(struct hal_i2c_bus_host* host, int hw_idx, const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_bus_host_init(struct hal_i2c_bus_host* host, int hw_idx,
+                              const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 I2C 总线主机, 释放硬件资源
      * @param[in] host 总线主机对象指针
@@ -159,7 +160,8 @@ extern "C"
      * @param[in] dev_cfg client 级设备配置 (DTSI 直投)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int hal_i2c_dev_init(struct hal_i2c_dev* pdev, struct hal_i2c_bus_host* host, const struct hal_i2c_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dev_init(struct hal_i2c_dev* pdev, struct hal_i2c_bus_host* host,
+                         const struct hal_i2c_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 解绑设备并复位 client 状态
      * @param[in] pdev I2C 设备对象指针
@@ -178,7 +180,8 @@ extern "C"
      *        两者都非空 → 先写后读 (Repeated START), 长度均为 len
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
-    int hal_i2c_sync(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_sync(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                     uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 主机同步写 (直接走 master write, 不经 sync 绕路)
      * @param[in] pdev I2C 设备对象指针
@@ -187,7 +190,8 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
-    int hal_i2c_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
+                      uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 主机同步读 (直接走 master read, 不经 sync 绕路)
      * @param[in] pdev I2C 设备对象指针
@@ -196,7 +200,8 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
-    int hal_i2c_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len,
+                     uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 主机 DMA 异步写 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev I2C 设备对象指针
@@ -205,7 +210,8 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
-    int hal_i2c_dma_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dma_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 主机 DMA 异步读 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev I2C 设备对象指针
@@ -214,7 +220,8 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
-    int hal_i2c_dma_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dma_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len,
+                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief DMA 先写后读 (中间 Repeated START, 无 STOP)
      * @param[in] pdev I2C 设备对象指针
@@ -224,7 +231,8 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
-    int hal_i2c_dma_write_then_read(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dma_write_then_read(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx,
+                                    size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

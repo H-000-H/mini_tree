@@ -84,7 +84,8 @@ extern "C"
      * @param[in] report_id report ID
      * @param[in] report report 数据
      * @param[in] len report 长度
-     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (如 MINI_ERR_AGAIN 未就绪, MINI_ERR_NOSPC 缓冲满)
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (如 MINI_ERR_AGAIN 未就绪, MINI_ERR_NOSPC
+     * 缓冲满)
      */
     int usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
 

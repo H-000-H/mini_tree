@@ -31,7 +31,10 @@ static const char* k_tag = "vfs_iwdg";
 /**
  * @brief IWDG VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1));
+}
 
 /**
  * @brief IWDG 打开: 引用计数, 首次打开时调用 hal_iwdg_start 启动独立看门狗
@@ -120,7 +123,8 @@ static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     case IWDG_CMD_SET_TIMEOUT:
     {
         const struct iwdg_timeout_arg* a = arg;
-        ret = (!a || arg_len != sizeof(*a)) ? MINI_ERR_INVAL : hal_iwdg_set_timeout_ms(&priv->iwdg, a->timeout_ms);
+        ret = (!a || arg_len != sizeof(*a)) ? MINI_ERR_INVAL :
+                                              hal_iwdg_set_timeout_ms(&priv->iwdg, a->timeout_ms);
         break;
     }
     case IWDG_CMD_SET_LONG:

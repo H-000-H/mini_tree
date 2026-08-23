@@ -101,7 +101,8 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
     at_buf.rx_cap = sizeof(resp_buf) - 1U;
     at_buf.rx_len = 0;
 
-    ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf), timeout_ms);
+    ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf),
+                       timeout_ms);
 
     if (ret != MINI_OK)
         return ret;
@@ -113,7 +114,8 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
         at_buf.rx = &resp_buf[total_receive];
         at_buf.rx_cap = sizeof(resp_buf) - 1 - total_receive;
         at_buf.rx_len = 0;
-        ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf, sizeof(at_buf), PPPIF_AT_RECV_CHUNK_MS);
+        ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf, sizeof(at_buf),
+                           PPPIF_AT_RECV_CHUNK_MS);
         if (ret == MINI_OK && at_buf.rx_len > 0)
         {
             total_receive += at_buf.rx_len;
@@ -122,7 +124,8 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
             if (strstr((const char*)resp_buf, expect_resp) != NULL)
                 return MINI_OK;
 
-            if (strcmp(expect_resp, "CONNECT") != 0 && strstr((const char*)resp_buf, "ERROR") != NULL)
+            if (strcmp(expect_resp, "CONNECT") != 0 &&
+                strstr((const char*)resp_buf, "ERROR") != NULL)
                 return MINI_ERR_IO;
         }
     } while ((osal_time_ms() - start_time) < timeout_ms);
@@ -208,12 +211,15 @@ static void pppif_link_status_callback(ppp_pcb* pcb, int err_code, void* ctx)
     {
         /*ppp成功获得IP*/
         p_ctx->is_link_up = true;
-        SYS_LOGI(k_tag, "PPP link up. IP: %s, GW: %s, MASK: %s", ip4addr_ntoa(netif_ip4_addr(ppp_netif)), ip4addr_ntoa(netif_ip4_gw(ppp_netif)), ip4addr_ntoa(netif_ip4_netmask(ppp_netif)));
+        SYS_LOGI(k_tag, "PPP link up. IP: %s, GW: %s, MASK: %s",
+                 ip4addr_ntoa(netif_ip4_addr(ppp_netif)), ip4addr_ntoa(netif_ip4_gw(ppp_netif)),
+                 ip4addr_ntoa(netif_ip4_netmask(ppp_netif)));
 #if LWIP_DNS
         /* 打印 DNS 地址 */
         const ip_addr_t* primary_dns = dns_getserver(0);
         const ip_addr_t* secondary_dns = dns_getserver(1);
-        SYS_LOGI(k_tag, "DNS Server: 1: %s, 2: %s", ipaddr_ntoa(primary_dns), ipaddr_ntoa(secondary_dns));
+        SYS_LOGI(k_tag, "DNS Server: 1: %s, 2: %s", ipaddr_ntoa(primary_dns),
+                 ipaddr_ntoa(secondary_dns));
 #endif
         netif_set_link_up(ppp_netif);
         netif_set_up(ppp_netif);
@@ -256,7 +262,8 @@ static void pppif_rx_thread_entry(void* param)
             osal_delay_ms(10);
             continue;
         }
-        receive_len = device_read(p_ctx->modem_dev, p_ctx->rx_buf, sizeof(p_ctx->rx_buf), PPPIF_UART_TIMEOUT_MS);
+        receive_len = device_read(p_ctx->modem_dev, p_ctx->rx_buf, sizeof(p_ctx->rx_buf),
+                                  PPPIF_UART_TIMEOUT_MS);
         if (receive_len > 0)
             pppos_input(p_ctx->ppp_pcb, p_ctx->rx_buf, receive_len);
     }
@@ -277,7 +284,8 @@ int pppif_poll(void)
     if (!s_pppif_context.modem_dev || !s_pppif_context.ppp_pcb)
         return MINI_ERR_INVAL;
 
-    receive_len = device_read(s_pppif_context.modem_dev, s_pppif_context.rx_buf, sizeof(s_pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
+    receive_len = device_read(s_pppif_context.modem_dev, s_pppif_context.rx_buf,
+                              sizeof(s_pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
     if (receive_len > 0)
         pppos_input(s_pppif_context.ppp_pcb, s_pppif_context.rx_buf, receive_len);
 
@@ -325,7 +333,8 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
         goto err_clean_device;
 
     /* 创建 lwIP PPPoS 控制块 */
-    s_pppif_context.ppp_pcb = pppos_create(&s_pppif_context.ppp_netif, pppif_output_callback, pppif_link_status_callback, &s_pppif_context);
+    s_pppif_context.ppp_pcb = pppos_create(&s_pppif_context.ppp_netif, pppif_output_callback,
+                                           pppif_link_status_callback, &s_pppif_context);
     if (!s_pppif_context.ppp_pcb)
     {
         ret = MINI_ERR_NOMEM;
@@ -341,7 +350,9 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
 #if !NO_SYS
     /* 创建后台接收数据处理任务 (RTOS 模式) */
     s_pppif_context.is_running = true;
-    ret = osal_task_create_handle("pppos_rx", PPPIF_RX_TASK_STACK_SIZE, PPPIF_RX_TASK_PRIO, pppif_rx_thread_entry, &s_pppif_context, (int)-1, &s_pppif_context.rx_thread);
+    ret = osal_task_create_handle("pppos_rx", PPPIF_RX_TASK_STACK_SIZE, PPPIF_RX_TASK_PRIO,
+                                  pppif_rx_thread_entry, &s_pppif_context, (int)-1,
+                                  &s_pppif_context.rx_thread);
     if (ret != 0 || !s_pppif_context.rx_thread)
     {
         ret = MINI_ERR_NOMEM;

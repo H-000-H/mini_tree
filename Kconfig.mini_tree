@@ -857,6 +857,66 @@ config USB
               device_read timeout for frame reception; default 0 means
               non-blocking poll, suitable for the NO_SYS=1 main loop.
         endmenu
+
+    menu "UI Libraries (LVGL / u8g2)"
+        # UI 库胶水层 (ui/) 配置。CMake 经 .config 的 CONFIG_UI_LVGL /
+        # CONFIG_UI_U8G2 桥接决定是否 add_subdirectory(ui); 胶水层只经
+        # device/VFS 模型 (DISPLAY_CMD_*) 触硬件。
+        # Glue layer (ui/) gate; CMake bridges via CONFIG_UI_LVGL /
+        # CONFIG_UI_U8G2 in .config; glue only touches hardware through
+        # the device/VFS model (DISPLAY_CMD_*).
+
+        config UI_LVGL
+            bool "LVGL glue layer (ui/lvgl)"
+            default y
+            help
+              编入 ui/lvgl/lvgl_port.c 并链接 LVGL (mini_tree_link_lvgl,
+              lv_conf.h 取 ui/lvgl/lv_conf.h)。胶水链路: lv_init +
+              osal_time_ms tick + lv_display_create → DISPLAY_CMD_FLUSH
+              (display_lvgl_flush_callback)。
+
+              Build ui/lvgl port and link LVGL; tick from osal_time_ms,
+              flush via DISPLAY_CMD_FLUSH on the panel device.
+
+        config UI_LVGL_DISPLAY_COUNT
+            int "LVGL display context count"
+            default 1
+            range 1 4
+            depends on UI_LVGL
+            help
+              LVGL 显示上下文静态池容量 (可同时 attach 的屏数量)。
+              Static pool capacity for LVGL display contexts.
+
+        config UI_LVGL_FLUSH_TIMEOUT_MS
+            int "LVGL flush ioctl timeout (ms)"
+            default 100
+            range 0 10000
+            depends on UI_LVGL
+            help
+              LVGL flush 回调内 device_ioctl(DISPLAY_CMD_FLUSH) 的超时 (毫秒)。
+              Timeout for the flush ioctl issued by the LVGL flush callback.
+
+        config UI_U8G2
+            bool "u8g2 glue layer (ui/u8g2)"
+            default n
+            help
+              编入 ui/u8g2/u8g2_port.c 并链接 u8g2 (mini_tree_link_u8g2)。
+              提供 u8x8 byte/gpio_and_delay 回调与 u8g2_port_flush 整帧落屏
+              (display_u8g2_flush_frame_buffer → DISPLAY_CMD_FLUSH), 仅支持
+              单色面板 (_f 整帧缓冲初始化过程)。
+
+              Build ui/u8g2 port and link u8g2; provides u8x8 callbacks
+              and full-frame flush for monochrome panels.
+
+        config UI_U8G2_FLUSH_TIMEOUT_MS
+            int "u8g2 flush ioctl timeout (ms)"
+            default 100
+            range 0 10000
+            depends on UI_U8G2
+            help
+              u8g2_port_flush 传 0 时使用的 device_ioctl 默认超时 (毫秒)。
+              Default flush ioctl timeout used when u8g2_port_flush gets 0.
+    endmenu
 endmenu
 
 menu "Board Features"
@@ -1162,7 +1222,7 @@ menu "lwIP (TCP/IP Stack)"
 
     config LWIP
         bool "Enable lwIP TCP/IP stack"
-        default y
+        default n
         help
           lwIP 协议栈总开关。选中后 net/ 端口层 (sys_arch.c) 会被编入, 且
           应用工程需调用 mini_tree_link_lwip() 拉取 lwIP 源码。关闭则端口层
@@ -1416,48 +1476,135 @@ menu "lwIP (TCP/IP Stack)"
               (byte stream).
     endmenu
 
+    menu "UDP Client (net/port/udp/udp_client.c)"
+        depends on LWIP_UDP
+
+        config UDP_CLIENT_RX_BUFFER_SIZE
+            int "UDP client RX FIFO size (bytes, power of 2)"
+            default 1024
+            range 256 8192
+            help
+              UDP 客户端 (net/port/udp/udp_client.c) 每实例接收环形缓冲大小,
+              必须为 2 的幂。静态嵌入 udp_client_context, 按实例数成倍占 RAM。
+              发送为原子数据报 (pbuf 直发), 无 TX FIFO。
+              Per-instance RX ring buffer of the UDP client; must be a
+              power of two. Sending is atomic per datagram (no TX FIFO).
+    endmenu
+
     menu "MQTT Client (net/port/mqtt/mqtt_client.c)"
         depends on LWIP_TCP
 
-        config MQTT_MAX_TOPIC_LEN
-            int "MQTT max topic length (bytes)"
-            default 64
-            range 8 256
+        config NET_MQTT_USE_COREMQTT
+            bool "Use coreMQTT as MQTT protocol engine"
+            default y
             help
-              单个订阅 Topic 过滤串的最大长度 (含结尾 '\0')。
-              Max length of one subscription topic filter (incl. '\0').
+              用 FreeRTOS coreMQTT 做报文编解码与状态机, 包装层只留连接管理。
+              关闭后 MQTT 客户端不参与链接 (当前无备选实现)。
+              Use FreeRTOS coreMQTT for packet codec & state machine.
 
-        config MQTT_MAX_SUBSCRIPTIONS
-            int "MQTT max subscriptions"
-            default 8
-            range 1 32
+        config MQTT_NET_BUFFER_SIZE
+            int "MQTT network buffer size (bytes, coreMQTT shared TX/RX)"
+            default 2048
+            range 512 16384
             help
-              订阅路由表槽位数, 每槽一份 topic + 回调。
-              Subscription table capacity (one topic + callback per slot).
+              coreMQTT 收发共用的单一静态缓冲 (MQTTFixedBuffer_t),
+              需 >= 单条最大报文 (含订阅列表/遗嘱/最大下行负载)。
+              Single shared static buffer of coreMQTT; must fit the
+              largest packet in either direction.
 
-        config MQTT_TX_BUFFER_SIZE
-            int "MQTT TX FIFO size (bytes)"
-            default 1024
-            range 256 8192
+        config MQTT_CLIENT_ID
+            string "MQTT default client id"
+            default "mini_node"
             help
-              MQTT 客户端发送环形缓冲大小, 静态嵌入上下文。
-              TX ring buffer of the MQTT client, embedded in context.
+              未显式指定时使用的默认客户端 ID。
+              Default client id when not overridden by caller.
+    endmenu
 
-        config MQTT_RX_BUFFER_SIZE
-            int "MQTT RX FIFO size (bytes)"
-            default 1024
-            range 256 8192
-            help
-              MQTT 客户端接收环形缓冲大小, 需 >= 单条最大下行报文。
-              RX ring buffer; must fit the largest inbound packet.
+    menu "HTTP Client (net/port/http/http_client.c)"
+        depends on LWIP_TCP
 
-        config MQTT_BYTE_SIZE
-            int "MQTT FIFO element size (bytes)"
-            default 1
-            range 1 8
+        config NET_HTTP_USE_COREHTTP
+            bool "Use coreHTTP as HTTP protocol engine"
+            default y
             help
-              MQTT 收发 FIFO 的元素粒度 (字节), 默认 1 即字节流。
-              FIFO element granularity of the MQTT client, default 1.
+              用 FreeRTOS coreHTTP (HTTP/1.1 全方法 + llhttp 解析) 做报文编解码,
+              包装层只留短连接请求流程。关闭后 HTTP 客户端不参与链接。
+              Use FreeRTOS coreHTTP for request/response codec.
+
+        config HTTP_CLIENT_RESPONSE_BUFFER_SIZE
+            int "HTTP client response buffer size (bytes)"
+            default 2048
+            range 512 16384
+            help
+              HTTP 响应静态缓冲 (头 + 体共用), 需 >= 单次最大响应。
+              Static response buffer (headers + body), must fit the
+              largest expected response.
+
+        config HTTP_CLIENT_RECV_TIMEOUT_MS
+            int "HTTP client recv timeout (ms)"
+            default 5000
+            range 100 60000
+            help
+              单次请求等待响应的上限。
+              Timeout of one request waiting for response.
+    endmenu
+
+    menu "TLS (altcp_tls_mbedtls)"
+        depends on LWIP_TCP
+
+        config LWIP_ALTCP
+            bool "Application-layer TCP abstraction (altcp)"
+            default n
+            help
+              lwIP 应用层 TCP 抽象层 (altcp): 在 tcp_pcb 之上提供可叠加的
+              分层连接接口, 是 TLS 层的前提。关闭时 altcp_* 全部宏退化为
+              tcp_* 原生接口, 现有 TCP 代码零改动。
+              开启 LWIP_ALTCP_TLS 时由 select 强制选中。
+              Application-layer TCP abstraction of lwIP; prerequisite of
+              the TLS layer. When off, altcp_* macros degrade to plain
+              tcp_* APIs. Force-selected by LWIP_ALTCP_TLS.
+
+        config LWIP_ALTCP_TLS
+            bool "TLS over altcp (https/mqtts capable)"
+            default n
+            select LWIP_ALTCP
+            help
+              altcp 之上的 TLS 层 (lwip/src/apps/altcp_tls)。开启后传输层
+              可走加密通道, 供 https/mqtts 使用。需要 mbedTLS 库与较大的
+              lwIP 堆 (建议 MEM_SIZE >= 32768)。
+              TLS layer on top of altcp for https/mqtts. Requires mbedTLS
+              and a larger lwIP heap (MEM_SIZE >= 32768 recommended).
+
+        config LWIP_ALTCP_TLS_MBEDTLS
+            bool "mbedTLS backend for altcp TLS"
+            default y if LWIP_ALTCP_TLS
+            default n
+            depends on LWIP_ALTCP_TLS
+            help
+              altcp TLS 的 mbedTLS 实现 (LWIP_ALTCP_TLS_MBEDTLS)。当前唯一
+              后端, 开启时链接 lib/mbedtls 并编入 altcp_tls_mbedtls 源文件。
+              The mbedTLS implementation of altcp TLS; links lib/mbedtls.
+
+        config TLS_TRANSPORT_RX_BUFFER_SIZE
+            int "TLS transport RX FIFO size (bytes, power of 2)"
+            default 2048
+            range 512 16384
+            depends on LWIP_ALTCP_TLS
+            help
+              TLS 传输层 (net/port/tls/tls_transport.c) 每实例接收环形缓冲
+              大小, 必须为 2 的幂。静态嵌入上下文, 按实例数成倍占 RAM。
+              Per-instance RX ring buffer of the TLS transport; must be a
+              power of two.
+
+        config TLS_TRANSPORT_TX_BUFFER_SIZE
+            int "TLS transport TX FIFO size (bytes, power of 2)"
+            default 2048
+            range 512 16384
+            depends on LWIP_ALTCP_TLS
+            help
+              TLS 传输层每实例发送环形缓冲大小, 必须为 2 的幂。
+              Per-instance TX ring buffer of the TLS transport; must be a
+              power of two.
     endmenu
 
         config LWIP_ETHERNET

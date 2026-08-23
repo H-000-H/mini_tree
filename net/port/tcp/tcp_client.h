@@ -55,7 +55,8 @@ extern "C"
      * @param[in]     port       服务器端口
      * @return ERR_OK 成功发起连接, 其它为 lwIP 错误码
      */
-    int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* server_ip, uint16_t port);
+    int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* server_ip,
+                                    uint16_t port);
 
     /**
      * @brief 发送数据（将数据写入 TX FIFO 并尝试推送给底层 TCP）
@@ -65,7 +66,8 @@ extern "C"
      * @param[out] sent_len 返回实际发送的字节数
      * @return ERR_OK 成功, 其它为错误码
      */
-    int tcp_client_send(struct tcp_client_context* ctx, const void* data, uint16_t len, uint16_t* sent_len);
+    int tcp_client_send(struct tcp_client_context* ctx, const void* data, uint16_t len,
+                        uint16_t* sent_len);
 
     /**
      * @brief 从接收缓冲读取数据
@@ -75,7 +77,8 @@ extern "C"
      * @param[out] recv_len 实际读取到的字节数
      * @return ERR_OK 成功, 其它为错误码
      */
-    int tcp_client_read(struct tcp_client_context* ctx, void* buf, uint16_t len, uint16_t* recv_len);
+    int tcp_client_read(struct tcp_client_context* ctx, void* buf, uint16_t len,
+                        uint16_t* recv_len);
 
     /**
      * @brief 主动断开连接并清理 PCB
@@ -85,10 +88,12 @@ extern "C"
     int tcp_client_disconnect(struct tcp_client_context* ctx);
 
     /**
-     * @brief 触发刷新 TX FIFO 中排队的数据到网卡 (可在定时器或主循环中周期调用实际是调用tcp_write 只是发到缓冲区)
+     * @brief 触发刷新 TX FIFO 中排队的数据到网卡 (可在定时器或主循环中周期调用实际是调用tcp_write
+     * 只是发到缓冲区)
      * @param[in] ctx   客户端上下文
      * @return ERR_OK 成功, 其它为错误码
-     * @note 限制了最大发送块大小为 128 字节 (合适大小不建议去修改里面的逻辑了除非你真的需要更大的块大小)
+     * @note 限制了最大发送块大小为 128 字节
+     * (合适大小不建议去修改里面的逻辑了除非你真的需要更大的块大小)
      */
     int tcp_client_poll_send(struct tcp_client_context* ctx);
 #ifdef __cplusplus

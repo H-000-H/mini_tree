@@ -71,19 +71,13 @@
 | FreeRTOS | C++ | 34696 | 1752 | 1656 | 3408 |
 | RT-Thread | C | 40228 | 1892 | 1164 | 3056 |
 | RT-Thread | C++ | 40612 | 1892 | 1516 | 3408 |
-| ThreadX | C | 34120 | 1752 | 940 | 2692 |
-| ThreadX | C++ | 34504 | 1752 | 1292 | 3044 |
-| uC/OS-II | C | 32992 | 1744 | 872 | 2616 |
-| uC/OS-II | C++ | 33376 | 1744 | 1224 | 2968 |
-| uC/OS-III | C | 33448 | 1744 | 1404 | 3148 |
-| uC/OS-III | C++ | 33832 | 1744 | 1756 | 3500 |
 
 > Scope: under `XTASK_NONE`, `OSAL_NULL_TASK_CPP` is auto-disabled by Kconfig (`depends on !XTASK_NONE`) and the osal/system layer depends on the xtask interface (`osal_null.h` unconditionally includes `xtask.h`), so with no implementation it cannot link; the firmware degrades to a minimal closure (startup + hand-written main loop) without the system/osal layer. RTOS backends' `text` already includes their respective kernels; numbers include the whole library (board device model, etc.) — **relative deltas** are the meaningful comparison. The bare-metal scheduler tri-state (`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`) is selected via the `Kconfig.mini_tree` choice; CMake injects `MINI_TREE_XTASK_*` macros to decide whether `xtask_coop.c` or `xtask_preempt.c` is compiled. Preemptive and cooperative expose the identical API (`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`), so caller code switches transparently.
 
 Conclusions:
 1. Bare `while` is smallest (86 B text, zero RAM) — at the cost of writing all scheduling logic yourself.
-2. Bare-metal xtask (coop/preempt, ~31 KB text) is ~1.7 KB smaller than the smallest RTOS kernel (uC/OS-II ~33 KB) and needs **no per-task stack** (run-to-completion, task stack reuses the main-loop stack); preempt adds a task pool to bss (~444 B: 8×48 B slots + bitmap/list heads).
-3. RTOS kernel cost ordering: uC/OS-II < uC/OS-III < ThreadX < FreeRTOS < RT-Thread (text 33.0 → 40.2 KB).
+2. Bare-metal xtask (coop/preempt, ~31 KB text) is ~3 KB smaller than the smallest RTOS kernel (FreeRTOS ~34 KB) and needs **no per-task stack** (run-to-completion, task stack reuses the main-loop stack); preempt adds a task pool to bss (~444 B: 8×48 B slots + bitmap/list heads).
+3. RTOS kernel cost ordering: FreeRTOS < RT-Thread (text 34.3 → 40.2 KB).
 4. C vs C++ system backend: identical for bare-metal (coop/preempt); under RTOS, C++ costs ~+300–380 B text and +350–440 B bss more than C. **Pick the C backend for minimum size.**
 5. Per-task extra cost: RTOS needs a TCB + dedicated task stack (stack sized per app, counted separately); xtask only has a static TCB (coop 28 B / preempt 48 B pool slot), no stack.
 
@@ -121,7 +115,7 @@ Conclusions:
 
 | Kconfig / config | Value | Impact |
 | :--- | :--- | :--- |
-| `CONFIG_OSAL_NULL` | `y` | drop FreeRTOS/RT-Thread/ThreadX/UCOS, use bare-metal OSAL — main RAM driver (RTOS needs per-task TCB + dedicated stack; xtask reuses the main-loop stack) |
+| `CONFIG_OSAL_NULL` | `y` | drop FreeRTOS/RT-Thread, use bare-metal OSAL — main RAM driver (RTOS needs per-task TCB + dedicated stack; xtask reuses the main-loop stack) |
 | `CONFIG_XTASK_PREEMPT` | `y` | preemptive xtask coroutines + `CONFIG_XTASK_COROUTINE` |
 | `# CONFIG_SYSTEM_SCRUBBER` | unset | disable startup memory scrubber |
 | `# CONFIG_SYSTEM_CMD` | unset | disable command-line shell |

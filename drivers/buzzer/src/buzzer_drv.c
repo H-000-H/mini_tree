@@ -52,14 +52,20 @@ static const char* const k_tag = "buzzer";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void buzzer_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_buzzer_pool_ctrl, s_buzzer_used, BUZZER_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void buzzer_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_buzzer_pool_ctrl, s_buzzer_used, BUZZER_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct buzzer_device* buzzer_get_drvdata(struct device* pdev) { return (struct buzzer_device*)device_get_priv(pdev); }
+static struct buzzer_device* buzzer_get_drvdata(struct device* pdev)
+{
+    return (struct buzzer_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 首次 open 时打开对应后端（TIM 或 GPIO）
@@ -188,7 +194,8 @@ static int buzzer_cmd_beep(struct buzzer_device* dev, void* arg, size_t len, uin
         dev->tim.arr = 1000U;
         dev->tim.ccr = on ? 500U : 0U;
         dev->tim.channel = 1U;
-        COMPAT_IGNORE_RESULT(device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 100));
+        COMPAT_IGNORE_RESULT(
+            device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 100));
     }
     else if (dev->gpio_dev)
     {

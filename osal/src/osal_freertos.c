@@ -81,7 +81,8 @@ static int osal_mutex_init(struct osal_mutex* mutex, osal_mutex_type_t type)
     return mutex->handle ? OSAL_OK : OSAL_ERR_NOMEM;
 }
 
-_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE, "OSAL_MUTEX_STORAGE_SIZE too small");
+_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE,
+               "OSAL_MUTEX_STORAGE_SIZE too small");
 
 /**
  * @brief 判定是否在 FreeRTOS ISR 上下文
@@ -220,14 +221,18 @@ COMPAT_UNUSED COMPAT_STATIC_INLINE bool osal_spinlock_is_locked(struct osal_spin
 /* ── 槽位池 (每池独立临界区锁) ── */
 
 #ifdef ESP_PLATFORM
-_Static_assert(sizeof(portMUX_TYPE) <= OSAL_POOL_MUX_STORAGE_SIZE, "OSAL_POOL_MUX_STORAGE_SIZE too small for portMUX_TYPE");
+_Static_assert(sizeof(portMUX_TYPE) <= OSAL_POOL_MUX_STORAGE_SIZE,
+               "OSAL_POOL_MUX_STORAGE_SIZE too small for portMUX_TYPE");
 /**
  * @param[in] pool 池指针
  * @return 临界区锁指针
  * @brief ESP平台使用portMUX_TYPE作为临界区锁 把字节缓冲区指针强制转换成 portMUX_TYPE 结构体指针,
  * 然后传给 portENTER_CRITICAL_ISR 或 taskENTER_CRITICAL
  */
-COMPAT_STATIC_INLINE portMUX_TYPE* osal_pool_mux(osal_pool_t* pool) { return (portMUX_TYPE*)pool->mux_storage; }
+COMPAT_STATIC_INLINE portMUX_TYPE* osal_pool_mux(osal_pool_t* pool)
+{
+    return (portMUX_TYPE*)pool->mux_storage;
+}
 #else
 typedef int portMUX_TYPE;
 #endif
@@ -363,7 +368,10 @@ static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 初始化静态互斥锁池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化互斥锁池控制结构体
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE));
+}
 
 /**
  * @brief xTaskGetTickCount 转 ms
@@ -478,7 +486,8 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size, osal_mutex_type_t type)
+int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size,
+                                   osal_mutex_type_t type)
 {
     if (!out || !storage || storage_size < sizeof(struct osal_mutex))
         return OSAL_ERR_INVAL;
@@ -501,42 +510,60 @@ int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief FreeRTOS 静态/池化互斥锁
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief FreeRTOS 静态/池化互斥锁
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_recursive(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE); }
+int osal_mutex_create_recursive(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE);
+}
 
 /**
  * @brief FreeRTOS 静态/池化互斥锁
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_RECURSIVE); }
+int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_RECURSIVE);
+}
 
 /**
  * @brief FreeRTOS 静态/池化互斥锁
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_plain(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_plain(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief FreeRTOS 静态/池化互斥锁
  * @param[out] out 等见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief vSemaphoreDelete + 释放池槽
@@ -636,7 +663,10 @@ static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 初始化二值信号量池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化二值信号量池
  */
-pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE)); }
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE));
+}
 
 /**
  * @brief 初始化二值信号量
@@ -817,7 +847,9 @@ void osal_int_freeze(void) { portDISABLE_INTERRUPTS(); }
 static StackType_t s_idle_stack[configMINIMAL_STACK_SIZE]; /**<空闲任务栈*/
 static StaticTask_t s_idle_tcb; /**<空闲任务TCB*/
 
-void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer, StackType_t** ppxIdleTaskStackBuffer, uint32_t* pulIdleTaskStackSize)
+void vApplicationGetIdleTaskMemory(StaticTask_t** ppxIdleTaskTCBBuffer,
+                                   StackType_t** ppxIdleTaskStackBuffer,
+                                   uint32_t* pulIdleTaskStackSize)
 {
     *ppxIdleTaskTCBBuffer = &s_idle_tcb;
     *ppxIdleTaskStackBuffer = s_idle_stack;
@@ -843,7 +875,11 @@ void vApplicationStackOverflowHook(TaskHandle_t x_task, char* pcTaskName)
  * @param[in] stack_bytes 栈大小 (字节)
  * @return StackType_t 元素个数
  */
-COMPAT_STATIC_INLINE uint32_t osal_stack_words(uint32_t stack_bytes) { return (stack_bytes + sizeof(StackType_t) - 1) / sizeof(StackType_t); /**< 向上取整, 确保栈大小足够 */ }
+COMPAT_STATIC_INLINE uint32_t osal_stack_words(uint32_t stack_bytes)
+{
+    return (stack_bytes + sizeof(StackType_t) - 1) /
+           sizeof(StackType_t); /**< 向上取整, 确保栈大小足够 */
+}
 
 /**
  * @brief 钳位到 FreeRTOS 合法优先级 [0, configMAX_PRIORITIES)
@@ -865,7 +901,8 @@ COMPAT_STATIC_INLINE UBaseType_t osal_clamp_task_priority(uint32_t priority)
  * @param[in] core_id 核
  * @return OSAL_OK 或 NOMEM
  */
-int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
+                     osal_task_entry_t entry, void* param, int core_id)
 {
 #if CONFIG_CPU_CORES > 1
     if (core_id > 0)
@@ -881,7 +918,8 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, o
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size), param, osal_clamp_task_priority(priority), &handle);
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size), param,
+                                 osal_clamp_task_priority(priority), &handle);
     return (ret == pdPASS) ? OSAL_OK : OSAL_ERR_NOMEM;
 }
 
@@ -896,7 +934,9 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, o
  * @param[out] out_handle 输出
  * @return 0 或 NOMEM
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id, osal_task_handle_t* out_handle)
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
+                            osal_task_entry_t entry, void* param, int core_id,
+                            osal_task_handle_t* out_handle)
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;
@@ -914,7 +954,8 @@ int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t prio
 #endif
 
     TaskHandle_t handle = NULL;
-    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size), param, osal_clamp_task_priority(priority), &handle);
+    BaseType_t ret = xTaskCreate(entry, name, osal_stack_words(stack_size), param,
+                                 osal_clamp_task_priority(priority), &handle);
     if (ret != pdPASS)
         return OSAL_ERR_NOMEM;
     *out_handle = (osal_task_handle_t)handle;
@@ -990,7 +1031,10 @@ uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
  * @param[in] item_size 大小
  * @return 句柄
  */
-osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size) { return (osal_queue_handle_t)xQueueCreate(queue_len, item_size); }
+osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
+{
+    return (osal_queue_handle_t)xQueueCreate(queue_len, item_size);
+}
 
 /**
  * @brief vQueueDelete
@@ -1068,7 +1112,8 @@ COMPAT_WEAK void safety_hardware_shutdown(void) { COMPAT_TRAP(); }
 /**
  * @brief 弱符号 Panic 安全互锁 (板级可覆盖: 喂狗、切断执行器等)
  */
-COMPAT_WEAK void osal_panic_interlock(void) { /* 板级可覆盖: 喂硬件看门狗, 切断执行器供电, 等待复位 */ }
+COMPAT_WEAK void osal_panic_interlock(void)
+{ /* 板级可覆盖: 喂硬件看门狗, 切断执行器供电, 等待复位 */ }
 
 /**
  * @brief 日志

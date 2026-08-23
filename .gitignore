@@ -138,3 +138,27 @@ lib/uC-LIB/
 
 # IDE 索引生成物（含绝对路径，由 tools/gen_compile_db.py 生成）
 /compile_commands.json
+
+# ---------------------------------------------
+# net/ 只保留 mqtt 最小构建集 + pppif/usb 网卡
+# 屏蔽：http/https/udp/mqtts/tls/ethernet/arch/sys/CMakeLists/lwipopts
+# ---------------------------------------------
+/net/arch/
+/net/sys/
+/net/CMakeLists.txt
+/net/lwipopts.h
+/net/port/ethernet/
+/net/port/http/
+/net/port/https/
+/net/port/mqtt/mqtt_broker.c
+/net/port/mqtt/mqtt_broker.h
+/net/port/mqtts/
+/net/port/tls/
+/net/port/udp/
+# ---------------------------------------------
+# ui/ 只保留 display/，其余不提交
+# ---------------------------------------------
+/ui/CMakeLists.txt
+/ui/lvgl/
+/ui/touch/
+/ui/u8g2/

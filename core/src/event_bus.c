@@ -136,7 +136,9 @@ int event_bus_init(void)
         return MINI_ERR_NOMEM;
     }
 
-    if (osal_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage, sizeof(s_bus.sub_lock_storage)) != 0 || s_bus.sub_lock == NULL)
+    if (osal_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage,
+                                 sizeof(s_bus.sub_lock_storage)) != 0 ||
+        s_bus.sub_lock == NULL)
     {
         SYS_LOGE(K_TAG, "FATAL: mutex create failed");
         osal_queue_delete(s_bus.queue);
@@ -158,7 +160,8 @@ int event_bus_init(void)
  * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文; MINI_ERR_NOTSUPP 封表;
  *         MINI_ERR_INVAL 参数非法/未初始化; MINI_ERR_TIMEOUT 锁超时; MINI_ERR_NOSPC 表满
  */
-int event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback, void* user_data)
+int event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback,
+                        void* user_data)
 {
     if (osal_in_isr())
         return MINI_ERR_ISR;
@@ -200,7 +203,8 @@ int event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callb
  * @param[in] px_yield_required ISR 路径下输出是否需要 yield (可为 NULL)
  * @return MINI_OK 入队成功; MINI_ERR_AGAIN 总线未初始化/OS 未就绪; MINI_ERR_NOSPC 队列满
  */
-static int event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
+static int event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
+                                   bool* px_yield_required)
 {
     if (s_bus.queue == NULL || !s_bus.inited)
         return MINI_ERR_AGAIN;
@@ -251,7 +255,10 @@ int event_bus_post(uint32_t id, uintptr_t arg)
  * @param[in] px_yield_required yield
  * @return MINI_OK 成功; MINI_ERR_AGAIN 未就绪; MINI_ERR_NOSPC 队列满
  */
-int event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required) { return event_bus_post_internal(id, arg, true, px_yield_required); }
+int event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
+{
+    return event_bus_post_internal(id, arg, true, px_yield_required);
+}
 
 /**
  * @brief 丢弃计数
@@ -267,7 +274,9 @@ void event_bus_start(void)
     if (s_bus.task != NULL || s_bus.queue == NULL)
         return;
 
-    if (osal_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO, event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 || s_bus.task == NULL)
+    if (osal_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO,
+                                event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 ||
+        s_bus.task == NULL)
     {
         SYS_LOGW(K_TAG, "dispatch task create failed");
         return;

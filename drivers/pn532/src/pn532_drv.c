@@ -47,20 +47,27 @@ static const char* const k_tag = "pn532";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void pn532_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_pn532_pool_ctrl, s_pn532_used, PN532_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void pn532_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_pn532_pool_ctrl, s_pn532_used, PN532_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct pn532_device* pn532_get_drvdata(struct device* pdev) { return (struct pn532_device*)device_get_priv(pdev); }
+static struct pn532_device* pn532_get_drvdata(struct device* pdev)
+{
+    return (struct pn532_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 向 UART 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int pn532_uart_wr(struct pn532_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int pn532_uart_wr(struct pn532_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -183,7 +190,8 @@ struct pn532_ioctl_map
 static int pn532_cmd_fw(struct pn532_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     /* HSU wake + GetFirmwareVersion 帧 */
-    static const uint8_t wake[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    static const uint8_t wake[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     static const uint8_t cmd[] = {0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD4, 0x02, 0x2A, 0x00};
     uint8_t rx[32];
     struct pn532_fw* o = (struct pn532_fw*)arg;

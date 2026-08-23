@@ -51,20 +51,27 @@ static const char* const k_tag = "xpt2046";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void xpt2046_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_xpt2046_pool_ctrl, s_xpt2046_used, XPT2046_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void xpt2046_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_xpt2046_pool_ctrl, s_xpt2046_used, XPT2046_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct xpt2046_device* xpt2046_get_drvdata(struct device* pdev) { return (struct xpt2046_device*)device_get_priv(pdev); }
+static struct xpt2046_device* xpt2046_get_drvdata(struct device* pdev)
+{
+    return (struct xpt2046_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int xpt2046_spi_xfer(struct xpt2046_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
+static int xpt2046_spi_xfer(struct xpt2046_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
+                            uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -169,7 +176,8 @@ static int xpt2046_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*xpt2046_ioctl_fn_t)(struct xpt2046_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*xpt2046_ioctl_fn_t)(struct xpt2046_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct xpt2046_ioctl_map
 {
     xpt2046_ioctl_fn_t handler;

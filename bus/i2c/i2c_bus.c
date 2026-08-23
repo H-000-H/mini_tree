@@ -59,7 +59,10 @@ static const char* const k_tag = "i2c_bus";
 /**
  * @brief I2C Host 池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
+}
 /*===========================================================================================================================================================*/
 /* Host pool helpers */
 /*===========================================================================================================================================================*/
@@ -164,7 +167,10 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
     return MINI_OK;
 }
 
-int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg) { return i2c_host_init_impl(pdev, cfg); }
+int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg)
+{
+    return i2c_host_init_impl(pdev, cfg);
+}
 
 /**
  * @brief I2C 总线主机销毁实现
@@ -186,7 +192,8 @@ static int i2c_host_deinit_impl(struct device* pdev)
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
-        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
+                 COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
         return MINI_ERR_BUSY;
     }
 
@@ -230,7 +237,8 @@ static int i2c_host_role_impl(struct device* pdev)
     if (!host)
         return -1;
 
-    return host->hal_host.cfg.bus_role == HAL_I2C_BUS_ROLE_MASTER ? I2C_BUS_ROLE_MASTER : I2C_BUS_ROLE_SLAVE;
+    return host->hal_host.cfg.bus_role == HAL_I2C_BUS_ROLE_MASTER ? I2C_BUS_ROLE_MASTER :
+                                                                    I2C_BUS_ROLE_SLAVE;
 }
 
 int i2c_bus_host_role(struct device* pdev) { return i2c_host_role_impl(pdev); }
@@ -287,7 +295,11 @@ static int i2c_client_register_impl(struct device* pdev, const void* cfg, void**
     return MINI_OK;
 }
 
-int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg, struct i2c_bus_client** out) { return i2c_client_register_impl(pdev, cfg, (void**)out); }
+int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg,
+                            struct i2c_bus_client** out)
+{
+    return i2c_client_register_impl(pdev, cfg, (void**)out);
+}
 
 /**
  * @brief I2C 总线客户端销毁实现 (关 hw / 减 host 引用 / 清槽)
@@ -364,7 +376,8 @@ int i2c_bus_close(struct device* pdev)
  * @param[in] xfer_mode 传输模式 (POLL / DMA / AUTO)
  * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
-static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* tx, size_t len,
+                                 uint32_t timeout_ms, uint32_t xfer_mode)
 {
     if (xfer_mode > HAL_I2C_XFER_DMA)
         return MINI_ERR_INVAL;
@@ -394,7 +407,8 @@ static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* t
  * @param[in] xfer_mode 传输模式 (POLL / DMA / AUTO)
  * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
-static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size_t len,
+                                uint32_t timeout_ms, uint32_t xfer_mode)
 {
     if (xfer_mode > HAL_I2C_XFER_DMA)
         return MINI_ERR_INVAL;
@@ -414,7 +428,8 @@ static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size
     return hal_i2c_read(&client->hal_dev, rx, len, timeout_ms);
 }
 
-int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                     uint32_t timeout_ms, uint32_t xfer_mode)
 {
     struct i2c_bus_client* client;
     int role;
@@ -440,7 +455,8 @@ int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t
         if (xfer_mode == HAL_I2C_XFER_DMA)
             return hal_i2c_dma_write_then_read(&client->hal_dev, tx, rx, len, timeout_ms);
         /* AUTO: DMA 可用则走 DMA 组合, 否则 poll */
-        if (client->host->hal_host.cfg.dma_tx.dma_enable && (len == 1U || client->host->hal_host.cfg.dma_rx.dma_enable))
+        if (client->host->hal_host.cfg.dma_tx.dma_enable &&
+            (len == 1U || client->host->hal_host.cfg.dma_rx.dma_enable))
         {
             int ret = hal_i2c_dma_write_then_read(&client->hal_dev, tx, rx, len, timeout_ms);
             if (ret != MINI_ERR_NOTSUPP)
@@ -453,7 +469,8 @@ int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t
     return i2c_master_read_mode(client, rx, len, timeout_ms, xfer_mode);
 }
 
-int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms,
+                  uint32_t xfer_mode)
 {
     struct i2c_bus_client* client;
 
@@ -470,7 +487,8 @@ int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t t
     return i2c_master_write_mode(client, tx, len, timeout_ms, xfer_mode);
 }
 
-int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
+int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms,
+                 uint32_t xfer_mode)
 {
     struct i2c_bus_client* client;
 
@@ -490,7 +508,8 @@ int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_
 /*===========================================================================================================================================================*/
 /* Slave API — 故意空壳: STM32 路径固定返回 NOTSUPP */
 /*===========================================================================================================================================================*/
-int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
+int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                       uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(tx);
@@ -500,7 +519,8 @@ int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size
     return MINI_ERR_NOTSUPP;
 }
 
-int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
+int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
+                           uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(data);
@@ -509,7 +529,8 @@ int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
     return MINI_ERR_NOTSUPP;
 }
 
-int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms)
+int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap,
+                                   size_t* trans_len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(rx_data);

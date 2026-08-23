@@ -52,7 +52,8 @@ extern "C"
      */
     COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void)
     {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
         uint32_t primask;
         __asm__ volatile("mrs %0, primask\ncpsid i" : "=r"(primask)::"memory");
         return primask;
@@ -72,7 +73,8 @@ extern "C"
      */
     COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t state)
     {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
         __asm__ volatile("msr primask, %0" ::"r"(state) : "memory");
 #elif defined(__riscv)
     if (state & 8U)
@@ -108,7 +110,10 @@ extern "C"
  * @return 任务句柄 optional; 创建失败为空
  * @note 裸机 C API (osal.h) 恒返回 OSAL_ERR_NOTSUPP, 任务创建请走本重载 (xtask 周期任务)
  */
-etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size, uint32_t period, void (*entry)(x_task*), void* param1, void* param2 = nullptr, int core_id = -1);
+etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,
+                                                uint32_t period, void (*entry)(x_task*),
+                                                void* param1, void* param2 = nullptr,
+                                                int core_id = -1);
 #else
 /**
  * @brief 裸机专用 C++ 重载 osal_task_create (抢占式, 定义见 osal_task.cpp)
@@ -121,7 +126,10 @@ etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack
  * @param[in] core_id 核心号 (默认 -1)
  * @return 任务句柄 optional; 创建失败为空
  */
-etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, void (*entry)(x_task*), void* param1, void* param2 = nullptr, int core_id = -1);
+etl::optional<x_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,
+                                                uint32_t priority, void (*entry)(x_task*),
+                                                void* param1, void* param2 = nullptr,
+                                                int core_id = -1);
 #endif /* CONFIG_XTASK_PREEMPT */
 #endif /* CONFIG_OSAL_NULL_TASK_CPP */
 #endif /* __cplusplus */

@@ -44,7 +44,11 @@ static osal_pool_t s_usb_priv_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_host_tag = "usb_host_vfs";
 
 /** 资源池初始化 (pre_execution 阶段, 供 device 池复用) */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
+}
 
 /**
  * @brief 从 device 树解析 USB 主机硬件配置 (DTSI 直投到 hal_usb_bus_config)
@@ -58,9 +62,15 @@ static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config
     int dp_port = 0, dp_pin = 0, dp_af = 0;
     int dm_port = 0, dm_pin = 0, dm_af = 0;
 
-    if (device_get_prop_int(pdev, "usb-base", &usb_base) != MINI_OK || device_get_prop_int(pdev, "rhport", &rhport) != MINI_OK || device_get_prop_int(pdev, "irqn", &irqn) != MINI_OK ||
-        device_get_prop_int(pdev, "dp-port", &dp_port) != MINI_OK || device_get_prop_int(pdev, "dp-pin", &dp_pin) != MINI_OK || device_get_prop_int(pdev, "dp-af", &dp_af) != MINI_OK ||
-        device_get_prop_int(pdev, "dm-port", &dm_port) != MINI_OK || device_get_prop_int(pdev, "dm-pin", &dm_pin) != MINI_OK || device_get_prop_int(pdev, "dm-af", &dm_af) != MINI_OK)
+    if (device_get_prop_int(pdev, "usb-base", &usb_base) != MINI_OK ||
+        device_get_prop_int(pdev, "rhport", &rhport) != MINI_OK ||
+        device_get_prop_int(pdev, "irqn", &irqn) != MINI_OK ||
+        device_get_prop_int(pdev, "dp-port", &dp_port) != MINI_OK ||
+        device_get_prop_int(pdev, "dp-pin", &dp_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "dp-af", &dp_af) != MINI_OK ||
+        device_get_prop_int(pdev, "dm-port", &dm_port) != MINI_OK ||
+        device_get_prop_int(pdev, "dm-pin", &dm_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "dm-af", &dm_af) != MINI_OK)
         return MINI_ERR_INVAL;
 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "vbus-sense", &vbus));
@@ -187,7 +197,10 @@ static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_client_tag = "usb_client_vfs";
 
 /** 客户端池初始化 (pre_execution 阶段) */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT));
+}
 
 /**
  * @brief VFS open 回调: 打开 USB 总线 (引用计数 +1)
@@ -322,7 +335,8 @@ static int usb_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
  * @param[in] timeout_ms 超时毫秒数 (未用)
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_NOTSUPP
  */
-static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (cmd == USB_CMD_SET_XFER_MODE)
@@ -424,11 +438,20 @@ static int usb_vfs_client_remove(struct device* pdev)
 }
 
 /** CDC ACM 客户端 probe (DRIVER_REGISTER) */
-static int usb_cdc_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_CDC); }
+static int usb_cdc_probe(struct device* pdev)
+{
+    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_CDC);
+}
 /** CDC-ECM 客户端 probe (DRIVER_REGISTER) */
-static int usb_ecm_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_ECM); }
+static int usb_ecm_probe(struct device* pdev)
+{
+    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_ECM);
+}
 /** HID 客户端 probe (DRIVER_REGISTER) */
-static int usb_hid_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID); }
+static int usb_hid_probe(struct device* pdev)
+{
+    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID);
+}
 
 DRIVER_REGISTER(usb_otg_host, "usb-otg-host", vfs_usb_priv_probe, vfs_usb_priv_remove)
 DRIVER_REGISTER(usb_cdc_acm, "heterogeneous,usb-cdc-acm", usb_cdc_probe, usb_vfs_client_remove)

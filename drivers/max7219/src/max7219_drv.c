@@ -47,20 +47,27 @@ static const char* const k_tag = "max7219";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void max7219_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_max7219_pool_ctrl, s_max7219_used, MAX7219_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void max7219_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_max7219_pool_ctrl, s_max7219_used, MAX7219_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct max7219_device* max7219_get_drvdata(struct device* pdev) { return (struct max7219_device*)device_get_priv(pdev); }
+static struct max7219_device* max7219_get_drvdata(struct device* pdev)
+{
+    return (struct max7219_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int max7219_spi_xfer(struct max7219_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
+static int max7219_spi_xfer(struct max7219_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
+                            uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -166,7 +173,8 @@ static int max7219_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*max7219_ioctl_fn_t)(struct max7219_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*max7219_ioctl_fn_t)(struct max7219_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct max7219_ioctl_map
 {
     max7219_ioctl_fn_t handler;
@@ -210,7 +218,8 @@ static int max7219_cmd_init(struct max7219_device* dev, void* arg, size_t len, u
 static int max7219_cmd_digit(struct max7219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct max7219_digit* a = (struct max7219_digit*)arg;
-    if (!dev->hw_ready || !a || len != sizeof(*a) || a->digit < MAX7219_REG_DIGIT0 || a->digit > MAX7219_REG_DIGIT7)
+    if (!dev->hw_ready || !a || len != sizeof(*a) || a->digit < MAX7219_REG_DIGIT0 ||
+        a->digit > MAX7219_REG_DIGIT7)
         return MINI_ERR_INVAL;
     return max7219_wr(dev, a->digit, a->value, timeout_ms);
 }
@@ -235,7 +244,8 @@ static int max7219_cmd_clear(struct max7219_device* dev, void* arg, size_t len, 
 /**
  * @brief MAX7219_CMD_FLUSH_FB 实现：整帧逐位写入
  */
-static int max7219_cmd_flush_fb(struct max7219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
+static int max7219_cmd_flush_fb(struct max7219_device* dev, void* arg, size_t len,
+                                uint32_t timeout_ms)
 {
     struct max7219_fb* a = (struct max7219_fb*)arg;
     int i;

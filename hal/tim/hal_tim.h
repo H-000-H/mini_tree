@@ -36,10 +36,12 @@ extern "C"
 #define HAL_BASE_TIM_MAX_CHANNELS 4 /**< 基础定时器最大通道数 DTS没有定义时使用默认值 */
 #endif
 #ifndef HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS
-#define HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS 4 /**< 输出比较定时器最大通道数 DTS没有定义时使用默认值 */
+#define HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS                                                        \
+    4 /**< 输出比较定时器最大通道数 DTS没有定义时使用默认值 */
 #endif
 #ifndef HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS
-#define HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS 4 /**< 输入捕获定时器最大通道数 DTS没有定义时使用默认值 */
+#define HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS                                                         \
+    4 /**< 输入捕获定时器最大通道数 DTS没有定义时使用默认值 */
 #endif
 #ifndef HAL_ENCODER_TIM_MAX_CHANNELS
 #define HAL_ENCODER_TIM_MAX_CHANNELS 2 /**< 编码器定时器最大通道数 DTS没有定义时使用默认值 */
@@ -212,18 +214,24 @@ extern "C"
             /* 1. 多通道输出比较/PWM 模式 */
             struct
             {
-                hal_output_compare_config config[HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS]; /**< 输出比较配置 */
-                hal_tim_channel_config channel[HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS]; /**< 输出比较模式通道配置 */
-                hal_tim_pin_config pin[HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS]; /**< 输出比较模式引脚配置 */
+                hal_output_compare_config
+                    config[HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS]; /**< 输出比较配置 */
+                hal_tim_channel_config
+                    channel[HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS]; /**< 输出比较模式通道配置 */
+                hal_tim_pin_config
+                    pin[HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS]; /**< 输出比较模式引脚配置 */
             } oc_mode;
 
             /* 2. 多通道输入捕获模式 */
             struct
             {
                 uintptr_t ic_handle; /**< 指向底层芯片特有的输入捕获寄存器块或句柄 */
-                hal_input_capture_config config[HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS]; /**< 输入捕获配置 */
-                hal_tim_channel_config channel[HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS]; /**< 输入捕获模式通道配置 */
-                hal_tim_pin_config pin[HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS]; /**< 输入捕获模式引脚配置 */
+                hal_input_capture_config
+                    config[HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS]; /**< 输入捕获配置 */
+                hal_tim_channel_config
+                    channel[HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS]; /**< 输入捕获模式通道配置 */
+                hal_tim_pin_config
+                    pin[HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS]; /**< 输入捕获模式引脚配置 */
             } ic_mode;
 
             /* 3. 正交编码器接口模式（固定双通道、双引脚） */
@@ -231,7 +239,8 @@ extern "C"
             {
                 uintptr_t encoder_handle; /**< 指向底层芯片特有的编码器寄存器块或句柄 */
                 hal_encoder_config config; /**< 编码器配置 */
-                hal_tim_channel_config channel[HAL_ENCODER_TIM_MAX_CHANNELS]; /**< 编码器模式通道配置 */
+                hal_tim_channel_config
+                    channel[HAL_ENCODER_TIM_MAX_CHANNELS]; /**< 编码器模式通道配置 */
                 hal_tim_pin_config pin[HAL_ENCODER_TIM_MAX_CHANNELS]; /**< 编码器模式引脚配置 */
             } encoder_mode;
 
@@ -240,8 +249,10 @@ extern "C"
             {
                 uintptr_t hall_handle; /**< 指向底层芯片特有的霍尔传感器寄存器块或句柄 */
                 hal_hall_config config; /**< 霍尔传感器配置 */
-                hal_tim_channel_config capture_channel; /**< 硬件映射的目标捕获通道（STM32通常固定为CH1） */
-                hal_tim_pin_config phase_pins[HAL_HALL_TIM_MAX_CHANNELS]; /**< 接入的 U, V, W 3相物理引脚 */
+                hal_tim_channel_config
+                    capture_channel; /**< 硬件映射的目标捕获通道（STM32通常固定为CH1） */
+                hal_tim_pin_config
+                    phase_pins[HAL_HALL_TIM_MAX_CHANNELS]; /**< 接入的 U, V, W 3相物理引脚 */
             } hall_mode;
         };
         hal_bdtr_config bdtr; /**< 断路器与死区配置，属于高级定时器全局联动属性 */
@@ -285,7 +296,9 @@ extern "C"
      * @param[in] host 主机配置指针 (DTSI 直投)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_device_init(hal_tim_device* pdev, hal_tim_platform_unique_config* unique, hal_tim_host_config* host);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_device_init(hal_tim_device* pdev,
+                                                      hal_tim_platform_unique_config* unique,
+                                                      hal_tim_host_config* host);
     /**
      * @brief 释放 TIM 设备运行时资源
      * @param[in] pdev TIM 设备对象指针
@@ -313,14 +326,16 @@ extern "C"
      * @param[in] frequency 目标频率 (Hz)
      * @param[in] duty 占空比值 (或者是直接对应的 Compare 寄存器数值，依底层设计而定)
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel, uint32_t frequency, uint32_t duty);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel,
+                                                     uint32_t frequency, uint32_t duty);
 
     /**
      * @brief 定时器中断配置接口
      * @param[in] pdev 定时器设备句柄
      * @param[in] interrupt_config 中断配置
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_interrupt_config(hal_tim_device* pdev, uint32_t interrupt_config);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_interrupt_config(hal_tim_device* pdev,
+                                                           uint32_t interrupt_config);
     /**
      * @brief 获取定时器当前计数值 (热路径读取 CNT)
      * @param[in] pdev 定时器设备句柄
@@ -335,21 +350,24 @@ extern "C"
      * @param[out] value 回传捕获的计数值
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_capture_value(const hal_tim_device* pdev, uint32_t channel, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_capture_value(const hal_tim_device* pdev,
+                                                            uint32_t channel, uint32_t* value);
     /**
      * @brief 获取编码器累计计数值
      * @param[in] pdev 定时器设备句柄
      * @param[out] value 回传编码器计数值
      * @return 成功返回 MINI_OK, pdev 或 value 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_encoder_value(const hal_tim_device* pdev, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_encoder_value(const hal_tim_device* pdev,
+                                                            uint32_t* value);
     /**
      * @brief 获取霍尔换向捕获值
      * @param[in] pdev 定时器设备句柄
      * @param[out] value 回传霍尔捕获值
      * @return 成功返回 MINI_OK, pdev 或 value 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_hall_value(const hal_tim_device* pdev, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_hall_value(const hal_tim_device* pdev,
+                                                         uint32_t* value);
     /**
      * @brief 强制停止定时器接口
      * @param[in] pdev 定时器设备句柄
@@ -361,7 +379,8 @@ extern "C"
      * @param[in] pdev 定时器设备句柄
      * @param[in] encoder_mode 编码器倍频模式（如：1, 2, 4 倍频）
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_encoder_start(hal_tim_device* pdev, uint32_t encoder_mode);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_encoder_start(hal_tim_device* pdev,
+                                                        uint32_t encoder_mode);
 
     /**
      * @brief 启动霍尔接口换向捕获模式
@@ -389,7 +408,8 @@ extern "C"
      * @param[out] value 回传自动重装载值
      * @return 成功返回 MINI_OK, pdev 或 value 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_autoreload(const hal_tim_device* pdev, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_autoreload(const hal_tim_device* pdev,
+                                                         uint32_t* value);
     /**
      * @brief 设置预分频器 (PSC)
      * @param[in] pdev 定时器设备句柄
@@ -403,7 +423,8 @@ extern "C"
      * @param[out] value 回传预分频系数
      * @return 成功返回 MINI_OK, pdev 或 value 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_prescaler(const hal_tim_device* pdev, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_prescaler(const hal_tim_device* pdev,
+                                                        uint32_t* value);
     /**
      * @brief 设置时钟分频因子 (用于死区/滤波采样)
      * @param[in] pdev 定时器设备句柄
@@ -417,7 +438,8 @@ extern "C"
      * @param[out] value 回传时钟分频因子
      * @return 成功返回 MINI_OK, pdev 或 value 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_clock_division(const hal_tim_device* pdev, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_clock_division(const hal_tim_device* pdev,
+                                                             uint32_t* value);
     /**
      * @brief 设置计数模式 (向上/向下/中心对齐)
      * @param[in] pdev 定时器设备句柄
@@ -431,7 +453,8 @@ extern "C"
      * @param[out] value 回传计数模式
      * @return 成功返回 MINI_OK, pdev 或 value 为空返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_counter_mode(const hal_tim_device* pdev, uint32_t* value);
+    int COMPAT_WARN_UNUSED_RESULT hal_tim_get_counter_mode(const hal_tim_device* pdev,
+                                                           uint32_t* value);
     /**
      * @brief 使能 ARR 预装载 (影子寄存器)
      * @param[in] pdev 定时器设备句柄
@@ -460,7 +483,8 @@ extern "C"
     /**
      * @brief 清除 TIM update 标志, 供 ISR top_half 调用 (避免中断子系统依赖 LL_TIM)
      * @param[in] pdev 定时器设备句柄
-     * @return 成功返回 MINI_OK; 无 update flag (spurious IRQ) 返回 MINI_ERR_IO; 非法参数返回 MINI_ERR_INVAL
+     * @return 成功返回 MINI_OK; 无 update flag (spurious IRQ) 返回 MINI_ERR_IO; 非法参数返回
+     * MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_tim_clear_update_flag(hal_tim_device* pdev);
 

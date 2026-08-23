@@ -93,10 +93,15 @@ COMPAT_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
  * @brief 队列池初始化
  * @details 队列池初始化 主要是队列的缓冲区 队列的长度 队列的元素大小 队列的头部和尾部
  */
-pre_execution(PRE_EXEC_PRIO_QUEUE_POOL) static void osal_null_queue_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_QUEUE_POOL_SIZE)); }
+pre_execution(PRE_EXEC_PRIO_QUEUE_POOL) static void osal_null_queue_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_QUEUE_POOL_SIZE));
+}
 #endif /* OSAL_NULL_QUEUE_POOL_SIZE > 0 */
 
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
 /**
  * @brief 执行 WFI 等待中断 (Cortex-M 低功耗忙等)
  */
@@ -142,7 +147,8 @@ struct osal_mutex
     COMPAT_ATOMIC_UINT lock; /**<互斥锁状态*/
     COMPAT_ATOMIC_UINT depth; /**<互斥锁深度*/
 };
-_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE, "osal_null: OSAL_MUTEX_STORAGE_SIZE too small");
+_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE,
+               "osal_null: OSAL_MUTEX_STORAGE_SIZE too small");
 
 /**
  * @brief 互斥锁初始化
@@ -176,7 +182,10 @@ static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 互斥锁池初始化
  * @details 互斥锁池初始化 主要是互斥锁的缓冲区 互斥锁的使用情况 互斥锁的池控制句柄
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_null_mutex_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_null_mutex_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE));
+}
 
 /**
  * @brief 判定是否在 ISR (嵌套计数 + IPSR/mcause)
@@ -187,7 +196,8 @@ int osal_in_isr(void)
     if (s_isr_nest > 0U)
         return 1;
 
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
     uint32_t ipsr;
     __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
     return (ipsr & 0xFFU) != 0U;
@@ -286,7 +296,8 @@ COMPAT_STATIC_INLINE int queue_index_of(osal_queue_handle_t queue)
 #if OSAL_NULL_QUEUE_POOL_SIZE > 0
     if (!queue)
         return -1;
-    int idx = (int)((struct osal_queue_obj*)queue - s_queues); /**< 计算出队列在静态队列池中的索引queue的地址减去全局起始地址 */
+    int idx = (int)((struct osal_queue_obj*)queue -
+                    s_queues); /**< 计算出队列在静态队列池中的索引queue的地址减去全局起始地址 */
     if (idx < 0 || idx >= OSAL_NULL_QUEUE_POOL_SIZE || !s_queue_used[idx])
         return -1;
     return idx;
@@ -394,7 +405,10 @@ COMPAT_UNUSED COMPAT_STATIC_INLINE bool osal_spinlock_is_locked(struct osal_spin
  * @brief xtask tick_count 毫秒时钟
  * @return 毫秒
  */
-uint32_t osal_time_ms(void) { return COMPAT_ATOMIC_LOAD(&g_scheduler.tick_count, COMPAT_MO_RELAXED); }
+uint32_t osal_time_ms(void)
+{
+    return COMPAT_ATOMIC_LOAD(&g_scheduler.tick_count, COMPAT_MO_RELAXED);
+}
 
 #define OSAL_NULL_TICK_HANG_THRESHOLD 10000U
 /**
@@ -518,7 +532,8 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size, osal_mutex_type_t type)
+int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size,
+                                   osal_mutex_type_t type)
 {
     if (!out || !storage || storage_size < sizeof(struct osal_mutex))
         return OSAL_ERR_INVAL;
@@ -540,7 +555,10 @@ int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief storage 内创建普通互斥锁
@@ -548,7 +566,10 @@ int osal_mutex_create(struct osal_mutex** out) { return osal_mutex_create_typed(
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief 创建递归互斥锁
@@ -556,7 +577,10 @@ int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t stor
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_recursive(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE); }
+int osal_mutex_create_recursive(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE);
+}
 
 /**
  * @brief storage 内创建递归互斥锁
@@ -564,7 +588,10 @@ int osal_mutex_create_recursive(struct osal_mutex** out) { return osal_mutex_cre
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_RECURSIVE); }
+int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_RECURSIVE);
+}
 
 /**
  * @brief 显式创建普通互斥锁
@@ -572,7 +599,10 @@ int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, s
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_plain(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_plain(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief storage 内显式普通互斥锁
@@ -580,7 +610,10 @@ int osal_mutex_create_plain(struct osal_mutex** out) { return osal_mutex_create_
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief 销毁互斥锁并归还池槽
@@ -778,7 +811,8 @@ __attribute__((unused)) static void osal_periodic_task_stub(void* param)
  * @param[in] core_id 忽略
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
+                     osal_task_entry_t entry, void* param, int core_id)
 {
     COMPAT_UNUSED_PARAM(name);
     COMPAT_UNUSED_PARAM(stack_size);
@@ -800,7 +834,9 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, o
  * @param[out] out_handle 输出
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id, osal_task_handle_t* out_handle)
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
+                            osal_task_entry_t entry, void* param, int core_id,
+                            osal_task_handle_t* out_handle)
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;
@@ -889,7 +925,10 @@ static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
 /**
  * @brief null OSAL 信号量池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_null_sem_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE)); }
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_null_sem_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE));
+}
 
 /**
  * @brief 池化二值信号量
@@ -1058,8 +1097,11 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
     if (item_size % sizeof(fifo_data_type) != 0)
         return NULL;
 
-    size_t elements_per_item = item_size / sizeof(fifo_data_type); /**< 计算出一个消息 item 占用了多少个 FIFO 基础单元 */
-    size_t total_elements = queue_len * elements_per_item; /**< 计算总元素个数,因为底层fifo就没有%和//所以这里必须2的整数倍 */
+    size_t elements_per_item =
+        item_size / sizeof(fifo_data_type); /**< 计算出一个消息 item 占用了多少个 FIFO 基础单元 */
+    size_t total_elements =
+        queue_len *
+        elements_per_item; /**< 计算总元素个数,因为底层fifo就没有%和//所以这里必须2的整数倍 */
 
     if ((total_elements & (total_elements - 1)) != 0) /**< 判断总元素个数是否为2的整数倍 */
         COMPAT_TRAP();

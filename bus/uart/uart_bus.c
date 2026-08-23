@@ -69,8 +69,10 @@ static const char* const k_tag = "uart_bus";
  */
 pre_execution(PRE_EXEC_PRIO_RES_POOL) static void uart_bus_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_host_pool_ctrl, s_uart_host_used, UART_BUS_HOST_MAX));
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_client_pool_ctrl, s_uart_client_used, UART_BUS_CLIENT_MAX));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_uart_host_pool_ctrl, s_uart_host_used, UART_BUS_HOST_MAX));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_uart_client_pool_ctrl, s_uart_client_used, UART_BUS_CLIENT_MAX));
 }
 
 /*===========================================================================================================================================================*/
@@ -171,7 +173,8 @@ static int uart_host_init_impl(struct device* pdev, const void* cfg)
         return ret;
     }
 
-    SYS_LOGI(k_tag, "host init OK: %s uart=%lu baud=%lu", device_get_name(pdev), (unsigned long)host_cfg->uart, (unsigned long)host_cfg->baud_rate);
+    SYS_LOGI(k_tag, "host init OK: %s uart=%lu baud=%lu", device_get_name(pdev),
+             (unsigned long)host_cfg->uart, (unsigned long)host_cfg->baud_rate);
     return MINI_OK;
 }
 
@@ -219,7 +222,10 @@ static int uart_host_role_impl(struct device* pdev)
     return 0; /* UART 无 master/slave 之分 */
 }
 
-int uart_bus_host_init(struct device* pdev, const struct hal_uart_config* cfg) { return uart_host_init_impl(pdev, cfg); }
+int uart_bus_host_init(struct device* pdev, const struct hal_uart_config* cfg)
+{
+    return uart_host_init_impl(pdev, cfg);
+}
 
 int uart_bus_host_deinit(struct device* pdev) { return uart_host_deinit_impl(pdev); }
 
@@ -277,7 +283,8 @@ static int uart_client_register_impl(struct device* pdev, const void* cfg, void*
         return ret;
     }
 
-    (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST); /* 对齐 spi: client_register +1 */
+    (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1,
+                                  COMPAT_MO_SEQ_CST); /* 对齐 spi: client_register +1 */
 
     if (out)
         *out = cli;
@@ -314,7 +321,10 @@ static void uart_client_unregister_impl(struct device* pdev)
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_client_pool_ctrl, idx));
 }
 
-int uart_bus_client_register(struct device* pdev) { return uart_client_register_impl(pdev, NULL, NULL); }
+int uart_bus_client_register(struct device* pdev)
+{
+    return uart_client_register_impl(pdev, NULL, NULL);
+}
 
 void uart_bus_client_unregister(struct device* pdev) { uart_client_unregister_impl(pdev); }
 
@@ -357,7 +367,8 @@ int uart_bus_read(struct device* pdev, uint8_t* data, size_t len, uint32_t timeo
     return hal_uart_read(&hal_dev, data, len, timeout_ms);
 }
 
-int uart_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t tx_len, size_t rx_len, uint32_t timeout_ms)
+int uart_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t tx_len,
+                      size_t rx_len, uint32_t timeout_ms)
 {
     int ret = MINI_OK;
 

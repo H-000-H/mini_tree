@@ -45,7 +45,8 @@ static device_id_t device_to_id(const struct device* pdev)
  * @param[in] hw_ctx 硬件上下文指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-int bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
+int bus_controller_bind_full(struct device* pdev, bus_type_t type,
+                             const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
 {
     device_id_t id;
 
@@ -170,7 +171,8 @@ struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, 
  * @param[in] cb 用户完成回调
  * @param[in] userdata 回调用户数据
  */
-void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev, bus_async_user_cb_t cb, void* userdata)
+void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev,
+                           bus_async_user_cb_t cb, void* userdata)
 {
     if (!bridge)
         return;

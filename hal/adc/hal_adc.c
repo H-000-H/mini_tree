@@ -16,7 +16,9 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_adc_device_init(hal_adc_device* pdev, hal_adc_platform_unique_config* unique_cfg, hal_adc_host_config* host)
+COMPAT_WEAK int hal_adc_device_init(hal_adc_device* pdev,
+                                    hal_adc_platform_unique_config* unique_cfg,
+                                    hal_adc_host_config* host)
 {
     (void)pdev;
     (void)unique_cfg;
@@ -91,7 +93,8 @@ COMPAT_WEAK int hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index, uint32_t* sample_time)
+COMPAT_WEAK int hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index,
+                                                uint32_t* sample_time)
 {
     (void)pdev;
     (void)index;

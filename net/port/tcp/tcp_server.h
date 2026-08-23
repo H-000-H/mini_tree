@@ -28,7 +28,8 @@ extern "C"
 
     /**
      * @brief 读取指定客户端 session 的接收数据
-     * @note SPSC 约束: 同一 session_id 只能由一个消费者线程调用, 多线程读同一 session 会产生数据竞争
+     * @note SPSC 约束: 同一 session_id 只能由一个消费者线程调用, 多线程读同一 session
+     * 会产生数据竞争
      * @param[in]  session_id 客户端会话 ID (0 ~ CONFIG_TCP_SERVER_MAX_CLIENTS - 1)
      * @param[out] buf        接收目标缓冲区
      * @param[in]  len        期望读取的最大长度

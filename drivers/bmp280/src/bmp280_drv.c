@@ -61,14 +61,20 @@ static const char* const k_tag = "bmp280";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void bmp280_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_bmp280_pool_ctrl, s_bmp280_used, BMP280_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void bmp280_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_bmp280_pool_ctrl, s_bmp280_used, BMP280_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct bmp280_device* bmp280_get_drvdata(struct device* pdev) { return (struct bmp280_device*)device_get_priv(pdev); }
+static struct bmp280_device* bmp280_get_drvdata(struct device* pdev)
+{
+    return (struct bmp280_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 向 I2C 总线写数据
@@ -78,7 +84,8 @@ static struct bmp280_device* bmp280_get_drvdata(struct device* pdev) { return (s
  * @param[in] timeout_ms 超时（ms）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -104,7 +111,8 @@ static int bmp280_i2c_rd(struct bmp280_device* dev, uint8_t* rx, size_t len, uin
  * @param[in] start 起始寄存器地址
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* buf, size_t len, uint32_t timeout_ms)
+static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* buf, size_t len,
+                            uint32_t timeout_ms)
 {
     int ret = bmp280_i2c_wr(dev, &start, 1, timeout_ms);
     if (ret != MINI_OK)
@@ -149,7 +157,10 @@ static int32_t bmp280_compensate_t(struct bmp280_device* dev, int32_t adc_t)
     int32_t var1;
     int32_t var2;
     var1 = ((((adc_t >> 3) - ((int32_t)dev->dig_T1 << 1))) * ((int32_t)dev->dig_T2)) >> 11;
-    var2 = (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >> 12) * ((int32_t)dev->dig_T3)) >> 14;
+    var2 = (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >>
+             12) *
+            ((int32_t)dev->dig_T3)) >>
+           14;
     dev->t_fine = var1 + var2;
     return (dev->t_fine * 5 + 128) >> 8; /* 0.01°C */
 }

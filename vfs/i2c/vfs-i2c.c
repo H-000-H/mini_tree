@@ -47,7 +47,11 @@ static const char* const k_host_tag = "i2c_vfs_host";
 /**
  * @brief I2C Host 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
+}
 
 /**
  * @brief 解析 I2C Host DTS 属性, 填入 hal_i2c_bus_config
@@ -64,9 +68,15 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
     int scl_output_type = 0, scl_speed = 0, scl_mode = 0, scl_pull = 0;
     int sda_output_type = 0, sda_speed = 0, sda_mode = 0, sda_pull = 0;
 
-    if (device_get_prop_int(pdev, "i2c-base", &i2c_base) != MINI_OK || device_get_prop_int(pdev, "i2c-clk", &i2c_clk) != MINI_OK || device_get_prop_int(pdev, "scl-port", &scl_port) != MINI_OK ||
-        device_get_prop_int(pdev, "scl-pin", &scl_pin) != MINI_OK || device_get_prop_int(pdev, "scl-clk", &scl_clk) != MINI_OK || device_get_prop_int(pdev, "scl-af", &scl_af) != MINI_OK ||
-        device_get_prop_int(pdev, "sda-port", &sda_port) != MINI_OK || device_get_prop_int(pdev, "sda-pin", &sda_pin) != MINI_OK || device_get_prop_int(pdev, "sda-clk", &sda_clk) != MINI_OK ||
+    if (device_get_prop_int(pdev, "i2c-base", &i2c_base) != MINI_OK ||
+        device_get_prop_int(pdev, "i2c-clk", &i2c_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "scl-port", &scl_port) != MINI_OK ||
+        device_get_prop_int(pdev, "scl-pin", &scl_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "scl-clk", &scl_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "scl-af", &scl_af) != MINI_OK ||
+        device_get_prop_int(pdev, "sda-port", &sda_port) != MINI_OK ||
+        device_get_prop_int(pdev, "sda-pin", &sda_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "sda-clk", &sda_clk) != MINI_OK ||
         device_get_prop_int(pdev, "sda-af", &sda_af) != MINI_OK)
         return MINI_ERR_INVAL;
 
@@ -186,7 +196,8 @@ static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev), bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
+    SYS_LOGI(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
+             bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
     return MINI_OK;
 
 err_bus:
@@ -201,14 +212,20 @@ err_pool:
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_i2c_priv_probe_master(struct device* pdev) { return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_MASTER); }
+static int vfs_i2c_priv_probe_master(struct device* pdev)
+{
+    return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_MASTER);
+}
 
 /**
  * @brief I2C Slave Host 驱动 probe 入口
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_i2c_priv_probe_slave(struct device* pdev) { return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_SLAVE); }
+static int vfs_i2c_priv_probe_slave(struct device* pdev)
+{
+    return vfs_i2c_priv_probe_impl(pdev, I2C_BUS_ROLE_SLAVE);
+}
 
 /**
  * @brief I2C Host 移除: remove_start → 排空 IO → host_deinit → 释放私有池
@@ -280,7 +297,10 @@ static const char* const k_client_tag = "i2c_vfs_client";
 /**
  * @brief I2C Client 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
+}
 
 /**
  * @brief I2C Client 打开: 引用计数, 首次打开时调用 i2c_bus_open
@@ -480,7 +500,8 @@ static int i2c_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     const struct i2c_xfer_mode_arg* ma = (const struct i2c_xfer_mode_arg*)arg;
     struct i2c_vfs_client* priv;
@@ -504,7 +525,8 @@ static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
+                                 uint32_t timeout_ms)
 {
     struct i2c_xfer_mode_arg* ma = (struct i2c_xfer_mode_arg*)arg;
     struct i2c_vfs_client* priv;
@@ -542,7 +564,8 @@ static int i2c_cmd_queue_tx(struct device* pdev, void* arg, size_t arg_len, uint
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 MINI_OK, 未实现或失败返回负数错误码
  */
-static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_cmd_get_trans_result(struct device* pdev, void* arg, size_t arg_len,
+                                    uint32_t timeout_ms)
 {
     const struct i2c_trans_result_arg* tra = (const struct i2c_trans_result_arg*)arg;
     if (!tra || arg_len != sizeof(*tra))
@@ -567,7 +590,8 @@ static const struct i2c_ioctl_map s_i2c_ioctl_map[I2C_CMD_COUNT] = {
  * @param[in] timeout_ms 超时 (毫秒, 部分命令透传)
  * @return 成功返回 MINI_OK 或实际传输字节数, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int i2c_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;
@@ -681,7 +705,8 @@ static int i2c_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev), role == I2C_BUS_ROLE_MASTER ? "master" : "slave", (unsigned)priv->cfg.address,
+    SYS_LOGI(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev),
+             role == I2C_BUS_ROLE_MASTER ? "master" : "slave", (unsigned)priv->cfg.address,
              (unsigned)priv->cfg.clock_speed_hz);
     return MINI_OK;
 

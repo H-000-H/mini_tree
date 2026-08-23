@@ -71,8 +71,10 @@ extern "C"
     struct hal_sdio
     {
         int (*init)(struct hal_sdio* sdio, const struct hal_sdio_config* cfg); /**< 初始化 */
-        int (*read)(struct hal_sdio* sdio, uint8_t* buf, uint32_t sector, size_t count); /**< 按扇区读 */
-        int (*write)(struct hal_sdio* sdio, const uint8_t* buf, uint32_t sector, size_t count); /**< 按扇区写 */
+        int (*read)(struct hal_sdio* sdio, uint8_t* buf, uint32_t sector,
+                    size_t count); /**< 按扇区读 */
+        int (*write)(struct hal_sdio* sdio, const uint8_t* buf, uint32_t sector,
+                     size_t count); /**< 按扇区写 */
         int (*get_info)(struct hal_sdio* sdio, struct hal_sdio_info* info); /**< 查询卡信息 */
         int (*deinit)(struct hal_sdio* sdio); /**< 反初始化 */
         void* _impl; /**< 平台私有实现指针 */

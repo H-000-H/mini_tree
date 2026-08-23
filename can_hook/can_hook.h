@@ -54,14 +54,16 @@ extern "C"
      * @param[in] tx_ret 底层发送返回值
      * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
-    int can_hook_post_tx(struct device* pdev, const struct can_frame* frame, int tx_ret) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_post_tx(struct device* pdev, const struct can_frame* frame,
+                         int tx_ret) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 接收过滤钩子 (决定帧是否接受)
      * @param[in] pdev CAN 设备对象指针
      * @param[in] frame 接收帧
      * @return 匹配返回 MINI_OK, 过滤丢弃返回负数错误码
      */
-    int can_hook_filter_match(struct device* pdev, const struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
+    int can_hook_filter_match(struct device* pdev,
+                              const struct can_frame* frame) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 接收钩子 (帧可被改写)
      * @param[in] pdev CAN 设备对象指针

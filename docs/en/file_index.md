@@ -97,7 +97,28 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `algorithm/buffer/` | ring & double buffers |
 | `cmake/*.cmake` | `dep_fetch` + `mini_tree_link_*` helpers; also `disasm` / `rust` / `esp_idf` |
 
-> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP / cJSON** are fetched at config time, all other bricks at link time.
+---
+
+## net/ (Network Protocol Stack Glue)
+
+> Most subdirectories are gitignored; only the MQTT minimal build set is committed.
+
+| Path | Description |
+| :--- | :--- |
+| `port/mqtt/mqtt_client.{c,h}` | coreMQTT v5 thin wrapper, `NET_*` error codes |
+| `port/mqtt/core_mqtt_config.h` | coreMQTT configuration header |
+
+---
+
+## ui/ (UI Library Glue Layer)
+
+> Most subdirectories are gitignored; only `display/` unified bridge header is committed.
+
+| Path | Description |
+| :--- | :--- |
+| `display/display_ui_bridge.h` | Entry point for UI library callbacks (LVGL flush / u8g2 SendBuffer), goes through `DISPLAY_CMD_*`, zero third-party library dependencies |
+
+> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP** are fetched at config time, all other bricks at link time.
 
 ---
 

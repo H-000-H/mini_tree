@@ -47,20 +47,27 @@ static const char* const k_tag = "hc05";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void hc05_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_hc05_pool_ctrl, s_hc05_used, HC05_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void hc05_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_hc05_pool_ctrl, s_hc05_used, HC05_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct hc05_device* hc05_get_drvdata(struct device* pdev) { return (struct hc05_device*)device_get_priv(pdev); }
+static struct hc05_device* hc05_get_drvdata(struct device* pdev)
+{
+    return (struct hc05_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief UART 双向传输（UART_CMD_TRANSFER）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int hc05_uart_xchg(struct hc05_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
+static int hc05_uart_xchg(struct hc05_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx,
+                          size_t rx_len, uint32_t timeout_ms)
 {
     struct uart_transfer_arg arg;
     if (!dev || !dev->uart_dev)

@@ -67,14 +67,20 @@ static const char* const k_tag = "bme280";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void bme280_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_bme280_pool_ctrl, s_bme280_used, BME280_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void bme280_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_bme280_pool_ctrl, s_bme280_used, BME280_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct bme280_device* bme280_get_drvdata(struct device* pdev) { return (struct bme280_device*)device_get_priv(pdev); }
+static struct bme280_device* bme280_get_drvdata(struct device* pdev)
+{
+    return (struct bme280_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 向 I2C 总线写数据
@@ -84,7 +90,8 @@ static struct bme280_device* bme280_get_drvdata(struct device* pdev) { return (s
  * @param[in] timeout_ms 超时（ms）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bme280_i2c_wr(struct bme280_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int bme280_i2c_wr(struct bme280_device* dev, const uint8_t* tx, size_t len,
+                         uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -111,7 +118,8 @@ static int bme280_i2c_rd(struct bme280_device* dev, uint8_t* rx, size_t len, uin
  * @param[in] start 起始寄存器地址
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bme280_read_regs(struct bme280_device* dev, uint8_t start, uint8_t* buf, size_t len, uint32_t timeout_ms)
+static int bme280_read_regs(struct bme280_device* dev, uint8_t start, uint8_t* buf, size_t len,
+                            uint32_t timeout_ms)
 {
     int ret = bme280_i2c_wr(dev, &start, 1, timeout_ms);
     if (ret != MINI_OK)
@@ -165,7 +173,11 @@ static int bme280_load_calib(struct bme280_device* dev, uint32_t timeout_ms)
 static int32_t bme280_compensate_t(struct bme280_device* dev, int32_t adc_t)
 {
     int32_t var1 = ((((adc_t >> 3) - ((int32_t)dev->dig_T1 << 1))) * ((int32_t)dev->dig_T2)) >> 11;
-    int32_t var2 = (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >> 12) * ((int32_t)dev->dig_T3)) >> 14;
+    int32_t var2 =
+        (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >>
+          12) *
+         ((int32_t)dev->dig_T3)) >>
+        14;
     dev->t_fine = var1 + var2;
     return (dev->t_fine * 5 + 128) >> 8;
 }
@@ -203,8 +215,16 @@ static uint32_t bme280_compensate_h(struct bme280_device* dev, int32_t adc_h)
 {
     int32_t v_x1;
     v_x1 = dev->t_fine - 76800;
-    v_x1 = (((((adc_h << 14) - (((int32_t)dev->dig_H4) << 20) - (((int32_t)dev->dig_H5) * v_x1)) + 16384) >> 15) *
-            (((((((v_x1 * ((int32_t)dev->dig_H6)) >> 10) * (((v_x1 * ((int32_t)dev->dig_H3)) >> 11) + 32768)) >> 10) + 2097152) * ((int32_t)dev->dig_H2) + 8192) >> 14));
+    v_x1 = (((((adc_h << 14) - (((int32_t)dev->dig_H4) << 20) - (((int32_t)dev->dig_H5) * v_x1)) +
+              16384) >>
+             15) *
+            (((((((v_x1 * ((int32_t)dev->dig_H6)) >> 10) *
+                 (((v_x1 * ((int32_t)dev->dig_H3)) >> 11) + 32768)) >>
+                10) +
+               2097152) *
+                  ((int32_t)dev->dig_H2) +
+              8192) >>
+             14));
     v_x1 = v_x1 - (((((v_x1 >> 15) * (v_x1 >> 15)) >> 7) * ((int32_t)dev->dig_H1)) >> 4);
     v_x1 = (v_x1 < 0) ? 0 : v_x1;
     v_x1 = (v_x1 > 419430400) ? 419430400 : v_x1;

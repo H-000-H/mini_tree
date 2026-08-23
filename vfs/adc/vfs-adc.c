@@ -82,7 +82,8 @@ static int adc_cmd_get_channel_sample_time(struct vfs_adc_priv* priv, void* arg,
     if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
         return MINI_ERR_INVAL;
     struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_get_channel_sample_time(&priv->adc, adc_arg->channel_index, &adc_arg->sample_time);
+    return hal_adc_get_channel_sample_time(&priv->adc, adc_arg->channel_index,
+                                           &adc_arg->sample_time);
 }
 
 /**
@@ -169,7 +170,8 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
  */
 pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_init()
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
 }
 
@@ -253,7 +255,8 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
     cfg->config.sw_trigger = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) == VFS_ADC_PIN_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==
+        VFS_ADC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
         cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
@@ -267,7 +270,8 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     else
         return MINI_ERR_INVAL;
 
-    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) == VFS_ADC_MULTI_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) ==
+        VFS_ADC_MULTI_FIELD_COUNT)
     {
         cfg->multi_cfg->multimode = (uint32_t)multi_arr[0];
         cfg->multi_cfg->common_clock = (uint32_t)multi_arr[1];
@@ -277,7 +281,8 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     else
         return MINI_ERR_INVAL;
 
-    if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_ADC_DMA_FIELD_COUNT) == VFS_ADC_DMA_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_ADC_DMA_FIELD_COUNT) ==
+        VFS_ADC_DMA_FIELD_COUNT)
     {
         cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
         cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
@@ -305,7 +310,8 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
         int ch_arr[VFS_ADC_CHANNEL_FIELD_COUNT];
 
         snprintf(k, sizeof(k), "channel%d", i);
-        if (device_get_prop_int_array(pdev, k, ch_arr, VFS_ADC_CHANNEL_FIELD_COUNT) != VFS_ADC_CHANNEL_FIELD_COUNT)
+        if (device_get_prop_int_array(pdev, k, ch_arr, VFS_ADC_CHANNEL_FIELD_COUNT) !=
+            VFS_ADC_CHANNEL_FIELD_COUNT)
             return MINI_ERR_INVAL;
 
         cfg->channels[i].channel_id = (uint32_t)ch_arr[0];
@@ -403,7 +409,8 @@ static int vfs_adc_close(struct device* pdev)
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_adc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int vfs_adc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct vfs_adc_priv* priv;
     struct dev_lifecycle* lc;
@@ -509,7 +516,8 @@ static int vfs_adc_probe(struct device* pdev)
     }
 
 #ifdef CONFIG_VIRQ
-    interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback, &g_adc_dma_bottom_half_work, &priv->adc);
+    interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback,
+                               &g_adc_dma_bottom_half_work, &priv->adc);
 
     int dma_irqn = -1;
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));

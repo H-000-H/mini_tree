@@ -47,20 +47,27 @@ static const char* const k_tag = "mpu6050";
 /**
  * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void mpu6050_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_mpu6050_pool_ctrl, s_mpu6050_used, MPU6050_POOL_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void mpu6050_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_mpu6050_pool_ctrl, s_mpu6050_used, MPU6050_POOL_COUNT));
+}
 
 /**
  * @brief 取驱动私有数据
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct mpu6050_device* mpu6050_get_drvdata(struct device* pdev) { return (struct mpu6050_device*)device_get_priv(pdev); }
+static struct mpu6050_device* mpu6050_get_drvdata(struct device* pdev)
+{
+    return (struct mpu6050_device*)device_get_priv(pdev);
+}
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int mpu6050_i2c_wr(struct mpu6050_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
+static int mpu6050_i2c_wr(struct mpu6050_device* dev, const uint8_t* tx, size_t len,
+                          uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -171,7 +178,8 @@ static int mpu6050_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* dev, void* arg, size_t arg_len, uint32_t ms);
+typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* dev, void* arg, size_t arg_len,
+                                  uint32_t ms);
 struct mpu6050_ioctl_map
 {
     mpu6050_ioctl_fn_t handler;

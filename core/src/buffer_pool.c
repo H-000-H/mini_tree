@@ -37,7 +37,10 @@ static inline uint32_t BUFF_POOL_CRITICAL_ENTER(void)
     return primask;
 }
 
-static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask) { __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory"); }
+static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask)
+{
+    __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory");
+}
 
 #define BUFF_POOL_ATOMIC_LOAD(p) (*(p))
 #define BUFF_POOL_ATOMIC_STORE(p, v) (*(p) = (v))
@@ -50,7 +53,8 @@ static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask) { __asm__ volatile(
 #define BUFF_POOL_ATOMIC_STORE(p, v) __atomic_store_n((p), (v), __ATOMIC_RELAXED)
 #define BUFF_POOL_ATOMIC_ADD_FETCH(p, v) __atomic_add_fetch((p), (v), __ATOMIC_RELAXED)
 #define BUFF_POOL_ATOMIC_SUB_FETCH(p, v) __atomic_sub_fetch((p), (v), __ATOMIC_RELAXED)
-#define BUFF_POOL_ATOMIC_CAS(p, e, d) __atomic_compare_exchange_n((p), (e), (d), 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
+#define BUFF_POOL_ATOMIC_CAS(p, e, d)                                                              \
+    __atomic_compare_exchange_n((p), (e), (d), 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
 
 #endif
 
@@ -70,7 +74,11 @@ struct buff_pool_free_block
 };
 
 /* Unified header size: free_block when free, buffer_block_t when allocated */
-#define BUFF_POOL_HEAD_SIZE (BUFF_POOL_ALIGN_UP((sizeof(struct buff_pool_free_block) > sizeof(buffer_block_t) ? sizeof(struct buff_pool_free_block) : sizeof(buffer_block_t)), BUFF_POOL_ALIGN_SIZE))
+#define BUFF_POOL_HEAD_SIZE                                                                        \
+    (BUFF_POOL_ALIGN_UP((sizeof(struct buff_pool_free_block) > sizeof(buffer_block_t) ?            \
+                             sizeof(struct buff_pool_free_block) :                                 \
+                             sizeof(buffer_block_t)),                                              \
+                        BUFF_POOL_ALIGN_SIZE))
 
 #define BUFF_POOL_MAX_SEGS 4u /* maximum number of pool segments (initial + expands) */
 
@@ -201,7 +209,8 @@ static void buff_pool_freelist_merge(struct buffer_pool* pool, struct buff_pool_
  * If seg != NULL, only free blocks located inside that segment are considered
  * (address range check). The chosen block is REMOVED from the list and handed
  * to the caller; the remainder (split) stays in the list where the block was. */
-static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool* pool, size_t size, const struct buff_pool_seg* seg)
+static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool* pool, size_t size,
+                                                             const struct buff_pool_seg* seg)
 {
     struct buff_pool_free_block* it = pool->free_list;
     uint8_t* s_base = seg ? seg->base : NULL;
@@ -223,7 +232,8 @@ static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool*
             size_t remain = it->size - size;
             if (remain >= BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
             {
-                struct buff_pool_free_block* split = (struct buff_pool_free_block*)((uint8_t*)it + BUFF_POOL_HEAD_SIZE + size);
+                struct buff_pool_free_block* split =
+                    (struct buff_pool_free_block*)((uint8_t*)it + BUFF_POOL_HEAD_SIZE + size);
                 buff_pool_freelist_remove(pool, it);
                 split->prev = NULL;
                 split->next = NULL;
@@ -243,7 +253,8 @@ static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool*
 }
 
 /* Largest single free block inside one segment (caller holds the lock) */
-static size_t buff_pool_seg_max_free(const struct buffer_pool* pool, const struct buff_pool_seg* seg)
+static size_t buff_pool_seg_max_free(const struct buffer_pool* pool,
+                                     const struct buff_pool_seg* seg)
 {
     const struct buff_pool_free_block* it = pool->free_list;
     uint8_t* s_base = seg->base;
@@ -509,9 +520,15 @@ int buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block)
     return BUFF_POOL_OK;
 }
 
-int buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size, buffer_block_t** p_block) { return buffer_pool_alloc(pool, size, p_block); }
+int buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size, buffer_block_t** p_block)
+{
+    return buffer_pool_alloc(pool, size, p_block);
+}
 
-int buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block) { return buffer_pool_free(pool, block); }
+int buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block)
+{
+    return buffer_pool_free(pool, block);
+}
 
 /* ── Block content management (dual pointers, ring read/write;
  *    SPSC semantics, head/tail atomic) ── */

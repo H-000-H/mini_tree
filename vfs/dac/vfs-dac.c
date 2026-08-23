@@ -193,7 +193,11 @@ static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
 /**
  * @brief DAC Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
+}
 
 /**
  * @brief 解析 DAC Host DTS 属性 (硬件直投值), 填入 hal_dac_host_cfg
@@ -251,7 +255,8 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
     cfg->config.dma_data_align = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) == VFS_DAC_PIN_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) ==
+        VFS_DAC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
         cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
@@ -267,7 +272,8 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
 
     if (cfg->config.dma_enable)
     {
-        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) != VFS_DAC_DMA_FIELD_COUNT)
+        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) !=
+            VFS_DAC_DMA_FIELD_COUNT)
             return MINI_ERR_INVAL;
 
         cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
@@ -458,7 +464,8 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK 或写入采样数, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct vfs_dac_priv* priv;
     struct dev_lifecycle* lc;

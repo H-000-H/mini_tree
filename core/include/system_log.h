@@ -60,17 +60,17 @@ void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...);
  */
 #include "production_log.h" /* IWYU pragma: keep */
 
-#define DRV_LOGE(tag, fmt, ...)                                                                                                                                                                        \
-    do                                                                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
-        osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__);                                                                                                                                             \
-        production_log_push_fmt(0, tag, fmt, ##__VA_ARGS__);                                                                                                                                           \
+#define DRV_LOGE(tag, fmt, ...)                                                                    \
+    do                                                                                             \
+    {                                                                                              \
+        osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__);                                         \
+        production_log_push_fmt(0, tag, fmt, ##__VA_ARGS__);                                       \
     } while (0)
-#define DRV_LOGW(tag, fmt, ...)                                                                                                                                                                        \
-    do                                                                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
-        osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__);                                                                                                                                              \
-        production_log_push_fmt(1, tag, fmt, ##__VA_ARGS__);                                                                                                                                           \
+#define DRV_LOGW(tag, fmt, ...)                                                                    \
+    do                                                                                             \
+    {                                                                                              \
+        osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__);                                          \
+        production_log_push_fmt(1, tag, fmt, ##__VA_ARGS__);                                       \
     } while (0)
 #define DRV_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
 #define DRV_LOGD(tag, fmt, ...) osal_log(OSAL_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)

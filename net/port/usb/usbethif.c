@@ -40,14 +40,18 @@ static uint8_t s_usb_netif_used[USBETHIF_NETIF_MAX];
 #define USBETHIF_TX_TIMEOUT_MS CONFIG_USB_NET_TX_TIMEOUT_MS
 #define USBETHIF_RX_TIMEOUT_MS CONFIG_USB_NET_RX_TIMEOUT_MS /* 非阻塞尝试 */
 
-static uint8_t s_mac[6] = {CONFIG_USB_NET_MAC0, CONFIG_USB_NET_MAC1, CONFIG_USB_NET_MAC2, CONFIG_USB_NET_MAC3, CONFIG_USB_NET_MAC4, CONFIG_USB_NET_MAC5};
+static uint8_t s_mac[6] = {CONFIG_USB_NET_MAC0, CONFIG_USB_NET_MAC1, CONFIG_USB_NET_MAC2,
+                           CONFIG_USB_NET_MAC3, CONFIG_USB_NET_MAC4, CONFIG_USB_NET_MAC5};
 
 /**
  * @brief 从 netif->state 取回 USB 网卡 device 句柄
  * @param[in] netif lwIP 网络接口
  * @return USB 网卡 device 或 NULL
  */
-static struct device* usb_ethif_dev(struct netif* netif) { return (netif) ? (struct device*)netif->state : NULL; }
+static struct device* usb_ethif_dev(struct netif* netif)
+{
+    return (netif) ? (struct device*)netif->state : NULL;
+}
 
 /**
  * @brief lwIP → USB 发送 (从 netif->state 取 device, 走 VFS device_write)

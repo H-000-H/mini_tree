@@ -567,6 +567,16 @@ if(MINI_TREE_LWIP_ON)
     target_link_libraries(mini_tree PUBLIC mini_tree_net)
 endif()
 
+# UI 胶水层 (ui/): LVGL / u8g2 移植, 只经 device/VFS 模型触硬件。
+# 同样从 .config 提取开关 (CONFIG_UI_LVGL / CONFIG_UI_U8G2), 两者任一开启即编入。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_LVGL_ON REGEX "^CONFIG_UI_LVGL=y$")
+file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_U8G2_ON REGEX "^CONFIG_UI_U8G2=y$")
+if(CONFIG_UI_LVGL_ON OR CONFIG_UI_U8G2_ON)
+    add_subdirectory(ui)
+    add_dependencies(mini_tree_ui mini_tree_gen)
+    target_link_libraries(mini_tree PUBLIC mini_tree_ui)
+endif()
+
 if(MINI_TREE_USB_ON)
     target_link_libraries(mini_tree PUBLIC tinyusb)
 endif()

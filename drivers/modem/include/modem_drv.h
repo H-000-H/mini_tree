@@ -24,8 +24,8 @@ extern "C"
 {
 #endif
 
-#define MODEM_CMD_BASE                                                                                                                                                                                 \
-    COMPAT_MAGIC(MODEM) /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突）                                                                                                           \
+#define MODEM_CMD_BASE                                                                             \
+    COMPAT_MAGIC(MODEM) /** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突）              \
                          */
 #define MODEM_CMD_AT_SEND (MODEM_CMD_BASE + 0x01) /** 发送 AT 命令（arg: struct modem_at_buf*） */
 #define MODEM_CMD_AT_RECV (MODEM_CMD_BASE + 0x02) /** 接收 AT 应答（arg: struct modem_at_buf*） */

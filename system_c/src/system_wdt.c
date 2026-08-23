@@ -123,14 +123,19 @@ void system_wdt_stack_check_all(void)
 
         if (wm_bytes == 0)
         {
-            SYS_LOGE(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!", osal_task_get_name(entry->task));
+            SYS_LOGE(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!",
+                     osal_task_get_name(entry->task));
             continue;
         }
 
         if (wm_bytes < entry->alarm_threshold_bytes)
-            SYS_LOGE(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u", osal_task_get_name(entry->task), (unsigned)wm_bytes, (unsigned)entry->alarm_threshold_bytes);
+            SYS_LOGE(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u",
+                     osal_task_get_name(entry->task), (unsigned)wm_bytes,
+                     (unsigned)entry->alarm_threshold_bytes);
         else if (wm_bytes < entry->alarm_threshold_bytes * 2)
-            SYS_LOGW(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)", osal_task_get_name(entry->task), (unsigned)wm_bytes, (unsigned)entry->alarm_threshold_bytes);
+            SYS_LOGW(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)",
+                     osal_task_get_name(entry->task), (unsigned)wm_bytes,
+                     (unsigned)entry->alarm_threshold_bytes);
     }
 }
 

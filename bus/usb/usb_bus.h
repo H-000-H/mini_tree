@@ -49,7 +49,8 @@ extern "C"
      * @param[in] cfg host 配置
      * @return MINI_OK 或 VFS_ERR_*
      */
-    int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_host_init(struct device* pdev,
+                          const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief USB host 反初始化 (仍有 client 引用时返回 BUSY)
      * @param[in] pdev controller device (host)
@@ -67,7 +68,8 @@ extern "C"
      * @param[out] out 输出 client 句柄
      * @return MINI_OK 或 VFS_ERR_*
      */
-    int usb_bus_client_register(struct device* pdev, enum usb_client_class cls, struct usb_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_client_register(struct device* pdev, enum usb_client_class cls,
+                                struct usb_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 注销 USB class client, ref_count -1
      * @param[in] pdev client device
@@ -93,7 +95,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_*
      * @return HAL_USB_XFER_POLL / HAL_USB_XFER_DMA, 或负数 VFS_ERR_*
      */
-    int usb_bus_resolve_xfer_mode(struct device* client_or_host, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_resolve_xfer_mode(struct device* client_or_host,
+                                  uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 推进 TinyUSB 事件队列 (主循环或调度任务周期调用)
@@ -109,7 +112,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_*
      * @return 已写字节数, 或负数 VFS_ERR_*
      */
-    int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms,
+                          uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief CDC ACM 读
      * @param[in] pdev client device
@@ -119,7 +123,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_*
      * @return 已读字节数, 或负数 VFS_ERR_*
      */
-    int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms,
+                         uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief CDC-ECM 发送一帧
@@ -130,7 +135,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_*
      * @return 帧长或 VFS_ERR_*
      */
-    int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms,
+                          uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief CDC-ECM 接收一帧
      * @param[in] pdev client device
@@ -140,7 +146,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_*
      * @return 帧长 / 0(无数据且非阻塞) / 负数 VFS_ERR_*
      */
-    int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms,
+                         uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief HID 发送 report
@@ -151,7 +158,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_*
      * @return 已发字节数或 VFS_ERR_*
      */
-    int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms,
+                          uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

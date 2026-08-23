@@ -68,8 +68,8 @@ extern "C"
  *   dev_lc_remove_finish(device_lc(pdev));
  * probe 阶段: device_lc_bind(pdev);
  */
-#define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)                                                                                                                                             \
-    int board_driver_probe_##name(struct device* pdev) { return probe_fn(pdev); }                                                                                                                      \
+#define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)                                         \
+    int board_driver_probe_##name(struct device* pdev) { return probe_fn(pdev); }                  \
     int board_driver_remove_##name(struct device* pdev) { return remove_fn(pdev); }
 
 #ifdef __cplusplus

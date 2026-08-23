@@ -50,7 +50,11 @@ static const char* const k_host_tag = "uart_host_vfs";
 /**
  * @brief UART Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT));
+}
 
 /**
  * @brief 解析 UART Host DTS 属性 (硬件直投值), 填入 hal_uart_config
@@ -70,11 +74,20 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
     int rx_port = 0, rx_pin = 0, rx_clk = 0, rx_af = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "uart-base", &uart_base) != MINI_OK || device_get_prop_int(pdev, "uart-clk", &uart_clk) != MINI_OK || device_get_prop_int(pdev, "uart-baud", &uart_baud) != MINI_OK ||
-        device_get_prop_int(pdev, "data-width", &data_width) != MINI_OK || device_get_prop_int(pdev, "parity", &parity) != MINI_OK || device_get_prop_int(pdev, "stop-bits", &stop_bits) != MINI_OK ||
-        device_get_prop_int(pdev, "tx-port", &tx_port) != MINI_OK || device_get_prop_int(pdev, "tx-pin", &tx_pin) != MINI_OK || device_get_prop_int(pdev, "tx-clk", &tx_clk) != MINI_OK ||
-        device_get_prop_int(pdev, "tx-af", &tx_af) != MINI_OK || device_get_prop_int(pdev, "rx-port", &rx_port) != MINI_OK || device_get_prop_int(pdev, "rx-pin", &rx_pin) != MINI_OK ||
-        device_get_prop_int(pdev, "rx-clk", &rx_clk) != MINI_OK || device_get_prop_int(pdev, "rx-af", &rx_af) != MINI_OK)
+    if (device_get_prop_int(pdev, "uart-base", &uart_base) != MINI_OK ||
+        device_get_prop_int(pdev, "uart-clk", &uart_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "uart-baud", &uart_baud) != MINI_OK ||
+        device_get_prop_int(pdev, "data-width", &data_width) != MINI_OK ||
+        device_get_prop_int(pdev, "parity", &parity) != MINI_OK ||
+        device_get_prop_int(pdev, "stop-bits", &stop_bits) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-port", &tx_port) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-pin", &tx_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-clk", &tx_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-af", &tx_af) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-port", &rx_port) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-pin", &rx_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-clk", &rx_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-af", &rx_af) != MINI_OK)
     {
         return MINI_ERR_INVAL;
     }
@@ -201,7 +214,8 @@ static int vfs_uart_priv_probe(struct device* pdev)
         goto err_bus;
     }
 
-    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev), (unsigned long)priv->cfg.baud_rate);
+    SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev),
+             (unsigned long)priv->cfg.baud_rate);
     return MINI_OK;
 
 err_bus:
@@ -279,7 +293,10 @@ static const char* const k_tag = "uart_vfs";
 /**
  * @brief UART Client VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT));
+}
 
 /**
  * @brief UART Client 设备打开操作 (引用计数, 首次打开时调用 uart_bus_open)
@@ -446,7 +463,8 @@ static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                          uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
     int32_t offset;

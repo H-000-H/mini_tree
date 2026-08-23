@@ -61,12 +61,14 @@ extern "C"
      * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文调用; MINI_ERR_NOTSUPP 已封表;
      *         MINI_ERR_INVAL 参数非法/未初始化; MINI_ERR_TIMEOUT 锁超时; MINI_ERR_NOSPC 槽位已满
      */
-    int event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback, void* user_data) COMPAT_WARN_UNUSED_RESULT;
+    int event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback,
+                            void* user_data) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 发布事件 (task 上下文)
      * @param[in] id 事件 ID (框架级或用户自定义)
      * @param[in] arg 事件参数 (指针或整数值)
-     * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文调用; MINI_ERR_AGAIN 总线未就绪; MINI_ERR_NOSPC 队列满
+     * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文调用; MINI_ERR_AGAIN 总线未就绪; MINI_ERR_NOSPC
+     * 队列满
      */
     int event_bus_post(uint32_t id, uintptr_t arg) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -76,7 +78,8 @@ extern "C"
      * @param[out] px_yield_required ISR 内是否需要请求上下文切换
      * @return MINI_OK 成功; MINI_ERR_AGAIN 总线未就绪; MINI_ERR_NOSPC 队列满
      */
-    int event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required) COMPAT_WARN_UNUSED_RESULT;
+    int event_bus_post_from_isr(uint32_t id, uintptr_t arg,
+                                bool* px_yield_required) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 启动事件分发 (创建分发任务)
      */

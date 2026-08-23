@@ -25,7 +25,9 @@ extern "C"
      * @param[in] timeout_ms 超时（ms）
      * @return MINI_OK 或 VFS_ERR_*
      */
-    COMPAT_STATIC_INLINE int max7219_flush_matrix(struct device* pdev, const uint8_t rows[MAX7219_MATRIX_BYTES], uint32_t timeout_ms)
+    COMPAT_STATIC_INLINE int max7219_flush_matrix(struct device* pdev,
+                                                  const uint8_t rows[MAX7219_MATRIX_BYTES],
+                                                  uint32_t timeout_ms)
     {
         struct max7219_fb a = {.rows = rows, .len = MAX7219_MATRIX_BYTES};
         if (!pdev || !rows)

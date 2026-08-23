@@ -176,7 +176,8 @@ extern "C"
      * @param[in] cfg 总线配置 (DTSI 直投, 生命周期由调用方持有)
      * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
      */
-    int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx, const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx,
+                              const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 CAN 总线主机, 释放硬件资源
      * @param[in] host CAN 主机对象指针
@@ -201,7 +202,8 @@ extern "C"
      * @param[in] host 所属总线主机指针
      * @return 成功返回 MINI_OK, pdev 或 host 为空返回 MINI_ERR_INVAL
      */
-    int hal_can_dev_init(struct hal_can_dev* pdev, struct hal_can_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_dev_init(struct hal_can_dev* pdev,
+                         struct hal_can_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 解绑 CAN 设备并复位状态
      * @param[in] pdev CAN 设备对象指针
@@ -216,7 +218,8 @@ extern "C"
      * @param[in] timeout_ms 等待空闲邮箱超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 非法帧返回 MINI_ERR_INVAL
      */
-    int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame,
+                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 从指定 FIFO 接收一帧经典 CAN
@@ -226,18 +229,21 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, FIFO 非法返回 MINI_ERR_INVAL
      */
-    int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo,
+                        uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 配置硬件过滤器 (作用于 host/控制器)
      */
-    int hal_can_filter_config(struct hal_can_bus_host* host, const struct hal_can_filter_config* filter) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_filter_config(struct hal_can_bus_host* host,
+                              const struct hal_can_filter_config* filter) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查询控制器状态
      * @param[out] out_state 输出 HAL_CAN_STATE_*
      */
-    int hal_can_get_state(struct hal_can_bus_host* host, uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_get_state(struct hal_can_bus_host* host,
+                          uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

@@ -54,7 +54,8 @@ extern "C"
      */
     COMPAT_STATIC_INLINE int hal_is_in_isr(void)
     {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
         int ipsr;
         __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
         return ipsr;
@@ -71,13 +72,13 @@ extern "C"
 #define HAL_ASSERT_NOT_ISR() ((void)0)
 #else
 #include "compiler_compat.h"
-#define HAL_ASSERT_NOT_ISR()                                                                                                                                                                           \
-    do                                                                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
-        if (hal_is_in_isr())                                                                                                                                                                           \
-        {                                                                                                                                                                                              \
-            COMPAT_TRAP();                                                                                                                                                                             \
-        }                                                                                                                                                                                              \
+#define HAL_ASSERT_NOT_ISR()                                                                       \
+    do                                                                                             \
+    {                                                                                              \
+        if (hal_is_in_isr())                                                                       \
+        {                                                                                          \
+            COMPAT_TRAP();                                                                         \
+        }                                                                                          \
     } while (0)
 #endif
     /*===========================================================================================================================================================*/
@@ -113,19 +114,26 @@ extern "C"
      * @param[in] irq_num NVIC 中断号
      * @param[in] priority 优先级 (0=最高)
      */
-    COMPAT_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority) { COMPAT_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF)); }
+    COMPAT_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority)
+    {
+        COMPAT_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF));
+    }
 
     /**
      * @brief 获取指定 NVIC 中断优先级
      * @param[in] irq_num NVIC 中断号
      * @return 当前优先级
      */
-    COMPAT_STATIC_INLINE int hal_irq_get_priority(int irq_num) { return COMPAT_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num); }
+    COMPAT_STATIC_INLINE int hal_irq_get_priority(int irq_num)
+    {
+        return COMPAT_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num);
+    }
     /*===========================================================================================================================================================*/
 
     /*全局中断屏蔽 inline*/
 /*===========================================================================================================================================================*/
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
+    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
 
     /**
      * @brief 关闭全局中断并保存掩码 (临界区入口)
@@ -144,7 +152,10 @@ extern "C"
      * @brief 恢复全局中断掩码 (临界区出口)
      * @param[in] mask hal_irq_disable_all 返回的掩码
      */
-    COMPAT_STATIC_INLINE void hal_irq_restore(uint32_t mask) { __asm__ volatile("msr primask, %0" : : "r"(mask)); }
+    COMPAT_STATIC_INLINE void hal_irq_restore(uint32_t mask)
+    {
+        __asm__ volatile("msr primask, %0" : : "r"(mask));
+    }
 
 #else
 /* 非 ARM/RISC-V 平台的 fallback: 无全局中断开关, 仅透传 (API 语义同 #if 分支) */

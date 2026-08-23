@@ -97,7 +97,30 @@
 | `algorithm/buffer/` | 环形/双缓冲 |
 | `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` / `esp_idf` |
 
-> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP / cJSON** 为配置期 FetchContent，其余积木为链接期 FetchContent。
+---
+
+## net/（网络协议栈胶水）
+
+> 大部分子目录已 gitignore，仅提交 MQTT 最小构建集 + PPP/USB 网卡。
+
+| 路径 | 说明 |
+| :--- | :--- |
+| `port/mqtt/mqtt_client.{c,h}` | coreMQTT v5 薄包装，`NET_*` 错误码 |
+| `port/mqtt/core_mqtt_config.h` | coreMQTT 配置头 |
+| `port/pppif/pppif.c` | PPP 网卡 lwIP netif 适配 |
+| `port/usb/usbethif.c` | TinyUSB CDC-NCM/RNDIS 网卡 lwIP netif 适配 |
+
+---
+
+## ui/（UI 库胶水层）
+
+> 大部分子目录已 gitignore，仅提交 `display/` 统一桥接头。
+
+| 路径 | 说明 |
+| :--- | :--- |
+| `display/display_ui_bridge.h` | 面向 UI 库回调的入口（LVGL flush / u8g2 SendBuffer），走 `DISPLAY_CMD_*`，零第三方库依赖 |
+
+> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP** 为配置期 FetchContent，其余积木为链接期 FetchContent。
 
 ---
 

@@ -38,7 +38,8 @@ extern void osal_delay_ms(uint32_t ms);
 #define USB_NET_QUEUE_MASK (USB_NET_QUEUE_DEPTH - 1U)
 
 /** @brief 先保障2的x次方不然后面的代码都没意义 */
-_Static_assert((USB_NET_QUEUE_DEPTH & USB_NET_QUEUE_MASK) == 0U, "CONFIG_USB_NET_DEPTH must be a power of 2");
+_Static_assert((USB_NET_QUEUE_DEPTH & USB_NET_QUEUE_MASK) == 0U,
+               "CONFIG_USB_NET_DEPTH must be a power of 2");
 _Static_assert(CFG_TUD_NET_MTU < UINT16_MAX, "CFG_TUD_NET_MTU must lower than UINT16_MAX");
 #ifndef CONFIG_USB_NET_TX_TIMEOUT_MS
 #define USB_NET_TX_TIMEOUT_MS 50U
@@ -53,7 +54,8 @@ struct ubs_net_rx_frame
     uint16_t len; /**< 帧有效长度 */
 };
 
-/** @brief 静态接收帧队列: 统一 FIFO, 元素 = 完整帧 (SPSC: 生产 = tud_network_recv_cb, 消费 = usb_net_frame_pop_rx) */
+/** @brief 静态接收帧队列: 统一 FIFO, 元素 = 完整帧 (SPSC: 生产 = tud_network_recv_cb, 消费 =
+ * usb_net_frame_pop_rx) */
 static struct fifo_uni_spsc s_rx_fifo;
 static uint8_t s_rx_ring[USB_NET_QUEUE_DEPTH * sizeof(struct ubs_net_rx_frame)] COMPAT_ALIGNED(4);
 
@@ -64,7 +66,11 @@ static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] COMPAT_ALIGNED(4);
  */
 uint8_t tud_network_mac_address[6] = {0x02, 0x02, 0x84, 0x6A, 0x96, 0x00};
 
-void tud_network_init_cb() { COMPAT_IGNORE_RESULT(fifo_uni_init(&s_rx_fifo, s_rx_ring, (uint16_t)sizeof(struct ubs_net_rx_frame), USB_NET_QUEUE_DEPTH)); }
+void tud_network_init_cb()
+{
+    COMPAT_IGNORE_RESULT(fifo_uni_init(
+        &s_rx_fifo, s_rx_ring, (uint16_t)sizeof(struct ubs_net_rx_frame), USB_NET_QUEUE_DEPTH));
+}
 
 /**
  * @brief TinyUSB 接收数据包回调函数 (中断 / 核心任务上下文)

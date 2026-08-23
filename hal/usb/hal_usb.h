@@ -80,7 +80,8 @@ extern "C"
      * @param[in] cfg  DTSI 直投配置
      * @return MINI_OK 或 VFS_ERR_*
      */
-    int hal_usb_bus_host_init(struct hal_usb_bus_host* host, const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_usb_bus_host_init(struct hal_usb_bus_host* host,
+                              const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化: 关 IRQ、关时钟、恢复 GPIO
      * @param[in] host host 对象
@@ -106,7 +107,8 @@ extern "C"
      * @param[in] xfer_mode HAL_USB_XFER_AUTO / POLL / DMA
      * @return HAL_USB_XFER_POLL / HAL_USB_XFER_DMA, 或负数 VFS_ERR_*
      */
-    int hal_usb_resolve_xfer_mode(const struct hal_usb_bus_host* host, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int hal_usb_resolve_xfer_mode(const struct hal_usb_bus_host* host,
+                                  uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

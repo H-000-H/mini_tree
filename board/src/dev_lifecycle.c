@@ -61,7 +61,11 @@ void dev_lc_reset(struct dev_lifecycle* lc)
  * @param[in] lc 生命周期对象指针
  * @return 当前状态, lc 为 NULL 返回 DEV_LC_UNINITIALIZED
  */
-dev_lc_state_t dev_lc_state(const struct dev_lifecycle* lc) { return lc ? (dev_lc_state_t)COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) : DEV_LC_UNINITIALIZED; }
+dev_lc_state_t dev_lc_state(const struct dev_lifecycle* lc)
+{
+    return lc ? (dev_lc_state_t)COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) :
+                DEV_LC_UNINITIALIZED;
+}
 
 /**
  * @brief 读取当前 open 引用计数 (teardown 锁定后返回 0)
@@ -170,7 +174,8 @@ int dev_lc_io_begin(struct dev_lifecycle* lc)
             return MINI_ERR_NODEV;
         if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
             return MINI_ERR_NODEV;
-    } while (!COMPAT_ATOMIC_CAS(&lc->io_active, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+    } while (
+        !COMPAT_ATOMIC_CAS(&lc->io_active, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
     return MINI_OK;
 }
@@ -215,14 +220,16 @@ int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
     for (;;)
     {
         int opens_expected = 0;
-        if (COMPAT_ATOMIC_CAS(&lc->opens, &opens_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
+        if (COMPAT_ATOMIC_CAS(&lc->opens, &opens_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL,
+                              COMPAT_MO_RELAXED))
         {
             /* opens 已锁定为 -1. 在 state == REMOVING 门控下 open_begin 必拒绝,
              * 因此 opens 一旦锁定即保持锁定, 不回滚到 0 (避免短暂暴露窗口). */
             for (;;)
             {
                 int io_expected = 0;
-                if (COMPAT_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
+                if (COMPAT_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED,
+                                      COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
                     return MINI_OK;
 
                 if (timeout_ms != OSAL_WAIT_FOREVER && (osal_time_ms() - start_ms) >= timeout_ms)

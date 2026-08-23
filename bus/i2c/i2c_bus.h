@@ -44,7 +44,8 @@ extern "C"
      * @param[in] cfg host 配置 (VFS 填充 DTSI 硬件直投值)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_host_init(struct device* pdev,
+                          const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C host 反初始化 (ref_count > 0 时返回 BUSY)
      * @param[in] pdev controller device (host)
@@ -68,7 +69,8 @@ extern "C"
      * @param[out] out 输出 i2c_bus_client 指针
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg, struct i2c_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg,
+                                struct i2c_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 注销 I2C client 并递减 host 引用计数 (ref_count -1, 清零槽位)
      * @param[in] pdev client device
@@ -97,7 +99,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (毫秒)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                         uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C 读数据
      * @param[in] pdev client device
@@ -106,7 +109,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (毫秒)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms,
+                     uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C 写数据
      * @param[in] pdev client device
@@ -115,7 +119,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (毫秒)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms,
+                      uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C slave 模式同步传输 (空壳: STM32 返回 NOTSUPP)
      * @param[in] pdev client device
@@ -125,7 +130,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (毫秒)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+                           uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C slave 模式排队发送 (空壳: STM32 返回 NOTSUPP)
      * @param[in] pdev client device
@@ -134,7 +140,8 @@ extern "C"
      * @param[in] timeout_ms 超时 (毫秒)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
+                               uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C slave 模式获取传输结果 (空壳: STM32 返回 NOTSUPP)
      * @param[in] pdev client device
@@ -144,7 +151,9 @@ extern "C"
      * @param[in] timeout_ms 超时 (毫秒)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap,
+                                       size_t* trans_len,
+                                       uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
 
 #ifdef __cplusplus

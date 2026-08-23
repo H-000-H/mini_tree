@@ -16,7 +16,8 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_dac_device_init(hal_dac_device* pdev, hal_dac_host_config* host_cfg, hal_dac_platform_unique_config* unique_cfg)
+COMPAT_WEAK int hal_dac_device_init(hal_dac_device* pdev, hal_dac_host_config* host_cfg,
+                                    hal_dac_platform_unique_config* unique_cfg)
 {
     (void)pdev;
     (void)host_cfg;

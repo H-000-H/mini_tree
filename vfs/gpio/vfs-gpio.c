@@ -44,7 +44,11 @@ static uint8_t s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE]
 /**
  * @brief GPIO VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void)
+{
+    COMPAT_IGNORE_RESULT(
+        osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
+}
 
 /**
  * @brief GPIO 设备打开操作 (引用计数, 首次打开时调用 HAL 初始化)
@@ -212,7 +216,8 @@ static const gpio_ioctl_map_t s_gpio_ioctl_map[GPIO_CMD_COUNT] = {
  * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                          uint32_t timeout_ms)
 {
     struct vfs_gpio_priv* priv;
     struct dev_lifecycle* lc;
@@ -292,8 +297,11 @@ static int vfs_gpio_probe(struct device* pdev)
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (device_get_prop_int(pdev, "gpio-port", &port_val) != MINI_OK || device_get_prop_int(pdev, "gpio-pin", &pin_val) != MINI_OK || device_get_prop_int(pdev, "gpio-clk", &clk_val) != MINI_OK ||
-        device_get_prop_int(pdev, "gpio-mode", &mode_val) != MINI_OK || device_get_prop_int(pdev, "gpio-pull", &pull_val) != MINI_OK)
+    if (device_get_prop_int(pdev, "gpio-port", &port_val) != MINI_OK ||
+        device_get_prop_int(pdev, "gpio-pin", &pin_val) != MINI_OK ||
+        device_get_prop_int(pdev, "gpio-clk", &clk_val) != MINI_OK ||
+        device_get_prop_int(pdev, "gpio-mode", &mode_val) != MINI_OK ||
+        device_get_prop_int(pdev, "gpio-pull", &pull_val) != MINI_OK)
     {
         ret = MINI_ERR_INVAL;
         goto err_pool;
@@ -331,7 +339,8 @@ static int vfs_gpio_probe(struct device* pdev)
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "default-level", &default_level));
     priv->default_level = default_level;
 
-    if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx], sizeof(s_gpio_mutex_storage[pool_idx])) != 0)
+    if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx],
+                                 sizeof(s_gpio_mutex_storage[pool_idx])) != 0)
     {
         ret = MINI_ERR_NOMEM;
         goto err_pool;
@@ -347,7 +356,8 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_mutex;
     }
 
-    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
+    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val,
+             (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
     return MINI_OK;
 
 err_mutex:

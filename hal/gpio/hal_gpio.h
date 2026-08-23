@@ -8,7 +8,8 @@
  *   @note        由于 GPIO 是快速热路径外设所以 GPIO 的初始化与配置应该尽量在硬件直投层完成
  *   @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
  *   @note        获取参数不能直接返回，必须通过指针参数传递
- *   @note 禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
+ *   @note
+ *禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
 
 #ifndef HAL_GPIO_H
@@ -163,7 +164,8 @@ extern "C"
      * @param[out] output_type 输出类型宏值 (如 LL_GPIO_OUTPUT_PUSHPULL)
      * @return 成功返回 MINI_OK
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_output_type(hal_gpio_dev_t* pdev, uint32_t output_type);
+    int COMPAT_WARN_UNUSED_RESULT hal_gpio_set_output_type(hal_gpio_dev_t* pdev,
+                                                           uint32_t output_type);
 
     /**
      * @brief GPIO 获取当前输出类型配置
@@ -171,7 +173,8 @@ extern "C"
      * @param[out] output_type 用于回传输出类型宏值的指针
      * @return 成功返回 MINI_OK
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_output_type(hal_gpio_dev_t* pdev, uint32_t* output_type);
+    int COMPAT_WARN_UNUSED_RESULT hal_gpio_get_output_type(hal_gpio_dev_t* pdev,
+                                                           uint32_t* output_type);
 
     /**
      * @brief GPIO 设置复用功能寄存器值(AFR)

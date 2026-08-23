@@ -137,7 +137,8 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数
      * @return 排空完成返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
-    int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int dev_lc_remove_drain(struct dev_lifecycle* lc,
+                            uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 移除完成: 复位计数器, 回到 UNINITIALIZED

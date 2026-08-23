@@ -37,7 +37,10 @@ static const char* const k_tag = "vfs_rtc";
 /**
  * @brief RTC VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void) { COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool_ctrl, s_used, RTC_VFS_POOL)); }
+pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void)
+{
+    COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
+}
 
 /**
  * @brief RTC 设备打开: 引用计数, 首次打开时调用 hal_rtc_open
@@ -219,8 +222,12 @@ static int rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_l
 
 typedef int (*rtc_ioctl_fn)(struct vfs_rtc_priv*, void*, size_t, uint32_t);
 static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
-    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,         [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,     [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,
-    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm, [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup, [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
+    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,
+    [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,
+    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,
+    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm,
+    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup,
+    [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
     [RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1] = rtc_cmd_force_stop,
 };
 
@@ -233,7 +240,8 @@ static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
  * @param[in] timeout_ms 未使用 (透传给子命令)
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
+                         uint32_t timeout_ms)
 {
     struct vfs_rtc_priv* priv;
     struct dev_lifecycle* lc;

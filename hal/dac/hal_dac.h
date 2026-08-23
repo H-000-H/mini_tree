@@ -8,7 +8,8 @@
  *   @note        由于 DAC 是热路径外设所以 DAC 的初始化与配置应该尽量在硬件直投层完成
  *   @note        文件约定：返回值不允许void，必须使用int，并且错误码必须使用VFS.h中的错误码
  *   @note        获取参数不能直接返回，必须通过指针参数传递
- *   @note 禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
+ *   @note
+ *禁止使用enum，enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
  */
 
 #ifndef HAL_DAC_H
@@ -123,7 +124,9 @@ extern "C"
      * @param[in] unique_cfg 平台唯一配置指针
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_dac_device_init(hal_dac_device* pdev, hal_dac_host_config* host_cfg, hal_dac_platform_unique_config* unique_cfg);
+    int COMPAT_WARN_UNUSED_RESULT hal_dac_device_init(hal_dac_device* pdev,
+                                                      hal_dac_host_config* host_cfg,
+                                                      hal_dac_platform_unique_config* unique_cfg);
 
     /**
      * @brief 关闭 DAC 设备
@@ -196,7 +199,8 @@ extern "C"
      * @param[in] remaining 返回剩余未发送的数据个数
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_dac_get_dma_progress(hal_dac_device* pdev, uint32_t* remaining);
+    int COMPAT_WARN_UNUSED_RESULT hal_dac_get_dma_progress(hal_dac_device* pdev,
+                                                           uint32_t* remaining);
 
     /**
      * @brief 向 DMA 缓冲区写入一段波形数据
@@ -205,7 +209,8 @@ extern "C"
      * @param[in] len 待写入的数据长度
      * @return 成功返回写入长度, 失败返回负数错误码
      */
-    int COMPAT_WARN_UNUSED_RESULT hal_dac_write_dma_buffer(hal_dac_device* pdev, const uint16_t* data, uint32_t len);
+    int COMPAT_WARN_UNUSED_RESULT hal_dac_write_dma_buffer(hal_dac_device* pdev,
+                                                           const uint16_t* data, uint32_t len);
 
     /**
      * @brief 停止 DMA 并彻底复位硬件状态

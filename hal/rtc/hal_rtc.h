@@ -72,7 +72,8 @@ extern "C"
      * @param[in] cfg RTC 硬件配置 (DTSI 直投)
      * @return 成功返回 MINI_OK, pdev 或 cfg 为空返回 MINI_ERR_INVAL
      */
-    int hal_rtc_init(struct hal_rtc_dev* pdev, const struct hal_rtc_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+    int hal_rtc_init(struct hal_rtc_dev* pdev,
+                     const struct hal_rtc_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 RTC 软件对象
      * @param[in] pdev RTC 设备对象指针
@@ -98,14 +99,16 @@ extern "C"
      * @param[in] time 目标日历时间
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
-    int hal_rtc_set_time(struct hal_rtc_dev* pdev, const struct hal_rtc_time* time) COMPAT_WARN_UNUSED_RESULT;
+    int hal_rtc_set_time(struct hal_rtc_dev* pdev,
+                         const struct hal_rtc_time* time) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 读取 RTC 当前日历时间
      * @param[in] pdev RTC 设备对象指针
      * @param[out] time 回传当前日历时间
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
-    int hal_rtc_get_time(struct hal_rtc_dev* pdev, struct hal_rtc_time* time) COMPAT_WARN_UNUSED_RESULT;
+    int hal_rtc_get_time(struct hal_rtc_dev* pdev,
+                         struct hal_rtc_time* time) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 配置闹钟 A 并使能中断位; callback 暂存但当前无完整 ISR 派发
      * @param[in] pdev RTC 设备对象指针
@@ -114,7 +117,8 @@ extern "C"
      * @param[in] user 回调用户数据
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
-    int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm, hal_rtc_alarm_cb_t cb, void* user) COMPAT_WARN_UNUSED_RESULT;
+    int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm,
+                          hal_rtc_alarm_cb_t cb, void* user) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 取消闹钟 A
      * @param[in] pdev RTC 设备对象指针
@@ -127,7 +131,8 @@ extern "C"
      * @param[in] seconds 唤醒周期 (秒)
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
-    int hal_rtc_set_wakeup_timer(struct hal_rtc_dev* pdev, uint32_t seconds) COMPAT_WARN_UNUSED_RESULT;
+    int hal_rtc_set_wakeup_timer(struct hal_rtc_dev* pdev,
+                                 uint32_t seconds) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 取消 RTC 唤醒定时器
      * @param[in] pdev RTC 设备对象指针

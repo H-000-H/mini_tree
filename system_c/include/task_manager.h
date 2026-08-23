@@ -26,7 +26,8 @@ extern "C"
      * @param[in] param 任务参数
      * @return 任务句柄; 创建失败返回 NULL
      */
-    osal_task_handle_t task_manager_create(const struct board_task_config* config, void (*entry)(void*), void* param);
+    osal_task_handle_t task_manager_create(const struct board_task_config* config,
+                                           void (*entry)(void*), void* param);
 
     /**
      * @brief 按显式参数创建任务 (自动订阅 TWDT 若已初始化)
@@ -38,7 +39,9 @@ extern "C"
      * @param[in] core_id 核心号 (-1=任意核心)
      * @return 任务句柄; 创建失败返回 NULL
      */
-    osal_task_handle_t task_manager_create_task(const char* name, uint32_t stack_size, uint32_t priority, void (*entry)(void*), void* param, int core_id);
+    osal_task_handle_t task_manager_create_task(const char* name, uint32_t stack_size,
+                                                uint32_t priority, void (*entry)(void*),
+                                                void* param, int core_id);
 
 #ifdef __cplusplus
 }

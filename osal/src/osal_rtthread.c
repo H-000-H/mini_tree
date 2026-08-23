@@ -78,13 +78,16 @@ static int osal_mutex_init(struct osal_mutex* m, osal_mutex_type_t type, const c
 
     m->type = type;
     if (type == OSAL_MUTEX_RECURSIVE)
-        return rt_mutex_init(&m->u.mutex, name, RT_IPC_FLAG_PRIO) == RT_EOK ? OSAL_OK : OSAL_ERR_NOMEM;
+        return rt_mutex_init(&m->u.mutex, name, RT_IPC_FLAG_PRIO) == RT_EOK ? OSAL_OK :
+                                                                              OSAL_ERR_NOMEM;
     if (type == OSAL_MUTEX_PLAIN)
-        return rt_sem_init(&m->u.sem, name, 1, RT_IPC_FLAG_PRIO) == RT_EOK ? OSAL_OK : OSAL_ERR_NOMEM;
+        return rt_sem_init(&m->u.sem, name, 1, RT_IPC_FLAG_PRIO) == RT_EOK ? OSAL_OK :
+                                                                             OSAL_ERR_NOMEM;
     return OSAL_ERR_INVAL;
 }
 
-_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE, "OSAL_MUTEX_STORAGE_SIZE too small");
+_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE,
+               "OSAL_MUTEX_STORAGE_SIZE too small");
 
 /* ── ISR 上下文检测 ── */
 /**
@@ -170,7 +173,10 @@ static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 初始化静态互斥锁池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化互斥锁池控制结构体
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void) { osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE); }
+pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void)
+{
+    osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE);
+}
 
 /**
  * @brief 初始化池
@@ -345,7 +351,8 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
  * @param[in] type OSAL_MUTEX_PLAIN 或 OSAL_MUTEX_RECURSIVE
  * @return 0 成功; OSAL_ERR_INVAL/ISR/NOMEM 失败
  */
-int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size, osal_mutex_type_t type)
+int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size,
+                                   osal_mutex_type_t type)
 {
     if (!out || !storage || storage_size < sizeof(struct osal_mutex))
         return OSAL_ERR_INVAL;
@@ -368,42 +375,60 @@ int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_
  * @param[out] out 等见签名
  * @return 0 或错误码
  */
-int osal_mutex_create(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief RT-Thread mutex/sem 互斥锁
  * @param[out] out 等见签名
  * @return 0 或错误码
  */
-int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief RT-Thread mutex/sem 互斥锁
  * @param[out] out 等见签名
  * @return 0 或错误码
  */
-int osal_mutex_create_recursive(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE); }
+int osal_mutex_create_recursive(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE);
+}
 
 /**
  * @brief RT-Thread mutex/sem 互斥锁
  * @param[out] out 等见签名
  * @return 0 或错误码
  */
-int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_RECURSIVE); }
+int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_RECURSIVE);
+}
 
 /**
  * @brief RT-Thread mutex/sem 互斥锁
  * @param[out] out 等见签名
  * @return 0 或错误码
  */
-int osal_mutex_create_plain(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_plain(struct osal_mutex** out)
+{
+    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief RT-Thread mutex/sem 互斥锁
  * @param[out] out 等见签名
  * @return 0 或错误码
  */
-int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size) { return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN); }
+int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size)
+{
+    return osal_mutex_create_static_typed(out, storage, storage_size, OSAL_MUTEX_PLAIN);
+}
 
 /**
  * @brief detach + 释放池槽
@@ -485,7 +510,10 @@ static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
  * @brief 初始化二值信号量池
  * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化二值信号量池
  */
-pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void) { osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE); }
+pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void)
+{
+    osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE);
+}
 
 /**
  * @brief 初始化二值信号量
@@ -638,7 +666,8 @@ void osal_yield_from_isr(bool yield_required) { COMPAT_UNUSED_PARAM(yield_requir
  * @param[in] core_id SMP 时绑核 ID
  * @return 0 成功; OSAL_ERR_INVAL 失败
  */
-int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
+                     osal_task_entry_t entry, void* param, int core_id)
 {
     rtt_heap_init_once();
 
@@ -669,7 +698,9 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, o
  * @param[out] out_handle 输出线程句柄
  * @return 0 成功; OSAL_ERR_INVAL 失败
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id, osal_task_handle_t* out_handle)
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
+                            osal_task_entry_t entry, void* param, int core_id,
+                            osal_task_handle_t* out_handle)
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;

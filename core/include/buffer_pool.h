@@ -120,7 +120,8 @@ extern "C"
      * @param[in] pool 池对象指针
      * @param[in] size 请求的数据区字节数
      * @param[out] p_block 回传块对象指针 (仅成功时写入)
-     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOMEM 静态池无法满足 (调用方可改用 buffer_pool_expand 扩容)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOMEM 静态池无法满足
+     * (调用方可改用 buffer_pool_expand 扩容)
      * @note 与 buffer_pool_alloc 不同, 本函数绝不走 calloc。
      */
     int buffer_pool_alloc_static(buffer_pool_t* pool, size_t size, buffer_block_t** p_block);
@@ -166,7 +167,8 @@ extern "C"
      * @param[in] src 源数据
      * @param[in] len 请求写入字节数
      * @param[out] actual 可选: 实际写入字节数 (≤ len), 可传 NULL
-     * @return BUFF_POOL_OK 成功 (空间不足时截断); BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOSPC 块已满 (*actual = 0)
+     * @return BUFF_POOL_OK 成功 (空间不足时截断); BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOSPC
+     * 块已满 (*actual = 0)
      * @note 空间不足时按实际剩余空间截断写入, 仍返回 BUFF_POOL_OK;
      *       用 *actual 判断是否写满。
      */
@@ -177,7 +179,8 @@ extern "C"
      * @param[out] dst 目的缓冲区
      * @param[in] len 请求读取字节数
      * @param[out] actual 可选: 实际读取字节数 (≤ len), 可传 NULL
-     * @return BUFF_POOL_OK 成功 (数据不足时截断); BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_EMPTY 块内无数据 (*actual = 0)
+     * @return BUFF_POOL_OK 成功 (数据不足时截断); BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_EMPTY
+     * 块内无数据 (*actual = 0)
      * @note 数据不足时按实际可读字节数截断读取, 仍返回 BUFF_POOL_OK;
      *       用 *actual 判断是否读到期望长度。
      */

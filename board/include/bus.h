@@ -57,7 +57,8 @@ extern "C"
         int (*init)(struct device* pdev, const void* cfg); /**< 初始化 host */
         int (*deinit)(struct device* pdev); /**< 反初始化 host (返回 int, BUSY 时不销毁) */
         int (*role)(struct device* pdev); /**< 查询角色 (MASTER/SLAVE) */
-        int (*client_register)(struct device* pdev, const void* cfg, void** out); /**< 注册 client */
+        int (*client_register)(struct device* pdev, const void* cfg,
+                               void** out); /**< 注册 client */
         void (*client_unregister)(struct device* pdev); /**< 注销 client */
     };
     /*===========================================================================================================================================================*/
@@ -96,7 +97,9 @@ extern "C"
      *
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx) COMPAT_WARN_UNUSED_RESULT;
+    int bus_controller_bind_full(struct device* pdev, bus_type_t type,
+                                 const struct bus_controller_ops* ctlr_ops,
+                                 void* hw_ctx) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查找 device 自身绑定的 controller (传 host)
@@ -104,7 +107,8 @@ extern "C"
      * @param[out] out 回传 bus_controller 指针
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
-    int bus_controller_get(const struct device* pdev, struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
+    int bus_controller_get(const struct device* pdev,
+                           struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查找 client 所属的 controller
@@ -117,7 +121,8 @@ extern "C"
      *
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
-    int bus_controller_of(const struct device* pdev, struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
+    int bus_controller_of(const struct device* pdev,
+                          struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 解绑 controller
@@ -156,7 +161,8 @@ extern "C"
      * @param[in] slot_count 槽位数量
      * @return 成功返回 bridge 指针, 池满返回 NULL
      */
-    struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, size_t slot_count);
+    struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots,
+                                                    size_t slot_count);
 
     /**
      * @brief 绑定 device / 用户回调 / userdata (claim 之后调用)
@@ -165,7 +171,8 @@ extern "C"
      * @param[in] cb 用户完成回调
      * @param[in] userdata 用户私有数据
      */
-    void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev, bus_async_user_cb_t cb, void* userdata);
+    void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev,
+                               bus_async_user_cb_t cb, void* userdata);
 
     /**
      * @brief 释放槽位 (HAL 提交失败时立即调用, 不触发用户 cb)
