@@ -82,7 +82,7 @@ Platform implementations must be **table-free and branch-free** (per the header 
 - [ ] short top-half, no OS blocking APIs
 - [ ] logging only in tasks or bottom halves
 - [ ] no dynamic allocation on hot paths
-- [ ] timeout paths return `VFS_ERR_TIMEOUT`, never spin forever
+- [ ] timeout paths return `MINI_ERR_TIMEOUT`, never spin forever
 
 ---
 

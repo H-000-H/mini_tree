@@ -154,7 +154,7 @@ device_read/write/ioctl
 
 ### 4.4 错误与指针
 
-- 返回值：`int`，`VFS_OK` 或负的 `VFS_ERR_*`
+- 返回值：`int`，`MINI_OK` 或负的 `VFS_ERR_*`
 - 特殊指针：`ERR_PTR` / `IS_ERR` / `PTR_ERR`（依赖 `error_symbols.ld` 的 `ERR_SECTION_BASE`）
 
 ---

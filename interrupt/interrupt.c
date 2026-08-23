@@ -47,11 +47,11 @@ void interrupt_virtual_dispatch(uint16_t virq_num)
     {
         int need_bottom_half = top(arg, virq_num);
         if (need_bottom_half && work)
-            (void)interrupt_bottom_half_submit(work);
+            COMPAT_IGNORE_RESULT(interrupt_bottom_half_submit(work));
     }
     else if (work)
     {
-        (void)interrupt_bottom_half_submit(work);
+        COMPAT_IGNORE_RESULT(interrupt_bottom_half_submit(work));
     }
 }
 
@@ -73,49 +73,49 @@ COMPAT_WEAK int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num)
 {
     COMPAT_UNUSED_PARAM(arg);
     COMPAT_UNUSED_PARAM(irq_num);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 COMPAT_WEAK void hal_adc_dma_bottom_half_handler(void* arg) { COMPAT_UNUSED_PARAM(arg); }
@@ -131,7 +131,7 @@ void bottom_half_run_pending(struct fifo_spsc* fifo)
         return;
 
     fifo_data_type elem;
-    while (fifo_read_data(fifo, &elem))
+    while (fifo_read_data(fifo, &elem) == BUFF_OK)
     {
         struct bottom_half_work* work = (struct bottom_half_work*)(uintptr_t)elem;
 
@@ -143,7 +143,7 @@ void bottom_half_run_pending(struct fifo_spsc* fifo)
 
         while (COMPAT_ATOMIC_EXCHANGE(&work->rerun, false, COMPAT_MO_ACQ_REL))
         {
-            if (bottom_half_submit_rerun(fifo, work))
+            if (bottom_half_submit_rerun(fifo, work) == MINI_OK)
                 break;
             COMPAT_ATOMIC_STORE(&work->executing, true, COMPAT_MO_RELEASE);
             work->fn(work->arg);
@@ -171,6 +171,6 @@ pre_execution(PRE_EXEC_PRIO_IRQ_BOTTOM) static void interrupt_bottom_half_pool_i
 
 void interrupt_bottom_half_init(void) { bottom_half_poller_init(&s_global_poller); }
 
-bool interrupt_bottom_half_submit(struct bottom_half_work* work) { return bottom_half_poller_submit(&s_global_poller, work); }
+int interrupt_bottom_half_submit(struct bottom_half_work* work) { return bottom_half_poller_submit(&s_global_poller, work); }
 
 void interrupt_bottom_half_poll(void) { bottom_half_poller_run(&s_global_poller); }

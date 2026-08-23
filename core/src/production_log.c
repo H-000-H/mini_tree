@@ -45,11 +45,11 @@ static bool s_ready = false;
  */
 int production_log_init(void)
 {
-    hal_storage_init();
+    COMPAT_IGNORE_RESULT(hal_storage_init());
 
     COMPAT_MEM_SET(&s_state, 0, sizeof(s_state));
     size_t len = sizeof(s_state);
-    hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len);
+    COMPAT_IGNORE_RESULT(hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len));
 
     s_ready = true;
     return 0;
@@ -83,7 +83,7 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     if (osal_in_isr())
         return;
 
-    hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state));
+    COMPAT_IGNORE_RESULT(hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state)));
 }
 
 /**

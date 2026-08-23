@@ -110,7 +110,7 @@ board_driver_probe_all()
 关键点：
 
 - **运行时零 strcmp**：compatible 字符串在编译期就映射为函数指针，运行时只是查表取地址。
-- **3 趟 deferred probe**：`board_driver_probe_all` 最多跑 3 趟；驱动返回 `VFS_ERR_DEFER`（phandle 依赖未就绪）则下趟重试；`deferred` 不再减少视为 **stall**，相关设备被永久 `DEVICE_STATUS_DISABLED`。
+- **3 趟 deferred probe**：`board_driver_probe_all` 最多跑 3 趟；驱动返回 `MINI_ERR_DEFER`（phandle 依赖未就绪）则下趟重试；`deferred` 不再减少视为 **stall**，相关设备被永久 `DEVICE_STATUS_DISABLED`。
 - **失败分级**（`handle_probe_failure`）：`DEVICE_CRIT_FATAL` → `OSAL_PANIC` 安全停机；`DEVICE_CRIT_WARNING` → 告警；`DEVICE_CRIT_IGNORE` → 静默。依赖失败的设备通过 `disable_dependents` 级联禁用。
 - 无驱动的无名节点静默禁用；有名节点无驱动按 criticality 处理。
 
@@ -123,7 +123,7 @@ board_driver_probe_all()
 ### 常见坑
 
 - 驱动 `.c` 忘记写 `DRIVER_REGISTER` → 生成表里没有该函数 → 设备被标记 `DISABLED`，日志会提示 "no generated probe"。
-- `probe` 返回 `VFS_ERR_DEFER` 但不能在 3 趟内解决 → stall → 永久禁用；应确保依赖在 probe 顺序上靠前。
+- `probe` 返回 `MINI_ERR_DEFER` 但不能在 3 趟内解决 → stall → 永久禁用；应确保依赖在 probe 顺序上靠前。
 - remove 标准序列（`driver.h` 注释）必须按序：`dev_lc_remove_start` → `device_ops_unregister` → `dev_lc_remove_drain` → teardown → `dev_lc_remove_finish`（机制见 §7）。
 
 ---
@@ -239,7 +239,7 @@ VIRTUAL_IRQ_BLOCK_TABLE(X)  → system / tim / gpio / adc / uart / spi / i2c / i
 
 ```c
 interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &ctx);
-// top_half 返回 VFS_IRQ_ENTRY_BOTTOM(非零) → dispatch 自动 submit 下半部
+// top_half 返回 MINI_IRQ_ENTRY_BOTTOM(非零) → dispatch 自动 submit 下半部
 interrupt_virtual_dispatch(virq_num);   // ISR 内调用
 ```
 
@@ -264,7 +264,7 @@ rerun     fn() 执行期间再次 trigger → 结束后补跑，事件不丢失
 ISR（top_half，必须轻量）
   ├─ 读硬件标志 / 清中断
   ├─ 无锁取数（写 SPSC FIFO，见 §6）
-  └─ return VFS_IRQ_ENTRY_BOTTOM  → dispatch submit 下半部 work
+  └─ return MINI_IRQ_ENTRY_BOTTOM  → dispatch submit 下半部 work
 主循环 / bottom_half_task（下半部，可以重）
   └─ 协议解析、数据处理、驱动回调
 ```
@@ -318,9 +318,10 @@ struct fifo_spsc {
 ### 常见坑
 
 - **违反 SPSC 是未定义行为**：多生产者会丢数据/破坏内存序，多消费者会重复消费。需要多对多就上 OSAL 队列（带锁）。
-- `fifo_init` 强制 `size` 为 2 的幂（`(size & (size-1)) != 0` 直接返回），传错值静默失败。
+- `fifo_init` 强制 `size` 为 2 的幂（`(size & (size-1)) != 0` 拒绝），传错值返回 `BUFF_ERR_INVAL`。
 - `fifo_data_type` 是 `uintptr_t`：既能存 16 位 ADC 采样值，也能存下半部 work 指针（`interrupt.h` 正是这么复用的）。
-- 块读写（`fifo_write_block/read_block`）处理了环形回绕的跨边界 memcpy，`len` 超过空闲空间时按 `free_len` 截断并返回实际长度。
+- buffer 家族全部接口返回 `BUFF_*` 错误码（自成一套, 包装 errno: `BUFF_OK` / `BUFF_ERR_INVAL` / `BUFF_ERR_FULL` / `BUFF_ERR_EMPTY`），长度类结果经指针参数回传。
+- 块读写（`fifo_write_block/read_block`）处理了环形回绕的跨边界 memcpy，`len` 超过空闲空间时按剩余空间截断，实际写入/读取个数经 `p_actual` 回传。
 
 ---
 
@@ -359,7 +360,7 @@ dev_lc_remove_finish(device_lc(pdev));     // RESET
 
 ### 常见坑
 
-- `remove_drain` 超时返回 `VFS_ERR_TIMEOUT`；`OSAL_WAIT_FOREVER` 时若某个 open 永不释放会永久等待——业务代码必须保证 open/io 成对。
+- `remove_drain` 超时返回 `MINI_ERR_TIMEOUT`；`OSAL_WAIT_FOREVER` 时若某个 open 永不释放会永久等待——业务代码必须保证 open/io 成对。
 - `dev_lc_open_begin` 返回语义：首次 open 返回 1，重复 open 返回 0，失败返回负错误码，别把"重复 open"当错误。
 
 ---

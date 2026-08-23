@@ -85,57 +85,57 @@ extern "C"
     /**
      * @brief VIRQ 外围钩子 — 原散落于 hal 各外设头，统一集中到本模块声明
      * @note  板级以强符号覆盖 (弱实现在 interrupt.c); 未覆盖时上半部返回
-     *        VFS_IRQ_ENTRY_NOBOTTOM (不需要下半部)。
-     * @note  上半部约定: 返回 VFS_IRQ_ENTRY_BOTTOM(1) = 需要 submit 下半部;
-     *        VFS_IRQ_ENTRY_NOBOTTOM(0) = 不需要。
+     *        MINI_IRQ_ENTRY_NOBOTTOM (不需要下半部)。
+     * @note  上半部约定: 返回 MINI_IRQ_ENTRY_BOTTOM(1) = 需要 submit 下半部;
+     *        MINI_IRQ_ENTRY_NOBOTTOM(0) = 不需要。
      */
     /**
      * @brief ADC VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num);
     /**
      * @brief I2S VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num);
     /**
      * @brief SPI VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num);
     /**
      * @brief CAN VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num);
     /**
      * @brief DAC VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num);
     /**
      * @brief TIM VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num);
     /**
      * @brief UART VIRQ 上半部钩子 (板级以强符号覆盖)
      * @param[in] arg 中断上下文参数
      * @param[in] irq_num 虚拟中断号
-     * @return VFS_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; VFS_IRQ_ENTRY_NOBOTTOM(0)=不需要
+     * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
      */
     int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num);
     /**
@@ -203,49 +203,49 @@ extern "C"
      * @brief 补跑入队 (内部使用)
      * @param[in] fifo  fifo_spsc 指针
      * @param[in] work  工作项指针
-     * @return true 成功; false 队列满
+     * @return MINI_OK 成功; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE bool bottom_half_submit_rerun(struct fifo_spsc* fifo, struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE int bottom_half_submit_rerun(struct fifo_spsc* fifo, struct bottom_half_work* work)
     {
         bool expected = false;
 
         if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
-            return true;
+            return MINI_OK;
 
-        if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work))
-            return true;
+        if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) == BUFF_OK)
+            return MINI_OK;
 
         COMPAT_ATOMIC_STORE(&work->pending, false, COMPAT_MO_RELEASE);
-        return false;
+        return MINI_ERR_NOSPC;
     }
 
     /**
      * @brief ISR 侧入队 (裸机 / OS 共用)
      * @param[in] fifo  fifo_spsc 指针
      * @param[in] work  工作项指针
-     * @return true 已入队 / 已在队列 / 已记 rerun; false 队列满 (work 被丢弃)
+     * @return MINI_OK 已入队 / 已在队列 / 已记 rerun; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满 (work 被丢弃)
      * @note   本函数不执行 work->fn(); 调用方 return-from-ISR 后由消费者 run_pending
      */
-    COMPAT_STATIC_INLINE bool bottom_half_submit_from_isr(struct fifo_spsc* fifo, struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE int bottom_half_submit_from_isr(struct fifo_spsc* fifo, struct bottom_half_work* work)
     {
         bool expected = false;
 
         if (!fifo || !work || !work->fn)
-            return false;
+            return MINI_ERR_INVAL;
 
         if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
         {
             if (COMPAT_ATOMIC_LOAD(&work->executing, COMPAT_MO_ACQUIRE))
                 COMPAT_ATOMIC_STORE(&work->rerun, true, COMPAT_MO_RELEASE);
-            return true;
+            return MINI_OK;
         }
 
-        if (!fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work))
+        if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) != BUFF_OK)
         {
             COMPAT_ATOMIC_STORE(&work->pending, false, COMPAT_MO_RELEASE);
-            return false;
+            return MINI_ERR_NOSPC;
         }
-        return true;
+        return MINI_OK;
     }
 
     /**< 非 inline 实现, 在 interrupt.c 中定义 */
@@ -274,7 +274,7 @@ extern "C"
     {
         if (!poller)
             return;
-        fifo_init(&poller->fifo, poller->ring, BOTTOM_HALF_QUEUE_DEPTH);
+        COMPAT_IGNORE_RESULT(fifo_init(&poller->fifo, poller->ring, BOTTOM_HALF_QUEUE_DEPTH));
         poller->pending_drain = false;
     }
 
@@ -283,17 +283,17 @@ extern "C"
      * @param[in] poller 轮询器指针
      * @param[in] work 工作项指针
      * @note   return-from-ISR 后, 主循环 bottom_half_poller_run() 才 run_pending
-     * @return 成功入队返回 true, 队列满返回 false
+     * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE bool bottom_half_poller_submit(struct bottom_half_poller* poller, struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE int bottom_half_poller_submit(struct bottom_half_poller* poller, struct bottom_half_work* work)
     {
         if (!poller)
-            return false;
+            return MINI_ERR_INVAL;
 
-        bool ok = bottom_half_submit_from_isr(&poller->fifo, work);
-        if (ok)
+        int ret = bottom_half_submit_from_isr(&poller->fifo, work);
+        if (ret == MINI_OK)
             poller->pending_drain = true;
-        return ok;
+        return ret;
     }
 
     /**< 非 inline 实现, 在 interrupt.c 中定义 */
@@ -318,15 +318,16 @@ extern "C"
      * @brief 初始化下半部任务适配器 (绑定二值信号量)
      * @param[in] task 任务适配器指针
      * @param[in] sem 二值信号量 (ISR 入队后用于唤醒)
-     * @return 成功返回 0, 参数非法返回 -1
+     * @return MINI_OK 成功; MINI_ERR_INVAL 参数非法或 FIFO 初始化失败
      */
     COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task, struct osal_sem* sem)
     {
         if (!task || !sem)
-            return -1;
-        fifo_init(&task->fifo, task->ring, BOTTOM_HALF_QUEUE_DEPTH);
+            return MINI_ERR_INVAL;
+        if (fifo_init(&task->fifo, task->ring, BOTTOM_HALF_QUEUE_DEPTH) != BUFF_OK)
+            return MINI_ERR_INVAL;
         task->sem = sem;
-        return 0;
+        return MINI_OK;
     }
 
     /**
@@ -334,38 +335,40 @@ extern "C"
      * @param[in] task 任务适配器指针
      * @param[in] work 工作项指针
      * @param[out] px_yield_required ISR 出口是否需要 yield
-     * @return 成功入队返回 true, 队列满返回 false
+     * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE bool bottom_half_task_submit_from_isr(struct bottom_half_task* task, struct bottom_half_work* work, bool* px_yield_required)
+    COMPAT_STATIC_INLINE int bottom_half_task_submit_from_isr(struct bottom_half_task* task, struct bottom_half_work* work, bool* px_yield_required)
     {
         if (!task || !task->sem)
-            return false;
+            return MINI_ERR_INVAL;
 
-        bool ok = bottom_half_submit_from_isr(&task->fifo, work);
-        if (!ok)
-            return false;
+        int ret = bottom_half_submit_from_isr(&task->fifo, work);
+        if (ret != MINI_OK)
+            return ret;
 
         (void)osal_sem_post_from_isr(task->sem, px_yield_required);
-        return true;
+        return MINI_OK;
     }
 
     /**
      * @brief 任务上下文: 入队 + post 二值信号量
      * @param[in] task 任务适配器指针
      * @param[in] work 工作项指针
-     * @return 成功入队返回 true, 队列满或在 ISR 中调用返回 false
+     * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_ISR 在 ISR 中调用; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE bool bottom_half_task_submit(struct bottom_half_task* task, struct bottom_half_work* work)
+    COMPAT_STATIC_INLINE int bottom_half_task_submit(struct bottom_half_task* task, struct bottom_half_work* work)
     {
-        if (!task || !task->sem || bottom_half_in_isr())
-            return false;
+        if (!task || !task->sem)
+            return MINI_ERR_INVAL;
+        if (bottom_half_in_isr())
+            return MINI_ERR_ISR;
 
-        bool ok = bottom_half_submit_from_isr(&task->fifo, work);
-        if (!ok)
-            return false;
+        int ret = bottom_half_submit_from_isr(&task->fifo, work);
+        if (ret != MINI_OK)
+            return ret;
 
         (void)osal_sem_post(task->sem);
-        return true;
+        return MINI_OK;
     }
 
     /**
@@ -393,12 +396,12 @@ extern "C"
      * @param[in] name 任务名 (NULL 用默认)
      * @param[in] stack_size 栈大小 (0 用默认)
      * @param[in] priority 优先级
-     * @return 成功返回 VFS_OK, 创建失败返回负数错误码
+     * @return 成功返回 MINI_OK, 创建失败返回负数错误码
      */
     COMPAT_STATIC_INLINE int bottom_half_task_start(struct bottom_half_task* task, const char* name, uint32_t stack_size, uint32_t priority)
     {
         if (!task)
-            return -1;
+            return MINI_ERR_INVAL;
         return osal_task_create(name ? name : BOTTOM_HALF_TASK_NAME, stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority, bottom_half_task_entry, task, 0);
     }
 #endif /* CONFIG_OSAL_NULL */
@@ -450,9 +453,9 @@ extern "C"
     /**
      * @brief ISR 入队接口 (一般由 dispatch 自动调用, 也可手动调用)
      * @param[in] work 工作项指针
-     * @return true 成功; false 队列满
+     * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
      */
-    bool interrupt_bottom_half_submit(struct bottom_half_work* work);
+    int interrupt_bottom_half_submit(struct bottom_half_work* work);
 
     /**
      * @brief 主循环执行下半部队列

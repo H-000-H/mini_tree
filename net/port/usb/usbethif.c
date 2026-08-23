@@ -142,7 +142,7 @@ int usb_ethif_init_dev(const char* dev_name)
         return -1;
     }
     ret = device_open(dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_tag, "Open USB eth '%s' failed: %d", dev_name, ret);
         return -1;

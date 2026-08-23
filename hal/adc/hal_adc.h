@@ -210,46 +210,46 @@ extern "C"
      * @param[in] pdev ADC 设备指针
      * @param[in] unique_cfg 平台唯一配置指针
      * @param[in] host 主机配置指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_device_init(hal_adc_device* pdev, hal_adc_platform_unique_config* unique_cfg, hal_adc_host_config* host);
 
     /**
      * @brief 释放 ADC 设备运行时资源
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_device_deinit(hal_adc_device* pdev);
 
     /**
      * @brief 初始化 ADC 外设寄存器 (应用 host->config 直投属性)
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_init(hal_adc_device* pdev);
     /**
      * @brief 关闭全部 ADC 设备通道并复位外设
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_deinit_all_adcx(hal_adc_device* pdev);
     /**
      * @brief 关闭 ADC 设备指定通道
      * @param[in] pdev ADC 设备指针
      * @param[in] channel_id 硬件通道号
-     * @return 成功返回 VFS_OK, 通道无效返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 通道无效返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_deinit_adcx_channel(hal_adc_device* pdev, uint32_t channel_id);
     /**
      * @brief 启动 ADC 连续/单次转换
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_start(hal_adc_device* pdev);
     /**
      * @brief 停止 ADC 转换并关闭外设
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_stop(hal_adc_device* pdev);
     /**
@@ -257,21 +257,21 @@ extern "C"
      * @param[in] pdev ADC 设备指针
      * @param[in] channel_num 目标硬件通道号
      * @param[out] out_val 回传转换结果 (12/16 位, 取决于 resolution)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num, uint16_t* out_val);
     /**
      * @brief 轮询等待 ADC 转换完成
      * @param[in] pdev ADC 设备指针
      * @param[out] out_status 回传转换完成状态 (非 0=完成)
-     * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT
+     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_poll_for_conversion(hal_adc_device* pdev, uint32_t* out_status);
     /**
      * @brief 获取 ADC 设备有效通道数量
      * @param[in] pdev ADC 设备指针
      * @param[out] count 回传当前有效通道总数
-     * @return 成功返回 VFS_OK, pdev 或 count 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 或 count 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_count(hal_adc_device* pdev, uint32_t* count);
     /**
@@ -279,7 +279,7 @@ extern "C"
      * @param[in] pdev ADC 设备指针
      * @param[in] index 通道索引 (0-based)
      * @param[out] channel_id 回传硬件通道号
-     * @return 成功返回 VFS_OK, 索引越界返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t* channel_id);
     /**
@@ -287,33 +287,33 @@ extern "C"
      * @param[in] pdev ADC 设备指针
      * @param[in] index 通道索引 (0-based)
      * @param[out] sample_time 回传硬件采样周期时间
-     * @return 成功返回 VFS_OK, 索引越界返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index, uint32_t* sample_time);
     /**
      * @brief 启动 ADC DMA 传输 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, DMA 不可用返回 VFS_ERR_NOTSUPP, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_start(hal_adc_device* pdev);
     /**
      * @brief 启动 ADC DMA 中断模式传输
      * @param[in] pdev ADC 设备指针
-     * @return 成功返回 VFS_OK, DMA 不可用返回 VFS_ERR_NOTSUPP, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, pdev 为空返回 MINI_ERR_INVAL
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_it_start(hal_adc_device* pdev);
     /**
      * @brief 读取 DMA 中断模式下的转换值
      * @param[in] pdev ADC 设备指针
      * @param[out] out_val 回传转换结果
-     * @return 成功返回 VFS_OK, 数据未就绪返回 VFS_ERR_AGAIN, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 数据未就绪返回 MINI_ERR_AGAIN, 失败返回 VFS_ERR_*
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_it_read_value(hal_adc_device* pdev, uint16_t* out_val);
     /**
      * @brief 读取 DMA 模式下的转换值
      * @param[in] pdev ADC 设备指针
      * @param[out] out_val 回传转换结果
-     * @return 成功返回 VFS_OK, 数据未就绪返回 VFS_ERR_AGAIN, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 数据未就绪返回 MINI_ERR_AGAIN, 失败返回 VFS_ERR_*
      */
     int COMPAT_WARN_UNUSED_RESULT hal_adc_dma_read_value(hal_adc_device* pdev, uint16_t* out_val);
 

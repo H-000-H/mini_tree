@@ -231,7 +231,7 @@ void xscheduler_start(void)
     /* ① DTS 显式配了 scheduler-tim → 显式覆盖, 直接走 chosen TIM */
 #ifdef CHOSEN_SCHEDULER_TIM
     struct device* tick_dev = board_dev_get(CHOSEN_SCHEDULER_TIM);
-    if (tick_dev != NULL && device_open(tick_dev, NULL) == VFS_OK)
+    if (tick_dev != NULL && device_open(tick_dev, NULL) == MINI_OK)
     {
         s_priv.tim = vfs_tim_get_hal_dev(tick_dev);
         if (s_priv.tim != NULL)
@@ -239,7 +239,7 @@ void xscheduler_start(void)
             /* 记录周期 tick 的硬件 ARR (精确 WFI 后恢复用, 走 VFS 快路径) */
             struct vfs_tim_arg tim_arg = {0};
             tim_arg.obj = s_priv.tim;
-            if (vfs_tim_fast_get_autoreload(&tim_arg) == VFS_OK && tim_arg.value != 0)
+            if (vfs_tim_fast_get_autoreload(&tim_arg) == MINI_OK && tim_arg.value != 0)
                 s_priv.tick_period = tim_arg.value;
 
 #ifdef CONFIG_VIRQ
@@ -252,7 +252,7 @@ void xscheduler_start(void)
 #endif
 
     /* ② 没配 chosen (或打开失败) → 默认 SysTick (仅 Cortex-M 存在; 非 ARM 返回 NOTSUPP) */
-    if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == VFS_OK)
+    if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == MINI_OK)
     {
         s_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
         s_priv.systick_active = true;
@@ -321,27 +321,27 @@ x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, ui
  * @brief TIM 上半部: 清 update flag + 累加 tick
  * @param[in] arg 指向 x_preempt_priv
  * @param[in] irq_num 中断号
- * @return VFS_OK
+ * @return MINI_OK
  */
 int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 {
     COMPAT_IGNORE_RESULT(irq_num);
     struct x_preempt_priv* priv = (struct x_preempt_priv*)context;
     if (priv == NULL)
-        return VFS_OK;
+        return MINI_OK;
 
     struct vfs_tim_arg tim_arg = {0};
     tim_arg.obj = priv->tim;
-    if (vfs_tim_fast_clear_update_flag(&tim_arg) == VFS_OK)
+    if (vfs_tim_fast_clear_update_flag(&tim_arg) == MINI_OK)
         x_scheduler_tick(&g_scheduler, (unsigned int)priv->tick_delay);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 累加系统滴答并唤醒到期任务
  * @param[in] sched 忽略 (preempt 用全局 s_priv)
  * @param[in] ms 滴答增量
- * @return VFS_OK
+ * @return MINI_OK
  */
 int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 {
@@ -351,13 +351,13 @@ int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
     if (sched != NULL)
         COMPAT_IGNORE_RESULT(sched); /* preempt 用全局 s_priv, sched 仅契约 */
     wakeup_due();
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 抢占式调度核心: 运行最高优先级任务, 无任务时精确 WFI
  * @param[in] sched 忽略 (preempt 用全局 s_priv)
- * @return VFS_OK
+ * @return MINI_OK
  */
 int x_task_run_preempt(x_scheduler* sched)
 {
@@ -370,7 +370,7 @@ int x_task_run_preempt(x_scheduler* sched)
     {
         osal_null_irq_restore(irq);
         idle_wfi(); /* 无就绪任务 → 精确休眠 (WFI 须在中断使能态执行) */
-        return VFS_OK;
+        return MINI_OK;
     }
 
     ready_remove(task);
@@ -397,7 +397,7 @@ int x_task_run_preempt(x_scheduler* sched)
     irq = osal_null_irq_disable();
     sleep_insert(task);
     osal_null_irq_restore(irq);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /** 轮询全局抢占式调度器 (与协调式同名, 应用层无感知) */

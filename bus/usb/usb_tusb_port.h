@@ -16,6 +16,7 @@
 #define USB_TUSB_PORT_H
 
 #include "compiler_compat.h"
+#include "status.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,9 +30,9 @@ extern "C"
     /**
      * @brief 初始化 TinyUSB 协议栈 (平台实现)
      * @param[in] rhport 根 Hub 端口号
-     * @return 成功返回 true, 失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (如 MINI_ERR_NODEV 协议栈初始化失败)
      */
-    bool usb_tusb_init(uint8_t rhport);
+    int usb_tusb_init(uint8_t rhport);
     /**
      * @brief 推进 TinyUSB 主任务 (主循环周期调用, 平台实现)
      */
@@ -83,22 +84,22 @@ extern "C"
      * @param[in] report_id report ID
      * @param[in] report report 数据
      * @param[in] len report 长度
-     * @return 成功返回 true, 失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (如 MINI_ERR_AGAIN 未就绪, MINI_ERR_NOSPC 缓冲满)
      */
-    bool usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
+    int usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
 
     /**
      * @brief 推送一帧到 ECM TX 队列 (平台实现)
      * @param[in] frame 帧数据
      * @param[in] len 帧长度
-     * @return 成功返回 VFS_OK, 队列满返回 VFS_ERR_NOMEM
+     * @return 成功返回 MINI_OK, 队列满返回 MINI_ERR_NOMEM
      */
     int usb_net_frame_push_tx(const void* frame, size_t len);
     /**
      * @brief 从 ECM RX 队列弹出一帧 (平台实现)
      * @param[out] frame 帧缓冲区
      * @param[in] len 缓冲区长度
-     * @return 成功返回 VFS_OK, 无数据返回 VFS_ERR_AGAIN
+     * @return 成功返回 MINI_OK, 无数据返回 MINI_ERR_AGAIN
      */
     int usb_net_frame_pop_rx(void* frame, size_t len);
 

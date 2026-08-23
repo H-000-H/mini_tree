@@ -23,12 +23,12 @@ extern "C"
      * @param[in] pdev XPT2046 device
      * @param[out] out 输出坐标结果
      * @param[in] timeout_ms 超时（ms）
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     COMPAT_STATIC_INLINE int xpt2046_lvgl_read(struct device* pdev, struct xpt2046_xy* out, uint32_t timeout_ms)
     {
         if (!pdev || !out)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return device_ioctl(pdev, XPT2046_CMD_READ_XY, out, sizeof(*out), timeout_ms);
     }
 

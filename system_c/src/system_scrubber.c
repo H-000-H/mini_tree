@@ -107,7 +107,7 @@ static void scrubber_task(void* param)
             uint32_t remaining = total_size - offset;
             uint32_t read_len = (remaining < SYSTEM_SCRUBBER_CHUNK_BYTES) ? remaining : SYSTEM_SCRUBBER_CHUNK_BYTES;
 
-            if (hal_flash_read(base_addr + offset, chunk, read_len))
+            if (hal_flash_read(base_addr + offset, chunk, read_len) == MINI_OK)
             {
                 crc = crc32_update(crc, chunk, read_len);
                 offset += read_len;
@@ -138,18 +138,18 @@ static void scrubber_task(void* param)
 
 /**
  * @brief scrubber init
- * @return true
+ * @return MINI_OK 成功
  */
-bool system_scrubber_init(void) { return true; }
+int system_scrubber_init(void) { return MINI_OK; }
 
 /**
  * @brief 启动 CRC 巡检任务
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_NOMEM 任务创建失败
  */
-bool system_scrubber_start(void)
+int system_scrubber_start(void)
 {
     if (s_running)
-        return true;
+        return MINI_OK;
 
     s_running = true;
     int ret = osal_task_create_handle("scrubber", k_scrubber_stack, k_scrubber_prio, scrubber_task, NULL, 0, &s_handle);
@@ -157,11 +157,11 @@ bool system_scrubber_start(void)
     {
         SYS_LOGE(k_tag, "failed to create scrubber task");
         s_running = false;
-        return false;
+        return MINI_ERR_NOMEM;
     }
 
     SYS_LOGI(k_tag, "scrubber task created, prio=%u", (unsigned)k_scrubber_prio);
-    return true;
+    return MINI_OK;
 }
 
 /**

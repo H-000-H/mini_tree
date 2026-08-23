@@ -59,24 +59,24 @@ static struct sg90_device* sg90_get_drvdata(struct device* pdev) { return (struc
 
 /**
  * @brief 首次 open 时打开 TIM 并下发初始 PWM
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sg90_hw_create(struct sg90_device* dev)
 {
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     {
         int ret = device_open(dev->tim_dev, NULL);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
         ret = device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 0);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -101,7 +101,7 @@ static int sg90_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -111,18 +111,18 @@ static int sg90_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = sg90_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -134,7 +134,7 @@ static int sg90_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -147,7 +147,7 @@ static int sg90_close(struct device* pdev)
     if (last)
         sg90_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 typedef int (*sg90_ioctl_fn_t)(struct sg90_device* dev, void* arg, size_t arg_len, uint32_t ms);
@@ -164,7 +164,7 @@ static int sg90_cmd_angle(struct sg90_device* dev, void* arg, size_t len, uint32
     int deg;
     COMPAT_IGNORE_RESULT(ms);
     if (!dev->hw_ready || !arg || len != sizeof(int))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     deg = *(int*)arg;
     if (deg < 0)
         deg = 0;
@@ -189,7 +189,7 @@ static int sg90_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, u
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -197,11 +197,11 @@ static int sg90_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, u
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)SG90_CMD_BASE;
     if (off < 1 || off > SG90_CMD_COUNT || !s_sg90_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_sg90_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -222,10 +222,10 @@ static int sg90_probe(struct device* pdev)
     struct sg90_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sg90_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_sg90_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->tim_dev = device_get_phandle_dev(pdev, "pwm");
@@ -242,15 +242,15 @@ static int sg90_probe(struct device* pdev)
             dev->ch = (uint32_t)ch;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = sg90_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -267,7 +267,7 @@ static int sg90_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -277,16 +277,16 @@ static int sg90_remove(struct device* pdev)
     idx = (int)(dev - s_sg90_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     sg90_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_sg90_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(sg90, "towerpro,sg90", sg90_probe, sg90_remove)

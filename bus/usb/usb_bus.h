@@ -47,13 +47,13 @@ extern "C"
      * @brief USB host 初始化 (cfg 由 VFS 从 DTSI 直投填充, bus 零翻译)
      * @param[in] pdev controller device (host)
      * @param[in] cfg host 配置
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief USB host 反初始化 (仍有 client 引用时返回 BUSY)
      * @param[in] pdev controller device (host)
-     * @return VFS_OK / VFS_ERR_BUSY / VFS_ERR_*
+     * @return MINI_OK / MINI_ERR_BUSY / VFS_ERR_*
      */
     int usb_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
@@ -65,7 +65,7 @@ extern "C"
      * @param[in] pdev client device
      * @param[in] cls CDC / ECM / HID
      * @param[out] out 输出 client 句柄
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int usb_bus_client_register(struct device* pdev, enum usb_client_class cls, struct usb_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -77,13 +77,13 @@ extern "C"
     /**
      * @brief 打开 client (幂等)
      * @param[in] pdev client device
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int usb_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 client (幂等)
      * @param[in] pdev client device
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int usb_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 

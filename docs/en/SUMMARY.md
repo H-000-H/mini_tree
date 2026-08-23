@@ -94,7 +94,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | OSAL backends | `CONFIG_OSAL_NULL` (bare-metal, default) / `FREERTOS` (v11.3.0) / `RTTHREAD` (v5.3.0) |
 | Targets | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · dual-core AMP |
 | Peripheral coverage | Bus-based 6 (SPI/I2C/I2S/UART/CAN/USB) · Bus-less 7 (GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG) · HAL-Only: AMP/Storage/Platform Safety/**SDIO (reserved)** |
-| Error codes | `VFS_OK=0`; `VFS_ERR_*` (full name, see `status.h`); `device_find` failure returns `ERR_PTR` not `NULL` |
+| Error codes | `MINI_OK=0`; `VFS_ERR_*` (full name, see `status.h`); `device_find` failure returns `ERR_PTR` not `NULL` |
 | Build | CMake ≥ 3.16; `lark` (dtc-lite); vendored `kconfiglib` 14.1.0; `ETL` vendored and linked by default |
 
 ---

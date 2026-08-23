@@ -307,12 +307,12 @@ static int bmp280_probe(struct device* pdev)
 {
     struct bmp280_device* dev = bmp280_claim();
     if (dev == NULL)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     /* 1. read board-level properties (reg = I2C address) */
     dev->addr = device_get_prop_int(pdev, "reg", -1);
     if (dev->addr < 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* 2. get the bus dependency (compile-time enum, zero lookup) */
     dev->bus = board_dev_get(DEV_ID_i2c0);
@@ -323,14 +323,14 @@ static int bmp280_probe(struct device* pdev)
     /* device_lc_bind(pdev); */
 
     SYS_LOGI("bmp280", "probed @0x%02x on i2c0", dev->addr);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 static int bmp280_remove(struct device* pdev)
 {
     /* dev_lc_remove_start / device_ops_unregister / dev_lc_remove_drain /
        dev_lc_remove_finish standard sequence, see driver.h comments */
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
@@ -392,7 +392,7 @@ set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # contains my_soc.dts
 | Cortex-M | Set | **chosen TIM explicit override** (`CHOSEN_SCHEDULER_TIM` resolved at compile time; free up SysTick by using a generic TIM) |
 | RISC-V | **Required** | chosen TIM (mtime / SoC timer as a normal `tim` node); SysTick path is compiled out |
 
-> **Frequency via DTS**: SysTick's tick frequency comes from `/chosen` `tick-rate` (`DTC_GEN_TICK_RATE_HZ`), CPU clock from `/cpus/cpu@0` `clock-frequency` (`DTC_GEN_CPU_CLOCK_HZ`); `hal_systick` only hard-codes the register base (`HAL_SYSTICK_BASE`, default `0xE000E010`, overridable), never any frequency. RISC-V boards must set `scheduler-tim` explicitly, otherwise `hal_systick_init` returns `VFS_ERR_NOTSUPP` and the scheduler won't start.
+> **Frequency via DTS**: SysTick's tick frequency comes from `/chosen` `tick-rate` (`DTC_GEN_TICK_RATE_HZ`), CPU clock from `/cpus/cpu@0` `clock-frequency` (`DTC_GEN_CPU_CLOCK_HZ`); `hal_systick` only hard-codes the register base (`HAL_SYSTICK_BASE`, default `0xE000E010`, overridable), never any frequency. RISC-V boards must set `scheduler-tim` explicitly, otherwise `hal_systick_init` returns `MINI_ERR_NOTSUPP` and the scheduler won't start.
 
 #### 9.2.1 SysTick DTS configuration (no VFS layer; dtc-lite macro injection)
 
@@ -530,7 +530,7 @@ static void led_task_cb(x_task* self)
         struct device* pdev = device_find_by_label("led");
         if (IS_ERR_OR_NULL(pdev))
             return;
-        if (device_open(pdev, NULL) != VFS_OK)
+        if (device_open(pdev, NULL) != MINI_OK)
         {
             SYS_LOGE(s_kTag, "device_open(led) failed");
             return;
@@ -539,7 +539,7 @@ static void led_task_cb(x_task* self)
     }
 
     ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         SYS_LOGE(s_kTag, "device_ioctl(TOGGLE) failed: %d", ret);
 }
 
@@ -599,7 +599,7 @@ namespace App_Led
             struct device* pdev = device_find_by_label("led");
             if (IS_ERR_OR_NULL(pdev))
                 return;
-            if (device_open(pdev, nullptr) != VFS_OK)
+            if (device_open(pdev, nullptr) != MINI_OK)
             {
                 SYS_LOGE(kName.c_str(), "device_open(led) failed");
                 return;
@@ -608,7 +608,7 @@ namespace App_Led
         }
 
         ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             SYS_LOGE(kName.c_str(), "device_ioctl(TOGGLE) failed: %d", ret);
     }
 
@@ -620,7 +620,7 @@ namespace App_Led
                                        led_task_cb, nullptr);
         if (!handle)
             return etl::nullopt;
-        return etl::make_optional(VFS_OK);
+        return etl::make_optional(MINI_OK);
     }
 } // namespace App_Led
 ```
@@ -646,7 +646,7 @@ namespace App_Led
 | `DEV_ID_xxx` not generated | node `status="disabled"` or template not included | enable it at board level: `&label { status = "okay"; }` |
 | `&label { status="okay" }` leaves the node `DISABLED` / frequency not applied | **label `label` was never declared in any dtsi**; dtc-lite silently *phantoms* an orphan node under `/soc`, so the override never reaches the target | add the label to the target node, e.g. `cpu0: cpu@0 { ... }`, so `&cpu0` resolves exactly; verify `.status` / properties via `git diff` on `board_devtable.c` |
 | probe never called | `DRIVER_REGISTER` compat ≠ dtsi `compatible` (space/case) | make them exactly identical; rerun dtc-lite |
-| pool overflow / `VFS_ERR_NOMEM` | more board nodes than expected | `DTC_GEN_COUNT_*` follows node count; check for un-enabled nodes |
+| pool overflow / `MINI_ERR_NOMEM` | more board nodes than expected | `DTC_GEN_COUNT_*` follows node count; check for un-enabled nodes |
 | driver can't find bus | `board_dev_get(DEV_ID_i2c0)` errors | confirm `i2c0` is `status="okay"` and has an enum in `board_nodes.h` |
 | changed dts not effective | incremental build didn't rerun dtc-lite | clean `<build>/generated` or trigger CMake reconfigure (dts / `.config` are `CONFIGURE_DEPENDS`) |
 | vendor macros not found | dt-bindings path missing | put in `board/dt-bindings/` or use `VENDOR_INC_DIRS` |

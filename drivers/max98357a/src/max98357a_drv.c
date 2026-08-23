@@ -65,37 +65,37 @@ static struct max98357a_device* max98357a_get_drvdata(struct device* pdev) { ret
 static int max98357a_set_level(struct max98357a_device* amp, int enable)
 {
     if (!amp || !amp->sdn_gpio.obj)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     amp->sdn_gpio.level = enable ? amp->active_level : !amp->active_level;
     return vfs_gpio_set_level(&amp->sdn_gpio);
 }
 
 /**
  * @brief 首次 open 时打开 SDN GPIO 并默认使能功放
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int max98357a_hw_create(struct max98357a_device* amp)
 {
     int ret;
 
     if (!amp || !amp->sdn_dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (amp->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
 
     ret = device_open(amp->sdn_dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     ret = device_ioctl(amp->sdn_dev, GPIO_CMD_GET_LEVEL, &amp->sdn_gpio, sizeof(amp->sdn_gpio), 0);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(device_close(amp->sdn_dev));
         return ret;
     }
 
     ret = max98357a_set_level(amp, 1);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(device_close(amp->sdn_dev));
         amp->sdn_gpio.obj = NULL;
@@ -103,7 +103,7 @@ static int max98357a_hw_create(struct max98357a_device* amp)
     }
 
     amp->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -132,7 +132,7 @@ static int max98357a_open(struct device* pdev, void* arg)
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     amp = max98357a_get_drvdata(pdev);
     if (IS_ERR(amp))
@@ -146,11 +146,11 @@ static int max98357a_open(struct device* pdev, void* arg)
     if (first < 0)
         return first;
 
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = max98357a_hw_create(amp);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
@@ -158,7 +158,7 @@ static int max98357a_open(struct device* pdev, void* arg)
     }
 
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -171,7 +171,7 @@ static int max98357a_close(struct device* pdev)
     int last;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     amp = max98357a_get_drvdata(pdev);
     if (IS_ERR(amp))
@@ -189,7 +189,7 @@ static int max98357a_close(struct device* pdev)
         max98357a_hw_destroy(amp);
 
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -199,9 +199,9 @@ static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, siz
 {
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!amp || !arg || arg_len != sizeof(int))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (!amp->hw_ready)
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     return max98357a_set_level(amp, *(int*)arg);
 }
 
@@ -230,7 +230,7 @@ static int max98357a_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_l
     int ret;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     amp = max98357a_get_drvdata(pdev);
     if (IS_ERR(amp))
@@ -241,12 +241,12 @@ static int max98357a_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_l
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     offset = (int32_t)cmd - (int32_t)MAX98357A_CMD_BASE;
     if (offset < 1 || offset > MAX98357A_CMD_COUNT || !s_max98357a_ioctl_map[offset - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_max98357a_ioctl_map[offset - 1].handler(amp, arg, arg_len, timeout_ms);
 
@@ -298,7 +298,7 @@ static int max98357a_probe(struct device* pdev)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     sdn_dev = device_get_phandle_dev(pdev, "sdn-gpio");
     if (IS_ERR(sdn_dev))
@@ -306,7 +306,7 @@ static int max98357a_probe(struct device* pdev)
 
     pool_idx = osal_pool_claim(&s_max98357a_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     amp = &s_max98357a_pool[pool_idx];
     COMPAT_MEM_SET(amp, 0, sizeof(*amp));
@@ -316,9 +316,9 @@ static int max98357a_probe(struct device* pdev)
     amp->active_level = active ? 1 : 0;
     amp->hw_ready = 0;
 
-    if (device_set_priv(pdev, amp) != VFS_OK)
+    if (device_set_priv(pdev, amp) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_pool;
     }
 
@@ -326,7 +326,7 @@ static int max98357a_probe(struct device* pdev)
     pdev->ops = &amp->ops;
 
     SYS_LOGI(k_tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev), amp->active_level);
-    return VFS_OK;
+    return MINI_OK;
 
 err_pool:
     pdev->ops = NULL;
@@ -345,7 +345,7 @@ static int max98357a_remove(struct device* pdev)
     int pool_idx;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     amp = max98357a_get_drvdata(pdev);
     if (IS_ERR(amp))
@@ -360,17 +360,17 @@ static int max98357a_remove(struct device* pdev)
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     max98357a_hw_destroy(amp);
     COMPAT_MEM_SET(amp, 0, sizeof(*amp));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_max98357a_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(max98357a, "maxim,max98357a", max98357a_probe, max98357a_remove)

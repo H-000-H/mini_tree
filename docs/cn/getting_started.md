@@ -249,7 +249,7 @@ system_init_complete();
 
 - [ ] `config.h` 生成且 OSAL/SYSTEM 宏符合预期
 - [ ] dtc-lite 产出 `board_nodes.h`，`DEV_ID_COUNT` ≥ 1（真实板应远大于占位）
-- [ ] 链接后 GPIO/UART 等 HAL 为平台实现（非一直 `VFS_ERR_NOTSUPP`）
+- [ ] 链接后 GPIO/UART 等 HAL 为平台实现（非一直 `MINI_ERR_NOTSUPP`）
 - [ ] `board_driver_probe_all` 无意外 FATAL
 - [ ] 开中断后业务任务或裸机 loop 稳定跑
 

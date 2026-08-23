@@ -65,25 +65,25 @@ static void ds18b20_delay_us(uint32_t us) { osal_delay_us(us); }
 
 /**
  * @brief 单总线复位脉冲：拉低 480us 后释放，检测存在脉冲
- * @return VFS_OK（检测到应答）或 VFS_ERR_IO（无应答）
+ * @return MINI_OK（检测到应答）或 MINI_ERR_IO（无应答）
  */
 static int ds18b20_reset(struct ds18b20_device* dev)
 {
     int present;
 
     dev->data_gpio.level = 0;
-    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_set_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     ds18b20_delay_us(480);
     dev->data_gpio.level = 1;
-    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_set_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     ds18b20_delay_us(70);
-    if (vfs_gpio_get_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_get_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     present = (dev->data_gpio.level == 0);
     ds18b20_delay_us(410);
-    return present ? VFS_OK : VFS_ERR_IO;
+    return present ? MINI_OK : MINI_ERR_IO;
 }
 
 /**
@@ -92,14 +92,14 @@ static int ds18b20_reset(struct ds18b20_device* dev)
 static int ds18b20_write_bit(struct ds18b20_device* dev, int bit)
 {
     dev->data_gpio.level = 0;
-    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_set_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     ds18b20_delay_us(bit ? 6U : 60U);
     dev->data_gpio.level = 1;
-    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_set_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     ds18b20_delay_us(bit ? 64U : 10U);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -109,18 +109,18 @@ static int ds18b20_write_bit(struct ds18b20_device* dev, int bit)
 static int ds18b20_read_bit(struct ds18b20_device* dev, int* bit)
 {
     dev->data_gpio.level = 0;
-    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_set_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     ds18b20_delay_us(3);
     dev->data_gpio.level = 1;
-    if (vfs_gpio_set_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_set_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     ds18b20_delay_us(10);
-    if (vfs_gpio_get_level(&dev->data_gpio) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_gpio_get_level(&dev->data_gpio) != MINI_OK)
+        return MINI_ERR_IO;
     *bit = dev->data_gpio.level ? 1 : 0;
     ds18b20_delay_us(50);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -132,10 +132,10 @@ static int ds18b20_write_byte(struct ds18b20_device* dev, uint8_t val)
     for (i = 0; i < 8; i++)
     {
         int ret = ds18b20_write_bit(dev, (val >> i) & 1);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -149,35 +149,35 @@ static int ds18b20_read_byte(struct ds18b20_device* dev, uint8_t* val)
     uint8_t out = 0;
     for (i = 0; i < 8; i++)
     {
-        if (ds18b20_read_bit(dev, &bit_val) != VFS_OK)
-            return VFS_ERR_IO;
+        if (ds18b20_read_bit(dev, &bit_val) != MINI_OK)
+            return MINI_ERR_IO;
         if (bit_val)
             out |= (uint8_t)(1U << i);
     }
     *val = out;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 首次 open 时打开 GPIO 设备并查询默认电平（空实现，仅确保 hw_ready）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int ds18b20_hw_create(struct ds18b20_device* dev)
 {
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     {
         int ret = device_open(dev->data_dev, NULL);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
         ret = device_ioctl(dev->data_dev, GPIO_CMD_GET_LEVEL, &dev->data_gpio, sizeof(dev->data_gpio), 0);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -202,7 +202,7 @@ static int ds18b20_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = ds18b20_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -212,18 +212,18 @@ static int ds18b20_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = ds18b20_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -235,7 +235,7 @@ static int ds18b20_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = ds18b20_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -248,7 +248,7 @@ static int ds18b20_close(struct device* pdev)
     if (last)
         ds18b20_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -271,27 +271,27 @@ static int ds18b20_cmd_temp(struct ds18b20_device* dev, void* arg, size_t len, u
     int* t = (int*)arg;
     COMPAT_IGNORE_RESULT(ms);
     if (!dev->hw_ready || !t || len != sizeof(int))
-        return VFS_ERR_INVAL;
-    if (ds18b20_reset(dev) != VFS_OK)
-        return VFS_ERR_IO;
-    if (ds18b20_write_byte(dev, DS18B20_OW_SKIP_ROM) != VFS_OK)
-        return VFS_ERR_IO;
-    if (ds18b20_write_byte(dev, DS18B20_OW_CONVERT_T) != VFS_OK)
-        return VFS_ERR_IO;
+        return MINI_ERR_INVAL;
+    if (ds18b20_reset(dev) != MINI_OK)
+        return MINI_ERR_IO;
+    if (ds18b20_write_byte(dev, DS18B20_OW_SKIP_ROM) != MINI_OK)
+        return MINI_ERR_IO;
+    if (ds18b20_write_byte(dev, DS18B20_OW_CONVERT_T) != MINI_OK)
+        return MINI_ERR_IO;
     osal_delay_ms(DS18B20_CONVERT_MS);
-    if (ds18b20_reset(dev) != VFS_OK)
-        return VFS_ERR_IO;
-    if (ds18b20_write_byte(dev, DS18B20_OW_SKIP_ROM) != VFS_OK)
-        return VFS_ERR_IO;
-    if (ds18b20_write_byte(dev, DS18B20_OW_READ_SCRATCHPAD) != VFS_OK)
-        return VFS_ERR_IO;
-    if (ds18b20_read_byte(dev, &lo) != VFS_OK)
-        return VFS_ERR_IO;
-    if (ds18b20_read_byte(dev, &hi) != VFS_OK)
-        return VFS_ERR_IO;
+    if (ds18b20_reset(dev) != MINI_OK)
+        return MINI_ERR_IO;
+    if (ds18b20_write_byte(dev, DS18B20_OW_SKIP_ROM) != MINI_OK)
+        return MINI_ERR_IO;
+    if (ds18b20_write_byte(dev, DS18B20_OW_READ_SCRATCHPAD) != MINI_OK)
+        return MINI_ERR_IO;
+    if (ds18b20_read_byte(dev, &lo) != MINI_OK)
+        return MINI_ERR_IO;
+    if (ds18b20_read_byte(dev, &hi) != MINI_OK)
+        return MINI_ERR_IO;
     raw = (int16_t)(((uint16_t)hi << 8) | lo);
     *t = (int)(raw / DS18B20_TEMP_LSB_PER_C);
-    return VFS_OK;
+    return MINI_OK;
 }
 static const struct ds18b20_ioctl_map s_ds18b20_map[DS18B20_CMD_COUNT] = {
     [DS18B20_CMD_READ_TEMP - DS18B20_CMD_BASE - 1] = {ds18b20_cmd_temp},
@@ -307,7 +307,7 @@ static int ds18b20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = ds18b20_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -315,11 +315,11 @@ static int ds18b20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)DS18B20_CMD_BASE;
     if (off < 1 || off > DS18B20_CMD_COUNT || !s_ds18b20_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_ds18b20_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -340,10 +340,10 @@ static int ds18b20_probe(struct device* pdev)
     struct ds18b20_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ds18b20_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_ds18b20_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->data_dev = device_get_phandle_dev(pdev, "data-gpio");
@@ -353,15 +353,15 @@ static int ds18b20_probe(struct device* pdev)
         goto err;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = ds18b20_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -378,7 +378,7 @@ static int ds18b20_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = ds18b20_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -388,16 +388,16 @@ static int ds18b20_remove(struct device* pdev)
     idx = (int)(dev - s_ds18b20_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     ds18b20_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(ds18b20, "maxim,ds18b20", ds18b20_probe, ds18b20_remove)

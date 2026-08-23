@@ -39,7 +39,7 @@ If the IDE still reports `etl/string.h` not found: confirm `lib/etl/include` exi
 
 ## Build & Linking
 
-### HAL calls always return `VFS_ERR_NOTSUPP`
+### HAL calls always return `MINI_ERR_NOTSUPP`
 
 The platform strong symbols are not linked in, so the middleware weak empty implementations are still used. Check the target source list and link order.
 

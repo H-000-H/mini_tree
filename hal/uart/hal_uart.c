@@ -20,19 +20,19 @@ COMPAT_WEAK int hal_uart_dev_init(struct hal_uart_bus_host* host, const struct h
 {
     (void)host;
     (void)cfg;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_uart_dev_hw_open(struct hal_uart_bus_host* host)
 {
     (void)host;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_uart_dev_hw_close(struct hal_uart_bus_host* host)
 {
     (void)host;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
@@ -41,7 +41,7 @@ COMPAT_WEAK int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, s
     (void)data;
     (void)len;
     (void)timeout_ms;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len, uint32_t timeout_ms)
@@ -50,7 +50,7 @@ COMPAT_WEAK int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t l
     (void)data;
     (void)len;
     (void)timeout_ms;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
@@ -59,12 +59,12 @@ COMPAT_WEAK int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* dat
     (void)data;
     (void)len;
     (void)timeout_ms;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_uart_dma_abort(struct hal_uart_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 #endif /* ESP_PLATFORM */

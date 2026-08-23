@@ -307,12 +307,12 @@ static int bmp280_probe(struct device* pdev)
 {
     struct bmp280_device* dev = bmp280_claim();
     if (dev == NULL)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     /* 1. 取板级属性（reg = I2C 地址） */
     dev->addr = device_get_prop_int(pdev, "reg", -1);
     if (dev->addr < 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* 2. 取总线依赖（编译期枚举，零查找） */
     dev->bus = board_dev_get(DEV_ID_i2c0);
@@ -323,14 +323,14 @@ static int bmp280_probe(struct device* pdev)
     /* device_lc_bind(pdev); */
 
     SYS_LOGI("bmp280", "probed @0x%02x on i2c0", dev->addr);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 static int bmp280_remove(struct device* pdev)
 {
     /* dev_lc_remove_start / device_ops_unregister / dev_lc_remove_drain /
        dev_lc_remove_finish 标准序列见 driver.h 注释 */
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
@@ -392,7 +392,7 @@ set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # 含 my_soc.dtsi
 | Cortex-M | 已配 | **chosen TIM 显式覆盖**（`CHOSEN_SCHEDULER_TIM` 编译期判定，可用通用 TIM 换出 SysTick） |
 | RISC-V | **必配** | chosen TIM（mtime / SoC 定时器走普通 `tim` 节点），SysTick 路径编译剔除 |
 
-> **频率走 DTS**：SysTick 的 tick 频率取自 `/chosen` 的 `tick-rate`（`DTC_GEN_TICK_RATE_HZ`），CPU 主频取自 `/cpus/cpu@0` 的 `clock-frequency`（`DTC_GEN_CPU_CLOCK_HZ`）；`hal_systick` 仅写死寄存器基址（`HAL_SYSTICK_BASE`，默认 `0xE000E010`，可覆盖），不写死任何频率。RISC-V 板必须显式在 DTS 配 `scheduler-tim`，否则 `hal_systick_init` 返回 `VFS_ERR_NOTSUPP`，调度器不启动。
+> **频率走 DTS**：SysTick 的 tick 频率取自 `/chosen` 的 `tick-rate`（`DTC_GEN_TICK_RATE_HZ`），CPU 主频取自 `/cpus/cpu@0` 的 `clock-frequency`（`DTC_GEN_CPU_CLOCK_HZ`）；`hal_systick` 仅写死寄存器基址（`HAL_SYSTICK_BASE`，默认 `0xE000E010`，可覆盖），不写死任何频率。RISC-V 板必须显式在 DTS 配 `scheduler-tim`，否则 `hal_systick_init` 返回 `MINI_ERR_NOTSUPP`，调度器不启动。
 
 #### 9.2.1 SysTick 的 DTS 配置（无 VFS 层，靠 dtc-lite 宏注入）
 
@@ -530,7 +530,7 @@ static void led_task_cb(x_task* self)
         struct device* pdev = device_find_by_label("led");
         if (IS_ERR_OR_NULL(pdev))
             return;
-        if (device_open(pdev, NULL) != VFS_OK)
+        if (device_open(pdev, NULL) != MINI_OK)
         {
             SYS_LOGE(s_kTag, "device_open(led) failed");
             return;
@@ -539,7 +539,7 @@ static void led_task_cb(x_task* self)
     }
 
     ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         SYS_LOGE(s_kTag, "device_ioctl(TOGGLE) failed: %d", ret);
 }
 
@@ -599,7 +599,7 @@ namespace App_Led
             struct device* pdev = device_find_by_label("led");
             if (IS_ERR_OR_NULL(pdev))
                 return;
-            if (device_open(pdev, nullptr) != VFS_OK)
+            if (device_open(pdev, nullptr) != MINI_OK)
             {
                 SYS_LOGE(kName.c_str(), "device_open(led) failed");
                 return;
@@ -608,7 +608,7 @@ namespace App_Led
         }
 
         ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             SYS_LOGE(kName.c_str(), "device_ioctl(TOGGLE) failed: %d", ret);
     }
 
@@ -620,7 +620,7 @@ namespace App_Led
                                        led_task_cb, nullptr);
         if (!handle)
             return etl::nullopt;
-        return etl::make_optional(VFS_OK);
+        return etl::make_optional(MINI_OK);
     }
 } // namespace App_Led
 ```
@@ -646,7 +646,7 @@ namespace App_Led
 | `DEV_ID_xxx` 未生成 | 节点 `status="disabled"` 或未 include 模板 | 板级 `&label { status = "okay"; }` 打开 |
 | `&label { status="okay" }` 覆盖后节点仍是 `DISABLED` / 频率没写进去 | **标签 `label` 未在任一 dtsi 声明**，dtc-lite 不报错而是**虚空创生**一个孤儿节点挂到 `/soc`，覆盖没落到目标节点 | 给目标节点补上标签，如 `cpu0: cpu@0 { ... }`，确保 `&cpu0` 精确命中；`git diff` 对比 `board_devtable.c` 里 `.status` / 属性确认生效 |
 | probe 未被调用 | `DRIVER_REGISTER` 的 compat 与 dtsi `compatible` 不一致（空格/大小写） | 严格一致；重跑 dtc-lite |
-| 池溢出 / `VFS_ERR_NOMEM` | 板级节点数 > 预期 | `DTC_GEN_COUNT_*` 自动跟随节点数，检查是否漏开节点 |
+| 池溢出 / `MINI_ERR_NOMEM` | 板级节点数 > 预期 | `DTC_GEN_COUNT_*` 自动跟随节点数，检查是否漏开节点 |
 | 驱动找不到总线 | `board_dev_get(DEV_ID_i2c0)` 返回错误 | 确认 `i2c0` 节点 `status="okay"` 且在 `board_nodes.h` 有枚举 |
 | 改了 dts 不生效 | 增量构建未重跑 dtc-lite | 清理 `<build>/generated` 或触发 CMake reconfigure（`.config` / dts 为 `CONFIGURE_DEPENDS`） |
 | 厂商宏找不到 | dt-bindings 路径未包含 | 放 `board/dt-bindings/` 或用 `VENDOR_INC_DIRS` |

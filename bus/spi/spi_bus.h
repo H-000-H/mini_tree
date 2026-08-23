@@ -42,13 +42,13 @@ extern "C"
      * @brief SPI host 初始化 (config 类型直接用 hal_spi_bus_config, bus 零翻译透传)
      * @param[in] pdev controller device (host)
      * @param[in] cfg host 配置 (VFS 填充 DTSI 硬件直投值)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_host_init(struct device* pdev, const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief SPI host 反初始化 (ref_count > 0 时返回 BUSY)
      * @param[in] pdev controller device (host)
-     * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
      */
     int spi_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -66,7 +66,7 @@ extern "C"
      * @param[in] pdev client device
      * @param[in] cfg client 配置 (VFS 填充 DTSI 硬件直投值)
      * @param[out] out 输出 spi_bus_client 指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_client_register(struct device* pdev, const struct hal_spi_device_config* cfg, struct spi_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -78,13 +78,13 @@ extern "C"
     /**
      * @brief 打开 SPI client 硬件 (幂等)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 SPI client 硬件 (幂等)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -95,7 +95,7 @@ extern "C"
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (毫秒)
      * @param[in] xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -105,7 +105,7 @@ extern "C"
      * @param[out] rx 接收缓冲区
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -114,7 +114,7 @@ extern "C"
      * @param[in] data 发送数据
      * @param[in] len 数据长度
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -124,7 +124,7 @@ extern "C"
      * @param[out] rx_cap 接收缓冲区容量
      * @param[out] trans_len 输出实际传输长度
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
@@ -136,7 +136,7 @@ extern "C"
      * @param[in] len 传输字节数
      * @param[in] cb 传输完成回调
      * @param[in] userdata 回调用户数据
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_transfer_async(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, void (*cb)(struct device* pdev, const void* trans, void* userdata),
                                void* userdata) COMPAT_WARN_UNUSED_RESULT;
@@ -144,7 +144,7 @@ extern "C"
      * @brief 轮询等待异步传输完成
      * @param[in] pdev client device
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int spi_bus_transfer_poll(struct device* pdev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/

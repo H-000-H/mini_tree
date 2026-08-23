@@ -29,7 +29,7 @@ extern "C"
 #ifndef CONFIG_TCP_CLIENT_RX_TX_BYTE_TYPE
 #define TCP_CLIENT_RX_TX_BYTE_TYPE 1
 #else
-TCP_CLIENT_RX_TX_BYTE_TYPE CONFIG_TCP_CLIENT_RX_TX_BYTE_TYPE
+#define TCP_CLIENT_RX_TX_BYTE_TYPE CONFIG_TCP_CLIENT_RX_TX_BYTE_TYPE
 #endif
 
     static const char* k_tag = "tcp_client";

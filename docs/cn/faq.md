@@ -39,7 +39,7 @@ ETL 是 **上层 C++ 基础库**，vendor 于 `lib/etl`（仅 include + cmake）
 
 ## 构建与链接
 
-### HAL 调用总是 `VFS_ERR_NOTSUPP`
+### HAL 调用总是 `MINI_ERR_NOTSUPP`
 
 平台强符号未链入，仍在用中间件 weak 空实现。检查目标源文件列表与链接顺序。
 

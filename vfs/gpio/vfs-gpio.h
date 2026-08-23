@@ -43,42 +43,42 @@ extern "C"
     /**
      * @brief 快速设置 GPIO 输出电平 (热路径, 不走生命周期)
      * @param[in] vfs_arg 参数包 (含 obj 与 level)
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_gpio_set_level(struct vfs_gpio_arg* vfs_arg)
     {
         if (IS_ERR(vfs_arg))
             return PTR_ERR(vfs_arg);
         if (!vfs_arg || !vfs_arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_gpio_fast_set_level(vfs_arg->obj, vfs_arg->level);
     }
 
     /**
      * @brief 快速读取 GPIO 输入电平 (热路径, 不走生命周期)
      * @param[in] vfs_arg 参数包 (含 obj; level 回传结果)
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_gpio_get_level(struct vfs_gpio_arg* vfs_arg)
     {
         if (IS_ERR(vfs_arg))
             return PTR_ERR(vfs_arg);
         if (!vfs_arg || !vfs_arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_gpio_fast_get_level(vfs_arg->obj, &vfs_arg->level);
     }
 
     /**
      * @brief 快速翻转 GPIO 输出电平 (热路径, 不走生命周期)
      * @param[in] vfs_arg 参数包 (含 obj)
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_gpio_toggle(struct vfs_gpio_arg* vfs_arg)
     {
         if (IS_ERR(vfs_arg))
             return PTR_ERR(vfs_arg);
         if (!vfs_arg || !vfs_arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_gpio_fast_toggle(vfs_arg->obj);
     }
 

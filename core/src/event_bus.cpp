@@ -32,16 +32,16 @@ static constexpr uint32_t kStopWaitMs = 500;
 
 EventBus::EventBus() = default;
 
-bool EventBus::init()
+int EventBus::init()
 {
     if (m_inited)
-        return true;
+        return MINI_OK;
 
     m_queue = osal_queue_create(k_queue_len, sizeof(event));
     if (m_queue == nullptr)
     {
         SYS_LOGE(k_tag, "FATAL: osal_queue_create failed — event bus unusable");
-        return false;
+        return MINI_ERR_NOMEM;
     }
 
     if (osal_mutex_create_static(&m_sub_lock, m_sub_lock_storage, sizeof(m_sub_lock_storage)) !=
@@ -51,12 +51,12 @@ bool EventBus::init()
         SYS_LOGE(k_tag, "FATAL: mutex create failed");
         osal_queue_delete(m_queue);
         m_queue = nullptr;
-        return false;
+        return MINI_ERR_NOMEM;
     }
 
     m_inited = true;
     SYS_LOGI(k_tag, "event bus initialized, queue=%u slots", (unsigned)k_queue_len);
-    return true;
+    return MINI_OK;
 }
 
 EventBus& EventBus::get_instance()
@@ -65,22 +65,22 @@ EventBus& EventBus::get_instance()
     return bus;
 }
 
-bool EventBus::subscribe(uint32_t id_min, uint32_t id_max, EventCallback callback, void* user_data)
+int EventBus::subscribe(uint32_t id_min, uint32_t id_max, EventCallback callback, void* user_data)
 {
     if (osal_in_isr())
-        return false;
+        return MINI_ERR_ISR;
     if (m_is_sealed)
-        return false;
+        return MINI_ERR_NOTSUPP;
     if (callback == nullptr || m_sub_lock == nullptr || id_min > id_max)
-        return false;
+        return MINI_ERR_INVAL;
 
     if (osal_mutex_lock(m_sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
         SYS_LOGE(k_tag, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
-        return false;
+        return MINI_ERR_TIMEOUT;
     }
 
-    bool ok = false;
+    int ret = MINI_ERR_NOSPC;
     if (m_count < k_max_subscribers)
     {
         m_subscribers[m_count].id_min = id_min;
@@ -88,33 +88,33 @@ bool EventBus::subscribe(uint32_t id_min, uint32_t id_max, EventCallback callbac
         m_subscribers[m_count].callback = callback;
         m_subscribers[m_count].user_data = user_data;
         m_count++;
-        ok = true;
+        ret = MINI_OK;
     }
 
     osal_mutex_unlock(m_sub_lock);
-    return ok;
+    return ret;
 }
 
-bool EventBus::post(uint32_t id, uintptr_t arg)
+int EventBus::post(uint32_t id, uintptr_t arg)
 {
     if (osal_in_isr())
-        return false;
+        return MINI_ERR_ISR;
 
     return post_internal(id, arg, false, nullptr);
 }
 
-bool EventBus::post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
+int EventBus::post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
 {
     return post_internal(id, arg, true, px_yield_required);
 }
 
-bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
+int EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
 {
     if (m_queue == nullptr || !m_inited)
-        return false;
+        return MINI_ERR_AGAIN;
 
     if (!g_system_os_initialized)
-        return false;
+        return MINI_ERR_AGAIN;
 
     const event event = {id, arg};
     bool ok;
@@ -133,9 +133,9 @@ bool EventBus::post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px
             if ((cur % 8) == 0 && cur != 0)
                 SYS_LOGW(k_tag, "event queue full, dropped=%u", (unsigned)cur);
         }
-        return false;
+        return MINI_ERR_NOSPC;
     }
-    return true;
+    return MINI_OK;
 }
 
 size_t EventBus::dropped_count() const { return __atomic_load_n(&m_dropped, __ATOMIC_RELAXED); }
@@ -190,12 +190,12 @@ void EventBus::start()
     if (m_task != nullptr || m_queue == nullptr)
         return;
 
-    if(osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio, dispatch_task, this, 0,&m_task)!=VFS_OK)
+    if (osal_task_create_handle("evt_bus", kDispatchStack, kDispatchPrio, dispatch_task, this, 0, &m_task) != MINI_OK)
     {
-        SYS_LOGE(k_tag,"FATAL: osal_task_create_handle failed — event bus unusable");
+        SYS_LOGE(k_tag, "FATAL: osal_task_create_handle failed — event bus unusable");
         return;
-    }    
-    system_wdt_subscribe(m_task);
+    }
+    COMPAT_IGNORE_RESULT(system_wdt_subscribe(m_task));
     SYS_LOGI(k_tag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
 }
 
@@ -207,11 +207,11 @@ void EventBus::stop()
     osal_task_handle_t handle = m_task;
     m_task = nullptr;
 
-    /* 向队列发空事件唤醒 dispatch 线程 */
+    /* 向队列发空事件唤醒 dispatch 线程 (osal_queue_send 返回 bool) */
     event dummy = {EVENT_SYS_FAULT, 0};
-    if(osal_queue_send(m_queue, &dummy, 0)!=VFS_OK)
+    if (!osal_queue_send(m_queue, &dummy, 0))
     {
-        SYS_LOGE(k_tag,"FATAL: osal_queue_send failed — event bus unusable");
+        SYS_LOGE(k_tag, "FATAL: osal_queue_send failed — event bus unusable");
         return;
     }
 
@@ -237,14 +237,14 @@ void EventBus::stop()
 void EventBus::seal() { m_is_sealed = true; }
 
 /* ── C 接口 (extern "C") ── */
-extern "C" bool event_bus_init(void) { return EventBus::get_instance().init(); }
+extern "C" int event_bus_init(void) { return EventBus::get_instance().init(); }
 
-extern "C" bool event_bus_post(uint32_t id, uintptr_t arg)
+extern "C" int event_bus_post(uint32_t id, uintptr_t arg)
 {
     return EventBus::get_instance().post(id, arg);
 }
 
-extern "C" bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
+extern "C" int event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required)
 {
     return EventBus::get_instance().post_from_isr(id, arg, px_yield_required);
 }

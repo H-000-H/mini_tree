@@ -42,7 +42,7 @@ extern "C"
     {
         node->next = node;
         node->prev = node;
-        return VFS_OK;
+        return MINI_OK;
     }
 
     /**
@@ -57,7 +57,7 @@ extern "C"
         new_node->prev = prev;
         new_node->next = next;
         prev->next = new_node;
-        return VFS_OK;
+        return MINI_OK;
     }
 
     /**
@@ -125,7 +125,7 @@ extern "C"
      * @brief 累加系统滴答
      * @param[in] sched 调度器
      * @param[in] ms 滴答增量
-     * @return VFS_OK / VFS_ERR_INVAL
+     * @return MINI_OK / MINI_ERR_INVAL
      */
     int x_scheduler_tick(x_scheduler* sched, unsigned int ms);
 
@@ -215,7 +215,7 @@ void x_scheduler_poll(void);
     void xscheduler_start(void);
 
     /** @brief TIM 上半部: 清 update flag + 累加 tick
-     * @return VFS_IRQ_ENTRY_NOBOTTOM
+     * @return MINI_IRQ_ENTRY_NOBOTTOM
      */
     int scheduler_tim_isr_top(void* context, uint16_t irq_num);
 

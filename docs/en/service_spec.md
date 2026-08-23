@@ -26,7 +26,7 @@
 | Header & Module | Use |
 | :--- | :--- |
 | `device.h` | device lookup & I/O |
-| `status.h` | `VFS_OK` / `VFS_ERR_*` |
+| `status.h` | `MINI_OK` / `VFS_ERR_*` |
 | `osal.h` | tasks, locks, queues, delays, log levels |
 | `event_bus.h` / `event_bus.hpp` | pub-sub |
 | `buffer_pool.h` · `algorithm/buffer` | buffers |
@@ -55,7 +55,7 @@ if (IS_ERR(dev))
     return PTR_ERR(dev);
 
 int ret = device_open(dev, NULL);
-if (ret != VFS_OK)
+if (ret != MINI_OK)
     return ret;
 
 ret = device_write(dev, buf, len, 100 /* ms */);

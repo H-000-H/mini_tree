@@ -527,12 +527,12 @@ COMPAT_STATIC_INLINE void auto_free_ptr(void* ptr)
  * @param[in] dest 目标内存地址
  * @param[in] src  填充字节值
  * @param[in] size 内存大小
- * @return VFS_OK 成功, VFS_ERR_INVAL 参数无效
+ * @return MINI_OK 成功, MINI_ERR_INVAL 参数无效
  */
 COMPAT_STATIC_INLINE int COMPAT_MEM_SET(void* dest, int src, size_t size)
 {
     if (dest == NULL)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (size > 0)
     {
 #if defined(__GNUC__) || defined(__clang__)
@@ -541,7 +541,7 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_SET(void* dest, int src, size_t size)
         memset(dest, src, size);
 #endif
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -549,12 +549,12 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_SET(void* dest, int src, size_t size)
  * @param[in] dest 目标内存地址
  * @param[in] src  源内存地址
  * @param[in] size 内存大小
- * @return VFS_OK 成功, VFS_ERR_INVAL 参数无效
+ * @return MINI_OK 成功, MINI_ERR_INVAL 参数无效
  */
 COMPAT_STATIC_INLINE int COMPAT_MEM_COPY(void* dest, const void* src, size_t size)
 {
     if (dest == NULL || src == NULL)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (size > 0)
     {
 #if defined(__GNUC__) || defined(__clang__)
@@ -563,7 +563,7 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_COPY(void* dest, const void* src, size_t siz
         memcpy(dest, src, size);
 #endif
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -571,12 +571,12 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_COPY(void* dest, const void* src, size_t siz
  * @param[in] dest 目标内存地址
  * @param[in] src  源内存地址
  * @param[in] size 内存大小
- * @return VFS_OK 成功, VFS_ERR_INVAL 参数无效
+ * @return MINI_OK 成功, MINI_ERR_INVAL 参数无效
  */
 COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t size)
 {
     if (dest == NULL || src == NULL)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (size > 0)
     {
 #if defined(__GNUC__) || defined(__clang__)
@@ -585,7 +585,7 @@ COMPAT_STATIC_INLINE int COMPAT_MEM_MOVE(void* dest, const void* src, size_t siz
         memmove(dest, src, size);
 #endif
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /* ── MMIO 寄存器访问 ─────────────────────────────────────────────────────── */

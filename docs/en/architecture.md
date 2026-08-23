@@ -154,7 +154,7 @@ Publish/subscribe in `core`; module switch `CONFIG_EVENT_BUS` (off by default, d
 
 ### 4.4 Errors & Pointers
 
-- Return values: `int`, `VFS_OK` or negative `VFS_ERR_*`
+- Return values: `int`, `MINI_OK` or negative `VFS_ERR_*`
 - Special pointers: `ERR_PTR` / `IS_ERR` / `PTR_ERR` (rely on `ERR_SECTION_BASE` from `error_symbols.ld`)
 
 ---

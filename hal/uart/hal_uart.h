@@ -105,19 +105,19 @@ extern "C"
      * @brief 绑定 UART 主机并应用 DTSI 配置 (零计算直投)
      * @param[in] host UART 主机对象指针 (非 NULL)
      * @param[in] cfg UART 配置指针 (DTSI 直投, 生命周期由调用方持有)
-     * @return 成功返回 VFS_OK, host 或 cfg 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
      */
     int hal_uart_dev_init(struct hal_uart_bus_host* host, const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 打开 UART 硬件 (引用计数 +1, 首次触发底层 init)
      * @param[in] host UART 主机对象指针
-     * @return 成功返回 VFS_OK, host 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
      */
     int hal_uart_dev_hw_open(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 UART 硬件 (引用计数 -1, 归零触发底层 deinit)
      * @param[in] host UART 主机对象指针
-     * @return 成功返回 VFS_OK, host 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
      */
     int hal_uart_dev_hw_close(struct hal_uart_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 
@@ -127,7 +127,7 @@ extern "C"
      * @param[in] data 发送缓冲区
      * @param[in] len 发送字节数
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_* (超时 VFS_ERR_TIMEOUT)
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -136,25 +136,25 @@ extern "C"
      * @param[out] data 接收缓冲区
      * @param[in] len 接收字节数
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_* (超时 VFS_ERR_TIMEOUT)
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
     /* DMA 配置由 host->cfg.dma_cfg 提供 (硬件直投, 仿 ADC), 无需外部传入通道句柄。
-     * dma_enable=0 时返回 VFS_ERR_NOTSUPP。 */
+     * dma_enable=0 时返回 MINI_ERR_NOTSUPP。 */
     /**
      * @brief DMA 异步发送 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev UART 设备对象指针
      * @param[in] data 发送缓冲区 (DMA 期间须保持有效)
      * @param[in] len 发送字节数
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
-     * @return 成功返回 VFS_OK, DMA 不可用返回 VFS_ERR_NOTSUPP, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
     int hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 终止正在进行的 UART DMA 传输
      * @param[in] pdev UART 设备对象指针
-     * @return 成功返回 VFS_OK, 无进行中传输返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 无进行中传输返回 MINI_ERR_INVAL
      */
     int hal_uart_dma_abort(struct hal_uart_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 

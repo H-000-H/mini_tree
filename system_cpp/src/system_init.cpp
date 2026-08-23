@@ -82,16 +82,16 @@ void mini_tree::system_pre_os_init(void)
 
     /* RTC 硬件看门狗: 独立时钟, 在 CPU 总线停滞时仍存活 */
 #ifdef CONFIG_SYSTEM_WDT
-    system_wdt_init_iwdg(8000);
+    COMPAT_IGNORE_RESULT(system_wdt_init_iwdg(8000));
 #endif
 
     /* 设备树初始化 (编译时生成的节点表) */
-    if (device_tree_init() != VFS_OK)
+    if (device_tree_init() != MINI_OK)
         SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
 
     /* 事件总线两阶段初始化 (SIOF 防御) */
 #ifdef CONFIG_EVENT_BUS
-    if (!event_bus_init())
+    if (event_bus_init() != MINI_OK)
     {
         SYS_LOGE(k_tag, "EventBus init failed — entering safe state");
         enter_safe_state("EventBus init failed");
@@ -146,14 +146,14 @@ void mini_tree::system_start_tasks(void)
 
     /* TWDT 初始化 */
 #ifdef CONFIG_SYSTEM_WDT
-    system_wdt_init(3000);
+    COMPAT_IGNORE_RESULT(system_wdt_init(3000));
 #endif
 
     /* Flash 位腐烂巡检 */
     /* Flash 位腐烂巡检 */
 #ifdef CONFIG_SYSTEM_SCRUBBER
-    system_scrubber_init();
-    system_scrubber_start();
+    COMPAT_IGNORE_RESULT(system_scrubber_init());
+    COMPAT_IGNORE_RESULT(system_scrubber_start());
 #endif
 
     /* 启动循环计数器清除 */

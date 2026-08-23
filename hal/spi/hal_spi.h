@@ -170,7 +170,7 @@ extern "C"
     /**
      * @brief 释放 SPI 总线主机
      * @param[in] host 总线主机对象指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 
@@ -185,14 +185,14 @@ extern "C"
     /**
      * @brief 打开 SPI 设备
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_dev_hw_open(struct hal_spi_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 关闭 SPI 设备
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_dev_hw_close(struct hal_spi_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
@@ -204,7 +204,7 @@ extern "C"
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (ms)
      * @param[in] xfer_mode HAL_SPI_XFER_AUTO / POLL / DMA
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
 
@@ -216,7 +216,7 @@ extern "C"
      * @param[in] len 传输字节数
      * @param[in] cb 回调函数
      * @param[in] userdata 用户数据指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, hal_spi_callback_t cb, void* userdata) COMPAT_WARN_UNUSED_RESULT;
 
@@ -224,7 +224,7 @@ extern "C"
      * @brief SPI 异步传输轮询
      * @param[in] pdev 设备对象指针
      * @param[in] timeout_ms 超时 (ms)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_transfer_poll(struct hal_spi_dev* pdev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
@@ -235,7 +235,7 @@ extern "C"
      * @param[out] rx_cap 接收缓冲区容量
      * @param[out] trans_len 传输字节数
      * @param[in] timeout_ms 超时 (ms)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_get_trans_result(struct hal_spi_dev* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms);
 
@@ -246,7 +246,7 @@ extern "C"
      * @param[out] rx 接收缓冲区 (可为 NULL, 仅丢弃)
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (ms)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
@@ -256,7 +256,7 @@ extern "C"
      * @param[in] data 发送缓冲区
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (ms)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 

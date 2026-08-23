@@ -51,7 +51,7 @@ extern "C"
 
     /**
      * @brief 初始化量产日志环形缓冲 (含持久化后端时恢复历史)
-     * @return 成功返回 VFS_OK, 初始化失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 初始化失败返回 VFS_ERR_*
      */
     int production_log_init(void);
 

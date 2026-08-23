@@ -20,39 +20,39 @@ COMPAT_WEAK int hal_rtc_init(struct hal_rtc_dev* pdev, const struct hal_rtc_conf
 {
     (void)pdev;
     (void)cfg;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_deinit(struct hal_rtc_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_open(struct hal_rtc_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_close(struct hal_rtc_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_set_time(struct hal_rtc_dev* pdev, const struct hal_rtc_time* time)
 {
     (void)pdev;
     (void)time;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_get_time(struct hal_rtc_dev* pdev, struct hal_rtc_time* time)
 {
     (void)pdev;
     (void)time;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm, hal_rtc_alarm_cb_t cb, void* user)
@@ -61,27 +61,27 @@ COMPAT_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc
     (void)alarm;
     (void)cb;
     (void)user;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_cancel_alarm(struct hal_rtc_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_set_wakeup_timer(struct hal_rtc_dev* pdev, uint32_t seconds)
 {
     (void)pdev;
     (void)seconds;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_rtc_cancel_wakeup_timer(struct hal_rtc_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_rtc_force_stop(void) { return VFS_OK; }
+COMPAT_WEAK int hal_rtc_force_stop(void) { return MINI_OK; }
 #endif /* ESP_PLATFORM */

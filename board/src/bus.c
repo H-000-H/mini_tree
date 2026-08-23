@@ -43,55 +43,55 @@ static device_id_t device_to_id(const struct device* pdev)
  * @param[in] type 总线类型
  * @param[in] ctlr_ops 控制器操作表
  * @param[in] hw_ctx 硬件上下文指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
 {
     device_id_t id;
 
     if (!pdev || type == 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     id = device_to_id(pdev);
     if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     s_controllers[id].type = type;
     s_controllers[id].ctlr_ops = ctlr_ops;
     s_controllers[id].hw_ctx = hw_ctx;
     s_controller_used[id] = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 获取 device 自身绑定的总线控制器
  * @param[in] pdev device 指针
  * @param[out] out 输出 bus_controller 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int bus_controller_get(const struct device* pdev, struct bus_controller** out)
 {
     device_id_t id;
 
     if (!out)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     *out = NULL;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     id = device_to_id(pdev);
     if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     *out = &s_controllers[id];
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 获取 device 父节点绑定的总线控制器 (client 查 host)
  * @param[in] pdev client device 指针
  * @param[out] out 输出 bus_controller 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int bus_controller_of(const struct device* pdev, struct bus_controller** out)
 {
@@ -99,11 +99,11 @@ int bus_controller_of(const struct device* pdev, struct bus_controller** out)
     device_id_t id;
 
     if (!out)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     *out = NULL;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     parent = device_get_parent(pdev);
     if (IS_ERR(parent))
@@ -111,10 +111,10 @@ int bus_controller_of(const struct device* pdev, struct bus_controller** out)
 
     id = device_to_id(parent);
     if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     *out = &s_controllers[id];
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**

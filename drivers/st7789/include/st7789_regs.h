@@ -49,14 +49,14 @@ extern "C"
      * @brief ST7789 公共 probe
      * @param[in] pdev device 指针
      * @param[in] require_nocs 非 0 时断言父 SPI client cs-pin < 0
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int st7789_probe_common(struct device* pdev, int require_nocs);
 
     /**
      * @brief ST7789 公共 remove（有 CS / 无 CS 共用）
      * @param[in] pdev device 指针
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int st7789_remove_common(struct device* pdev);
 

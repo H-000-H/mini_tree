@@ -795,6 +795,67 @@ config USB
             help
               以太网帧总长 = lwIP MTU(1500) + 14 字节 ethhdr。
               默认 1514, 对齐 TinyUSB CFG_TUD_NET_MTU。
+
+        config USB_NET_MAC0
+            int "USB net MAC byte 0"
+            default 0x02
+            range 0x00 0xFF
+            depends on USB_NET
+            help
+              USB 虚拟网卡 MAC 地址第 0 字节 (net/port/usb/usbethif.c)。
+              默认 0x02 表示本地管理 (locally administered) 单播地址。
+              MAC byte 0 of the USB virtual NIC MAC address; default
+              0x02 marks a locally-administered unicast address.
+
+        config USB_NET_MAC1
+            int "USB net MAC byte 1"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC2
+            int "USB net MAC byte 2"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC3
+            int "USB net MAC byte 3"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC4
+            int "USB net MAC byte 4"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC5
+            int "USB net MAC byte 5"
+            default 0x01
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_TX_TIMEOUT_MS
+            int "USB net TX timeout (ms)"
+            default 100
+            range 1 10000
+            depends on USB_NET
+            help
+              usbethif 发送一帧的 device_write 超时 (毫秒)。
+              Per-frame device_write timeout in usbethif link output.
+
+        config USB_NET_RX_TIMEOUT_MS
+            int "USB net RX timeout (ms)"
+            default 0
+            range 0 10000
+            depends on USB_NET
+            help
+              usbethif 收帧的 device_read 超时 (毫秒)。
+              默认 0 = 非阻塞尝试, 适合主循环轮询 (NO_SYS=1)。
+              device_read timeout for frame reception; default 0 means
+              non-blocking poll, suitable for the NO_SYS=1 main loop.
         endmenu
 endmenu
 
@@ -1323,6 +1384,81 @@ menu "lwIP (TCP/IP Stack)"
             help
               TCP 服务端每个 session 的接收环形缓冲大小 (bytes), 必须为 2 的幂。
               静态分配, 总内存占用 = TCP_SERVER_MAX_CLIENTS x 本值。
+
+    menu "TCP Client (net/port/tcp/tcp_client.c)"
+        depends on LWIP_TCP
+
+        config TCP_CLIENT_RX_BUFFER_SIZE
+            int "TCP client RX FIFO size (bytes)"
+            default 1024
+            range 256 8192
+            help
+              TCP 客户端 (net/port/tcp/tcp_client.c) 每实例接收环形缓冲大小。
+              静态嵌入 tcp_client_context, 按实例数成倍占 RAM。
+              Per-instance RX ring buffer of the TCP client; embedded
+              in tcp_client_context, RAM scales with instance count.
+
+        config TCP_CLIENT_TX_BUFFER_SIZE
+            int "TCP client TX FIFO size (bytes)"
+            default 1024
+            range 256 8192
+            help
+              TCP 客户端每实例发送环形缓冲大小。
+              Per-instance TX ring buffer of the TCP client.
+
+        config TCP_CLIENT_RX_TX_BYTE_TYPE
+            int "TCP client FIFO element size (bytes)"
+            default 1
+            range 1 8
+            help
+              TCP 客户端收发 FIFO 的元素粒度 (字节), 默认 1 即字节流。
+              FIFO element granularity of the TCP client, default 1
+              (byte stream).
+    endmenu
+
+    menu "MQTT Client (net/port/mqtt/mqtt_client.c)"
+        depends on LWIP_TCP
+
+        config MQTT_MAX_TOPIC_LEN
+            int "MQTT max topic length (bytes)"
+            default 64
+            range 8 256
+            help
+              单个订阅 Topic 过滤串的最大长度 (含结尾 '\0')。
+              Max length of one subscription topic filter (incl. '\0').
+
+        config MQTT_MAX_SUBSCRIPTIONS
+            int "MQTT max subscriptions"
+            default 8
+            range 1 32
+            help
+              订阅路由表槽位数, 每槽一份 topic + 回调。
+              Subscription table capacity (one topic + callback per slot).
+
+        config MQTT_TX_BUFFER_SIZE
+            int "MQTT TX FIFO size (bytes)"
+            default 1024
+            range 256 8192
+            help
+              MQTT 客户端发送环形缓冲大小, 静态嵌入上下文。
+              TX ring buffer of the MQTT client, embedded in context.
+
+        config MQTT_RX_BUFFER_SIZE
+            int "MQTT RX FIFO size (bytes)"
+            default 1024
+            range 256 8192
+            help
+              MQTT 客户端接收环形缓冲大小, 需 >= 单条最大下行报文。
+              RX ring buffer; must fit the largest inbound packet.
+
+        config MQTT_BYTE_SIZE
+            int "MQTT FIFO element size (bytes)"
+            default 1
+            range 1 8
+            help
+              MQTT 收发 FIFO 的元素粒度 (字节), 默认 1 即字节流。
+              FIFO element granularity of the MQTT client, default 1.
+    endmenu
 
         config LWIP_ETHERNET
             bool "Ethernet support"

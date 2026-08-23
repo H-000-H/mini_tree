@@ -123,7 +123,8 @@ static err_t tcp_server_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
         total_in = (uint16_t)(total_in + q->len);
         if (q->len > 0)
         {
-            uint16_t written = fifo_uni_write_block(&session->rx_fifo, q->payload, q->len);
+            uint16_t written = 0;
+            COMPAT_IGNORE_RESULT(fifo_uni_write_block(&session->rx_fifo, q->payload, q->len, &written));
             total_written = (uint16_t)(total_written + written);
 
             if (written < q->len)
@@ -176,7 +177,7 @@ static err_t tcp_server_accept_callback(void* arg, struct tcp_pcb* newpcb, err_t
 
     /* 初始化当前会话: 先就绪 pcb 与 FIFO, 最后置位 is_used, 避免读者看到已占用但 FIFO 未初始化 */
     free_session->pcb = newpcb;
-    fifo_uni_init(&free_session->rx_fifo, free_session->rx_buf, 1U, CLIENT_RX_BUF_SIZE);
+    COMPAT_IGNORE_RESULT(fifo_uni_init(&free_session->rx_fifo, free_session->rx_buf, 1U, CLIENT_RX_BUF_SIZE));
     free_session->is_used = true;
 
     SYS_LOGI(k_tag, "new client accepted -> session [%d]\r\n", free_session->id);
@@ -243,7 +244,9 @@ int get_tcp_data_by_session(int session_id, char* buf, int len, int* recv_len)
         return ERR_CONN;
     }
 
-    uint16_t bytes_read = fifo_uni_read_block(&session->rx_fifo, (uint8_t*)buf, (uint16_t)len);
+    uint16_t bytes_read = 0;
+
+    COMPAT_IGNORE_RESULT(fifo_uni_read_block(&session->rx_fifo, (uint8_t*)buf, (uint16_t)len, &bytes_read));
     *recv_len = (int)bytes_read;
 
     return ERR_OK;

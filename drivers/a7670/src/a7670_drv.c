@@ -58,12 +58,12 @@ static struct a7670_device* a7670_get_drvdata(struct device* pdev) { return (str
 
 /**
  * @brief 向 UART 总线写数据
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_write(dev->uart_dev, tx, len, timeout_ms);
 }
 /**
@@ -73,27 +73,27 @@ static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len
 static int a7670_uart_rd(struct a7670_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !rx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_read(dev->uart_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 UART 总线（空实现，仅确保 hw_ready）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int a7670_hw_create(struct a7670_device* dev)
 {
     int ret;
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     ret = device_open(dev->uart_dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -119,7 +119,7 @@ static int a7670_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -129,18 +129,18 @@ static int a7670_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = a7670_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -152,7 +152,7 @@ static int a7670_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -165,7 +165,7 @@ static int a7670_close(struct device* pdev)
     if (last)
         a7670_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -184,7 +184,7 @@ static int a7670_cmd_send(struct a7670_device* dev, void* arg, size_t len, uint3
 {
     struct modem_at_buf* a = (struct modem_at_buf*)arg;
     if (!dev->hw_ready || !a || len != sizeof(*a) || !a->tx || a->tx_len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return a7670_uart_wr(dev, a->tx, a->tx_len, timeout_ms);
 }
 /**
@@ -195,12 +195,12 @@ static int a7670_cmd_recv(struct a7670_device* dev, void* arg, size_t len, uint3
     struct modem_at_buf* a = (struct modem_at_buf*)arg;
     int ret;
     if (!dev->hw_ready || !a || len != sizeof(*a) || !a->rx || a->rx_cap == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     ret = a7670_uart_rd(dev, a->rx, a->rx_cap, timeout_ms);
     if (ret < 0)
         return ret;
     a->rx_len = (size_t)ret;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -214,17 +214,17 @@ static int a7670_write(struct device* pdev, const void* buffer, size_t len, uint
     struct dev_lifecycle* lc;
     int ret;
     if (!pdev || !pdev->ops || !buffer || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
     if (!dev->hw_ready)
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = a7670_uart_wr(dev, (const uint8_t*)buffer, len, timeout_ms);
     dev_lc_io_end(lc);
@@ -242,17 +242,17 @@ static int a7670_read(struct device* pdev, void* buffer, size_t len, uint32_t ti
     struct dev_lifecycle* lc;
     int ret;
     if (!pdev || !pdev->ops || !buffer || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
     if (!dev->hw_ready)
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = a7670_uart_rd(dev, (uint8_t*)buffer, len, timeout_ms);
     dev_lc_io_end(lc);
@@ -274,7 +274,7 @@ static int a7670_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -282,11 +282,11 @@ static int a7670_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)MODEM_CMD_BASE;
     if (off < 1 || off > MODEM_CMD_COUNT || !s_a7670_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_a7670_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -309,28 +309,28 @@ static int a7670_probe(struct device* pdev)
     struct a7670_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_a7670_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_a7670_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->uart_dev = device_get_parent(pdev);
     if (!dev->uart_dev)
     {
-        ret = VFS_ERR_NODEV;
+        ret = MINI_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = a7670_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -347,7 +347,7 @@ static int a7670_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -357,16 +357,16 @@ static int a7670_remove(struct device* pdev)
     idx = (int)(dev - s_a7670_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     a7670_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_a7670_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(a7670, "simcom,a7670", a7670_probe, a7670_remove)

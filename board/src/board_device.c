@@ -70,7 +70,7 @@ static int device_status_can_transit(enum device_status from, enum device_status
 
 /**
  * @brief 初始化设备树运行时实例表 (device/lock/lifecycle)
- * @return 有设备返回 VFS_OK, 无设备返回 VFS_ERR_IO
+ * @return 有设备返回 MINI_OK, 无设备返回 MINI_ERR_IO
  */
 int device_tree_init(void)
 {
@@ -113,7 +113,7 @@ int device_tree_init(void)
     if (board_dev_count() >= OSAL_MUTEX_POOL_SIZE * 9 / 10)
         osal_log(OSAL_LOG_WARN, "board", "device_tree_init: mutex pool >90%% used (%d/%d)\n", board_dev_count(), OSAL_MUTEX_POOL_SIZE);
 
-    return board_dev_count() > 0 ? VFS_OK : VFS_ERR_IO;
+    return board_dev_count() > 0 ? MINI_OK : MINI_ERR_IO;
 }
 
 /* ── 运行时设备实例访问 ── */
@@ -125,7 +125,7 @@ int device_tree_init(void)
 struct device* board_dev_get(device_id_t id)
 {
     if ((int)id < 0 || (int)id >= DEV_ID_COUNT)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     return &s_devices[id];
 }
 
@@ -139,10 +139,10 @@ struct device* device_find(const char* name)
     device_id_t id;
 
     if (!name)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     id = board_dev_find(name);
     if ((int)id < 0)
-        return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
     return board_dev_get(id);
 }
 
@@ -156,10 +156,10 @@ struct device* device_find_by_label(const char* label)
     device_id_t id;
 
     if (!label)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     id = board_dev_find_by_label(label);
     if ((int)id < 0)
-        return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
     return board_dev_get(id);
 }
 
@@ -174,9 +174,9 @@ struct device* device_get_phandle_dev(const struct device* pdev, const char* key
     const char* val;
 
     if (!pdev || !key)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
-    if (device_get_prop_str(pdev, key, &val) != VFS_OK)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
+    if (device_get_prop_str(pdev, key, &val) != MINI_OK)
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     /* dtc-lite 将 phandle 引用存为 label 名字符串 */
     return device_find_by_label(val);
 }
@@ -196,14 +196,14 @@ struct device* device_find_by_id(device_id_t id) { return board_dev_get(id); }
 struct device* device_find_by_path(const char* path)
 {
     if (!path)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     for (int i = 0; i < DEV_ID_COUNT; i++)
     {
         const struct device_node* node = board_node_get((device_id_t)i);
         if (node && node->path && strcmp(node->path, path) == 0)
             return board_dev_get((device_id_t)i);
     }
-    return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+    return (struct device*)ERR_PTR(MINI_ERR_NODEV);
 }
 
 /**
@@ -216,10 +216,10 @@ struct device* device_find_by_compatible(const char* compatible)
     device_id_t id;
 
     if (!compatible)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     id = board_dev_find_by_compat(compatible);
     if ((int)id < 0)
-        return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
     return board_dev_get(id);
 }
 
@@ -233,10 +233,10 @@ struct device* device_get_parent(const struct device* pdev)
     const struct device_node* node;
 
     if (!pdev || !pdev->node)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     node = pdev->node;
     if (node->dep_count <= 0 || !node->deps)
-        return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
     return board_dev_get(node->deps[0]);
 }
 
@@ -325,23 +325,23 @@ static int safe_parse_int32(const char* str, int* out)
  * @param[in] pdev device 指针
  * @param[out] key 属性键名
  * @param[out] val 输出整型值
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_get_prop_int(const struct device* pdev, const char* key, int* val)
 {
     if (!pdev || !pdev->node || !key || !val)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     const struct device_node* node = pdev->node;
     for (int i = 0; i < node->prop_count; i++)
     {
         if (strcmp(node->props[i].key, key) == 0)
         {
             if (safe_parse_int32(node->props[i].value, val) != 0)
-                return VFS_ERR_INVAL;
-            return VFS_OK;
+                return MINI_ERR_INVAL;
+            return MINI_OK;
         }
     }
-    return VFS_ERR_INVAL;
+    return MINI_ERR_INVAL;
 }
 
 /**
@@ -355,7 +355,7 @@ int device_get_prop_int(const struct device* pdev, const char* key, int* val)
 int device_get_prop_int_array(const struct device* pdev, const char* key, int* out_arr, int max_len)
 {
     if (!pdev || !pdev->node || !key || !out_arr || max_len <= 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     const char* value = NULL;
     for (int i = 0; i < pdev->node->prop_count; i++)
@@ -367,7 +367,7 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
         }
     }
     if (!value)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* 解析空格分隔的整数串 */
     int count = 0;
@@ -388,12 +388,12 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
         char token[64];
         size_t len = (size_t)(p - start);
         if (len >= sizeof(token))
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         __builtin_memcpy(token, start, len);
         token[len] = '\0';
 
         if (safe_parse_int32(token, &out_arr[count]) != 0)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         count++;
     }
 
@@ -405,22 +405,22 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
  * @param[in] pdev device 指针
  * @param[out] key 属性键名
  * @param[out] val 输出字符串指针 (指向 node 内存储)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_get_prop_str(const struct device* pdev, const char* key, const char** val)
 {
     if (!pdev || !pdev->node || !key || !val)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     const struct device_node* node = pdev->node;
     for (int i = 0; i < node->prop_count; i++)
     {
         if (strcmp(node->props[i].key, key) == 0)
         {
             *val = node->props[i].value;
-            return VFS_OK;
+            return MINI_OK;
         }
     }
-    return VFS_ERR_INVAL;
+    return MINI_ERR_INVAL;
 }
 
 /**
@@ -428,7 +428,7 @@ int device_get_prop_str(const struct device* pdev, const char* key, const char**
  * @param[in] pdev device 指针
  * @param[out] key 属性键名
  * @param[out] val 输出整型布尔值 (0/1)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_get_prop_bool(const struct device* pdev, const char* key, int* val) { return device_get_prop_int(pdev, key, val); }
 
@@ -437,18 +437,18 @@ int device_get_prop_bool(const struct device* pdev, const char* key, int* val) {
  * @param[in] pdev device 指针
  * @param[out] idx reg 索引
  * @param[out] out 输出 reg 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_get_reg(const struct device* pdev, int idx, const struct device_reg** out)
 {
     if (!pdev || !pdev->node || !out)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (idx < 0 || idx >= (int)pdev->node->reg_count)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (!pdev->node->regs)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     *out = &pdev->node->regs[idx];
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -456,18 +456,18 @@ int device_get_reg(const struct device* pdev, int idx, const struct device_reg**
  * @param[in] pdev device 指针
  * @param[out] idx irq 索引
  * @param[out] out 输出 irq 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_get_irq(const struct device* pdev, int idx, const struct device_irq** out)
 {
     if (!pdev || !pdev->node || !out)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (idx < 0 || idx >= (int)pdev->node->irq_count)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (!pdev->node->irqs)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     *out = &pdev->node->irqs[idx];
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -522,19 +522,19 @@ enum device_criticality device_get_criticality(const struct device* pdev)
  * @brief 设置 device 状态 (持锁校验状态机迁移)
  * @param[in] pdev device 指针
  * @param[in] status 目标状态
- * @return 成功返回 VFS_OK, 非法迁移返回 VFS_ERR_INVAL
+ * @return 成功返回 MINI_OK, 非法迁移返回 MINI_ERR_INVAL
  */
 int device_set_status(struct device* pdev, enum device_status status)
 {
-    int ret = VFS_OK;
+    int ret = MINI_OK;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (pdev->lock && osal_mutex_lock(pdev->lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
-        return VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
 
     if (!device_status_can_transit(pdev->status, status))
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         pdev->status = status;
 
@@ -547,14 +547,14 @@ int device_set_status(struct device* pdev, enum device_status status)
  * @brief 设置 device 私有数据指针
  * @param[in] pdev device 指针
  * @param[in] priv 私有数据指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
  */
 int device_set_priv(struct device* pdev, void* priv)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pdev->priv_data = priv;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -565,9 +565,9 @@ int device_set_priv(struct device* pdev, void* priv)
 void* device_get_priv(const struct device* pdev)
 {
     if (!pdev)
-        return ERR_PTR(VFS_ERR_INVAL);
+        return ERR_PTR(MINI_ERR_INVAL);
     if (!pdev->priv_data)
-        return ERR_PTR(VFS_ERR_NODEV);
+        return ERR_PTR(MINI_ERR_NODEV);
     return pdev->priv_data;
 }
 
@@ -579,7 +579,7 @@ void* device_get_priv(const struct device* pdev)
 struct device* device_get_first(void)
 {
     if (board_dev_count() <= 0)
-        return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
     return board_dev_get((device_id_t)0);
 }
 
@@ -591,20 +591,20 @@ struct device* device_get_first(void)
 struct device* device_get_next(const struct device* prev)
 {
     if (!prev)
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     if (IS_ERR(prev))
-        return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     for (int i = 0; i < board_dev_count(); i++)
     {
         if (board_dev_get((device_id_t)i) == prev)
         {
             int next = i + 1;
             if (next >= board_dev_count())
-                return (struct device*)ERR_PTR(VFS_ERR_NODEV);
+                return (struct device*)ERR_PTR(MINI_ERR_NODEV);
             return board_dev_get((device_id_t)next);
         }
     }
-    return (struct device*)ERR_PTR(VFS_ERR_INVAL);
+    return (struct device*)ERR_PTR(MINI_ERR_INVAL);
 }
 
 /**
@@ -628,34 +628,34 @@ int device_get_count(void) { return board_dev_count(); }
  * @brief 打开 device (持锁, PROBED→RUNNING)
  * @param[in] pdev device 指针
  * @param[in] arg 传递给驱动 open/init 的参数
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_open(struct device* pdev, void* arg)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
 
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (!pdev->ops || (!pdev->ops->open && !pdev->ops->init))
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     if (pdev->status == DEVICE_STATUS_RUNNING)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_OK;
+        return MINI_OK;
     }
     if (pdev->status != DEVICE_STATUS_PROBED)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     int ret = pdev->ops->open ? pdev->ops->open(pdev, arg) : pdev->ops->init(pdev);
-    if (ret == VFS_OK)
+    if (ret == MINI_OK)
         COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
     return ret;
@@ -664,28 +664,28 @@ int device_open(struct device* pdev, void* arg)
 /**
  * @brief 关闭 device (持锁, RUNNING/SUSPENDED→PROBED)
  * @param[in] pdev device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_close(struct device* pdev)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->close)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     if (pdev->status != DEVICE_STATUS_RUNNING && pdev->status != DEVICE_STATUS_SUSPENDED)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     int ret = pdev->ops->close(pdev);
-    if (ret == VFS_OK)
+    if (ret == MINI_OK)
         COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_PROBED));
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
     return ret;
@@ -697,19 +697,19 @@ int device_close(struct device* pdev)
  * @param[in] buf 数据缓冲
  * @param[in] len 字节数
  * @param[in] timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK 或驱动返回值, 失败返回负数错误码
+ * @return 成功返回 MINI_OK 或驱动返回值, 失败返回负数错误码
  */
 int device_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->write || pdev->status != DEVICE_STATUS_RUNNING)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     int ret = pdev->ops->write(pdev, buf, len, timeout_ms);
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
@@ -722,19 +722,19 @@ int device_write(struct device* pdev, const void* buf, size_t len, uint32_t time
  * @param[out] buf 数据缓冲
  * @param[out] len 字节数
  * @param[in] timeout_ms 超时 (毫秒)
- * @return 成功返回已读字节数或 VFS_OK, 失败返回负数错误码
+ * @return 成功返回已读字节数或 MINI_OK, 失败返回负数错误码
  */
 int device_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->read || pdev->status != DEVICE_STATUS_RUNNING)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     int ret = pdev->ops->read(pdev, buf, len, timeout_ms);
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
@@ -748,19 +748,19 @@ int device_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
  * @param[in] arg 命令参数指针
  * @param[in] arg_len 参数长度
  * @param[in] timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK 或驱动返回值, 失败返回负数错误码
+ * @return 成功返回 MINI_OK 或驱动返回值, 失败返回负数错误码
  */
 int device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->ioctl || pdev->status != DEVICE_STATUS_RUNNING)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     int ret = pdev->ops->ioctl(pdev, cmd, arg, arg_len, timeout_ms);
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
@@ -770,27 +770,27 @@ int device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32
 /**
  * @brief 挂起 device (RUNNING→SUSPENDED)
  * @param[in] pdev device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_suspend(struct device* pdev)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
 
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (pdev->status != DEVICE_STATUS_RUNNING)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
-    int ret = VFS_OK;
+    int ret = MINI_OK;
     if (pdev->ops && pdev->ops->suspend)
     {
         ret = pdev->ops->suspend(pdev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             COMPAT_IGNORE_RESULT(device_unlock(pdev));
             return ret;
@@ -798,33 +798,33 @@ int device_suspend(struct device* pdev)
     }
     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_SUSPENDED));
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 恢复 device (SUSPENDED→RUNNING)
  * @param[in] pdev device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_resume(struct device* pdev)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     HAL_ASSERT_NOT_ISR();
 
-    if (device_lock(pdev) != VFS_OK)
-        return VFS_ERR_BUSY;
+    if (device_lock(pdev) != MINI_OK)
+        return MINI_ERR_BUSY;
     if (pdev->status != DEVICE_STATUS_SUSPENDED)
     {
         COMPAT_IGNORE_RESULT(device_unlock(pdev));
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
-    int ret = VFS_OK;
+    int ret = MINI_OK;
     if (pdev->ops && pdev->ops->resume)
     {
         ret = pdev->ops->resume(pdev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             COMPAT_IGNORE_RESULT(device_unlock(pdev));
             return ret;
@@ -832,34 +832,34 @@ int device_resume(struct device* pdev)
     }
     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
     COMPAT_IGNORE_RESULT(device_unlock(pdev));
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /* ── 设备锁（启动期静态创建，运行期仅有限时加锁） ── */
 /**
  * @brief 获取 device 递归互斥锁
  * @param[in] pdev device 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_BUSY 或 VFS_ERR_INVAL
+ * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_BUSY 或 MINI_ERR_INVAL
  */
 int device_lock(struct device* pdev)
 {
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (!pdev->lock)
-        return VFS_ERR_BUSY;
-    return osal_mutex_lock(pdev->lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) == OSAL_OK ? VFS_OK : VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
+    return osal_mutex_lock(pdev->lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) == OSAL_OK ? MINI_OK : MINI_ERR_BUSY;
 }
 
 /**
  * @brief 释放 device 递归互斥锁
  * @param[in] pdev device 指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int device_unlock(struct device* pdev)
 {
     if (!pdev || !pdev->lock)
-        return VFS_ERR_INVAL;
-    return osal_mutex_unlock(pdev->lock) == OSAL_OK ? VFS_OK : VFS_ERR_IO;
+        return MINI_ERR_INVAL;
+    return osal_mutex_unlock(pdev->lock) == OSAL_OK ? MINI_OK : MINI_ERR_IO;
 }
 
 /* ── 驱动卸载清理：状态锁定 → 广播 → 持锁斩断 ──
@@ -882,7 +882,7 @@ void device_ops_unregister(struct device* pdev)
     if (!pdev)
         return;
 
-    if (device_lock(pdev) != VFS_OK)
+    if (device_lock(pdev) != MINI_OK)
         return;
 
     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_REMOVED));
@@ -893,7 +893,7 @@ void device_ops_unregister(struct device* pdev)
     COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_DEVICE_REMOVED, (uintptr_t)pdev));
 #endif
 
-    if (device_lock(pdev) != VFS_OK)
+    if (device_lock(pdev) != MINI_OK)
         return;
 
     COMPAT_IGNORE_RESULT(device_set_priv(pdev, NULL));
@@ -910,7 +910,7 @@ void device_ops_unregister(struct device* pdev)
 struct dev_lifecycle* device_lc(struct device* pdev)
 {
     if (!pdev)
-        return (struct dev_lifecycle*)ERR_PTR(VFS_ERR_INVAL);
+        return (struct dev_lifecycle*)ERR_PTR(MINI_ERR_INVAL);
     return &pdev->lc;
 }
 

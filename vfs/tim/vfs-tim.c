@@ -54,7 +54,7 @@ hal_tim_device* vfs_tim_get_hal_dev(struct device* pdev)
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 命令参数指针
  * @param[in] arg_len 参数长度
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 typedef int (*tim_cmd_handler_t)(struct vfs_tim_priv* priv, void* arg, size_t arg_len);
 
@@ -72,7 +72,7 @@ typedef struct
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -86,7 +86,7 @@ static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -100,7 +100,7 @@ static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_resume(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -114,12 +114,12 @@ static int tim_cmd_resume(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_counter(&priv->tim, (uint32_t*)arg);
 }
 
@@ -128,12 +128,12 @@ static int tim_cmd_get_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 设定值指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_set_counter(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -142,12 +142,12 @@ static int tim_cmd_set_counter(struct vfs_tim_priv* priv, void* arg, size_t arg_
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg vfs_tim_arg 参数指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(struct vfs_tim_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     const struct vfs_tim_arg* a = (const struct vfs_tim_arg*)arg;
     return hal_tim_pwm_update(&priv->tim, a->channel, a->arr, a->ccr);
 }
@@ -157,12 +157,12 @@ static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_l
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg vfs_tim_arg 参数指针 (channel 入, value 出)
  * @param[in] arg_len 参数长度 (需 >= sizeof(struct vfs_tim_arg))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(struct vfs_tim_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     struct vfs_tim_arg* a = (struct vfs_tim_arg*)arg;
     return hal_tim_get_capture_value(&priv->tim, a->channel, &a->value);
 }
@@ -172,12 +172,12 @@ static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_encoder(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_encoder_value(&priv->tim, (uint32_t*)arg);
 }
 
@@ -186,12 +186,12 @@ static int tim_cmd_get_encoder(struct vfs_tim_priv* priv, void* arg, size_t arg_
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_hall(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_hall_value(&priv->tim, (uint32_t*)arg);
 }
 
@@ -200,12 +200,12 @@ static int tim_cmd_get_hall(struct vfs_tim_priv* priv, void* arg, size_t arg_len
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 设定值指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_autoreload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_set_autoreload(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -214,12 +214,12 @@ static int tim_cmd_set_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_autoreload(&priv->tim, (uint32_t*)arg);
 }
 
@@ -228,7 +228,7 @@ static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 忽略 (可为 NULL)
  * @param[in] arg_len 忽略
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_clear_update_flag(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -242,12 +242,12 @@ static int tim_cmd_clear_update_flag(struct vfs_tim_priv* priv, void* arg, size_
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 设定值指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_prescaler(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_set_prescaler(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -256,12 +256,12 @@ static int tim_cmd_set_prescaler(struct vfs_tim_priv* priv, void* arg, size_t ar
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_prescaler(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_prescaler(&priv->tim, (uint32_t*)arg);
 }
 
@@ -270,12 +270,12 @@ static int tim_cmd_get_prescaler(struct vfs_tim_priv* priv, void* arg, size_t ar
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 设定值指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_clock_division(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_set_clock_division(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -284,12 +284,12 @@ static int tim_cmd_set_clock_division(struct vfs_tim_priv* priv, void* arg, size
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_clock_division(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_clock_division(&priv->tim, (uint32_t*)arg);
 }
 
@@ -298,12 +298,12 @@ static int tim_cmd_get_clock_division(struct vfs_tim_priv* priv, void* arg, size
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 设定值指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_set_counter_mode(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -312,12 +312,12 @@ static int tim_cmd_set_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 输出缓冲区指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_get_counter_mode(&priv->tim, (uint32_t*)arg);
 }
 
@@ -326,7 +326,7 @@ static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -340,7 +340,7 @@ static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_disable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -354,12 +354,12 @@ static int tim_cmd_disable_arr_preload(struct vfs_tim_priv* priv, void* arg, siz
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 中断掩码指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_set_interrupt(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_interrupt_config(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -368,12 +368,12 @@ static int tim_cmd_set_interrupt(struct vfs_tim_priv* priv, void* arg, size_t ar
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg uint32_t 编码器参数指针
  * @param[in] arg_len 参数长度 (需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(uint32_t))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_tim_encoder_start(&priv->tim, *(const uint32_t*)arg);
 }
 
@@ -382,7 +382,7 @@ static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t ar
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -396,7 +396,7 @@ static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_l
  * @param[in] priv TIM 私有数据指针
  * @param[in] arg encoder 模式下为 uint32_t 参数指针; 其他模式未使用
  * @param[in] arg_len 参数长度 (encoder 模式需 >= sizeof(uint32_t))
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int tim_cmd_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
@@ -407,7 +407,7 @@ static int tim_cmd_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
     {
     case HAL_TIM_MODE_ENCODER:
         if (!arg || arg_len < sizeof(uint32_t))
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_encoder_start(&priv->tim, *(const uint32_t*)arg);
     case HAL_TIM_MODE_HALLSENSOR:
         return hal_tim_hall_start(&priv->tim);
@@ -457,21 +457,21 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init() { COM
  * @note    unique不在此处解析因为unique属于特殊变量在probe解析
  * @param[in]   pdev 设备对象指针
  * @param[in]   cfg 输出的 HAL 总线配置结构
- * @return  成功返回 VFS_OK, 失败返回负数错误码
+ * @return  成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_config* cfg)
 {
     if (!pdev || !cfg)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     int tim_mode = -1;
-    if (device_get_prop_int(pdev, "tim-mode", &tim_mode) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "tim-mode", &tim_mode) != MINI_OK)
+        return MINI_ERR_INVAL;
     cfg->mode = (uint32_t)tim_mode;
 
     /* 基础时基 — 必填, 缺任一即失败 */
-    if (device_get_prop_int(pdev, "prescaler", (int*)&cfg->base.prescaler) != VFS_OK || device_get_prop_int(pdev, "counter-mode", (int*)&cfg->base.counter_mode) != VFS_OK ||
-        device_get_prop_int(pdev, "autoreload", (int*)&cfg->base.autoreload) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "prescaler", (int*)&cfg->base.prescaler) != MINI_OK || device_get_prop_int(pdev, "counter-mode", (int*)&cfg->base.counter_mode) != MINI_OK ||
+        device_get_prop_int(pdev, "autoreload", (int*)&cfg->base.autoreload) != MINI_OK)
+        return MINI_ERR_INVAL;
 
     /* 选填字段 — 属性不存在时字段保持 0 */
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clock-division", (int*)&cfg->base.clock_division));
@@ -502,7 +502,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             for (int j = 0; j < (int)(sizeof(fmt) / sizeof(fmt[0])); j++)
             {
                 snprintf(k, sizeof(k), fmt[j], i);
-                if (device_get_prop_int(pdev, k, dst[j]) != VFS_OK)
+                if (device_get_prop_int(pdev, k, dst[j]) != MINI_OK)
                     osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
             }
             snprintf(k, sizeof(k), "oc%d-pin", i);
@@ -541,7 +541,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             for (int j = 0; j < (int)(sizeof(fmt) / sizeof(fmt[0])); j++)
             {
                 snprintf(k, sizeof(k), fmt[j], i);
-                if (device_get_prop_int(pdev, k, dst[j]) != VFS_OK)
+                if (device_get_prop_int(pdev, k, dst[j]) != MINI_OK)
                     osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
             }
             snprintf(k, sizeof(k), "ic%d-pin", i);
@@ -580,7 +580,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                           (int*)&h->ic2_prescaler,
                           (int*)&cfg->encoder_mode.config.pulse_per_rev};
         for (int j = 0; j < (int)(sizeof(cfg_keys) / sizeof(cfg_keys[0])); j++)
-            if (device_get_prop_int(pdev, cfg_keys[j], cfg_dst[j]) != VFS_OK)
+            if (device_get_prop_int(pdev, cfg_keys[j], cfg_dst[j]) != MINI_OK)
                 osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", cfg_keys[j]);
 
         static const char* const ch_fmt[] = {"encoder-ch%d-channel-id", "encoder-ch%d-chn-mode", "encoder-ch%d-chn-polarity", "encoder-ch%d-chn-filter", "encoder-ch%d-chn-prescaler"};
@@ -594,7 +594,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             for (int j = 0; j < (int)(sizeof(ch_fmt) / sizeof(ch_fmt[0])); j++)
             {
                 snprintf(k, sizeof(k), ch_fmt[j], i);
-                if (device_get_prop_int(pdev, k, dst[j]) != VFS_OK)
+                if (device_get_prop_int(pdev, k, dst[j]) != MINI_OK)
                     osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
             }
             snprintf(k, sizeof(k), "encoder-ch%d-pin", i);
@@ -630,7 +630,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                       (int*)&cfg->hall_mode.capture_channel.filter,
                       (int*)&cfg->hall_mode.capture_channel.prescaler};
         for (int j = 0; j < (int)(sizeof(keys) / sizeof(keys[0])); j++)
-            if (device_get_prop_int(pdev, keys[j], dst[j]) != VFS_OK)
+            if (device_get_prop_int(pdev, keys[j], dst[j]) != MINI_OK)
                 osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[j]);
         for (int i = 0; i < HAL_HALL_TIM_MAX_CHANNELS; i++)
         {
@@ -656,7 +656,7 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
     }
 
     default:
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     }
 
     /* BDTR — 选填, 仅高级定时器生效 */
@@ -666,18 +666,18 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
         int* dst[] = {(int*)&cfg->bdtr.automatic_output, (int*)&cfg->bdtr.break_state, (int*)&cfg->bdtr.break_polarity, (int*)&cfg->bdtr.break_filter,
                       (int*)&cfg->bdtr.ossi_state,       (int*)&cfg->bdtr.ossr_state,  (int*)&cfg->bdtr.dead_time,      (int*)&cfg->bdtr.lock_level};
         for (int j = 0; j < (int)(sizeof(keys) / sizeof(keys[0])); j++)
-            if (device_get_prop_int(pdev, keys[j], dst[j]) != VFS_OK)
+            if (device_get_prop_int(pdev, keys[j], dst[j]) != MINI_OK)
                 osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[j]);
     }
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief TIM Client 打开: 引用计数, 首次打开时调用 hal_tim_open
  * @param[in] pdev 设备对象指针
  * @param[in] arg 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_tim_open(struct device* pdev, void* arg)
 {
@@ -686,7 +686,7 @@ static int vfs_tim_open(struct device* pdev, void* arg)
     int first;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
     lc = device_lc(pdev);
@@ -699,26 +699,26 @@ static int vfs_tim_open(struct device* pdev, void* arg)
 
     if (first == 1)
     {
-        if (hal_tim_open(&priv->tim) != VFS_OK)
+        if (hal_tim_open(&priv->tim) != MINI_OK)
         {
             dev_lc_open_abort(lc);
-            return VFS_ERR_IO;
+            return MINI_ERR_IO;
         }
     }
 
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief TIM Client 关闭: 引用计数, 末次关闭时调用 hal_tim_close
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_tim_close(struct device* pdev)
 {
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     struct vfs_tim_priv* priv;
     struct dev_lifecycle* lc;
     int last;
@@ -736,7 +736,7 @@ static int vfs_tim_close(struct device* pdev)
         COMPAT_IGNORE_RESULT(hal_tim_close(&priv->tim));
 
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -746,12 +746,12 @@ static int vfs_tim_close(struct device* pdev)
  * @param[in] arg 命令参数指针
  * @param[in] arg_len 参数长度
  * @param[in] timeout_ms 未使用
- * @return 成功返回 VFS_OK, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
 static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     struct vfs_tim_priv* priv;
     int ret;
     struct dev_lifecycle* lc;
@@ -761,7 +761,7 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
@@ -774,7 +774,7 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (offset < 1 || offset > TIM_CMD_COUNT)
     {
         dev_lc_io_end(lc);
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     }
     uint8_t index = (uint8_t)(offset - 1); /*<此处用(cmd&0xff-1)也可以一样的效果*/
 
@@ -782,7 +782,7 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (handler != NULL)
         ret = handler(priv, arg, arg_len);
     else
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
 
     dev_lc_io_end(lc);
     return ret;
@@ -794,14 +794,14 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
  * @param[in] buf uint32_t 输出缓冲区指针
  * @param[in] len 未使用
  * @param[in] timeout_ms 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_tim_base_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     struct vfs_tim_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
@@ -810,7 +810,7 @@ static int vfs_tim_base_read(struct device* pdev, void* buf, size_t len, uint32_
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
     ret = hal_tim_get_counter(&priv->tim, (uint32_t*)buf);
@@ -825,12 +825,12 @@ static int vfs_tim_base_read(struct device* pdev, void* buf, size_t len, uint32_
  * @param[in] buf vfs_tim_arg 参数指针
  * @param[in] len 未使用
  * @param[in] timeout_ms 未使用
- * @return 固定返回 VFS_OK (不传播 hal_tim_set_counter 错误)
+ * @return 固定返回 MINI_OK (不传播 hal_tim_set_counter 错误)
  */
 static int vfs_tim_base_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     COMPAT_IGNORE_RESULT(timeout_ms);
     COMPAT_IGNORE_RESULT(len);
     struct vfs_tim_priv* priv;
@@ -842,25 +842,25 @@ static int vfs_tim_base_write(struct device* pdev, const void* buf, size_t len, 
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
 
     ret = hal_tim_set_counter(&priv->tim, arg->value);
 
     dev_lc_io_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief TIM Client 挂起: 调用 hal_tim_base_stop 暂停计数
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, IO 门控失败返回 VFS_ERR_IO, 其他失败返回负数错误码
+ * @return 成功返回 MINI_OK, IO 门控失败返回 MINI_ERR_IO, 其他失败返回负数错误码
  */
 static int vfs_tim_base_suspend(struct device* pdev)
 {
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     struct vfs_tim_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
@@ -870,28 +870,28 @@ static int vfs_tim_base_suspend(struct device* pdev)
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
-        return VFS_ERR_IO;
+    if (ret != MINI_OK)
+        return MINI_ERR_IO;
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
 
     ret = hal_tim_base_stop(&priv->tim);
-    if (ret != VFS_OK)
-        return VFS_ERR_IO;
+    if (ret != MINI_OK)
+        return MINI_ERR_IO;
 
     dev_lc_io_end(lc);
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief TIM Client 恢复: 调用 hal_tim_base_start 恢复计数
  * @param[in] pdev 设备对象指针
- * @return 固定返回 VFS_OK (不传播 hal_tim_base_start 错误)
+ * @return 固定返回 MINI_OK (不传播 hal_tim_base_start 错误)
  */
 static int vfs_tim_base_resume(struct device* pdev)
 {
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     struct vfs_tim_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
@@ -901,20 +901,20 @@ static int vfs_tim_base_resume(struct device* pdev)
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
     ret = hal_tim_base_start(&priv->tim);
 
     dev_lc_io_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief TIM Client 设备文件操作
  * @param pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+ * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
  */
 static const struct file_operations fops = {
     .close = vfs_tim_close,
@@ -929,7 +929,7 @@ static const struct file_operations fops = {
 /**
  * @brief TIM 设备探测: 解析 DTS, hal_tim_device_init, 注册 fops
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_tim_probe(struct device* pdev)
 {
@@ -938,20 +938,20 @@ static int vfs_tim_probe(struct device* pdev)
     int ret;
     /*<本处只能看这个是不是null, 不能看ops是不是null, 因为ops是通过device_set_priv设置的*/
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     pool_idx = osal_pool_claim(&s_tim_priv_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     priv = &s_tim_priv_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (vfs_tim_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
+    if (vfs_tim_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
     {
         SYS_LOGE(k_tag, "dts parse failed: %s", device_get_name(pdev));
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
         goto err_pool;
     }
 
@@ -960,10 +960,10 @@ static int vfs_tim_probe(struct device* pdev)
         int clk_periph = 0;
         int irqn = -1;
         int int_mask = 0;
-        if (device_get_prop_int(pdev, "hw-instance", &hw_instance) != VFS_OK)
+        if (device_get_prop_int(pdev, "hw-instance", &hw_instance) != MINI_OK)
         {
             SYS_LOGE(k_tag, "missing hw-instance: %s", device_get_name(pdev));
-            ret = VFS_ERR_INVAL;
+            ret = MINI_ERR_INVAL;
             goto err_pool;
         }
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clk-periph", &clk_periph));
@@ -976,7 +976,7 @@ static int vfs_tim_probe(struct device* pdev)
     }
 
     ret = hal_tim_device_init(&priv->tim, &priv->unique, &priv->cfg);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_tag, "hal_tim_device_init failed: %s", device_get_name(pdev));
         goto err_pool;
@@ -985,14 +985,14 @@ static int vfs_tim_probe(struct device* pdev)
     priv->ops = fops;
     pdev->ops = &priv->ops;
 
-    if (device_set_priv(pdev, priv) != VFS_OK)
+    if (device_set_priv(pdev, priv) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_deinit;
     }
 
     SYS_LOGI(k_tag, "probe OK %s", device_get_name(pdev));
-    return VFS_OK;
+    return MINI_OK;
 
 err_deinit:
     pdev->ops = NULL;
@@ -1005,7 +1005,7 @@ err_pool:
 /**
  * @brief TIM 设备移除: remove_start → 排空 IO → hal 释放 → 归还私有池
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_tim_remove(struct device* pdev)
 {
@@ -1014,7 +1014,7 @@ static int vfs_tim_remove(struct device* pdev)
     int pool_idx;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_tim_priv, ops);
     lc = device_lc(pdev);
@@ -1026,10 +1026,10 @@ static int vfs_tim_remove(struct device* pdev)
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     COMPAT_IGNORE_RESULT(hal_tim_close(&priv->tim));
@@ -1039,7 +1039,7 @@ static int vfs_tim_remove(struct device* pdev)
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_tim_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(vfs_tim_priv, "tim", vfs_tim_probe, vfs_tim_remove)

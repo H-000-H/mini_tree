@@ -87,7 +87,7 @@ extern "C"
     /**
      * @brief 打开操作前段: CAS 递增 opens, 拒绝 teardown/非 LIVE 状态
      * @param[in] lc 生命周期状态机指针
-     * @return 允许打开返回 VFS_OK, teardown 或未 LIVE 返回 VFS_ERR_NODEV
+     * @return 允许打开返回 MINI_OK, teardown 或未 LIVE 返回 MINI_ERR_NODEV
      */
     int dev_lc_open_begin(struct dev_lifecycle* lc) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -104,7 +104,7 @@ extern "C"
     /**
      * @brief 关闭操作前段: 递减 opens (归零前阻止)
      * @param[in] lc 生命周期状态机指针
-     * @return 允许关闭返回 VFS_OK, 计数非法返回 VFS_ERR_INVAL
+     * @return 允许关闭返回 MINI_OK, 计数非法返回 MINI_ERR_INVAL
      */
     int dev_lc_close_begin(struct dev_lifecycle* lc) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -116,7 +116,7 @@ extern "C"
     /**
      * @brief I/O 操作前段: CAS 递增 io_active, 拒绝 teardown/非 LIVE 状态
      * @param[in] lc 生命周期状态机指针
-     * @return 允许 I/O 返回 VFS_OK, teardown 或未 LIVE 返回 VFS_ERR_NODEV
+     * @return 允许 I/O 返回 MINI_OK, teardown 或未 LIVE 返回 MINI_ERR_NODEV
      */
     int dev_lc_io_begin(struct dev_lifecycle* lc) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -135,7 +135,7 @@ extern "C"
      * @brief 移除排空: 锁定 opens=-1, 并等待 io_active 归零为 -1
      * @param[in] lc 生命周期状态机指针
      * @param[in] timeout_ms 超时毫秒数
-     * @return 排空完成返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT
+     * @return 排空完成返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
     int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 

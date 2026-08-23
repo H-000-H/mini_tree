@@ -12,6 +12,7 @@
 #ifndef HAL_FLASH_H
 #define HAL_FLASH_H
 
+#include "status.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -28,9 +29,9 @@ extern "C"
      * @param[in] addr 起始地址
      * @param[out] buf 数据缓冲区
      * @param[in] len 读取长度
-     * @return 成功返回 true, 地址越界返回 false
+     * @return MINI_OK 成功; MINI_ERR_INVAL 地址越界; weak stub 返回 MINI_ERR_NOTSUPP
      */
-    bool hal_flash_read(uint32_t addr, uint8_t* buf, size_t len);
+    int hal_flash_read(uint32_t addr, uint8_t* buf, size_t len);
     /*===========================================================================================================================================================*/
 
     /*应用程序地址与大小*/

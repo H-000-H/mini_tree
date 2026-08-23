@@ -12,6 +12,7 @@
 
 #include "config_store.h"
 
+#include "compiler_compat.h"
 #include "hal_storage.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -411,7 +412,7 @@ static uint8_t read_slot_flag(void)
     if (!s_storage_ready)
         return 0xFF;
     uint8_t flag = 0xFF;
-    hal_storage_read_flag(&flag);
+    COMPAT_IGNORE_RESULT(hal_storage_read_flag(&flag));
     return flag;
 }
 
@@ -424,7 +425,7 @@ static bool write_slot_flag(uint8_t flag)
 {
     if (!s_storage_ready)
         return false;
-    return hal_storage_write_flag(flag);
+    return hal_storage_write_flag(flag) == MINI_OK;
 }
 
 /**
@@ -437,7 +438,7 @@ static bool load_from_storage(uint8_t slot)
     uint8_t buf[BLOB_MAX];
     size_t len = BLOB_MAX;
 
-    if (!hal_storage_read_blob(slot, buf, &len))
+    if (hal_storage_read_blob(slot, buf, &len) != MINI_OK)
         return false;
     if (len < 6)
         return false;
@@ -483,13 +484,13 @@ static bool save_to_storage(uint8_t slot)
     __builtin_memcpy(buf, &crc, sizeof(crc));
     out_len += 4;
 
-    if (!hal_storage_write_blob(slot, buf, out_len))
+    if (hal_storage_write_blob(slot, buf, out_len) != MINI_OK)
         return false;
 
     /* 直读验证 */
     uint8_t verify[BLOB_MAX];
     size_t verify_len = BLOB_MAX;
-    if (!hal_storage_read_blob(slot, verify, &verify_len))
+    if (hal_storage_read_blob(slot, verify, &verify_len) != MINI_OK)
         return false;
     if (verify_len != out_len)
         return false;
@@ -501,14 +502,14 @@ static bool save_to_storage(uint8_t slot)
 
 /**
  * @brief 初始化配置存储 (加载工厂默认 + 可选持久化槽)
- * @return true 初始化成功, false JSON 源无效
+ * @return MINI_OK 初始化成功, MINI_ERR_INVAL JSON 源无效
  */
-bool config_store_init(void)
+int config_store_init(void)
 {
-    s_storage_ready = hal_storage_init();
+    s_storage_ready = (hal_storage_init() == MINI_OK);
 
     if (!load_factory_defaults())
-        return false;
+        return MINI_ERR_INVAL;
 
     if (s_storage_ready)
     {
@@ -518,7 +519,7 @@ bool config_store_init(void)
         else if (flag == FLAG_B_VALID)
             load_from_storage(1);
     }
-    return true;
+    return MINI_OK;
 }
 
 /**
@@ -601,77 +602,77 @@ const char* config_store_get_string(const char* key, const char* default_value)
  * @brief 设置布尔配置项 (标记 dirty)
  * @param[in] key 键名
  * @param[in] value 配置值
- * @return true 成功, false 表满或参数非法
+ * @return MINI_OK 成功, MINI_ERR_INVAL 表满或参数非法
  */
-bool config_store_set_bool(const char* key, bool value)
+int config_store_set_bool(const char* key, bool value)
 {
     struct cs_entry* e = find_entry(key);
     if (!e)
         e = add_entry(key, CS_TYPE_BOOL);
     if (!e)
-        return false;
+        return MINI_ERR_INVAL;
     e->type = CS_TYPE_BOOL;
     e->value.b = value;
     e->dirty = true;
-    return true;
+    return MINI_OK;
 }
 
 /**
  * @brief 设置整型配置项 (标记 dirty)
  * @param[in] key 键名
  * @param[in] value 配置值
- * @return true 成功, false 表满或参数非法
+ * @return MINI_OK 成功, MINI_ERR_INVAL 表满或参数非法
  */
-bool config_store_set_int(const char* key, int value)
+int config_store_set_int(const char* key, int value)
 {
     struct cs_entry* e = find_entry(key);
     if (!e)
         e = add_entry(key, CS_TYPE_INT);
     if (!e)
-        return false;
+        return MINI_ERR_INVAL;
     e->type = CS_TYPE_INT;
     e->value.i = value;
     e->dirty = true;
-    return true;
+    return MINI_OK;
 }
 
 /**
  * @brief 设置浮点配置项 (标记 dirty)
  * @param[in] key 键名
  * @param[in] value 配置值
- * @return true 成功, false 表满或参数非法
+ * @return MINI_OK 成功, MINI_ERR_INVAL 表满或参数非法
  */
-bool config_store_set_float(const char* key, float value)
+int config_store_set_float(const char* key, float value)
 {
     struct cs_entry* e = find_entry(key);
     if (!e)
         e = add_entry(key, CS_TYPE_FLOAT);
     if (!e)
-        return false;
+        return MINI_ERR_INVAL;
     e->type = CS_TYPE_FLOAT;
     e->value.f = value;
     e->dirty = true;
-    return true;
+    return MINI_OK;
 }
 
 /**
  * @brief 设置字符串配置项 (标记 dirty)
  * @param[in] key 键名
  * @param[in] value 配置值
- * @return true 成功, false 表满或参数非法
+ * @return MINI_OK 成功, MINI_ERR_INVAL 表满或参数非法
  */
-bool config_store_set_string(const char* key, const char* value)
+int config_store_set_string(const char* key, const char* value)
 {
     struct cs_entry* e = find_entry(key);
     if (!e)
         e = add_entry(key, CS_TYPE_STRING);
     if (!e)
-        return false;
+        return MINI_ERR_INVAL;
     e->type = CS_TYPE_STRING;
     strncpy(e->value.s, value, sizeof(e->value.s) - 1);
     e->value.s[sizeof(e->value.s) - 1] = '\0';
     e->dirty = true;
-    return true;
+    return MINI_OK;
 }
 
 /**
@@ -682,68 +683,70 @@ void config_store_register_write_hook(config_store_write_hook_t hook) { s_write_
 
 /**
  * @brief 提交 dirty 配置到持久化 (hook 或 A/B slot)
- * @return true 提交成功, false 序列化/写入失败
+ * @return MINI_OK 提交成功; MINI_ERR_NOSPC 序列化失败; MINI_ERR_IO 写入失败; MINI_ERR_AGAIN 存储未就绪
  */
-bool config_store_commit(void)
+int config_store_commit(void)
 {
     uint8_t buf[BLOB_MAX];
     size_t out_len = 0;
     if (!blob_serialize(buf, BLOB_MAX, &out_len))
-        return false;
+        return MINI_ERR_NOSPC;
 
     /* 优先使用注册的回调桥 */
     if (s_write_hook)
     {
-        bool ok = s_write_hook(buf, out_len);
-        if (ok)
+        int ret = s_write_hook(buf, out_len);
+        if (ret == MINI_OK)
             for (int i = 0; i < s_entry_count; i++)
                 s_entries[i].dirty = false;
-        return ok;
+        return ret;
     }
 
     /* 默认 hal_storage A/B slot 路径 */
     if (!s_storage_ready)
-        return false;
+        return MINI_ERR_AGAIN;
 
     uint8_t current = read_slot_flag();
     uint8_t target = (current == FLAG_A_VALID) ? 1 : 0;
 
     if (!save_to_storage(target))
-        return false;
+        return MINI_ERR_IO;
 
     uint8_t new_flag = (target == 0) ? FLAG_A_VALID : FLAG_B_VALID;
     if (!write_slot_flag(new_flag))
-        return false;
+        return MINI_ERR_IO;
 
     for (int i = 0; i < s_entry_count; i++)
         s_entries[i].dirty = false;
 
-    return true;
+    return MINI_OK;
 }
 
 /**
  * @brief 恢复工厂默认配置并擦除持久化
- * @return true 成功, false 加载工厂默认失败
+ * @return MINI_OK 成功, MINI_ERR_INVAL 加载工厂默认失败, MINI_ERR_IO 写回失败
  */
-bool config_store_factory_reset(void)
+int config_store_factory_reset(void)
 {
     if (!s_storage_ready)
     {
         s_entry_count = 0;
-        return load_factory_defaults();
+        return load_factory_defaults() ? MINI_OK : MINI_ERR_INVAL;
     }
 
-    hal_storage_erase_all();
+    COMPAT_IGNORE_RESULT(hal_storage_erase_all());
 
     s_entry_count = 0;
     s_health = 0;
 
     if (!load_factory_defaults())
-        return false;
+        return MINI_ERR_INVAL;
 
-    save_to_storage(0);
-    write_slot_flag(FLAG_A_VALID);
-    return true;
+    if (!save_to_storage(0))
+        return MINI_ERR_IO;
+    if (!write_slot_flag(FLAG_A_VALID))
+        return MINI_ERR_IO;
+    return MINI_OK;
 }
 
 /**

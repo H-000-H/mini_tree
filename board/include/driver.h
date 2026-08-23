@@ -25,12 +25,12 @@ extern "C"
     /* ── Driver 核心 API ── */
     /**
      * @brief 遍历设备树 → 匹配 driver → 逐一 probe 初始化
-     * @return 全部成功返回 VFS_OK, 任一失败返回负数错误码
+     * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
      */
     int board_driver_probe_all(void) COMPAT_WARN_UNUSED_RESULT; /* 遍历设备 → 匹配 driver → probe */
     /**
      * @brief 按 probe 逆序逐一 remove, 安全停机全部设备
-     * @return 全部成功返回 VFS_OK, 任一失败返回负数错误码
+     * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
      */
     int board_driver_remove_all(void) COMPAT_WARN_UNUSED_RESULT;
 

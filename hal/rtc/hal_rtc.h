@@ -70,40 +70,40 @@ extern "C"
      * @brief 初始化 RTC 软件对象
      * @param[in] pdev RTC 设备对象指针
      * @param[in] cfg RTC 硬件配置 (DTSI 直投)
-     * @return 成功返回 VFS_OK, pdev 或 cfg 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 或 cfg 为空返回 MINI_ERR_INVAL
      */
     int hal_rtc_init(struct hal_rtc_dev* pdev, const struct hal_rtc_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 RTC 软件对象
      * @param[in] pdev RTC 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_rtc_deinit(struct hal_rtc_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 打开 RTC (引用计数 +1, 首次触发硬件初始化)
      * @param[in] pdev RTC 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_rtc_open(struct hal_rtc_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 RTC (引用计数 -1)
      * @param[in] pdev RTC 设备对象指针
      * @note 仅清软件状态, 不关闭 RTC 时钟 (日历持续运行)
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_rtc_close(struct hal_rtc_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 设置 RTC 日历时间
      * @param[in] pdev RTC 设备对象指针
      * @param[in] time 目标日历时间
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int hal_rtc_set_time(struct hal_rtc_dev* pdev, const struct hal_rtc_time* time) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 读取 RTC 当前日历时间
      * @param[in] pdev RTC 设备对象指针
      * @param[out] time 回传当前日历时间
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int hal_rtc_get_time(struct hal_rtc_dev* pdev, struct hal_rtc_time* time) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -112,31 +112,31 @@ extern "C"
      * @param[in] alarm 闹钟时间
      * @param[in] cb 闹钟回调 (ISR 上下文, 当前未完成派发)
      * @param[in] user 回调用户数据
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm, hal_rtc_alarm_cb_t cb, void* user) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 取消闹钟 A
      * @param[in] pdev RTC 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_rtc_cancel_alarm(struct hal_rtc_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 设置 RTC 唤醒定时器
      * @param[in] pdev RTC 设备对象指针
      * @param[in] seconds 唤醒周期 (秒)
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int hal_rtc_set_wakeup_timer(struct hal_rtc_dev* pdev, uint32_t seconds) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 取消 RTC 唤醒定时器
      * @param[in] pdev RTC 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_rtc_cancel_wakeup_timer(struct hal_rtc_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 强制停止 RTC (断电保护/紧急停机用)
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int hal_rtc_force_stop(void) COMPAT_WARN_UNUSED_RESULT;
 

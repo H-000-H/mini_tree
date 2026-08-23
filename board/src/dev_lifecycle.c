@@ -93,16 +93,16 @@ int dev_lc_io_active_count(const struct dev_lifecycle* lc)
 int dev_lc_open_begin(struct dev_lifecycle* lc)
 {
     if (!lc)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     int old;
     do
     {
         old = COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_RELAXED);
         if (old < 0)
-            return VFS_ERR_NODEV;
+            return MINI_ERR_NODEV;
         if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
-            return VFS_ERR_NODEV;
+            return MINI_ERR_NODEV;
     } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
     return (old + 1 == 1) ? 1 : 0;
@@ -128,19 +128,19 @@ void dev_lc_open_abort(struct dev_lifecycle* lc)
 /**
  * @brief 开始 close (CAS 递减 opens)
  * @param[in] lc 生命周期对象指针
- * @return 末次 close 返回 1, 非末次返回 0, opens<=0 返回 VFS_ERR_IO
+ * @return 末次 close 返回 1, 非末次返回 0, opens<=0 返回 MINI_ERR_IO
  */
 int dev_lc_close_begin(struct dev_lifecycle* lc)
 {
     if (!lc)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     int old;
     do
     {
         old = COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_RELAXED);
         if (old <= 0)
-            return VFS_ERR_IO;
+            return MINI_ERR_IO;
     } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old - 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
     return (old - 1 == 0) ? 1 : 0;
@@ -155,24 +155,24 @@ void dev_lc_close_end(struct dev_lifecycle* lc) { COMPAT_UNUSED_PARAM(lc); }
 /**
  * @brief 开始 I/O (CAS 递增 io_active, teardown 或非 LIVE 拒绝)
  * @param[in] lc 生命周期对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 int dev_lc_io_begin(struct dev_lifecycle* lc)
 {
     if (!lc)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     int old;
     do
     {
         old = COMPAT_ATOMIC_LOAD(&lc->io_active, COMPAT_MO_RELAXED);
         if (old < 0)
-            return VFS_ERR_NODEV;
+            return MINI_ERR_NODEV;
         if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
-            return VFS_ERR_NODEV;
+            return MINI_ERR_NODEV;
     } while (!COMPAT_ATOMIC_CAS(&lc->io_active, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -201,15 +201,15 @@ void dev_lc_remove_start(struct dev_lifecycle* lc)
  * @brief 排空 open/io 并 CAS 锁定 (teardown drain)
  * @param[in] lc 生命周期对象指针
  * @param[in] timeout_ms 超时 (毫秒, OSAL_WAIT_FOREVER 表示永久等待)
- * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, 状态非法返回 VFS_ERR_BUSY
+ * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 状态非法返回 MINI_ERR_BUSY
  */
 int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
 {
     if (!lc)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_REMOVING)
-        return VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
 
     const uint32_t start_ms = osal_time_ms();
     for (;;)
@@ -223,10 +223,10 @@ int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
             {
                 int io_expected = 0;
                 if (COMPAT_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
-                    return VFS_OK;
+                    return MINI_OK;
 
                 if (timeout_ms != OSAL_WAIT_FOREVER && (osal_time_ms() - start_ms) >= timeout_ms)
-                    return VFS_ERR_TIMEOUT;
+                    return MINI_ERR_TIMEOUT;
 
                 osal_delay_ms(1);
             }
@@ -235,7 +235,7 @@ int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
         if (timeout_ms != OSAL_WAIT_FOREVER)
         {
             if (osal_time_ms() - start_ms >= timeout_ms)
-                return VFS_ERR_TIMEOUT;
+                return MINI_ERR_TIMEOUT;
         }
         osal_delay_ms(1);
     }

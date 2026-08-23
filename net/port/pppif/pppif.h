@@ -17,20 +17,20 @@ extern "C"
      * @param[in] apn APN 名称 (可 NULL)
      * @param[in] user PPP 用户名 (可 NULL)
      * @param[in] pass PPP 密码 (可 NULL)
-     * @return 成功返回 0 (VFS_OK), 失败返回负值错误码
+     * @return 成功返回 0 (MINI_OK), 失败返回负值错误码
      * @note 裸机 (NO_SYS=1) 下初始化后需周期调用 pppif_poll() 驱动状态机。
      */
     int pppif_init(const char* modem_dev_name, const char* apn, const char* user, const char* pass);
 
     /**
      * @brief PPP 数据态轮询
-     * @return 成功返回 0 (VFS_OK), 失败返回负值错误码
+     * @return 成功返回 0 (MINI_OK), 失败返回负值错误码
      * @details 裸机 (NO_SYS=1) 下需在主循环周期调用, 驱动 PPP 状态机与串口收发。
      */
     int pppif_poll(void);
     /**
      * @brief PPP 反初始化
-     * @return 成功返回 0 (VFS_OK), 失败返回负值错误码
+     * @return 成功返回 0 (MINI_OK), 失败返回负值错误码
      * @details 关闭 PPP 拨号, 释放资源, 断开链路。
      */
     int pppif_deinit(void);

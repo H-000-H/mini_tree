@@ -33,12 +33,12 @@ extern "C"
      * @brief Fast Path: 中断 DMA 异步无锁 FIFO 极致直读接口
      * @param[in] pdev ADC 设备指针
      * @param[out] out_val 回传转换值
-     * @return 成功返回 VFS_OK, 参数为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_read_dma_it_adc_value(hal_adc_device* pdev, uint16_t* out_val)
     {
         if (!pdev || !out_val)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_adc_dma_it_read_value(pdev, (uint16_t*)out_val);
     }
 
@@ -46,12 +46,12 @@ extern "C"
      * @brief Fast Path: 普通 DMA 同步寄存器极致直读接口
      * @param[in] pdev ADC 设备指针
      * @param[out] out_val 回传转换值
-     * @return 成功返回 VFS_OK, 参数为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
      */
     COMPAT_STATIC_INLINE int vfs_read_dma_adc_value(hal_adc_device* pdev, uint16_t* out_val)
     {
         if (!pdev || !out_val)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_adc_dma_read_value(pdev, out_val);
     }
 

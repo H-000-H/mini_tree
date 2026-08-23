@@ -62,13 +62,13 @@ static struct xpt2046_device* xpt2046_get_drvdata(struct device* pdev) { return 
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int xpt2046_spi_xfer(struct xpt2046_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     arg.tx = tx;
     arg.rx = rx;
     arg.len = len;
@@ -78,21 +78,21 @@ static int xpt2046_spi_xfer(struct xpt2046_device* dev, const uint8_t* tx, uint8
 
 /**
  * @brief 首次 open 时打开 SPI 总线（空实现，仅确保 hw_ready）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int xpt2046_hw_create(struct xpt2046_device* dev)
 {
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     {
         int ret = device_open(dev->spi_dev, NULL);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -117,7 +117,7 @@ static int xpt2046_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -127,18 +127,18 @@ static int xpt2046_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = xpt2046_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -150,7 +150,7 @@ static int xpt2046_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -163,7 +163,7 @@ static int xpt2046_close(struct device* pdev)
     if (last)
         xpt2046_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -183,16 +183,16 @@ static int xpt2046_cmd_xy(struct xpt2046_device* dev, void* arg, size_t len, uin
     uint8_t tx[3] = {0x90, 0, 0}, rx[3] = {0};
     struct xpt2046_xy* p = (struct xpt2046_xy*)arg;
     if (!dev->hw_ready || !p || len != sizeof(*p))
-        return VFS_ERR_INVAL;
-    if (xpt2046_spi_xfer(dev, tx, rx, 3, timeout_ms) != VFS_OK)
-        return VFS_ERR_IO;
+        return MINI_ERR_INVAL;
+    if (xpt2046_spi_xfer(dev, tx, rx, 3, timeout_ms) != MINI_OK)
+        return MINI_ERR_IO;
     p->pos_x = (uint16_t)(((rx[1] << 8) | rx[2]) >> 3);
     tx[0] = 0xD0;
-    if (xpt2046_spi_xfer(dev, tx, rx, 3, timeout_ms) != VFS_OK)
-        return VFS_ERR_IO;
+    if (xpt2046_spi_xfer(dev, tx, rx, 3, timeout_ms) != MINI_OK)
+        return MINI_ERR_IO;
     p->pos_y = (uint16_t)(((rx[1] << 8) | rx[2]) >> 3);
     p->pressed = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 static const struct xpt2046_ioctl_map s_xpt2046_map[XPT2046_CMD_COUNT] = {
     [XPT2046_CMD_READ_XY - XPT2046_CMD_BASE - 1] = {xpt2046_cmd_xy},
@@ -208,7 +208,7 @@ static int xpt2046_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -216,11 +216,11 @@ static int xpt2046_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)XPT2046_CMD_BASE;
     if (off < 1 || off > XPT2046_CMD_COUNT || !s_xpt2046_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_xpt2046_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -241,16 +241,16 @@ static int xpt2046_probe(struct device* pdev)
     struct xpt2046_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_xpt2046_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_xpt2046_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->spi_dev = device_get_parent(pdev);
     if (!dev->spi_dev)
     {
-        ret = VFS_ERR_NODEV;
+        ret = MINI_ERR_NODEV;
         goto err;
     }
     dev->irq_dev = device_get_phandle_dev(pdev, "irq-gpio");
@@ -262,15 +262,15 @@ static int xpt2046_probe(struct device* pdev)
     else
         dev->has_irq = 1;
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = xpt2046_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -287,7 +287,7 @@ static int xpt2046_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -297,16 +297,16 @@ static int xpt2046_remove(struct device* pdev)
     idx = (int)(dev - s_xpt2046_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     xpt2046_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_xpt2046_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(xpt2046, "ti,xpt2046", xpt2046_probe, xpt2046_remove)

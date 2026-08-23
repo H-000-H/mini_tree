@@ -55,7 +55,7 @@ device_open/close/read/write/ioctl(CAN)
 
 ## 3. 返回值约定
 
-与仓库其它层一致：成功 `VFS_OK`（或钩子约定的 0）；失败 `VFS_ERR_*`。
+与仓库其它层一致：成功 `MINI_OK`（或钩子约定的 0）；失败 `VFS_ERR_*`。
 
 | 场景 | 建议 |
 | :--- | :--- |
@@ -77,7 +77,7 @@ int can_hook_pre_tx(struct device* pdev, struct can_frame* frame)
     /* 例：改写 ID 或拒绝 */
     (void)pdev;
     (void)frame;
-    return VFS_OK;
+    return MINI_OK;
 }
 ```
 

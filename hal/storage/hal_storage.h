@@ -12,6 +12,7 @@
 #ifndef HAL_STORAGE_H
 #define HAL_STORAGE_H
 
+#include "status.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -25,42 +26,42 @@ extern "C"
     /*===========================================================================================================================================================*/
     /**
      * @brief 初始化存储介质 (探测介质并识别有效槽位)
-     * @return 成功返回 true, 初始化失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (weak stub 返回 MINI_ERR_NOTSUPP)
      */
-    bool hal_storage_init(void);
+    int hal_storage_init(void);
     /**
      * @brief 读取槽位元数据标记
      * @param[out] flag 回传当前有效槽位标记
-     * @return 成功返回 true, 读取失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool hal_storage_read_flag(uint8_t* flag);
+    int hal_storage_read_flag(uint8_t* flag);
     /**
      * @brief 写入槽位元数据标记
      * @param[in] flag 待写入的有效槽位标记
-     * @return 成功返回 true, 写入失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool hal_storage_write_flag(uint8_t flag);
+    int hal_storage_write_flag(uint8_t flag);
     /**
      * @brief 读取指定槽位的 blob 数据
      * @param[in] slot 槽位号 (0=A 区, 1=B 区)
      * @param[out] buf 数据缓冲区
      * @param[in,out] len 入参=缓冲区容量, 出参=实际读取长度
-     * @return 成功返回 true, 读取失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool hal_storage_read_blob(uint8_t slot, uint8_t* buf, size_t* len);
+    int hal_storage_read_blob(uint8_t slot, uint8_t* buf, size_t* len);
     /**
      * @brief 写入 blob 数据到指定槽位
      * @param[in] slot 槽位号 (0=A 区, 1=B 区)
      * @param[in] buf 数据源
      * @param[in] len 数据长度
-     * @return 成功返回 true, 写入失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool hal_storage_write_blob(uint8_t slot, const uint8_t* buf, size_t len);
+    int hal_storage_write_blob(uint8_t slot, const uint8_t* buf, size_t len);
     /**
      * @brief 全擦除存储介质
-     * @return 成功返回 true, 擦除失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool hal_storage_erase_all(void);
+    int hal_storage_erase_all(void);
     /*===========================================================================================================================================================*/
 
     /*ioctl 命令与参数结构*/

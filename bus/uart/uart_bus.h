@@ -37,13 +37,13 @@ extern "C"
      * @brief UART host 初始化 (config 类型直接用 hal_uart_config, bus 零翻译透传)
      * @param[in] pdev controller device (host)
      * @param[in] cfg host 配置 (VFS 填充 DTSI 硬件直投值)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int uart_bus_host_init(struct device* pdev, const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief UART host 反初始化 (ref_count > 0 时返回 BUSY)
      * @param[in] pdev controller device (host)
-     * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
      */
     int uart_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
@@ -53,7 +53,7 @@ extern "C"
     /**
      * @brief UART client 注册 (UART 无 per-client 配置, 单 host 单 client, 无需 cfg)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int uart_bus_client_register(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -65,13 +65,13 @@ extern "C"
     /**
      * @brief 打开 UART client (ref_count 在 register/unregister 维护, 此处仅 IO gate)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
     int uart_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 UART client (仅 IO gate, 不改 ref_count)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
     int uart_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
@@ -81,7 +81,7 @@ extern "C"
      * @param[in] data 待写入数据
      * @param[in] len 数据长度
      * @param[in] timeout_ms 超时 (ms, 0=平台默认)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int uart_bus_write(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
@@ -91,7 +91,7 @@ extern "C"
      * @param[out] data 读取缓冲区
      * @param[out] len 读取长度
      * @param[in] timeout_ms 超时 (ms, 0=平台默认)
-     * @return 成功返回已读字节数或 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回已读字节数或 MINI_OK, 失败返回 VFS_ERR_*
      */
     int uart_bus_read(struct device* pdev, uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
@@ -103,7 +103,7 @@ extern "C"
      * @param[in] tx_len 发送长度
      * @param[out] rx_len 接收长度
      * @param[in] timeout_ms 超时 (ms, 0=平台默认; 写/读各自使用该超时)
-     * @return 成功返回 VFS_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
      */
     int uart_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t tx_len, size_t rx_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 

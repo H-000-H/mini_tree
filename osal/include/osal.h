@@ -100,7 +100,7 @@ extern "C"
     /**
      * @brief 释放内存
      * @param[in] ptr 内存指针 (可为 NULL)
-     * @return 成功返回 VFS_OK
+     * @return 成功返回 MINI_OK
      */
     int osal_free(void* ptr);
 
@@ -125,19 +125,19 @@ extern "C"
     /**
      * @brief 初始化自旋锁
      * @param[in] lock 自旋锁指针
-     * @return 成功返回 VFS_OK, lock 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, lock 为空返回 MINI_ERR_INVAL
      */
     int osal_spinlock_init(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 获取自旋锁 (ISR 安全, 禁止睡眠)
      * @param[in] lock 自旋锁指针
-     * @return 成功返回 VFS_OK, lock 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, lock 为空返回 MINI_ERR_INVAL
      */
     int osal_spinlock_lock(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 释放自旋锁
      * @param[in] lock 自旋锁指针
-     * @return 成功返回 VFS_OK, lock 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, lock 为空返回 MINI_ERR_INVAL
      */
     int osal_spinlock_unlock(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
@@ -214,7 +214,7 @@ extern "C"
      * @brief 创建互斥锁 (指定类型, 池分配)
      * @param[out] out 回传互斥锁句柄
      * @param[in] type 互斥锁类型 (OSAL_MUTEX_PLAIN/RECURSIVE)
-     * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM
+     * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
     int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -223,14 +223,14 @@ extern "C"
      * @param[in] storage 存储缓冲
      * @param[in] storage_size 缓冲大小
      * @param[in] type 互斥锁类型
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size, osal_mutex_type_t type) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 创建普通非递归互斥锁 (池分配, 推荐)
      * @param[out] out 回传互斥锁句柄
-     * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM
+     * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
     int osal_mutex_create(struct osal_mutex** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -238,14 +238,14 @@ extern "C"
      * @param[out] out 回传互斥锁句柄
      * @param[in] storage 存储缓冲
      * @param[in] storage_size 缓冲大小
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 创建递归互斥锁 (可嵌套 lock/unlock, 池分配)
      * @param[out] out 回传互斥锁句柄
-     * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM
+     * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
     int osal_mutex_create_recursive(struct osal_mutex** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -253,14 +253,14 @@ extern "C"
      * @param[out] out 回传互斥锁句柄
      * @param[in] storage 存储缓冲
      * @param[in] storage_size 缓冲大小
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
 
     /**
      * @brief 创建普通非递归互斥锁 (与 create 等价, 强调语义)
      * @param[out] out 回传互斥锁句柄
-     * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM
+     * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
     int osal_mutex_create_plain(struct osal_mutex** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -268,7 +268,7 @@ extern "C"
      * @param[out] out 回传互斥锁句柄
      * @param[in] storage 存储缓冲
      * @param[in] storage_size 缓冲大小
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage, size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/
@@ -284,13 +284,13 @@ extern "C"
      * @brief 锁定互斥锁
      * @param[in] mutex 互斥锁指针
      * @param[in] timeout_ms 超时毫秒数 (OSAL_WAIT_FOREVER 永久等待)
-     * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT
+     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
     int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 释放互斥锁
      * @param[in] mutex 互斥锁指针
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int osal_mutex_unlock(struct osal_mutex* mutex);
     /*===========================================================================================================================================================*/
@@ -328,7 +328,7 @@ extern "C"
     /**
      * @brief 创建二值信号量 (池分配)
      * @param[out] out 回传信号量句柄
-     * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM
+     * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
     int osal_sem_create_binary(struct osal_sem** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -336,7 +336,7 @@ extern "C"
      * @param[out] out 回传信号量句柄
      * @param[in] storage 存储缓冲
      * @param[in] storage_size 缓冲大小
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_sem_create_binary_static(struct osal_sem** out, void* storage, size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -348,7 +348,7 @@ extern "C"
      * @brief 等待信号量
      * @param[in] sem 信号量句柄
      * @param[in] timeout_ms 超时毫秒数 (OSAL_WAIT_FOREVER 永久等待)
-     * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT
+     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
     int osal_sem_wait(struct osal_sem* sem, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -391,7 +391,7 @@ extern "C"
      * @param[in] pool 槽位池指针
      * @param[in] used_slots 已使用槽位位图指针 (由调用方提供)
      * @param[in] slot_count 槽位数量
-     * @return 成功返回 VFS_OK, 参数非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_pool_init(osal_pool_t* pool, volatile uint8_t* used_slots, size_t slot_count) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -404,7 +404,7 @@ extern "C"
      * @brief 释放指定槽位
      * @param[in] pool 槽位池指针
      * @param[in] slot_index 槽位索引
-     * @return 成功返回 VFS_OK, 索引越界返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
     int osal_pool_release(osal_pool_t* pool, int slot_index) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -427,7 +427,7 @@ extern "C"
      * @param[in] entry 任务入口函数
      * @param[in] param 任务参数
      * @param[in] core_id 核心号 (-1=任意核心)
-     * @return 成功返回 VFS_OK, 创建失败返回负数错误码
+     * @return 成功返回 MINI_OK, 创建失败返回负数错误码
      */
     int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id) COMPAT_WARN_UNUSED_RESULT;
 
@@ -456,7 +456,7 @@ extern "C"
      * @param[in] param 任务参数
      * @param[in] core_id 核心号 (-1=任意核心)
      * @param[out] out_handle 回传任务句柄
-     * @return 成功返回 VFS_OK, 创建失败返回负数错误码
+     * @return 成功返回 MINI_OK, 创建失败返回负数错误码
      */
     int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id, osal_task_handle_t* out_handle) COMPAT_WARN_UNUSED_RESULT;
     /**

@@ -50,7 +50,7 @@ extern "C"
      * @brief Host 级控制器操作表 — 管理控制器生命周期与 client 挂载
      *
      *
-     * @return 成功返回 0, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+     * @return 成功返回 0, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
      */
     struct bus_controller_ops
     {
@@ -94,7 +94,7 @@ extern "C"
      * @param[in] ctlr_ops  host 级 ops
      * @param[in] hw_ctx    host 私有上下文 (struct xxx_bus_host*)
      *
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx) COMPAT_WARN_UNUSED_RESULT;
 
@@ -102,7 +102,7 @@ extern "C"
      * @brief 查找 device 自身绑定的 controller (传 host)
      * @param[in] pdev controller device (host)
      * @param[out] out 回传 bus_controller 指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
     int bus_controller_get(const struct device* pdev, struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
 
@@ -115,7 +115,7 @@ extern "C"
      * @param[in] pdev  client device
      * @param[out] out  输出 bus_controller 指针
      *
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
     int bus_controller_of(const struct device* pdev, struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
 

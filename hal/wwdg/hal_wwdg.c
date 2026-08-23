@@ -20,18 +20,18 @@ COMPAT_WEAK int hal_wwdg_init(struct hal_wwdg_dev* pdev, const struct hal_wwdg_c
 {
     (void)pdev;
     (void)cfg;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_wwdg_start(struct hal_wwdg_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 COMPAT_WEAK int hal_wwdg_feed(struct hal_wwdg_dev* pdev)
 {
     (void)pdev;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 #endif /* ESP_PLATFORM */

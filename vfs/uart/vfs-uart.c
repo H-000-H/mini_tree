@@ -56,7 +56,7 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void) 
  * @brief 解析 UART Host DTS 属性 (硬件直投值), 填入 hal_uart_config
  * @param[in] pdev 设备对象指针
  * @param[in] cfg 配置结构指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* cfg)
 {
@@ -70,13 +70,13 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
     int rx_port = 0, rx_pin = 0, rx_clk = 0, rx_af = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "uart-base", &uart_base) != VFS_OK || device_get_prop_int(pdev, "uart-clk", &uart_clk) != VFS_OK || device_get_prop_int(pdev, "uart-baud", &uart_baud) != VFS_OK ||
-        device_get_prop_int(pdev, "data-width", &data_width) != VFS_OK || device_get_prop_int(pdev, "parity", &parity) != VFS_OK || device_get_prop_int(pdev, "stop-bits", &stop_bits) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-port", &tx_port) != VFS_OK || device_get_prop_int(pdev, "tx-pin", &tx_pin) != VFS_OK || device_get_prop_int(pdev, "tx-clk", &tx_clk) != VFS_OK ||
-        device_get_prop_int(pdev, "tx-af", &tx_af) != VFS_OK || device_get_prop_int(pdev, "rx-port", &rx_port) != VFS_OK || device_get_prop_int(pdev, "rx-pin", &rx_pin) != VFS_OK ||
-        device_get_prop_int(pdev, "rx-clk", &rx_clk) != VFS_OK || device_get_prop_int(pdev, "rx-af", &rx_af) != VFS_OK)
+    if (device_get_prop_int(pdev, "uart-base", &uart_base) != MINI_OK || device_get_prop_int(pdev, "uart-clk", &uart_clk) != MINI_OK || device_get_prop_int(pdev, "uart-baud", &uart_baud) != MINI_OK ||
+        device_get_prop_int(pdev, "data-width", &data_width) != MINI_OK || device_get_prop_int(pdev, "parity", &parity) != MINI_OK || device_get_prop_int(pdev, "stop-bits", &stop_bits) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-port", &tx_port) != MINI_OK || device_get_prop_int(pdev, "tx-pin", &tx_pin) != MINI_OK || device_get_prop_int(pdev, "tx-clk", &tx_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-af", &tx_af) != MINI_OK || device_get_prop_int(pdev, "rx-port", &rx_port) != MINI_OK || device_get_prop_int(pdev, "rx-pin", &rx_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-clk", &rx_clk) != MINI_OK || device_get_prop_int(pdev, "rx-af", &rx_af) != MINI_OK)
     {
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     }
     /** 扩展字段: DTS 可选, 未定义时取 0 (LL 库默认行为) */
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "direction", &direction));
@@ -159,13 +159,13 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
         }
     }
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief UART Host 设备探测: 申请池槽, 解析 DTS, 调用 uart_bus_host_init
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_uart_priv_probe(struct device* pdev)
 {
@@ -174,35 +174,35 @@ static int vfs_uart_priv_probe(struct device* pdev)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     pool_idx = osal_pool_claim(&s_uart_priv_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     priv = &s_uart_priv_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (vfs_uart_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
+    if (vfs_uart_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
     {
         SYS_LOGE(k_host_tag, "dts parse failed: %s", device_get_name(pdev));
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
         goto err_pool;
     }
 
     ret = uart_bus_host_init(pdev, &priv->cfg);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         goto err_pool;
 
-    if (device_set_priv(pdev, priv) != VFS_OK)
+    if (device_set_priv(pdev, priv) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_bus;
     }
 
     SYS_LOGI(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev), (unsigned long)priv->cfg.baud_rate);
-    return VFS_OK;
+    return MINI_OK;
 
 err_bus:
     COMPAT_IGNORE_RESULT(uart_bus_host_deinit(pdev));
@@ -214,7 +214,7 @@ err_pool:
 /**
  * @brief UART Host 设备移除: remove_start → ops_unregister → remove_drain → host_deinit → 释放池槽
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_uart_priv_remove(struct device* pdev)
 {
@@ -224,7 +224,7 @@ static int vfs_uart_priv_remove(struct device* pdev)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = (struct vfs_uart_priv*)device_get_priv(pdev);
     if (IS_ERR(priv))
@@ -239,14 +239,14 @@ static int vfs_uart_priv_remove(struct device* pdev)
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     ret = uart_bus_host_deinit(pdev);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_host_tag, "host_deinit failed: %s", device_get_name(pdev));
         dev_lc_remove_finish(lc);
@@ -257,7 +257,7 @@ static int vfs_uart_priv_remove(struct device* pdev)
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /*===========================================================================================================================================================*/
@@ -285,7 +285,7 @@ pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void) { 
  * @brief UART Client 设备打开操作 (引用计数, 首次打开时调用 uart_bus_open)
  * @param[in] pdev 设备对象指针
  * @param[in] arg 命令参数指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int uart_vfs_open(struct device* pdev, void* arg)
 {
@@ -294,7 +294,7 @@ static int uart_vfs_open(struct device* pdev, void* arg)
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
@@ -306,21 +306,21 @@ static int uart_vfs_open(struct device* pdev, void* arg)
 
     if (first == 1)
     {
-        if (uart_bus_open(pdev) != VFS_OK)
+        if (uart_bus_open(pdev) != MINI_OK)
         {
             dev_lc_open_abort(lc);
-            return VFS_ERR_IO;
+            return MINI_ERR_IO;
         }
     }
 
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief UART Client 设备关闭操作 (引用计数, 末次关闭时调用 uart_bus_close)
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int uart_vfs_close(struct device* pdev)
 {
@@ -328,7 +328,7 @@ static int uart_vfs_close(struct device* pdev)
     int last;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
@@ -342,7 +342,7 @@ static int uart_vfs_close(struct device* pdev)
         COMPAT_IGNORE_RESULT(uart_bus_close(pdev));
 
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -351,7 +351,7 @@ static int uart_vfs_close(struct device* pdev)
  * @param[in] buf 数据缓冲
  * @param[in] len 数据长度 (字节)
  * @param[in] timeout_ms 超时 (毫秒, 0=平台默认)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
@@ -359,14 +359,14 @@ static int uart_vfs_write(struct device* pdev, const void* buf, size_t len, uint
     int ret;
 
     if (!pdev || !pdev->ops || !buf || len == 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     ret = uart_bus_write(pdev, (const uint8_t*)buf, len, timeout_ms);
@@ -389,14 +389,14 @@ static int uart_vfs_read(struct device* pdev, void* buf, size_t len, uint32_t ti
     int ret;
 
     if (!pdev || !pdev->ops || !buf || len == 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     ret = uart_bus_read(pdev, (uint8_t*)buf, len, timeout_ms);
@@ -421,14 +421,14 @@ struct uart_ioctl_map
  * @param[in] arg 命令参数指针
  * @param[in] arg_len 参数长度
  * @param[in] timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int uart_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     const struct uart_transfer_arg* t = (const struct uart_transfer_arg*)arg;
 
     if (!t || arg_len != sizeof(*t) || (!t->tx && !t->rx))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     return uart_bus_transfer(pdev, t->tx, t->rx, t->tx_len, t->rx_len, timeout_ms);
 }
@@ -444,7 +444,7 @@ static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
  * @param[in] arg 命令参数指针
  * @param[in] arg_len 参数长度
  * @param[in] timeout_ms 超时 (毫秒)
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
@@ -453,19 +453,19 @@ static int uart_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     int ret;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     offset = (int32_t)cmd - (int32_t)UART_CMD_BASE;
     if (offset < 1 || offset > UART_CMD_COUNT || !s_uart_ioctl_map[offset - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_uart_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
 
@@ -488,11 +488,11 @@ int uart_vfs_probe(struct device* pdev)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     pool_idx = osal_pool_claim(&s_uart_vfs_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     priv = &s_uart_vfs_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
@@ -500,21 +500,21 @@ int uart_vfs_probe(struct device* pdev)
 
     /* UART 无 per-client 配置, client_register 无需 cfg */
     ret = uart_bus_client_register(pdev);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         goto err_pool;
 
     priv->ops = uart_vfs_fops;
     pdev->ops = &priv->ops;
 
-    if (device_set_priv(pdev, priv) != VFS_OK)
+    if (device_set_priv(pdev, priv) != MINI_OK)
     {
         uart_bus_client_unregister(pdev);
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_pool;
     }
 
     SYS_LOGI(k_tag, "probe OK: %s", device_get_name(pdev));
-    return VFS_OK;
+    return MINI_OK;
 
 err_pool:
     pdev->ops = NULL; /* 切断 fops, 防 UAF */
@@ -530,7 +530,7 @@ int uart_vfs_remove(struct device* pdev)
     int pool_idx;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct uart_vfs_client, ops);
     lc = device_lc(pdev);
@@ -542,10 +542,10 @@ int uart_vfs_remove(struct device* pdev)
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     uart_bus_client_unregister(pdev);
@@ -553,7 +553,7 @@ int uart_vfs_remove(struct device* pdev)
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_uart_vfs_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(vfs_uart_priv, "uart", vfs_uart_priv_probe, vfs_uart_priv_remove)

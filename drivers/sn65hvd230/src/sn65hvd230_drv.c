@@ -62,34 +62,34 @@ static struct sn65hvd230_device* sn65hvd230_get_drvdata(struct device* pdev) { r
 static int sn65hvd230_gpio_on(struct sn65hvd230_device* dev, struct device* g, struct vfs_gpio_arg* a)
 {
     int ret = device_open(g, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = device_ioctl(g, GPIO_CMD_GET_LEVEL, a, sizeof(*a), 0);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(device_close(g));
         return ret;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 首次 open 时打开 GPIO 并绑定参数
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sn65hvd230_hw_create(struct sn65hvd230_device* dev)
 {
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     {
         int ret = sn65hvd230_gpio_on(dev, dev->gdev, &dev->gpio);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -115,7 +115,7 @@ static int sn65hvd230_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sn65hvd230_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -125,18 +125,18 @@ static int sn65hvd230_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = sn65hvd230_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -148,7 +148,7 @@ static int sn65hvd230_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sn65hvd230_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -161,7 +161,7 @@ static int sn65hvd230_close(struct device* pdev)
     if (last)
         sn65hvd230_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 typedef int (*sn65hvd230_ioctl_fn_t)(struct sn65hvd230_device* dev, void* arg, size_t arg_len, uint32_t ms);
@@ -177,7 +177,7 @@ static int sn65hvd230_cmd(struct sn65hvd230_device* dev, void* arg, size_t len, 
 {
     COMPAT_IGNORE_RESULT(ms);
     if (!dev->hw_ready || !arg || len != sizeof(int))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev->gpio.level = (*(int*)arg) ? 1 : 0;
     return vfs_gpio_set_level(&dev->gpio);
 }
@@ -196,7 +196,7 @@ static int sn65hvd230_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sn65hvd230_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -204,11 +204,11 @@ static int sn65hvd230_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)SN65HVD230_CMD_BASE;
     if (off < 1 || off > SN65HVD230_CMD_COUNT || !s_sn65hvd230_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_sn65hvd230_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -229,10 +229,10 @@ static int sn65hvd230_probe(struct device* pdev)
     struct sn65hvd230_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sn65hvd230_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_sn65hvd230_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->gdev = device_get_phandle_dev(pdev, "stb-gpio");
@@ -242,15 +242,15 @@ static int sn65hvd230_probe(struct device* pdev)
         goto err;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = sn65hvd230_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -267,7 +267,7 @@ static int sn65hvd230_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sn65hvd230_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -277,16 +277,16 @@ static int sn65hvd230_remove(struct device* pdev)
     idx = (int)(dev - s_sn65hvd230_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     sn65hvd230_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_sn65hvd230_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(sn65hvd230, "ti,sn65hvd230", sn65hvd230_probe, sn65hvd230_remove)

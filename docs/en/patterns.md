@@ -110,7 +110,7 @@ board_driver_probe_all()
 Key points:
 
 - **Zero strcmp at runtime**: the compatible string maps to a function pointer at compile time; runtime only looks up the table.
-- **3-pass deferred probe**: `board_driver_probe_all` runs at most 3 passes; a driver returning `VFS_ERR_DEFER` (phandle dependency not ready) is retried next pass; if `deferred` stops shrinking it is a **stall**, and the stuck devices are permanently set to `DEVICE_STATUS_DISABLED`.
+- **3-pass deferred probe**: `board_driver_probe_all` runs at most 3 passes; a driver returning `MINI_ERR_DEFER` (phandle dependency not ready) is retried next pass; if `deferred` stops shrinking it is a **stall**, and the stuck devices are permanently set to `DEVICE_STATUS_DISABLED`.
 - **Failure grading** (`handle_probe_failure`): `DEVICE_CRIT_FATAL` → `OSAL_PANIC` safe shutdown; `DEVICE_CRIT_WARNING` → warn; `DEVICE_CRIT_IGNORE` → silent. Devices depending on a failed one are cascaded-disabled via `disable_dependents`.
 - Drivers for unnamed nodes are silently disabled; named nodes without a driver are graded by criticality.
 
@@ -123,7 +123,7 @@ Key points:
 ### Common Pitfalls
 
 - Forgetting `DRIVER_REGISTER` in the driver `.c` → no entry in the generated table → device marked `DISABLED`, log shows "no generated probe".
-- Returning `VFS_ERR_DEFER` that never resolves within 3 passes → stall → permanently disabled; make sure dependencies come earlier in probe order.
+- Returning `MINI_ERR_DEFER` that never resolves within 3 passes → stall → permanently disabled; make sure dependencies come earlier in probe order.
 - The remove sequence (comment in `driver.h`) must be followed in order: `dev_lc_remove_start` → `device_ops_unregister` → `dev_lc_remove_drain` → teardown → `dev_lc_remove_finish` (see §7).
 
 ---
@@ -239,7 +239,7 @@ VIRTUAL_IRQ_BLOCK_TABLE(X)  → system / tim / gpio / adc / uart / spi / i2c / i
 
 ```c
 interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &ctx);
-// top_half returning VFS_IRQ_ENTRY_BOTTOM (non-zero) → dispatch auto-submits bottom half
+// top_half returning MINI_IRQ_ENTRY_BOTTOM (non-zero) → dispatch auto-submits bottom half
 interrupt_virtual_dispatch(virq_num);   // called inside ISR
 ```
 
@@ -264,7 +264,7 @@ Two consumer adapters:
 ISR (top_half, must be lightweight)
   ├─ read hardware flags / clear interrupt
   ├─ lock-free capture (write to SPSC FIFO, see §6)
-  └─ return VFS_IRQ_ENTRY_BOTTOM  → dispatch submits bottom-half work
+  └─ return MINI_IRQ_ENTRY_BOTTOM  → dispatch submits bottom-half work
 Main loop / bottom_half_task (bottom half, may be heavy)
   └─ protocol parsing, data processing, driver callbacks
 ```
@@ -318,9 +318,10 @@ Read/write separation with swap switching: **DMA capture runs in parallel with C
 ### Common Pitfalls
 
 - **Violating SPSC is undefined behavior**: multiple producers lose data / break ordering; multiple consumers double-consume. For multi-producer/multi-consumer use OSAL queues (locked).
-- `fifo_init` requires `size` to be a power of two (`(size & (size-1)) != 0` returns immediately); wrong values fail silently.
+- `fifo_init` requires `size` to be a power of two (`(size & (size-1)) != 0` is rejected); wrong values return `BUFF_ERR_INVAL`.
 - `fifo_data_type` is `uintptr_t`: it can hold 16-bit ADC samples or bottom-half work pointers (`interrupt.h` reuses it exactly that way).
-- Block operations (`fifo_write_block/read_block`) handle cross-boundary memcpy around the ring; when `len` exceeds free space they truncate to `free_len` and return the actual count.
+- All buffer-family APIs return `BUFF_*` error codes (a self-contained set wrapping errno: `BUFF_OK` / `BUFF_ERR_INVAL` / `BUFF_ERR_FULL` / `BUFF_ERR_EMPTY`); length results come back through pointer arguments.
+- Block operations (`fifo_write_block/read_block`) handle cross-boundary memcpy around the ring; when `len` exceeds free space they truncate to the remaining space and report the actual count via `p_actual`.
 
 ---
 
@@ -359,7 +360,7 @@ dev_lc_remove_finish(device_lc(pdev));     // RESET
 
 ### Common Pitfalls
 
-- `remove_drain` returns `VFS_ERR_TIMEOUT` on timeout; with `OSAL_WAIT_FOREVER` a never-released open waits forever - business code must pair open/io.
+- `remove_drain` returns `MINI_ERR_TIMEOUT` on timeout; with `OSAL_WAIT_FOREVER` a never-released open waits forever - business code must pair open/io.
 - `dev_lc_open_begin` return semantics: 1 on first open, 0 on repeated open, negative error on failure - do not treat "repeated open" as an error.
 
 ---

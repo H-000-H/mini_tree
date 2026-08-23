@@ -108,7 +108,7 @@ static const struct bus_controller_ops s_can_controller_ops = {
  * @brief CAN 总线主机初始化实现
  * @param[in] pdev host device 指针
  * @param[in] cfg host 配置指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int can_host_init_impl(struct device* pdev, const void* cfg)
 {
@@ -118,16 +118,16 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
     int ret;
 
     if (!pdev || !cfg)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     host_cfg = (const struct hal_can_bus_config*)cfg;
 
     if (can_host_from_device(pdev))
-        return VFS_OK;
+        return MINI_OK;
 
     idx = osal_pool_claim(&s_can_host_pool_ctrl);
     if (idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     host = &s_can_hosts[idx];
 
@@ -138,7 +138,7 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
     COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     ret = hal_can_bus_host_init(&host->hal_host, idx, host_cfg);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_MEM_SET(host, 0, sizeof(*host));
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_can_host_pool_ctrl, idx));
@@ -146,7 +146,7 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
     }
 
     ret = bus_controller_bind_full(pdev, BUS_TYPE_CAN, &s_can_controller_ops, host);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(hal_can_bus_host_deinit(&host->hal_host));
         COMPAT_MEM_SET(host, 0, sizeof(*host));
@@ -154,7 +154,7 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
         return ret;
     }
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg) { return can_host_init_impl(pdev, cfg); }
@@ -162,7 +162,7 @@ int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg)
 /**
  * @brief CAN 总线主机销毁实现
  * @param[in] pdev host device 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int can_host_deinit_impl(struct device* pdev)
 {
@@ -171,23 +171,23 @@ static int can_host_deinit_impl(struct device* pdev)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     host = can_host_from_device(pdev);
     if (!host)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
         SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
-        return VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
     }
 
     idx = (int)(host - s_can_hosts);
     bus_controller_unbind(pdev);
 
     ret = hal_can_bus_host_deinit(&host->hal_host);
-    if (ret == VFS_OK)
+    if (ret == MINI_OK)
     {
         COMPAT_MEM_SET(host, 0, sizeof(*host));
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_can_host_pool_ctrl, idx));
@@ -213,7 +213,7 @@ static int can_host_role_impl(struct device* pdev)
  * @param[in] pdev client device 指针
  * @param[in] cfg 未使用 (CAN 无设备级配置)
  * @param[out] out 输出 client 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int can_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
@@ -225,27 +225,27 @@ static int can_client_register_impl(struct device* pdev, const void* cfg, void**
     COMPAT_IGNORE_RESULT(cfg);
 
     if (!pdev || !out)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
-    if (bus_controller_of(pdev, &ctlr) != VFS_OK)
-        return VFS_ERR_NODEV;
+    if (bus_controller_of(pdev, &ctlr) != MINI_OK)
+        return MINI_ERR_NODEV;
 
     host = (struct can_bus_host*)ctlr->hw_ctx;
     if (!host)
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
 
     id = (int)board_dev_find(device_get_name(pdev));
     if (id < 0 || id >= DEV_ID_COUNT)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = &s_can_clients[id];
 
     if (client->pdev)
     {
         if (client->pdev != pdev)
-            return VFS_ERR_BUSY;
+            return MINI_ERR_BUSY;
         *out = client;
-        return VFS_OK;
+        return MINI_OK;
     }
 
     COMPAT_MEM_SET(client, 0, sizeof(*client));
@@ -255,7 +255,7 @@ static int can_client_register_impl(struct device* pdev, const void* cfg, void**
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
 
     *out = client;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int can_bus_client_register(struct device* pdev, struct can_bus_client** out) { return can_client_register_impl(pdev, NULL, (void**)out); }
@@ -295,18 +295,18 @@ int can_bus_open(struct device* pdev)
 
     client = can_client_from_device(pdev);
     if (!client)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (client->hw_open)
-        return VFS_OK;
+        return MINI_OK;
 
     COMPAT_IGNORE_RESULT(hal_can_dev_init(&client->hal_dev, &client->host->hal_host));
     ret = hal_can_dev_hw_open(&client->hal_dev);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     client->hw_open = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int can_bus_close(struct device* pdev)
@@ -315,14 +315,14 @@ int can_bus_close(struct device* pdev)
 
     client = can_client_from_device(pdev);
     if (!client)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (client->hw_open)
     {
         COMPAT_IGNORE_RESULT(hal_can_dev_hw_close(&client->hal_dev));
         client->hw_open = 0;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_t timeout_ms)
@@ -330,11 +330,11 @@ int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_
     struct can_bus_client* client;
 
     if (!pdev || !frame)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = can_client_from_device(pdev);
     if (!client || !client->hw_open)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     return hal_can_transmit(&client->hal_dev, frame, timeout_ms);
 }
@@ -344,11 +344,11 @@ int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
     struct can_bus_client* client;
 
     if (!pdev || !frame)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = can_client_from_device(pdev);
     if (!client || !client->hw_open)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     return hal_can_receive(&client->hal_dev, frame, fifo, timeout_ms);
 }
@@ -358,11 +358,11 @@ int can_bus_filter_config(struct device* pdev, const struct hal_can_filter_confi
     struct can_bus_client* client;
 
     if (!pdev || !filter)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = can_client_from_device(pdev);
     if (!client)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     return hal_can_filter_config(&client->host->hal_host, filter);
 }
@@ -372,11 +372,11 @@ int can_bus_get_state(struct device* pdev, uint32_t* out_state)
     struct can_bus_client* client;
 
     if (!pdev || !out_state)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = can_client_from_device(pdev);
     if (!client || !client->host)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     return hal_can_get_state(&client->host->hal_host, out_state);
 }

@@ -27,13 +27,13 @@ extern "C"
      *   - 点亮故障指示灯 (Fault LED)
      *   - 启动蜂鸣器报警 (2Hz 方波)
      *
-     * @return VFS_OK 成功; 负的 VFS_ERR_* (如 VFS_ERR_IO) 表示某步失败.
+     * @return MINI_OK 成功; 负的 VFS_ERR_* (如 MINI_ERR_IO) 表示某步失败.
      * 调用方处于安全停机路径, 通常忽略返回值 (COMPAT_IGNORE_RESULT).
      */
     int hal_platform_critical_hardware_lock(void);
 
     /* 强制停止所有 PWM 输出 (安全停机路径; STM32F407 板无独立 PWM 引擎时为 no-op)
-     * @return VFS_OK 成功; 负的 VFS_ERR_* (如 VFS_ERR_IO) 表示停止失败. */
+     * @return MINI_OK 成功; 负的 VFS_ERR_* (如 MINI_ERR_IO) 表示停止失败. */
     int hal_pwm_force_stop_all(void);
     /*===========================================================================================================================================================*/
 

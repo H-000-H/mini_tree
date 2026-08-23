@@ -16,24 +16,24 @@ static bool s_initialized = false;
 static struct hal_iwdg_dev s_iwdg;
 static bool s_iwdg_active = false;
 
-bool system_wdt_init_iwdg(uint32_t timeout_ms)
+int system_wdt_init_iwdg(uint32_t timeout_ms)
 {
     struct hal_iwdg_config cfg;
 
     if (s_iwdg_active)
-        return true;
+        return MINI_OK;
 
     cfg.timeout_ms = timeout_ms;
     cfg.prer = 0xFFFFFFFFU;
     cfg.rlr = 0xFFFFFFFFU;
     if (hal_iwdg_init(&s_iwdg, &cfg) != 0)
-        return false;
+        return MINI_ERR_IO;
     if (hal_iwdg_start(&s_iwdg) != 0)
-        return false;
+        return MINI_ERR_IO;
 
     s_iwdg_active = true;
     SYS_LOGI(k_tag, "IWDG started, timeout=%ums", (unsigned)timeout_ms);
-    return true;
+    return MINI_OK;
 }
 
 void system_wdt_iwdg_set_long_timeout(void)
@@ -67,20 +67,20 @@ struct StackMonitorEntry
 static StackMonitorEntry s_stack_entries[BOARD_STACK_MONITOR_MAX_TASKS];
 static size_t s_stack_entry_count = 0;
 
-bool system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes)
+int system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes)
 {
     if (task == nullptr || alarm_threshold_bytes == 0)
-        return false;
+        return MINI_ERR_INVAL;
     if (s_stack_entry_count >= BOARD_STACK_MONITOR_MAX_TASKS)
     {
         SYS_LOGE(k_tag, "stack monitor: max entries (%d) reached", BOARD_STACK_MONITOR_MAX_TASKS);
-        return false;
+        return MINI_ERR_NOSPC;
     }
 
     s_stack_entries[s_stack_entry_count].task = task;
     s_stack_entries[s_stack_entry_count].alarm_threshold_bytes = alarm_threshold_bytes;
     s_stack_entry_count++;
-    return true;
+    return MINI_OK;
 }
 
 void system_wdt_stack_check_all(void)
@@ -115,18 +115,32 @@ void system_wdt_stack_check_all(void)
     }
 }
 
-bool system_wdt_init(uint32_t timeout_ms)
+int system_wdt_init(uint32_t timeout_ms)
 {
     (void)timeout_ms;
     if (s_initialized)
-        return true;
+        return MINI_OK;
     s_initialized = true;
     SYS_LOGI(k_tag, "TWDT placeholder started");
-    return true;
+    return MINI_OK;
 }
 
-bool system_wdt_subscribe(osal_task_handle_t task) { return s_initialized && task != nullptr; }
+int system_wdt_subscribe(osal_task_handle_t task)
+{
+    if (task == nullptr)
+        return MINI_ERR_INVAL;
+    if (!s_initialized)
+        return MINI_ERR_AGAIN;
+    return MINI_OK;
+}
 
-bool system_wdt_unsubscribe(osal_task_handle_t task) { return s_initialized && task != nullptr; }
+int system_wdt_unsubscribe(osal_task_handle_t task)
+{
+    if (task == nullptr)
+        return MINI_ERR_INVAL;
+    if (!s_initialized)
+        return MINI_ERR_AGAIN;
+    return MINI_OK;
+}
 
 void system_wdt_feed(void) {}

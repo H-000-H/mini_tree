@@ -36,13 +36,13 @@ SystemCmd& SystemCmd::get_instance()
 /* ═══════════════════════════════════════════════════════════════════════════
  *  register_cmd — 无参数版
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::register_cmd(const char* name, bool (*handler)())
+int SystemCmd::register_cmd(const char* name, bool (*handler)())
 {
     if (!name || !handler)
-        return false;
+        return MINI_ERR_INVAL;
     const size_t name_len = etl::strlen(name);
     if (name_len >= k_max_cmd_name_len)
-        return false;
+        return MINI_ERR_INVAL;
 
     HandlerNode node;
     node.args_id = get_type_id<void>();
@@ -52,34 +52,39 @@ bool SystemCmd::register_cmd(const char* name, bool (*handler)())
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
-    if (m_commands.full() || m_commands.contains(cmd))
+    if (m_commands.full())
     {
         COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
-        return false;
+        return MINI_ERR_NOSPC;
+    }
+    if (m_commands.contains(cmd))
+    {
+        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+        return MINI_ERR_BUSY;
     }
     bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
-    return success;
+    return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
     for (size_t i = 0; i < m_count; i++)
         if (strcmp(m_entries[i].name, name) == 0)
-            return false;
+            return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
-        return false;
+        return MINI_ERR_NOSPC;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
     m_count++;
-    return true;
+    return MINI_OK;
 #endif
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
  *  注销命令
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::unregister_cmd(const char* name)
+int SystemCmd::unregister_cmd(const char* name)
 {
     if (!name)
-        return false;
+        return MINI_ERR_INVAL;
 
 #ifndef CONFIG_OSAL_NULL
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
@@ -88,11 +93,11 @@ bool SystemCmd::unregister_cmd(const char* name)
     if (it == m_commands.end())
     {
         COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
-        return false;
+        return MINI_ERR_NODEV;
     }
     m_commands.erase(it);
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
-    return true;
+    return MINI_OK;
 #else
     for (size_t i = 0; i < m_count; i++)
     {
@@ -100,21 +105,21 @@ bool SystemCmd::unregister_cmd(const char* name)
         {
             m_entries[i] = m_entries[m_count - 1];
             m_count--;
-            return true;
+            return MINI_OK;
         }
     }
-    return false;
+    return MINI_ERR_NODEV;
 #endif
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
  *  命令分发
  * ═══════════════════════════════════════════════════════════════════════════ */
-bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void* ctx,
-                         TypeIdToken expected_args_id, TypeIdToken expected_ctx_id) const
+int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void* ctx,
+                        TypeIdToken expected_args_id, TypeIdToken expected_ctx_id) const
 {
     if (!name)
-        return false;
+        return MINI_ERR_INVAL;
 
 #ifndef CONFIG_OSAL_NULL
     COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
@@ -123,17 +128,17 @@ bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void
     if (it == m_commands.end())
     {
         COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
-        return false;
+        return MINI_ERR_NODEV;
     }
     /* 拷贝 HandlerNode 后再解锁, 避免 erase 导致悬垂引用 */
     HandlerNode node = it->second;
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
 
     if (expected_args_id && node.args_id != expected_args_id)
-        return false;
+        return MINI_ERR_NOTSUPP;
     if (expected_ctx_id && node.ctx_id != expected_ctx_id)
-        return false;
-    return node.wrapper(arg, arg_len, ctx);
+        return MINI_ERR_NOTSUPP;
+    return node.wrapper(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
 #else
     for (size_t i = 0; i < m_count; i++)
     {
@@ -141,13 +146,13 @@ bool SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void
         {
             const HandlerNode& node = m_entries[i].node;
             if (expected_args_id && node.args_id != expected_args_id)
-                return false;
+                return MINI_ERR_NOTSUPP;
             if (expected_ctx_id && node.ctx_id != expected_ctx_id)
-                return false;
-            return node.wrapper(arg, arg_len, ctx);
+                return MINI_ERR_NOTSUPP;
+            return node.wrapper(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
         }
     }
-    return false;
+    return MINI_ERR_NODEV;
 #endif
 }
 

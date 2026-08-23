@@ -24,26 +24,26 @@ static bool s_iwdg_active = false;
 /**
  * @brief 启动 IWDG
  * @param[in] timeout_ms 超时
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_IO 硬件初始化/启动失败
  */
-bool system_wdt_init_iwdg(uint32_t timeout_ms)
+int system_wdt_init_iwdg(uint32_t timeout_ms)
 {
     struct hal_iwdg_config cfg;
 
     if (s_iwdg_active)
-        return true;
+        return MINI_OK;
 
     cfg.timeout_ms = timeout_ms;
     cfg.prer = 0xFFFFFFFFU;
     cfg.rlr = 0xFFFFFFFFU;
     if (hal_iwdg_init(&s_iwdg, &cfg) != 0)
-        return false;
+        return MINI_ERR_IO;
     if (hal_iwdg_start(&s_iwdg) != 0)
-        return false;
+        return MINI_ERR_IO;
 
     s_iwdg_active = true;
     SYS_LOGI(k_tag, "IWDG started, timeout=%ums", (unsigned)timeout_ms);
-    return true;
+    return MINI_OK;
 }
 
 /**
@@ -90,22 +90,22 @@ static size_t s_stack_entry_count = 0;
  * @brief 注册栈监控
  * @param[in] task 任务
  * @param[in] alarm_threshold_bytes 阈值
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 表满
  */
-bool system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes)
+int system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_threshold_bytes)
 {
     if (task == NULL || alarm_threshold_bytes == 0)
-        return false;
+        return MINI_ERR_INVAL;
     if (s_stack_entry_count >= BOARD_STACK_MONITOR_MAX_TASKS)
     {
         SYS_LOGE(k_tag, "stack monitor: max entries (%d) reached", BOARD_STACK_MONITOR_MAX_TASKS);
-        return false;
+        return MINI_ERR_NOSPC;
     }
 
     s_stack_entries[s_stack_entry_count].task = task;
     s_stack_entries[s_stack_entry_count].alarm_threshold_bytes = alarm_threshold_bytes;
     s_stack_entry_count++;
-    return true;
+    return MINI_OK;
 }
 
 /**
@@ -137,31 +137,45 @@ void system_wdt_stack_check_all(void)
 /**
  * @brief TWDT 占位
  * @param[in] timeout_ms 忽略
- * @return true
+ * @return MINI_OK 成功
  */
-bool system_wdt_init(uint32_t timeout_ms)
+int system_wdt_init(uint32_t timeout_ms)
 {
     (void)timeout_ms;
     if (s_initialized)
-        return true;
+        return MINI_OK;
     s_initialized = true;
     SYS_LOGI(k_tag, "TWDT placeholder started");
-    return true;
+    return MINI_OK;
 }
 
 /**
  * @brief TWDT 订阅
  * @param[in] task 任务
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_AGAIN 未初始化
  */
-bool system_wdt_subscribe(osal_task_handle_t task) { return s_initialized && task != NULL; }
+int system_wdt_subscribe(osal_task_handle_t task)
+{
+    if (task == NULL)
+        return MINI_ERR_INVAL;
+    if (!s_initialized)
+        return MINI_ERR_AGAIN;
+    return MINI_OK;
+}
 
 /**
  * @brief TWDT 取消
  * @param[in] task 任务
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_AGAIN 未初始化
  */
-bool system_wdt_unsubscribe(osal_task_handle_t task) { return s_initialized && task != NULL; }
+int system_wdt_unsubscribe(osal_task_handle_t task)
+{
+    if (task == NULL)
+        return MINI_ERR_INVAL;
+    if (!s_initialized)
+        return MINI_ERR_AGAIN;
+    return MINI_OK;
+}
 
 /**
  * @brief TWDT 喂狗

@@ -23,12 +23,12 @@ extern "C"
      * @param[in] pdev FT5x06 device
      * @param[out] out 输出触摸结果
      * @param[in] timeout_ms 超时（ms）
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     COMPAT_STATIC_INLINE int ft5x06_lvgl_read(struct device* pdev, struct ft5x06_touch* out, uint32_t timeout_ms)
     {
         if (!pdev || !out)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return device_ioctl(pdev, FT5X06_CMD_READ_TOUCH, out, sizeof(*out), timeout_ms);
     }
 

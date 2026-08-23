@@ -13,20 +13,20 @@
 COMPAT_WEAK int can_hook_on_open(struct device* pdev)
 {
     COMPAT_IGNORE_RESULT(pdev);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 COMPAT_WEAK int can_hook_on_close(struct device* pdev)
 {
     COMPAT_IGNORE_RESULT(pdev);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 COMPAT_WEAK int can_hook_pre_tx(struct device* pdev, struct can_frame* frame)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(frame);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 COMPAT_WEAK int can_hook_post_tx(struct device* pdev, const struct can_frame* frame, int tx_ret)
@@ -40,19 +40,19 @@ COMPAT_WEAK int can_hook_filter_match(struct device* pdev, const struct can_fram
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(frame);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 COMPAT_WEAK int can_hook_on_rx(struct device* pdev, struct can_frame* frame)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(frame);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 COMPAT_WEAK int can_hook_on_err(struct device* pdev, int err)
 {
     COMPAT_IGNORE_RESULT(pdev);
     COMPAT_IGNORE_RESULT(err);
-    return VFS_OK;
+    return MINI_OK;
 }

@@ -174,38 +174,38 @@ extern "C"
      * @param[in] host CAN 主机对象指针
      * @param[in] hw_idx host 池下标
      * @param[in] cfg 总线配置 (DTSI 直投, 生命周期由调用方持有)
-     * @return 成功返回 VFS_OK, host 或 cfg 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
      */
     int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx, const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 CAN 总线主机, 释放硬件资源
      * @param[in] host CAN 主机对象指针
-     * @return 成功返回 VFS_OK, host 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
      */
     int hal_can_bus_host_deinit(struct hal_can_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 打开 CAN 设备硬件 (引用计数 +1, 首次触发底层 init)
      * @param[in] pdev CAN 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_can_dev_hw_open(struct hal_can_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 CAN 设备硬件 (引用计数 -1, 归零触发底层 deinit)
      * @param[in] pdev CAN 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_can_dev_hw_close(struct hal_can_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 绑定 CAN 设备与所属主机
      * @param[in] pdev CAN 设备对象指针
      * @param[in] host 所属总线主机指针
-     * @return 成功返回 VFS_OK, pdev 或 host 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 或 host 为空返回 MINI_ERR_INVAL
      */
     int hal_can_dev_init(struct hal_can_dev* pdev, struct hal_can_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 解绑 CAN 设备并复位状态
      * @param[in] pdev CAN 设备对象指针
-     * @return 成功返回 VFS_OK, pdev 为空返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
     int hal_can_dev_deinit(struct hal_can_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
 
@@ -214,7 +214,7 @@ extern "C"
      * @param[in] pdev CAN 设备对象指针
      * @param[in] frame 待发送帧 (拒绝 CAN_ERR_FLAG; data 长度受 CAN_MAX_DLEN 约束)
      * @param[in] timeout_ms 等待空闲邮箱超时毫秒数 (0=不等待)
-     * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, 非法帧返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 非法帧返回 MINI_ERR_INVAL
      */
     int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 
@@ -224,7 +224,7 @@ extern "C"
      * @param[out] frame 回传接收到的帧
      * @param[in] fifo 目标 RX FIFO 编号 (0 / 1)
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
-     * @return 成功返回 VFS_OK, 超时返回 VFS_ERR_TIMEOUT, FIFO 非法返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, FIFO 非法返回 MINI_ERR_INVAL
      */
     int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
 

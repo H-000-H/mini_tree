@@ -13,6 +13,7 @@
 #ifndef CONFIG_STORE_H
 #define CONFIG_STORE_H
 
+#include "status.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -34,9 +35,9 @@ extern "C"
 
     /**
      * @brief 初始化配置存储 (解析绑定的 JSON 工厂默认值, 装载当前配置)
-     * @return 成功返回 true, 初始化失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool config_store_init(void);
+    int config_store_init(void);
 
     /**
      * @brief 读取 bool 配置 (key 不存在时返回默认值)
@@ -71,42 +72,42 @@ extern "C"
      * @brief 写入 bool 配置 (RAM 中生效, 需 commit 持久化)
      * @param[in] key 配置键
      * @param[in] value 配置值
-     * @return 成功返回 true, 键无效返回 false
+     * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
      */
-    bool config_store_set_bool(const char* key, bool value);
+    int config_store_set_bool(const char* key, bool value);
     /**
      * @brief 写入 int 配置
      * @param[in] key 配置键
      * @param[in] value 配置值
-     * @return 成功返回 true, 键无效返回 false
+     * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
      */
-    bool config_store_set_int(const char* key, int value);
+    int config_store_set_int(const char* key, int value);
     /**
      * @brief 写入 float 配置
      * @param[in] key 配置键
      * @param[in] value 配置值
-     * @return 成功返回 true, 键无效返回 false
+     * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
      */
-    bool config_store_set_float(const char* key, float value);
+    int config_store_set_float(const char* key, float value);
     /**
      * @brief 写入 string 配置
      * @param[in] key 配置键
      * @param[in] value 配置值 (内部拷贝)
-     * @return 成功返回 true, 键无效返回 false
+     * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
      */
-    bool config_store_set_string(const char* key, const char* value);
+    int config_store_set_string(const char* key, const char* value);
 
     /**
      * @brief 将 RAM 中配置持久化到底层存储
-     * @return 成功返回 true, 写入失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (如 MINI_ERR_IO 写入失败)
      */
-    bool config_store_commit(void);
+    int config_store_commit(void);
 
     /**
      * @brief 恢复出厂配置 (丢弃所有改动, 重载工厂默认值)
-     * @return 成功返回 true, 失败返回 false
+     * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
      */
-    bool config_store_factory_reset(void);
+    int config_store_factory_reset(void);
 
     /**
      * @brief 查询配置存储健康状态
@@ -119,13 +120,13 @@ extern "C"
      * 若不注册，config_store_commit() 将使用默认的 hal_storage 路径。
      *
      * 用法:
-     *   static bool my_write(const uint8_t* data, size_t len)
+     *   static int my_write(const uint8_t* data, size_t len)
      {
-     *       return my_flash_write(0x1000, data, len);
+     *       return my_flash_write(0x1000, data, len) ? MINI_ERR_IO : MINI_OK;
      *   }
      *   config_store_register_write_hook(my_write);
      */
-    typedef bool (*config_store_write_hook_t)(const uint8_t* data, size_t len);
+    typedef int (*config_store_write_hook_t)(const uint8_t* data, size_t len);
     /**
      * @brief 注册持久化写入回调 (替代默认 hal_storage 路径)
      * @param[in] hook 写入回调 (可为 NULL 恢复默认)

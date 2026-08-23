@@ -327,14 +327,14 @@ static buffer_block_t* buff_pool_alloc_dynamic(size_t size)
  * Public API
  * ═══════════════════════════════════════════════════════════════ */
 
-buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config)
+int buffer_pool_create(const buffer_pool_config_t* config, buffer_pool_t** p_pool)
 {
     buffer_pool_t* pool;
-    if (config == NULL)
-        return NULL;
+    if (config == NULL || p_pool == NULL)
+        return BUFF_POOL_ERR_INVAL;
     pool = (buffer_pool_t*)calloc(1u, sizeof(*pool));
     if (pool == NULL)
-        return NULL;
+        return BUFF_POOL_ERR_NOMEM;
     pool->name = config->name;
     BUFF_POOL_ATOMIC_STORE(&pool->lock, 0u);
 
@@ -351,7 +351,7 @@ buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config)
         if (total < BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
         {
             free(pool);
-            return NULL;
+            return BUFF_POOL_ERR_INVAL;
         }
         if (config->static_mem != NULL)
         {
@@ -364,7 +364,7 @@ buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config)
             if (pool->pool_base == NULL)
             {
                 free(pool);
-                return NULL;
+                return BUFF_POOL_ERR_NOMEM;
             }
             pool->pool_owned = true;
         }
@@ -376,7 +376,7 @@ buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config)
             if (pool->pool_owned)
                 free(pool->pool_base);
             free(pool);
-            return NULL;
+            return BUFF_POOL_ERR_INVAL;
         }
         /* The whole pool becomes a single free block */
         {
@@ -389,16 +389,18 @@ buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config)
         pool->use_static = true;
     }
 #endif /* BUFFER_POOL_DYNAMIC_ONLY */
-    return pool;
+    *p_pool = pool;
+    return BUFF_POOL_OK;
 }
 
-void buffer_pool_destroy(buffer_pool_t* pool)
+int buffer_pool_destroy(buffer_pool_t* pool)
 {
     if (pool == NULL)
-        return;
+        return BUFF_POOL_ERR_INVAL;
     if (pool->pool_owned && pool->pool_base != NULL)
         free(pool->pool_base);
     free(pool);
+    return BUFF_POOL_OK;
 }
 
 /* Bookkeeping for a successful allocation (caller holds the lock) */
@@ -415,26 +417,29 @@ static void buff_pool_count_alloc(buffer_pool_t* pool, buffer_block_t* blk)
     } while (!BUFF_POOL_ATOMIC_CAS(&pool->peak, &p, used));
 }
 
-buffer_block_t* buffer_pool_alloc_static(buffer_pool_t* pool, size_t size)
+int buffer_pool_alloc_static(buffer_pool_t* pool, size_t size, buffer_block_t** p_block)
 {
     buffer_block_t* blk;
     uint32_t lock_state;
-    if (pool == NULL || size == 0u)
-        return NULL;
+    if (pool == NULL || size == 0u || p_block == NULL)
+        return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
     blk = buff_pool_alloc_static_impl(pool, size);
     if (blk != NULL)
         buff_pool_count_alloc(pool, blk);
     buff_pool_lock_exit(pool, lock_state);
-    return blk;
+    if (blk == NULL)
+        return BUFF_POOL_ERR_NOMEM;
+    *p_block = blk;
+    return BUFF_POOL_OK;
 }
 
-buffer_block_t* buffer_pool_alloc(buffer_pool_t* pool, size_t size)
+int buffer_pool_alloc(buffer_pool_t* pool, size_t size, buffer_block_t** p_block)
 {
     buffer_block_t* blk;
     uint32_t lock_state;
-    if (pool == NULL || size == 0u)
-        return NULL;
+    if (pool == NULL || size == 0u || p_block == NULL)
+        return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
     /* Threshold: if the request exceeds the largest single free block in ANY
      * segment, the static pool cannot satisfy it — go straight to dynamic. */
@@ -451,7 +456,10 @@ buffer_block_t* buffer_pool_alloc(buffer_pool_t* pool, size_t size)
     if (blk != NULL)
         buff_pool_count_alloc(pool, blk);
     buff_pool_lock_exit(pool, lock_state);
-    return blk;
+    if (blk == NULL)
+        return BUFF_POOL_ERR_NOMEM;
+    *p_block = blk;
+    return BUFF_POOL_OK;
 }
 
 int buffer_pool_expand(buffer_pool_t* pool, void* mem, size_t len)
@@ -459,12 +467,12 @@ int buffer_pool_expand(buffer_pool_t* pool, void* mem, size_t len)
     struct buff_pool_free_block* seg;
     uint32_t lock_state;
     if (pool == NULL || mem == NULL || len < BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
-        return -EINVAL;
+        return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
     if (buff_pool_seg_add(pool, (uint8_t*)mem, len) != 0) /* segment table full */
     {
         buff_pool_lock_exit(pool, lock_state);
-        return -ENOSPC;
+        return BUFF_POOL_ERR_NOSPC;
     }
     seg = (struct buff_pool_free_block*)mem;
     seg->prev = NULL;
@@ -473,14 +481,14 @@ int buffer_pool_expand(buffer_pool_t* pool, void* mem, size_t len)
     buff_pool_freelist_merge(pool, seg); /* coalesces with adjacent free blocks */
     pool->total_size += len;
     buff_pool_lock_exit(pool, lock_state);
-    return 0;
+    return BUFF_POOL_OK;
 }
 
-void buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block)
+int buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block)
 {
     uint32_t lock_state;
     if (pool == NULL || block == NULL)
-        return;
+        return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
     if (block->from_static)
     {
@@ -498,54 +506,64 @@ void buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block)
     if (BUFF_POOL_ATOMIC_LOAD(&pool->used_count) > 0u)
         BUFF_POOL_ATOMIC_SUB_FETCH(&pool->used_count, 1u);
     buff_pool_lock_exit(pool, lock_state);
+    return BUFF_POOL_OK;
 }
 
-buffer_block_t* buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size) { return buffer_pool_alloc(pool, size); }
+int buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size, buffer_block_t** p_block) { return buffer_pool_alloc(pool, size, p_block); }
 
-void buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block) { buffer_pool_free(pool, block); }
+int buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block) { return buffer_pool_free(pool, block); }
 
 /* ── Block content management (dual pointers, ring read/write;
  *    SPSC semantics, head/tail atomic) ── */
 
-size_t buffer_block_used(const buffer_block_t* block)
+int buffer_block_used(const buffer_block_t* block, size_t* p_used)
 {
     uint32_t head;
     uint32_t tail;
-    if (block == NULL || block->capacity == 0u)
-        return 0u;
+    if (block == NULL || p_used == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    if (block->capacity == 0u)
+    {
+        *p_used = 0u;
+        return BUFF_POOL_OK;
+    }
     head = BUFF_POOL_ATOMIC_LOAD(&block->head);
     tail = BUFF_POOL_ATOMIC_LOAD(&block->tail);
-    return (size_t)((head + (uint32_t)block->capacity - tail) % (uint32_t)block->capacity);
+    *p_used = (size_t)((head + (uint32_t)block->capacity - tail) % (uint32_t)block->capacity);
+    return BUFF_POOL_OK;
 }
 
-size_t buffer_block_space(const buffer_block_t* block)
+int buffer_block_space(const buffer_block_t* block, size_t* p_space)
 {
-    if (block == NULL)
-        return 0u;
-    return block->capacity - buffer_block_used(block);
+    size_t used = 0u;
+    int ret;
+    if (block == NULL || p_space == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    ret = buffer_block_used(block, &used);
+    if (ret != BUFF_POOL_OK)
+        return ret;
+    *p_space = block->capacity - used;
+    return BUFF_POOL_OK;
 }
 
 int buffer_block_write(buffer_block_t* block, const void* src, size_t len, size_t* actual)
 {
     const uint8_t* s = (const uint8_t*)src;
-    size_t space;
+    size_t space = 0u;
     size_t first;
     uint32_t head;
+    int ret;
+    if (actual != NULL)
+        *actual = 0u;
     if (block == NULL || src == NULL || len == 0u)
-    {
-        if (actual != NULL)
-            *actual = 0u;
-        return -EINVAL;
-    }
-    space = buffer_block_space(block);
+        return BUFF_POOL_ERR_INVAL;
+    ret = buffer_block_space(block, &space);
+    if (ret != BUFF_POOL_OK)
+        return ret;
+    if (space == 0u)
+        return BUFF_POOL_ERR_NOSPC; /* block full, nothing written */
     if (len > space)
         len = space;
-    if (len == 0u)
-    {
-        if (actual != NULL)
-            *actual = 0u;
-        return 0; /* block full, truncated to 0, still success */
-    }
     head = BUFF_POOL_ATOMIC_LOAD(&block->head);
     first = block->capacity - (size_t)head;
     if (first > len)
@@ -556,30 +574,27 @@ int buffer_block_write(buffer_block_t* block, const void* src, size_t len, size_
     BUFF_POOL_ATOMIC_STORE(&block->head, (head + (uint32_t)len) % (uint32_t)block->capacity);
     if (actual != NULL)
         *actual = len;
-    return 0;
+    return BUFF_POOL_OK;
 }
 
 int buffer_block_read(buffer_block_t* block, void* dst, size_t len, size_t* actual)
 {
     uint8_t* d = (uint8_t*)dst;
-    size_t used;
+    size_t used = 0u;
     size_t first;
     uint32_t tail;
+    int ret;
+    if (actual != NULL)
+        *actual = 0u;
     if (block == NULL || dst == NULL || len == 0u)
-    {
-        if (actual != NULL)
-            *actual = 0u;
-        return -EINVAL;
-    }
-    used = buffer_block_used(block);
+        return BUFF_POOL_ERR_INVAL;
+    ret = buffer_block_used(block, &used);
+    if (ret != BUFF_POOL_OK)
+        return ret;
+    if (used == 0u)
+        return BUFF_POOL_ERR_EMPTY; /* empty, nothing to read */
     if (len > used)
         len = used;
-    if (len == 0u)
-    {
-        if (actual != NULL)
-            *actual = 0u;
-        return 0; /* empty, truncated to 0, still success */
-    }
     tail = BUFF_POOL_ATOMIC_LOAD(&block->tail);
     first = block->capacity - (size_t)tail;
     if (first > len)
@@ -590,60 +605,71 @@ int buffer_block_read(buffer_block_t* block, void* dst, size_t len, size_t* actu
     BUFF_POOL_ATOMIC_STORE(&block->tail, (tail + (uint32_t)len) % (uint32_t)block->capacity);
     if (actual != NULL)
         *actual = len;
-    return 0;
+    return BUFF_POOL_OK;
 }
 
-void buffer_block_reset(buffer_block_t* block)
+int buffer_block_reset(buffer_block_t* block)
 {
-    if (block != NULL)
-    {
-        BUFF_POOL_ATOMIC_STORE(&block->head, 0u);
-        BUFF_POOL_ATOMIC_STORE(&block->tail, 0u);
-    }
+    if (block == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    BUFF_POOL_ATOMIC_STORE(&block->head, 0u);
+    BUFF_POOL_ATOMIC_STORE(&block->tail, 0u);
+    return BUFF_POOL_OK;
 }
 
 /* ── Statistics / diagnostics ── */
 
-size_t buffer_pool_size(const buffer_pool_t* pool)
+int buffer_pool_size(const buffer_pool_t* pool, size_t* p_size)
 {
-    if (pool == NULL)
-        return 0u;
-    return pool->total_size;
+    if (pool == NULL || p_size == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    *p_size = pool->total_size;
+    return BUFF_POOL_OK;
 }
 
-size_t buffer_pool_free_space(const buffer_pool_t* pool)
+int buffer_pool_free_space(const buffer_pool_t* pool, size_t* p_free)
 {
     const struct buff_pool_free_block* it;
     size_t total = 0u;
     uint32_t lock_state;
-    if (pool == NULL || pool->pool_base == NULL)
-        return 0u;
+    if (pool == NULL || p_free == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    if (pool->pool_base == NULL)
+    {
+        *p_free = 0u;
+        return BUFF_POOL_OK;
+    }
     /* Walk the free list under the lock to avoid concurrent mutation */
     buff_pool_lock_enter((buffer_pool_t*)pool, &lock_state);
     for (it = pool->free_list; it != NULL; it = it->next)
         total += BUFF_POOL_HEAD_SIZE + it->size;
     buff_pool_lock_exit((buffer_pool_t*)pool, lock_state);
-    return total;
+    *p_free = total;
+    return BUFF_POOL_OK;
 }
 
-uint32_t buffer_pool_used(const buffer_pool_t* pool)
+int buffer_pool_used(const buffer_pool_t* pool, uint32_t* p_used)
+{
+    if (pool == NULL || p_used == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    *p_used = BUFF_POOL_ATOMIC_LOAD(&pool->used_count);
+    return BUFF_POOL_OK;
+}
+
+int buffer_pool_peak(const buffer_pool_t* pool, uint32_t* p_peak)
+{
+    if (pool == NULL || p_peak == NULL)
+        return BUFF_POOL_ERR_INVAL;
+    *p_peak = BUFF_POOL_ATOMIC_LOAD(&pool->peak);
+    return BUFF_POOL_OK;
+}
+
+int buffer_pool_reset_peak(buffer_pool_t* pool)
 {
     if (pool == NULL)
-        return 0u;
-    return BUFF_POOL_ATOMIC_LOAD(&pool->used_count);
-}
-
-uint32_t buffer_pool_peak(const buffer_pool_t* pool)
-{
-    if (pool == NULL)
-        return 0u;
-    return BUFF_POOL_ATOMIC_LOAD(&pool->peak);
-}
-
-void buffer_pool_reset_peak(buffer_pool_t* pool)
-{
-    if (pool != NULL)
-        BUFF_POOL_ATOMIC_STORE(&pool->peak, BUFF_POOL_ATOMIC_LOAD(&pool->used_count));
+        return BUFF_POOL_ERR_INVAL;
+    BUFF_POOL_ATOMIC_STORE(&pool->peak, BUFF_POOL_ATOMIC_LOAD(&pool->used_count));
+    return BUFF_POOL_OK;
 }
 
 #endif /* CONFIG_BUFFER_POOL */

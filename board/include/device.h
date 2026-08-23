@@ -193,7 +193,7 @@ extern "C"
      * @param[in] pdev 设备对象指针
      * @param[in] key 属性键名
      * @param[out] val 回传属性值
-     * @return 成功返回 VFS_OK, 属性缺失返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 属性缺失返回 MINI_ERR_NODEV
      */
     int device_get_prop_int(const struct device* pdev, const char* key, int* val) DEVICE_WARN_UNUSED_RESULT;
     /**
@@ -202,7 +202,7 @@ extern "C"
      * @param[in] key 属性键名
      * @param[out] out_arr 回传数组
      * @param[in] max_len 数组容量
-     * @return 成功返回 VFS_OK, 属性缺失或超长返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 属性缺失或超长返回 MINI_ERR_NODEV
      */
     int device_get_prop_int_array(const struct device* pdev, const char* key, int* out_arr, int max_len) DEVICE_WARN_UNUSED_RESULT;
     /**
@@ -210,7 +210,7 @@ extern "C"
      * @param[in] pdev 设备对象指针
      * @param[in] key 属性键名
      * @param[out] val 回传字符串指针 (指向节点只读内存)
-     * @return 成功返回 VFS_OK, 属性缺失返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 属性缺失返回 MINI_ERR_NODEV
      */
     int device_get_prop_str(const struct device* pdev, const char* key, const char** val) DEVICE_WARN_UNUSED_RESULT;
     /**
@@ -218,7 +218,7 @@ extern "C"
      * @param[in] pdev 设备对象指针
      * @param[in] key 属性键名
      * @param[out] val 回传布尔值 (0/1)
-     * @return 成功返回 VFS_OK, 属性缺失返回 VFS_ERR_NODEV
+     * @return 成功返回 MINI_OK, 属性缺失返回 MINI_ERR_NODEV
      */
     int device_get_prop_bool(const struct device* pdev, const char* key, int* val) DEVICE_WARN_UNUSED_RESULT;
 
@@ -253,7 +253,7 @@ extern "C"
      * @param[in] pdev 设备对象指针
      * @param[in] idx reg 条目索引
      * @param[out] out 回传 reg 条目指针
-     * @return 成功返回 VFS_OK, 索引越界返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
     int device_get_reg(const struct device* pdev, int idx, const struct device_reg** out) DEVICE_WARN_UNUSED_RESULT;
 
@@ -263,7 +263,7 @@ extern "C"
      * @param[in] pdev 设备对象指针
      * @param[in] idx interrupt 条目索引
      * @param[out] out 回传 interrupt 条目指针
-     * @return 成功返回 VFS_OK, 索引越界返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
     int device_get_irq(const struct device* pdev, int idx, const struct device_irq** out) DEVICE_WARN_UNUSED_RESULT;
 
@@ -272,7 +272,7 @@ extern "C"
      * @brief 设置设备状态
      * @param[in] pdev 设备对象指针
      * @param[in] status 设备状态
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int device_set_status(struct device* pdev, enum device_status status) DEVICE_WARN_UNUSED_RESULT;
 
@@ -280,7 +280,7 @@ extern "C"
      * @brief 设置设备私有数据
      * @param[in] pdev 设备对象指针
      * @param[in] priv 私有数据指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_INVAL
+     * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int device_set_priv(struct device* pdev, void* priv) DEVICE_WARN_UNUSED_RESULT;
 
@@ -312,7 +312,7 @@ extern "C"
     /* ── 设备树加载 ── */
     /**
      * @brief 加载设备树并全量静态分配设备实例
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_tree_init(void) DEVICE_WARN_UNUSED_RESULT;
 
@@ -320,13 +320,13 @@ extern "C"
     /**
      * @brief 加锁设备 (per-device 递归锁)
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_lock(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
     /**
      * @brief 解锁设备
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_unlock(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
 
@@ -361,13 +361,13 @@ extern "C"
      * @brief 打开设备 (持锁)
      * @param[in] pdev 设备对象指针
      * @param[in] arg 打开参数 (可为 NULL)
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_open(struct device* pdev, void* arg) DEVICE_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭设备 (持锁)
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_close(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
     /**
@@ -376,7 +376,7 @@ extern "C"
      * @param[in] buf 发送缓冲区
      * @param[in] len 发送长度
      * @param[in] timeout_ms 超时毫秒数
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms) DEVICE_WARN_UNUSED_RESULT;
     /**
@@ -385,7 +385,7 @@ extern "C"
      * @param[out] buf 接收缓冲区
      * @param[in] len 接收长度
      * @param[in] timeout_ms 超时毫秒数
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms) DEVICE_WARN_UNUSED_RESULT;
     /**
@@ -395,19 +395,19 @@ extern "C"
      * @param[in] arg 命令参数
      * @param[in] arg_len 参数长度
      * @param[in] timeout_ms 超时毫秒数
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms) DEVICE_WARN_UNUSED_RESULT;
     /**
      * @brief 挂起设备 (持锁)
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_suspend(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
     /**
      * @brief 恢复设备 (持锁)
      * @param[in] pdev 设备对象指针
-     * @return 成功返回 VFS_OK, 失败返回负数错误码
+     * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
     int device_resume(struct device* pdev) DEVICE_WARN_UNUSED_RESULT;
 

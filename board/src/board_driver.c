@@ -79,7 +79,7 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 /**
  * @brief 从 DTS 属性注册安全停机 GPIO 引脚
  * @param[in] pdev 安全硬件 device 指针
- * @return 成功返回 VFS_OK
+ * @return 成功返回 MINI_OK
  */
 static int board_safety_hw_probe(struct device* pdev)
 {
@@ -91,27 +91,27 @@ static int board_safety_hw_probe(struct device* pdev)
     {
         snprintf(pin_prop, sizeof(pin_prop), "pin_%d", idx);
         snprintf(level_prop, sizeof(level_prop), "safe_level_%d", idx);
-        if (device_get_prop_int(pdev, pin_prop, &pin) != VFS_OK)
+        if (device_get_prop_int(pdev, pin_prop, &pin) != MINI_OK)
             break;
         device_get_prop_int(pdev, level_prop, &safe_level);
         board_safety_add_pin(pin, safe_level);
         idx++;
     }
     DRV_LOGI(k_tag, "safety-hw: %d shutdown pins registered", g_safety_pin_count);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 清除已注册的安全停机引脚与回调
  * @param[in] pdev device 指针 (未使用)
- * @return 成功返回 VFS_OK
+ * @return 成功返回 MINI_OK
  */
 static int board_safety_hw_remove(struct device* pdev)
 {
     COMPAT_UNUSED_PARAM(pdev);
     g_safety_pin_count = 0;
     g_safety_cb_count = 0;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(board_safety_hw, "board,safety-hw", board_safety_hw_probe, board_safety_hw_remove);
@@ -368,13 +368,13 @@ int board_driver_probe_all(void)
 
             DRV_LOGI(k_tag, "probing '%s' (%s) ...", device_get_name(pdev), device_get_compatible(pdev));
             int ret = probe(pdev);
-            if (ret == VFS_OK)
+            if (ret == MINI_OK)
             {
                 COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_PROBED));
-                int open_ret = VFS_OK;
+                int open_ret = MINI_OK;
                 if (pdev->ops && (pdev->ops->open || pdev->ops->init))
                     open_ret = device_open(pdev, NULL);
-                if (open_ret != VFS_OK)
+                if (open_ret != MINI_OK)
                 {
                     COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_ERROR));
                     DRV_LOGE(k_tag, "device_open FAILED: %s (ret=%d)", device_get_name(pdev), open_ret);
@@ -385,7 +385,7 @@ int board_driver_probe_all(void)
                 }
                 ok++;
             }
-            else if (ret == VFS_ERR_DEFER)
+            else if (ret == MINI_ERR_DEFER)
             {
                 DRV_LOGI(k_tag, "DEFER '%s': phandle dependency not yet probed", device_get_name(pdev));
                 deferred++;
@@ -428,7 +428,7 @@ int board_driver_probe_all(void)
 
 /**
  * @brief 按逆 probe 顺序卸载所有设备
- * @return 成功返回 VFS_OK
+ * @return 成功返回 MINI_OK
  */
 int board_driver_remove_all(void)
 {
@@ -452,7 +452,7 @@ int board_driver_remove_all(void)
         if (remove_fn)
         {
             int ret = remove_fn(pdev);
-            if (ret != VFS_OK)
+            if (ret != MINI_OK)
             {
                 DRV_LOGE(k_tag, "remove FAILED: %s (ret=%d) — keeping ERROR state", device_get_name(pdev), ret);
                 COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_ERROR));
@@ -461,5 +461,5 @@ int board_driver_remove_all(void)
         }
         COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_READY));
     }
-    return VFS_OK;
+    return MINI_OK;
 }

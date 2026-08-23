@@ -98,7 +98,7 @@ static const struct bus_controller_ops s_usb_controller_ops = {
  * @brief USB 主机初始化实现: 解析 cfg + 池分配 + 绑定 controller_ops
  * @param[in] pdev host device 指针
  * @param[in] cfg host 配置指针
- * @return 成功返回 VFS_OK, 池耗尽返回 VFS_ERR_NOMEM, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM, 失败返回负数错误码
  */
 static int usb_host_init_impl(struct device* pdev, const void* cfg)
 {
@@ -107,15 +107,15 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     int idx, ret;
 
     if (!pdev || !cfg)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     host_cfg = (const struct hal_usb_bus_config*)cfg;
     if (usb_host_from_device(pdev))
-        return VFS_OK;
+        return MINI_OK;
 
     idx = osal_pool_claim(&s_usb_host_pool_ctrl);
     if (idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     host = &s_usb_hosts[idx];
     COMPAT_MEM_SET(host, 0, sizeof(*host));
@@ -124,13 +124,13 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     ret = hal_usb_bus_host_init(&host->hal_host, host_cfg);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         goto fail_pool;
 
-    if (!usb_tusb_init(host->rhport))
+        if (usb_tusb_init(host->rhport) != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto fail_pool;
     }
     host->tusb_inited = 1;
@@ -138,7 +138,7 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     COMPAT_IGNORE_RESULT(hal_usb_irq_enable(&host->hal_host));
 
     ret = bus_controller_bind_full(pdev, BUS_TYPE_USB, &s_usb_controller_ops, host);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(hal_usb_irq_disable(&host->hal_host));
         s_irq_host = NULL;
@@ -147,7 +147,7 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     }
 
     SYS_LOGI(k_tag, "host init OK rhport=%u", (unsigned)host->rhport);
-    return VFS_OK;
+    return MINI_OK;
 
 fail_pool:
     COMPAT_MEM_SET(host, 0, sizeof(*host));
@@ -160,7 +160,7 @@ int usb_bus_host_init(struct device* pdev, const struct hal_usb_bus_config* cfg)
 /**
  * @brief USB 主机反初始化实现: 校验 ref_count + 解绑 + 释放池槽
  * @param[in] pdev host device 指针
- * @return 成功返回 VFS_OK, 引用未归零返回 VFS_ERR_BUSY, 未找到返回 VFS_ERR_NODEV
+ * @return 成功返回 MINI_OK, 引用未归零返回 MINI_ERR_BUSY, 未找到返回 MINI_ERR_NODEV
  */
 static int usb_host_deinit_impl(struct device* pdev)
 {
@@ -168,19 +168,19 @@ static int usb_host_deinit_impl(struct device* pdev)
     int idx, ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     host = usb_host_from_device(pdev);
     if (!host)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
-        return VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
 
     idx = (int)(host - s_usb_hosts);
     bus_controller_unbind(pdev);
     if (s_irq_host == host)
         s_irq_host = NULL;
     ret = hal_usb_bus_host_deinit(&host->hal_host);
-    if (ret == VFS_OK)
+    if (ret == MINI_OK)
     {
         COMPAT_MEM_SET(host, 0, sizeof(*host));
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_usb_host_pool_ctrl, idx));
@@ -206,7 +206,7 @@ static int usb_host_role_impl(struct device* pdev)
  * @param[in] pdev client device 指针
  * @param[in] cfg 客户端类配置 (enum usb_client_class*)
  * @param[out] out 回传已绑定 client 指针
- * @return 成功返回 VFS_OK, 占用冲突返回 VFS_ERR_BUSY, 参数非法返回 VFS_ERR_INVAL
+ * @return 成功返回 MINI_OK, 占用冲突返回 MINI_ERR_BUSY, 参数非法返回 MINI_ERR_INVAL
  */
 static int usb_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
@@ -217,26 +217,26 @@ static int usb_client_register_impl(struct device* pdev, const void* cfg, void**
     int id;
 
     if (!pdev || !out || !cfg)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pcls = (const enum usb_client_class*)cfg;
 
-    if (bus_controller_of(pdev, &ctlr) != VFS_OK)
-        return VFS_ERR_NODEV;
+    if (bus_controller_of(pdev, &ctlr) != MINI_OK)
+        return MINI_ERR_NODEV;
     host = (struct usb_bus_host*)ctlr->hw_ctx;
     if (!host)
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
 
     id = (int)board_dev_find(device_get_name(pdev));
     if (id < 0 || id >= DEV_ID_COUNT)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = &s_usb_clients[id];
     if (client->pdev)
     {
         if (client->pdev != pdev)
-            return VFS_ERR_BUSY;
+            return MINI_ERR_BUSY;
         *out = client;
-        return VFS_OK;
+        return MINI_OK;
     }
 
     COMPAT_MEM_SET(client, 0, sizeof(*client));
@@ -245,7 +245,7 @@ static int usb_client_register_impl(struct device* pdev, const void* cfg, void**
     client->cls = *pcls;
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
     *out = client;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int usb_bus_client_register(struct device* pdev, enum usb_client_class cls, struct usb_bus_client** out) { return usb_client_register_impl(pdev, &cls, (void**)out); }
@@ -278,18 +278,18 @@ int usb_bus_open(struct device* pdev)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     if (!c)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
     c->hw_open = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int usb_bus_close(struct device* pdev)
 {
     struct usb_bus_client* c = usb_client_from_device(pdev);
     if (!c)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
     c->hw_open = 0;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int usb_bus_resolve_xfer_mode(struct device* client_or_host, uint32_t xfer_mode)
@@ -301,7 +301,7 @@ int usb_bus_resolve_xfer_mode(struct device* client_or_host, uint32_t xfer_mode)
     {
         client = usb_client_from_device(client_or_host);
         if (!client || !client->host)
-            return VFS_ERR_NODEV;
+            return MINI_ERR_NODEV;
         host = client->host;
     }
     return hal_usb_resolve_xfer_mode(&host->hal_host, xfer_mode);
@@ -322,14 +322,14 @@ int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!c || c->cls != USB_CLIENT_CDC || !buf)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 
     if (!usb_tusb_cdc_connected())
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
 
     start = osal_time_ms();
     while (done < len)
@@ -356,7 +356,7 @@ int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeou
     int mode;
 
     if (!c || c->cls != USB_CLIENT_CDC || !buf)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
@@ -391,7 +391,7 @@ int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!c || c->cls != USB_CLIENT_ECM || !frame || !len)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
@@ -407,7 +407,7 @@ int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t time
     int n, mode;
 
     if (!c || c->cls != USB_CLIENT_ECM || !frame || !len)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
@@ -421,9 +421,9 @@ int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t time
             return n;
         usb_tusb_task();
         if (timeout_ms == 0)
-            return VFS_ERR_TIMEOUT;
+            return MINI_ERR_TIMEOUT;
         if ((osal_time_ms() - start) >= timeout_ms)
-            return VFS_ERR_TIMEOUT;
+            return MINI_ERR_TIMEOUT;
     }
 }
 
@@ -434,15 +434,15 @@ int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint3
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!c || c->cls != USB_CLIENT_HID || !report || !len)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
     if (mode < 0)
         return mode;
 
     if (!usb_tusb_hid_ready())
-        return VFS_ERR_IO;
-    if (!usb_tusb_hid_report(0, report, (uint16_t)len))
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
+    if (usb_tusb_hid_report(0, report, (uint16_t)len) != MINI_OK)
+        return MINI_ERR_IO;
     return (int)len;
 }

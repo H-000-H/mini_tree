@@ -16,14 +16,25 @@
 #ifndef BUFFER_POOL_H
 #define BUFFER_POOL_H
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifndef ENODATA
+#define ENODATA 61 /**< 部分 libc (newlib 等) 缺少 ENODATA, 补齐 Linux 取值 */
+#endif
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define BUFF_POOL_OK 0 /**< 成功 */
+#define BUFF_POOL_ERR_INVAL (-EINVAL) /**< 入参非法 (句柄/指针为 NULL、大小为 0、池段过小) */
+#define BUFF_POOL_ERR_NOMEM (-ENOMEM) /**< 内存不足 (calloc 失败 / 静态池无法满足) */
+#define BUFF_POOL_ERR_NOSPC (-ENOSPC) /**< 无剩余空间 (块写满 / 扩容段表已满) */
+#define BUFF_POOL_ERR_EMPTY (-ENODATA) /**< 块内无可读数据 */
 
     /* ── Buffer Pool — 空闲链表 + 双指针块分配器 ──
      *
@@ -45,8 +56,10 @@ extern "C"
      *       .static_mem = s_pool_mem,
      *       .static_len = sizeof(s_pool_mem),
      *   };
-     *   buffer_pool_t* pool = buffer_pool_create(&cfg);
-     *   buffer_block_t* blk = buffer_pool_alloc(pool, 1024);
+     *   buffer_pool_t* pool = NULL;
+     *   buffer_block_t* blk = NULL;
+     *   buffer_pool_create(&cfg, &pool);
+     *   buffer_pool_alloc(pool, 1024, &blk);
      *   size_t n = 0;
      *   buffer_block_write(blk, data, len, &n); // 双指针写, n=实际写入
      *   buffer_block_read(blk, dst, sizeof dst, &n); // 双指针读
@@ -82,37 +95,41 @@ extern "C"
     /**
      * @brief 创建 buffer pool (空闲链表 + 双指针块分配器)
      * @param[in] config 池配置 (name/use_static/static_mem/static_len)
-     * @return 池对象指针; 配置非法或资源不足返回 NULL
+     * @param[out] p_pool 回传池对象指针 (仅成功时写入)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 配置非法; BUFF_POOL_ERR_NOMEM 资源不足
      */
-    buffer_pool_t* buffer_pool_create(const buffer_pool_config_t* config);
+    int buffer_pool_create(const buffer_pool_config_t* config, buffer_pool_t** p_pool);
     /**
      * @brief 销毁 buffer pool 并释放资源
-     * @param[in] pool 池对象指针 (可为 NULL)
+     * @param[in] pool 池对象指针 (不得为 NULL)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法
      */
-    void buffer_pool_destroy(buffer_pool_t* pool);
+    int buffer_pool_destroy(buffer_pool_t* pool);
 
     /* ── 分配/释放 ── */
     /**
      * @brief 从池分配一块指定大小的缓冲 (静态优先, 用尽回退动态; 全动态模式直接动态)
      * @param[in] pool 池对象指针
      * @param[in] size 请求的数据区字节数 (调用方指定, 不写死)
-     * @return 块对象; 失败返回 NULL
+     * @param[out] p_block 回传块对象指针 (仅成功时写入)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOMEM 分配失败
      */
-    buffer_block_t* buffer_pool_alloc(buffer_pool_t* pool, size_t size);
+    int buffer_pool_alloc(buffer_pool_t* pool, size_t size, buffer_block_t** p_block);
     /**
      * @brief 仅从静态池分配 (绝不回退动态)
      * @param[in] pool 池对象指针
      * @param[in] size 请求的数据区字节数
-     * @return 块对象; 静态池无法满足时返回 NULL (调用方可改用 buffer_pool_expand 扩容)
+     * @param[out] p_block 回传块对象指针 (仅成功时写入)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOMEM 静态池无法满足 (调用方可改用 buffer_pool_expand 扩容)
      * @note 与 buffer_pool_alloc 不同, 本函数绝不走 calloc。
      */
-    buffer_block_t* buffer_pool_alloc_static(buffer_pool_t* pool, size_t size);
+    int buffer_pool_alloc_static(buffer_pool_t* pool, size_t size, buffer_block_t** p_block);
     /**
      * @brief 向静态池追加一段内存 (运行期扩容)
      * @param[in] pool 池对象指针
      * @param[in] mem 新段基址 (不得与池内存/任何块重叠; 调用方保证该内存独占)
      * @param[in] len 新段字节数 (>= 块头 + 最小块)
-     * @return 0 = 成功; -EINVAL = 入参非法
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOSPC 段表已满
      * @note 已有块永不移动, 无指针失效风险; 新段并入空闲链表,
      *       与相邻空闲块自动合并。绝不 realloc/resize 原内存。
      */
@@ -121,23 +138,26 @@ extern "C"
      * @brief 归还块到池 (静态块插回空闲链表并合并相邻, 动态块 free)
      * @param[in] pool 池对象指针
      * @param[in] block 待释放块 (须由本池 buffer_pool_alloc 分配)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法
      */
-    void buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block);
+    int buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block);
 
     /* ISR 安全版本 (内部原子, 关中断实现, 天然 ISR 安全) */
     /**
      * @brief ISR 上下文分配块 (同 buffer_pool_alloc)
      * @param[in] pool 池对象指针
      * @param[in] size 请求字节数
-     * @return 块对象; 失败返回 NULL
+     * @param[out] p_block 回传块对象指针 (仅成功时写入)
+     * @return 同 buffer_pool_alloc
      */
-    buffer_block_t* buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size);
+    int buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size, buffer_block_t** p_block);
     /**
      * @brief ISR 上下文归还块 (同 buffer_pool_free)
      * @param[in] pool 池对象指针
      * @param[in] block 待释放块
+     * @return 同 buffer_pool_free
      */
-    void buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block);
+    int buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block);
 
     /* ── 块内容管理 (双指针, 环形读写; 实际字节数走指针, return 只表成败) ── */
     /**
@@ -146,75 +166,83 @@ extern "C"
      * @param[in] src 源数据
      * @param[in] len 请求写入字节数
      * @param[out] actual 可选: 实际写入字节数 (≤ len), 可传 NULL
-     * @return 0 = 成功; -EINVAL = 入参非法
-     * @note 空间不足时按实际剩余空间截断写入, 仍返回 0 (成功);
+     * @return BUFF_POOL_OK 成功 (空间不足时截断); BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_NOSPC 块已满 (*actual = 0)
+     * @note 空间不足时按实际剩余空间截断写入, 仍返回 BUFF_POOL_OK;
      *       用 *actual 判断是否写满。
      */
     int buffer_block_write(buffer_block_t* block, const void* src, size_t len, size_t* actual);
     /**
-     * @brief 从块读取数据 (tail 指针推进, 环形回绕; 空则返回 0)
+     * @brief 从块读取数据 (tail 指针推进, 环形回绕; 空则截断为 0)
      * @param[in] block 块对象
      * @param[out] dst 目的缓冲区
      * @param[in] len 请求读取字节数
      * @param[out] actual 可选: 实际读取字节数 (≤ len), 可传 NULL
-     * @return 0 = 成功; -EINVAL = 入参非法
-     * @note 数据不足时按实际可读字节数截断读取, 仍返回 0 (成功);
+     * @return BUFF_POOL_OK 成功 (数据不足时截断); BUFF_POOL_ERR_INVAL 入参非法; BUFF_POOL_ERR_EMPTY 块内无数据 (*actual = 0)
+     * @note 数据不足时按实际可读字节数截断读取, 仍返回 BUFF_POOL_OK;
      *       用 *actual 判断是否读到期望长度。
      */
     int buffer_block_read(buffer_block_t* block, void* dst, size_t len, size_t* actual);
     /**
      * @brief 查询块内已写入但未读取的字节数
      * @param[in] block 块对象
-     * @return 已占用字节数
+     * @param[out] p_used 回传已占用字节数
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法 (*p_used = 0)
      */
-    size_t buffer_block_used(const buffer_block_t* block);
+    int buffer_block_used(const buffer_block_t* block, size_t* p_used);
     /**
      * @brief 查询块剩余可写字节数
      * @param[in] block 块对象
-     * @return 剩余空间 (字节)
+     * @param[out] p_space 回传剩余空间 (字节)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法 (*p_space = 0)
      */
-    size_t buffer_block_space(const buffer_block_t* block);
+    int buffer_block_space(const buffer_block_t* block, size_t* p_space);
     /**
      * @brief 重置块读写双指针 (清空内容)
      * @param[in] block 块对象
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法
      */
-    void buffer_block_reset(buffer_block_t* block);
+    int buffer_block_reset(buffer_block_t* block);
 
     /* ── 统计诊断 ── */
     /**
      * @brief 查询池子总大小 (静态池字节数)
      * @param[in] pool 池对象指针
-     * @return 池子总字节数; 未启用静态池 (全动态模式) 返回 0
+     * @param[out] p_size 回传池子总字节数; 未启用静态池 (全动态模式) 回传 0
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法 (*p_size = 0)
      * @note 与 config 的关系: use_static && static_len>0 → static_len;
      *       use_static && static_len==0 → 默认池大小;
      *       全动态模式 → 0 (静态池屏蔽)
      */
-    size_t buffer_pool_size(const buffer_pool_t* pool);
+    int buffer_pool_size(const buffer_pool_t* pool, size_t* p_size);
     /**
      * @brief 查询静态池当前剩余可切字节数 (遍历空闲链表求和)
      * @param[in] pool 池对象指针
-     * @return 剩余字节数; 未启用静态池返回 0
+     * @param[out] p_free 回传剩余字节数; 未启用静态池回传 0
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法 (*p_free = 0)
      * @note 含各空闲块数据区 + 可复用的块头 (拆分后余块重新入链),
      *       与实际最大单块大小相近但不保证连续。
      */
-    size_t buffer_pool_free_space(const buffer_pool_t* pool);
+    int buffer_pool_free_space(const buffer_pool_t* pool, size_t* p_free);
     /**
      * @brief 查询当前已分配块数
      * @param[in] pool 池对象指针
-     * @return 已分配块数
+     * @param[out] p_used 回传已分配块数
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法 (*p_used = 0)
      */
-    uint32_t buffer_pool_used(const buffer_pool_t* pool);
+    int buffer_pool_used(const buffer_pool_t* pool, uint32_t* p_used);
     /**
      * @brief 查询历史峰值占用 (调试/认证用)
      * @param[in] pool 池对象指针
-     * @return 峰值占用块数
+     * @param[out] p_peak 回传峰值占用块数
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法 (*p_peak = 0)
      */
-    uint32_t buffer_pool_peak(const buffer_pool_t* pool);
+    int buffer_pool_peak(const buffer_pool_t* pool, uint32_t* p_peak);
     /**
      * @brief 重置峰值计数器
      * @param[in] pool 池对象指针
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法
      */
-    void buffer_pool_reset_peak(buffer_pool_t* pool);
+    int buffer_pool_reset_peak(buffer_pool_t* pool);
 
 #ifdef __cplusplus
 }

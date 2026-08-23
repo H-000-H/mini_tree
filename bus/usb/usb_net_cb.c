@@ -64,7 +64,7 @@ static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] COMPAT_ALIGNED(4);
  */
 uint8_t tud_network_mac_address[6] = {0x02, 0x02, 0x84, 0x6A, 0x96, 0x00};
 
-void tud_network_init_cb() { fifo_uni_init(&s_rx_fifo, s_rx_ring, (uint16_t)sizeof(struct ubs_net_rx_frame), USB_NET_QUEUE_DEPTH); }
+void tud_network_init_cb() { COMPAT_IGNORE_RESULT(fifo_uni_init(&s_rx_fifo, s_rx_ring, (uint16_t)sizeof(struct ubs_net_rx_frame), USB_NET_QUEUE_DEPTH)); }
 
 /**
  * @brief TinyUSB 接收数据包回调函数 (中断 / 核心任务上下文)
@@ -78,14 +78,15 @@ bool tud_network_recv_cb(const uint8_t* src, uint16_t size)
         return false;
 
     /* 零拷贝获取可写帧槽, 队列满则拒收 */
-    struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)fifo_uni_write_acquire(&s_rx_fifo);
-    if (slot == NULL)
+    void* slot_raw = NULL;
+    if (fifo_uni_write_acquire(&s_rx_fifo, &slot_raw) != BUFF_OK)
         return false;
+    struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)slot_raw;
 
     /* 先拷数据与长度, 再 commit 发布 (release 内存序由 fifo 内部保证) */
     COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(slot->data, src, size));
     slot->len = size;
-    fifo_uni_write_commit(&s_rx_fifo);
+    COMPAT_IGNORE_RESULT(fifo_uni_write_commit(&s_rx_fifo));
     return true;
 }
 
@@ -110,7 +111,7 @@ int usb_net_frame_push_tx(const void* frame, size_t len)
 {
     uint32_t start_time;
     if (!frame || len == 0U || len > (size_t)CFG_TUD_NET_MTU)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     start_time = osal_time_ms();
 
@@ -118,7 +119,7 @@ int usb_net_frame_push_tx(const void* frame, size_t len)
     while (!tud_ready() || !tud_network_can_xmit((uint16_t)len))
     {
         if ((osal_time_ms() - start_time) > USB_NET_TX_TIMEOUT_MS)
-            return VFS_ERR_TIMEOUT;
+            return MINI_ERR_TIMEOUT;
 #if defined(NO_SYS) && (NO_SYS == 1)
         usb_tusb_task();
 #else
@@ -134,22 +135,23 @@ int usb_net_frame_push_tx(const void* frame, size_t len)
 int usb_net_frame_pop_rx(void* frame, size_t len)
 {
     if (!frame || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* 零拷贝察视可读帧槽, 队列空直接返回 */
-    struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)fifo_uni_read_peek(&s_rx_fifo);
-    if (slot == NULL)
+    void* slot_raw = NULL;
+    if (fifo_uni_read_peek(&s_rx_fifo, &slot_raw) != BUFF_OK)
         return 0;
+    struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)slot_raw;
 
     uint16_t frame_len = slot->len;
     if ((size_t)frame_len > len)
     {
         /* 调用方缓冲放不下: 丢弃该帧避免死队, 调用方应加大接收缓冲 */
-        fifo_uni_read_release(&s_rx_fifo);
-        return VFS_ERR_NOSPC;
+        COMPAT_IGNORE_RESULT(fifo_uni_read_release(&s_rx_fifo));
+        return MINI_ERR_NOSPC;
     }
 
     COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(frame, slot->data, frame_len));
-    fifo_uni_read_release(&s_rx_fifo);
+    COMPAT_IGNORE_RESULT(fifo_uni_read_release(&s_rx_fifo));
     return (int)frame_len;
 }

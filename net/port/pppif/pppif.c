@@ -82,7 +82,7 @@ static struct pppif_context s_pppif_context = {0};
  * @param[in] cmd 发送的 AT 命令字符串 (需包含 \\r 结尾)
  * @param[in] expect_resp 期望匹配的关键响应 (如 "OK", "CONNECT")
  * @param[in] timeout_ms 指令整体执行超时时间 (ms)
- * @return 成功返回 VFS_OK，超时或失败返回对应错误码
+ * @return 成功返回 MINI_OK，超时或失败返回对应错误码
  */
 static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32_t timeout_ms)
 {
@@ -93,7 +93,7 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
     int ret = 0;
 
     if (!s_pppif_context.modem_dev || !cmd || !expect_resp)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     at_buf.tx = (const uint8_t*)cmd;
     at_buf.tx_len = strlen(cmd);
@@ -103,7 +103,7 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
 
     ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf), timeout_ms);
 
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     start_time = osal_time_ms();
@@ -114,26 +114,26 @@ static int pppif_at_send_expect(const char* cmd, const char* expect_resp, uint32
         at_buf.rx_cap = sizeof(resp_buf) - 1 - total_receive;
         at_buf.rx_len = 0;
         ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf, sizeof(at_buf), PPPIF_AT_RECV_CHUNK_MS);
-        if (ret == VFS_OK && at_buf.rx_len > 0)
+        if (ret == MINI_OK && at_buf.rx_len > 0)
         {
             total_receive += at_buf.rx_len;
             resp_buf[total_receive] = '\0';
 
             if (strstr((const char*)resp_buf, expect_resp) != NULL)
-                return VFS_OK;
+                return MINI_OK;
 
             if (strcmp(expect_resp, "CONNECT") != 0 && strstr((const char*)resp_buf, "ERROR") != NULL)
-                return VFS_ERR_IO;
+                return MINI_ERR_IO;
         }
     } while ((osal_time_ms() - start_time) < timeout_ms);
 
-    return VFS_ERR_TIMEOUT;
+    return MINI_ERR_TIMEOUT;
 }
 
 /**
  * @brief 模组拨号控制流程：握手 -> 关回显 -> 设置 APN -> 进入数据透传态
  * @param[in] apn 运营商接入点名称
- * @return 成功返回 VFS_OK，失败返回错误码
+ * @return 成功返回 MINI_OK，失败返回错误码
  */
 static int pppif_modem_dial(const char* apn)
 {
@@ -142,7 +142,7 @@ static int pppif_modem_dial(const char* apn)
 
     /*基础AT通信握手*/
     ret = pppif_at_send_expect("AT\r", "OK", PPPIF_AT_TIMEOUT_MS);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_tag, "Modem AT no response: %d", ret);
         return ret;
@@ -156,10 +156,10 @@ static int pppif_modem_dial(const char* apn)
         if (snprintf_ret <= 0 || (size_t)snprintf_ret >= sizeof(cmd_buf))
         {
             SYS_LOGE(k_tag, "APN too long: %s", apn);
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         }
         ret = pppif_at_send_expect(cmd_buf, "OK", PPPIF_AT_TIMEOUT_MS);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             SYS_LOGE(k_tag, "Set APN failed: %d", ret);
             return ret;
@@ -168,7 +168,7 @@ static int pppif_modem_dial(const char* apn)
 
     /*  触发 PPP 拨号命令，等待模组切入透传数据态 */
     ret = pppif_at_send_expect("ATD*99#\r", "CONNECT", PPPIF_AT_TIMEOUT_MS);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         SYS_LOGE(k_tag, "Modem dial failed: %d", ret);
     return ret;
 }
@@ -269,20 +269,20 @@ static void pppif_rx_thread_entry(void* param)
  * @brief PPP 数据态裸机轮询驱动 (NO_SYS=1 主循环周期调用)
  * @details 读模组串口裸字节流喂 pppos_input, 并驱动 lwIP 超时
  *          (LCP/IPCP 协商重传依赖 sys_check_timeouts)。
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 int pppif_poll(void)
 {
     int receive_len;
     if (!s_pppif_context.modem_dev || !s_pppif_context.ppp_pcb)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     receive_len = device_read(s_pppif_context.modem_dev, s_pppif_context.rx_buf, sizeof(s_pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
     if (receive_len > 0)
         pppos_input(s_pppif_context.ppp_pcb, s_pppif_context.rx_buf, receive_len);
 
     sys_check_timeouts();
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -291,16 +291,16 @@ int pppif_poll(void)
  * @param[in] apn 接入点 APN (可为 NULL)
  * @param[in] username PAP/CHAP 认证账号 (可为 NULL)
  * @param[in] password PAP/CHAP 认证密码 (可为 NULL)
- * @return 成功返回 VFS_OK，失败返回对应错误码
+ * @return 成功返回 MINI_OK，失败返回对应错误码
  */
 int pppif_init(const char* modem_label, const char* apn, const char* username, const char* password)
 {
     int ret;
     if (!modem_label)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     if (s_pppif_context.modem_dev || s_pppif_context.ppp_pcb)
-        return VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
 
     s_pppif_context.modem_dev = device_find_by_label(modem_label);
     if (IS_ERR(s_pppif_context.modem_dev))
@@ -312,7 +312,7 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
     }
 
     ret = device_open(s_pppif_context.modem_dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_tag, "Open modem device failed: %d", ret);
         s_pppif_context.modem_dev = NULL;
@@ -321,14 +321,14 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
 
     /* 执行 AT 拨号切入数据态 */
     ret = pppif_modem_dial(apn);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         goto err_clean_device;
 
     /* 创建 lwIP PPPoS 控制块 */
     s_pppif_context.ppp_pcb = pppos_create(&s_pppif_context.ppp_netif, pppif_output_callback, pppif_link_status_callback, &s_pppif_context);
     if (!s_pppif_context.ppp_pcb)
     {
-        ret = VFS_ERR_NOMEM;
+        ret = MINI_ERR_NOMEM;
         goto err_clean_device;
     }
 
@@ -344,7 +344,7 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
     ret = osal_task_create_handle("pppos_rx", PPPIF_RX_TASK_STACK_SIZE, PPPIF_RX_TASK_PRIO, pppif_rx_thread_entry, &s_pppif_context, (int)-1, &s_pppif_context.rx_thread);
     if (ret != 0 || !s_pppif_context.rx_thread)
     {
-        ret = VFS_ERR_NOMEM;
+        ret = MINI_ERR_NOMEM;
         goto err_clean_ppp;
     }
 #else
@@ -353,13 +353,13 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
 #endif /* !NO_SYS */
 
     ret = ppp_connect(s_pppif_context.ppp_pcb, 0);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_clean_ppp;
     }
 
-    return VFS_OK;
+    return MINI_OK;
 err_clean_ppp:
     if (s_pppif_context.ppp_pcb)
     {
@@ -376,7 +376,7 @@ err_clean_device:
 int pppif_deinit(void)
 {
     if (!s_pppif_context.ppp_pcb && !s_pppif_context.modem_dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* 停止后台接收线程 (RTOS 模式) / 标记轮询停止 (裸机模式) */
     s_pppif_context.is_running = 0;
@@ -393,7 +393,7 @@ int pppif_deinit(void)
         s_pppif_context.modem_dev = NULL;
     }
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int pppif_is_link_up(void) { return s_pppif_context.is_link_up; }

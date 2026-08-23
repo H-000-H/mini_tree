@@ -58,32 +58,32 @@ static struct sh1106_device* sh1106_get_drvdata(struct device* pdev) { return (s
 
 /**
  * @brief 向 I2C 总线写数据
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sh1106_i2c_wr(struct sh1106_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sh1106_hw_create(struct sh1106_device* dev)
 {
     int ret;
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     ret = device_open(dev->i2c_dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -109,7 +109,7 @@ static int sh1106_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -119,18 +119,18 @@ static int sh1106_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = sh1106_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -142,7 +142,7 @@ static int sh1106_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -155,7 +155,7 @@ static int sh1106_close(struct device* pdev)
     if (last)
         sh1106_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -183,10 +183,10 @@ static int sh1106_set_page_col(struct sh1106_device* dev, uint8_t page, uint32_t
 {
     uint8_t col = SH1106_COL_OFFSET;
     int ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)), timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)), timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     return sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_COL_HI | ((col >> 4) & 0x0FU)), timeout_ms);
 }
@@ -203,7 +203,7 @@ static int sh1106_cmd_clear(struct sh1106_device* dev, void* arg, size_t len, ui
     uint8_t page_buf[1 + SH1106_WIDTH];
     size_t i;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     val = darg->value ? 0xFFU : 0x00U;
     page_buf[0] = SH1106_I2C_CTRL_DATA;
     for (i = 1; i < sizeof(page_buf); i++)
@@ -211,13 +211,13 @@ static int sh1106_cmd_clear(struct sh1106_device* dev, void* arg, size_t len, ui
     for (p = 0; p < SH1106_PAGES; p++)
     {
         int ret = sh1106_set_page_col(dev, (uint8_t)p, to_ms);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
         ret = sh1106_i2c_wr(dev, page_buf, sizeof(page_buf), to_ms);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -229,11 +229,11 @@ static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len,
     COMPAT_IGNORE_RESULT(dev);
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!info || len != sizeof(*info))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     info->width = SH1106_WIDTH;
     info->height = SH1106_HEIGHT;
     info->format = DISPLAY_FMT_MONO_1BPP;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -244,9 +244,9 @@ static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len
     const struct display_rect_arg* darg = (const struct display_rect_arg*)arg;
     struct display_clear_arg clear_arg;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (darg->x != 0 || darg->y != 0 || darg->w != SH1106_WIDTH || darg->h != SH1106_HEIGHT)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     clear_arg.value = darg->color ? 1U : 0U;
     return sh1106_cmd_clear(dev, &clear_arg, sizeof(clear_arg), timeout_ms);
 }
@@ -260,15 +260,15 @@ static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len
     int page;
     uint32_t to_ms = timeout_ms ? timeout_ms : 100U;
     if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (darg->x != 0 || darg->y != 0 || darg->w != SH1106_WIDTH || darg->h != SH1106_HEIGHT)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     for (page = 0; page < SH1106_PAGES; page++)
     {
         uint8_t chunk[1 + 64];
         size_t off = 0;
-        if (sh1106_set_page_col(dev, (uint8_t)page, to_ms) != VFS_OK)
-            return VFS_ERR_IO;
+        if (sh1106_set_page_col(dev, (uint8_t)page, to_ms) != MINI_OK)
+            return MINI_ERR_IO;
         chunk[0] = SH1106_I2C_CTRL_DATA;
         while (off < SH1106_WIDTH)
         {
@@ -276,12 +276,12 @@ static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len
             if (count > 64U)
                 count = 64U;
             COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&chunk[1], &darg->data[page * SH1106_WIDTH + off], count));
-            if (sh1106_i2c_wr(dev, chunk, count + 1U, to_ms) != VFS_OK)
-                return VFS_ERR_IO;
+            if (sh1106_i2c_wr(dev, chunk, count + 1U, to_ms) != MINI_OK)
+                return MINI_ERR_IO;
             off += count;
         }
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -291,7 +291,7 @@ static int sh1106_cmd_flush(struct sh1106_device* dev, void* arg, size_t len, ui
 {
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
     if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return sh1106_cmd_draw_area(dev, (void*)darg, sizeof(*darg), timeout_ms);
 }
 
@@ -303,9 +303,9 @@ static int sh1106_cmd_set_brightness(struct sh1106_device* dev, void* arg, size_
     const struct display_bright_arg* darg = (const struct display_bright_arg*)arg;
     uint32_t to_ms = timeout_ms ? timeout_ms : 100U;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
-        return VFS_ERR_INVAL;
-    if (sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, SH1106_REG_SET_CONTRAST, to_ms) != VFS_OK)
-        return VFS_ERR_IO;
+        return MINI_ERR_INVAL;
+    if (sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, SH1106_REG_SET_CONTRAST, to_ms) != MINI_OK)
+        return MINI_ERR_IO;
     return sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, darg->value, to_ms);
 }
 
@@ -325,7 +325,7 @@ static int sh1106_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -333,11 +333,11 @@ static int sh1106_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
     if (off < 1 || off > DISPLAY_CMD_COUNT || !s_sh1106_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_sh1106_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -358,28 +358,28 @@ static int sh1106_probe(struct device* pdev)
     struct sh1106_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sh1106_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_sh1106_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->i2c_dev = device_get_parent(pdev);
     if (!dev->i2c_dev)
     {
-        ret = VFS_ERR_NODEV;
+        ret = MINI_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = sh1106_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -396,7 +396,7 @@ static int sh1106_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -406,16 +406,16 @@ static int sh1106_remove(struct device* pdev)
     idx = (int)(dev - s_sh1106_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     sh1106_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_sh1106_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(sh1106, "sinowealth,sh1106", sh1106_probe, sh1106_remove)

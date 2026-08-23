@@ -63,7 +63,7 @@ void xscheduler_start(void)
     /* ① DTS 显式配了 scheduler-tim → 显式覆盖, 直接走 chosen TIM */
 #ifdef CHOSEN_SCHEDULER_TIM
     struct device* tick_dev = board_dev_get(CHOSEN_SCHEDULER_TIM);
-    if (tick_dev != NULL && device_open(tick_dev, NULL) == VFS_OK)
+    if (tick_dev != NULL && device_open(tick_dev, NULL) == MINI_OK)
     {
         s_priv.tim = vfs_tim_get_hal_dev(tick_dev);
         if (s_priv.tim != NULL)
@@ -84,7 +84,7 @@ void xscheduler_start(void)
 #endif
 
     /* ② 没配 chosen (或打开失败) → 默认 SysTick (仅 Cortex-M 存在; 非 ARM 返回 NOTSUPP) */
-    if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == VFS_OK)
+    if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == MINI_OK)
     {
         s_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
         /* 每 SysTick 中断推进 ms = 1000 / tick-rate; 亚毫秒 tick-rate 按 1ms 兜底 */
@@ -104,20 +104,20 @@ void hal_systick_irq_handler(void) { x_scheduler_tick(&g_scheduler, (unsigned in
  * @brief 定时器 ISR 上半部
  * @param[in] arg 指向 x_coop_priv
  * @param[in] irq_num 号
- * @return VFS_IRQ_ENTRY_NOBOTTOM
+ * @return MINI_IRQ_ENTRY_NOBOTTOM
  */
 int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 {
     COMPAT_IGNORE_RESULT(irq_num);
     struct x_coop_priv* priv = (struct x_coop_priv*)context;
     if (priv == NULL)
-        return VFS_IRQ_ENTRY_NOBOTTOM;
+        return MINI_IRQ_ENTRY_NOBOTTOM;
 
     struct vfs_tim_arg tim_arg = {0};
     tim_arg.obj = priv->tim;
-    if (vfs_tim_fast_clear_update_flag(&tim_arg) == VFS_OK)
+    if (vfs_tim_fast_clear_update_flag(&tim_arg) == MINI_OK)
         x_scheduler_tick(&g_scheduler, (unsigned int)priv->tick_delay);
-    return VFS_IRQ_ENTRY_NOBOTTOM;
+    return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 /**
@@ -131,7 +131,7 @@ int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms)
 {
     if (!task || !cb || !name)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     task->name = name;
     task->xTask_cb = cb;
@@ -151,25 +151,25 @@ x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb
  * @brief 递增 tick
  * @param[in] sched 调度器
  * @param[in] ms 毫秒
- * @return VFS_OK
+ * @return MINI_OK
  */
 int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 {
     if (!sched)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     COMPAT_ATOMIC_ADD_FETCH(&sched->tick_count, ms, COMPAT_MO_RELAXED);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief 运行到期任务
  * @param[in] sched 调度器
- * @return VFS_OK
+ * @return MINI_OK
  */
 int x_task_run(x_scheduler* sched)
 {
     if (!sched)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     list_node* head = &sched->task_list_head;
     list_node* current = head->next;
@@ -207,7 +207,7 @@ int x_task_run(x_scheduler* sched)
         }
         current = next;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**

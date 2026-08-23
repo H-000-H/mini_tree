@@ -84,7 +84,7 @@ static struct st7789_device* st7789_get_drvdata(struct device* pdev) { return (s
 static int st7789_gpio_out(struct vfs_gpio_arg* ga, int level)
 {
     if (!ga || !ga->obj)
-        return VFS_OK;
+        return MINI_OK;
     ga->level = level ? 1 : 0;
     return vfs_gpio_set_level(ga);
 }
@@ -97,12 +97,12 @@ static int st7789_bind_gpio(struct device* gdev, struct vfs_gpio_arg* ga)
     int ret;
 
     if (!gdev || !ga)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     ret = device_open(gdev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = device_ioctl(gdev, GPIO_CMD_GET_LEVEL, ga, sizeof(*ga), 0);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(device_close(gdev));
         ga->obj = NULL;
@@ -118,7 +118,7 @@ static int st7789_spi_write(struct st7789_device* lcd, const uint8_t* data, size
     size_t offset = 0;
 
     if (!lcd || !lcd->spi_dev || (!data && len > 0U))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     while (offset < len)
     {
@@ -129,11 +129,11 @@ static int st7789_spi_write(struct st7789_device* lcd, const uint8_t* data, size
             chunk = lcd->spi_chunk;
 
         ret = device_write(lcd->spi_dev, data + offset, chunk, timeout_ms);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
         offset += chunk;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -142,7 +142,7 @@ static int st7789_spi_write(struct st7789_device* lcd, const uint8_t* data, size
 static int st7789_write_cmd(struct st7789_device* lcd, uint8_t cmd, uint32_t timeout_ms)
 {
     int ret = st7789_gpio_out(&lcd->dc_gpio, 0);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     return st7789_spi_write(lcd, &cmd, 1U, timeout_ms);
 }
@@ -153,19 +153,19 @@ static int st7789_write_cmd(struct st7789_device* lcd, uint8_t cmd, uint32_t tim
 static int st7789_write_data(struct st7789_device* lcd, const uint8_t* data, size_t len, uint32_t timeout_ms)
 {
     int ret = st7789_gpio_out(&lcd->dc_gpio, 1);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     return st7789_spi_write(lcd, data, len, timeout_ms);
 }
 
 /**
  * @brief 矩形裁剪到面板边界（越界部分裁掉）
- * @return VFS_OK（裁剪后仍有有效区域）或 VFS_ERR_INVAL（完全越界）
+ * @return MINI_OK（裁剪后仍有有效区域）或 MINI_ERR_INVAL（完全越界）
  */
 static int st7789_clip_rect(const struct st7789_device* lcd, int* pos_x, int* pos_y, int* size_w, int* size_h)
 {
     if (!lcd || !pos_x || !pos_y || !size_w || !size_h || *size_w <= 0 || *size_h <= 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     if (*pos_x < 0)
     {
@@ -178,12 +178,12 @@ static int st7789_clip_rect(const struct st7789_device* lcd, int* pos_x, int* po
         *pos_y = 0;
     }
     if (*pos_x >= lcd->width || *pos_y >= lcd->height || *size_w <= 0 || *size_h <= 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (*size_w > lcd->width - *pos_x)
         *size_w = lcd->width - *pos_x;
     if (*size_h > lcd->height - *pos_y)
         *size_h = lcd->height - *pos_y;
-    return (*size_w > 0 && *size_h > 0) ? VFS_OK : VFS_ERR_INVAL;
+    return (*size_w > 0 && *size_h > 0) ? MINI_OK : MINI_ERR_INVAL;
 }
 
 /**
@@ -210,13 +210,13 @@ static int st7789_set_window(struct st7789_device* lcd, int pos_x, int pos_y, in
     int ret;
 
     ret = st7789_write_cmd(lcd, ST7789_REG_CASET, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_data(lcd, col, sizeof(col), timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_cmd(lcd, ST7789_REG_RASET, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     return st7789_write_data(lcd, row, sizeof(row), timeout_ms);
 }
@@ -242,53 +242,53 @@ static int st7789_hw_init(struct st7789_device* lcd, uint32_t timeout_ms)
     else
     {
         ret = st7789_write_cmd(lcd, ST7789_REG_SWRESET, timeout_ms);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
         osal_delay_ms(20U);
     }
 
     ret = st7789_write_cmd(lcd, ST7789_REG_SLPOUT, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     osal_delay_ms(100U);
 
     ret = st7789_write_cmd(lcd, ST7789_REG_MADCTL, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_data(lcd, &madctl, 1U, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     ret = st7789_write_cmd(lcd, ST7789_REG_COLMOD, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_data(lcd, &colmod, 1U, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     ret = st7789_write_cmd(lcd, ST7789_REG_RAMCTRL, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_data(lcd, ramctrl, sizeof(ramctrl), timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     if (lcd->invert)
     {
         ret = st7789_write_cmd(lcd, ST7789_REG_INVON, timeout_ms);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
     }
 
     ret = st7789_write_cmd(lcd, ST7789_REG_NORON, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_cmd(lcd, ST7789_REG_DISPON, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     COMPAT_IGNORE_RESULT(st7789_gpio_out(&lcd->dc_gpio, 1));
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -299,7 +299,7 @@ static int st7789_apply_backlight(struct st7789_device* lcd, uint8_t brightness)
     uint32_t ccr;
 
     if (!lcd->bl_tim.obj)
-        return VFS_ERR_NOTSUPP;
+        return MINI_ERR_NOTSUPP;
 
     ccr = ((uint32_t)brightness * lcd->bl_arr) / 255U;
     if (!lcd->bl_active_high)
@@ -308,10 +308,10 @@ static int st7789_apply_backlight(struct st7789_device* lcd, uint8_t brightness)
     lcd->bl_tim.channel = lcd->bl_channel;
     lcd->bl_tim.arr = lcd->bl_arr;
     lcd->bl_tim.ccr = ccr;
-    if (vfs_tim_fast_pwm_update(&lcd->bl_tim) != VFS_OK)
-        return VFS_ERR_IO;
+    if (vfs_tim_fast_pwm_update(&lcd->bl_tim) != MINI_OK)
+        return MINI_ERR_IO;
     lcd->bl_brightness = brightness;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -327,17 +327,17 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int pos_x, int pos_y, 
     size_t total;
     size_t left;
 
-    if (st7789_clip_rect(lcd, &pos_x, &pos_y, &size_w, &size_h) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (st7789_clip_rect(lcd, &pos_x, &pos_y, &size_w, &size_h) != MINI_OK)
+        return MINI_ERR_INVAL;
 
     ret = st7789_set_window(lcd, pos_x, pos_y, size_w, size_h, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_cmd(lcd, ST7789_REG_RAMWR, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_gpio_out(&lcd->dc_gpio, 1);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     /* 窗已开好：按 GRAM 顺序流式写即可，不必逐行 device_write */
@@ -346,7 +346,7 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int pos_x, int pos_y, 
         fill_bytes = lcd->spi_chunk;
     fill_bytes &= ~1U; /* RGB565：保持偶数字节 */
     if (fill_bytes < 2U)
-        return VFS_ERR_NOSPC;
+        return MINI_ERR_NOSPC;
 
     hi = (uint8_t)(color >> 8);
     lo = (uint8_t)(color & 0xFFU);
@@ -363,11 +363,11 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int pos_x, int pos_y, 
         size_t count = (left < fill_bytes) ? left : fill_bytes;
 
         ret = st7789_spi_write(lcd, lcd->block_buf, count, timeout_ms);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             return ret;
         left -= count;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -379,22 +379,22 @@ static int st7789_do_draw_bitmap(struct st7789_device* lcd, int pos_x, int pos_y
     int ret;
 
     if (!data || size_w <= 0 || size_h <= 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (pos_x < 0 || pos_y < 0 || pos_x > lcd->width - size_w || pos_y > lcd->height - size_h)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     pixels = (size_t)size_w * (size_t)size_h;
     if (size_h != 0 && pixels / (size_t)size_h != (size_t)size_w)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     ret = st7789_set_window(lcd, pos_x, pos_y, size_w, size_h, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_write_cmd(lcd, ST7789_REG_RAMWR, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = st7789_gpio_out(&lcd->dc_gpio, 1);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     return st7789_spi_write(lcd, data, pixels * 2U, timeout_ms);
 }
@@ -411,7 +411,7 @@ static int st7789_open(struct device* pdev, void* arg)
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lcd = st7789_get_drvdata(pdev);
     if (IS_ERR(lcd))
@@ -425,11 +425,11 @@ static int st7789_open(struct device* pdev, void* arg)
     if (first < 0)
         return first;
 
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = st7789_bind_gpio(lcd->dc_dev, &lcd->dc_gpio);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
@@ -437,7 +437,7 @@ static int st7789_open(struct device* pdev, void* arg)
         if (lcd->rst_dev)
         {
             ret = st7789_bind_gpio(lcd->rst_dev, &lcd->rst_gpio);
-            if (ret != VFS_OK)
+            if (ret != MINI_OK)
             {
                 COMPAT_IGNORE_RESULT(device_close(lcd->dc_dev));
                 lcd->dc_gpio.obj = NULL;
@@ -448,7 +448,7 @@ static int st7789_open(struct device* pdev, void* arg)
         if (lcd->bl_tim_dev)
         {
             ret = device_open(lcd->bl_tim_dev, NULL);
-            if (ret != VFS_OK)
+            if (ret != MINI_OK)
             {
                 if (lcd->rst_dev)
                     COMPAT_IGNORE_RESULT(device_close(lcd->rst_dev));
@@ -468,17 +468,17 @@ static int st7789_open(struct device* pdev, void* arg)
                 lcd->dc_gpio.obj = NULL;
                 lcd->rst_gpio.obj = NULL;
                 dev_lc_open_abort(lc);
-                return VFS_ERR_IO;
+                return MINI_ERR_IO;
             }
             /* 经 VFS 快路径取 ARR，禁止 product 直调 hal_tim_* */
-            if (vfs_tim_fast_get_autoreload(&lcd->bl_tim) == VFS_OK && lcd->bl_tim.value != 0U)
+            if (vfs_tim_fast_get_autoreload(&lcd->bl_tim) == MINI_OK && lcd->bl_tim.value != 0U)
                 lcd->bl_arr = lcd->bl_tim.value;
             else
                 lcd->bl_arr = ST7789_BL_ARR_FALLBACK;
         }
 
         ret = device_open(lcd->spi_dev, NULL);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             if (lcd->bl_tim_dev)
                 COMPAT_IGNORE_RESULT(device_close(lcd->bl_tim_dev));
@@ -494,7 +494,7 @@ static int st7789_open(struct device* pdev, void* arg)
 
         lcd->pins_ready = 1;
         ret = st7789_hw_init(lcd, ST7789_TIMEOUT_CMD_MS);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             COMPAT_IGNORE_RESULT(device_close(lcd->spi_dev));
             if (lcd->bl_tim_dev)
@@ -515,7 +515,7 @@ static int st7789_open(struct device* pdev, void* arg)
     }
 
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -528,7 +528,7 @@ static int st7789_close(struct device* pdev)
     int last;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lcd = st7789_get_drvdata(pdev);
     if (IS_ERR(lcd))
@@ -561,7 +561,7 @@ static int st7789_close(struct device* pdev)
     }
 
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -582,7 +582,7 @@ static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg
     const struct display_rect_arg* a = (const struct display_rect_arg*)arg;
 
     if (!lcd || !a || arg_len != sizeof(*a))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return st7789_do_fill_rect(lcd, a->x, a->y, a->w, a->h, a->color, timeout_ms);
 }
 
@@ -594,7 +594,7 @@ static int st7789_cmd_clear(struct st7789_device* lcd, void* arg, size_t arg_len
     const struct display_clear_arg* a = (const struct display_clear_arg*)arg;
 
     if (!lcd || !a || arg_len != sizeof(*a))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return st7789_do_fill_rect(lcd, 0, 0, lcd->width, lcd->height, a->value, timeout_ms);
 }
 
@@ -606,7 +606,7 @@ static int st7789_cmd_draw_area(struct st7789_device* lcd, void* arg, size_t arg
     const struct display_draw_arg* a = (const struct display_draw_arg*)arg;
 
     if (!lcd || !a || arg_len != sizeof(*a) || a->format != DISPLAY_FMT_RGB565)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
 }
 
@@ -619,7 +619,7 @@ static int st7789_cmd_set_brightness(struct st7789_device* lcd, void* arg, size_
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!lcd || !a || arg_len != sizeof(*a))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return st7789_apply_backlight(lcd, a->value);
 }
 
@@ -632,11 +632,11 @@ static int st7789_cmd_get_info(struct st7789_device* lcd, void* arg, size_t arg_
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!lcd || !a || arg_len != sizeof(*a))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     a->width = (uint16_t)lcd->width;
     a->height = (uint16_t)lcd->height;
     a->format = DISPLAY_FMT_RGB565;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -647,7 +647,7 @@ static int st7789_cmd_flush(struct st7789_device* lcd, void* arg, size_t arg_len
     const struct display_draw_arg* a = (const struct display_draw_arg*)arg;
 
     if (!lcd || !a || arg_len != sizeof(*a) || a->format != DISPLAY_FMT_RGB565)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
 }
 
@@ -668,7 +668,7 @@ static int st7789_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     int ret;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lcd = st7789_get_drvdata(pdev);
     if (IS_ERR(lcd))
@@ -679,12 +679,12 @@ static int st7789_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     offset = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
     if (offset < 1 || offset > DISPLAY_CMD_COUNT || !s_st7789_ioctl_map[offset - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_st7789_ioctl_map[offset - 1].handler(lcd, arg, arg_len, timeout_ms);
 
@@ -719,14 +719,14 @@ int st7789_probe_common(struct device* pdev, int require_nocs)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     dc_dev = device_get_phandle_dev(pdev, "dc-gpio");
     if (IS_ERR(dc_dev))
         return PTR_ERR(dc_dev);
 
-    if (device_get_prop_int(pdev, "width", &width) != VFS_OK || device_get_prop_int(pdev, "height", &height) != VFS_OK || width <= 0 || height <= 0 || width > ST7789_MAX_WIDTH)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "width", &width) != MINI_OK || device_get_prop_int(pdev, "height", &height) != MINI_OK || width <= 0 || height <= 0 || width > ST7789_MAX_WIDTH)
+        return MINI_ERR_INVAL;
 
     rst_dev = device_get_phandle_dev(pdev, "reset-gpio");
     if (IS_ERR(rst_dev))
@@ -742,7 +742,7 @@ int st7789_probe_common(struct device* pdev, int require_nocs)
 
     pool_idx = osal_pool_claim(&s_st7789_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     lcd = &s_st7789_pool[pool_idx];
     COMPAT_MEM_SET(lcd, 0, sizeof(*lcd));
@@ -750,16 +750,16 @@ int st7789_probe_common(struct device* pdev, int require_nocs)
     lcd->spi_dev = device_get_parent(pdev);
     if (!lcd->spi_dev)
     {
-        ret = VFS_ERR_NODEV;
+        ret = MINI_ERR_NODEV;
         goto err_pool;
     }
 
     if (require_nocs)
     {
-        if (device_get_prop_int(lcd->spi_dev, "cs-pin", &parent_cs) != VFS_OK || parent_cs >= 0)
+        if (device_get_prop_int(lcd->spi_dev, "cs-pin", &parent_cs) != MINI_OK || parent_cs >= 0)
         {
             SYS_LOGE(k_tag, "nocs requires parent cs-pin < 0");
-            ret = VFS_ERR_INVAL;
+            ret = MINI_ERR_INVAL;
             goto err_pool;
         }
     }
@@ -788,9 +788,9 @@ int st7789_probe_common(struct device* pdev, int require_nocs)
     lcd->spi_chunk = (size_t)max_trans;
     lcd->block_buf = s_st7789_block_buf[pool_idx];
 
-    if (device_set_priv(pdev, lcd) != VFS_OK)
+    if (device_set_priv(pdev, lcd) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_pool;
     }
 
@@ -798,7 +798,7 @@ int st7789_probe_common(struct device* pdev, int require_nocs)
     pdev->ops = &lcd->ops;
 
     SYS_LOGI(k_tag, "probe OK: pool=%d %dx%d dc=%s bl=%s nocs=%d", pool_idx, width, height, device_get_name(dc_dev), bl_tim_dev ? device_get_name(bl_tim_dev) : "none", require_nocs);
-    return VFS_OK;
+    return MINI_OK;
 
 err_pool:
     pdev->ops = NULL;
@@ -817,7 +817,7 @@ int st7789_remove_common(struct device* pdev)
     int pool_idx;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lcd = st7789_get_drvdata(pdev);
     if (IS_ERR(lcd))
@@ -832,10 +832,10 @@ int st7789_remove_common(struct device* pdev)
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     if (lcd->bl_tim.obj)
@@ -844,5 +844,5 @@ int st7789_remove_common(struct device* pdev)
     COMPAT_MEM_SET(lcd, 0, sizeof(*lcd));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_st7789_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }

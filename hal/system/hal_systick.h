@@ -40,16 +40,16 @@ extern "C"
     /**
      * @brief 初始化并启动 SysTick
      * @param[in] tick_hz tick 中断频率 (Hz), 来自 DTS chosen tick-rate (DTC_GEN_TICK_RATE_HZ)
-     * @return VFS_OK 成功; VFS_ERR_NOTSUPP 平台无 SysTick (非 Cortex-M); 负的 VFS_ERR_* 配置失败
+     * @return MINI_OK 成功; MINI_ERR_NOTSUPP 平台无 SysTick (非 Cortex-M); 负的 VFS_ERR_* 配置失败
      * @note  CPU 主频从 DTS /cpus/cpu@0 clock-frequency (DTC_GEN_CPU_CLOCK_HZ) 读取,
-     *        由此计算 LOAD 装载值; 非 Cortex-M 平台返回 VFS_ERR_NOTSUPP, 调度器回退 DTS chosen
+     *        由此计算 LOAD 装载值; 非 Cortex-M 平台返回 MINI_ERR_NOTSUPP, 调度器回退 DTS chosen
      * TIM。
      */
     int COMPAT_WARN_UNUSED_RESULT hal_systick_init(uint32_t tick_hz);
 
     /**
      * @brief 停止并关闭 SysTick
-     * @return VFS_OK 成功
+     * @return MINI_OK 成功
      */
     int COMPAT_WARN_UNUSED_RESULT hal_systick_deinit(void);
 

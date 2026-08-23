@@ -249,7 +249,7 @@ This repo is a **CMake + clangd** based, cross-platform architecture. **At the c
 
 - [ ] `config.h` is generated and OSAL/SYSTEM macros match expectations
 - [ ] dtc-lite produces `board_nodes.h` with `DEV_ID_COUNT` ≥ 1 (a real board should be far larger than the placeholder)
-- [ ] after linking, HALs like GPIO/UART are platform implementations (not always `VFS_ERR_NOTSUPP`)
+- [ ] after linking, HALs like GPIO/UART are platform implementations (not always `MINI_ERR_NOTSUPP`)
 - [ ] `board_driver_probe_all` finishes without unexpected FATAL
 - [ ] business tasks or the bare-metal loop run stably once interrupts are enabled
 

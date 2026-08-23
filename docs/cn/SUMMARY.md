@@ -94,7 +94,7 @@
 | OSAL 后端 | `CONFIG_OSAL_NULL`（裸机，默认）/ `FREERTOS`（v11.3.0）/ `RTTHREAD`（v5.3.0） |
 | 目标架构 | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · 双核 AMP |
 | 外设覆盖 | 总线层 6（SPI/I2C/I2S/UART/CAN/USB）· 无总线层 7（GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG）· HAL-Only：AMP/Storage/Platform Safety/**SDIO（预留 reserved）** |
-| 错误码 | `VFS_OK=0`；`VFS_ERR_*`（全名，见 `status.h`）；`device_find` 失败返回 `ERR_PTR` 而非 `NULL` |
+| 错误码 | `MINI_OK=0`；`VFS_ERR_*`（全名，见 `status.h`）；`device_find` 失败返回 `ERR_PTR` 而非 `NULL` |
 | 构建 | CMake ≥ 3.16；`lark`（dtc-lite）；内置 `kconfiglib` 14.1.0；`ETL` 随仓 vendor 且默认链入 |
 
 ---

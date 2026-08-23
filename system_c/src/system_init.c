@@ -67,14 +67,14 @@ void mini_tree_pre_os_init(void)
     }
 
 #ifdef CONFIG_SYSTEM_WDT
-    system_wdt_init_iwdg(8000);
+    COMPAT_IGNORE_RESULT(system_wdt_init_iwdg(8000));
 #endif
 
-    if (device_tree_init() != VFS_OK)
+    if (device_tree_init() != MINI_OK)
         SYS_LOGW(k_tag, "device_tree_init failed (non-fatal)");
 
 #ifdef CONFIG_EVENT_BUS
-    if (!event_bus_init())
+    if (event_bus_init() != MINI_OK)
     {
         SYS_LOGE(k_tag, "EventBus init failed — entering safe state");
         enter_safe_state("EventBus init failed");
@@ -105,12 +105,12 @@ void mini_tree_start_tasks(void)
         SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
 
 #ifdef CONFIG_SYSTEM_WDT
-    system_wdt_init(3000);
+    COMPAT_IGNORE_RESULT(system_wdt_init(3000));
 #endif
 
 #ifdef CONFIG_SYSTEM_SCRUBBER
-    system_scrubber_init();
-    system_scrubber_start();
+    COMPAT_IGNORE_RESULT(system_scrubber_init());
+    COMPAT_IGNORE_RESULT(system_scrubber_start());
 #endif
 
     safe_state_clear_bootloop();

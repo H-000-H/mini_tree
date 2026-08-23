@@ -58,12 +58,12 @@ typedef struct
  * @param[in] priv DAC 私有数据指针
  * @param[in] arg vfs_dac_arg 参数指针
  * @param[in] arg_len 参数长度
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int dac_cmd_write_value(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_dac_set_value(&priv->dac, ((const vfs_dac_arg*)arg)->value);
 }
 
@@ -72,12 +72,12 @@ static int dac_cmd_write_value(struct vfs_dac_priv* priv, void* arg, size_t arg_
  * @param[in] priv DAC 私有数据指针
  * @param[in] arg vfs_dac_arg 输出参数指针
  * @param[in] arg_len 参数长度
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_dac_get_value(&priv->dac, &((vfs_dac_arg*)arg)->value);
 }
 
@@ -86,14 +86,14 @@ static int dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_le
  * @param[in] priv 未使用
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 固定返回 VFS_ERR_NOTSUPP
+ * @return 固定返回 MINI_ERR_NOTSUPP
  */
 static int dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     COMPAT_IGNORE_RESULT(priv);
     COMPAT_IGNORE_RESULT(arg);
     COMPAT_IGNORE_RESULT(arg_len);
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 /**
@@ -101,12 +101,12 @@ static int dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, size_t
  * @param[in] priv DAC 私有数据指针
  * @param[in] arg vfs_dac_arg 参数指针 (pause 非 0 暂停)
  * @param[in] arg_len 参数长度
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     const vfs_dac_arg* a = (const vfs_dac_arg*)arg;
     if (a->pause)
         return hal_dac_dma_pause(&priv->dac);
@@ -118,7 +118,7 @@ static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_le
  * @param[in] priv DAC 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
@@ -132,7 +132,7 @@ static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
  * @param[in] priv DAC 私有数据指针
  * @param[in] arg 未使用
  * @param[in] arg_len 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
@@ -151,10 +151,10 @@ static int dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t arg_l
 static int dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     const vfs_dac_arg* a = (const vfs_dac_arg*)arg;
     if (!a->data || !a->len)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return hal_dac_write_dma_buffer(&priv->dac, a->data, a->len);
 }
 
@@ -163,12 +163,12 @@ static int dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, size_t
  * @param[in] priv DAC 私有数据指针
  * @param[in] arg vfs_dac_arg 参数指针 (pause 非 0 暂停)
  * @param[in] arg_len 参数长度
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int dac_cmd_base_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     const vfs_dac_arg* a = (const vfs_dac_arg*)arg;
     if (a->pause)
         return hal_dac_base_pause(&priv->dac);
@@ -199,7 +199,7 @@ pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void) {
  * @brief 解析 DAC Host DTS 属性 (硬件直投值), 填入 hal_dac_host_cfg
  * @param[in] pdev 设备对象指针
  * @param[in] cfg 输出的 HAL 主机配置指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* cfg)
 {
@@ -209,22 +209,22 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
     int dma_arr[VFS_DAC_DMA_FIELD_COUNT];
 
     if (!pdev || !cfg)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
-    if (device_get_prop_int(pdev, "dac-base", &dac_base) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "dac-base", &dac_base) != MINI_OK)
+        return MINI_ERR_INVAL;
     cfg->dac_handle = (uintptr_t)dac_base;
 
-    if (device_get_prop_int(pdev, "dac-clk", &tmp) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "dac-clk", &tmp) != MINI_OK)
+        return MINI_ERR_INVAL;
     cfg->config.dac_clk_periph = (uint32_t)tmp;
 
-    if (device_get_prop_int(pdev, "channel", &tmp) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "channel", &tmp) != MINI_OK)
+        return MINI_ERR_INVAL;
     cfg->config.channel = (uint32_t)tmp;
 
-    if (device_get_prop_int(pdev, "trigger-source", &tmp) != VFS_OK)
-        return VFS_ERR_INVAL;
+    if (device_get_prop_int(pdev, "trigger-source", &tmp) != MINI_OK)
+        return MINI_ERR_INVAL;
     cfg->config.trigger_source = (uint32_t)tmp;
 
     COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "data-align", &tmp));
@@ -263,12 +263,12 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
         cfg->gpio_cfg.pull = (uint32_t)pin_arr[7];
     }
     else
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     if (cfg->config.dma_enable)
     {
         if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) != VFS_DAC_DMA_FIELD_COUNT)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
 
         cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
         cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
@@ -306,14 +306,14 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
         cfg->dma_cfg.dma_fifo_threshold = (uint32_t)tmp;
     }
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief DAC 打开: 引用计数, 首次打开时 hal_dac_start
  * @param[in] pdev 设备对象指针
  * @param[in] arg 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_open(struct device* pdev, void* arg)
 {
@@ -323,7 +323,7 @@ static int vfs_dac_open(struct device* pdev, void* arg)
 
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
     lc = device_lc(pdev);
@@ -336,21 +336,21 @@ static int vfs_dac_open(struct device* pdev, void* arg)
 
     if (first == 1)
     {
-        if (hal_dac_start(&priv->dac) != VFS_OK)
+        if (hal_dac_start(&priv->dac) != MINI_OK)
         {
             dev_lc_open_abort(lc);
-            return VFS_ERR_IO;
+            return MINI_ERR_IO;
         }
     }
 
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
  * @brief DAC 关闭: 引用计数, 末次关闭时 hal_dac_force_stop 停止硬件
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_close(struct device* pdev)
 {
@@ -359,7 +359,7 @@ static int vfs_dac_close(struct device* pdev)
     int last;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
     lc = device_lc(pdev);
@@ -374,7 +374,7 @@ static int vfs_dac_close(struct device* pdev)
         COMPAT_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
 
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -383,7 +383,7 @@ static int vfs_dac_close(struct device* pdev)
  * @param[in] buf vfs_dac_arg 参数指针
  * @param[in] len 未使用
  * @param[in] timeout_ms 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
@@ -395,7 +395,7 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !buf)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     dac_arg = (const vfs_dac_arg*)buf;
     lc = device_lc(pdev);
@@ -403,7 +403,7 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
@@ -419,7 +419,7 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
  * @param[in] buf vfs_dac_arg 输出参数指针
  * @param[in] len 未使用
  * @param[in] timeout_ms 未使用
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
@@ -431,7 +431,7 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !buf)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     dac_arg = (vfs_dac_arg*)buf;
     lc = device_lc(pdev);
@@ -439,7 +439,7 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
@@ -456,7 +456,7 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
  * @param[in] arg 命令参数指针
  * @param[in] arg_len 参数长度
  * @param[in] timeout_ms 未使用
- * @return 成功返回 VFS_OK 或写入采样数, 未知命令返回 VFS_ERR_INVAL, 失败返回负数错误码
+ * @return 成功返回 MINI_OK 或写入采样数, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
 static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
@@ -467,14 +467,14 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 
     COMPAT_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
@@ -483,7 +483,7 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (offset < 1 || offset > DAC_CMD_COUNT)
     {
         dev_lc_io_end(lc);
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     }
     uint8_t index = (uint8_t)(offset - 1);
 
@@ -491,7 +491,7 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     if (handler != NULL)
         ret = handler(priv, arg, arg_len);
     else
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
 
     dev_lc_io_end(lc);
     return ret;
@@ -500,7 +500,7 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
 /**
  * @brief DAC 挂起: hal_dac_pause
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_suspend(struct device* pdev)
 {
@@ -509,14 +509,14 @@ static int vfs_dac_suspend(struct device* pdev)
     int ret;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
@@ -529,7 +529,7 @@ static int vfs_dac_suspend(struct device* pdev)
 /**
  * @brief DAC 恢复: hal_dac_resume
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_resume(struct device* pdev)
 {
@@ -538,14 +538,14 @@ static int vfs_dac_resume(struct device* pdev)
     int ret;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
 
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
@@ -571,7 +571,7 @@ static const struct file_operations fops = {
 /**
  * @brief DAC 探测: 解析 DTS, hal 初始化, 注册 fops
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_probe(struct device* pdev)
 {
@@ -581,20 +581,20 @@ static int vfs_dac_probe(struct device* pdev)
     int private_cfg = 0;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     pool_idx = osal_pool_claim(&s_dac_priv_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     priv = &s_dac_priv_pool[pool_idx];
     COMPAT_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != VFS_OK)
+    if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
     {
         SYS_LOGE(k_tag, "dts parse failed: %s", device_get_name(pdev));
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
         goto err_pool;
     }
 
@@ -603,19 +603,23 @@ static int vfs_dac_probe(struct device* pdev)
 
     if (priv->cfg.config.dma_enable)
     {
-        fifo_init(&priv->dma_fifo, priv->dma_data_buf, DAC_DMA_BUFFER_SIZE);
+        if (fifo_init(&priv->dma_fifo, priv->dma_data_buf, DAC_DMA_BUFFER_SIZE) != BUFF_OK)
+        {
+            ret = MINI_ERR_INVAL;
+            goto err_pool;
+        }
         priv->cfg.dma_cfg.dma_fifo = &priv->dma_fifo;
     }
 
     ret = hal_dac_device_init(&priv->dac, &priv->cfg, &priv->unique);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_tag, "hal_dac_device_init failed: %s", device_get_name(pdev));
         goto err_pool;
     }
 
     ret = hal_dac_init(&priv->dac);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         SYS_LOGE(k_tag, "hal_dac_init failed: %s", device_get_name(pdev));
         goto err_deinit;
@@ -624,14 +628,14 @@ static int vfs_dac_probe(struct device* pdev)
     priv->ops = fops;
     pdev->ops = &priv->ops;
 
-    if (device_set_priv(pdev, priv) != VFS_OK)
+    if (device_set_priv(pdev, priv) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err_deinit;
     }
 
     SYS_LOGI(k_tag, "probe OK %s", device_get_name(pdev));
-    return VFS_OK;
+    return MINI_OK;
 
 err_deinit:
     pdev->ops = NULL;
@@ -645,7 +649,7 @@ err_pool:
 /**
  * @brief DAC 移除: remove_start → 排空 IO → force_stop/close → 归还私有池
  * @param[in] pdev 设备对象指针
- * @return 成功返回 VFS_OK, 失败返回负数错误码
+ * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
 static int vfs_dac_remove(struct device* pdev)
 {
@@ -654,7 +658,7 @@ static int vfs_dac_remove(struct device* pdev)
     int pool_idx;
 
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
     lc = device_lc(pdev);
@@ -666,10 +670,10 @@ static int vfs_dac_remove(struct device* pdev)
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
 
     COMPAT_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
@@ -679,7 +683,7 @@ static int vfs_dac_remove(struct device* pdev)
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_dac_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(vfs_dac_priv, "dac", vfs_dac_probe, vfs_dac_remove)

@@ -122,18 +122,18 @@ static void event_bus_dispatch_task(void* param)
 
 /**
  * @brief 初始化 EventBus
- * @return true 成功
+ * @return MINI_OK 成功; MINI_ERR_NOMEM 队列/锁创建失败
  */
-bool event_bus_init(void)
+int event_bus_init(void)
 {
     if (s_bus.inited)
-        return true;
+        return MINI_OK;
 
     s_bus.queue = osal_queue_create(K_QUEUE_LEN, sizeof(struct event));
     if (s_bus.queue == NULL)
     {
         SYS_LOGE(K_TAG, "FATAL: osal_queue_create failed — event bus unusable");
-        return false;
+        return MINI_ERR_NOMEM;
     }
 
     if (osal_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage, sizeof(s_bus.sub_lock_storage)) != 0 || s_bus.sub_lock == NULL)
@@ -141,12 +141,12 @@ bool event_bus_init(void)
         SYS_LOGE(K_TAG, "FATAL: mutex create failed");
         osal_queue_delete(s_bus.queue);
         s_bus.queue = NULL;
-        return false;
+        return MINI_ERR_NOMEM;
     }
 
     s_bus.inited = true;
     SYS_LOGI(K_TAG, "event bus initialized, queue=%u slots", (unsigned)K_QUEUE_LEN);
-    return true;
+    return MINI_OK;
 }
 
 /**
@@ -155,28 +155,29 @@ bool event_bus_init(void)
  * @param[in] id_max 最大事件 ID (含)
  * @param[in] callback 匹配时回调
  * @param[in] user_data 传给 callback 的用户数据
- * @return true 订阅成功; false 封表/ISR/参数无效/表满/锁超时
+ * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文; MINI_ERR_NOTSUPP 封表;
+ *         MINI_ERR_INVAL 参数非法/未初始化; MINI_ERR_TIMEOUT 锁超时; MINI_ERR_NOSPC 表满
  */
-bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback, void* user_data)
+int event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback, void* user_data)
 {
     if (osal_in_isr())
-        return false;
+        return MINI_ERR_ISR;
     if (s_bus.is_sealed)
-        return false;
+        return MINI_ERR_NOTSUPP;
     if (callback == NULL)
-        return false;
+        return MINI_ERR_INVAL;
     if (s_bus.sub_lock == NULL)
-        return false;
+        return MINI_ERR_INVAL;
     if (id_min > id_max)
-        return false;
+        return MINI_ERR_INVAL;
 
     if (osal_mutex_lock(s_bus.sub_lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) != OSAL_OK)
     {
         SYS_LOGE(K_TAG, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
-        return false;
+        return MINI_ERR_TIMEOUT;
     }
 
-    bool ok = false;
+    int ret = MINI_ERR_NOSPC;
     if (s_bus.count < K_MAX_SUBSCRIBERS)
     {
         s_bus.subscribers[s_bus.count].id_min = id_min;
@@ -184,11 +185,11 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t call
         s_bus.subscribers[s_bus.count].callback = callback;
         s_bus.subscribers[s_bus.count].user_data = user_data;
         s_bus.count++;
-        ok = true;
+        ret = MINI_OK;
     }
 
     osal_mutex_unlock(s_bus.sub_lock);
-    return ok;
+    return ret;
 }
 
 /**
@@ -197,15 +198,15 @@ bool event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t call
  * @param[in] arg 事件参数
  * @param[in] from_isr 为 true 时走 ISR 安全入队路径
  * @param[in] px_yield_required ISR 路径下输出是否需要 yield (可为 NULL)
- * @return true 入队成功, false 总线未初始化或队列满
+ * @return MINI_OK 入队成功; MINI_ERR_AGAIN 总线未初始化/OS 未就绪; MINI_ERR_NOSPC 队列满
  */
-static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
+static int event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
 {
     if (s_bus.queue == NULL || !s_bus.inited)
-        return false;
+        return MINI_ERR_AGAIN;
 
     if (!g_system_os_initialized)
-        return false;
+        return MINI_ERR_AGAIN;
 
     const struct event event = {id, arg};
     bool ok;
@@ -224,21 +225,21 @@ static bool event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr, b
             if ((cur % 8) == 0 && cur != 0)
                 SYS_LOGW(K_TAG, "event queue full, dropped=%u", (unsigned)cur);
         }
-        return false;
+        return MINI_ERR_NOSPC;
     }
-    return true;
+    return MINI_OK;
 }
 
 /**
  * @brief 任务态 post
  * @param[in] id 事件 ID
  * @param[in] arg 参数
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文调用; 其余同 event_bus_post_internal
  */
-bool event_bus_post(uint32_t id, uintptr_t arg)
+int event_bus_post(uint32_t id, uintptr_t arg)
 {
     if (osal_in_isr())
-        return false;
+        return MINI_ERR_ISR;
 
     return event_bus_post_internal(id, arg, false, NULL);
 }
@@ -248,9 +249,9 @@ bool event_bus_post(uint32_t id, uintptr_t arg)
  * @param[in] id 事件 ID
  * @param[in] arg 参数
  * @param[in] px_yield_required yield
- * @return true
+ * @return MINI_OK 成功; MINI_ERR_AGAIN 未就绪; MINI_ERR_NOSPC 队列满
  */
-bool event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required) { return event_bus_post_internal(id, arg, true, px_yield_required); }
+int event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required) { return event_bus_post_internal(id, arg, true, px_yield_required); }
 
 /**
  * @brief 丢弃计数
@@ -271,7 +272,7 @@ void event_bus_start(void)
         SYS_LOGW(K_TAG, "dispatch task create failed");
         return;
     }
-    system_wdt_subscribe(s_bus.task);
+    COMPAT_IGNORE_RESULT(system_wdt_subscribe(s_bus.task));
     SYS_LOGI(K_TAG, "dispatch task started prio %lu", (unsigned long)K_DISPATCH_PRIO);
 }
 

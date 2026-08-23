@@ -1074,7 +1074,11 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
 
     struct osal_queue_obj* queue = &s_queues[idx];
     queue->elements_per_item = elements_per_item; /**< 设置每个队列元素包含的元素个数 */
-    fifo_init(&queue->fifo, queue->buf, (uint16_t)total_elements);
+    if (fifo_init(&queue->fifo, queue->buf, (uint16_t)total_elements) != BUFF_OK)
+    {
+        COMPAT_IGNORE_RESULT(osal_pool_release(&s_queue_pool_ctrl, idx));
+        return NULL;
+    }
 
     return (osal_queue_handle_t)queue;
 #else
@@ -1115,13 +1119,18 @@ static bool queue_send_internal(osal_queue_handle_t queue, const void* item)
     if (!q)
         return false;
     uint16_t epi = (uint16_t)q->elements_per_item;
+    uint16_t count = 0;
+    uint16_t written = 0;
 
     /**< SPSC 安全: 消费者只能释放空间不会缩减,
      * 检查通过则写入必然完整就是如果你传的格子数大小超过剩余各子数那么就会返回false */
-    if ((uint16_t)(q->fifo.size - fifo_get_count(&q->fifo)) < epi)
+    COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+    if ((uint16_t)(q->fifo.size - count) < epi)
         return false;
 
-    return fifo_write_block(&q->fifo, (const fifo_data_type*)item, epi) == epi;
+    if (fifo_write_block(&q->fifo, (const fifo_data_type*)item, epi, &written) != BUFF_OK)
+        return false;
+    return written == epi;
 }
 
 /**
@@ -1174,33 +1183,42 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
     if (!q)
         return false;
     uint16_t epi = (uint16_t)q->elements_per_item;
+    uint16_t count = 0;
+    uint16_t rd = 0;
 
     if (timeout_ms == OSAL_WAIT_FOREVER)
     {
-        while (fifo_get_count(&q->fifo) < epi)
+        COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+        while (count < epi)
         {
 #ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
 #endif
+            COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
         }
     }
     else if (timeout_ms > 0)
     {
         uint32_t start = osal_time_ms();
-        while (fifo_get_count(&q->fifo) < epi)
+        COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+        while (count < epi)
         {
             if ((osal_time_ms() - start) >= timeout_ms)
                 return false;
 #ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
 #endif
+            COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
         }
     }
 
-    if (fifo_get_count(&q->fifo) < epi)
+    COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+    if (count < epi)
         return false;
 
-    return fifo_read_block(&q->fifo, (fifo_data_type*)item, epi) == epi;
+    if (fifo_read_block(&q->fifo, (fifo_data_type*)item, epi, &rd) != BUFF_OK)
+        return false;
+    return rd == epi;
 }
 
 /**
@@ -1222,11 +1240,16 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
     if (!q)
         return false;
     uint16_t epi = (uint16_t)q->elements_per_item;
+    uint16_t count = 0;
+    uint16_t rd = 0;
 
-    if (fifo_get_count(&q->fifo) < epi)
+    COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+    if (count < epi)
         return false;
 
-    return fifo_read_block(&q->fifo, (fifo_data_type*)item, epi) == epi;
+    if (fifo_read_block(&q->fifo, (fifo_data_type*)item, epi, &rd) != BUFF_OK)
+        return false;
+    return rd == epi;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

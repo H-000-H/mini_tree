@@ -112,7 +112,7 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 
 - `name`：C 标识符，全局唯一
 - `compatible`：与 DTS 节点 `compatible = "..."` **完全一致**
-- `probe`/`remove`：返回 `VFS_OK` 或 `VFS_ERR_*`
+- `probe`/`remove`：返回 `MINI_OK` 或 `VFS_ERR_*`
 
 命名统一小写（`.clang-tidy` 的 `readability-identifier-naming` 强制）：`x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::` 等；`.clang-format` 为 Allman、单语句去括号、4 空格、200 列。app 层为建议，app 以下为强规定。
 

@@ -115,7 +115,7 @@ static const struct bus_controller_ops s_i2c_controller_ops = {
  * @brief I2C 总线主机初始化实现
  * @param[in] pdev host device 指针
  * @param[in] cfg host 配置指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_host_init_impl(struct device* pdev, const void* cfg)
 {
@@ -125,16 +125,16 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
     int ret;
 
     if (!pdev || !cfg)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     host_cfg = (const struct hal_i2c_bus_config*)cfg;
 
     if (i2c_host_from_device(pdev))
-        return VFS_OK;
+        return MINI_OK;
 
     idx = osal_pool_claim(&s_i2c_host_pool_ctrl);
     if (idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     host = &s_i2c_hosts[idx];
 
@@ -145,7 +145,7 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
     COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     ret = hal_i2c_bus_host_init(&host->hal_host, idx, host_cfg);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_MEM_SET(host, 0, sizeof(*host));
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
@@ -153,7 +153,7 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
     }
 
     ret = bus_controller_bind_full(pdev, BUS_TYPE_I2C, &s_i2c_controller_ops, host);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(hal_i2c_bus_host_deinit(&host->hal_host));
         COMPAT_MEM_SET(host, 0, sizeof(*host));
@@ -161,7 +161,7 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
         return ret;
     }
 
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg) { return i2c_host_init_impl(pdev, cfg); }
@@ -169,7 +169,7 @@ int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg)
 /**
  * @brief I2C 总线主机销毁实现
  * @param[in] pdev host device 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_host_deinit_impl(struct device* pdev)
 {
@@ -178,23 +178,23 @@ static int i2c_host_deinit_impl(struct device* pdev)
     int ret;
 
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     host = i2c_host_from_device(pdev);
     if (!host)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
     {
         SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
-        return VFS_ERR_BUSY;
+        return MINI_ERR_BUSY;
     }
 
     idx = (int)(host - s_i2c_hosts);
     bus_controller_unbind(pdev);
 
     ret = hal_i2c_bus_host_deinit(&host->hal_host);
-    if (ret == VFS_OK)
+    if (ret == MINI_OK)
     {
         COMPAT_MEM_SET(host, 0, sizeof(*host));
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
@@ -217,9 +217,9 @@ static int i2c_host_role_impl(struct device* pdev)
     if (!pdev)
         return -1;
 
-    if (bus_controller_get(pdev, &ctlr) != VFS_OK)
+    if (bus_controller_get(pdev, &ctlr) != MINI_OK)
     {
-        if (bus_controller_of(pdev, &ctlr) != VFS_OK)
+        if (bus_controller_of(pdev, &ctlr) != MINI_OK)
             return -1;
     }
 
@@ -240,7 +240,7 @@ int i2c_bus_host_role(struct device* pdev) { return i2c_host_role_impl(pdev); }
  * @param[in] pdev client device 指针
  * @param[in] cfg client 配置指针
  * @param[out] out 输出 client 指针
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
@@ -251,29 +251,29 @@ static int i2c_client_register_impl(struct device* pdev, const void* cfg, void**
     int id;
 
     if (!pdev || !cfg || !out)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client_cfg = (const struct hal_i2c_device_config*)cfg;
 
-    if (bus_controller_of(pdev, &ctlr) != VFS_OK)
-        return VFS_ERR_NODEV;
+    if (bus_controller_of(pdev, &ctlr) != MINI_OK)
+        return MINI_ERR_NODEV;
 
     host = (struct i2c_bus_host*)ctlr->hw_ctx;
     if (!host)
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
 
     id = (int)board_dev_find(device_get_name(pdev));
     if (id < 0 || id >= DEV_ID_COUNT)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = &s_i2c_clients[id];
 
     if (client->pdev)
     {
         if (client->pdev != pdev)
-            return VFS_ERR_BUSY;
+            return MINI_ERR_BUSY;
         *out = client;
-        return VFS_OK;
+        return MINI_OK;
     }
 
     COMPAT_MEM_SET(client, 0, sizeof(*client));
@@ -284,7 +284,7 @@ static int i2c_client_register_impl(struct device* pdev, const void* cfg, void**
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
 
     *out = client;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg, struct i2c_bus_client** out) { return i2c_client_register_impl(pdev, cfg, (void**)out); }
@@ -325,18 +325,18 @@ int i2c_bus_open(struct device* pdev)
 
     client = i2c_client_from_device(pdev);
     if (!client)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (client->hw_open)
-        return VFS_OK;
+        return MINI_OK;
 
     COMPAT_IGNORE_RESULT(hal_i2c_dev_init(&client->hal_dev, &client->host->hal_host, &client->cfg));
     ret = hal_i2c_dev_hw_open(&client->hal_dev);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     client->hw_open = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int i2c_bus_close(struct device* pdev)
@@ -345,14 +345,14 @@ int i2c_bus_close(struct device* pdev)
 
     client = i2c_client_from_device(pdev);
     if (!client)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (client->hw_open)
     {
         COMPAT_IGNORE_RESULT(hal_i2c_dev_hw_close(&client->hal_dev));
         client->hw_open = 0;
     }
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -362,12 +362,12 @@ int i2c_bus_close(struct device* pdev)
  * @param[in] len 字节数
  * @param[in] timeout_ms 超时 (ms)
  * @param[in] xfer_mode 传输模式 (POLL / DMA / AUTO)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     if (xfer_mode > HAL_I2C_XFER_DMA)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     if (xfer_mode == HAL_I2C_XFER_POLL)
         return hal_i2c_write(&client->hal_dev, tx, len, timeout_ms);
@@ -379,7 +379,7 @@ static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* t
     if (client->host->hal_host.cfg.dma_tx.dma_enable)
     {
         int ret = hal_i2c_dma_write(&client->hal_dev, tx, len, timeout_ms);
-        if (ret != VFS_ERR_NOTSUPP)
+        if (ret != MINI_ERR_NOTSUPP)
             return ret;
     }
     return hal_i2c_write(&client->hal_dev, tx, len, timeout_ms);
@@ -392,12 +392,12 @@ static int i2c_master_write_mode(struct i2c_bus_client* client, const uint8_t* t
  * @param[in] len 字节数
  * @param[in] timeout_ms 超时 (ms)
  * @param[in] xfer_mode 传输模式 (POLL / DMA / AUTO)
- * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
  */
 static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     if (xfer_mode > HAL_I2C_XFER_DMA)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     if (xfer_mode == HAL_I2C_XFER_POLL)
         return hal_i2c_read(&client->hal_dev, rx, len, timeout_ms);
@@ -408,7 +408,7 @@ static int i2c_master_read_mode(struct i2c_bus_client* client, uint8_t* rx, size
     if (client->host->hal_host.cfg.dma_rx.dma_enable)
     {
         int ret = hal_i2c_dma_read(&client->hal_dev, rx, len, timeout_ms);
-        if (ret != VFS_ERR_NOTSUPP)
+        if (ret != MINI_ERR_NOTSUPP)
             return ret;
     }
     return hal_i2c_read(&client->hal_dev, rx, len, timeout_ms);
@@ -420,17 +420,17 @@ int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t
     int role;
 
     if (!pdev || len == 0 || (!tx && !rx))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = i2c_client_from_device(pdev);
     if (!client || !client->hw_open)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     role = i2c_bus_host_role(pdev);
     if (role == I2C_BUS_ROLE_SLAVE)
         return i2c_bus_slave_sync(pdev, tx, rx, len, timeout_ms);
     if (role != I2C_BUS_ROLE_MASTER)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (tx && rx)
     {
@@ -443,7 +443,7 @@ int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t
         if (client->host->hal_host.cfg.dma_tx.dma_enable && (len == 1U || client->host->hal_host.cfg.dma_rx.dma_enable))
         {
             int ret = hal_i2c_dma_write_then_read(&client->hal_dev, tx, rx, len, timeout_ms);
-            if (ret != VFS_ERR_NOTSUPP)
+            if (ret != MINI_ERR_NOTSUPP)
                 return ret;
         }
         return hal_i2c_sync(&client->hal_dev, tx, rx, len, timeout_ms);
@@ -458,14 +458,14 @@ int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t t
     struct i2c_bus_client* client;
 
     if (!pdev || !tx || len == 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = i2c_client_from_device(pdev);
     if (!client || !client->hw_open)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (i2c_bus_host_role(pdev) != I2C_BUS_ROLE_MASTER)
-        return VFS_ERR_NOTSUPP;
+        return MINI_ERR_NOTSUPP;
 
     return i2c_master_write_mode(client, tx, len, timeout_ms, xfer_mode);
 }
@@ -475,14 +475,14 @@ int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_
     struct i2c_bus_client* client;
 
     if (!pdev || !rx || len == 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     client = i2c_client_from_device(pdev);
     if (!client || !client->hw_open)
-        return VFS_ERR_NODEV;
+        return MINI_ERR_NODEV;
 
     if (i2c_bus_host_role(pdev) != I2C_BUS_ROLE_MASTER)
-        return VFS_ERR_NOTSUPP;
+        return MINI_ERR_NOTSUPP;
 
     return i2c_master_read_mode(client, rx, len, timeout_ms, xfer_mode);
 }
@@ -497,7 +497,7 @@ int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size
     COMPAT_IGNORE_RESULT(rx);
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
@@ -506,7 +506,7 @@ int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
     COMPAT_IGNORE_RESULT(data);
     COMPAT_IGNORE_RESULT(len);
     COMPAT_IGNORE_RESULT(timeout_ms);
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
 int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms)
@@ -516,5 +516,5 @@ int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t
     COMPAT_IGNORE_RESULT(rx_cap);
     COMPAT_IGNORE_RESULT(trans_len);
     COMPAT_IGNORE_RESULT(timeout_ms);
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }

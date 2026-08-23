@@ -42,13 +42,13 @@ extern "C"
      * @brief I2C host 初始化 (config 类型直接用 hal_i2c_bus_config, bus 零翻译透传)
      * @param[in] pdev controller device (host)
      * @param[in] cfg host 配置 (VFS 填充 DTSI 硬件直投值)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_host_init(struct device* pdev, const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief I2C host 反初始化 (ref_count > 0 时返回 BUSY)
      * @param[in] pdev controller device (host)
-     * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
      */
     int i2c_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -66,7 +66,7 @@ extern "C"
      * @param[in] pdev client device
      * @param[in] cfg client 配置 (VFS 填充 DTSI 硬件直投值)
      * @param[out] out 输出 i2c_bus_client 指针
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg, struct i2c_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -78,13 +78,13 @@ extern "C"
     /**
      * @brief 打开 I2C client 硬件 (幂等)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 I2C client 硬件 (幂等)
      * @param[in] pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
 
@@ -95,7 +95,7 @@ extern "C"
      * @param[out] rx 接收缓冲区 (可 NULL)
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -104,7 +104,7 @@ extern "C"
      * @param[out] rx 接收缓冲区
      * @param[out] len 读取长度
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -113,7 +113,7 @@ extern "C"
      * @param[in] tx 发送缓冲区
      * @param[in] len 写入长度
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -123,7 +123,7 @@ extern "C"
      * @param[out] rx 接收缓冲区
      * @param[in] len 传输字节数
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -132,7 +132,7 @@ extern "C"
      * @param[in] data 发送数据
      * @param[in] len 数据长度
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /**
@@ -142,7 +142,7 @@ extern "C"
      * @param[out] rx_cap 接收缓冲区容量
      * @param[out] trans_len 输出实际传输长度
      * @param[in] timeout_ms 超时 (毫秒)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
+     * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap, size_t* trans_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
     /*===========================================================================================================================================================*/

@@ -33,7 +33,7 @@ extern "C"
      * @param[in] px 像素缓冲（RGB565 或单色，取决于 format）
      * @param[in] format enum display_color_format
      * @param[in] timeout_ms 超时（ms）
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     COMPAT_STATIC_INLINE int display_lvgl_flush_cb(void* disp, int16_t x1, int16_t y1, int16_t x2, int16_t y2, const void* px, uint8_t format, uint32_t timeout_ms)
     {
@@ -42,7 +42,7 @@ extern "C"
         struct display_draw_arg draw_arg;
 
         if (!disp || !px || x2 < x1 || y2 < y1)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         draw_arg.x = x1;
         draw_arg.y = y1;
         draw_arg.w = w;
@@ -58,7 +58,7 @@ extern "C"
      * @param[in] fb 整帧缓冲（page-major 单色）
      * @param[in] len 缓冲长度（应为 w*h/8）
      * @param[in] timeout_ms 超时（ms）
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     COMPAT_STATIC_INLINE int display_u8g2_flush_fb(void* disp, const uint8_t* fb, size_t len, uint32_t timeout_ms)
     {
@@ -66,13 +66,13 @@ extern "C"
         struct display_draw_arg draw_arg;
 
         if (!disp || !fb || len == 0U)
-            return VFS_ERR_INVAL;
-        if (device_ioctl((struct device*)disp, DISPLAY_CMD_GET_INFO, &info, sizeof(info), 0) != VFS_OK)
-            return VFS_ERR_IO;
+            return MINI_ERR_INVAL;
+        if (device_ioctl((struct device*)disp, DISPLAY_CMD_GET_INFO, &info, sizeof(info), 0) != MINI_OK)
+            return MINI_ERR_IO;
         if (info.format != DISPLAY_FMT_MONO_1BPP)
-            return VFS_ERR_NOTSUPP;
+            return MINI_ERR_NOTSUPP;
         if (len != (size_t)info.width * (size_t)info.height / 8U)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         draw_arg.x = 0;
         draw_arg.y = 0;
         draw_arg.w = (int16_t)info.width;

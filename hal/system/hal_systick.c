@@ -15,7 +15,7 @@
  *   本层不写死频率; 仅写死基址 HAL_SYSTICK_BASE (默认 0xE000E010, 可覆盖)。
  *   中断向量 SysTick_Handler 在本文件 weak 定义, 内部调用 hal_systick_irq_handler;
  *   hal_systick_irq_handler 亦为 weak 空钩子, 由使用方 (如调度器) 强符号覆盖以累加滴答。
- *   非 Cortex-M 平台 (RISC-V 等) 无 SysTick, hal_systick_init 返回 VFS_ERR_NOTSUPP,
+ *   非 Cortex-M 平台 (RISC-V 等) 无 SysTick, hal_systick_init 返回 MINI_ERR_NOTSUPP,
  *   调度器据此回退 DTS chosen TIM。
  */
 
@@ -48,16 +48,16 @@
 int hal_systick_init(uint32_t tick_hz)
 {
     if (tick_hz == 0u)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     uint32_t cpu_hz = (uint32_t)DTC_GEN_CPU_CLOCK_HZ;
     if (cpu_hz == 0u)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* reload = cpu_hz / tick_hz - 1, 24 位上限检查 */
     uint32_t reload = cpu_hz / tick_hz;
     if (reload == 0u || reload > (HAL_SYSTICK_LOAD_MASK + 1u))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     reload -= 1u;
 
     /* 先关断再配置, 避免中间态触发 */
@@ -65,7 +65,7 @@ int hal_systick_init(uint32_t tick_hz)
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, reload);
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, HAL_SYSTICK_CTRL_CLKSOURCE | HAL_SYSTICK_CTRL_TICKINT | HAL_SYSTICK_CTRL_ENABLE);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 int hal_systick_deinit(void)
@@ -73,7 +73,7 @@ int hal_systick_deinit(void)
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, 0u);
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, 0u);
     COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -86,10 +86,10 @@ COMPAT_WEAK void SysTick_Handler(void) { hal_systick_irq_handler(); }
 int hal_systick_init(uint32_t tick_hz)
 {
     (void)tick_hz;
-    return VFS_ERR_NOTSUPP;
+    return MINI_ERR_NOTSUPP;
 }
 
-int hal_systick_deinit(void) { return VFS_OK; }
+int hal_systick_deinit(void) { return MINI_OK; }
 
 #endif /* __CORTEX_M* / __ARM_ARCH_*M__ */
 

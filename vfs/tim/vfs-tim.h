@@ -91,7 +91,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_pwm_update(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_pwm_update(arg->obj, arg->channel, arg->arr, arg->ccr);
     }
 
@@ -101,7 +101,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_get_counter(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_get_counter(arg->obj, &arg->value);
     }
 
@@ -111,7 +111,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_set_counter(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_set_counter(arg->obj, arg->value);
     }
 
@@ -121,7 +121,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_get_capture(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_get_capture_value(arg->obj, arg->channel, &arg->value);
     }
 
@@ -131,7 +131,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_get_encoder(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_get_encoder_value(arg->obj, &arg->value);
     }
 
@@ -141,7 +141,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_get_hall(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_get_hall_value(arg->obj, &arg->value);
     }
 
@@ -151,7 +151,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_set_autoreload(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_set_autoreload(arg->obj, arg->arr);
     }
 
@@ -161,7 +161,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_get_autoreload(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_get_autoreload(arg->obj, &arg->value);
     }
 
@@ -171,7 +171,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_clear_update_flag(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_clear_update_flag(arg->obj);
     }
 
@@ -181,7 +181,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_set_prescaler(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_set_prescaler(arg->obj, arg->value);
     }
 
@@ -191,7 +191,7 @@ extern "C"
     COMPAT_STATIC_INLINE int vfs_tim_fast_get_prescaler(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
-            return VFS_ERR_INVAL;
+            return MINI_ERR_INVAL;
         return hal_tim_get_prescaler(arg->obj, &arg->value);
     }
 

@@ -78,25 +78,25 @@ extern "C"
      * @brief 初始化 OTG 时钟、DP/DM AF、NVIC 优先级 (不启 Cube PCD)
      * @param[in] host host 对象
      * @param[in] cfg  DTSI 直投配置
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int hal_usb_bus_host_init(struct hal_usb_bus_host* host, const struct hal_usb_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化: 关 IRQ、关时钟、恢复 GPIO
      * @param[in] host host 对象
-     * @return VFS_OK 或 VFS_ERR_*
+     * @return MINI_OK 或 VFS_ERR_*
      */
     int hal_usb_bus_host_deinit(struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 使能 OTG NVIC 中断
      * @param[in] host host 对象
-     * @return VFS_OK 成功; 负的 VFS_ERR_* 表示失败
+     * @return MINI_OK 成功; 负的 VFS_ERR_* 表示失败
      */
     int hal_usb_irq_enable(const struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
     /**
      * @brief 禁止 OTG NVIC 中断
      * @param[in] host host 对象
-     * @return VFS_OK 成功; 负的 VFS_ERR_* 表示失败
+     * @return MINI_OK 成功; 负的 VFS_ERR_* 表示失败
      */
     int hal_usb_irq_disable(const struct hal_usb_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
 

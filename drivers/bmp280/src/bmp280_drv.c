@@ -76,12 +76,12 @@ static struct bmp280_device* bmp280_get_drvdata(struct device* pdev) { return (s
  * @param[in] tx 发送缓冲
  * @param[in] len 发送长度
  * @param[in] timeout_ms 超时（ms）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 /**
@@ -90,37 +90,37 @@ static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t le
  * @param[out] rx 接收缓冲
  * @param[in] len 接收长度
  * @param[in] timeout_ms 超时（ms）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int bmp280_i2c_rd(struct bmp280_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !rx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_read(dev->i2c_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 读连续寄存器（先写起始地址，再读）
  * @param[in] start 起始寄存器地址
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* buf, size_t len, uint32_t timeout_ms)
 {
     int ret = bmp280_i2c_wr(dev, &start, 1, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     return bmp280_i2c_rd(dev, buf, len, timeout_ms);
 }
 
 /**
  * @brief 加载校准系数（T/P）并校验可用
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int bmp280_load_calib(struct bmp280_device* dev, uint32_t timeout_ms)
 {
     uint8_t c[24];
     int ret = bmp280_read_regs(dev, BMP280_REG_DIG_T1, c, sizeof(c), timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     dev->dig_T1 = (uint16_t)(c[0] | ((uint16_t)c[1] << 8));
     dev->dig_T2 = (int16_t)(c[2] | ((uint16_t)c[3] << 8));
@@ -135,7 +135,7 @@ static int bmp280_load_calib(struct bmp280_device* dev, uint32_t timeout_ms)
     dev->dig_P8 = (int16_t)(c[20] | ((uint16_t)c[21] << 8));
     dev->dig_P9 = (int16_t)(c[22] | ((uint16_t)c[23] << 8));
     dev->calib_ok = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /* Bosch BMP280 datasheet 补偿公式（32-bit） */
@@ -182,34 +182,34 @@ static uint32_t bmp280_compensate_p(struct bmp280_device* dev, int32_t adc_p)
 
 /**
  * @brief 首次 open 时初始化硬件：软复位 + 加载校准
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int bmp280_hw_create(struct bmp280_device* dev)
 {
     int ret;
     const uint8_t soft_rst[2] = {BMP280_REG_SOFT_RESET, BMP280_SOFT_RESET_VAL};
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     ret = device_open(dev->i2c_dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     ret = bmp280_i2c_wr(dev, soft_rst, 2, 100);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
         return ret;
     }
     osal_delay_ms(10);
     ret = bmp280_load_calib(dev, 100);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
     {
         COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
         return ret;
     }
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -235,7 +235,7 @@ static int bmp280_open(struct device* pdev, void* arg)
     int first, ret;
     COMPAT_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -245,18 +245,18 @@ static int bmp280_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = bmp280_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -268,7 +268,7 @@ static int bmp280_close(struct device* pdev)
     struct dev_lifecycle* lc;
     int last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -281,7 +281,7 @@ static int bmp280_close(struct device* pdev)
     if (last)
         bmp280_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -306,20 +306,20 @@ static int bmp280_cmd_read(struct bmp280_device* dev, void* arg, size_t len, uin
     int32_t adc_t;
     int32_t t_x100;
     if (!dev->hw_ready || !dev->calib_ok || !o || len != sizeof(*o))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     ret = bmp280_i2c_wr(dev, ctrl, 2, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     osal_delay_ms(10);
     ret = bmp280_read_regs(dev, BMP280_REG_PRESS_MSB, raw, sizeof(raw), timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     adc_p = (int32_t)(((uint32_t)raw[0] << 12) | ((uint32_t)raw[1] << 4) | (raw[2] >> 4));
     adc_t = (int32_t)(((uint32_t)raw[3] << 12) | ((uint32_t)raw[4] << 4) | (raw[5] >> 4));
     t_x100 = bmp280_compensate_t(dev, adc_t);
     o->temp_c_x100 = (int16_t)t_x100;
     o->press_pa = (int32_t)bmp280_compensate_p(dev, adc_p);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 static const struct bmp280_ioctl_map s_bmp280_map[BMP280_CMD_COUNT] = {
@@ -336,7 +336,7 @@ static int bmp280_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     int32_t off;
     int ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -344,11 +344,11 @@ static int bmp280_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)BMP280_CMD_BASE;
     if (off < 1 || off > BMP280_CMD_COUNT || !s_bmp280_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_bmp280_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -369,28 +369,28 @@ static int bmp280_probe(struct device* pdev)
     struct bmp280_device* dev;
     int pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_bmp280_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_bmp280_pool[pool_idx];
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     dev->i2c_dev = device_get_parent(pdev);
     if (!dev->i2c_dev)
     {
-        ret = VFS_ERR_NODEV;
+        ret = MINI_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = bmp280_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
@@ -407,7 +407,7 @@ static int bmp280_remove(struct device* pdev)
     struct dev_lifecycle* lc;
     int idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -417,16 +417,16 @@ static int bmp280_remove(struct device* pdev)
     idx = (int)(dev - s_bmp280_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     bmp280_hw_destroy(dev);
     COMPAT_MEM_SET(dev, 0, sizeof(*dev));
     COMPAT_IGNORE_RESULT(osal_pool_release(&s_bmp280_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove)
