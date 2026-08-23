@@ -28,7 +28,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | `faq.md` | FAQ (regenerate artifacts, install `lark`, …) | P2 | [en](faq.md) |
 | `architecture.md` | Layering `app→board→vfs→bus→hal(weak)→vendor`, data flow, boot sequence | **P0** | [en](architecture.md) |
 | `patterns.md` | Key mechanisms anatomy: pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines | P1 | [en](patterns.md) |
-| `ecosystem.md` | Brick-style linking: `lib/` vendors only; TinyUSB/lwIP/cJSON are **config-time** FetchContent, rest link-time; 22 OSS libs with versions | **P0** | [en](ecosystem.md) |
+| `ecosystem.md` | Brick-style linking: `lib/` vendors only; TinyUSB/lwIP are **config-time** FetchContent, rest link-time; OSS libs with versions | **P0** | [en](ecosystem.md) |
 
 ### 1.2 Porting
 
@@ -41,6 +41,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | `usb_tusb_port.md` | TinyUSB board-level contract (`usb_tusb_port`) | P1 (USB) | [en](usb_tusb_port.md) |
 | `amp.md` | Dual-core heterogeneous AMP | P2 | [en](amp.md) |
 | `osal_switching.md` | OSAL backend switching (NULL/FREERTOS/RTTHREAD; priority semantics vary by backend) | P1 | [en](osal_switching.md) |
+| `net.md` | Network protocol stack glue: coreMQTT v5 thin wrapper / TCP / transport adapter / PPP·USB NIC / `NET_*` error codes | P1 (network) | [en](net.md) |
 | `esp_idf_notes.md` | ESP fixes log + specifics + dependency strategy — **moved to the `esp` branch** | P1 (ESP, on `esp` branch) | [en](esp_idf_notes.md) |
 
 ### 1.3 Application & Coding
@@ -90,7 +91,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 
 | Topic | English |
 | :--- | :--- |
-| Product drivers | 37, in `drivers/<chip>/{include,src}`, GLOB-scanned; the only out-of-tree exception is `driver_ws2812` (WHOLE_ARCHIVE) |
+| Product drivers | 39, in `drivers/<chip>/{include,src}`, GLOB-scanned |
 | OSAL backends | `CONFIG_OSAL_NULL` (bare-metal, default) / `FREERTOS` (v11.3.0) / `RTTHREAD` (v5.3.0) |
 | Targets | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · dual-core AMP |
 | Peripheral coverage | Bus-based 6 (SPI/I2C/I2S/UART/CAN/USB) · Bus-less 7 (GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG) · HAL-Only: AMP/Storage/Platform Safety/**SDIO (reserved)** |

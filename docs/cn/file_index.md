@@ -36,7 +36,6 @@
 | `include/bus.h` | 总线控制器抽象 |
 | `include/dev_lifecycle.h` | 驱动 I/O 生命周期 |
 | `include/board_config.h` | 容量宏聚合、`dt_config_gen` / `config.h` |
-| `include/VFS.h` | 兼容包装（转发 status 等） |
 | `src/board_device.c` | 设备实例与查找 |
 | `src/board_driver.c` | probe 调度、safety-hw 注册 |
 | `src/bus.c` | 控制器表 |
@@ -92,7 +91,7 @@
 | `tools/genconfig.py` | Kconfig → `config.h` |
 | `tools/system_scrubber_crc_stub.h` | CRC 占位 |
 | `ide/stubs/` | clangd 生成头占位 |
-| `drivers/<chip>/` | 产品驱动共 **37 个**（`include/` + `src/`，`DRIVER_REGISTER` + dtc-lite 编译期 probe）；例 `w25qxx`、`st7789`、`ssd1306`…；**无**旧 `drivers/flash` |
+| `drivers/<chip>/` | 产品驱动共 **39 个**（`include/` + `src/`，`DRIVER_REGISTER` + dtc-lite 编译期 probe）；例 `w25qxx`、`st7789`、`ssd1306`…；**无**旧 `drivers/flash` |
 | `can_hook/` | CAN 协议超集钩子（见 [can_hook.md](can_hook.md)） |
 | `algorithm/buffer/` | 环形/双缓冲 |
 | `cmake/*.cmake` | `dep_fetch` + 各 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)）；另有 `disasm` / `rust` / `esp_idf` |
@@ -101,14 +100,18 @@
 
 ## net/（网络协议栈胶水）
 
-> 大部分子目录已 gitignore，仅提交 MQTT 最小构建集 + PPP/USB 网卡。
+> 大部分子目录已 gitignore，仅提交 MQTT / TCP / 传输层适配 / PPP 网卡 / USB 网卡。
 
 | 路径 | 说明 |
 | :--- | :--- |
 | `port/mqtt/mqtt_client.{c,h}` | coreMQTT v5 薄包装，`NET_*` 错误码 |
 | `port/mqtt/core_mqtt_config.h` | coreMQTT 配置头 |
-| `port/pppif/pppif.c` | PPP 网卡 lwIP netif 适配 |
-| `port/usb/usbethif.c` | TinyUSB CDC-NCM/RNDIS 网卡 lwIP netif 适配 |
+| `port/tcp/tcp_client.{c,h}` | TCP 客户端（FIFO + 异步发送 + 连接状态机） |
+| `port/tcp/tcp_server.{c,h}` | TCP 服务端 |
+| `port/transport_glue/transport_glue.{c,h}` | `network_transport_*` 适配层，桥接 tcp_client 与 coreMQTT `int32_t` 签名 |
+| `port/net_error.h` | `NET_OK` / `NET_ERR_*` 错误码体系 |
+| `port/pppif/pppif.{c,h}` | PPP 网卡 lwIP netif 适配 |
+| `port/usb/usbethif.{c,h}` | TinyUSB CDC-NCM/RNDIS 网卡 lwIP netif 适配 |
 
 ---
 

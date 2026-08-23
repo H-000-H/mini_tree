@@ -77,16 +77,17 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
-# System / EventBus 软编码：.config 显式 "# CONFIG_SYSTEM is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_OFF REGEX "^# CONFIG_SYSTEM is not set$")
-if(CONFIG_SYSTEM_OFF)
-    set(MINI_TREE_SYSTEM OFF)
-else()
+# System / EventBus 软编码：对齐 Kconfig 语义 — 显式 "=y" 才编入，缺失/未置位一律不编入，
+# 避免 .config 缺符号时误拉依赖。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ON REGEX "^CONFIG_SYSTEM=y$")
+if(CONFIG_SYSTEM_ON)
     set(MINI_TREE_SYSTEM ON)
+else()
+    set(MINI_TREE_SYSTEM OFF)
 endif()
-file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_OFF REGEX "^# CONFIG_EVENT_BUS is not set$")
+file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_ON REGEX "^CONFIG_EVENT_BUS=y$")
 # EVENT_BUS 依赖 SYSTEM: .config 手写 y 但 SYSTEM=n 时按 Kconfig 语义视为关
-if(CONFIG_EVENT_BUS_OFF OR NOT MINI_TREE_SYSTEM)
+if(NOT CONFIG_EVENT_BUS_ON OR NOT MINI_TREE_SYSTEM)
     set(MINI_TREE_EVENT_BUS OFF)
 else()
     set(MINI_TREE_EVENT_BUS ON)
@@ -100,23 +101,24 @@ else()
     set(MINI_TREE_SYSTEM_CMD OFF)
 endif()
 
-# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
-if(CONFIG_USB_OFF)
-    set(MINI_TREE_USB OFF)
-else()
+# USB 软编码：对齐 Kconfig 语义 — 显式 "CONFIG_USB=y" 才编入 (并拉 TinyUSB)，
+# .config 未置位时不编入，避免缺符号时误拉网络依赖。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_ON REGEX "^CONFIG_USB=y$")
+if(CONFIG_USB_ON)
     set(MINI_TREE_USB ON)
+else()
+    set(MINI_TREE_USB OFF)
 endif()
 if(MINI_TREE_USB)
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/tinyusb.cmake")
 endif()
 
-# VIRQ 软编码：.config 显式 "# CONFIG_VIRQ is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_VIRQ_OFF REGEX "^# CONFIG_VIRQ is not set$")
-if(CONFIG_VIRQ_OFF)
-    set(MINI_TREE_VIRQ OFF)
-else()
+# VIRQ 软编码：对齐 Kconfig 语义 — 显式 "CONFIG_VIRQ=y" 才编入，缺失/未置位不编入。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_VIRQ_ON REGEX "^CONFIG_VIRQ=y$")
+if(CONFIG_VIRQ_ON)
     set(MINI_TREE_VIRQ ON)
+else()
+    set(MINI_TREE_VIRQ OFF)
 endif()
 
 # 裸机调度器三态 (choice: XTASK_NONE / XTASK_COOP / XTASK_PREEMPT)：
@@ -186,10 +188,10 @@ else()
     set(OSAL_DEFINE CONFIG_OSAL_NULL)
 endif()
 
-# C++ 任务创建封装 (osal_task.cpp) — 软编码: .config 显式 "# CONFIG_OSAL_NULL_TASK_CPP is not set" 才裁剪;
-# 缺省视为启用 (对齐 Kconfig default y)。依赖 xtask 原生 API, 需 CONFIG_XTASK。
-file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_TASK_CPP_OFF REGEX "^# CONFIG_OSAL_NULL_TASK_CPP is not set$")
-if(MINI_TREE_XTASK AND NOT CONFIG_OSAL_NULL_TASK_CPP_OFF)
+# C++ 任务创建封装 (osal_task.cpp) — 软编码: 对齐 Kconfig 语义, 显式 "=y" 才编入。
+# 依赖 xtask 原生 API, 需 CONFIG_XTASK。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_TASK_CPP_ON REGEX "^CONFIG_OSAL_NULL_TASK_CPP=y$")
+if(MINI_TREE_XTASK AND CONFIG_OSAL_NULL_TASK_CPP_ON)
     list(APPEND OSAL_SRCS "osal/src/osal_task.cpp")
 endif()
 
@@ -577,6 +579,6 @@ if(CONFIG_UI_LVGL_ON OR CONFIG_UI_U8G2_ON)
     target_link_libraries(mini_tree PUBLIC mini_tree_ui)
 endif()
 
-if(MINI_TREE_USB_ON)
+if(MINI_TREE_USB)
     target_link_libraries(mini_tree PUBLIC tinyusb)
 endif()

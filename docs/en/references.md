@@ -35,7 +35,6 @@
 | :--- | :--- |
 | TinyUSB | USB device/host stack (`lib/tinyusb`, Fetch) |
 | lwIP | networking stack (Fetch) |
-| cJSON | JSON parser (Fetch) |
 | ETL | embedded template library (`lib/etl`, vendored) |
 | FreeRTOS / RT-Thread | vendored (see [ecosystem.md](ecosystem.md)) |
 

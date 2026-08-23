@@ -51,6 +51,7 @@
 | [usb_tusb_port.md](usb_tusb_port.md) | TinyUSB board-level contract |
 | [amp.md](amp.md) | Dual-core AMP |
 | [osal_switching.md](osal_switching.md) | OSAL backend switching |
+| [net.md](net.md) | Network protocol stack glue (MQTT / TCP / PPP / USB NIC) |
 
 ### Coding & Runtime
 

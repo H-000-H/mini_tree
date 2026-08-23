@@ -35,7 +35,6 @@
 | :--- | :--- |
 | TinyUSB | USB 设备/主机栈（`lib/tinyusb`，Fetch） |
 | lwIP | 网络栈（Fetch） |
-| cJSON | JSON 解析（Fetch） |
 | ETL | 嵌入式模板库（`lib/etl`，已 vendor） |
 | FreeRTOS / RT-Thread | 已 vendor（见 [ecosystem.md](ecosystem.md)） |
 

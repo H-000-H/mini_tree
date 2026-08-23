@@ -28,7 +28,7 @@
 | `faq.md` | 常见问题（生成物重跑、`lark` 安装等） | P2 | [cn](faq.md) |
 | `architecture.md` | 分层 `app→board→vfs→bus→hal(weak)→vendor`、数据流、启动时序 | **P0** | [cn](architecture.md) |
 | `patterns.md` | 关键机制解剖：pre_execution 注册链 / 两段式点火 / 编译期 probe 表 / xtask 调度 / VIRQ 上下半部 / SPSC 无锁通道 / dev_lifecycle / 非阻塞状态机 | P1 | [cn](patterns.md) |
-| `ecosystem.md` | 积木型链接：`lib/` 仅 vendor FreeRTOS/RT-Thread/ETL；TinyUSB/lwIP/cJSON 为 **config-time** FetchContent，其余为 link-time；已接入 22 个开源库版本清单 | **P0** | [cn](ecosystem.md) |
+| `ecosystem.md` | 积木型链接：`lib/` 仅 vendor FreeRTOS/RT-Thread/ETL；TinyUSB/lwIP 为 **config-time** FetchContent，其余为 link-time；已接入开源库版本清单 | **P0** | [cn](ecosystem.md) |
 
 ### 1.2 平台移植
 
@@ -41,6 +41,7 @@
 | `usb_tusb_port.md` | TinyUSB 板级契约（`usb_tusb_port`） | P1（USB） | [cn](usb_tusb_port.md) |
 | `amp.md` | 双核 AMP（异构多核） | P2 | [cn](amp.md) |
 | `osal_switching.md` | OSAL 后端切换（NULL/FREERTOS/RTTHREAD；优先级语义随后端变化） | P1 | [cn](osal_switching.md) |
+| `net.md` | 网络协议栈胶水：coreMQTT v5 薄包装 / TCP / 传输层适配 / PPP·USB 网卡 / `NET_*` 错误码 | P1（网络） | [cn](net.md) |
 | `esp_idf_notes.md` | ESP 修复记录 + 特殊性 + 依赖策略 —— **已迁移到 `esp` 分支** | P1（ESP，在 `esp` 分支） | [cn](esp_idf_notes.md) |
 
 ### 1.3 应用编写与编码
@@ -90,7 +91,7 @@
 
 | 主题 | 中文 |
 | :--- | :--- |
-| 产品驱动 | 37 个，在 `drivers/<chip>/{include,src}`，GLOB 扫描；唯一树外例外 `driver_ws2812`（WHOLE_ARCHIVE） |
+| 产品驱动 | 39 个，在 `drivers/<chip>/{include,src}`，GLOB 扫描 |
 | OSAL 后端 | `CONFIG_OSAL_NULL`（裸机，默认）/ `FREERTOS`（v11.3.0）/ `RTTHREAD`（v5.3.0） |
 | 目标架构 | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · 双核 AMP |
 | 外设覆盖 | 总线层 6（SPI/I2C/I2S/UART/CAN/USB）· 无总线层 7（GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG）· HAL-Only：AMP/Storage/Platform Safety/**SDIO（预留 reserved）** |

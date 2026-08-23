@@ -126,7 +126,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏 |
 | `VENDOR_DEFINES` | `STRING` | 额外 `-D`（少用） |
 | ETL（`cmake/etl.cmake`） | — | **vendor 于 `lib/etl`**（仅 include + cmake）；根 CMake 始终 link（缺失时 Fetch 兜底） |
-| 其它开源积木 | — | TinyUSB / lwIP / cJSON 为**配置期** FetchContent（根 CMake 直接 include 对应 `cmake/*.cmake`），其余（LVGL、u8g2、littlefs、FatFs、SFUD、Mbed TLS、coreMQTT、coreHTTP、nanopb、miniz、MCUBoot、FreeModbus、libmodbus、CMSIS-DSP、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) |
+| 其它开源积木 | — | TinyUSB / lwIP 为**配置期** FetchContent（根 CMake 直接 include 对应 `cmake/*.cmake`），其余（LVGL、u8g2、littlefs、FatFs、SFUD、coreMQTT、MCUBoot、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | 可选；见 `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | 启用后可对目标加反汇编 post-build（`cmake/disasm.cmake`） |
 
@@ -137,7 +137,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 1. 跑 `genconfig.py`
 2. 跑 `dtc-lite`（扫描 vfs/bus/drivers 中的 `DRIVER_REGISTER`，生成编译期 probe 表）
 3. 按 `.config` 挑选 OSAL / SYSTEM 源；链入 `lib/` 中的 vendor 内核（FreeRTOS v11.3.0 / RT-Thread v5.3.0）
-4. 配置期积木（TinyUSB / lwIP / cJSON）由根 CMake 直接 `include` 对应 `cmake/*.cmake`；其余可选积木由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）
+4. 配置期积木（TinyUSB / lwIP）由根 CMake 直接 `include` 对应 `cmake/*.cmake`；其余可选积木由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）
 
 语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)；积木清单见 [ecosystem.md](ecosystem.md)。
 

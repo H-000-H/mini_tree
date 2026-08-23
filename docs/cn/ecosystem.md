@@ -132,7 +132,7 @@
 - **南向**：Flash/显示/网卡仍通过板级 HAL 或 port 回调接触硬件，保持「硬件直投、中间件不绑 SDK」。
 - **UI 胶水层 (`ui/`)**：LVGL / u8g2 的 flush 回调经 `ui/display/display_ui_bridge.h` 统一入口，走 `device_ioctl(DISPLAY_CMD_*)` 触显示硬件；不直调 `bus_*` / `hal_*`，换屏仅需更换 device 指针。
 
-产品驱动（37 个）位于 `drivers/<chip>/{include,src}`，是生态的一部分但走本仓 `DRIVER_REGISTER` 契约，与积木库互不绑定。
+产品驱动（39 个）位于 `drivers/<chip>/{include,src}`，是生态的一部分但走本仓 `DRIVER_REGISTER` 契约，与积木库互不绑定。
 
 ---
 

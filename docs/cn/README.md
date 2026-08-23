@@ -51,6 +51,7 @@
 | [usb_tusb_port.md](usb_tusb_port.md) | TinyUSB 板级契约 |
 | [amp.md](amp.md) | 双核 AMP |
 | [osal_switching.md](osal_switching.md) | OSAL 后端切换 |
+| [net.md](net.md) | 网络协议栈胶水（MQTT / TCP / PPP / USB 网卡） |
 
 ### 编码与运行时
 

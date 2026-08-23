@@ -620,12 +620,12 @@ menu "Components"
 
 config USB
     bool "USB bus/VFS (TinyUSB)"
-    default y
+    default n
     help
       USB host/client 总线与 VFS（bus/usb + vfs/usb + hal/usb）。
       启用时板级必须提供 usb_tusb_port 粘合层（docs/usb_tusb_port.md）
       并自行链接 TinyUSB DCD；置 "not set" 时整条 USB 通路与
-      TinyUSB 均不编入（CMake 按 .config 裁剪，缺省视为启用）。
+      TinyUSB 均不编入（CMake 对齐 Kconfig 语义：显式 =y 才编入）。
 
       USB host/client bus and VFS (bus/usb + vfs/usb + hal/usb).
       When enabled, the board must supply the usb_tusb_port glue layer
@@ -868,7 +868,7 @@ config USB
 
         config UI_LVGL
             bool "LVGL glue layer (ui/lvgl)"
-            default y
+            default n
             help
               编入 ui/lvgl/lvgl_port.c 并链接 LVGL (mini_tree_link_lvgl,
               lv_conf.h 取 ui/lvgl/lv_conf.h)。胶水链路: lv_init +

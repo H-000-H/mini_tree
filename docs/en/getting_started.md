@@ -126,7 +126,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 | `VENDOR_INC_DIRS` | `STRING` | vendor-header `-I` for dtc/cpp macro expansion |
 | `VENDOR_DEFINES` | `STRING` | extra `-D` (rarely used) |
 | ETL (`cmake/etl.cmake`) | — | **vendored in `lib/etl`** (include + cmake only); always linked by the root CMake (Fetch fallback if missing) |
-| Other open-source bricks | — | TinyUSB / lwIP / cJSON are **config-time** FetchContent (root CMake directly `include`s their `cmake/*.cmake`); the rest (LVGL, u8g2, littlefs, FatFs, SFUD, Mbed TLS, coreMQTT, coreHTTP, nanopb, miniz, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB) use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
+| Other open-source bricks | — | TinyUSB / lwIP are **config-time** FetchContent (root CMake directly `include`s their `cmake/*.cmake`); the rest (LVGL, u8g2, littlefs, FatFs, SFUD, coreMQTT, MCUBoot, MultiButton, EasyFlash, EasyLogger, FlashDB) use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
 | `mini_tree_add_rust_crate` | — | optional; see `cmake/rust.cmake` |
 | `CONFIG_BUILD_DISASM` | Kconfig | adds a disassembly post-build step when enabled (`cmake/disasm.cmake`) |
 
@@ -137,7 +137,7 @@ The `mini_tree` target will:
 1. Run `genconfig.py`
 2. Run dtc-lite (scan `DRIVER_REGISTER` in vfs/bus/drivers and generate the compile-time probe table)
 3. Pick OSAL / SYSTEM sources per `.config`; link the vendored kernels in `lib/` (FreeRTOS v11.3.0 / RT-Thread v5.3.0)
-4. Config-time bricks (TinyUSB / lwIP / cJSON) are directly `include`d by the root CMake via their `cmake/*.cmake`; the rest are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
+4. Config-time bricks (TinyUSB / lwIP) are directly `include`d by the root CMake via their `cmake/*.cmake`; the rest are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
 
 Language-backend comparison: [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp); USB board-level contract: [usb_tusb_port.md](usb_tusb_port.md); brick list: [ecosystem.md](ecosystem.md).
 

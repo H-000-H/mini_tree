@@ -143,10 +143,6 @@ lib/uC-LIB/
 # net/ 只保留 mqtt 最小构建集 + pppif/usb 网卡
 # 屏蔽：http/https/udp/mqtts/tls/ethernet/arch/sys/CMakeLists/lwipopts
 # ---------------------------------------------
-/net/arch/
-/net/sys/
-/net/CMakeLists.txt
-/net/lwipopts.h
 /net/port/ethernet/
 /net/port/http/
 /net/port/https/

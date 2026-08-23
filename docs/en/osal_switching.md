@@ -37,7 +37,7 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) picks one scheduler from the "bare-m
 
 The public surface is `osal/include/osal.h`. Business code and VFS should depend on this header only.
 
-Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** are vendored; TinyUSB / lwIP / cJSON are config-time FetchContent, and the rest (LVGL, littlefs, FatFs, Mbed TLS, coreMQTT, coreHTTP, nanopb, MCUBoot, FreeModbus, libmodbus, CMSIS-DSP, MultiButton, EasyFlash, EasyLogger, FlashDB, u8g2, SFUD, miniz) are link-time FetchContent (`mini_tree_link_*`).
+Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** are vendored; TinyUSB / lwIP are config-time FetchContent, and the rest (littlefs, FatFs, MultiButton, MCUBoot, coreMQTT, LVGL, u8g2, FlashDB, SFUD, EasyFlash, EasyLogger) are link-time FetchContent (`mini_tree_link_*`).
 
 ---
 

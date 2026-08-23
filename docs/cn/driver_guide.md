@@ -39,7 +39,7 @@
 | `board/dts/board.dts` | **占位**根节点（仅 `mini-tree,placeholder`，无外设）；板级用 `BOARD_DTS` 覆盖 |
 | `board/dtsi/` | **节点模板库**：`example-soc.dtsi`（SoC 骨架：cpus/gpio/uart）+ `vfs/`（11 个 VFS 各一文件）+ `drivers/`（37 个产品驱动各一文件）；参数全 0 占位 + 用法注释，板级拷走填值；`BOARD_DTSI_DIR` 可指向平台自有 dtsi |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | 通用 `#define`，供 dtsi `#include <dt-bindings/...>` |
-| `drivers/<chip>/{include,src}` | 产品驱动（37 个）；CMake / `dtc-lite` GLOB 扫描 |
+| `drivers/<chip>/{include,src}` | 产品驱动（39 个）；CMake / `dtc-lite` GLOB 扫描 |
 
 > **模板用法**：drivers 模板挂载在 vfs 模板定义的 label 上（如 `&i2c0 { aht20: aht20@0 {...} }`）。板级同时启用总线节点与器件节点（`status = "okay"`）；实例池大小自动 = `DTC_GEN_COUNT_*`（同名 compatible 节点数，缺省 1），无需手调。
 
@@ -52,7 +52,6 @@ dtsi/<soc>.dtsi                    # SoC / 总线 / 产品片段
 dtsi/<soc>-product-drivers.dtsi
 …
 # HAL 强符号：components/hal_esp32s3/
-# 例外驱动：components/driver_ws2812/
 ```
 
 > 上例：`BOARD_DTS` 入口、SoC/产品 dtsi 片段、HAL 强符号与例外驱动均位于平台工程（ESP 参考）。
@@ -128,9 +127,8 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 | `vfs/can` | host + client |
 | `vfs/usb` | `usb-otg-host`、`heterogeneous,usb-cdc-acm/ecm`、`heterogeneous,usb-hid` |
 | `vfs/gpio` · `adc` · `dac` · `tim` · `rtc` · `iwdg` · `wwdg` | 各外设 compatible |
-| `drivers/<chip>/` | 产品驱动 37 个（GLOB 扫描）；例：`winbond,w25qxx`、`sitronix,st7789`、`solomon,ssd1306`、`modbus,rtu-rs485` … |
+| `drivers/<chip>/` | 产品驱动 39 个（GLOB 扫描）；例：`winbond,w25qxx`、`sitronix,st7789`、`solomon,ssd1306`、`modbus,rtu-rs485` … |
 | `board` | `board,safety-hw` |
-| 树外 `driver_ws2812` | `worldsemi,ws2812`（唯一厂商 RMT 例外） |
 
 产品驱动目录约定：`drivers/<chip>/{include,src}`。CMake / dtc-lite 用 `drivers/*/src` 扫描，**勿**再维护逐文件列表。
 

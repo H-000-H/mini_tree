@@ -132,7 +132,7 @@ Policy: **open source only; prefer Fetch for everything except infrastructure; n
 - **Southbound**: Flash/display/NIC still touch hardware through board-level HAL or port callbacks, keeping "hardware direct-inject, middleware never binds an SDK".
 - **UI glue layer (`ui/`)**: LVGL / u8g2 flush callbacks go through the unified entry point `ui/display/display_ui_bridge.h`, which calls `device_ioctl(DISPLAY_CMD_*)` to reach display hardware; no direct `bus_*` / `hal_*` calls — swapping displays only requires changing the device pointer.
 
-The 37 product drivers live in `drivers/<chip>/{include,src}`; they are part of the ecosystem but follow this repo's `DRIVER_REGISTER` contract and stay independent of the block libraries.
+The 39 product drivers live in `drivers/<chip>/{include,src}`; they are part of the ecosystem but follow this repo's `DRIVER_REGISTER` contract and stay independent of the block libraries.
 
 ---
 

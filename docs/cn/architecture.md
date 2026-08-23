@@ -85,7 +85,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `interrupt/` | VIRQ、上/下半部 | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | 启动、WDT、scrubber、safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
 | `time_slice/` | 裸机调度 — 由 Kconfig 三态 choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`) 选择; 协调式 (`xtask_coop.c`, 默认) 与抢占式 (`xtask_preempt.c`, N+1 多优先级) 二选一, 共用 `xtask.h` API; CMake + `#ifdef` 双重互斥; 仅 `OSAL_NULL` | `x_scheduler` / `x_task` |
-| `drivers/<chip>/` | 产品驱动（37 个，`{include,src}` 结构） | `DRIVER_REGISTER` / ioctl；dtc-lite 编译期 probe |
+| `drivers/<chip>/` | 产品驱动（39 个，`{include,src}` 结构） | `DRIVER_REGISTER` / ioctl；dtc-lite 编译期 probe |
 | `can_hook/` | CAN 钩子扩展 | — |
 | `net/` | 网络协议栈胶水（MQTT 客户端 / PPP 网卡 / USB 网卡），经 lwIP + coreMQTT 等积木，只经 device/VFS 模型触硬件 | `mqtt_client_*`、`pppif_*`、`usbethif_*` |
 | `ui/` | UI 库胶水层（LVGL / u8g2 显示桥接），只经 device/VFS 模型（`DISPLAY_CMD_*`）触显示硬件 | `display_lvgl_flush_callback`、`display_u8g2_flush_frame_buffer` |

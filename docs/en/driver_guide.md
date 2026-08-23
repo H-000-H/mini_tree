@@ -52,7 +52,6 @@ dtsi/<soc>.dtsi                    # SoC / bus / product fragments
 dtsi/<soc>-product-drivers.dtsi
 …
 # HAL strong symbols: components/hal_esp32s3/
-# Exception driver: components/driver_ws2812/
 ```
 
 > Above: the `BOARD_DTS` entry, SoC/product dtsi fragments, HAL strong symbols, and the exception driver all live in the platform project (ESP reference).
@@ -128,9 +127,8 @@ Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-iden
 | `vfs/can` | host + client |
 | `vfs/usb` | `usb-otg-host`, `heterogeneous,usb-cdc-acm/ecm`, `heterogeneous,usb-hid` |
 | `vfs/gpio` · `adc` · `dac` · `tim` · `rtc` · `iwdg` · `wwdg` | Per-peripheral compatibles |
-| `drivers/<chip>/` | 37 product drivers (GLOB-scanned); e.g. `winbond,w25qxx`, `sitronix,st7789`, `solomon,ssd1306`, `modbus,rtu-rs485`, … |
+| `drivers/<chip>/` | 39 product drivers (GLOB-scanned); e.g. `winbond,w25qxx`, `sitronix,st7789`, `solomon,ssd1306`, `modbus,rtu-rs485`, … |
 | `board` | `board,safety-hw` |
-| Out-of-tree `driver_ws2812` | `worldsemi,ws2812` (the only vendor-RMT exception) |
 
 Product drivers follow `drivers/<chip>/{include,src}`. CMake / dtc-lite scan with `drivers/*/src` — **don't** maintain per-file lists.
 

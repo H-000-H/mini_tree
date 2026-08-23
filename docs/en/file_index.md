@@ -36,7 +36,6 @@
 | `include/bus.h` | bus controller abstraction |
 | `include/dev_lifecycle.h` | driver I/O lifecycle |
 | `include/board_config.h` | capacity macro aggregation, `dt_config_gen` / `config.h` |
-| `include/VFS.h` | compatibility wrapper (forwards status, etc.) |
 | `src/board_device.c` | device instances and lookup |
 | `src/board_driver.c` | probe scheduling, safety-hw registration |
 | `src/bus.c` | controller table |
@@ -92,7 +91,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `tools/genconfig.py` | Kconfig → `config.h` |
 | `tools/system_scrubber_crc_stub.h` | CRC stub |
 | `ide/stubs/` | generated-header stubs for clangd |
-| `drivers/<chip>/` | **37** product drivers (`include/` + `src/`, `DRIVER_REGISTER` + dtc-lite compile-time probe); e.g. `w25qxx`, `st7789`, `ssd1306`…; no legacy `drivers/flash` |
+| `drivers/<chip>/` | **39** product drivers (`include/` + `src/`, `DRIVER_REGISTER` + dtc-lite compile-time probe); e.g. `w25qxx`, `st7789`, `ssd1306`…; no legacy `drivers/flash` |
 | `can_hook/` | CAN protocol superset hooks |
 | `algorithm/buffer/` | ring & double buffers |
 | `cmake/*.cmake` | `dep_fetch` + `mini_tree_link_*` helpers; also `disasm` / `rust` / `esp_idf` |
@@ -101,12 +100,18 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 
 ## net/ (Network Protocol Stack Glue)
 
-> Most subdirectories are gitignored; only the MQTT minimal build set is committed.
+> Most subdirectories are gitignored; only MQTT / TCP / transport adapter / PPP netif / USB netif are committed.
 
 | Path | Description |
 | :--- | :--- |
 | `port/mqtt/mqtt_client.{c,h}` | coreMQTT v5 thin wrapper, `NET_*` error codes |
 | `port/mqtt/core_mqtt_config.h` | coreMQTT configuration header |
+| `port/tcp/tcp_client.{c,h}` | TCP client (FIFO + async send + connection state machine) |
+| `port/tcp/tcp_server.{c,h}` | TCP server |
+| `port/transport_glue/transport_glue.{c,h}` | `network_transport_*` adapter, bridges tcp_client to coreMQTT `int32_t` signatures |
+| `port/net_error.h` | `NET_OK` / `NET_ERR_*` error code system |
+| `port/pppif/pppif.{c,h}` | PPP netif adapter for lwIP |
+| `port/usb/usbethif.{c,h}` | TinyUSB CDC-NCM/RNDIS netif adapter for lwIP |
 
 ---
 

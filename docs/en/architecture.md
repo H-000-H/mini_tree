@@ -85,7 +85,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `interrupt/` | VIRQ, top/bottom halves | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | startup, WDT, scrubber, safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
 | `time_slice/` | bare-metal scheduling — selected by the `Kconfig.mini_tree` tri-state choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`); cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, N+1 multi-priority) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake (`MINI_TREE_XTASK_*`) + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
-| `drivers/<chip>/` | product drivers (37, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
+| `drivers/<chip>/` | product drivers (39, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
 | `can_hook/` | CAN hook extensions | — |
 | `net/` | Network protocol stack glue (MQTT client / PPP netif / USB netif), via lwIP + coreMQTT etc., hardware access only through device/VFS model | `mqtt_client_*`, `pppif_*`, `usbethif_*` |
 | `ui/` | UI library glue layer (LVGL / u8g2 display bridge), hardware access only through device/VFS model (`DISPLAY_CMD_*`) | `display_lvgl_flush_callback`, `display_u8g2_flush_frame_buffer` |
