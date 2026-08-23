@@ -120,7 +120,6 @@ static err_t tcp_client_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
     if (total_bytes > 0)
         tcp_recved(pcb, total_bytes);
 
-    /* 释放整条 pbuf 链 (buf 遍历后已为 NULL, 须释放原始指针, 否则内存泄漏) */
     pbuf_free(current_buf);
     return ERR_OK;
 }

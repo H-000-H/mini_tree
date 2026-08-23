@@ -8,6 +8,8 @@ add_library(mini_tree_net STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/sys/sys_arch.c"
     ${MINI_TREE_NET_PORT_SRCS}
     port/pppif/pppif.h
+    port/mqtt/mqtt_client.h
+    port/mqtt/mqtt_client.c
 )
 
 target_include_directories(mini_tree_net PUBLIC
