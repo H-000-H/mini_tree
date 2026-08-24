@@ -35,7 +35,7 @@
 | **VFS（本仓库）** | 设备 `file_operations` 层，**不是** Linux 内核 VFS | `vfs/*` |
 | **OSAL** | 操作系统抽象三后端：裸机 / FreeRTOS v11.3.0 / RT-Thread v5.3.0 | `osal/` |
 | **VIRQ** | 虚拟中断号 + 上/下半部 | `interrupt/` |
-| **status / VFS_ERR_*** | 统一错误码 | `core/include/status.h` |
+| **status / MINI_ERR_*** | 统一错误码 | `core/include/status.h` |
 | **积木 / Brick** | 可选开源能力块（GUI/网络/FS…） | [ecosystem.md](ecosystem.md)；`mini_tree_link_*` |
 | **vendor / Fetch** | 仅 FreeRTOS / RT-Thread / ETL 常驻 `lib/`；TinyUSB / lwIP 为配置期 FetchContent，其余链接期 | [ecosystem.md](ecosystem.md) §0 |
 | **两段式点火** | pre-os → start-tasks → complete → 调度 | `system_init.h` / `system_init.hpp` |
@@ -89,7 +89,7 @@
 | :--- | :--- |
 | 上手 | [getting_started](getting_started.md) · [faq](faq.md) · [keil_integration](keil_integration.md) |
 | 生态 | [ecosystem](ecosystem.md)（积木 / Fetch） · [architecture](architecture.md) |
-| 移植 | [device_tree_porting](device_tree_porting.md) · [esp_idf_cmake](esp_idf_cmake.md)（ESP：**在 `esp` 分支**）· [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
+| 移植 | [device_tree_porting](device_tree_porting.md) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
 | 编码 | [service_spec](service_spec.md) · [peripherals](peripherals.md) · [runtime_services](runtime_services.md) · [can_hook](can_hook.md) · [fast_path](fast_path.md) · [api_compatibility](api_compatibility.md) |
 | 诊断 | [debug_monitor](debug_monitor.md) · [problem_summary](problem_summary.md) |
 | 选型 | [design_decisions](design_decisions.md) · [references](references.md) |

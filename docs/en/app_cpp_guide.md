@@ -70,7 +70,7 @@ Use ETL fixed-capacity containers in the upper layer (no heap, compile-time-know
 - **Use lambda expressions** — clear local callbacks, can capture context; keep capture lists short, avoid large by-value captures
 - **Prefer containers over raw `char*` / `uint8_t*` in upper cpp** — containers carry length/bounds semantics, fewer overflows; prefer span/string_view for buffers
 - **Prefer `etl::optional<T>` return values over plain types** — explicit maybe-value, no -1/NULL sentinel ambiguity
-- **Error codes / status, not exceptions** — consistent with middleware `VFS_ERR_*`, checkable, no EH dependency
+- **Error codes / status, not exceptions** — consistent with middleware `MINI_ERR_*`, checkable, no EH dependency
 - **Pass buffers as span/string_view** — length-carrying, zero-copy, no raw-pointer length loss
 - **Use array or constexpr for fixed tables** — data in Flash, no heap, ready at boot
 - **`enum class` over macro enums** — strong typing, scoped, less pollution

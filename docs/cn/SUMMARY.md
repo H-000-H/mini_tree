@@ -35,14 +35,12 @@
 | 文档 | 中文标题 / 关键点 | 优先级 | 链接 |
 | :--- | :--- | :---: | :--- |
 | `device_tree_porting.md` | **设备树移植大长文（集中版，含完整示例代码）**：dtc-lite 流水线、节点模板、板级 DTS、生成物详解、驱动对接、CMake 注入（`BOARD_DTS`/`BOARD_DTSI_DIR`/`MINI_TREE_BOARD_PORT`）、验证、排坑。实际移植通常只需改 DTS + HAL | **P0** | [cn](device_tree_porting.md) |
-| `esp_idf_cmake.md` | ESP-IDF 组件式 CMake —— **已迁移到 `esp` 分支**（完整指南见该分支 `docs/cn/esp_idf_cmake.md`） | **P0**（ESP 路径，在 `esp` 分支） | [cn](esp_idf_cmake.md) |
 | `driver_guide.md` | DTS 布局、`dtc-lite` 流水线、`DRIVER_REGISTER`、compatible 属性、`board_*` 运行期 API、remove 生命周期 | **P0** | [cn](driver_guide.md) |
 | `peripherals.md` | 外设 compatible / ioctl 一览 | P1 | [cn](peripherals.md) |
 | `usb_tusb_port.md` | TinyUSB 板级契约（`usb_tusb_port`） | P1（USB） | [cn](usb_tusb_port.md) |
 | `amp.md` | 双核 AMP（异构多核） | P2 | [cn](amp.md) |
 | `osal_switching.md` | OSAL 后端切换（NULL/FREERTOS/RTTHREAD；优先级语义随后端变化） | P1 | [cn](osal_switching.md) |
 | `net.md` | 网络协议栈胶水：coreMQTT v5 薄包装 / TCP / 传输层适配 / PPP·USB 网卡 / `NET_*` 错误码 | P1（网络） | [cn](net.md) |
-| `esp_idf_notes.md` | ESP 修复记录 + 特殊性 + 依赖策略 —— **已迁移到 `esp` 分支** | P1（ESP，在 `esp` 分支） | [cn](esp_idf_notes.md) |
 
 ### 1.3 应用编写与编码
 
@@ -81,7 +79,7 @@
 
 ## 2. 按优先级速查
 
-- **P0（必须读）**：`getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `esp_idf_cmake.md`（ESP，**在 `esp` 分支**）· `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
+- **P0（必须读）**：`getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
 - **P1（按需）**：`patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md`
 - **P2（深入）**：`usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `keil_integration.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
 
@@ -95,7 +93,7 @@
 | OSAL 后端 | `CONFIG_OSAL_NULL`（裸机，默认）/ `FREERTOS`（v11.3.0）/ `RTTHREAD`（v5.3.0） |
 | 目标架构 | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · 双核 AMP |
 | 外设覆盖 | 总线层 6（SPI/I2C/I2S/UART/CAN/USB）· 无总线层 7（GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG）· HAL-Only：AMP/Storage/Platform Safety/**SDIO（预留 reserved）** |
-| 错误码 | `MINI_OK=0`；`VFS_ERR_*`（全名，见 `status.h`）；`device_find` 失败返回 `ERR_PTR` 而非 `NULL` |
+| 错误码 | `MINI_OK=0`；`MINI_ERR_*`（全名，见 `status.h`）；`device_find` 失败返回 `ERR_PTR` 而非 `NULL` |
 | 构建 | CMake ≥ 3.16；`lark`（dtc-lite）；内置 `kconfiglib` 14.1.0；`ETL` 随仓 vendor 且默认链入 |
 
 ---
@@ -103,7 +101,7 @@
 ## 4. 文档写作约定
 
 - 每篇专题含：标题+摘要、读者/前置、目录（长文）、正文（表格与命令优先）、相关文档链接。
-- 路径与符号用反引号；错误码写 `VFS_ERR_*` 全名；技术术语保留英文原文（如 `Device Tree`、`OSAL`、`VFS`）。
+- 路径与符号用反引号；错误码写 `MINI_ERR_*` 全名；技术术语保留英文原文（如 `Device Tree`、`OSAL`、`VFS`）。
 - 新文档放 `docs/cn/` 与 `docs/en/` 双语；根目录仅保留 `README` / `CHANGELOG` / `CONTRIBUTING` 与法律文件。
 
 ---

@@ -26,7 +26,7 @@
 | Header & Module | Use |
 | :--- | :--- |
 | `device.h` | device lookup & I/O |
-| `status.h` | `MINI_OK` / `VFS_ERR_*` |
+| `status.h` | `MINI_OK` / `MINI_ERR_*` |
 | `osal.h` | tasks, locks, queues, delays, log levels |
 | `event_bus.h` / `event_bus.hpp` | pub-sub |
 | `buffer_pool.h` · `algorithm/buffer` | buffers |

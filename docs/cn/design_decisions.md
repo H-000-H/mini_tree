@@ -21,7 +21,7 @@
 | 4 | Bus 强制隔离 | `#pragma GCC poison` 防上层直调 HAL |
 | 5 | OSAL 三栖 | FreeRTOS / RT-Thread / NULL，Kconfig 裁剪 |
 | 6 | 双系统后端 | `SYSTEM_C` / `SYSTEM_CPP` 编译期二选一 |
-| 7 | 统一错误码 | `status.h` 的 `VFS_ERR_*` / `OSAL_ERR_*` |
+| 7 | 统一错误码 | `status.h` 的 `MINI_ERR_*` / `OSAL_ERR_*` |
 
 ---
 

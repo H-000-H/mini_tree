@@ -35,14 +35,12 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | Document | English Title / Key Points | Priority | Links |
 | :--- | :--- | :---: | :--- |
 | `device_tree_porting.md` | **Device-tree porting guide (consolidated, full examples)**: dtc-lite pipeline, node templates, board DTS, generated-artifacts, driver wiring, CMake injection (`BOARD_DTS`/`BOARD_DTSI_DIR`/`MINI_TREE_BOARD_PORT`), verification, troubleshooting. In practice porting usually needs only DTS + HAL changes | **P0** | [en](device_tree_porting.md) |
-| `esp_idf_cmake.md` | ESP-IDF component CMake — **moved to the `esp` branch** (full guide: `docs/en/esp_idf_cmake.md` there) | **P0** (ESP path, on `esp` branch) | [en](esp_idf_cmake.md) |
 | `driver_guide.md` | DTS layout, `dtc-lite` pipeline, `DRIVER_REGISTER`, compatible props, `board_*` runtime API, remove lifecycle | **P0** | [en](driver_guide.md) |
 | `peripherals.md` | Peripheral compatible / ioctl overview | P1 | [en](peripherals.md) |
 | `usb_tusb_port.md` | TinyUSB board-level contract (`usb_tusb_port`) | P1 (USB) | [en](usb_tusb_port.md) |
 | `amp.md` | Dual-core heterogeneous AMP | P2 | [en](amp.md) |
 | `osal_switching.md` | OSAL backend switching (NULL/FREERTOS/RTTHREAD; priority semantics vary by backend) | P1 | [en](osal_switching.md) |
 | `net.md` | Network protocol stack glue: coreMQTT v5 thin wrapper / TCP / transport adapter / PPP·USB NIC / `NET_*` error codes | P1 (network) | [en](net.md) |
-| `esp_idf_notes.md` | ESP fixes log + specifics + dependency strategy — **moved to the `esp` branch** | P1 (ESP, on `esp` branch) | [en](esp_idf_notes.md) |
 
 ### 1.3 Application & Coding
 
@@ -81,7 +79,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 
 ## 2. Quick Index by Priority
 
-- **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `esp_idf_cmake.md` (ESP, **on `esp` branch**) · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
+- **P0 (Must-read)**: `getting_started.md` · `architecture.md` · `ecosystem.md` · `device_tree_porting.md` · `driver_guide.md` · `service_spec.md` · `coding_style.md` · `fast_path.md` · `tools_guide.md`
 - **P1 (As-needed)**: `patterns.md` · `peripherals.md` · `usb_tusb_port.md` · `osal_switching.md` · `app_cpp_guide.md` · `runtime_services.md` · `debug_monitor.md` · `design_decisions.md` · `file_index.md`
 - **P2 (Deep-dive)**: `usage.md` · `faq.md` · `amp.md` · `can_hook.md` · `memory_footprint.md` · `api_compatibility.md` · `keil_integration.md` · `references.md` · `problem_summary.md` · `roadmap.md` · `todolist.md` · `board_linux_vs_device_model.md`
 
@@ -95,7 +93,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | OSAL backends | `CONFIG_OSAL_NULL` (bare-metal, default) / `FREERTOS` (v11.3.0) / `RTTHREAD` (v5.3.0) |
 | Targets | Cortex-M0/M0+/M3/M4F/M7 · RISC-V 32-bit · dual-core AMP |
 | Peripheral coverage | Bus-based 6 (SPI/I2C/I2S/UART/CAN/USB) · Bus-less 7 (GPIO/ADC/DAC/TIM/RTC/IWDG/WWDG) · HAL-Only: AMP/Storage/Platform Safety/**SDIO (reserved)** |
-| Error codes | `MINI_OK=0`; `VFS_ERR_*` (full name, see `status.h`); `device_find` failure returns `ERR_PTR` not `NULL` |
+| Error codes | `MINI_OK=0`; `MINI_ERR_*` (full name, see `status.h`); `device_find` failure returns `ERR_PTR` not `NULL` |
 | Build | CMake ≥ 3.16; `lark` (dtc-lite); vendored `kconfiglib` 14.1.0; `ETL` vendored and linked by default |
 
 ---
@@ -103,7 +101,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 ## 4. Documentation Conventions
 
 - Each topic document includes: title + summary, audience/prerequisites, table of contents (for long docs), body (tables and commands first), related-document links.
-- Paths and symbols in back-ticks; error codes as full `VFS_ERR_*`; technical terms kept verbatim (e.g. `Device Tree`, `OSAL`, `VFS`).
+- Paths and symbols in back-ticks; error codes as full `MINI_ERR_*`; technical terms kept verbatim (e.g. `Device Tree`, `OSAL`, `VFS`).
 - New docs go into `docs/cn/` and `docs/en/` bilingually; the root keeps only `README` / `CHANGELOG` / `CONTRIBUTING` and legal files.
 
 ---

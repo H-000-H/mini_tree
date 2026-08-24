@@ -47,7 +47,7 @@
 | `CMakeLists.txt` | `add_subdirectory` 入口 |
 | `.config` / `Kconfig` | 功能裁剪 |
 | `board/dts/board.dts` | 默认占位（必被平台覆盖） |
-| `board/dtsi/` | 节点模板库：`example-soc.dtsi` + `vfs/`（11）+ `drivers/`（37），参数全 0 占位，板级拷走填值（见 [driver_guide.md](driver_guide.md) §1） |
+| `board/dtsi/` | 节点模板库：`example-soc.dtsi` + `vfs/`（11）+ `drivers/`（39），参数全 0 占位，板级拷走填值（见 [driver_guide.md](driver_guide.md) §1） |
 | `ide/stubs/` | 无生成物时的 IDE 头 |
 
 ---
@@ -143,10 +143,15 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 
 ### 4.2 ESP-IDF？
 
-**ESP 支持已从 `main` 剥离**，位于 **`esp` 分支**（`espidf-branch`）或乐鑫组件注册表。
+主仓 `main` 保留了完整的 ESP-IDF 构建路径（`cmake/esp_idf.cmake`、`Kconfig.projbuild`、`idf_component.yml`），但**不能**像普通平台一样直接 `add_subdirectory`——需要走 IDF 组件路径（由 `ESP_PLATFORM` 触发 → `cmake/esp_idf.cmake`）。
 
-**不要**对本仓根目录直接 `add_subdirectory` 进 IDF。
-ESP 使用 IDF 组件路径（`EXTRA_COMPONENT_DIRS` + `idf_component_register`，由 `ESP_PLATFORM` 触发）。完整指南见 `esp` 分支：[docs/cn/esp_idf_cmake.md](https://github.com/H-000-H/mini_tree/blob/espidf-branch/docs/cn/esp_idf_cmake.md)（本仓 `docs/cn/esp_idf_cmake.md` 仅保留指引）。
+完整参考板工程和移植指南在 **`esp` 分支**（`espidf-branch`）维护：
+
+```bash
+git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
+```
+
+也可通过乐鑫组件注册表拉取：在 `idf_component.yml` 里添加 `h-000-h/mini_tree: ">=1.2.0"`。
 
 ---
 

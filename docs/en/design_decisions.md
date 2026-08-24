@@ -21,7 +21,7 @@
 | 4 | Enforced bus isolation | `#pragma GCC poison` blocks upper layers from calling HAL directly |
 | 5 | OSAL triple-backend | FreeRTOS / RT-Thread / NULL, trimmed by Kconfig |
 | 6 | Dual system backends | compile-time choice of `SYSTEM_C` / `SYSTEM_CPP` |
-| 7 | Unified error codes | `status.h`'s `VFS_ERR_*` / `OSAL_ERR_*` |
+| 7 | Unified error codes | `status.h`'s `MINI_ERR_*` / `OSAL_ERR_*` |
 
 ---
 

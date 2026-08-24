@@ -35,7 +35,7 @@
 | **VFS (this repo)** | the device `file_operations` layer — **not** the Linux-kernel VFS | `vfs/*` |
 | **OSAL** | OS abstraction, three backends: bare-metal (cooperative / preemptive) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 | `osal/` |
 | **VIRQ** | virtual IRQ number + top/bottom halves | `interrupt/` |
-| **status / VFS_ERR_*** | unified error codes | `core/include/status.h` |
+| **status / MINI_ERR_*** | unified error codes | `core/include/status.h` |
 | **Brick** | optional open-source capability block (GUI/network/FS…) | [ecosystem.md](ecosystem.md); `mini_tree_link_*` |
 | **vendor / Fetch** | only FreeRTOS / RT-Thread / ETL live permanently in `lib/`; TinyUSB / lwIP are config-time FetchContent, the rest link-time | [ecosystem.md](ecosystem.md) §0 |
 | **two-phase ignition** | pre-os → start-tasks → complete → scheduler | `system_init.h` / `system_init.hpp` |
@@ -89,7 +89,7 @@ Condensed map below; full TOC in [docs/README.md](README.md).
 | :--- | :--- |
 | Onboarding | [getting_started](getting_started.md) · [faq](faq.md) · [keil_integration](keil_integration.md) |
 | Ecosystem | [ecosystem](ecosystem.md) (bricks / Fetch) · [architecture](architecture.md) |
-| Porting | [device_tree_porting](device_tree_porting.md) · [esp_idf_cmake](esp_idf_cmake.md) (ESP: **on `esp` branch**) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
+| Porting | [device_tree_porting](device_tree_porting.md) · [driver_guide](driver_guide.md) · [usb_tusb_port](usb_tusb_port.md) · [amp](amp.md) · [osal_switching](osal_switching.md) |
 | Coding | [service_spec](service_spec.md) · [peripherals](peripherals.md) · [runtime_services](runtime_services.md) · [can_hook](can_hook.md) · [fast_path](fast_path.md) · [api_compatibility](api_compatibility.md) |
 | Diagnostics | [debug_monitor](debug_monitor.md) · [problem_summary](problem_summary.md) |
 | Selection | [design_decisions](design_decisions.md) · [references](references.md) |

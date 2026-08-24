@@ -80,7 +80,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `vfs/` | 按 compatible 绑定的驱动 | `vfs_spi_probe`、uart/can/usb… |
 | `bus/` | 控制器 host + client 会话 | `spi_bus_open`、`can_bus_transmit` |
 | `hal/` | 抽象寄存器操作 | `hal_gpio_fast_set_level`、`hal_uart_write` |
-| `core/` | 错误码、兼容宏、事件、缓冲池、日志 | `VFS_ERR_*`、`event_bus_*` |
+| `core/` | 错误码、兼容宏、事件、缓冲池、日志 | `MINI_ERR_*`、`event_bus_*` |
 | `osal/` | 锁/队列/任务/时间 | `osal_mutex_lock` |
 | `interrupt/` | VIRQ、上/下半部 | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | 启动、WDT、scrubber、safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
@@ -156,7 +156,7 @@ device_read/write/ioctl
 
 ### 4.4 错误与指针
 
-- 返回值：`int`，`MINI_OK` 或负的 `VFS_ERR_*`
+- 返回值：`int`，`MINI_OK` 或负的 `MINI_ERR_*`
 - 特殊指针：`ERR_PTR` / `IS_ERR` / `PTR_ERR`（依赖 `error_symbols.ld` 的 `ERR_SECTION_BASE`）
 
 ---
@@ -206,7 +206,7 @@ CMake 关键缓存变量：`BOARD_DTS`、`BOARD_DTSI_DIR`、`VENDOR_INC_DIRS`、
 | 中间件源码、weak HAL、占位 DTS、文档、ide stubs | `hal_*_<soc>.c`、完整 dts/dtsi、厂商 `-I`、板级链接脚本与启动文件 |
 | OSAL 三后端骨架 | 时钟、堆、SysTick/RTOS 端口（若需要） |
 
-通用 CMake 路径下，平台通过 `MINI_TREE_BOARD_PORT`（绝对路径）或同级 `board_port.cmake` 注入板级；ESP-IDF 路径（由 `ESP_PLATFORM` 触发组件模式）已**迁移到 `esp` 分支**。验证矩阵以各 `platform/*/mini_tree` 工程为准，不在本 shelf 内绑定具体 SoC。
+通用 CMake 路径下，平台通过 `MINI_TREE_BOARD_PORT`（绝对路径）或同级 `board_port.cmake` 注入板级；ESP-IDF 路径（由 `ESP_PLATFORM` 触发组件模式）在主仓 `main` 分支已保留完整构建路径，但需要特殊处理（详见 [getting_started.md](getting_started.md) §4.2）。验证矩阵以各 `platform/*/mini_tree` 工程为准，不在本 shelf 内绑定具体 SoC。
 
 ---
 

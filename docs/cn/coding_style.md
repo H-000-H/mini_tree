@@ -72,7 +72,7 @@
 | 函数 / 变量 | `snake_case` |
 | 类型（`struct/typedef`） | 小写（`device`、`hal_can_config`） |
 | 命名空间（`system_cpp`） | `mini_tree::` |
-| 宏 / 枚举值 | 大写 `SNAKE_CASE`（`DEV_ID_UART0`、`VFS_ERR_*`） |
+| 宏 / 枚举值 | 大写 `SNAKE_CASE`（`DEV_ID_UART0`、`MINI_ERR_*`） |
 
 `app` 层为建议，app 以下为强规定。
 

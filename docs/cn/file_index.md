@@ -14,7 +14,9 @@
 | 路径 | 说明 |
 | :--- | :--- |
 | `CMakeLists.txt` | 静态库 `mini_tree`、genconfig、dtc-lite、源文件集合 |
-| `Kconfig` / `.config` | 配置菜单与点文件 |
+| `Kconfig.mini_tree` | 公开配置树（入库） |
+| `Kconfig.non_esp` / `Kconfig.projbuild` | 非 ESP / ESP-IDF 入口（各自 source `Kconfig.mini_tree`） |
+| `.config` | 功能裁剪点文件 |
 | `compile_flags.txt` / `.clangd` | clangd 编译数据库 |
 | `.clang-format` · `.clang-format-ignore` · 分层 `.clang-tidy` | 代码风格：格式化 + 命名规范；app 层建议、app 以下强规定 |
 | `error_symbols.ld` | `ERR_SECTION_BASE` |
@@ -23,7 +25,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | 入口、变更、贡献（开源惯例留根目录） |
 | `docs/` | 全部专题文档（见 [README.md](README.md)） |
 
-> 构建为通用 CMake：HAL 提供 weak 空实现，板级经 `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR` 注入。ESP-IDF 组件路径（`cmake/esp_idf.cmake`）已**迁移到 `esp` 分支**。
+> 构建为通用 CMake：HAL 提供 weak 空实现，板级经 `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR` 注入。ESP-IDF 组件路径（`cmake/esp_idf.cmake`）在主仓 `main` 分支已保留完整构建路径，但需走 IDF 组件模式（详见 [getting_started.md](getting_started.md) §4.2）。
 
 ---
 
@@ -66,7 +68,7 @@
 
 | 路径 | 说明 |
 | :--- | :--- |
-| `core/include/status.h` | `VFS_ERR_*`、`ERR_PTR` |
+| `core/include/status.h` | `MINI_ERR_*`、`ERR_PTR` |
 | `core/include/compiler_compat.h` | 可移植属性与 mem API |
 | `core/include/compiler_compat_poison.h` | poison 层 |
 | `core/include/event_bus.h` · `event_bus.hpp` | 事件总线 |

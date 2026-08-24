@@ -115,77 +115,6 @@ config OSAL_RTTHREAD
 
       Use RT-Thread kernel as OSAL backend.
 
-config OSAL_THREADX
-    bool "Eclipse ThreadX"
-    select USB_TUSB_OS_THREADX
-    help
-      使用 Eclipse ThreadX (v6.5.1) 作为 OSAL 后端。
-      许可 MIT (Eclipse 基金会托管, 商用友好)。
-      端口按 Kconfig PLATFORM 自动派生 (lib/threadx/ports/cortex_*/gnu);
-      内核配置见 lib/threadx/tx_user.h (1 ms tick + 栈检查)。
-      板级集成: 需改写 ports/cortex_m4/gnu/example_build/ 下的
-      tx_initialize_low_level.S (SysTick 1000 Hz) 并接线 tx_kernel_enter() /
-      tx_application_define()。任务控制块与栈由 OSAL 层 calloc 动态分配
-      (RAM 占用最小, 见 docs/memory_footprint.md §3.1.1)。
-
-      Use Eclipse ThreadX (v6.5.1) as the OSAL backend.
-      MIT licensed (hosted by the Eclipse Foundation, commercial-friendly).
-      Port is derived from Kconfig PLATFORM (lib/threadx/ports/cortex_*/gnu);
-      kernel config in lib/threadx/tx_user.h (1 ms tick + stack checking).
-      Board integration: edit tx_initialize_low_level.S under
-      ports/cortex_m4/gnu/example_build/ (SysTick 1000 Hz) and wire
-      tx_kernel_enter() / tx_application_define(). TCB and stack are
-      calloc'd by the OSAL layer (minimal RAM, see docs/memory_footprint.md §3.1.1).
-
-config OSAL_UCOS_III
-    bool "uC/OS-III"
-    select USB_TUSB_OS_NONE
-    help
-      使用 Micrium uC/OS-III (V3.08.02) 作为 OSAL 后端。
-      注意: TinyUSB 无 uC/OS 适配层, CFG_TUSB_OS 自动回退 None (裸机互斥)。
-      许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
-      依赖 lib/uC-CPU + lib/uC-LIB (需随仓克隆, weston-embedded);
-      项目配置副本 lib/uC-OS3/Cfg/ (os_cfg.h: DBG=1, 任务名入 TCB;
-      os_cfg_app.h: OS_CFG_MSG_POOL_SIZE=256 — 全系统并发在途队列消息上限)。
-      优先级 0 最高, 数小优先高; 队列传指针, OSAL 层自建定长槽环。
-      板级集成: OSInit() → OSStart(), SysTick 挂 OS_CPU_SysTickHandler,
-      ISR 包 OSIntEnter/OSIntExit。
-
-      Use Micrium uC/OS-III (V3.08.02) as the OSAL backend.
-      Apache-2.0 licensed (Micrium/Silicon Labs, open source).
-      Depends on lib/uC-CPU + lib/uC-LIB (clone with the repo, weston-embedded);
-      config copy at lib/uC-OS3/Cfg/ (os_cfg.h: DBG=1, task name in TCB;
-      os_cfg_app.h: OS_CFG_MSG_POOL_SIZE=256 — system-wide in-flight queue
-      message cap). Priority 0 is highest; queues pass pointers, OSAL
-      builds a fixed-slot ring. Board integration: OSInit() → OSStart(),
-      SysTick to OS_CPU_SysTickHandler, ISR wrapped with OSIntEnter/OSIntExit.
-
-config OSAL_UCOS_II
-    bool "uC/OS-II"
-    select USB_TUSB_OS_NONE
-    help
-      使用 Micrium uC/OS-II (V2.93.01) 作为 OSAL 后端。
-      注意: TinyUSB 无 uC/OS 适配层, CFG_TUSB_OS 自动回退 None (裸机互斥)。
-      许可 Apache-2.0 (Micrium/Silicon Labs 开源)。
-      注意: 每优先级仅允许一个任务 (0~63; 61/62/63 保留给 tmr/stat/idle),
-      任务句柄即优先级号。项目配置副本 lib/uC-OS2/Cfg/
-      (os_cfg.h: 1 ms tick、OS_MAX_EVENTS=24、OS_MAX_QS=8;
-      app_cfg.h: 端口要求的 CPU_CFG_KA_IPL_BOUNDARY / NVIC_PRIO_BITS)。
-      OS_EVENT 控制块来自内核池 (OS_MAX_EVENTS/OS_MAX_QS 为上限)。
-      板级集成: OSInit() → OSStart(), SysTick 挂 OS_CPU_SysTickHandler,
-      ISR 包 OSIntEnter/OSIntExit。
-
-      Use Micrium uC/OS-II (V2.93.01) as the OSAL backend.
-      Apache-2.0 licensed (Micrium/Silicon Labs, open source).
-      Note: only one task per priority (0~63; 61/62/63 reserved for
-      tmr/stat/idle); the task handle IS the priority number. Config copy
-      at lib/uC-OS2/Cfg/ (os_cfg.h: 1 ms tick, OS_MAX_EVENTS=24,
-      OS_MAX_QS=8; app_cfg.h: port-required CPU_CFG_KA_IPL_BOUNDARY /
-      NVIC_PRIO_BITS). OS_EVENT blocks come from the kernel pool
-      (OS_MAX_EVENTS/OS_MAX_QS caps). Board integration: OSInit() →
-      OSStart(), SysTick to OS_CPU_SysTickHandler, ISR wrapped with
-      OSIntEnter/OSIntExit.
-
 config OSAL_NULL
     bool "None (bare-metal)"
     select USB_TUSB_OS_NONE
@@ -362,11 +291,19 @@ config OSAL_NULL_TASK_CPP
       always goes through the standard C API.
 
 config HARD_PRIORITY
-    int "Generate Hardware interrupt priority Max Number"
+    int "Maximum hardware interrupt priority levels (N+1 preemptive scheduler)"
     default 8
     depends on XTASK_PREEMPT
-    help 
-      N+1链表的最大硬件优先级的数量默认和虚拟中断数一样,不要大于虚拟中断的数量不然容易虚拟中断越界
+    help
+      抢占式调度器 (xtask_preempt.c) N+1 链表中硬件中断优先级的数量上限。
+      该值决定调度器为硬件中断上下文预留的优先级槽位数, 不应超过
+      VIRQ 虚拟中断号总数 (CONFIG_VIRQ_MAX), 否则可能导致虚拟中断越界。
+      默认 8, 与 VIRQ 默认值对齐。
+
+      Maximum hardware interrupt priority slots reserved in the N+1
+      preemptive scheduler linked-list. Must not exceed the total VIRQ
+      count (CONFIG_VIRQ_MAX) to avoid virtual IRQ index overflow.
+      Default 8, aligned with the default VIRQ capacity.
 
 config X_PREEMPT_MAX_TASKS
     int "Preemptive scheduler task pool size"
@@ -630,8 +567,8 @@ config USB
       USB host/client bus and VFS (bus/usb + vfs/usb + hal/usb).
       When enabled, the board must supply the usb_tusb_port glue layer
       (docs/usb_tusb_port.md) and link TinyUSB DCD itself; setting it
-      "not set" excludes the whole USB path and TinyUSB (CMake trims by
-      .config; unset is treated as enabled by default).
+      "not set" excludes the whole USB path and TinyUSB (CMake aligns
+      with Kconfig semantics: only explicit =y pulls USB in).
 
     menu "TinyUSB 适配层"
 
@@ -653,8 +590,9 @@ config USB
             help
               由 OSAL Backend 自动派生 (select 联动), 无需手填。
               对应 tusb_option.h 的 OPT_OS_*:
-                NONE=1 / FREERTOS=2 / RTTHREAD=3 / THREADX=4
-              注意: 选 uC/OS 时 TinyUSB 无对应适配, 自动回退 NONE。
+                NONE=1 / FREERTOS=2 / RTTHREAD=3
+              注意: 选 uC/OS 或 ThreadX (本地扩展, 见 Kconfig.local) 时
+              TinyUSB 无对应适配, 自动回退 NONE。
 
             config USB_TUSB_OS_NONE
                 bool "None (bare-metal)"
@@ -662,8 +600,6 @@ config USB
                 bool "FreeRTOS"
             config USB_TUSB_OS_RTTHREAD
                 bool "RT-Thread"
-            config USB_TUSB_OS_THREADX
-                bool "ThreadX"
         endchoice
 
         config USB_TUSB_DEBUG
@@ -857,66 +793,6 @@ config USB
               device_read timeout for frame reception; default 0 means
               non-blocking poll, suitable for the NO_SYS=1 main loop.
         endmenu
-
-    menu "UI Libraries (LVGL / u8g2)"
-        # UI 库胶水层 (ui/) 配置。CMake 经 .config 的 CONFIG_UI_LVGL /
-        # CONFIG_UI_U8G2 桥接决定是否 add_subdirectory(ui); 胶水层只经
-        # device/VFS 模型 (DISPLAY_CMD_*) 触硬件。
-        # Glue layer (ui/) gate; CMake bridges via CONFIG_UI_LVGL /
-        # CONFIG_UI_U8G2 in .config; glue only touches hardware through
-        # the device/VFS model (DISPLAY_CMD_*).
-
-        config UI_LVGL
-            bool "LVGL glue layer (ui/lvgl)"
-            default n
-            help
-              编入 ui/lvgl/lvgl_port.c 并链接 LVGL (mini_tree_link_lvgl,
-              lv_conf.h 取 ui/lvgl/lv_conf.h)。胶水链路: lv_init +
-              osal_time_ms tick + lv_display_create → DISPLAY_CMD_FLUSH
-              (display_lvgl_flush_callback)。
-
-              Build ui/lvgl port and link LVGL; tick from osal_time_ms,
-              flush via DISPLAY_CMD_FLUSH on the panel device.
-
-        config UI_LVGL_DISPLAY_COUNT
-            int "LVGL display context count"
-            default 1
-            range 1 4
-            depends on UI_LVGL
-            help
-              LVGL 显示上下文静态池容量 (可同时 attach 的屏数量)。
-              Static pool capacity for LVGL display contexts.
-
-        config UI_LVGL_FLUSH_TIMEOUT_MS
-            int "LVGL flush ioctl timeout (ms)"
-            default 100
-            range 0 10000
-            depends on UI_LVGL
-            help
-              LVGL flush 回调内 device_ioctl(DISPLAY_CMD_FLUSH) 的超时 (毫秒)。
-              Timeout for the flush ioctl issued by the LVGL flush callback.
-
-        config UI_U8G2
-            bool "u8g2 glue layer (ui/u8g2)"
-            default n
-            help
-              编入 ui/u8g2/u8g2_port.c 并链接 u8g2 (mini_tree_link_u8g2)。
-              提供 u8x8 byte/gpio_and_delay 回调与 u8g2_port_flush 整帧落屏
-              (display_u8g2_flush_frame_buffer → DISPLAY_CMD_FLUSH), 仅支持
-              单色面板 (_f 整帧缓冲初始化过程)。
-
-              Build ui/u8g2 port and link u8g2; provides u8x8 callbacks
-              and full-frame flush for monochrome panels.
-
-        config UI_U8G2_FLUSH_TIMEOUT_MS
-            int "u8g2 flush ioctl timeout (ms)"
-            default 100
-            range 0 10000
-            depends on UI_U8G2
-            help
-              u8g2_port_flush 传 0 时使用的 device_ioctl 默认超时 (毫秒)。
-              Default flush ioctl timeout used when u8g2_port_flush gets 0.
-    endmenu
 endmenu
 
 menu "Board Features"
@@ -1218,7 +1094,7 @@ menu "lwIP (TCP/IP Stack)"
     #   net/arch/cc.h        <- lwip/arch.h 引用 ("arch/cc.h")
     #   net/arch/sys_arch.h  <- lwip/sys.h  引用 ("arch/sys_arch.h")
     # bool 选中 => config.h 生成 "#define CONFIG_XXX 1"; 未选中 => 宏不存在
-    #   (lwIP 中 #if XXX 将未定义视为  ert0, 即功能关闭)。
+    #   (lwIP 中 #if XXX 将未定义视为 0, 即功能关闭)。
 
     config LWIP
         bool "Enable lwIP TCP/IP stack"
@@ -1476,21 +1352,6 @@ menu "lwIP (TCP/IP Stack)"
               (byte stream).
     endmenu
 
-    menu "UDP Client (net/port/udp/udp_client.c)"
-        depends on LWIP_UDP
-
-        config UDP_CLIENT_RX_BUFFER_SIZE
-            int "UDP client RX FIFO size (bytes, power of 2)"
-            default 1024
-            range 256 8192
-            help
-              UDP 客户端 (net/port/udp/udp_client.c) 每实例接收环形缓冲大小,
-              必须为 2 的幂。静态嵌入 udp_client_context, 按实例数成倍占 RAM。
-              发送为原子数据报 (pbuf 直发), 无 TX FIFO。
-              Per-instance RX ring buffer of the UDP client; must be a
-              power of two. Sending is atomic per datagram (no TX FIFO).
-    endmenu
-
     menu "MQTT Client (net/port/mqtt/mqtt_client.c)"
         depends on LWIP_TCP
 
@@ -1518,93 +1379,6 @@ menu "lwIP (TCP/IP Stack)"
             help
               未显式指定时使用的默认客户端 ID。
               Default client id when not overridden by caller.
-    endmenu
-
-    menu "HTTP Client (net/port/http/http_client.c)"
-        depends on LWIP_TCP
-
-        config NET_HTTP_USE_COREHTTP
-            bool "Use coreHTTP as HTTP protocol engine"
-            default y
-            help
-              用 FreeRTOS coreHTTP (HTTP/1.1 全方法 + llhttp 解析) 做报文编解码,
-              包装层只留短连接请求流程。关闭后 HTTP 客户端不参与链接。
-              Use FreeRTOS coreHTTP for request/response codec.
-
-        config HTTP_CLIENT_RESPONSE_BUFFER_SIZE
-            int "HTTP client response buffer size (bytes)"
-            default 2048
-            range 512 16384
-            help
-              HTTP 响应静态缓冲 (头 + 体共用), 需 >= 单次最大响应。
-              Static response buffer (headers + body), must fit the
-              largest expected response.
-
-        config HTTP_CLIENT_RECV_TIMEOUT_MS
-            int "HTTP client recv timeout (ms)"
-            default 5000
-            range 100 60000
-            help
-              单次请求等待响应的上限。
-              Timeout of one request waiting for response.
-    endmenu
-
-    menu "TLS (altcp_tls_mbedtls)"
-        depends on LWIP_TCP
-
-        config LWIP_ALTCP
-            bool "Application-layer TCP abstraction (altcp)"
-            default n
-            help
-              lwIP 应用层 TCP 抽象层 (altcp): 在 tcp_pcb 之上提供可叠加的
-              分层连接接口, 是 TLS 层的前提。关闭时 altcp_* 全部宏退化为
-              tcp_* 原生接口, 现有 TCP 代码零改动。
-              开启 LWIP_ALTCP_TLS 时由 select 强制选中。
-              Application-layer TCP abstraction of lwIP; prerequisite of
-              the TLS layer. When off, altcp_* macros degrade to plain
-              tcp_* APIs. Force-selected by LWIP_ALTCP_TLS.
-
-        config LWIP_ALTCP_TLS
-            bool "TLS over altcp (https/mqtts capable)"
-            default n
-            select LWIP_ALTCP
-            help
-              altcp 之上的 TLS 层 (lwip/src/apps/altcp_tls)。开启后传输层
-              可走加密通道, 供 https/mqtts 使用。需要 mbedTLS 库与较大的
-              lwIP 堆 (建议 MEM_SIZE >= 32768)。
-              TLS layer on top of altcp for https/mqtts. Requires mbedTLS
-              and a larger lwIP heap (MEM_SIZE >= 32768 recommended).
-
-        config LWIP_ALTCP_TLS_MBEDTLS
-            bool "mbedTLS backend for altcp TLS"
-            default y if LWIP_ALTCP_TLS
-            default n
-            depends on LWIP_ALTCP_TLS
-            help
-              altcp TLS 的 mbedTLS 实现 (LWIP_ALTCP_TLS_MBEDTLS)。当前唯一
-              后端, 开启时链接 lib/mbedtls 并编入 altcp_tls_mbedtls 源文件。
-              The mbedTLS implementation of altcp TLS; links lib/mbedtls.
-
-        config TLS_TRANSPORT_RX_BUFFER_SIZE
-            int "TLS transport RX FIFO size (bytes, power of 2)"
-            default 2048
-            range 512 16384
-            depends on LWIP_ALTCP_TLS
-            help
-              TLS 传输层 (net/port/tls/tls_transport.c) 每实例接收环形缓冲
-              大小, 必须为 2 的幂。静态嵌入上下文, 按实例数成倍占 RAM。
-              Per-instance RX ring buffer of the TLS transport; must be a
-              power of two.
-
-        config TLS_TRANSPORT_TX_BUFFER_SIZE
-            int "TLS transport TX FIFO size (bytes, power of 2)"
-            default 2048
-            range 512 16384
-            depends on LWIP_ALTCP_TLS
-            help
-              TLS 传输层每实例发送环形缓冲大小, 必须为 2 的幂。
-              Per-instance TX ring buffer of the TLS transport; must be a
-              power of two.
     endmenu
 
         config LWIP_ETHERNET

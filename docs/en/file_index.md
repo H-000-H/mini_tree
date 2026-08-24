@@ -14,7 +14,9 @@
 | Path | Description |
 | :--- | :--- |
 | `CMakeLists.txt` | static lib `mini_tree`, genconfig, dtc-lite, source set |
-| `Kconfig` / `.config` | config menu and dotfile |
+| `Kconfig.mini_tree` | public config tree (in git) |
+| `Kconfig.non_esp` / `Kconfig.projbuild` | non-ESP / ESP-IDF entry (each sources `Kconfig.mini_tree`) |
+| `.config` | feature-trim dotfile |
 | `compile_flags.txt` / `.clangd` | clangd compilation database |
 | `.clang-format` · `.clang-format-ignore` · layered `.clang-tidy` | code style: formatting + naming rules; suggested at app layer, enforced below |
 | `error_symbols.ld` | `ERR_SECTION_BASE` |
@@ -23,7 +25,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | entry, changelog, contributing (kept at root per OSS convention) |
 | `docs/` | all topical docs (see README.md) |
 
-> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`. The ESP-IDF component path (`cmake/esp_idf.cmake`) has been **moved to the `esp` branch**.
+> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`. The ESP-IDF component path (`cmake/esp_idf.cmake`) keeps its full build path in the `main` branch but requires the IDF component mode (see [getting_started.md](getting_started.md) §4.2).
 
 ---
 
@@ -66,7 +68,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 
 | Path | Description |
 | :--- | :--- |
-| `core/include/status.h` | `VFS_ERR_*`, `ERR_PTR` |
+| `core/include/status.h` | `MINI_ERR_*`, `ERR_PTR` |
 | `core/include/compiler_compat.h` | portable attributes & mem API |
 | `core/include/compiler_compat_poison.h` | poison layer |
 | `core/include/event_bus.h` · `event_bus.hpp` | event bus |

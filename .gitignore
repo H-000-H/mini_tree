@@ -71,6 +71,10 @@ Thumbs.db
 *.user
 *.workspace
 
+# 本地 Kconfig 扩展 (不入库, 作者本地使用)
+# 详见 Kconfig.local 顶部注释; 需要时在 Kconfig.non_esp 末尾手动 source
+Kconfig.local
+
 # ---------------------------------------------
 # 编辑器个人目录（共享的 .vscode/ 可入库）
 # ---------------------------------------------

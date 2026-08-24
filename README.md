@@ -29,7 +29,7 @@ Platform-agnostic embedded middleware using a Linux-style Device Tree & Driver M
 
 ---
 
-## Product Drivers (37)
+## Product Drivers (39)
 
 | Category | Chips & Modules |
 |:---|:---|
@@ -116,7 +116,7 @@ Step-by-step: [docs/en/getting_started.md](docs/en/getting_started.md)
 
 ## ESP-IDF (ESP32)
 
-> **ESP 支持已从 `main` 分支剥离**。`main` 只保留平台无关的通用中间件；所有 ESP-IDF 相关代码（`components/mini_tree`、`board_port.cmake`、`hal_<soc>`、`esp_idf.cmake`）已迁至 **`esp` 分支**。
+`main` 分支保留了完整的 ESP-IDF 构建路径（`cmake/esp_idf.cmake`、`Kconfig.projbuild`、`idf_component.yml`），但不能像普通平台一样直接 `add_subdirectory`——需要走 IDF 组件路径（由 `ESP_PLATFORM` 触发）。
 
 获取 ESP 版本二选一：
 
@@ -131,7 +131,7 @@ Step-by-step: [docs/en/getting_started.md](docs/en/getting_started.md)
   ```
   或在工程目录执行 `idf.py add-dependency "h-000-h/mini_tree"`，由 `idf-component-manager` 自动拉取。
 
-ESP 移植步骤见 **`esp` 分支**上的 [docs/en/esp_idf_cmake.md](https://github.com/H-000-H/mini_tree/blob/espidf-branch/docs/en/esp_idf_cmake.md)（中文版 `docs/cn/esp_idf_cmake.md`）；本仓 `main` 分支不再维护 ESP 移植细节。
+ESP 完整移植指南见 `esp` 分支的 `docs/` 或 [getting_started.md](docs/en/getting_started.md) §4.2。
 
 ---
 

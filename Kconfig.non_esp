@@ -1,7 +1,12 @@
 # mini_tree Kconfig 入口 (非 ESP 路径)
 # ESP 路径走 Kconfig.projbuild (由 ESP-IDF confgen 自动注入顶层树)。
 # 公共配置树在 Kconfig.mini_tree, 两套入口各自 source 同一份, 避免分叉。
+#
+# 本地扩展 (不入库):
+#   需要使用本地扩展时, 在本文件末尾手动加一行:
+#       source "Kconfig.local"
+
 
 mainmenu "mini_tree Configuration"
-# rsource = 相对本文件目录解析 (与 CWD/srctree 无关), menuconfig 无需 chdir
+# rsource = 相对本文件目录解析, menuconfig 无需 chdir
 rsource "Kconfig.mini_tree"

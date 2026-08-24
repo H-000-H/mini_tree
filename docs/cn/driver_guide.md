@@ -37,7 +37,7 @@
 | 路径 | 说明 |
 | :--- | :--- |
 | `board/dts/board.dts` | **占位**根节点（仅 `mini-tree,placeholder`，无外设）；板级用 `BOARD_DTS` 覆盖 |
-| `board/dtsi/` | **节点模板库**：`example-soc.dtsi`（SoC 骨架：cpus/gpio/uart）+ `vfs/`（11 个 VFS 各一文件）+ `drivers/`（37 个产品驱动各一文件）；参数全 0 占位 + 用法注释，板级拷走填值；`BOARD_DTSI_DIR` 可指向平台自有 dtsi |
+| `board/dtsi/` | **节点模板库**：`example-soc.dtsi`（SoC 骨架：cpus/gpio/uart）+ `vfs/`（11 个 VFS 各一文件）+ `drivers/`（39 个产品驱动各一文件）；参数全 0 占位 + 用法注释，板级拷走填值；`BOARD_DTSI_DIR` 可指向平台自有 dtsi |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | 通用 `#define`，供 dtsi `#include <dt-bindings/...>` |
 | `drivers/<chip>/{include,src}` | 产品驱动（39 个）；CMake / `dtc-lite` GLOB 扫描 |
 
@@ -58,7 +58,7 @@ dtsi/<soc>-product-drivers.dtsi
 
 CMake：`BOARD_DTS`、`BOARD_DTSI_DIR`；厂商头搜索：`VENDOR_INC_DIRS` / `VENDOR_DEFINES`。
 
-产品驱动与 ESP 接线见 [esp_idf_cmake.md](esp_idf_cmake.md)（在 **`esp` 分支**上）。
+产品驱动与 ESP 接线见 [getting_started.md](getting_started.md) §4.2。
 
 ---
 
@@ -111,7 +111,7 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 
 - `name`：C 标识符，全局唯一
 - `compatible`：与 DTS 节点 `compatible = "..."` **完全一致**
-- `probe`/`remove`：返回 `MINI_OK` 或 `VFS_ERR_*`
+- `probe`/`remove`：返回 `MINI_OK` 或 `MINI_ERR_*`
 
 命名统一小写（`.clang-tidy` 的 `readability-identifier-naming` 强制）：`x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::` 等；`.clang-format` 为 Allman、单语句去括号、4 空格、200 列。app 层为建议，app 以下为强规定。
 
@@ -136,7 +136,7 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 
 **ioctl / 读写语义汇总**见 [peripherals.md](peripherals.md)。
 
-ESP 接线细节见 [esp_idf_cmake.md](esp_idf_cmake.md)（在 **`esp` 分支**上）。
+ESP 接线细节见 [getting_started.md](getting_started.md) §4.2。
 
 ---
 

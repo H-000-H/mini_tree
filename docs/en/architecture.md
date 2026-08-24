@@ -80,7 +80,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `vfs/` | drivers bound by compatible | `vfs_spi_probe`, uart/can/usb… |
 | `bus/` | controller host + client sessions | `spi_bus_open`, `can_bus_transmit` |
 | `hal/` | abstract register operations | `hal_gpio_fast_set_level`, `hal_uart_write` |
-| `core/` | error codes, compat macros, events, buffer pools, logging | `VFS_ERR_*`, `event_bus_*` |
+| `core/` | error codes, compat macros, events, buffer pools, logging | `MINI_ERR_*`, `event_bus_*` |
 | `osal/` | locks, queues, tasks, time | `osal_mutex_lock` |
 | `interrupt/` | VIRQ, top/bottom halves | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | startup, WDT, scrubber, safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
@@ -156,7 +156,7 @@ Publish/subscribe in `core`; module switch `CONFIG_EVENT_BUS` (off by default, d
 
 ### 4.4 Errors & Pointers
 
-- Return values: `int`, `MINI_OK` or negative `VFS_ERR_*`
+- Return values: `int`, `MINI_OK` or negative `MINI_ERR_*`
 - Special pointers: `ERR_PTR` / `IS_ERR` / `PTR_ERR` (rely on `ERR_SECTION_BASE` from `error_symbols.ld`)
 
 ---
@@ -206,7 +206,7 @@ Key CMake cache variables: `BOARD_DTS`, `BOARD_DTSI_DIR`, `VENDOR_INC_DIRS`, `VE
 | middleware source, weak HAL, placeholder DTS, docs, IDE stubs | `hal_*_<soc>.c`, full dts/dtsi, vendor `-I`, board linker scripts and startup files |
 | three OSAL backend skeletons | clocks, heap, SysTick/RTOS ports (if needed) |
 
-On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_PORT` (absolute path) or a sibling `board_port.cmake`; the ESP-IDF path (triggered by `ESP_PLATFORM`, component mode) has been **moved to the `esp` branch**. The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
+On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_PORT` (absolute path) or a sibling `board_port.cmake`; the ESP-IDF path (triggered by `ESP_PLATFORM`, component mode) keeps its full build path in the `main` branch but requires special handling (see [getting_started.md](getting_started.md) §4.2). The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
 
 ---
 

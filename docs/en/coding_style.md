@@ -72,7 +72,7 @@ Uniform lowercase (enforced by `readability-identifier-naming`):
 | functions / variables | `snake_case` |
 | types (`struct/typedef`) | lowercase (`device`, `hal_can_config`) |
 | namespace (`system_cpp`) | `mini_tree::` |
-| macros / enum values | UPPER `SNAKE_CASE` (`DEV_ID_UART0`, `VFS_ERR_*`) |
+| macros / enum values | UPPER `SNAKE_CASE` (`DEV_ID_UART0`, `MINI_ERR_*`) |
 
 Recommended at the `app` layer; mandatory below `app`.
 

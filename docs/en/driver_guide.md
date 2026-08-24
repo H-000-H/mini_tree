@@ -39,7 +39,7 @@
 | `board/dts/board.dts` | **Placeholder** root node (`mini-tree,placeholder` only, no peripherals); boards override via `BOARD_DTS` |
 | `board/dtsi/` | **Node-template library**: `example-soc.dtsi` (SoC skeleton: cpus/gpio/uart) + `vfs/` (one file per VFS) + `drivers/` (one file per product driver); all-0 placeholders with usage comments; `BOARD_DTSI_DIR` may point at platform-owned dtsi |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | Generic `#define`s for dtsi `#include <dt-bindings/...>` |
-| `drivers/<chip>/{include,src}` | Product drivers (37); GLOB-scanned by CMake / `dtc-lite` |
+| `drivers/<chip>/{include,src}` | Product drivers (39); GLOB-scanned by CMake / `dtc-lite` |
 
 > **How to use the templates**: drivers templates mount on labels defined by the vfs templates (e.g. `&i2c0 { aht20: aht20@0 {...} }`). The board enables both the bus node and the device node (`status = "okay"`); the instance pool size auto-equals `DTC_GEN_COUNT_*` (count of same-compatible nodes, default 1) — no manual tuning.
 
@@ -58,7 +58,7 @@ dtsi/<soc>-product-drivers.dtsi
 
 CMake: `BOARD_DTS`, `BOARD_DTSI_DIR`; vendor header search: `VENDOR_INC_DIRS` / `VENDOR_DEFINES`.
 
-Product drivers and ESP wiring: see [esp_idf_cmake.md](esp_idf_cmake.md) (on the **`esp` branch**).
+Product drivers and ESP wiring: see [getting_started.md](getting_started.md) §4.2.
 
 ---
 
@@ -111,7 +111,7 @@ Rules:
 
 - `name`: C identifier, globally unique
 - `compatible`: **exactly** matches the DTS node's `compatible = "..."`
-- `probe`/`remove`: return `MINI_OK` or `VFS_ERR_*`
+- `probe`/`remove`: return `MINI_OK` or `MINI_ERR_*`
 
 Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-identifier-naming`): `x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::`, etc.; `.clang-format` uses Allman braces, no braces on single statements, 4-space indent, 200 columns. Recommended at `app`, mandatory below `app`.
 
@@ -136,7 +136,7 @@ The `DRIVER_REGISTER` entries in the source are authoritative; re-run dtc-lite a
 
 The **ioctl / read-write semantics summary** lives in [peripherals.md](peripherals.md).
 
-ESP wiring details: see [esp_idf_cmake.md](esp_idf_cmake.md) (on the **`esp` branch**).
+ESP wiring details: see [getting_started.md](getting_started.md) §4.2.
 
 ---
 

@@ -47,7 +47,7 @@ Vendor this repository as a subdirectory or submodule, e.g. `third_party/mini_tr
 | `CMakeLists.txt` | `add_subdirectory` entry point |
 | `.config` / `Kconfig` | feature trimming |
 | `board/dts/board.dts` | default placeholder (must be overridden by the platform) |
-| `board/dtsi/` | node templates: `example-soc.dtsi` + `vfs/` (11) + `drivers/` (37), all-0 placeholders to copy & fill (see [driver_guide.md](driver_guide.md) §1) |
+| `board/dtsi/` | node templates: `example-soc.dtsi` + `vfs/` (11) + `drivers/` (39), all-0 placeholders to copy & fill (see [driver_guide.md](driver_guide.md) §1) |
 | `ide/stubs/` | IDE headers when there are no build artifacts |
 
 ---
@@ -143,10 +143,15 @@ Language-backend comparison: [runtime_services.md](runtime_services.md#3-system_
 
 ### 4.2 What about ESP-IDF?
 
-**ESP support has been split out of `main`** — it lives on the **`esp` branch** (`espidf-branch`) or in the Espressif Component Registry.
+The `main` branch keeps the full ESP-IDF build path (`cmake/esp_idf.cmake`, `Kconfig.projbuild`, `idf_component.yml`), but it **cannot** be used via a plain `add_subdirectory` into IDF — it needs the IDF component path (triggered by `ESP_PLATFORM` → `cmake/esp_idf.cmake`).
 
-**Do not** `add_subdirectory` this repository's root directly into IDF.
-ESP uses the IDF component path (`EXTRA_COMPONENT_DIRS` + `idf_component_register`, triggered by `ESP_PLATFORM`). See the full guide on the `esp` branch: [docs/en/esp_idf_cmake.md](https://github.com/H-000-H/mini_tree/blob/espidf-branch/docs/en/esp_idf_cmake.md) (this repo's `docs/en/esp_idf_cmake.md` only keeps a pointer).
+The full reference board project and porting guide are maintained on the **`esp` branch** (`espidf-branch`):
+
+```bash
+git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
+```
+
+Alternatively, pull via the Espressif Component Registry: add `h-000-h/mini_tree: ">=1.2.0"` to `idf_component.yml`.
 
 ---
 

@@ -15,7 +15,7 @@
 | :--- | :--- |
 | `device_*` & `file_operations` | primary app entry |
 | `DRIVER_REGISTER(name, compat, probe, remove)` shape | macro arg order & symbol rules |
-| `status.h` `MINI_OK` / `VFS_ERR_*` semantics | values may map through errno; semantics hold |
+| `status.h` `MINI_OK` / `MINI_ERR_*` semantics | values may map through errno; semantics hold |
 | `osal.h` public function set | common surface across three backends |
 | `osal_null.h` C++ overload `osal_task_create` (bare-metal only) | only `CONFIG_OSAL_NULL` + `CONFIG_OSAL_NULL_TASK_CPP` + `__cplusplus`; **cooperative** (`CONFIG_XTASK_COOP`): `period` in ms, `param1` is `x_task*` TCB; **preemptive** (`CONFIG_XTASK_PREEMPT`): 3rd arg reinterpreted as `priority` (higher = more urgent) |
 | HAL function & config-field names | platforms implement per header |
