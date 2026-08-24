@@ -1,6 +1,11 @@
 # mini_tree (generic CMake build for non-ESP-IDF projects)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    # 独立构建：需要声明最低版本与工程名
+    cmake_minimum_required(VERSION 3.16)
+    project(mini_tree LANGUAGES C CXX)
+endif()
 
-# 策略兼容：本文件被父工程 include（自身无 cmake_minimum_required），
+# 策略兼容：本文件可被父工程 include，也可独立构建（CMakePresets.json）
 if(POLICY CMP0003)
     cmake_policy(SET CMP0003 NEW)
 endif()
@@ -537,17 +542,28 @@ endif()
 target_compile_definitions(mini_tree PUBLIC ${OSAL_DEFINE})
 if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
     target_compile_definitions(mini_tree PRIVATE CONFIG_SYSTEM_CPP)
-    target_compile_options(mini_tree PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
-        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
-    )
+    if(MSVC)
+        target_compile_options(mini_tree PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/GR->
+            $<$<COMPILE_LANGUAGE:CXX>:/EHs-c->
+        )
+    else()
+        target_compile_options(mini_tree PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+            $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        )
+    endif()
 endif()
 
 # 第三方库：FreeRTOS / RT-Thread（按 .config）
 add_subdirectory(lib)
 target_link_libraries(mini_tree PUBLIC lib)
 
-target_compile_options(mini_tree PRIVATE -Wno-unused-value)
+if(MSVC)
+    target_compile_options(mini_tree PRIVATE /wd4100 /wd4101 /wd4102)
+else()
+    target_compile_options(mini_tree PRIVATE -Wno-unused-value -Wno-unused-variable)
+endif()
 # 上层 C++ 基础：ETL 默认进 mini_tree（SYSTEM_CPP / event_bus 等依赖）
 mini_tree_link_etl(mini_tree)
 add_custom_target(mini_tree_gen DEPENDS "${KCONFIG_OUT}" ${GEN_SRCS} ${GEN_HDRS} "${SCRUBBER_CRC_HDR}")
