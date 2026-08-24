@@ -122,9 +122,10 @@ static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
         break;
     case IWDG_CMD_SET_TIMEOUT:
     {
-        const struct iwdg_timeout_arg* a = arg;
-        ret = (!a || arg_len != sizeof(*a)) ? MINI_ERR_INVAL :
-                                              hal_iwdg_set_timeout_ms(&priv->iwdg, a->timeout_ms);
+        const struct iwdg_timeout_arg* timeout_arg = arg;
+        ret = (!timeout_arg || arg_len != sizeof(*timeout_arg)) ?
+                  MINI_ERR_INVAL :
+                  hal_iwdg_set_timeout_ms(&priv->iwdg, timeout_arg->timeout_ms);
         break;
     }
     case IWDG_CMD_SET_LONG:
@@ -155,15 +156,15 @@ static const struct file_operations s_fops = {
 static int vfs_iwdg_probe(struct device* pdev)
 {
     struct hal_iwdg_config cfg = {.timeout_ms = 8000, .prer = 0xFFFFFFFFU, .rlr = 0xFFFFFFFFU};
-    int v, idx, ret;
+    int value, idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     idx = osal_pool_claim(&s_pool);
     if (idx < 0)
         return MINI_ERR_NOMEM;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "timeout-ms", &v));
-    if (v > 0)
-        cfg.timeout_ms = (uint32_t)v;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "timeout-ms", &value));
+    if (value > 0)
+        cfg.timeout_ms = (uint32_t)value;
     COMPAT_MEM_SET(&s_priv, 0, sizeof(s_priv));
     s_priv.pool_idx = idx;
     ret = hal_iwdg_init(&s_priv.iwdg, &cfg);

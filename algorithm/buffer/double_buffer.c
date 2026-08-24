@@ -48,20 +48,21 @@ int double_buffer_init(struct double_buffer_spsc* handle, double_buffer_data_typ
 
 int double_buffer_write_data(struct double_buffer_spsc* handle, double_buffer_data_type data)
 {
-    uint16_t w;
+    uint16_t write_ptr;
 
     if (!handle)
         return BUFF_ERR_INVAL;
 
-    w = BUFF_LOAD_RELAXED(handle->w_ptr);
-    if (w >= handle->size)
+    write_ptr = BUFF_LOAD_RELAXED(handle->w_ptr);
+    if (write_ptr >= handle->size)
         return BUFF_ERR_FULL; /**< 写缓冲满, 等待消费者读空读侧后由下次写入触发 swap */
 
-    handle->buf1[w] = data;
-    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + 1));
+    handle->buf1[write_ptr] = data;
+    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(write_ptr + 1));
 
     /**< 写满 且 读侧已读空 → 交换读写角色 */
-    if ((uint16_t)(w + 1) == handle->size && BUFF_LOAD_ACQUIRE(handle->r_ptr) == handle->size)
+    if ((uint16_t)(write_ptr + 1) == handle->size &&
+        BUFF_LOAD_ACQUIRE(handle->r_ptr) == handle->size)
         double_buffer_swap(handle);
 
     return BUFF_OK;
@@ -69,18 +70,18 @@ int double_buffer_write_data(struct double_buffer_spsc* handle, double_buffer_da
 
 int double_buffer_read_data(struct double_buffer_spsc* handle, double_buffer_data_type* p_data)
 {
-    uint16_t r;
+    uint16_t read_ptr;
 
     if (!handle || !p_data)
         return BUFF_ERR_INVAL;
 
     /**< acquire 加载: 生产者 swap 时会复位读指针并交换缓冲字段 */
-    r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
-    if (r >= handle->size)
+    read_ptr = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    if (read_ptr >= handle->size)
         return BUFF_ERR_EMPTY; /**< 读侧空 (含首次 swap 前) */
 
-    *p_data = handle->buf2[r];
-    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + 1));
+    *p_data = handle->buf2[read_ptr];
+    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(read_ptr + 1));
     return BUFF_OK;
 }
 
@@ -88,7 +89,7 @@ int double_buffer_write_block(struct double_buffer_spsc* handle,
                               const double_buffer_data_type* p_data, uint16_t len,
                               uint16_t* p_actual)
 {
-    uint16_t w;
+    uint16_t write_ptr;
     uint16_t free_len;
 
     if (p_actual)
@@ -96,19 +97,20 @@ int double_buffer_write_block(struct double_buffer_spsc* handle,
     if (!handle || !p_data || len == 0)
         return BUFF_ERR_INVAL;
 
-    w = BUFF_LOAD_RELAXED(handle->w_ptr);
-    free_len = (uint16_t)(handle->size - w);
+    write_ptr = BUFF_LOAD_RELAXED(handle->w_ptr);
+    free_len = (uint16_t)(handle->size - write_ptr);
     if (free_len == 0)
         return BUFF_ERR_FULL;
 
     if (len > free_len)
         len = free_len;
 
-    BUFF_MEM_COPY(&handle->buf1[w], p_data, len * sizeof(double_buffer_data_type));
-    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(w + len));
+    BUFF_MEM_COPY(&handle->buf1[write_ptr], p_data, len * sizeof(double_buffer_data_type));
+    BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(write_ptr + len));
 
     /**< 写满 且 读侧已读空 → 交换读写角色 */
-    if ((uint16_t)(w + len) == handle->size && BUFF_LOAD_ACQUIRE(handle->r_ptr) == handle->size)
+    if ((uint16_t)(write_ptr + len) == handle->size &&
+        BUFF_LOAD_ACQUIRE(handle->r_ptr) == handle->size)
         double_buffer_swap(handle);
 
     if (p_actual)
@@ -119,7 +121,7 @@ int double_buffer_write_block(struct double_buffer_spsc* handle,
 int double_buffer_read_block(struct double_buffer_spsc* handle, double_buffer_data_type* p_data,
                              uint16_t len, uint16_t* p_actual)
 {
-    uint16_t r;
+    uint16_t read_ptr;
     uint16_t avail;
 
     if (p_actual)
@@ -128,16 +130,16 @@ int double_buffer_read_block(struct double_buffer_spsc* handle, double_buffer_da
         return BUFF_ERR_INVAL;
 
     /**< acquire 加载: 生产者 swap 时会复位读指针并交换缓冲字段 */
-    r = BUFF_LOAD_ACQUIRE(handle->r_ptr);
-    avail = (uint16_t)(handle->size - r);
+    read_ptr = BUFF_LOAD_ACQUIRE(handle->r_ptr);
+    avail = (uint16_t)(handle->size - read_ptr);
     if (avail == 0)
         return BUFF_ERR_EMPTY;
 
     if (len > avail)
         len = avail;
 
-    BUFF_MEM_COPY(p_data, &handle->buf2[r], len * sizeof(double_buffer_data_type));
-    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(r + len));
+    BUFF_MEM_COPY(p_data, &handle->buf2[read_ptr], len * sizeof(double_buffer_data_type));
+    BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(read_ptr + len));
     if (p_actual)
         *p_actual = len;
     return BUFF_OK;
@@ -169,13 +171,12 @@ int double_buffer_isfull(struct double_buffer_spsc* handle, bool* p_full)
     return BUFF_OK;
 }
 
-/* ============================================================================
- * 1.4 双缓冲独立读写 (dual_buffer) — 同时收发不阻塞, 线性缓冲无环绕
- *
- * 与 double_buffer_spsc 的区别: 两缓冲各自有独立读写指针, 无交换门槛,
- * 生产者写满一个自动切到另一个 (不等读空), 消费者读空一个自动切到另一个 (不等写满),
- * 适合连续流 (音频/传感器采样) 场景, 读写速率不等也不会互相阻塞。
- * ========================================================================== */
+/* -------------------------------------------------------------------------- */
+/* 1.4 双缓冲独立读写 (dual_buffer) — 同时收发不阻塞, 线性缓冲无环绕 */
+/* 与 double_buffer_spsc 的区别: 两缓冲各自有独立读写指针, 无交换门槛, */
+/* 生产者写满一个自动切到另一个 (不等读空), 消费者读空一个自动切到另一个 (不等写满), */
+/* 适合连续流 (音频/传感器采样) 场景, 读写速率不等也不会互相阻塞。 */
+/* -------------------------------------------------------------------------- */
 
 int dual_buffer_init(struct dual_buffer_spsc* handle, void* buffer1, void* buffer2,
                      uint16_t item_size, uint16_t item_count)
@@ -206,7 +207,7 @@ int dual_buffer_write_block(struct dual_buffer_spsc* handle, const void* p_data,
 {
     uint16_t written = 0;
     uint8_t* buf;
-    uint16_t w;
+    uint16_t write_ptr;
     uint16_t free_len;
     uint16_t to_write;
 
@@ -216,42 +217,44 @@ int dual_buffer_write_block(struct dual_buffer_spsc* handle, const void* p_data,
         return BUFF_ERR_INVAL;
 
     buf = (handle->active_w == 0) ? handle->buf1 : handle->buf2;
-    w = (handle->active_w == 0) ? BUFF_LOAD_RELAXED(handle->w1) : BUFF_LOAD_RELAXED(handle->w2);
+    write_ptr =
+        (handle->active_w == 0) ? BUFF_LOAD_RELAXED(handle->w1) : BUFF_LOAD_RELAXED(handle->w2);
 
     /**< 先写当前活跃缓冲 */
-    free_len = (uint16_t)(handle->size - w);
+    free_len = (uint16_t)(handle->size - write_ptr);
     to_write = (count < free_len) ? count : free_len;
     if (to_write > 0)
     {
-        BUFF_MEM_COPY(buf + (uint32_t)w * handle->item_size, p_data,
+        BUFF_MEM_COPY(buf + (uint32_t)write_ptr * handle->item_size, p_data,
                       (uint32_t)to_write * handle->item_size);
-        w = (uint16_t)(w + to_write);
+        write_ptr = (uint16_t)(write_ptr + to_write);
         if (handle->active_w == 0)
-            BUFF_STORE_RELEASE(handle->w1, w);
+            BUFF_STORE_RELEASE(handle->w1, write_ptr);
         else
-            BUFF_STORE_RELEASE(handle->w2, w);
+            BUFF_STORE_RELEASE(handle->w2, write_ptr);
         written = (uint16_t)(written + to_write);
         p_data = (const uint8_t*)p_data + (uint32_t)to_write * handle->item_size;
         count = (uint16_t)(count - to_write);
     }
 
     /**< 若还有剩余且当前缓冲满, 切到另一个 */
-    if (count > 0 && w >= handle->size)
+    if (count > 0 && write_ptr >= handle->size)
     {
         handle->active_w = (uint8_t)(1 - handle->active_w);
         buf = (handle->active_w == 0) ? handle->buf1 : handle->buf2;
-        w = (handle->active_w == 0) ? BUFF_LOAD_RELAXED(handle->w1) : BUFF_LOAD_RELAXED(handle->w2);
-        free_len = (uint16_t)(handle->size - w);
+        write_ptr =
+            (handle->active_w == 0) ? BUFF_LOAD_RELAXED(handle->w1) : BUFF_LOAD_RELAXED(handle->w2);
+        free_len = (uint16_t)(handle->size - write_ptr);
         to_write = (count < free_len) ? count : free_len;
         if (to_write > 0)
         {
-            BUFF_MEM_COPY(buf + (uint32_t)w * handle->item_size, p_data,
+            BUFF_MEM_COPY(buf + (uint32_t)write_ptr * handle->item_size, p_data,
                           (uint32_t)to_write * handle->item_size);
-            w = (uint16_t)(w + to_write);
+            write_ptr = (uint16_t)(write_ptr + to_write);
             if (handle->active_w == 0)
-                BUFF_STORE_RELEASE(handle->w1, w);
+                BUFF_STORE_RELEASE(handle->w1, write_ptr);
             else
-                BUFF_STORE_RELEASE(handle->w2, w);
+                BUFF_STORE_RELEASE(handle->w2, write_ptr);
             written = (uint16_t)(written + to_write);
         }
     }
@@ -268,8 +271,8 @@ int dual_buffer_read_block(struct dual_buffer_spsc* handle, void* p_data, uint16
 {
     uint16_t read = 0;
     uint8_t* buf;
-    uint16_t w;
-    uint16_t r;
+    uint16_t write_ptr;
+    uint16_t read_ptr;
     uint16_t avail;
     uint16_t to_read;
 
@@ -279,44 +282,48 @@ int dual_buffer_read_block(struct dual_buffer_spsc* handle, void* p_data, uint16
         return BUFF_ERR_INVAL;
 
     buf = (handle->active_r == 0) ? handle->buf1 : handle->buf2;
-    w = (handle->active_r == 0) ? BUFF_LOAD_ACQUIRE(handle->w1) : BUFF_LOAD_ACQUIRE(handle->w2);
-    r = (handle->active_r == 0) ? BUFF_LOAD_RELAXED(handle->r1) : BUFF_LOAD_RELAXED(handle->r2);
+    write_ptr =
+        (handle->active_r == 0) ? BUFF_LOAD_ACQUIRE(handle->w1) : BUFF_LOAD_ACQUIRE(handle->w2);
+    read_ptr =
+        (handle->active_r == 0) ? BUFF_LOAD_RELAXED(handle->r1) : BUFF_LOAD_RELAXED(handle->r2);
 
     /**< 先读当前活跃缓冲 */
-    avail = (uint16_t)(w - r);
+    avail = (uint16_t)(write_ptr - read_ptr);
     to_read = (count < avail) ? count : avail;
     if (to_read > 0)
     {
-        BUFF_MEM_COPY(p_data, buf + (uint32_t)r * handle->item_size,
+        BUFF_MEM_COPY(p_data, buf + (uint32_t)read_ptr * handle->item_size,
                       (uint32_t)to_read * handle->item_size);
-        r = (uint16_t)(r + to_read);
+        read_ptr = (uint16_t)(read_ptr + to_read);
         if (handle->active_r == 0)
-            BUFF_STORE_RELEASE(handle->r1, r);
+            BUFF_STORE_RELEASE(handle->r1, read_ptr);
         else
-            BUFF_STORE_RELEASE(handle->r2, r);
+            BUFF_STORE_RELEASE(handle->r2, read_ptr);
         read = (uint16_t)(read + to_read);
         p_data = (uint8_t*)p_data + (uint32_t)to_read * handle->item_size;
         count = (uint16_t)(count - to_read);
     }
 
     /**< 若还有剩余且当前缓冲空, 切到另一个 */
-    if (count > 0 && r >= w)
+    if (count > 0 && read_ptr >= write_ptr)
     {
         handle->active_r = (uint8_t)(1 - handle->active_r);
         buf = (handle->active_r == 0) ? handle->buf1 : handle->buf2;
-        w = (handle->active_r == 0) ? BUFF_LOAD_ACQUIRE(handle->w1) : BUFF_LOAD_ACQUIRE(handle->w2);
-        r = (handle->active_r == 0) ? BUFF_LOAD_RELAXED(handle->r1) : BUFF_LOAD_RELAXED(handle->r2);
-        avail = (uint16_t)(w - r);
+        write_ptr =
+            (handle->active_r == 0) ? BUFF_LOAD_ACQUIRE(handle->w1) : BUFF_LOAD_ACQUIRE(handle->w2);
+        read_ptr =
+            (handle->active_r == 0) ? BUFF_LOAD_RELAXED(handle->r1) : BUFF_LOAD_RELAXED(handle->r2);
+        avail = (uint16_t)(write_ptr - read_ptr);
         to_read = (count < avail) ? count : avail;
         if (to_read > 0)
         {
-            BUFF_MEM_COPY(p_data, buf + (uint32_t)r * handle->item_size,
+            BUFF_MEM_COPY(p_data, buf + (uint32_t)read_ptr * handle->item_size,
                           (uint32_t)to_read * handle->item_size);
-            r = (uint16_t)(r + to_read);
+            read_ptr = (uint16_t)(read_ptr + to_read);
             if (handle->active_r == 0)
-                BUFF_STORE_RELEASE(handle->r1, r);
+                BUFF_STORE_RELEASE(handle->r1, read_ptr);
             else
-                BUFF_STORE_RELEASE(handle->r2, r);
+                BUFF_STORE_RELEASE(handle->r2, read_ptr);
             read = (uint16_t)(read + to_read);
         }
     }

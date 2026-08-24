@@ -116,25 +116,25 @@ static err_t tcp_server_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
     }
 
     /* 3. 遍历 pbuf 链并写入当前 session 专属的 FIFO */
-    struct pbuf* q = buf;
+    struct pbuf* pbuf_head = buf;
     uint16_t total_in = 0;
     uint16_t total_written = 0;
 
-    while (q != NULL)
+    while (pbuf_head != NULL)
     {
-        total_in = (uint16_t)(total_in + q->len);
-        if (q->len > 0)
+        total_in = (uint16_t)(total_in + pbuf_head->len);
+        if (pbuf_head->len > 0)
         {
             uint16_t written = 0;
-            COMPAT_IGNORE_RESULT(
-                fifo_uni_write_block(&session->rx_fifo, q->payload, q->len, &written));
+            COMPAT_IGNORE_RESULT(fifo_uni_write_block(&session->rx_fifo, pbuf_head->payload,
+                                                      pbuf_head->len, &written));
             total_written = (uint16_t)(total_written + written);
 
-            if (written < q->len)
+            if (written < pbuf_head->len)
                 SYS_LOGW(k_tag, "session [%d] FIFO full, dropped %u bytes\r\n", session->id,
-                         (unsigned int)(q->len - written));
+                         (unsigned int)(pbuf_head->len - written));
         }
-        q = q->next;
+        pbuf_head = pbuf_head->next;
     }
 
     /* 4. 确认全部来字节 (含溢出丢弃部分): 丢掉的字节若既不收也不确认,
@@ -162,11 +162,11 @@ static err_t tcp_server_accept_callback(void* arg, struct tcp_pcb* newpcb, err_t
 
     /* 寻找空闲的 session 槽位 */
     struct client_session* free_session = NULL;
-    for (int i = 0; i < MAX_CLIENT_COUNT; i++)
+    for (int index = 0; index < MAX_CLIENT_COUNT; index++)
     {
-        if (!s_sessions[i].is_used)
+        if (!s_sessions[index].is_used)
         {
-            free_session = &s_sessions[i];
+            free_session = &s_sessions[index];
             break;
         }
     }
@@ -200,11 +200,11 @@ int tcp_server_init(int port)
     err_t ret;
 
     /* 初始化全局会话列表 */
-    for (int i = 0; i < MAX_CLIENT_COUNT; i++)
+    for (int index = 0; index < MAX_CLIENT_COUNT; index++)
     {
-        s_sessions[i].id = i;
-        s_sessions[i].is_used = false;
-        s_sessions[i].pcb = NULL;
+        s_sessions[index].id = index;
+        s_sessions[index].is_used = false;
+        s_sessions[index].pcb = NULL;
     }
 
     s_listen_pcb = tcp_new();
@@ -265,9 +265,9 @@ int get_tcp_data(char* buf, int len, int* recv_len)
         return ERR_ARG;
 
     /* 兼容单客户端用法: 从第一个已连接的 session 读取 */
-    for (int i = 0; i < MAX_CLIENT_COUNT; i++)
-        if (s_sessions[i].is_used)
-            return get_tcp_data_by_session(i, buf, len, recv_len);
+    for (int index = 0; index < MAX_CLIENT_COUNT; index++)
+        if (s_sessions[index].is_used)
+            return get_tcp_data_by_session(index, buf, len, recv_len);
 
     *recv_len = 0;
     return ERR_CONN;

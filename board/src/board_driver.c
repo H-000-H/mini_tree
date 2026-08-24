@@ -30,12 +30,12 @@ static const char* k_tag = "board_drv";
 
 static volatile int s_shutdown_entered = 0;
 
-/* ═══════════════════════════════════════════════════════════════════
- *  安全停机子系统
- *  由 Kconfig CONFIG_SAFETY_SHUTDOWN 控制.
- *  关闭时: board_safety_add_pin / register_shutdown 为空操作,
- *          system_safety_hardware_shutdown 仅执行 CPU 停机.
- * ═══════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 安全停机子系统 */
+/* 由 Kconfig CONFIG_SAFETY_SHUTDOWN 控制. */
+/* 关闭时: board_safety_add_pin / register_shutdown 为空操作, */
+/* system_safety_hardware_shutdown 仅执行 CPU 停机. */
+/* -------------------------------------------------------------------------- */
 #ifdef CONFIG_SAFETY_SHUTDOWN
 
 struct safety_pin
@@ -75,7 +75,9 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn)
         g_safety_cbs[g_safety_cb_count++] = fn;
 }
 
-/* ── 安全硬件伪驱动: 读取 DTS pin_N / safe_level_N 列表 ── */
+/* -------------------------------------------------------------------------- */
+/* 安全硬件伪驱动: 读取 DTS pin_N / safe_level_N 列表 */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 从 DTS 属性注册安全停机 GPIO 引脚
  * @param[in] pdev 安全硬件 device 指针
@@ -147,9 +149,9 @@ static int device_dependency_not_ready(const struct device* pdev)
     if (IS_ERR_OR_NULL(pdev) || !pdev->node || !pdev->node->deps)
         return 0;
 
-    for (int i = 0; i < pdev->node->dep_count; i++)
+    for (int loop_index = 0; loop_index < pdev->node->dep_count; loop_index++)
     {
-        struct device* dep = board_dev_get(pdev->node->deps[i]);
+        struct device* dep = board_dev_get(pdev->node->deps[loop_index]);
         if (IS_ERR_OR_NULL(dep))
             return 1;
 
@@ -174,9 +176,9 @@ static int device_dependency_pending(const struct device* pdev)
     if (IS_ERR_OR_NULL(pdev) || !pdev->node || !pdev->node->deps)
         return 0;
 
-    for (int i = 0; i < pdev->node->dep_count; i++)
+    for (int loop_index = 0; loop_index < pdev->node->dep_count; loop_index++)
     {
-        struct device* dep = board_dev_get(pdev->node->deps[i]);
+        struct device* dep = board_dev_get(pdev->node->deps[loop_index]);
         if (IS_ERR_OR_NULL(dep))
             return 1;
 
@@ -227,9 +229,9 @@ static void disable_dependents(device_id_t failed_id)
     if (!list || count == 0)
         return;
 
-    for (int i = 0; i < count; i++)
+    for (int loop_index = 0; loop_index < count; loop_index++)
     {
-        struct device* child = board_dev_get(list[i]);
+        struct device* child = board_dev_get(list[loop_index]);
         if (IS_ERR_OR_NULL(child))
             continue;
         enum device_status st = device_get_status(child);
@@ -255,17 +257,17 @@ void system_safety_hardware_shutdown(const char* reason)
 
     if (!osal_in_isr())
     {
-        for (int i = 0; i < g_safety_cb_count; i++)
-            if (g_safety_cbs[i])
-                g_safety_cbs[i]();
+        for (int loop_index = 0; loop_index < g_safety_cb_count; loop_index++)
+            if (g_safety_cbs[loop_index])
+                g_safety_cbs[loop_index]();
     }
 
     COMPAT_IGNORE_RESULT(hal_pwm_force_stop_all());
 
     /* 注: 所有 GPIO 写操作必须在 hal_cpu_emergency_stop_all_cores() 之前完成,
      * 因为 CPU STOP 后可能冻结外设总线, 后续 GPIO 写将失效. */
-    for (int i = 0; i < g_safety_pin_count; i++)
-        hal_gpio_set_level(g_safety_pins[i].pin, g_safety_pins[i].safe_level);
+    for (int loop_index = 0; loop_index < g_safety_pin_count; loop_index++)
+        hal_gpio_set_level(g_safety_pins[loop_index].pin, g_safety_pins[loop_index].safe_level);
     hal_gpio_set_level(BOARD_SAFE_STATE_FAULT_LED_PIN, 1);
 
     hal_cpu_emergency_stop_all_cores();
@@ -320,9 +322,9 @@ int board_driver_probe_all(void)
     {
         volatile int deferred = 0;
 
-        for (volatile int i = 0; i < count; i++)
+        for (volatile int loop_index = 0; loop_index < count; loop_index++)
         {
-            device_id_t id = board_probe_order_at(i);
+            device_id_t id = board_probe_order_at(loop_index);
             struct device* pdev = board_dev_get(id);
             probe_fn_t probe = board_probe_get_fn(id);
 
@@ -415,9 +417,9 @@ int board_driver_probe_all(void)
         {
             DRV_LOGE(k_tag, "EPROBE_DEFER stall: %d devices stuck after %d passes", (int)deferred,
                      (int)pass + 1);
-            for (volatile int i = 0; i < count; i++)
+            for (volatile int loop_index = 0; loop_index < count; loop_index++)
             {
-                device_id_t id = board_probe_order_at(i);
+                device_id_t id = board_probe_order_at(loop_index);
                 struct device* pdev = board_dev_get(id);
                 if (!IS_ERR_OR_NULL(pdev) && device_get_status(pdev) != DEVICE_STATUS_PROBED &&
                     device_get_status(pdev) != DEVICE_STATUS_RUNNING &&
@@ -449,9 +451,9 @@ int board_driver_remove_all(void)
 
     int count = board_probe_order_count();
 
-    for (int i = count - 1; i >= 0; i--)
+    for (int loop_index = count - 1; loop_index >= 0; loop_index--)
     {
-        device_id_t id = board_probe_order()[i];
+        device_id_t id = board_probe_order()[loop_index];
         struct device* pdev = board_dev_get(id);
 
         if (IS_ERR_OR_NULL(pdev))

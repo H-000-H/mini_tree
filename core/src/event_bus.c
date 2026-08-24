@@ -42,7 +42,9 @@ extern volatile bool g_system_os_initialized;
 #define K_DISPATCH_STACK CONFIG_EVENT_BUS_DISPATCH_STACK
 #define K_STOP_WAIT_MS 500
 
-/* ── 内部数据结构 ── */
+/* -------------------------------------------------------------------------- */
+/* 内部数据结构 */
+/* -------------------------------------------------------------------------- */
 struct subscriber
 {
     uint32_t id_min; /**< 订阅起始事件 ID */
@@ -66,10 +68,14 @@ struct event_bus
     uint8_t sub_lock_storage[OSAL_MUTEX_STORAGE_SIZE]; /**< 锁存储 */
 };
 
-/* ── 内部静态单例 ── */
+/* -------------------------------------------------------------------------- */
+/* 内部静态单例 */
+/* -------------------------------------------------------------------------- */
 static struct event_bus s_bus = {0};
 
-/* ── 分派任务 (静态函数, 仅内部使用) ── */
+/* -------------------------------------------------------------------------- */
+/* 分派任务 (静态函数, 仅内部使用) */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief EventBus 后台分派任务: 从队列取事件并回调匹配订阅者
  * @param[in] param OSAL 任务入口参数 (未使用)
@@ -101,14 +107,14 @@ static void event_bus_dispatch_task(void* param)
             }
         }
         snapshot_count = s_bus.count;
-        for (size_t i = 0; i < snapshot_count; i++)
-            snapshot[i] = s_bus.subscribers[i];
+        for (size_t index = 0; index < snapshot_count; index++)
+            snapshot[index] = s_bus.subscribers[index];
         if (s_bus.sub_lock)
             osal_mutex_unlock(s_bus.sub_lock);
 
-        for (size_t i = 0; i < snapshot_count; i++)
+        for (size_t index = 0; index < snapshot_count; index++)
         {
-            struct subscriber* sub = &snapshot[i];
+            struct subscriber* sub = &snapshot[index];
             if (sub->callback != NULL && event.id >= sub->id_min && event.id <= sub->id_max)
                 sub->callback(&event, sub->user_data);
         }
@@ -118,7 +124,9 @@ static void event_bus_dispatch_task(void* param)
     osal_task_self_delete();
 }
 
-/* ── 公开 API ── */
+/* -------------------------------------------------------------------------- */
+/* 公开 API */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief 初始化 EventBus

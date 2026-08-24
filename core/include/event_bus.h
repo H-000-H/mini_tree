@@ -23,18 +23,21 @@ extern "C"
 {
 #endif
 
-/* ── 框架级事件 ID (框架内部使用, 不涉及任何业务语义) ── */
+/* -------------------------------------------------------------------------- */
+/* 框架级事件 ID (框架内部使用, 不涉及任何业务语义) */
+/* -------------------------------------------------------------------------- */
 #define EVENT_SYS_BOOT 0x0000 /* 系统冷启动完成 */
 #define EVENT_SYS_READY 0x0001 /* 所有框架任务已就绪 */
 #define EVENT_SYS_FAULT 0x0002 /* 系统级故障, 进入安全状态 */
 #define EVENT_SYS_DEVICE_REMOVED 0x0003 /* 设备从设备树中移除 */
 
-/* ── 用户事件基线 ──
- * 用户工程在业务代码中基于此值定义自有事件:
- *   #define EVENT_MY_FEATURE  (EVENT_USER_BASE + 0)
- *   #define EVENT_MY_TIMER    (EVENT_USER_BASE + 1)
- * 框架只搬运事件 ID, 不解释其含义.
- */
+/* -------------------------------------------------------------------------- */
+/* 用户事件基线 */
+/* 用户工程在业务代码中基于此值定义自有事件: */
+/* #define EVENT_MY_FEATURE  (EVENT_USER_BASE + 0) */
+/* #define EVENT_MY_TIMER    (EVENT_USER_BASE + 1) */
+/* 框架只搬运事件 ID, 不解释其含义. */
+/* -------------------------------------------------------------------------- */
 #define EVENT_USER_BASE 0x1000u
 
     struct event
@@ -46,7 +49,9 @@ extern "C"
     /* 事件回调类型 */
     typedef void (*event_callback_t)(const struct event* event, void* user_data);
 
-    /* ── EventBus C API (统一返回 MINI_OK / MINI_ERR_* 错误码) ── */
+    /* -------------------------------------------------------------------------- */
+    /* EventBus C API (统一返回 MINI_OK / MINI_ERR_* 错误码) */
+    /* -------------------------------------------------------------------------- */
     /**
      * @brief 初始化事件总线 (创建订阅表, 启动前调用)
      * @return MINI_OK 成功; MINI_ERR_NOMEM 资源不足

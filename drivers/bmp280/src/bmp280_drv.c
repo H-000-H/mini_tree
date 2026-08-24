@@ -126,22 +126,22 @@ static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* b
  */
 static int bmp280_load_calib(struct bmp280_device* dev, uint32_t timeout_ms)
 {
-    uint8_t c[24];
-    int ret = bmp280_read_regs(dev, BMP280_REG_DIG_T1, c, sizeof(c), timeout_ms);
+    uint8_t calib_raw[24];
+    int ret = bmp280_read_regs(dev, BMP280_REG_DIG_T1, calib_raw, sizeof(calib_raw), timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    dev->dig_T1 = (uint16_t)(c[0] | ((uint16_t)c[1] << 8));
-    dev->dig_T2 = (int16_t)(c[2] | ((uint16_t)c[3] << 8));
-    dev->dig_T3 = (int16_t)(c[4] | ((uint16_t)c[5] << 8));
-    dev->dig_P1 = (uint16_t)(c[6] | ((uint16_t)c[7] << 8));
-    dev->dig_P2 = (int16_t)(c[8] | ((uint16_t)c[9] << 8));
-    dev->dig_P3 = (int16_t)(c[10] | ((uint16_t)c[11] << 8));
-    dev->dig_P4 = (int16_t)(c[12] | ((uint16_t)c[13] << 8));
-    dev->dig_P5 = (int16_t)(c[14] | ((uint16_t)c[15] << 8));
-    dev->dig_P6 = (int16_t)(c[16] | ((uint16_t)c[17] << 8));
-    dev->dig_P7 = (int16_t)(c[18] | ((uint16_t)c[19] << 8));
-    dev->dig_P8 = (int16_t)(c[20] | ((uint16_t)c[21] << 8));
-    dev->dig_P9 = (int16_t)(c[22] | ((uint16_t)c[23] << 8));
+    dev->dig_T1 = (uint16_t)(calib_raw[0] | ((uint16_t)calib_raw[1] << 8));
+    dev->dig_T2 = (int16_t)(calib_raw[2] | ((uint16_t)calib_raw[3] << 8));
+    dev->dig_T3 = (int16_t)(calib_raw[4] | ((uint16_t)calib_raw[5] << 8));
+    dev->dig_P1 = (uint16_t)(calib_raw[6] | ((uint16_t)calib_raw[7] << 8));
+    dev->dig_P2 = (int16_t)(calib_raw[8] | ((uint16_t)calib_raw[9] << 8));
+    dev->dig_P3 = (int16_t)(calib_raw[10] | ((uint16_t)calib_raw[11] << 8));
+    dev->dig_P4 = (int16_t)(calib_raw[12] | ((uint16_t)calib_raw[13] << 8));
+    dev->dig_P5 = (int16_t)(calib_raw[14] | ((uint16_t)calib_raw[15] << 8));
+    dev->dig_P6 = (int16_t)(calib_raw[16] | ((uint16_t)calib_raw[17] << 8));
+    dev->dig_P7 = (int16_t)(calib_raw[18] | ((uint16_t)calib_raw[19] << 8));
+    dev->dig_P8 = (int16_t)(calib_raw[20] | ((uint16_t)calib_raw[21] << 8));
+    dev->dig_P9 = (int16_t)(calib_raw[22] | ((uint16_t)calib_raw[23] << 8));
     dev->calib_ok = 1;
     return MINI_OK;
 }
@@ -174,7 +174,7 @@ static uint32_t bmp280_compensate_p(struct bmp280_device* dev, int32_t adc_p)
 {
     int64_t var1;
     int64_t var2;
-    int64_t p;
+    int64_t pressure;
     var1 = ((int64_t)dev->t_fine) - 128000;
     var2 = var1 * var1 * (int64_t)dev->dig_P6;
     var2 = var2 + ((var1 * (int64_t)dev->dig_P5) << 17);
@@ -183,12 +183,12 @@ static uint32_t bmp280_compensate_p(struct bmp280_device* dev, int32_t adc_p)
     var1 = (((((int64_t)1) << 47) + var1) * (int64_t)dev->dig_P1) >> 33;
     if (var1 == 0)
         return 0;
-    p = 1048576 - adc_p;
-    p = (((p << 31) - var2) * 3125) / var1;
-    var1 = (((int64_t)dev->dig_P9) * (p >> 13) * (p >> 13)) >> 25;
-    var2 = (((int64_t)dev->dig_P8) * p) >> 19;
-    p = ((p + var1 + var2) >> 8) + (((int64_t)dev->dig_P7) << 4);
-    return (uint32_t)(p >> 8); /* Pa */
+    pressure = 1048576 - adc_p;
+    pressure = (((pressure << 31) - var2) * 3125) / var1;
+    var1 = (((int64_t)dev->dig_P9) * (pressure >> 13) * (pressure >> 13)) >> 25;
+    var2 = (((int64_t)dev->dig_P8) * pressure) >> 19;
+    pressure = ((pressure + var1 + var2) >> 8) + (((int64_t)dev->dig_P7) << 4);
+    return (uint32_t)(pressure >> 8); /* Pa */
 }
 
 /**
@@ -311,12 +311,12 @@ static int bmp280_cmd_read(struct bmp280_device* dev, void* arg, size_t len, uin
 {
     const uint8_t ctrl[2] = {BMP280_REG_CTRL_MEAS, BMP280_CTRL_FORCED_X1};
     uint8_t raw[6];
-    struct bmp280_sample* o = (struct bmp280_sample*)arg;
+    struct bmp280_sample* sample = (struct bmp280_sample*)arg;
     int ret;
     int32_t adc_p;
     int32_t adc_t;
     int32_t t_x100;
-    if (!dev->hw_ready || !dev->calib_ok || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !dev->calib_ok || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = bmp280_i2c_wr(dev, ctrl, 2, timeout_ms);
     if (ret != MINI_OK)
@@ -328,8 +328,8 @@ static int bmp280_cmd_read(struct bmp280_device* dev, void* arg, size_t len, uin
     adc_p = (int32_t)(((uint32_t)raw[0] << 12) | ((uint32_t)raw[1] << 4) | (raw[2] >> 4));
     adc_t = (int32_t)(((uint32_t)raw[3] << 12) | ((uint32_t)raw[4] << 4) | (raw[5] >> 4));
     t_x100 = bmp280_compensate_t(dev, adc_t);
-    o->temp_c_x100 = (int16_t)t_x100;
-    o->press_pa = (int32_t)bmp280_compensate_p(dev, adc_p);
+    sample->temp_c_x100 = (int16_t)t_x100;
+    sample->press_pa = (int32_t)bmp280_compensate_p(dev, adc_p);
     return MINI_OK;
 }
 

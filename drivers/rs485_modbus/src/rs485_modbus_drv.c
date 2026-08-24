@@ -108,11 +108,11 @@ static int rs485_modbus_uart_xchg(struct rs485_modbus_device* dev, const uint8_t
 static uint16_t rs485_modbus_crc(const uint8_t* data, size_t count)
 {
     uint16_t crc_val = 0xFFFF;
-    size_t i, j;
-    for (i = 0; i < count; i++)
+    size_t byte_index, bit_index;
+    for (byte_index = 0; byte_index < count; byte_index++)
     {
-        crc_val ^= data[i];
-        for (j = 0; j < 8; j++)
+        crc_val ^= data[byte_index];
+        for (bit_index = 0; bit_index < 8; bit_index++)
             crc_val = (crc_val & 1) ? (crc_val >> 1) ^ 0xA001U : (crc_val >> 1);
     }
     return crc_val;

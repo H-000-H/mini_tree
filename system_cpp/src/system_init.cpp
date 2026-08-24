@@ -27,12 +27,13 @@
 extern "C" void x_scheduler_poll(void);
 #endif
 
-/* ── 启动期全局中断控制 (平台抽象) ──
- * 在 Pre_OS_Init 入口关全局中断, 阻断 ISR 抢跑访问未就绪的框架状态.
- * 直到用户显式调用 system_init_complete() 才重新打开.
- * FreeRTOS vTaskStartScheduler() 内部也会打开中断, 所以即使忘记调
- * system_init_complete(), 调度器启动后中断也会自动使能.
- */
+/* -------------------------------------------------------------------------- */
+/* 启动期全局中断控制 (平台抽象) */
+/* 在 Pre_OS_Init 入口关全局中断, 阻断 ISR 抢跑访问未就绪的框架状态. */
+/* 直到用户显式调用 system_init_complete() 才重新打开. */
+/* FreeRTOS vTaskStartScheduler() 内部也会打开中断, 所以即使忘记调 */
+/* system_init_complete(), 调度器启动后中断也会自动使能. */
+/* -------------------------------------------------------------------------- */
 #if defined(__ARM_ARCH_7EM__) || defined(__CORTEX_M) || defined(__ARM_ARCH_6M__) ||                \
     defined(__ARM_ARCH_8M_BASE__)
 #define IRQ_DISABLE() __asm__ volatile("cpsid i" ::: "memory")
@@ -56,18 +57,18 @@ static constexpr const char* k_tag = "SysInit";
 /* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
 volatile bool g_system_os_initialized = false;
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  阶段 1: 预操作系统初始化
- *
- *  在 vTaskStartScheduler() 之前调用。完成以下操作:
- *    - 启动循环保护
- *    - RTC 硬件看门狗 (独立时钟源)
- *    - 设备树数据结构初始化
- *    - 事件总线初始化 (创建 FreeRTOS 队列)
- *
- *  不创建任务、启动服务或探测驱动 —
- *  这些属于阶段 2, 在用户注册其 HAL 之后进行.
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 阶段 1: 预操作系统初始化 */
+/*  */
+/* 在 vTaskStartScheduler() 之前调用。完成以下操作: */
+/* - 启动循环保护 */
+/* - RTC 硬件看门狗 (独立时钟源) */
+/* - 设备树数据结构初始化 */
+/* - 事件总线初始化 (创建 FreeRTOS 队列) */
+/*  */
+/* 不创建任务、启动服务或探测驱动 — */
+/* 这些属于阶段 2, 在用户注册其 HAL 之后进行. */
+/* -------------------------------------------------------------------------- */
 void mini_tree::system_pre_os_init(void)
 {
     IRQ_DISABLE(); /* 关全局中断 — ISR 不得在框架就绪前触发 */
@@ -118,19 +119,19 @@ void mini_tree::system_pre_os_init(void)
     SYS_LOGI(k_tag, "=== mini_tree Phase 1 complete ===");
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  阶段 2: 创建框架任务
- *
- *  在用户驱动注册之后、vTaskStartScheduler() 之前调用。
- *  完成以下操作:
- *    - 驱动探测 (设备树 ←→ HAL 驱动匹配)
- *    - TWDT 初始化
- *    - Flash 位腐烂巡检启动
- *    - 启动循环计数器清除
- *
- *  用户工程在 mini_tree::system_start_tasks() 之后、
- *  vTaskStartScheduler() 之前创建自身的业务任务 (UI、云、音频等).
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 阶段 2: 创建框架任务 */
+/*  */
+/* 在用户驱动注册之后、vTaskStartScheduler() 之前调用。 */
+/* 完成以下操作: */
+/* - 驱动探测 (设备树 ←→ HAL 驱动匹配) */
+/* - TWDT 初始化 */
+/* - Flash 位腐烂巡检启动 */
+/* - 启动循环计数器清除 */
+/*  */
+/* 用户工程在 mini_tree::system_start_tasks() 之后、 */
+/* vTaskStartScheduler() 之前创建自身的业务任务 (UI、云、音频等). */
+/* -------------------------------------------------------------------------- */
 void mini_tree::system_start_tasks(void)
 {
     SYS_LOGI(k_tag, "=== mini_tree Phase 2: Start Tasks ===");
@@ -179,7 +180,9 @@ void mini_tree::system_start_tasks(void)
     SYS_LOGI(k_tag, "=== mini_tree Phase 2 complete ===");
 }
 
-/* ── 初始化完成 — 释放全局中断 (进入裸机 while / OS 调度器启动前) ── */
+/* -------------------------------------------------------------------------- */
+/* 初始化完成 — 释放全局中断 (进入裸机 while / OS 调度器启动前) */
+/* -------------------------------------------------------------------------- */
 extern "C" void system_init_complete(void) { IRQ_ENABLE(); }
 
 extern "C" void mini_tree_pre_os_init(void) { mini_tree::system_pre_os_init(); }

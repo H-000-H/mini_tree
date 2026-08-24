@@ -113,9 +113,9 @@ int system_wdt_stack_monitor_register(osal_task_handle_t task, uint32_t alarm_th
  */
 void system_wdt_stack_check_all(void)
 {
-    for (size_t i = 0; i < s_stack_entry_count; i++)
+    for (size_t index = 0; index < s_stack_entry_count; index++)
     {
-        const struct stack_monitor_entry* entry = &s_stack_entries[i];
+        const struct stack_monitor_entry* entry = &s_stack_entries[index];
         if (entry->task == NULL)
             continue;
 

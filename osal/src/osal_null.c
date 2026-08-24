@@ -123,7 +123,9 @@ COMPAT_STATIC_INLINE void osal_null_wfi(void) {}
 
 #endif
 
-/* ── ISR 嵌套计数 (osal_null_isr_enter/exit 维护, 与 IPSR 联合判定) ── */
+/* -------------------------------------------------------------------------- */
+/* ISR 嵌套计数 (osal_null_isr_enter/exit 维护, 与 IPSR 联合判定) */
+/* -------------------------------------------------------------------------- */
 static volatile uint32_t s_isr_nest;
 
 /**
@@ -140,7 +142,9 @@ void osal_null_isr_exit(void)
         s_isr_nest--;
 }
 
-/* ── 互斥锁 (原子 CAS + 递归深度) ── */
+/* -------------------------------------------------------------------------- */
+/* 互斥锁 (原子 CAS + 递归深度) */
+/* -------------------------------------------------------------------------- */
 struct osal_mutex
 {
     osal_mutex_type_t type; /**<互斥锁类型*/
@@ -225,8 +229,8 @@ int osal_pool_init(osal_pool_t* pool, volatile uint8_t* used_slots, size_t count
     pool->used_slots = used_slots;
     pool->slot_count = count;
 
-    for (size_t i = 0; i < count; i++)
-        used_slots[i] = 0;
+    for (size_t index = 0; index < count; index++)
+        used_slots[index] = 0;
 
     return OSAL_OK;
 }
@@ -243,12 +247,12 @@ int osal_pool_claim(osal_pool_t* pool)
 
     uint32_t irq = osal_null_irq_disable();
     int claimed = -1;
-    for (size_t i = 0; i < pool->slot_count; i++)
+    for (size_t index = 0; index < pool->slot_count; index++)
     {
-        if (!pool->used_slots[i])
+        if (!pool->used_slots[index])
         {
-            pool->used_slots[i] = 1;
-            claimed = (int)i;
+            pool->used_slots[index] = 1;
+            claimed = (int)index;
             break;
         }
     }
@@ -450,8 +454,8 @@ void osal_delay_ms(uint32_t ms)
 void osal_delay_us(uint32_t us)
 {
     /* 裸机无可靠 us 时钟时做短忙等；精度依赖编译器与主频 */
-    volatile uint32_t n = us * 8U;
-    while (n-- > 0U)
+    volatile uint32_t loops = us * 8U;
+    while (loops-- > 0U)
         ;
 }
 
@@ -474,16 +478,14 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
     return timeout_ms;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  内存 (不推荐使用)
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-/**
- * @brief calloc 分配
- * @param[in] count 数量
- * @param[in] size 大小
- * @return 指针
- */
+/* -------------------------------------------------------------------------- */
+/* 内存 (不推荐使用) */
+/* /** */
+/* @brief calloc 分配 */
+/* @param[in] count 数量 */
+/* @param[in] size 大小 */
+/* @return 指针 */
+/* -------------------------------------------------------------------------- */
 void* osal_calloc(size_t count, size_t size) { return calloc(count, size); }
 
 /**
@@ -542,10 +544,10 @@ int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_
     if (type != OSAL_MUTEX_RECURSIVE && type != OSAL_MUTEX_PLAIN)
         return OSAL_ERR_INVAL;
 
-    struct osal_mutex* m = (struct osal_mutex*)storage;
-    if (osal_mutex_init(m, type) != OSAL_OK)
+    struct osal_mutex* mutex_obj = (struct osal_mutex*)storage;
+    if (osal_mutex_init(mutex_obj, type) != OSAL_OK)
         return OSAL_ERR_NOMEM;
-    *out = m;
+    *out = mutex_obj;
     return OSAL_OK;
 }
 
@@ -898,9 +900,9 @@ uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
     return 0U;
 }
 
-/*===============================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*信号量推荐走全局不要自己定义非全局信号量,信号量基本不需要全局监督某一个资源*/
-/*===============================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 二值信号量
  */
@@ -1157,20 +1159,20 @@ static bool queue_send_internal(osal_queue_handle_t queue, const void* item)
     if (idx < 0 || !item)
         return false;
 
-    struct osal_queue_obj* q = queue_at(idx);
-    if (!q)
+    struct osal_queue_obj* queue_obj = queue_at(idx);
+    if (!queue_obj)
         return false;
-    uint16_t epi = (uint16_t)q->elements_per_item;
+    uint16_t epi = (uint16_t)queue_obj->elements_per_item;
     uint16_t count = 0;
     uint16_t written = 0;
 
     /**< SPSC 安全: 消费者只能释放空间不会缩减,
      * 检查通过则写入必然完整就是如果你传的格子数大小超过剩余各子数那么就会返回false */
-    COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
-    if ((uint16_t)(q->fifo.size - count) < epi)
+    COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
+    if ((uint16_t)(queue_obj->fifo.size - count) < epi)
         return false;
 
-    if (fifo_write_block(&q->fifo, (const fifo_data_type*)item, epi, &written) != BUFF_OK)
+    if (fifo_write_block(&queue_obj->fifo, (const fifo_data_type*)item, epi, &written) != BUFF_OK)
         return false;
     return written == epi;
 }
@@ -1221,28 +1223,28 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
     if (idx < 0 || !item)
         return false;
 
-    struct osal_queue_obj* q = queue_at(idx);
-    if (!q)
+    struct osal_queue_obj* queue_obj = queue_at(idx);
+    if (!queue_obj)
         return false;
-    uint16_t epi = (uint16_t)q->elements_per_item;
+    uint16_t epi = (uint16_t)queue_obj->elements_per_item;
     uint16_t count = 0;
     uint16_t rd = 0;
 
     if (timeout_ms == OSAL_WAIT_FOREVER)
     {
-        COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+        COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
         while (count < epi)
         {
 #ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
 #endif
-            COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+            COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
         }
     }
     else if (timeout_ms > 0)
     {
         uint32_t start = osal_time_ms();
-        COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+        COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
         while (count < epi)
         {
             if ((osal_time_ms() - start) >= timeout_ms)
@@ -1250,15 +1252,15 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
 #ifdef CONFIG_OSAL_NULL_WFI
             osal_null_wfi();
 #endif
-            COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+            COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
         }
     }
 
-    COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+    COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
     if (count < epi)
         return false;
 
-    if (fifo_read_block(&q->fifo, (fifo_data_type*)item, epi, &rd) != BUFF_OK)
+    if (fifo_read_block(&queue_obj->fifo, (fifo_data_type*)item, epi, &rd) != BUFF_OK)
         return false;
     return rd == epi;
 }
@@ -1278,28 +1280,27 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
     if (idx < 0 || !item) /**< 判断队列句柄是否有效且接收数据指针是否有效 */
         return false;
 
-    struct osal_queue_obj* q = queue_at(idx);
-    if (!q)
+    struct osal_queue_obj* queue_obj = queue_at(idx);
+    if (!queue_obj)
         return false;
-    uint16_t epi = (uint16_t)q->elements_per_item;
+    uint16_t epi = (uint16_t)queue_obj->elements_per_item;
     uint16_t count = 0;
     uint16_t rd = 0;
 
-    COMPAT_IGNORE_RESULT(fifo_get_count(&q->fifo, &count));
+    COMPAT_IGNORE_RESULT(fifo_get_count(&queue_obj->fifo, &count));
     if (count < epi)
         return false;
 
-    if (fifo_read_block(&q->fifo, (fifo_data_type*)item, epi, &rd) != BUFF_OK)
+    if (fifo_read_block(&queue_obj->fifo, (fifo_data_type*)item, epi, &rd) != BUFF_OK)
         return false;
     return rd == epi;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  硬件安全关断 & 日志
- * ═══════════════════════════════════════════════════════════════════════════ */
-/**
- * @brief 弱符号硬件安全关断 (板级未覆盖时触发 trap)
- */
+/* -------------------------------------------------------------------------- */
+/* 硬件安全关断 & 日志 */
+/* /** */
+/* @brief 弱符号硬件安全关断 (板级未覆盖时触发 trap) */
+/* -------------------------------------------------------------------------- */
 COMPAT_WEAK void safety_hardware_shutdown(void) { COMPAT_TRAP(); }
 
 /**

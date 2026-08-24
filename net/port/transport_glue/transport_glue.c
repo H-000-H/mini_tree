@@ -20,9 +20,9 @@
 
 static const char* const s_kTag = "transport_glue";
 
-/* ========================================================================= */
+/* -------------------------------------------------------------------------- */
 /* 建连 / 断连 / 链路状态                                                     */
-/* ========================================================================= */
+/* -------------------------------------------------------------------------- */
 int network_transport_connect(struct NetworkContext* context, const char* server_ip, uint16_t port)
 {
     if (context == NULL || context->tcp_client == NULL || server_ip == NULL || port == 0U)
@@ -54,9 +54,9 @@ bool network_transport_link_failed(struct NetworkContext* context)
     return (context->tcp_client->pcb == NULL) && !context->tcp_client->is_connected;
 }
 
-/* ========================================================================= */
+/* -------------------------------------------------------------------------- */
 /* 收发                                                                       */
-/* ========================================================================= */
+/* -------------------------------------------------------------------------- */
 int network_transport_write(struct NetworkContext* context, const void* buffer, size_t length)
 {
     if (context == NULL || context->tcp_client == NULL || buffer == NULL || length == 0U)
@@ -135,9 +135,9 @@ int network_transport_read(struct NetworkContext* context, void* buffer, size_t 
     }
 }
 
-/* ========================================================================= */
+/* -------------------------------------------------------------------------- */
 /* core 库 TransportSend_t / TransportRecv_t 签名适配                        */
-/* ========================================================================= */
+/* -------------------------------------------------------------------------- */
 int32_t network_transport_send(struct NetworkContext* context, const void* buffer, size_t length)
 {
     int err = network_transport_write(context, buffer, length);

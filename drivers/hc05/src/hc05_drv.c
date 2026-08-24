@@ -183,10 +183,10 @@ struct hc05_ioctl_map
  */
 static int hc05_cmd_send(struct hc05_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct hc05_at* a = (struct hc05_at*)arg;
-    if (!dev->hw_ready || !a || len != sizeof(*a) || !a->tx || !a->tx_len)
+    struct hc05_at* at = (struct hc05_at*)arg;
+    if (!dev->hw_ready || !at || len != sizeof(*at) || !at->tx || !at->tx_len)
         return MINI_ERR_INVAL;
-    return device_write(dev->uart_dev, a->tx, a->tx_len, timeout_ms);
+    return device_write(dev->uart_dev, at->tx, at->tx_len, timeout_ms);
 }
 static const struct hc05_ioctl_map s_hc05_map[HC05_CMD_COUNT] = {
     [HC05_CMD_AT_SEND - HC05_CMD_BASE - 1] = {hc05_cmd_send},

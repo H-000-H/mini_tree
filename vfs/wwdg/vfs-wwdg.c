@@ -124,17 +124,17 @@ static const struct file_operations s_fops = {
 static int vfs_wwdg_probe(struct device* pdev)
 {
     struct hal_wwdg_config cfg = {.window = 0x50, .counter = 0x7F, .prescaler = 1, .ewi_enable = 0};
-    int v, ret;
+    int value, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "window", &v));
-    if (v)
-        cfg.window = (uint32_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "counter", &v));
-    if (v)
-        cfg.counter = (uint32_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &v));
-    cfg.prescaler = (uint32_t)v;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "window", &value));
+    if (value)
+        cfg.window = (uint32_t)value;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "counter", &value));
+    if (value)
+        cfg.counter = (uint32_t)value;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &value));
+    cfg.prescaler = (uint32_t)value;
     COMPAT_MEM_SET(&s_priv, 0, sizeof(s_priv));
     ret = hal_wwdg_init(&s_priv.wwdg, &cfg);
     if (ret != MINI_OK)

@@ -209,19 +209,19 @@ static int sh1106_cmd_clear(struct sh1106_device* dev, void* arg, size_t len, ui
 {
     const struct display_clear_arg* darg = (const struct display_clear_arg*)arg;
     uint8_t val;
-    int p;
+    int page_index;
     uint32_t to_ms = timeout_ms ? timeout_ms : 100U;
     uint8_t page_buf[1 + SH1106_WIDTH];
-    size_t i;
+    size_t index;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
         return MINI_ERR_INVAL;
     val = darg->value ? 0xFFU : 0x00U;
     page_buf[0] = SH1106_I2C_CTRL_DATA;
-    for (i = 1; i < sizeof(page_buf); i++)
-        page_buf[i] = val;
-    for (p = 0; p < SH1106_PAGES; p++)
+    for (index = 1; index < sizeof(page_buf); index++)
+        page_buf[index] = val;
+    for (page_index = 0; page_index < SH1106_PAGES; page_index++)
     {
-        int ret = sh1106_set_page_col(dev, (uint8_t)p, to_ms);
+        int ret = sh1106_set_page_col(dev, (uint8_t)page_index, to_ms);
         if (ret != MINI_OK)
             return ret;
         ret = sh1106_i2c_wr(dev, page_buf, sizeof(page_buf), to_ms);

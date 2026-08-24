@@ -217,25 +217,25 @@ static int max7219_cmd_init(struct max7219_device* dev, void* arg, size_t len, u
  */
 static int max7219_cmd_digit(struct max7219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct max7219_digit* a = (struct max7219_digit*)arg;
-    if (!dev->hw_ready || !a || len != sizeof(*a) || a->digit < MAX7219_REG_DIGIT0 ||
-        a->digit > MAX7219_REG_DIGIT7)
+    struct max7219_digit* digit_arg = (struct max7219_digit*)arg;
+    if (!dev->hw_ready || !digit_arg || len != sizeof(*digit_arg) ||
+        digit_arg->digit < MAX7219_REG_DIGIT0 || digit_arg->digit > MAX7219_REG_DIGIT7)
         return MINI_ERR_INVAL;
-    return max7219_wr(dev, a->digit, a->value, timeout_ms);
+    return max7219_wr(dev, digit_arg->digit, digit_arg->value, timeout_ms);
 }
 /**
  * @brief MAX7219_CMD_CLEAR 实现：全部位清零
  */
 static int max7219_cmd_clear(struct max7219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    int i;
+    int index;
     COMPAT_IGNORE_RESULT(arg);
     COMPAT_IGNORE_RESULT(len);
     if (!dev->hw_ready)
         return MINI_ERR_INVAL;
-    for (i = (int)MAX7219_REG_DIGIT0; i <= (int)MAX7219_REG_DIGIT7; i++)
+    for (index = (int)MAX7219_REG_DIGIT0; index <= (int)MAX7219_REG_DIGIT7; index++)
     {
-        int ret = max7219_wr(dev, (uint8_t)i, 0x00, timeout_ms);
+        int ret = max7219_wr(dev, (uint8_t)index, 0x00, timeout_ms);
         if (ret != MINI_OK)
             return ret;
     }
@@ -247,13 +247,15 @@ static int max7219_cmd_clear(struct max7219_device* dev, void* arg, size_t len, 
 static int max7219_cmd_flush_fb(struct max7219_device* dev, void* arg, size_t len,
                                 uint32_t timeout_ms)
 {
-    struct max7219_fb* a = (struct max7219_fb*)arg;
-    int i;
-    if (!dev->hw_ready || !a || len != sizeof(*a) || !a->rows || a->len < MAX7219_MATRIX_BYTES)
+    struct max7219_fb* fb_arg = (struct max7219_fb*)arg;
+    int index;
+    if (!dev->hw_ready || !fb_arg || len != sizeof(*fb_arg) || !fb_arg->rows ||
+        fb_arg->len < MAX7219_MATRIX_BYTES)
         return MINI_ERR_INVAL;
-    for (i = 0; i < MAX7219_DIGITS; i++)
+    for (index = 0; index < MAX7219_DIGITS; index++)
     {
-        int ret = max7219_wr(dev, (uint8_t)(MAX7219_REG_DIGIT0 + i), a->rows[i], timeout_ms);
+        int ret =
+            max7219_wr(dev, (uint8_t)(MAX7219_REG_DIGIT0 + index), fb_arg->rows[index], timeout_ms);
         if (ret != MINI_OK)
             return ret;
     }

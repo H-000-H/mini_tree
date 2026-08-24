@@ -80,8 +80,8 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
         0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D,
     };
 
-    for (size_t i = 0; i < len; i++)
-        crc = k_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+    for (size_t index = 0; index < len; index++)
+        crc = k_table[(crc ^ data[index]) & 0xFF] ^ (crc >> 8);
     return crc;
 }
 

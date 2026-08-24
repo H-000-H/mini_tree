@@ -4,13 +4,13 @@
  *@brief vfs-i2c 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   I2C VFS 实现 : Host + Client, master/slave 分 compatible
  *   DTS:
  *   i2c@n (i2c-master / i2c-slave)              ← host
  *   └── i2c-*-client (heterogeneous,i2c-*-client) ← client (fops)
  *   └── sensor@addr                           ← leaf driver
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define I2C_VFS_IMPL
@@ -27,9 +27,9 @@
 #include "status.h"
 #include "system_log.h"
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Host VFS*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* 池大小宏见 board_define_i2c.h (数量由 DTS 节点数自动生成) */
 
 /** @brief I2C Host 私有数据 (静态池, 存 host 配置 + 池索引) */
@@ -129,13 +129,13 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
     {
         int max_transfer_sz = 0;
         int dma_arr[14];
-        int n;
+        int result;
 
         COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
 
-        n = device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14);
-        if (n >= 6)
+        result = device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14);
+        if (result >= 6)
         {
             cfg->dma_tx.dma_handle = (uintptr_t)dma_arr[0];
             cfg->dma_tx.dma_stream = (uint32_t)dma_arr[1];
@@ -144,8 +144,8 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
             cfg->dma_tx.dma_memory_size = (uint32_t)dma_arr[4];
             cfg->dma_tx.dma_enable = (uint32_t)dma_arr[5];
         }
-        n = device_get_prop_int_array(pdev, "dma-rx-cfg", dma_arr, 14);
-        if (n >= 6)
+        result = device_get_prop_int_array(pdev, "dma-rx-cfg", dma_arr, 14);
+        if (result >= 6)
         {
             cfg->dma_rx.dma_handle = (uintptr_t)dma_arr[0];
             cfg->dma_rx.dma_stream = (uint32_t)dma_arr[1];
@@ -274,9 +274,9 @@ static int vfs_i2c_priv_remove(struct device* pdev)
     return MINI_OK;
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Client VFS*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* client 池宏见 board_define_i2c.h */
 
 /** @brief I2C Client 运行时对象 (静态池, 含 fops + 设备配置 + 传输模式) */

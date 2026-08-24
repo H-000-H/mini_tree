@@ -192,9 +192,9 @@ static int mpu6050_cmd_read(struct mpu6050_device* dev, void* arg, size_t len, u
 {
     const uint8_t reg = 0x3B;
     uint8_t raw[14];
-    struct mpu6050_sample* o = (struct mpu6050_sample*)arg;
+    struct mpu6050_sample* sample = (struct mpu6050_sample*)arg;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = mpu6050_i2c_wr(dev, &reg, 1, timeout_ms);
     if (ret != MINI_OK)
@@ -202,12 +202,12 @@ static int mpu6050_cmd_read(struct mpu6050_device* dev, void* arg, size_t len, u
     ret = mpu6050_i2c_rd(dev, raw, 14, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    o->ax = (int16_t)((raw[0] << 8) | raw[1]);
-    o->ay = (int16_t)((raw[2] << 8) | raw[3]);
-    o->az = (int16_t)((raw[4] << 8) | raw[5]);
-    o->gx = (int16_t)((raw[8] << 8) | raw[9]);
-    o->gy = (int16_t)((raw[10] << 8) | raw[11]);
-    o->gz = (int16_t)((raw[12] << 8) | raw[13]);
+    sample->ax = (int16_t)((raw[0] << 8) | raw[1]);
+    sample->ay = (int16_t)((raw[2] << 8) | raw[3]);
+    sample->az = (int16_t)((raw[4] << 8) | raw[5]);
+    sample->gx = (int16_t)((raw[8] << 8) | raw[9]);
+    sample->gy = (int16_t)((raw[10] << 8) | raw[11]);
+    sample->gz = (int16_t)((raw[12] << 8) | raw[13]);
     return MINI_OK;
 }
 static const struct mpu6050_ioctl_map s_mpu6050_map[MPU6050_CMD_COUNT] = {

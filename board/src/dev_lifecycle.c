@@ -74,8 +74,8 @@ dev_lc_state_t dev_lc_state(const struct dev_lifecycle* lc)
  */
 int dev_lc_opens(const struct dev_lifecycle* lc)
 {
-    int v = lc ? COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_ACQUIRE) : 0;
-    return v < 0 ? 0 : v;
+    int value = lc ? COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_ACQUIRE) : 0;
+    return value < 0 ? 0 : value;
 }
 
 /**
@@ -85,8 +85,8 @@ int dev_lc_opens(const struct dev_lifecycle* lc)
  */
 int dev_lc_io_active_count(const struct dev_lifecycle* lc)
 {
-    int v = lc ? COMPAT_ATOMIC_LOAD(&lc->io_active, COMPAT_MO_ACQUIRE) : 0;
-    return v < 0 ? 0 : v;
+    int value = lc ? COMPAT_ATOMIC_LOAD(&lc->io_active, COMPAT_MO_ACQUIRE) : 0;
+    return value < 0 ? 0 : value;
 }
 
 /**

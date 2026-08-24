@@ -191,9 +191,9 @@ static int sht30_cmd_read(struct sht30_device* dev, void* arg, size_t len, uint3
 {
     const uint8_t cmd[2] = {0x24, 0x00};
     uint8_t raw[6];
-    struct sht30_sample* o = (struct sht30_sample*)arg;
+    struct sht30_sample* sample = (struct sht30_sample*)arg;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = sht30_i2c_wr(dev, cmd, 2, timeout_ms);
     if (ret != MINI_OK)
@@ -205,8 +205,8 @@ static int sht30_cmd_read(struct sht30_device* dev, void* arg, size_t len, uint3
     {
         uint16_t raw_t = (uint16_t)((raw[0] << 8) | raw[1]);
         uint16_t raw_h = (uint16_t)((raw[3] << 8) | raw[4]);
-        o->temp_c_x100 = (int16_t)((((int32_t)raw_t * 17500) / 65535) - 4500);
-        o->rh_x100 = (uint16_t)(((uint32_t)raw_h * 10000U) / 65535U);
+        sample->temp_c_x100 = (int16_t)((((int32_t)raw_t * 17500) / 65535) - 4500);
+        sample->rh_x100 = (uint16_t)(((uint32_t)raw_h * 10000U) / 65535U);
     }
     return MINI_OK;
 }

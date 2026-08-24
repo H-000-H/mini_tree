@@ -20,9 +20,9 @@
 
 #include "compiler_compat_poison.h"
 
-/* ═══════════════════════════════════════════════════════════════════
- * CONFIG_PRODUCTION_LOG — 启用时通过 hal_storage 持久化
- * ═══════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* CONFIG_PRODUCTION_LOG — 启用时通过 hal_storage 持久化 */
+/* -------------------------------------------------------------------------- */
 #ifdef CONFIG_PRODUCTION_LOG
 
 /* 持久化快照: 将环形缓冲区 + 元数据打包为单个 blob */
@@ -66,16 +66,16 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     if (!s_ready)
         return;
 
-    struct prod_log_entry* e = &s_state.ring[s_state.head];
-    e->seq = s_state.seq++;
-    e->timestamp = 0;
-    e->level = (uint8_t)level;
+    struct prod_log_entry* entry = &s_state.ring[s_state.head];
+    entry->seq = s_state.seq++;
+    entry->timestamp = 0;
+    entry->level = (uint8_t)level;
 
-    strncpy(e->tag, tag ? tag : "", PROD_LOG_TAG_LEN - 1);
-    e->tag[PROD_LOG_TAG_LEN - 1] = '\0';
+    strncpy(entry->tag, tag ? tag : "", PROD_LOG_TAG_LEN - 1);
+    entry->tag[PROD_LOG_TAG_LEN - 1] = '\0';
 
-    strncpy(e->msg, msg ? msg : "", PROD_LOG_MSG_LEN - 1);
-    e->msg[PROD_LOG_MSG_LEN - 1] = '\0';
+    strncpy(entry->msg, msg ? msg : "", PROD_LOG_MSG_LEN - 1);
+    entry->msg[PROD_LOG_MSG_LEN - 1] = '\0';
 
     s_state.head = (s_state.head + 1) % PROD_LOG_SLOT_COUNT;
 
@@ -110,10 +110,10 @@ void production_log_push_fmt(prod_log_level_t level, const char* tag, const char
  */
 int production_log_count(void)
 {
-    for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
-        if (s_state.ring[i].seq == 0 && s_state.ring[i].level == 0 &&
-            s_state.ring[i].msg[0] == '\0')
-            return i;
+    for (int slot_index = 0; slot_index < PROD_LOG_SLOT_COUNT; slot_index++)
+        if (s_state.ring[slot_index].seq == 0 && s_state.ring[slot_index].level == 0 &&
+            s_state.ring[slot_index].msg[0] == '\0')
+            return slot_index;
     return PROD_LOG_SLOT_COUNT;
 }
 
@@ -142,15 +142,15 @@ void production_log_dump(void (*sink)(const char* line))
     sink("=== PRODUCTION LOG DUMP ===");
 
     int oldest = s_state.head;
-    for (int i = 0; i < PROD_LOG_SLOT_COUNT; i++)
+    for (int slot_index = 0; slot_index < PROD_LOG_SLOT_COUNT; slot_index++)
     {
-        int idx = (oldest + i) % PROD_LOG_SLOT_COUNT;
-        const struct prod_log_entry* e = &s_state.ring[idx];
-        if (e->seq == 0 && e->msg[0] == '\0')
+        int idx = (oldest + slot_index) % PROD_LOG_SLOT_COUNT;
+        const struct prod_log_entry* entry = &s_state.ring[idx];
+        if (entry->seq == 0 && entry->msg[0] == '\0')
             continue;
 
         const char* lvl_str = "?";
-        switch (e->level)
+        switch (entry->level)
         {
         case PROD_LOG_ERROR:
             lvl_str = "E";
@@ -163,8 +163,8 @@ void production_log_dump(void (*sink)(const char* line))
             break;
         }
 
-        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)e->seq, lvl_str, e->tag,
-                 e->msg);
+        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)entry->seq, lvl_str,
+                 entry->tag, entry->msg);
         sink(buf);
     }
     sink("=== END ===");

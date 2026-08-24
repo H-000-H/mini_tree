@@ -168,14 +168,14 @@ void EventBus::dispatch_task(void* param)
             }
         }
         snapshot_count = self->m_count;
-        for (size_t i = 0; i < snapshot_count; i++)
-            snapshot[i] = self->m_subscribers[i];
+        for (size_t index = 0; index < snapshot_count; index++)
+            snapshot[index] = self->m_subscribers[index];
         if (self->m_sub_lock)
             osal_mutex_unlock(self->m_sub_lock);
 
-        for (size_t i = 0; i < snapshot_count; i++)
+        for (size_t index = 0; index < snapshot_count; index++)
         {
-            subscriber& sub = snapshot[i];
+            subscriber& sub = snapshot[index];
             if (sub.callback != nullptr && event.id >= sub.id_min && event.id <= sub.id_max)
                 sub.callback(event, sub.user_data);
         }
@@ -236,7 +236,9 @@ void EventBus::stop()
 
 void EventBus::seal() { m_is_sealed = true; }
 
-/* ── C 接口 (extern "C") ── */
+/* -------------------------------------------------------------------------- */
+/* C 接口 (extern "C") */
+/* -------------------------------------------------------------------------- */
 extern "C" int event_bus_init(void) { return EventBus::get_instance().init(); }
 
 extern "C" int event_bus_post(uint32_t id, uintptr_t arg)

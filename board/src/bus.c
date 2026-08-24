@@ -4,13 +4,13 @@
  *@brief bus 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   BUS CORE 实现 — 总线子系统通用框架
  *   静态表: s_controllers[DEV_ID_COUNT] (按 device_id 索引) + s_controller_used[] 位图
  *   查找: device_get_name → board_dev_find → device_id → s_controllers[id]
  *   线程安全: 本层无锁 (写入由上层 probe/remove 序列化); ref_count 在 bus_xxx 层用
  *   atomic_int 保护; 并发 client_register 需在 bus_xxx 层加 mutex
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #include "bus.h"
@@ -137,9 +137,9 @@ void bus_controller_unbind(struct device* pdev)
     COMPAT_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* Async callback bridge */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 从异步桥接池申请空闲槽位
  * @param slots 桥接槽位数组
@@ -148,17 +148,17 @@ void bus_controller_unbind(struct device* pdev)
  */
 struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, size_t slot_count)
 {
-    size_t i;
+    size_t index;
 
     if (!slots || slot_count == 0)
         return NULL;
 
-    for (i = 0; i < slot_count; i++)
+    for (index = 0; index < slot_count; index++)
     {
-        if (!slots[i].in_use)
+        if (!slots[index].in_use)
         {
-            slots[i].in_use = 1;
-            return &slots[i];
+            slots[index].in_use = 1;
+            return &slots[index];
         }
     }
     return NULL;

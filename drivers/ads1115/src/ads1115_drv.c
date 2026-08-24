@@ -190,15 +190,16 @@ struct ads1115_ioctl_map
  */
 static int ads1115_cmd_read(struct ads1115_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct ads1115_sample* o = (struct ads1115_sample*)arg;
+    struct ads1115_sample* sample = (struct ads1115_sample*)arg;
     uint8_t cfg[3];
     uint8_t ptr = 0x00;
     uint8_t raw[2];
     uint16_t mux;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o) || o->channel < 0 || o->channel > 3)
+    if (!dev->hw_ready || !sample || len != sizeof(*sample) || sample->channel < 0 ||
+        sample->channel > 3)
         return MINI_ERR_INVAL;
-    mux = (uint16_t)(0x8000U | ((uint16_t)(o->channel + 4) << 12) | 0x0200U | 0x0100U);
+    mux = (uint16_t)(0x8000U | ((uint16_t)(sample->channel + 4) << 12) | 0x0200U | 0x0100U);
     cfg[0] = 0x01;
     cfg[1] = (uint8_t)(mux >> 8);
     cfg[2] = (uint8_t)mux;
@@ -212,7 +213,7 @@ static int ads1115_cmd_read(struct ads1115_device* dev, void* arg, size_t len, u
     ret = ads1115_i2c_rd(dev, raw, 2, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    o->raw = (int16_t)((raw[0] << 8) | raw[1]);
+    sample->raw = (int16_t)((raw[0] << 8) | raw[1]);
     return MINI_OK;
 }
 

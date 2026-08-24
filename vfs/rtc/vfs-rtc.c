@@ -112,11 +112,11 @@ static int vfs_rtc_close(struct device* pdev)
  */
 static int rtc_cmd_set_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    const struct rtc_time_arg* a = (const struct rtc_time_arg*)arg;
+    const struct rtc_time_arg* time_arg = (const struct rtc_time_arg*)arg;
     COMPAT_IGNORE_RESULT(to);
-    if (!a || arg_len != sizeof(*a))
+    if (!time_arg || arg_len != sizeof(*time_arg))
         return MINI_ERR_INVAL;
-    return hal_rtc_set_time(&priv->rtc, &a->time);
+    return hal_rtc_set_time(&priv->rtc, &time_arg->time);
 }
 
 /**
@@ -129,11 +129,11 @@ static int rtc_cmd_set_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len
  */
 static int rtc_cmd_get_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    struct rtc_time_arg* a = (struct rtc_time_arg*)arg;
+    struct rtc_time_arg* time_arg = (struct rtc_time_arg*)arg;
     COMPAT_IGNORE_RESULT(to);
-    if (!a || arg_len != sizeof(*a))
+    if (!time_arg || arg_len != sizeof(*time_arg))
         return MINI_ERR_INVAL;
-    return hal_rtc_get_time(&priv->rtc, &a->time);
+    return hal_rtc_get_time(&priv->rtc, &time_arg->time);
 }
 
 /**
@@ -146,11 +146,11 @@ static int rtc_cmd_get_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len
  */
 static int rtc_cmd_set_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    const struct rtc_time_arg* a = (const struct rtc_time_arg*)arg;
+    const struct rtc_time_arg* time_arg = (const struct rtc_time_arg*)arg;
     COMPAT_IGNORE_RESULT(to);
-    if (!a || arg_len != sizeof(*a))
+    if (!time_arg || arg_len != sizeof(*time_arg))
         return MINI_ERR_INVAL;
-    return hal_rtc_set_alarm(&priv->rtc, &a->time, NULL, NULL);
+    return hal_rtc_set_alarm(&priv->rtc, &time_arg->time, NULL, NULL);
 }
 
 /**
@@ -179,11 +179,11 @@ static int rtc_cmd_cancel_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg
  */
 static int rtc_cmd_set_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
 {
-    const struct rtc_wakeup_arg* a = (const struct rtc_wakeup_arg*)arg;
+    const struct rtc_wakeup_arg* time_arg = (const struct rtc_wakeup_arg*)arg;
     COMPAT_IGNORE_RESULT(to);
-    if (!a || arg_len != sizeof(*a))
+    if (!time_arg || arg_len != sizeof(*time_arg))
         return MINI_ERR_INVAL;
-    return hal_rtc_set_wakeup_timer(&priv->rtc, a->seconds);
+    return hal_rtc_set_wakeup_timer(&priv->rtc, time_arg->seconds);
 }
 
 /**
@@ -280,23 +280,23 @@ static const struct file_operations s_rtc_fops = {
  */
 static int vfs_rtc_parse_dts(struct device* pdev, struct hal_rtc_config* cfg)
 {
-    int v;
+    int value;
     COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
-    if (device_get_prop_int(pdev, "hw-instance", &v) != MINI_OK)
+    if (device_get_prop_int(pdev, "hw-instance", &value) != MINI_OK)
         return MINI_ERR_INVAL;
-    cfg->rtc = (uintptr_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clk-source", &v));
-    cfg->clk_source = (uint32_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "async-prediv", &v));
-    cfg->async_prediv = (uint32_t)v;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sync-prediv", &v));
-    cfg->sync_prediv = (uint32_t)v;
-    v = 1;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "format-24h", &v));
-    cfg->format_24h = (uint32_t)v;
-    v = -1;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &v));
-    cfg->irqn = v;
+    cfg->rtc = (uintptr_t)value;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clk-source", &value));
+    cfg->clk_source = (uint32_t)value;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "async-prediv", &value));
+    cfg->async_prediv = (uint32_t)value;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sync-prediv", &value));
+    cfg->sync_prediv = (uint32_t)value;
+    value = 1;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "format-24h", &value));
+    cfg->format_24h = (uint32_t)value;
+    value = -1;
+    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &value));
+    cfg->irqn = value;
     return MINI_OK;
 }
 

@@ -51,7 +51,9 @@
 
 #include "compiler_compat_poison.h"
 
-/* ── 队列 / 信号量内部存储 ── */
+/* -------------------------------------------------------------------------- */
+/* 队列 / 信号量内部存储 */
+/* -------------------------------------------------------------------------- */
 struct osal_mutex
 {
     SemaphoreHandle_t handle; /**< FreeRTOS 句柄 */
@@ -104,7 +106,9 @@ int osal_in_isr(void)
 #endif
 }
 
-/* ── Spinlock ── */
+/* -------------------------------------------------------------------------- */
+/* Spinlock */
+/* -------------------------------------------------------------------------- */
 /**
  * @details 默认 CONFIG_OSAL_SPINLOCK_IRQ_DISABLE: 使用临界区 (ESP-IDF portMUX
  * @details 或 FreeRTOS taskENTER_CRITICAL). CONFIG_OSAL_SPINLOCK_ATOMIC:非 ESP 平台使用原子
@@ -218,7 +222,9 @@ COMPAT_UNUSED COMPAT_STATIC_INLINE bool osal_spinlock_is_locked(struct osal_spin
     return false;
 }
 
-/* ── 槽位池 (每池独立临界区锁) ── */
+/* -------------------------------------------------------------------------- */
+/* 槽位池 (每池独立临界区锁) */
+/* -------------------------------------------------------------------------- */
 
 #ifdef ESP_PLATFORM
 _Static_assert(sizeof(portMUX_TYPE) <= OSAL_POOL_MUX_STORAGE_SIZE,
@@ -288,8 +294,8 @@ int osal_pool_init(osal_pool_t* pool, volatile uint8_t* used_slots, size_t slot_
     pool->used_slots = used_slots;
     pool->slot_count = slot_count;
 
-    for (size_t i = 0; i < slot_count; i++)
-        used_slots[i] = 0;
+    for (size_t iter_index = 0; iter_index < slot_count; iter_index++)
+        used_slots[iter_index] = 0;
 
 #ifdef ESP_PLATFORM
     portMUX_INITIALIZE(osal_pool_mux(pool));
@@ -310,12 +316,12 @@ int osal_pool_claim(osal_pool_t* pool)
     osal_pool_lock(pool);
 
     int ret_idx = -1;
-    for (size_t i = 0; i < pool->slot_count; i++)
+    for (size_t iter_index = 0; iter_index < pool->slot_count; iter_index++)
     {
-        if (!pool->used_slots[i])
+        if (!pool->used_slots[iter_index])
         {
-            pool->used_slots[i] = 1;
-            ret_idx = (int)i;
+            pool->used_slots[iter_index] = 1;
+            ret_idx = (int)iter_index;
             break;
         }
     }
@@ -405,9 +411,9 @@ void osal_delay_us(uint32_t us)
     /* 粗略忙等：按 configTICK_RATE_HZ 不可靠，用 CPU 时钟周期近似 */
     {
         uint32_t cycles = us * (configCPU_CLOCK_HZ / 1000000U);
-        volatile uint32_t i;
-        for (i = 0; i < cycles; i++)
-            COMPAT_UNUSED_PARAM(i);
+        volatile uint32_t iter_index;
+        for (iter_index = 0; iter_index < cycles; iter_index++)
+            COMPAT_UNUSED_PARAM(iter_index);
     }
 #endif
 }
@@ -431,7 +437,9 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
     return pdMS_TO_TICKS(timeout_ms);
 }
 
-/* ── 内存 ── */
+/* -------------------------------------------------------------------------- */
+/* 内存 */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief calloc
  * @param[in] count 数量
@@ -451,7 +459,9 @@ int osal_free(void* ptr)
     return OSAL_OK;
 }
 
-/* ── 互斥锁 ── */
+/* -------------------------------------------------------------------------- */
+/* 互斥锁 */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief FreeRTOS 静态/池化互斥锁
  * @param[out] out 等见签名
@@ -471,13 +481,13 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
     if (index < 0)
         return OSAL_ERR_NOMEM;
 
-    struct osal_mutex* m = &s_mutex_pool[index];
-    if (osal_mutex_init(m, type) != OSAL_OK)
+    struct osal_mutex* mutex_obj = &s_mutex_pool[index];
+    if (osal_mutex_init(mutex_obj, type) != OSAL_OK)
     {
         COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, index));
         return OSAL_ERR_NOMEM;
     }
-    *out = (struct osal_mutex*)m;
+    *out = (struct osal_mutex*)mutex_obj;
     return OSAL_OK;
 }
 
@@ -627,7 +637,9 @@ int osal_mutex_unlock(struct osal_mutex* mutex)
     return xSemaphoreGive(mutex->handle) == pdTRUE ? OSAL_OK : OSAL_ERR_IO;
 }
 
-/* ── 二值信号量 ── */
+/* -------------------------------------------------------------------------- */
+/* 二值信号量 */
+/* -------------------------------------------------------------------------- */
 struct osal_sem
 {
     SemaphoreHandle_t handle; /**< FreeRTOS 句柄 */

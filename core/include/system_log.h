@@ -54,10 +54,11 @@ void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...);
 #endif
 
 #if defined(CONFIG_SYS_LOG_USE_OSAL) || defined(CONFIG_SYS_LOG_USE_PRINTF)
-/* ── 驱动日志宏 (DRV_LOG) ──
- * 原位于 osal.h, 提升至 middleware 层以消除层级倒置.
- * 依赖 production_log 的变体 (LOGE/LOGW) 推送至黑匣子环形缓冲区.
- */
+/* -------------------------------------------------------------------------- */
+/* 驱动日志宏 (DRV_LOG) */
+/* 原位于 osal.h, 提升至 middleware 层以消除层级倒置. */
+/* 依赖 production_log 的变体 (LOGE/LOGW) 推送至黑匣子环形缓冲区. */
+/* -------------------------------------------------------------------------- */
 #include "production_log.h" /* IWYU pragma: keep */
 
 #define DRV_LOGE(tag, fmt, ...)                                                                    \

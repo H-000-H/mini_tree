@@ -194,9 +194,9 @@ static int pn532_cmd_fw(struct pn532_device* dev, void* arg, size_t len, uint32_
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     static const uint8_t cmd[] = {0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD4, 0x02, 0x2A, 0x00};
     uint8_t rx[32];
-    struct pn532_fw* o = (struct pn532_fw*)arg;
+    struct pn532_fw* fw = (struct pn532_fw*)arg;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !fw || len != sizeof(*fw))
         return MINI_ERR_INVAL;
     ret = pn532_uart_wr(dev, wake, sizeof(wake), timeout_ms);
     if (ret != MINI_OK)
@@ -210,10 +210,10 @@ static int pn532_cmd_fw(struct pn532_device* dev, void* arg, size_t len, uint32_
         return ret;
     if (ret < 13)
         return MINI_ERR_IO;
-    o->ic = rx[9];
-    o->ver = rx[10];
-    o->rev = rx[11];
-    o->support = rx[12];
+    fw->ic = rx[9];
+    fw->ver = rx[10];
+    fw->rev = rx[11];
+    fw->support = rx[12];
     return MINI_OK;
 }
 

@@ -134,10 +134,10 @@ static int ds18b20_read_bit(struct ds18b20_device* dev, int* bit)
  */
 static int ds18b20_write_byte(struct ds18b20_device* dev, uint8_t val)
 {
-    int i;
-    for (i = 0; i < 8; i++)
+    int index;
+    for (index = 0; index < 8; index++)
     {
-        int ret = ds18b20_write_bit(dev, (val >> i) & 1);
+        int ret = ds18b20_write_bit(dev, (val >> index) & 1);
         if (ret != MINI_OK)
             return ret;
     }
@@ -150,15 +150,15 @@ static int ds18b20_write_byte(struct ds18b20_device* dev, uint8_t val)
  */
 static int ds18b20_read_byte(struct ds18b20_device* dev, uint8_t* val)
 {
-    int i;
+    int index;
     int bit_val;
     uint8_t out = 0;
-    for (i = 0; i < 8; i++)
+    for (index = 0; index < 8; index++)
     {
         if (ds18b20_read_bit(dev, &bit_val) != MINI_OK)
             return MINI_ERR_IO;
         if (bit_val)
-            out |= (uint8_t)(1U << i);
+            out |= (uint8_t)(1U << index);
     }
     *val = out;
     return MINI_OK;
@@ -276,9 +276,9 @@ static int ds18b20_cmd_temp(struct ds18b20_device* dev, void* arg, size_t len, u
     uint8_t lo = 0;
     uint8_t hi = 0;
     int16_t raw;
-    int* t = (int*)arg;
+    int* temp_out = (int*)arg;
     COMPAT_IGNORE_RESULT(ms);
-    if (!dev->hw_ready || !t || len != sizeof(int))
+    if (!dev->hw_ready || !temp_out || len != sizeof(int))
         return MINI_ERR_INVAL;
     if (ds18b20_reset(dev) != MINI_OK)
         return MINI_ERR_IO;
@@ -298,7 +298,7 @@ static int ds18b20_cmd_temp(struct ds18b20_device* dev, void* arg, size_t len, u
     if (ds18b20_read_byte(dev, &hi) != MINI_OK)
         return MINI_ERR_IO;
     raw = (int16_t)(((uint16_t)hi << 8) | lo);
-    *t = (int)(raw / DS18B20_TEMP_LSB_PER_C);
+    *temp_out = (int)(raw / DS18B20_TEMP_LSB_PER_C);
     return MINI_OK;
 }
 static const struct ds18b20_ioctl_map s_ds18b20_map[DS18B20_CMD_COUNT] = {

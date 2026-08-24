@@ -214,10 +214,10 @@ static int dfplayer_frame(struct dfplayer_device* dev, uint8_t cmd, uint16_t par
 static int dfplayer_cmd_play(struct dfplayer_device* dev, void* arg, size_t len,
                              uint32_t timeout_ms)
 {
-    struct dfplayer_track* a = (struct dfplayer_track*)arg;
-    if (!dev->hw_ready || !a || len != sizeof(*a))
+    struct dfplayer_track* track_arg = (struct dfplayer_track*)arg;
+    if (!dev->hw_ready || !track_arg || len != sizeof(*track_arg))
         return MINI_ERR_INVAL;
-    return dfplayer_frame(dev, DFPLAYER_OP_PLAY_TRACK, a->track, timeout_ms);
+    return dfplayer_frame(dev, DFPLAYER_OP_PLAY_TRACK, track_arg->track, timeout_ms);
 }
 
 /**

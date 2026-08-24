@@ -4,12 +4,12 @@
  *@brief i2s bus 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   I2S BUS 实现 — I2S 总线子系统 bus 层
  *   静态池: s_i2s_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2s_clients[DEV_ID_COUNT]
  *   职责: host init/open/close + client register + transfer (poll/DMA) + circular + HT/TC irq_mode
  *   @see bus/i2s/i2s_bus.h
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define I2S_BUS_IMPL
@@ -66,10 +66,10 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void)
  */
 static struct i2s_bus_host* host_from_dev(struct device* pdev)
 {
-    int i;
-    for (i = 0; i < I2S_BUS_HOST_MAX; i++)
-        if (osal_pool_is_used(&s_host_pool, i) && s_hosts[i].pdev == pdev)
-            return &s_hosts[i];
+    int index;
+    for (index = 0; index < I2S_BUS_HOST_MAX; index++)
+        if (osal_pool_is_used(&s_host_pool, index) && s_hosts[index].pdev == pdev)
+            return &s_hosts[index];
     return NULL;
 }
 
@@ -198,7 +198,7 @@ static int i2s_host_role_impl(struct device* pdev)
  */
 static int i2s_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
-    const struct hal_i2s_device_config* c = cfg;
+    const struct hal_i2s_device_config* config = cfg;
     struct bus_controller* ctlr;
     struct i2s_bus_host* host;
     struct i2s_bus_client* client;
@@ -225,7 +225,7 @@ static int i2s_client_register_impl(struct device* pdev, const void* cfg, void**
     COMPAT_MEM_SET(client, 0, sizeof(*client));
     client->pdev = pdev;
     client->host = host;
-    client->cfg = *c;
+    client->cfg = *config;
     (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
     *out = client;
     return MINI_OK;

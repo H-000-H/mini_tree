@@ -4,11 +4,11 @@
  *@brief usb bus 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   USB BUS 实现 — host/client 池 + TinyUSB 粘合 (usb_tusb_port)
  *   静态池: s_usb_hosts[HOST_MAX] + s_usb_clients[DEV_ID_COUNT]
  *   数据流: VFS → usb_bus_* → hal_usb_* / usb_tusb_* / usb_net_frame_*
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define USB_BUS_IMPL
@@ -64,9 +64,9 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
  */
 static struct usb_bus_host* usb_host_from_device(struct device* pdev)
 {
-    for (int i = 0; i < USB_BUS_HOST_MAX; i++)
-        if (osal_pool_is_used(&s_usb_host_pool_ctrl, i) && s_usb_hosts[i].pdev == pdev)
-            return &s_usb_hosts[i];
+    for (int index = 0; index < USB_BUS_HOST_MAX; index++)
+        if (osal_pool_is_used(&s_usb_host_pool_ctrl, index) && s_usb_hosts[index].pdev == pdev)
+            return &s_usb_hosts[index];
     return NULL;
 }
 
@@ -286,19 +286,19 @@ void usb_bus_client_unregister(struct device* pdev) { usb_client_unregister_impl
 
 int usb_bus_open(struct device* pdev)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
-    if (!c)
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
+    if (!usb_client)
         return MINI_ERR_NODEV;
-    c->hw_open = 1;
+    usb_client->hw_open = 1;
     return MINI_OK;
 }
 
 int usb_bus_close(struct device* pdev)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
-    if (!c)
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
+    if (!usb_client)
         return MINI_ERR_NODEV;
-    c->hw_open = 0;
+    usb_client->hw_open = 0;
     return MINI_OK;
 }
 
@@ -326,13 +326,13 @@ void usb_bus_task(void)
 int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms,
                       uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     uint32_t start;
     size_t done = 0;
     int mode;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
-    if (!c || c->cls != USB_CLIENT_CDC || !buf)
+    if (!usb_client || usb_client->cls != USB_CLIENT_CDC || !buf)
         return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
@@ -345,15 +345,15 @@ int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t
     start = osal_time_ms();
     while (done < len)
     {
-        uint32_t n = usb_tusb_cdc_write((const uint8_t*)buf + done, (uint32_t)(len - done));
+        uint32_t result = usb_tusb_cdc_write((const uint8_t*)buf + done, (uint32_t)(len - done));
         usb_tusb_cdc_write_flush();
-        done += n;
+        done += result;
         if (done >= len)
             break;
         usb_tusb_task();
         if (timeout_ms && (osal_time_ms() - start) >= timeout_ms)
             break;
-        if (n == 0)
+        if (result == 0)
             break;
     }
     return (int)done;
@@ -362,12 +362,12 @@ int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t
 int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms,
                      uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     uint32_t start;
     size_t done = 0;
     int mode;
 
-    if (!c || c->cls != USB_CLIENT_CDC || !buf)
+    if (!usb_client || usb_client->cls != USB_CLIENT_CDC || !buf)
         return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
@@ -379,8 +379,8 @@ int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeou
     {
         if (usb_tusb_cdc_available())
         {
-            uint32_t n = usb_tusb_cdc_read((uint8_t*)buf + done, (uint32_t)(len - done));
-            done += n;
+            uint32_t result = usb_tusb_cdc_read((uint8_t*)buf + done, (uint32_t)(len - done));
+            done += result;
             if (done >= len)
                 break;
         }
@@ -399,11 +399,11 @@ int usb_bus_cdc_read(struct device* pdev, void* buf, size_t len, uint32_t timeou
 int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32_t timeout_ms,
                       uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     int mode;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
-    if (!c || c->cls != USB_CLIENT_ECM || !frame || !len)
+    if (!usb_client || usb_client->cls != USB_CLIENT_ECM || !frame || !len)
         return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
@@ -416,11 +416,11 @@ int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32
 int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t timeout_ms,
                      uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     uint32_t start;
-    int n, mode;
+    int result, mode;
 
-    if (!c || c->cls != USB_CLIENT_ECM || !frame || !len)
+    if (!usb_client || usb_client->cls != USB_CLIENT_ECM || !frame || !len)
         return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);
@@ -430,9 +430,9 @@ int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t time
     start = osal_time_ms();
     for (;;)
     {
-        n = usb_net_frame_pop_rx(frame, len);
-        if (n > 0)
-            return n;
+        result = usb_net_frame_pop_rx(frame, len);
+        if (result > 0)
+            return result;
         usb_tusb_task();
         if (timeout_ms == 0)
             return MINI_ERR_TIMEOUT;
@@ -444,11 +444,11 @@ int usb_bus_ecm_read(struct device* pdev, void* frame, size_t len, uint32_t time
 int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint32_t timeout_ms,
                       uint32_t xfer_mode)
 {
-    struct usb_bus_client* c = usb_client_from_device(pdev);
+    struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     int mode;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
-    if (!c || c->cls != USB_CLIENT_HID || !report || !len)
+    if (!usb_client || usb_client->cls != USB_CLIENT_HID || !report || !len)
         return MINI_ERR_INVAL;
 
     mode = usb_bus_resolve_xfer_mode(pdev, xfer_mode);

@@ -26,7 +26,9 @@
 #include "vfs-tim.h"
 #include "xtask.h"
 
-/* ── 分组优先级参数 (Kconfig 控制) ───────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* 分组优先级参数 (Kconfig 控制) */
+/* -------------------------------------------------------------------------- */
 
 #ifndef CONFIG_X_PREEMPT_PRIO_LEVELS
 #define CONFIG_X_PREEMPT_PRIO_LEVELS 32
@@ -48,7 +50,9 @@
 #error "X_PREEMPT_PRIO_GROUP must be <= 32 (uint32_t group bitmap)"
 #endif
 
-/* ── 数据结构 ────────────────────────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* 数据结构 */
+/* -------------------------------------------------------------------------- */
 
 /** 抢占式任务 (池槽, 内嵌 x_task 供对外句柄; 到期时刻复用 x_task.next_running) */
 struct x_preempt_task
@@ -73,7 +77,9 @@ struct x_preempt_priv
     struct x_preempt_task task[CONFIG_X_PREEMPT_MAX_TASKS]; /**< 任务池 */
 };
 
-/* ── 全局 ────────────────────────────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* 全局 */
+/* -------------------------------------------------------------------------- */
 
 x_scheduler g_scheduler = {0}; /**< 对外契约 (xtask.h), preempt 内部不用其字段 */
 static struct x_preempt_priv s_priv; /**< 内部完整状态 */
@@ -88,7 +94,9 @@ uint32_t x_scheduler_now(void) { return s_priv.tick_count; }
 /** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
 x_task* x_scheduler_current(void) { return s_current_task; }
 #endif /* CONFIG_XTASK_COROUTINE */
-/* ── 内部工具 ────────────────────────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* 内部工具 */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief 计算优先级所在组
@@ -155,8 +163,8 @@ static struct x_preempt_task* ready_highest(void)
 {
     if (s_priv.group_bitmap == 0)
         return NULL;
-    uint32_t g = 31u - COMPAT_CLZ(s_priv.group_bitmap);
-    list_node* head = &s_priv.ready_head[g];
+    uint32_t group_index = 31u - COMPAT_CLZ(s_priv.group_bitmap);
+    list_node* head = &s_priv.ready_head[group_index];
     if (list_empty(head))
         return NULL;
     return container_of(head->next, struct x_preempt_task, ready_node);
@@ -208,7 +216,9 @@ static void idle_wfi(void)
     COMPAT_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
 }
 
-/* ── 对外 API ────────────────────────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* 对外 API */
+/* -------------------------------------------------------------------------- */
 
 pre_execution(PRE_EXEC_PRIO_SCHEDULER) static void xscheduler_early_init(void)
 {
@@ -295,11 +305,11 @@ x_task_handle_t x_scheduler_task_create(const char* name, uint32_t period_ms, ui
 
     /* 从任务池找空闲槽 */
     struct x_preempt_task* slot = NULL;
-    for (uint32_t i = 0; i < CONFIG_X_PREEMPT_MAX_TASKS; i++)
+    for (uint32_t index = 0; index < CONFIG_X_PREEMPT_MAX_TASKS; index++)
     {
-        if (s_priv.task[i].task.name == NULL)
+        if (s_priv.task[index].task.name == NULL)
         {
-            slot = &s_priv.task[i];
+            slot = &s_priv.task[index];
             break;
         }
     }

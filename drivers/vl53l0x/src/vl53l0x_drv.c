@@ -278,12 +278,12 @@ struct vl53l0x_ioctl_map
  */
 static int vl53l0x_cmd_read(struct vl53l0x_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct vl53l0x_sample* o = (struct vl53l0x_sample*)arg;
+    struct vl53l0x_sample* sample = (struct vl53l0x_sample*)arg;
     uint8_t st = 0;
     uint16_t mm = 0;
-    int i;
+    int index;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     /* 单次测距启动序列（对齐常见开源 VL53L0X 驱动，非完整 ST API 校准） */
     ret = vl53l0x_wr8(dev, 0x80, 0x01, timeout_ms);
@@ -310,7 +310,7 @@ static int vl53l0x_cmd_read(struct vl53l0x_device* dev, void* arg, size_t len, u
     ret = vl53l0x_wr8(dev, 0x00, 0x01, timeout_ms); /* SYSRANGE_START */
     if (ret != MINI_OK)
         return ret;
-    for (i = 0; i < 100; i++)
+    for (index = 0; index < 100; index++)
     {
         ret = vl53l0x_rd8(dev, 0x00, &st, timeout_ms);
         if (ret != MINI_OK)
@@ -319,7 +319,7 @@ static int vl53l0x_cmd_read(struct vl53l0x_device* dev, void* arg, size_t len, u
             break;
         osal_delay_ms(1);
     }
-    for (i = 0; i < 100; i++)
+    for (index = 0; index < 100; index++)
     {
         ret = vl53l0x_rd8(dev, 0x13, &st, timeout_ms); /* RESULT_INTERRUPT_STATUS */
         if (ret != MINI_OK)
@@ -334,7 +334,7 @@ static int vl53l0x_cmd_read(struct vl53l0x_device* dev, void* arg, size_t len, u
     if (ret != MINI_OK)
         return ret;
     COMPAT_IGNORE_RESULT(vl53l0x_wr8(dev, 0x0B, 0x01, timeout_ms)); /* clear interrupt */
-    o->mm = mm;
+    sample->mm = mm;
     return MINI_OK;
 }
 

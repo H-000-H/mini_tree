@@ -191,16 +191,16 @@ static int ft5x06_cmd_touch(struct ft5x06_device* dev, void* arg, size_t len, ui
 {
     const uint8_t reg = 0x02;
     uint8_t raw[6];
-    struct ft5x06_touch* t = (struct ft5x06_touch*)arg;
-    if (!dev->hw_ready || !t || len != sizeof(*t))
+    struct ft5x06_touch* touch = (struct ft5x06_touch*)arg;
+    if (!dev->hw_ready || !touch || len != sizeof(*touch))
         return MINI_ERR_INVAL;
     if (ft5x06_i2c_wr(dev, &reg, 1, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
     if (ft5x06_i2c_rd(dev, raw, 6, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
-    t->points = (raw[0] & 0x0FU);
-    t->pos_x = (uint16_t)(((raw[1] & 0x0FU) << 8) | raw[2]);
-    t->pos_y = (uint16_t)(((raw[3] & 0x0FU) << 8) | raw[4]);
+    touch->points = (raw[0] & 0x0FU);
+    touch->pos_x = (uint16_t)(((raw[1] & 0x0FU) << 8) | raw[2]);
+    touch->pos_y = (uint16_t)(((raw[3] & 0x0FU) << 8) | raw[4]);
     return MINI_OK;
 }
 static const struct ft5x06_ioctl_map s_ft5x06_map[FT5X06_CMD_COUNT] = {

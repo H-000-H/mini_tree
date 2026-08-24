@@ -185,27 +185,27 @@ struct neo_m8n_ioctl_map
  */
 static int neo_m8n_cmd_nmea(struct neo_m8n_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct neo_m8n_buf* b = (struct neo_m8n_buf*)arg;
+    struct neo_m8n_buf* buf = (struct neo_m8n_buf*)arg;
     size_t got = 0;
     int ret;
 
-    if (!dev->hw_ready || !b || len != sizeof(*b) || !b->data || b->cap == 0U)
+    if (!dev->hw_ready || !buf || len != sizeof(*buf) || !buf->data || buf->cap == 0U)
         return MINI_ERR_INVAL;
 
-    ret = device_read(dev->uart_dev, (uint8_t*)b->data, b->cap, timeout_ms);
+    ret = device_read(dev->uart_dev, (uint8_t*)buf->data, buf->cap, timeout_ms);
     if (ret < 0)
         return ret;
     got = (size_t)ret;
-    while (got < b->cap)
+    while (got < buf->cap)
     {
-        ret = device_read(dev->uart_dev, (uint8_t*)&b->data[got], 1, 10);
+        ret = device_read(dev->uart_dev, (uint8_t*)&buf->data[got], 1, 10);
         if (ret <= 0)
             break;
         got += (size_t)ret;
-        if (b->data[got - 1U] == '\n')
+        if (buf->data[got - 1U] == '\n')
             break;
     }
-    b->len = got;
+    buf->len = got;
     return MINI_OK;
 }
 static const struct neo_m8n_ioctl_map s_neo_m8n_map[NEO_M8N_CMD_COUNT] = {

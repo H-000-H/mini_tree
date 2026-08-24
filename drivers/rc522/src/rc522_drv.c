@@ -242,7 +242,7 @@ static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* s
     uint8_t wait_irq = 0;
     uint8_t count;
     uint8_t last_bits;
-    int i;
+    int index;
     int ret;
     if (cmd == RC522_OP_MF_AUTHENT)
     {
@@ -266,9 +266,9 @@ static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* s
     ret = rc522_wreg(dev, RC522_REG_COMMAND, RC522_OP_IDLE, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    for (i = 0; i < (int)send_len; i++)
+    for (index = 0; index < (int)send_len; index++)
     {
-        ret = rc522_wreg(dev, RC522_REG_FIFO_DATA, send[i], timeout_ms);
+        ret = rc522_wreg(dev, RC522_REG_FIFO_DATA, send[index], timeout_ms);
         if (ret != MINI_OK)
             return ret;
     }
@@ -281,18 +281,18 @@ static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* s
         if (ret != MINI_OK)
             return ret;
     }
-    i = 2000;
+    index = 2000;
     do
     {
         ret = rc522_rreg(dev, RC522_REG_COMIRQ, &count, timeout_ms);
         if (ret != MINI_OK)
             return ret;
-        i--;
-    } while (i && !(count & RC522_IRQ_TIMER) && !(count & wait_irq));
+        index--;
+    } while (index && !(count & RC522_IRQ_TIMER) && !(count & wait_irq));
     ret = rc522_clr_bits(dev, RC522_REG_BIT_FRAMING, RC522_BIT_START_SEND, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    if (i == 0)
+    if (index == 0)
         return MINI_ERR_TIMEOUT;
     ret = rc522_rreg(dev, RC522_REG_ERROR, &count, timeout_ms);
     if (ret != MINI_OK)
@@ -314,9 +314,9 @@ static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* s
             *back_len = (uint8_t)(count * 8U);
         if (count > RC522_FIFO_MAX)
             count = RC522_FIFO_MAX;
-        for (i = 0; i < (int)count; i++)
+        for (index = 0; index < (int)count; index++)
         {
-            ret = rc522_rreg(dev, RC522_REG_FIFO_DATA, &back[i], timeout_ms);
+            ret = rc522_rreg(dev, RC522_REG_FIFO_DATA, &back[index], timeout_ms);
             if (ret != MINI_OK)
                 return ret;
         }
@@ -364,7 +364,7 @@ static int rc522_cmd_init(struct rc522_device* dev, void* arg, size_t len, uint3
  */
 static int rc522_cmd_uid(struct rc522_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct rc522_uid* o = (struct rc522_uid*)arg;
+    struct rc522_uid* uid_out = (struct rc522_uid*)arg;
     uint8_t req[1] = {RC522_PICC_REQA};
     uint8_t atqa[2] = {0};
     uint8_t atqa_bits = 0;
@@ -372,7 +372,7 @@ static int rc522_cmd_uid(struct rc522_device* dev, void* arg, size_t len, uint32
     uint8_t uid[5] = {0};
     uint8_t uid_bits = 0;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !uid_out || len != sizeof(*uid_out))
         return MINI_ERR_INVAL;
     ret = rc522_wreg(dev, RC522_REG_BIT_FRAMING, RC522_BIT_TX_LASTBITS7, timeout_ms);
     if (ret != MINI_OK)
@@ -390,11 +390,11 @@ static int rc522_cmd_uid(struct rc522_device* dev, void* arg, size_t len, uint32
         return MINI_ERR_IO;
     if ((uint8_t)(uid[0] ^ uid[1] ^ uid[2] ^ uid[3]) != uid[4])
         return MINI_ERR_IO;
-    o->uid[0] = uid[0];
-    o->uid[1] = uid[1];
-    o->uid[2] = uid[2];
-    o->uid[3] = uid[3];
-    o->len = 4;
+    uid_out->uid[0] = uid[0];
+    uid_out->uid[1] = uid[1];
+    uid_out->uid[2] = uid[2];
+    uid_out->uid[3] = uid[3];
+    uid_out->len = 4;
     return MINI_OK;
 }
 

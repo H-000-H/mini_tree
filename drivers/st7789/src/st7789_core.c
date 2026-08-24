@@ -332,7 +332,7 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int pos_x, int pos_y, 
 {
     uint8_t hi;
     uint8_t lo;
-    int i;
+    int index;
     int ret;
     size_t fill_bytes;
     size_t total;
@@ -361,10 +361,10 @@ static int st7789_do_fill_rect(struct st7789_device* lcd, int pos_x, int pos_y, 
 
     hi = (uint8_t)(color >> 8);
     lo = (uint8_t)(color & 0xFFU);
-    for (i = 0; i < (int)(fill_bytes / 2U); i++)
+    for (index = 0; index < (int)(fill_bytes / 2U); index++)
     {
-        lcd->block_buf[i * 2] = hi;
-        lcd->block_buf[i * 2 + 1] = lo;
+        lcd->block_buf[index * 2] = hi;
+        lcd->block_buf[index * 2 + 1] = lo;
     }
 
     total = (size_t)size_w * (size_t)size_h * 2U;
@@ -593,11 +593,12 @@ struct st7789_ioctl_map
 static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg_len,
                                 uint32_t timeout_ms)
 {
-    const struct display_rect_arg* a = (const struct display_rect_arg*)arg;
+    const struct display_rect_arg* arg_data = (const struct display_rect_arg*)arg;
 
-    if (!lcd || !a || arg_len != sizeof(*a))
+    if (!lcd || !arg_data || arg_len != sizeof(*arg_data))
         return MINI_ERR_INVAL;
-    return st7789_do_fill_rect(lcd, a->x, a->y, a->w, a->h, a->color, timeout_ms);
+    return st7789_do_fill_rect(lcd, arg_data->x, arg_data->y, arg_data->w, arg_data->h,
+                               arg_data->color, timeout_ms);
 }
 
 /**
@@ -606,11 +607,11 @@ static int st7789_cmd_fill_rect(struct st7789_device* lcd, void* arg, size_t arg
 static int st7789_cmd_clear(struct st7789_device* lcd, void* arg, size_t arg_len,
                             uint32_t timeout_ms)
 {
-    const struct display_clear_arg* a = (const struct display_clear_arg*)arg;
+    const struct display_clear_arg* arg_data = (const struct display_clear_arg*)arg;
 
-    if (!lcd || !a || arg_len != sizeof(*a))
+    if (!lcd || !arg_data || arg_len != sizeof(*arg_data))
         return MINI_ERR_INVAL;
-    return st7789_do_fill_rect(lcd, 0, 0, lcd->width, lcd->height, a->value, timeout_ms);
+    return st7789_do_fill_rect(lcd, 0, 0, lcd->width, lcd->height, arg_data->value, timeout_ms);
 }
 
 /**
@@ -619,11 +620,12 @@ static int st7789_cmd_clear(struct st7789_device* lcd, void* arg, size_t arg_len
 static int st7789_cmd_draw_area(struct st7789_device* lcd, void* arg, size_t arg_len,
                                 uint32_t timeout_ms)
 {
-    const struct display_draw_arg* a = (const struct display_draw_arg*)arg;
+    const struct display_draw_arg* arg_data = (const struct display_draw_arg*)arg;
 
-    if (!lcd || !a || arg_len != sizeof(*a) || a->format != DISPLAY_FMT_RGB565)
+    if (!lcd || !arg_data || arg_len != sizeof(*arg_data) || arg_data->format != DISPLAY_FMT_RGB565)
         return MINI_ERR_INVAL;
-    return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
+    return st7789_do_draw_bitmap(lcd, arg_data->x, arg_data->y, arg_data->w, arg_data->h,
+                                 arg_data->data, timeout_ms);
 }
 
 /**
@@ -632,12 +634,12 @@ static int st7789_cmd_draw_area(struct st7789_device* lcd, void* arg, size_t arg
 static int st7789_cmd_set_brightness(struct st7789_device* lcd, void* arg, size_t arg_len,
                                      uint32_t timeout_ms)
 {
-    const struct display_bright_arg* a = (const struct display_bright_arg*)arg;
+    const struct display_bright_arg* arg_data = (const struct display_bright_arg*)arg;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
-    if (!lcd || !a || arg_len != sizeof(*a))
+    if (!lcd || !arg_data || arg_len != sizeof(*arg_data))
         return MINI_ERR_INVAL;
-    return st7789_apply_backlight(lcd, a->value);
+    return st7789_apply_backlight(lcd, arg_data->value);
 }
 
 /**
@@ -646,14 +648,14 @@ static int st7789_cmd_set_brightness(struct st7789_device* lcd, void* arg, size_
 static int st7789_cmd_get_info(struct st7789_device* lcd, void* arg, size_t arg_len,
                                uint32_t timeout_ms)
 {
-    struct display_info_arg* a = (struct display_info_arg*)arg;
+    struct display_info_arg* arg_data = (struct display_info_arg*)arg;
 
     COMPAT_IGNORE_RESULT(timeout_ms);
-    if (!lcd || !a || arg_len != sizeof(*a))
+    if (!lcd || !arg_data || arg_len != sizeof(*arg_data))
         return MINI_ERR_INVAL;
-    a->width = (uint16_t)lcd->width;
-    a->height = (uint16_t)lcd->height;
-    a->format = DISPLAY_FMT_RGB565;
+    arg_data->width = (uint16_t)lcd->width;
+    arg_data->height = (uint16_t)lcd->height;
+    arg_data->format = DISPLAY_FMT_RGB565;
     return MINI_OK;
 }
 
@@ -663,11 +665,12 @@ static int st7789_cmd_get_info(struct st7789_device* lcd, void* arg, size_t arg_
 static int st7789_cmd_flush(struct st7789_device* lcd, void* arg, size_t arg_len,
                             uint32_t timeout_ms)
 {
-    const struct display_draw_arg* a = (const struct display_draw_arg*)arg;
+    const struct display_draw_arg* arg_data = (const struct display_draw_arg*)arg;
 
-    if (!lcd || !a || arg_len != sizeof(*a) || a->format != DISPLAY_FMT_RGB565)
+    if (!lcd || !arg_data || arg_len != sizeof(*arg_data) || arg_data->format != DISPLAY_FMT_RGB565)
         return MINI_ERR_INVAL;
-    return st7789_do_draw_bitmap(lcd, a->x, a->y, a->w, a->h, a->data, timeout_ms);
+    return st7789_do_draw_bitmap(lcd, arg_data->x, arg_data->y, arg_data->w, arg_data->h,
+                                 arg_data->data, timeout_ms);
 }
 
 static const struct st7789_ioctl_map s_st7789_ioctl_map[DISPLAY_CMD_COUNT] = {

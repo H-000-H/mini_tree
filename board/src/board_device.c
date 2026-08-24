@@ -31,7 +31,9 @@
 _Static_assert(OSAL_MUTEX_POOL_SIZE >= DEV_ID_COUNT,
                "OSAL_MUTEX_POOL_SIZE too small for DEV_ID_COUNT devices");
 
-/* ── 运行时设备实例表 ── */
+/* -------------------------------------------------------------------------- */
+/* 运行时设备实例表 */
+/* -------------------------------------------------------------------------- */
 static struct device s_devices[DEV_ID_COUNT] COMPAT_ALIGNED(4);
 static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
 
@@ -82,27 +84,27 @@ static int device_status_can_transit(enum device_status from, enum device_status
  */
 int device_tree_init(void)
 {
-    for (int i = 0; i < DEV_ID_COUNT; i++)
+    for (int index = 0; index < DEV_ID_COUNT; index++)
     {
-        const struct device_node* node = board_node_get((device_id_t)i);
-        s_devices[i].node = node;
-        s_devices[i].status = node ? node->status : DEVICE_STATUS_DISABLED;
-        s_devices[i].priv_data = NULL;
-        s_devices[i].ops = NULL;
-        s_devices[i].lock = NULL;
-        s_devices[i].platform_data = NULL;
-        dev_lc_reset(&s_devices[i].lc);
+        const struct device_node* node = board_node_get((device_id_t)index);
+        s_devices[index].node = node;
+        s_devices[index].status = node ? node->status : DEVICE_STATUS_DISABLED;
+        s_devices[index].priv_data = NULL;
+        s_devices[index].ops = NULL;
+        s_devices[index].lock = NULL;
+        s_devices[index].platform_data = NULL;
+        dev_lc_reset(&s_devices[index].lc);
 
-        if (node && s_devices[i].status != DEVICE_STATUS_DISABLED &&
+        if (node && s_devices[index].status != DEVICE_STATUS_DISABLED &&
             !(node->flags & DEVICE_FLAG_DIRECT))
         {
             /* pdev->lock 需要递归: osal_mutex_create_static_recursive */
             struct osal_mutex* lock = NULL;
-            if (osal_mutex_create_static_recursive(&lock, s_device_lock_storage[i],
-                                                   sizeof(s_device_lock_storage[i])) == OSAL_OK)
+            if (osal_mutex_create_static_recursive(&lock, s_device_lock_storage[index],
+                                                   sizeof(s_device_lock_storage[index])) == OSAL_OK)
             {
-                s_devices[i].lock = lock;
-                device_lc_bind(&s_devices[i]);
+                s_devices[index].lock = lock;
+                device_lc_bind(&s_devices[index]);
             }
             else
             {
@@ -127,7 +129,9 @@ int device_tree_init(void)
     return board_dev_count() > 0 ? MINI_OK : MINI_ERR_IO;
 }
 
-/* ── 运行时设备实例访问 ── */
+/* -------------------------------------------------------------------------- */
+/* 运行时设备实例访问 */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 按 device_id 获取运行时 device 实例
  * @param id 设备 ID
@@ -208,11 +212,11 @@ struct device* device_find_by_path(const char* path)
 {
     if (!path)
         return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    for (int i = 0; i < DEV_ID_COUNT; i++)
+    for (int index = 0; index < DEV_ID_COUNT; index++)
     {
-        const struct device_node* node = board_node_get((device_id_t)i);
+        const struct device_node* node = board_node_get((device_id_t)index);
         if (node && node->path && strcmp(node->path, path) == 0)
-            return board_dev_get((device_id_t)i);
+            return board_dev_get((device_id_t)index);
     }
     return (struct device*)ERR_PTR(MINI_ERR_NODEV);
 }
@@ -264,27 +268,27 @@ static int safe_parse_int32(const char* str, int* out)
         return -1;
 
     int sign = 1;
-    const char* p = str;
-    if (*p == '-')
+    const char* cursor = str;
+    if (*cursor == '-')
     {
         sign = -1;
-        p++;
+        cursor++;
     }
-    else if (*p == '+')
+    else if (*cursor == '+')
     {
-        p++;
+        cursor++;
     }
 
     int base = 10;
-    if (*p == '0')
+    if (*cursor == '0')
     {
-        p++;
-        if (*p == 'x' || *p == 'X')
+        cursor++;
+        if (*cursor == 'x' || *cursor == 'X')
         {
             base = 16;
-            p++;
+            cursor++;
         }
-        else if (*p == '\0')
+        else if (*cursor == '\0')
         {
             *out = 0;
             return 0;
@@ -295,25 +299,25 @@ static int safe_parse_int32(const char* str, int* out)
         }
     }
 
-    if (!*p)
+    if (!*cursor)
         return -1;
 
     uint32_t val = 0;
     const uint32_t limit = (sign > 0) ? (uint32_t)INT32_MAX : (uint32_t)INT32_MAX + 1UL;
 
-    while (*p)
+    while (*cursor)
     {
         /* 空格作为自然终止符 — 兼容 multi-int 属性串如 "1073758208 1024" */
-        if (*p == ' ')
+        if (*cursor == ' ')
             break;
 
         uint32_t digit;
-        if (*p >= '0' && *p <= '9')
-            digit = (uint32_t)(*p - '0');
-        else if (*p >= 'a' && *p <= 'f')
-            digit = (uint32_t)(*p - 'a' + 10);
-        else if (*p >= 'A' && *p <= 'F')
-            digit = (uint32_t)(*p - 'A' + 10);
+        if (*cursor >= '0' && *cursor <= '9')
+            digit = (uint32_t)(*cursor - '0');
+        else if (*cursor >= 'a' && *cursor <= 'f')
+            digit = (uint32_t)(*cursor - 'a' + 10);
+        else if (*cursor >= 'A' && *cursor <= 'F')
+            digit = (uint32_t)(*cursor - 'A' + 10);
         else
             return -1;
 
@@ -323,14 +327,16 @@ static int safe_parse_int32(const char* str, int* out)
         if (val > (limit - digit) / (uint32_t)base)
             return -1;
         val = val * (uint32_t)base + digit;
-        p++;
+        cursor++;
     }
 
     *out = (sign > 0) ? (int)val : -(int)val;
     return 0;
 }
 
-/* ── 属性读取（通过 pdev->node） ── */
+/* -------------------------------------------------------------------------- */
+/* 属性读取（通过 pdev->node） */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 读取整型设备树属性
  * @param[in] pdev device 指针
@@ -343,11 +349,11 @@ int device_get_prop_int(const struct device* pdev, const char* key, int* val)
     if (!pdev || !pdev->node || !key || !val)
         return MINI_ERR_INVAL;
     const struct device_node* node = pdev->node;
-    for (int i = 0; i < node->prop_count; i++)
+    for (int index = 0; index < node->prop_count; index++)
     {
-        if (strcmp(node->props[i].key, key) == 0)
+        if (strcmp(node->props[index].key, key) == 0)
         {
-            if (safe_parse_int32(node->props[i].value, val) != 0)
+            if (safe_parse_int32(node->props[index].value, val) != 0)
                 return MINI_ERR_INVAL;
             return MINI_OK;
         }
@@ -369,11 +375,11 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
         return MINI_ERR_INVAL;
 
     const char* value = NULL;
-    for (int i = 0; i < pdev->node->prop_count; i++)
+    for (int index = 0; index < pdev->node->prop_count; index++)
     {
-        if (strcmp(pdev->node->props[i].key, key) == 0)
+        if (strcmp(pdev->node->props[index].key, key) == 0)
         {
-            value = pdev->node->props[i].value;
+            value = pdev->node->props[index].value;
             break;
         }
     }
@@ -382,22 +388,22 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
 
     /* 解析空格分隔的整数串 */
     int count = 0;
-    const char* p = value;
-    while (*p && count < max_len)
+    const char* cursor = value;
+    while (*cursor && count < max_len)
     {
-        while (*p == ' ')
-            p++;
-        if (!*p)
+        while (*cursor == ' ')
+            cursor++;
+        if (!*cursor)
             break;
 
         /* 计算当前 token 长度 */
-        const char* start = p;
-        while (*p && *p != ' ')
-            p++;
+        const char* start = cursor;
+        while (*cursor && *cursor != ' ')
+            cursor++;
 
         /* 复制 token 到临时缓冲区 */
         char token[64];
-        size_t len = (size_t)(p - start);
+        size_t len = (size_t)(cursor - start);
         if (len >= sizeof(token))
             return MINI_ERR_INVAL;
         __builtin_memcpy(token, start, len);
@@ -423,11 +429,11 @@ int device_get_prop_str(const struct device* pdev, const char* key, const char**
     if (!pdev || !pdev->node || !key || !val)
         return MINI_ERR_INVAL;
     const struct device_node* node = pdev->node;
-    for (int i = 0; i < node->prop_count; i++)
+    for (int index = 0; index < node->prop_count; index++)
     {
-        if (strcmp(node->props[i].key, key) == 0)
+        if (strcmp(node->props[index].key, key) == 0)
         {
-            *val = node->props[i].value;
+            *val = node->props[index].value;
             return MINI_OK;
         }
     }
@@ -585,7 +591,9 @@ void* device_get_priv(const struct device* pdev)
     return pdev->priv_data;
 }
 
-/* ── 设备遍历 ── */
+/* -------------------------------------------------------------------------- */
+/* 设备遍历 */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 获取第一个 device (按 devtable 顺序)
  * @return 成功返回 device 指针, 无设备返回 ERR_PTR
@@ -608,11 +616,11 @@ struct device* device_get_next(const struct device* prev)
         return (struct device*)ERR_PTR(MINI_ERR_INVAL);
     if (IS_ERR(prev))
         return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    for (int i = 0; i < board_dev_count(); i++)
+    for (int index = 0; index < board_dev_count(); index++)
     {
-        if (board_dev_get((device_id_t)i) == prev)
+        if (board_dev_get((device_id_t)index) == prev)
         {
-            int next = i + 1;
+            int next = index + 1;
             if (next >= board_dev_count())
                 return (struct device*)ERR_PTR(MINI_ERR_NODEV);
             return board_dev_get((device_id_t)next);
@@ -627,17 +635,16 @@ struct device* device_get_next(const struct device* prev)
  */
 int device_get_count(void) { return board_dev_count(); }
 
-/* ── VFS 转发层 ──
- * 所有 VFS 入口在持锁状态下完成状态检查 + ops 调用.
- *   device_open/close/suspend/resume + device_write/read/ioctl 全部
- *   在 device_lock(pdev) 保护下执行 check-then-act, 阻断多线程重入.
- *
- * pdev->lock 使用 osal_mutex_create_static_recursive; 驱动 io_lock 使用默认 plain 锁:
- *   - device_write(st7789) → write_cmd → device_write(spi) 持有不同锁, 安全
- *   - 驱动内部对 pdev 自身递归加锁, 递归 mutex 放行
- *
- * device_ops_unregister() 用于 remove 路径清理 priv_data + ops.
- */
+/* -------------------------------------------------------------------------- */
+/* VFS 转发层 */
+/* 所有 VFS 入口在持锁状态下完成状态检查 + ops 调用. */
+/* device_open/close/suspend/resume + device_write/read/ioctl 全部 */
+/* 在 device_lock(pdev) 保护下执行 check-then-act, 阻断多线程重入. */
+/* pdev->lock 使用 osal_mutex_create_static_recursive; 驱动 io_lock 使用默认 plain 锁: */
+/* - device_write(st7789) → write_cmd → device_write(spi) 持有不同锁, 安全 */
+/* - 驱动内部对 pdev 自身递归加锁, 递归 mutex 放行 */
+/* device_ops_unregister() 用于 remove 路径清理 priv_data + ops. */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 打开 device (持锁, PROBED→RUNNING)
  * @param[in] pdev device 指针
@@ -849,7 +856,9 @@ int device_resume(struct device* pdev)
     return MINI_OK;
 }
 
-/* ── 设备锁（启动期静态创建，运行期仅有限时加锁） ── */
+/* -------------------------------------------------------------------------- */
+/* 设备锁（启动期静态创建，运行期仅有限时加锁） */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 获取 device 递归互斥锁
  * @param[in] pdev device 指针
@@ -877,17 +886,17 @@ int device_unlock(struct device* pdev)
     return osal_mutex_unlock(pdev->lock) == OSAL_OK ? MINI_OK : MINI_ERR_IO;
 }
 
-/* ── 驱动卸载清理：状态锁定 → 广播 → 持锁斩断 ──
- * 必须在持有 pdev->lock 的前提下置空 ops,
- * 阻断 TOCTOU 竞态 (Thread A 在 device_read 中已通过 status 检查,
- * Thread B 同时卸载置空 ops → NULL 解引用 → HardFault).
- *
- * 1. 获取 pdev->lock, 阻断所有正在进行的 VFS 操作
- * 2. 标记 REMOVED, 阻断新 I/O 重入
- * 3. 广播 DeviceRemoved 事件, 通知 UI/异步任务立即释引用
- * 4. 持锁置空 priv_data 与 ops
- * 5. 释放锁
- */
+/* -------------------------------------------------------------------------- */
+/* 驱动卸载清理：状态锁定 → 广播 → 持锁斩断 */
+/* 必须在持有 pdev->lock 的前提下置空 ops, */
+/* 阻断 TOCTOU 竞态 (Thread A 在 device_read 中已通过 status 检查, */
+/* Thread B 同时卸载置空 ops → NULL 解引用 → HardFault). */
+/* 1. 获取 pdev->lock, 阻断所有正在进行的 VFS 操作 */
+/* 2. 标记 REMOVED, 阻断新 I/O 重入 */
+/* 3. 广播 DeviceRemoved 事件, 通知 UI/异步任务立即释引用 */
+/* 4. 持锁置空 priv_data 与 ops */
+/* 5. 释放锁 */
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 卸载驱动: 标记 REMOVED、广播事件、持锁清空 ops/priv
  * @param[in] pdev device 指针

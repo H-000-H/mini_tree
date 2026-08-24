@@ -34,11 +34,11 @@
 #define SYS_CMD_WRAPPER_FN_SZ 40
 #endif
 
-/* ═══════════════════════════════════════════════════════════════════════
- * CmdFn — 固定容量内联函数包装器 (Small-Buffer-Optimized Callable Wrapper)
- *
- * 通用后端, 不依赖 ETL / OSAL, 两个后端共用.
- * ═══════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* CmdFn — 固定容量内联函数包装器 (Small-Buffer-Optimized Callable Wrapper) */
+/*  */
+/* 通用后端, 不依赖 ETL / OSAL, 两个后端共用. */
+/* -------------------------------------------------------------------------- */
 template <size_t StorageSz = SYS_CMD_WRAPPER_FN_SZ> 
 class CmdFn
 {
@@ -129,14 +129,12 @@ const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::k_vtable = {
     &CmdFn<StorageSz>::template invoke_fn<F>, &CmdFn<StorageSz>::template copy_fn<F>,
     &CmdFn<StorageSz>::template destroy_fn<F>};
 
-/* ═══════════════════════════════════════════════════════════════════════
- * SystemCmd — 平台无关 API
- * ═══════════════════════════════════════════════════════════════════════ */
-/**
- * @brief 系统命令分发器 — 单例模式, 双后端 (OS / Bare-metal)
- *
- * 支持注册/注销/分发命令, 带轻量级 RTTI 类型安全校验
- */
+/* -------------------------------------------------------------------------- */
+/* SystemCmd — 平台无关 API */
+/* /** */
+/* @brief 系统命令分发器 — 单例模式, 双后端 (OS / Bare-metal) */
+/* 支持注册/注销/分发命令, 带轻量级 RTTI 类型安全校验 */
+/* -------------------------------------------------------------------------- */
 class SystemCmd
 {
 public:
@@ -162,7 +160,9 @@ public:
         TypeIdToken ctx_id; /**< 上下文类型令牌 (用于分发时校验) */
     };
 
-    /* ── 后端无关的公共 API ── */
+    /* -------------------------------------------------------------------------- */
+    /* 后端无关的公共 API */
+    /* -------------------------------------------------------------------------- */
     static SystemCmd& get_instance(); /**< 获取单例引用 */
 
     /** @brief 注册命令: handler(const Args&, Ctx*)
@@ -210,11 +210,13 @@ private:
     SystemCmd(const SystemCmd&) = delete; /**< 禁止拷贝 */
     SystemCmd& operator=(const SystemCmd&) = delete; /**< 禁止赋值 */
 
-    /* ════════════════════════════════════════════════════════════════════
-     *  后端存储
-     * ════════════════════════════════════════════════════════════════════ */
+    /* -------------------------------------------------------------------------- */
+    /* 后端存储 */
+    /* -------------------------------------------------------------------------- */
 #ifndef CONFIG_OSAL_NULL
-    /* ── OS 后端: etl::map + spinlock ── */
+    /* -------------------------------------------------------------------------- */
+    /* OS 后端: etl::map + spinlock */
+    /* -------------------------------------------------------------------------- */
     using CmdString = etl::string<k_max_cmd_name_len>; /**< 命令名存储类型 */
     using CmdMap = etl::map<CmdString, HandlerNode, k_max_commands>; /**< 命令映射表 */
 
@@ -222,7 +224,9 @@ private:
     mutable struct osal_spinlock* m_lock; /**< 自旋锁指针 (保护并发访问) */
     uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4); /**< 自旋锁存储区 */
 #else
-    /* ── Bare-metal 后端: 普通数组 + const char* + 无锁 ── */
+    /* -------------------------------------------------------------------------- */
+    /* Bare-metal 后端: 普通数组 + const char* + 无锁 */
+    /* -------------------------------------------------------------------------- */
     /** @brief 命令条目 (bare-metal 后端) */
     struct CmdEntry
     {
@@ -234,10 +238,9 @@ private:
 #endif
 };
 
-/* ═══════════════════════════════════════════════════════════════════════
- *  register_cmd 模板实现 — 双后端条件分支
- * ═══════════════════════════════════════════════════════════════════════ */
-
+/* -------------------------------------------------------------------------- */
+/* register_cmd 模板实现 — 双后端条件分支 */
+/* -------------------------------------------------------------------------- */
 template <typename Args, typename Ctx>
 inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, Ctx*))
 {
@@ -285,8 +288,8 @@ inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&
     osal_spinlock_unlock(m_lock);
     return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
             return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
         return MINI_ERR_NOSPC;
@@ -341,8 +344,8 @@ inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&
     osal_spinlock_unlock(m_lock);
     return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
             return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
         return MINI_ERR_NOSPC;
@@ -392,8 +395,8 @@ template <typename Ctx> inline int SystemCmd::register_cmd(const char* name, boo
     osal_spinlock_unlock(m_lock);
     return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
             return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
         return MINI_ERR_NOSPC;

@@ -191,7 +191,7 @@ static int ssd1306_cmd_clear(struct ssd1306_device* dev, void* arg, size_t len, 
 {
     const struct display_clear_arg* darg = (const struct display_clear_arg*)arg;
     uint8_t page_buf[1 + SSD1306_WIDTH];
-    size_t i;
+    size_t index;
     int page;
     uint8_t fill_val;
     uint32_t timeout_ms = ms ? ms : 100U;
@@ -199,8 +199,8 @@ static int ssd1306_cmd_clear(struct ssd1306_device* dev, void* arg, size_t len, 
         return MINI_ERR_INVAL;
     fill_val = darg->value ? 0xFFU : 0x00U;
     page_buf[0] = SSD1306_I2C_CTRL_DATA;
-    for (i = 1; i < sizeof(page_buf); i++)
-        page_buf[i] = fill_val;
+    for (index = 1; index < sizeof(page_buf); index++)
+        page_buf[index] = fill_val;
     for (page = 0; page < SSD1306_PAGES; page++)
     {
         if (ssd1306_wr_ctrl(dev, SSD1306_I2C_CTRL_CMD, (uint8_t)(SSD1306_REG_SET_PAGE | page),

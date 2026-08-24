@@ -133,34 +133,34 @@ static int bme280_read_regs(struct bme280_device* dev, uint8_t start, uint8_t* b
  */
 static int bme280_load_calib(struct bme280_device* dev, uint32_t timeout_ms)
 {
-    uint8_t c[24];
-    uint8_t h[7];
-    int ret = bme280_read_regs(dev, BME280_REG_DIG_T1, c, 24, timeout_ms);
+    uint8_t calib_raw[24];
+    uint8_t hum_raw[7];
+    int ret = bme280_read_regs(dev, BME280_REG_DIG_T1, calib_raw, 24, timeout_ms);
     if (ret != MINI_OK)
         return ret;
     ret = bme280_read_regs(dev, BME280_REG_DIG_H1, &dev->dig_H1, 1, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    ret = bme280_read_regs(dev, BME280_REG_DIG_H2, h, 7, timeout_ms);
+    ret = bme280_read_regs(dev, BME280_REG_DIG_H2, hum_raw, 7, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    dev->dig_T1 = (uint16_t)(c[0] | ((uint16_t)c[1] << 8));
-    dev->dig_T2 = (int16_t)(c[2] | ((uint16_t)c[3] << 8));
-    dev->dig_T3 = (int16_t)(c[4] | ((uint16_t)c[5] << 8));
-    dev->dig_P1 = (uint16_t)(c[6] | ((uint16_t)c[7] << 8));
-    dev->dig_P2 = (int16_t)(c[8] | ((uint16_t)c[9] << 8));
-    dev->dig_P3 = (int16_t)(c[10] | ((uint16_t)c[11] << 8));
-    dev->dig_P4 = (int16_t)(c[12] | ((uint16_t)c[13] << 8));
-    dev->dig_P5 = (int16_t)(c[14] | ((uint16_t)c[15] << 8));
-    dev->dig_P6 = (int16_t)(c[16] | ((uint16_t)c[17] << 8));
-    dev->dig_P7 = (int16_t)(c[18] | ((uint16_t)c[19] << 8));
-    dev->dig_P8 = (int16_t)(c[20] | ((uint16_t)c[21] << 8));
-    dev->dig_P9 = (int16_t)(c[22] | ((uint16_t)c[23] << 8));
-    dev->dig_H2 = (int16_t)(h[0] | ((uint16_t)h[1] << 8));
-    dev->dig_H3 = h[2];
-    dev->dig_H4 = (int16_t)(((int16_t)h[3] << 4) | (h[4] & 0x0F));
-    dev->dig_H5 = (int16_t)(((int16_t)h[5] << 4) | (h[4] >> 4));
-    dev->dig_H6 = (int8_t)h[6];
+    dev->dig_T1 = (uint16_t)(calib_raw[0] | ((uint16_t)calib_raw[1] << 8));
+    dev->dig_T2 = (int16_t)(calib_raw[2] | ((uint16_t)calib_raw[3] << 8));
+    dev->dig_T3 = (int16_t)(calib_raw[4] | ((uint16_t)calib_raw[5] << 8));
+    dev->dig_P1 = (uint16_t)(calib_raw[6] | ((uint16_t)calib_raw[7] << 8));
+    dev->dig_P2 = (int16_t)(calib_raw[8] | ((uint16_t)calib_raw[9] << 8));
+    dev->dig_P3 = (int16_t)(calib_raw[10] | ((uint16_t)calib_raw[11] << 8));
+    dev->dig_P4 = (int16_t)(calib_raw[12] | ((uint16_t)calib_raw[13] << 8));
+    dev->dig_P5 = (int16_t)(calib_raw[14] | ((uint16_t)calib_raw[15] << 8));
+    dev->dig_P6 = (int16_t)(calib_raw[16] | ((uint16_t)calib_raw[17] << 8));
+    dev->dig_P7 = (int16_t)(calib_raw[18] | ((uint16_t)calib_raw[19] << 8));
+    dev->dig_P8 = (int16_t)(calib_raw[20] | ((uint16_t)calib_raw[21] << 8));
+    dev->dig_P9 = (int16_t)(calib_raw[22] | ((uint16_t)calib_raw[23] << 8));
+    dev->dig_H2 = (int16_t)(hum_raw[0] | ((uint16_t)hum_raw[1] << 8));
+    dev->dig_H3 = hum_raw[2];
+    dev->dig_H4 = (int16_t)(((int16_t)hum_raw[3] << 4) | (hum_raw[4] & 0x0F));
+    dev->dig_H5 = (int16_t)(((int16_t)hum_raw[5] << 4) | (hum_raw[4] >> 4));
+    dev->dig_H6 = (int8_t)hum_raw[6];
     dev->calib_ok = 1;
     return MINI_OK;
 }
@@ -191,19 +191,19 @@ static uint32_t bme280_compensate_p(struct bme280_device* dev, int32_t adc_p)
 {
     int64_t var1 = ((int64_t)dev->t_fine) - 128000;
     int64_t var2 = var1 * var1 * (int64_t)dev->dig_P6;
-    int64_t p;
+    int64_t pressure_val;
     var2 = var2 + ((var1 * (int64_t)dev->dig_P5) << 17);
     var2 = var2 + (((int64_t)dev->dig_P4) << 35);
     var1 = ((var1 * var1 * (int64_t)dev->dig_P3) >> 8) + ((var1 * (int64_t)dev->dig_P2) << 12);
     var1 = (((((int64_t)1) << 47) + var1) * (int64_t)dev->dig_P1) >> 33;
     if (var1 == 0)
         return 0;
-    p = 1048576 - adc_p;
-    p = (((p << 31) - var2) * 3125) / var1;
-    var1 = (((int64_t)dev->dig_P9) * (p >> 13) * (p >> 13)) >> 25;
-    var2 = (((int64_t)dev->dig_P8) * p) >> 19;
-    p = ((p + var1 + var2) >> 8) + (((int64_t)dev->dig_P7) << 4);
-    return (uint32_t)(p >> 8);
+    pressure_val = 1048576 - adc_p;
+    pressure_val = (((pressure_val << 31) - var2) * 3125) / var1;
+    var1 = (((int64_t)dev->dig_P9) * (pressure_val >> 13) * (pressure_val >> 13)) >> 25;
+    var2 = (((int64_t)dev->dig_P8) * pressure_val) >> 19;
+    pressure_val = ((pressure_val + var1 + var2) >> 8) + (((int64_t)dev->dig_P7) << 4);
+    return (uint32_t)(pressure_val >> 8);
 }
 
 /**
@@ -356,13 +356,13 @@ static int bme280_cmd_env(struct bme280_device* dev, void* arg, size_t len, uint
     const uint8_t ctrl_hum[2] = {BME280_REG_CTRL_HUM, BME280_CTRL_HUM_OSRS1};
     const uint8_t ctrl_meas[2] = {BME280_REG_CTRL_MEAS, BME280_CTRL_FORCED_X1};
     uint8_t raw[8];
-    struct bme280_env* e = (struct bme280_env*)arg;
+    struct bme280_env* env = (struct bme280_env*)arg;
     int32_t adc_p;
     int32_t adc_t;
     int32_t adc_h;
     uint32_t hum_q22;
     int ret;
-    if (!dev->hw_ready || !dev->calib_ok || !e || len != sizeof(*e))
+    if (!dev->hw_ready || !dev->calib_ok || !env || len != sizeof(*env))
         return MINI_ERR_INVAL;
     ret = bme280_i2c_wr(dev, ctrl_hum, 2, timeout_ms);
     if (ret != MINI_OK)
@@ -377,10 +377,10 @@ static int bme280_cmd_env(struct bme280_device* dev, void* arg, size_t len, uint
     adc_p = (int32_t)(((uint32_t)raw[0] << 12) | ((uint32_t)raw[1] << 4) | (raw[2] >> 4));
     adc_t = (int32_t)(((uint32_t)raw[3] << 12) | ((uint32_t)raw[4] << 4) | (raw[5] >> 4));
     adc_h = (int32_t)(((uint32_t)raw[6] << 8) | raw[7]);
-    e->temp_c_x100 = (int16_t)bme280_compensate_t(dev, adc_t);
-    e->pressure = bme280_compensate_p(dev, adc_p);
+    env->temp_c_x100 = (int16_t)bme280_compensate_t(dev, adc_t);
+    env->pressure = bme280_compensate_p(dev, adc_p);
     hum_q22 = bme280_compensate_h(dev, adc_h);
-    e->humidity_x100 = (uint16_t)((hum_q22 * 100U) / 1024U);
+    env->humidity_x100 = (uint16_t)((hum_q22 * 100U) / 1024U);
     return MINI_OK;
 }
 static const struct bme280_ioctl_map s_bme280_map[BME280_CMD_COUNT] = {

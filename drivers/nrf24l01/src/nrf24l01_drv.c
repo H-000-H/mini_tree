@@ -188,12 +188,12 @@ struct nrf24l01_ioctl_map
 static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len,
                              uint32_t timeout_ms)
 {
-    struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
+    struct nrf24l01_reg* reg_arg = (struct nrf24l01_reg*)arg;
     uint8_t tx[2];
-    if (!dev->hw_ready || !a || len != sizeof(*a))
+    if (!dev->hw_ready || !reg_arg || len != sizeof(*reg_arg))
         return MINI_ERR_INVAL;
-    tx[0] = (uint8_t)(NRF24L01_OP_W_REGISTER | (a->reg & NRF24L01_REG_ADDR_MASK));
-    tx[1] = a->val;
+    tx[0] = (uint8_t)(NRF24L01_OP_W_REGISTER | (reg_arg->reg & NRF24L01_REG_ADDR_MASK));
+    tx[1] = reg_arg->val;
     return nrf24l01_spi_xfer(dev, tx, NULL, 2, timeout_ms);
 }
 
@@ -203,17 +203,17 @@ static int nrf24l01_cmd_wreg(struct nrf24l01_device* dev, void* arg, size_t len,
 static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len,
                              uint32_t timeout_ms)
 {
-    struct nrf24l01_reg* a = (struct nrf24l01_reg*)arg;
+    struct nrf24l01_reg* reg_arg = (struct nrf24l01_reg*)arg;
     uint8_t tx[2] = {0};
     uint8_t rx[2] = {0};
     int ret;
-    if (!dev->hw_ready || !a || len != sizeof(*a))
+    if (!dev->hw_ready || !reg_arg || len != sizeof(*reg_arg))
         return MINI_ERR_INVAL;
-    tx[0] = (uint8_t)(a->reg & NRF24L01_REG_ADDR_MASK);
+    tx[0] = (uint8_t)(reg_arg->reg & NRF24L01_REG_ADDR_MASK);
     ret = nrf24l01_spi_xfer(dev, tx, rx, 2, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    a->val = rx[1];
+    reg_arg->val = rx[1];
     return MINI_OK;
 }
 
@@ -223,14 +223,15 @@ static int nrf24l01_cmd_rreg(struct nrf24l01_device* dev, void* arg, size_t len,
 static int nrf24l01_cmd_send(struct nrf24l01_device* dev, void* arg, size_t len,
                              uint32_t timeout_ms)
 {
-    struct nrf24l01_payload* p = (struct nrf24l01_payload*)arg;
+    struct nrf24l01_payload* payload = (struct nrf24l01_payload*)arg;
     uint8_t tx[NRF24L01_MAX_PAYLOAD + 1U];
     size_t count;
-    if (!dev->hw_ready || !p || len != sizeof(*p) || !p->data || p->len == 0U)
+    if (!dev->hw_ready || !payload || len != sizeof(*payload) || !payload->data ||
+        payload->len == 0U)
         return MINI_ERR_INVAL;
-    count = p->len > NRF24L01_MAX_PAYLOAD ? NRF24L01_MAX_PAYLOAD : p->len;
+    count = payload->len > NRF24L01_MAX_PAYLOAD ? NRF24L01_MAX_PAYLOAD : payload->len;
     tx[0] = NRF24L01_OP_W_TX_PAYLOAD;
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], p->data, count));
+    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], payload->data, count));
     return nrf24l01_spi_xfer(dev, tx, NULL, count + 1U, timeout_ms);
 }
 

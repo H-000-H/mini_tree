@@ -29,10 +29,10 @@ extern "C"
                                                   const uint8_t rows[MAX7219_MATRIX_BYTES],
                                                   uint32_t timeout_ms)
     {
-        struct max7219_fb a = {.rows = rows, .len = MAX7219_MATRIX_BYTES};
+        struct max7219_fb fb = {.rows = rows, .len = MAX7219_MATRIX_BYTES};
         if (!pdev || !rows)
             return MINI_ERR_INVAL;
-        return device_ioctl(pdev, MAX7219_CMD_FLUSH_FB, &a, sizeof(a), timeout_ms);
+        return device_ioctl(pdev, MAX7219_CMD_FLUSH_FB, &fb, sizeof(fb), timeout_ms);
     }
 
 #ifdef __cplusplus

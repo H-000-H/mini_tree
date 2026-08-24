@@ -4,13 +4,13 @@
  *@brief can bus 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   CAN BUS 实现 — CAN 总线子系统 bus 层 (平台中立共享代码)
  *   静态池: s_can_hosts[HOST_MAX] (含 hal_host, ref_count) + s_can_clients[DEV_ID_COUNT]
  *   数据流:
  *   同步: VFS → can_bus_open/close/transmit|receive|filter → hal_can_*
  *   controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define CAN_BUS_IMPL
@@ -58,9 +58,9 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void)
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX));
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* Host pool helpers */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 通过 device 指针查找对应的 can_bus_host
  * @param[in] pdev host device 指针
@@ -68,9 +68,9 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void)
  */
 static struct can_bus_host* can_host_from_device(struct device* pdev)
 {
-    for (int i = 0; i < CAN_BUS_HOST_MAX; i++)
-        if (osal_pool_is_used(&s_can_host_pool_ctrl, i) && s_can_hosts[i].pdev == pdev)
-            return &s_can_hosts[i];
+    for (int index = 0; index < CAN_BUS_HOST_MAX; index++)
+        if (osal_pool_is_used(&s_can_host_pool_ctrl, index) && s_can_hosts[index].pdev == pdev)
+            return &s_can_hosts[index];
     return NULL;
 }
 
@@ -87,9 +87,9 @@ static struct can_bus_client* can_client_from_device(struct device* pdev)
     return &s_can_clients[id];
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* controller_ops (host 级操作) */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 static int can_host_init_impl(struct device* pdev, const void* cfg);
 static int can_host_deinit_impl(struct device* pdev);
 static int can_host_role_impl(struct device* pdev);

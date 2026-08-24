@@ -79,15 +79,16 @@ static int drv8833_hw_create(struct drv8833_device* dev)
     if (dev->hw_ready)
         return MINI_OK;
     {
-        struct device* g[4] = {dev->ain1_dev, dev->ain2_dev, dev->bin1_dev, dev->bin2_dev};
-        struct vfs_gpio_arg* a[4] = {&dev->ain1, &dev->ain2, &dev->bin1, &dev->bin2};
-        int i, ret;
-        for (i = 0; i < 4; i++)
+        struct device* gpios[4] = {dev->ain1_dev, dev->ain2_dev, dev->bin1_dev, dev->bin2_dev};
+        struct vfs_gpio_arg* gpio_args[4] = {&dev->ain1, &dev->ain2, &dev->bin1, &dev->bin2};
+        int index, ret;
+        for (index = 0; index < 4; index++)
         {
-            ret = device_open(g[i], NULL);
+            ret = device_open(gpios[index], NULL);
             if (ret != MINI_OK)
                 return ret;
-            ret = device_ioctl(g[i], GPIO_CMD_GET_LEVEL, a[i], sizeof(*a[i]), 0);
+            ret = device_ioctl(gpios[index], GPIO_CMD_GET_LEVEL, gpio_args[index],
+                               sizeof(*gpio_args[index]), 0);
             if (ret != MINI_OK)
                 return ret;
         }
@@ -183,29 +184,29 @@ struct drv8833_ioctl_map
 /**
  * @brief 设置单引脚电平（写 GPIO）
  */
-static void drv8833_apply(struct vfs_gpio_arg* a, int val)
+static void drv8833_apply(struct vfs_gpio_arg* gpio_args, int val)
 {
-    a->level = val ? 1 : 0;
-    COMPAT_IGNORE_RESULT(vfs_gpio_set_level(a));
+    gpio_args->level = val ? 1 : 0;
+    COMPAT_IGNORE_RESULT(vfs_gpio_set_level(gpio_args));
 }
 /**
  * @brief DRV8833_CMD_SET_MOTOR 实现：按方向差分驱动两路输入
  */
 static int drv8833_cmd_motor(struct drv8833_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    struct drv8833_motor* m = (struct drv8833_motor*)arg;
+    struct drv8833_motor* motor_arg = (struct drv8833_motor*)arg;
     COMPAT_IGNORE_RESULT(ms);
-    if (!dev->hw_ready || !m || len != sizeof(*m))
+    if (!dev->hw_ready || !motor_arg || len != sizeof(*motor_arg))
         return MINI_ERR_INVAL;
-    if (m->motor == 0)
+    if (motor_arg->motor == 0)
     {
-        drv8833_apply(&dev->ain1, m->fwd);
-        drv8833_apply(&dev->ain2, !m->fwd);
+        drv8833_apply(&dev->ain1, motor_arg->fwd);
+        drv8833_apply(&dev->ain2, !motor_arg->fwd);
     }
     else
     {
-        drv8833_apply(&dev->bin1, m->fwd);
-        drv8833_apply(&dev->bin2, !m->fwd);
+        drv8833_apply(&dev->bin1, motor_arg->fwd);
+        drv8833_apply(&dev->bin2, !motor_arg->fwd);
     }
     return MINI_OK;
 }

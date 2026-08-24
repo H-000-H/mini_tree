@@ -132,7 +132,7 @@ int usb_ethif_init_dev(const char* dev_name)
     struct netif* nif;
     int ret;
     int idx = -1;
-    int i;
+    int index;
 
     if (!dev_name)
         return -1;
@@ -153,11 +153,11 @@ int usb_ethif_init_dev(const char* dev_name)
     }
 
     /* 分配一个空闲静态 netif 槽位 */
-    for (i = 0; i < USBETHIF_NETIF_MAX; i++)
+    for (index = 0; index < USBETHIF_NETIF_MAX; index++)
     {
-        if (!s_usb_netif_used[i])
+        if (!s_usb_netif_used[index])
         {
-            idx = i;
+            idx = index;
             break;
         }
     }

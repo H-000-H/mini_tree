@@ -115,17 +115,17 @@ extern "C"
      */
     int config_store_health(void);
 
-    /* ── 持久化后端回调桥接器 ──
-     * 用户工程通过此函数注入底层存储的读写能力。
-     * 若不注册，config_store_commit() 将使用默认的 hal_storage 路径。
-     *
-     * 用法:
-     *   static int my_write(const uint8_t* data, size_t len)
-     {
-     *       return my_flash_write(0x1000, data, len) ? MINI_ERR_IO : MINI_OK;
-     *   }
-     *   config_store_register_write_hook(my_write);
-     */
+    /* -------------------------------------------------------------------------- */
+    /* 持久化后端回调桥接器 */
+    /* 用户工程通过此函数注入底层存储的读写能力。 */
+    /* 若不注册，config_store_commit() 将使用默认的 hal_storage 路径。 */
+    /* 用法: */
+    /*   static int my_write(const uint8_t* data, size_t len) */
+    /*   { */
+    /*       return my_flash_write(0x1000, data, len) ? MINI_ERR_IO : MINI_OK; */
+    /*   } */
+    /*   config_store_register_write_hook(my_write); */
+    /* -------------------------------------------------------------------------- */
     typedef int (*config_store_write_hook_t)(const uint8_t* data, size_t len);
     /**
      * @brief 注册持久化写入回调 (替代默认 hal_storage 路径)

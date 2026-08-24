@@ -127,8 +127,8 @@ static uint32_t crc32_le(uint32_t crc, const uint8_t* buf, uint32_t len)
         0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D,
     };
 
-    for (uint32_t i = 0; i < len; i++)
-        crc = k_table[(crc ^ buf[i]) & 0xFF] ^ (crc >> 8);
+    for (uint32_t index = 0; index < len; index++)
+        crc = k_table[(crc ^ buf[index]) & 0xFF] ^ (crc >> 8);
     return crc;
 }
 
@@ -168,9 +168,9 @@ static const char* find_json_value(const char* key)
  */
 static struct cs_entry* find_entry(const char* key)
 {
-    for (int i = 0; i < s_entry_count; i++)
-        if (strcmp(s_entries[i].key, key) == 0)
-            return &s_entries[i];
+    for (int index = 0; index < s_entry_count; index++)
+        if (strcmp(s_entries[index].key, key) == 0)
+            return &s_entries[index];
     return NULL;
 }
 
@@ -184,13 +184,13 @@ static struct cs_entry* add_entry(const char* key, cs_type_t type)
 {
     if (s_entry_count >= MAX_ENTRIES)
         return NULL;
-    struct cs_entry* e = &s_entries[s_entry_count++];
-    strncpy(e->key, key, sizeof(e->key) - 1);
-    e->key[sizeof(e->key) - 1] = '\0';
-    e->type = type;
-    e->dirty = false;
-    __builtin_memset(&e->value, 0, sizeof(e->value));
-    return e;
+    struct cs_entry* entry = &s_entries[s_entry_count++];
+    strncpy(entry->key, key, sizeof(entry->key) - 1);
+    entry->key[sizeof(entry->key) - 1] = '\0';
+    entry->type = type;
+    entry->dirty = false;
+    __builtin_memset(&entry->value, 0, sizeof(entry->value));
+    return entry;
 }
 
 /**
@@ -205,10 +205,10 @@ static bool load_factory_defaults(void)
     size_t size = s_json_size;
 
     s_entry_count = 0;
-    const char* p = json;
-    while (p < json + size)
+    const char* cursor = json;
+    while (cursor < json + size)
     {
-        const char* key_start = strchr(p, '"');
+        const char* key_start = strchr(cursor, '"');
         if (!key_start)
             break;
         key_start++;
@@ -219,14 +219,14 @@ static bool load_factory_defaults(void)
         size_t key_len = (size_t)(key_end - key_start);
         if (key_len >= 32)
         {
-            p = key_end + 1;
+            cursor = key_end + 1;
             continue;
         }
 
         const char* colon = strchr(key_end, ':');
         if (!colon)
         {
-            p = key_end + 1;
+            cursor = key_end + 1;
             continue;
         }
 
@@ -248,19 +248,19 @@ static bool load_factory_defaults(void)
         __builtin_memcpy(key_buf, key_start, key_len);
         key_buf[key_len] = '\0';
 
-        struct cs_entry* e = add_entry(key_buf, type);
-        if (e)
+        struct cs_entry* entry = add_entry(key_buf, type);
+        if (entry)
         {
             switch (type)
             {
             case CS_TYPE_BOOL:
-                e->value.b = (strncmp(val_start, "true", 4) == 0);
+                entry->value.b = (strncmp(val_start, "true", 4) == 0);
                 break;
             case CS_TYPE_INT:
-                e->value.i = atoi(val_start);
+                entry->value.i = atoi(val_start);
                 break;
             case CS_TYPE_FLOAT:
-                e->value.f = (float)atof(val_start);
+                entry->value.f = (float)atof(val_start);
                 break;
             case CS_TYPE_STRING:
             {
@@ -269,16 +269,16 @@ static bool load_factory_defaults(void)
                 if (q1 && q2)
                 {
                     size_t slen = (size_t)(q2 - q1 - 1);
-                    if (slen >= sizeof(e->value.s))
-                        slen = sizeof(e->value.s) - 1;
-                    __builtin_memcpy(e->value.s, q1 + 1, slen);
-                    e->value.s[slen] = '\0';
+                    if (slen >= sizeof(entry->value.s))
+                        slen = sizeof(entry->value.s) - 1;
+                    __builtin_memcpy(entry->value.s, q1 + 1, slen);
+                    entry->value.s[slen] = '\0';
                 }
                 break;
             }
             }
         }
-        p = val_start + 1;
+        cursor = val_start + 1;
     }
     return true;
 }
@@ -298,30 +298,30 @@ static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
     buf[pos++] = (uint8_t)(s_entry_count & 0xFF);
     buf[pos++] = (uint8_t)((s_entry_count >> 8) & 0xFF);
 
-    for (int i = 0; i < s_entry_count; i++)
+    for (int index = 0; index < s_entry_count; index++)
     {
-        struct cs_entry* e = &s_entries[i];
-        uint8_t key_len = (uint8_t)strlen(e->key);
+        struct cs_entry* entry = &s_entries[index];
+        uint8_t key_len = (uint8_t)strlen(entry->key);
         if (pos + 1 + key_len + 1 + 8 > buf_size)
             return false;
 
         buf[pos++] = key_len;
-        __builtin_memcpy(buf + pos, e->key, key_len);
+        __builtin_memcpy(buf + pos, entry->key, key_len);
         pos += key_len;
-        buf[pos++] = (uint8_t)e->type;
+        buf[pos++] = (uint8_t)entry->type;
 
-        switch (e->type)
+        switch (entry->type)
         {
         case CS_TYPE_INT:
-            buf[pos++] = (uint8_t)(e->value.i & 0xFF);
-            buf[pos++] = (uint8_t)((e->value.i >> 8) & 0xFF);
-            buf[pos++] = (uint8_t)((e->value.i >> 16) & 0xFF);
-            buf[pos++] = (uint8_t)((e->value.i >> 24) & 0xFF);
+            buf[pos++] = (uint8_t)(entry->value.i & 0xFF);
+            buf[pos++] = (uint8_t)((entry->value.i >> 8) & 0xFF);
+            buf[pos++] = (uint8_t)((entry->value.i >> 16) & 0xFF);
+            buf[pos++] = (uint8_t)((entry->value.i >> 24) & 0xFF);
             break;
         case CS_TYPE_FLOAT:
         {
             uint32_t bits;
-            __builtin_memcpy(&bits, &e->value.f, sizeof(bits));
+            __builtin_memcpy(&bits, &entry->value.f, sizeof(bits));
             buf[pos++] = (uint8_t)(bits & 0xFF);
             buf[pos++] = (uint8_t)((bits >> 8) & 0xFF);
             buf[pos++] = (uint8_t)((bits >> 16) & 0xFF);
@@ -329,14 +329,14 @@ static bool blob_serialize(uint8_t* buf, size_t buf_size, size_t* out_len)
             break;
         }
         case CS_TYPE_BOOL:
-            buf[pos++] = e->value.b ? 1 : 0;
+            buf[pos++] = entry->value.b ? 1 : 0;
             break;
         case CS_TYPE_STRING:
         {
-            uint16_t slen = (uint16_t)strlen(e->value.s);
+            uint16_t slen = (uint16_t)strlen(entry->value.s);
             buf[pos++] = (uint8_t)(slen & 0xFF);
             buf[pos++] = (uint8_t)((slen >> 8) & 0xFF);
-            __builtin_memcpy(buf + pos, e->value.s, slen);
+            __builtin_memcpy(buf + pos, entry->value.s, slen);
             pos += slen;
             break;
         }
@@ -361,7 +361,7 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
     uint16_t count = (uint16_t)buf[pos] | ((uint16_t)buf[pos + 1] << 8);
     pos += 2;
 
-    for (uint16_t i = 0; i < count; i++)
+    for (uint16_t index = 0; index < count; index++)
     {
         if (pos >= len)
             return false;
@@ -378,8 +378,8 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
             return false;
         cs_type_t type = (cs_type_t)buf[pos++];
 
-        struct cs_entry* e = add_entry(key, type);
-        if (!e)
+        struct cs_entry* entry = add_entry(key, type);
+        if (!entry)
             continue;
 
         switch (type)
@@ -387,8 +387,8 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
         case CS_TYPE_INT:
             if (pos + 4 > len)
                 return false;
-            e->value.i = (int)buf[pos] | ((int)buf[pos + 1] << 8) | ((int)buf[pos + 2] << 16) |
-                         ((int)buf[pos + 3] << 24);
+            entry->value.i = (int)buf[pos] | ((int)buf[pos + 1] << 8) | ((int)buf[pos + 2] << 16) |
+                             ((int)buf[pos + 3] << 24);
             pos += 4;
             break;
         case CS_TYPE_FLOAT:
@@ -397,14 +397,14 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
                 return false;
             uint32_t bits = (uint32_t)buf[pos] | ((uint32_t)buf[pos + 1] << 8) |
                             ((uint32_t)buf[pos + 2] << 16) | ((uint32_t)buf[pos + 3] << 24);
-            __builtin_memcpy(&e->value.f, &bits, sizeof(e->value.f));
+            __builtin_memcpy(&entry->value.f, &bits, sizeof(entry->value.f));
             pos += 4;
             break;
         }
         case CS_TYPE_BOOL:
             if (pos >= len)
                 return false;
-            e->value.b = (buf[pos++] != 0);
+            entry->value.b = (buf[pos++] != 0);
             break;
         case CS_TYPE_STRING:
         {
@@ -414,10 +414,10 @@ static bool blob_deserialize(const uint8_t* buf, size_t len)
             pos += 2;
             if (pos + slen > len)
                 return false;
-            if (slen >= sizeof(e->value.s))
-                slen = (uint16_t)(sizeof(e->value.s) - 1);
-            __builtin_memcpy(e->value.s, buf + pos, slen);
-            e->value.s[slen] = '\0';
+            if (slen >= sizeof(entry->value.s))
+                slen = (uint16_t)(sizeof(entry->value.s) - 1);
+            __builtin_memcpy(entry->value.s, buf + pos, slen);
+            entry->value.s[slen] = '\0';
             pos += slen;
             break;
         }
@@ -553,9 +553,9 @@ int config_store_init(void)
  */
 bool config_store_get_bool(const char* key, bool default_value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (e && e->type == CS_TYPE_BOOL)
-        return e->value.b;
+    struct cs_entry* entry = find_entry(key);
+    if (entry && entry->type == CS_TYPE_BOOL)
+        return entry->value.b;
 
     const char* value = find_json_value(key);
     if (!value)
@@ -575,9 +575,9 @@ bool config_store_get_bool(const char* key, bool default_value)
  */
 int config_store_get_int(const char* key, int default_value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (e && e->type == CS_TYPE_INT)
-        return e->value.i;
+    struct cs_entry* entry = find_entry(key);
+    if (entry && entry->type == CS_TYPE_INT)
+        return entry->value.i;
 
     const char* value = find_json_value(key);
     return value ? atoi(value) : default_value;
@@ -591,9 +591,9 @@ int config_store_get_int(const char* key, int default_value)
  */
 float config_store_get_float(const char* key, float default_value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (e && e->type == CS_TYPE_FLOAT)
-        return e->value.f;
+    struct cs_entry* entry = find_entry(key);
+    if (entry && entry->type == CS_TYPE_FLOAT)
+        return entry->value.f;
 
     const char* value = find_json_value(key);
     return value ? (float)atof(value) : default_value;
@@ -607,9 +607,9 @@ float config_store_get_float(const char* key, float default_value)
  */
 const char* config_store_get_string(const char* key, const char* default_value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (e && e->type == CS_TYPE_STRING)
-        return e->value.s;
+    struct cs_entry* entry = find_entry(key);
+    if (entry && entry->type == CS_TYPE_STRING)
+        return entry->value.s;
 
     const char* value = find_json_value(key);
     if (!value)
@@ -629,14 +629,14 @@ const char* config_store_get_string(const char* key, const char* default_value)
  */
 int config_store_set_bool(const char* key, bool value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (!e)
-        e = add_entry(key, CS_TYPE_BOOL);
-    if (!e)
+    struct cs_entry* entry = find_entry(key);
+    if (!entry)
+        entry = add_entry(key, CS_TYPE_BOOL);
+    if (!entry)
         return MINI_ERR_INVAL;
-    e->type = CS_TYPE_BOOL;
-    e->value.b = value;
-    e->dirty = true;
+    entry->type = CS_TYPE_BOOL;
+    entry->value.b = value;
+    entry->dirty = true;
     return MINI_OK;
 }
 
@@ -648,14 +648,14 @@ int config_store_set_bool(const char* key, bool value)
  */
 int config_store_set_int(const char* key, int value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (!e)
-        e = add_entry(key, CS_TYPE_INT);
-    if (!e)
+    struct cs_entry* entry = find_entry(key);
+    if (!entry)
+        entry = add_entry(key, CS_TYPE_INT);
+    if (!entry)
         return MINI_ERR_INVAL;
-    e->type = CS_TYPE_INT;
-    e->value.i = value;
-    e->dirty = true;
+    entry->type = CS_TYPE_INT;
+    entry->value.i = value;
+    entry->dirty = true;
     return MINI_OK;
 }
 
@@ -667,14 +667,14 @@ int config_store_set_int(const char* key, int value)
  */
 int config_store_set_float(const char* key, float value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (!e)
-        e = add_entry(key, CS_TYPE_FLOAT);
-    if (!e)
+    struct cs_entry* entry = find_entry(key);
+    if (!entry)
+        entry = add_entry(key, CS_TYPE_FLOAT);
+    if (!entry)
         return MINI_ERR_INVAL;
-    e->type = CS_TYPE_FLOAT;
-    e->value.f = value;
-    e->dirty = true;
+    entry->type = CS_TYPE_FLOAT;
+    entry->value.f = value;
+    entry->dirty = true;
     return MINI_OK;
 }
 
@@ -686,15 +686,15 @@ int config_store_set_float(const char* key, float value)
  */
 int config_store_set_string(const char* key, const char* value)
 {
-    struct cs_entry* e = find_entry(key);
-    if (!e)
-        e = add_entry(key, CS_TYPE_STRING);
-    if (!e)
+    struct cs_entry* entry = find_entry(key);
+    if (!entry)
+        entry = add_entry(key, CS_TYPE_STRING);
+    if (!entry)
         return MINI_ERR_INVAL;
-    e->type = CS_TYPE_STRING;
-    strncpy(e->value.s, value, sizeof(e->value.s) - 1);
-    e->value.s[sizeof(e->value.s) - 1] = '\0';
-    e->dirty = true;
+    entry->type = CS_TYPE_STRING;
+    strncpy(entry->value.s, value, sizeof(entry->value.s) - 1);
+    entry->value.s[sizeof(entry->value.s) - 1] = '\0';
+    entry->dirty = true;
     return MINI_OK;
 }
 
@@ -721,8 +721,8 @@ int config_store_commit(void)
     {
         int ret = s_write_hook(buf, out_len);
         if (ret == MINI_OK)
-            for (int i = 0; i < s_entry_count; i++)
-                s_entries[i].dirty = false;
+            for (int index = 0; index < s_entry_count; index++)
+                s_entries[index].dirty = false;
         return ret;
     }
 
@@ -740,8 +740,8 @@ int config_store_commit(void)
     if (!write_slot_flag(new_flag))
         return MINI_ERR_IO;
 
-    for (int i = 0; i < s_entry_count; i++)
-        s_entries[i].dirty = false;
+    for (int index = 0; index < s_entry_count; index++)
+        s_entries[index].dirty = false;
 
     return MINI_OK;
 }

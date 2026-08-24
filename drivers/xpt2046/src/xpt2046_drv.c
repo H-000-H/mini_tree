@@ -189,17 +189,17 @@ struct xpt2046_ioctl_map
 static int xpt2046_cmd_xy(struct xpt2046_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     uint8_t tx[3] = {0x90, 0, 0}, rx[3] = {0};
-    struct xpt2046_xy* p = (struct xpt2046_xy*)arg;
-    if (!dev->hw_ready || !p || len != sizeof(*p))
+    struct xpt2046_xy* xy = (struct xpt2046_xy*)arg;
+    if (!dev->hw_ready || !xy || len != sizeof(*xy))
         return MINI_ERR_INVAL;
     if (xpt2046_spi_xfer(dev, tx, rx, 3, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
-    p->pos_x = (uint16_t)(((rx[1] << 8) | rx[2]) >> 3);
+    xy->pos_x = (uint16_t)(((rx[1] << 8) | rx[2]) >> 3);
     tx[0] = 0xD0;
     if (xpt2046_spi_xfer(dev, tx, rx, 3, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
-    p->pos_y = (uint16_t)(((rx[1] << 8) | rx[2]) >> 3);
-    p->pressed = 1;
+    xy->pos_y = (uint16_t)(((rx[1] << 8) | rx[2]) >> 3);
+    xy->pressed = 1;
     return MINI_OK;
 }
 static const struct xpt2046_ioctl_map s_xpt2046_map[XPT2046_CMD_COUNT] = {

@@ -9,9 +9,9 @@
 #include <etl/char_traits.h>
 #include <etl/string.h>
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  构造函数
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 构造函数 */
+/* -------------------------------------------------------------------------- */
 SystemCmd::SystemCmd()
 #ifndef CONFIG_OSAL_NULL
 {
@@ -24,18 +24,18 @@ SystemCmd::SystemCmd()
 }
 #endif
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  Singleton
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* Singleton */
+/* -------------------------------------------------------------------------- */
 SystemCmd& SystemCmd::get_instance()
 {
     static SystemCmd instance;
     return instance;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  register_cmd — 无参数版
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* register_cmd — 无参数版 */
+/* -------------------------------------------------------------------------- */
 int SystemCmd::register_cmd(const char* name, bool (*handler)())
 {
     if (!name || !handler)
@@ -66,8 +66,8 @@ int SystemCmd::register_cmd(const char* name, bool (*handler)())
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
             return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
         return MINI_ERR_NOSPC;
@@ -78,9 +78,9 @@ int SystemCmd::register_cmd(const char* name, bool (*handler)())
 #endif
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  注销命令
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 注销命令 */
+/* -------------------------------------------------------------------------- */
 int SystemCmd::unregister_cmd(const char* name)
 {
     if (!name)
@@ -99,11 +99,11 @@ int SystemCmd::unregister_cmd(const char* name)
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return MINI_OK;
 #else
-    for (size_t i = 0; i < m_count; i++)
+    for (size_t index = 0; index < m_count; index++)
     {
-        if (strcmp(m_entries[i].name, name) == 0)
+        if (strcmp(m_entries[index].name, name) == 0)
         {
-            m_entries[i] = m_entries[m_count - 1];
+            m_entries[index] = m_entries[m_count - 1];
             m_count--;
             return MINI_OK;
         }
@@ -112,9 +112,9 @@ int SystemCmd::unregister_cmd(const char* name)
 #endif
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  命令分发
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 命令分发 */
+/* -------------------------------------------------------------------------- */
 int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void* ctx,
                         TypeIdToken expected_args_id, TypeIdToken expected_ctx_id) const
 {
@@ -140,11 +140,11 @@ int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void*
         return MINI_ERR_NOTSUPP;
     return node.wrapper(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
 #else
-    for (size_t i = 0; i < m_count; i++)
+    for (size_t index = 0; index < m_count; index++)
     {
-        if (strcmp(m_entries[i].name, name) == 0)
+        if (strcmp(m_entries[index].name, name) == 0)
         {
-            const HandlerNode& node = m_entries[i].node;
+            const HandlerNode& node = m_entries[index].node;
             if (expected_args_id && node.args_id != expected_args_id)
                 return MINI_ERR_NOTSUPP;
             if (expected_ctx_id && node.ctx_id != expected_ctx_id)
@@ -156,9 +156,9 @@ int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void*
 #endif
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- *  查询 / 计数
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------- */
+/* 查询 / 计数 */
+/* -------------------------------------------------------------------------- */
 bool SystemCmd::has_cmd(const char* name) const
 {
     if (!name)
@@ -171,8 +171,8 @@ bool SystemCmd::has_cmd(const char* name) const
     COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return found;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
             return true;
     return false;
 #endif

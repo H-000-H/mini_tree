@@ -36,35 +36,33 @@ extern "C"
 #define BUFF_POOL_ERR_NOSPC (-ENOSPC) /**< 无剩余空间 (块写满 / 扩容段表已满) */
 #define BUFF_POOL_ERR_EMPTY (-ENODATA) /**< 块内无可读数据 */
 
-    /* ── Buffer Pool — 空闲链表 + 双指针块分配器 ──
-     *
-     * 空闲链表(双向)管理"从内存池分配多少": 静态池被切成大小不一的块,
-     * 每块头部内嵌块元数据, 分配/释放维护链表, 相邻块自动合并.
-     * 双指针管理"每块内容怎么用": 每个分配出来的小内存池内部有 head(写)
-     * 与 tail(读) 双指针, 构成环形读写缓冲, 用满时写入被截断.
-     *
-     * 编译期模式:
-     *   - BUFFER_POOL_STATIC_THEN_DYNAMIC (默认): 静态池优先, 用尽回退动态
-     *   - BUFFER_POOL_DYNAMIC_ONLY: 静态池屏蔽, 全部走动态分配
-     *
-     * 用法:
-     *   static uint8_t s_pool_mem[4096] _Alignas(8);
-     *   static struct buffer_pool_config cfg =
-     *   {
-     *       .name = "net",
-     *       .use_static = true,
-     *       .static_mem = s_pool_mem,
-     *       .static_len = sizeof(s_pool_mem),
-     *   };
-     *   buffer_pool_t* pool = NULL;
-     *   buffer_block_t* blk = NULL;
-     *   buffer_pool_create(&cfg, &pool);
-     *   buffer_pool_alloc(pool, 1024, &blk);
-     *   size_t n = 0;
-     *   buffer_block_write(blk, data, len, &n); // 双指针写, n=实际写入
-     *   buffer_block_read(blk, dst, sizeof dst, &n); // 双指针读
-     *   buffer_pool_free(pool, blk);
-     */
+    /* -------------------------------------------------------------------------- */
+    /* Buffer Pool — 空闲链表 + 双指针块分配器 */
+    /* 空闲链表(双向)管理"从内存池分配多少": 静态池被切成大小不一的块, */
+    /* 每块头部内嵌块元数据, 分配/释放维护链表, 相邻块自动合并. */
+    /* 双指针管理"每块内容怎么用": 每个分配出来的小内存池内部有 head(写) */
+    /* 与 tail(读) 双指针, 构成环形读写缓冲, 用满时写入被截断. */
+    /* 编译期模式: */
+    /* - BUFFER_POOL_STATIC_THEN_DYNAMIC (默认): 静态池优先, 用尽回退动态 */
+    /* - BUFFER_POOL_DYNAMIC_ONLY: 静态池屏蔽, 全部走动态分配 */
+    /* 用法: */
+    /* static uint8_t s_pool_mem[4096] _Alignas(8); */
+    /* static struct buffer_pool_config cfg = */
+    /* { */
+    /* .name = "net", */
+    /* .use_static = true, */
+    /* .static_mem = s_pool_mem, */
+    /* .static_len = sizeof(s_pool_mem), */
+    /* }; */
+    /* buffer_pool_t* pool = NULL; */
+    /* buffer_block_t* blk = NULL; */
+    /* buffer_pool_create(&cfg, &pool); */
+    /* buffer_pool_alloc(pool, 1024, &blk); */
+    /* size_t n = 0; */
+    /* buffer_block_write(blk, data, len, &n); // 双指针写, n=实际写入 */
+    /* buffer_block_read(blk, dst, sizeof dst, &n); // 双指针读 */
+    /* buffer_pool_free(pool, blk); */
+    /* -------------------------------------------------------------------------- */
 
     /* 原子类型 (本模块自定; 原子操作由实现文件内部自包装 BUFF_POOL_*) */
     typedef volatile uint32_t buff_pool_atomic_uint_t;
@@ -91,7 +89,9 @@ extern "C"
 
     typedef struct buffer_pool buffer_pool_t;
 
-    /* ── 生命周期 ── */
+    /* -------------------------------------------------------------------------- */
+    /* 生命周期 */
+    /* -------------------------------------------------------------------------- */
     /**
      * @brief 创建 buffer pool (空闲链表 + 双指针块分配器)
      * @param[in] config 池配置 (name/use_static/static_mem/static_len)
@@ -106,7 +106,9 @@ extern "C"
      */
     int buffer_pool_destroy(buffer_pool_t* pool);
 
-    /* ── 分配/释放 ── */
+    /* -------------------------------------------------------------------------- */
+    /* 分配/释放 */
+    /* -------------------------------------------------------------------------- */
     /**
      * @brief 从池分配一块指定大小的缓冲 (静态优先, 用尽回退动态; 全动态模式直接动态)
      * @param[in] pool 池对象指针
@@ -143,24 +145,32 @@ extern "C"
      */
     int buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block);
 
-    /* ISR 安全版本 (内部原子, 关中断实现, 天然 ISR 安全) */
+    /* ISR 安全版本 (仅限静态池; ISR 上下文严禁触碰原生堆,                */
+    /* libc malloc/free 不是 ISR 安全的。临界区用关中断实现,               */
+    /* 绝不用 CAS 自旋锁, 不会在被抢占线程持锁时死锁)                    */
     /**
-     * @brief ISR 上下文分配块 (同 buffer_pool_alloc)
+     * @brief ISR 上下文分配块 (仅静态池, 无动态回退)
      * @param[in] pool 池对象指针
      * @param[in] size 请求字节数
      * @param[out] p_block 回传块对象指针 (仅成功时写入)
-     * @return 同 buffer_pool_alloc
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法/架构不支持;
+     *         BUFF_POOL_ERR_NOMEM 静态池无法满足 (与 buffer_pool_alloc 不同,
+     *         绝不回退 calloc)
      */
     int buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size, buffer_block_t** p_block);
     /**
-     * @brief ISR 上下文归还块 (同 buffer_pool_free)
+     * @brief ISR 上下文归还块 (仅静态块)
      * @param[in] pool 池对象指针
-     * @param[in] block 待释放块
-     * @return 同 buffer_pool_free
+     * @param[in] block 待释放块 (必须是静态块)
+     * @return BUFF_POOL_OK 成功; BUFF_POOL_ERR_INVAL 入参非法/动态块/
+     *         架构不支持。动态块 (from_static == false) 的 free() 非 ISR 安全,
+     *         须在线程上下文用 buffer_pool_free 释放
      */
     int buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block);
 
-    /* ── 块内容管理 (双指针, 环形读写; 实际字节数走指针, return 只表成败) ── */
+    /* -------------------------------------------------------------------------- */
+    /* 块内容管理 (双指针, 环形读写; 实际字节数走指针, return 只表成败) */
+    /* -------------------------------------------------------------------------- */
     /**
      * @brief 向块写入数据 (head 指针推进, 环形回绕; 满则截断)
      * @param[in] block 块对象
@@ -206,7 +216,9 @@ extern "C"
      */
     int buffer_block_reset(buffer_block_t* block);
 
-    /* ── 统计诊断 ── */
+    /* -------------------------------------------------------------------------- */
+    /* 统计诊断 */
+    /* -------------------------------------------------------------------------- */
     /**
      * @brief 查询池子总大小 (静态池字节数)
      * @param[in] pool 池对象指针

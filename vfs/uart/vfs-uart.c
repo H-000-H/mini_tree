@@ -4,7 +4,7 @@
  *@brief vfs-uart 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   UART VFS 实现 — UART 总线子系统 VFS 层
  *   两层结构:
  *   - Host VFS:   DTS 解析 + uart_bus_host_init (controller driver)
@@ -13,7 +13,7 @@
  *   I/O: read/write 走 uart_bus_*; ioctl(TRANSFER) 走 uart_bus_transfer (先写后读)。
  *   Host remove 安全: host_deinit 返回 BUSY 时 remove 拒绝销毁, 防 client 仍 open 时 host UAF。
  *   @see bus/uart/uart_bus.h  bus 层接口
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define UART_VFS_IMPL
@@ -31,9 +31,9 @@
 #include "uart_bus.h"
 #include <string.h>
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Host VFS*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* 池大小宏见 board_define_uart.h (数量由 DTS 节点数自动生成) */
 
 struct vfs_uart_priv
@@ -148,8 +148,8 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
      *  长元组 (≥15): 其后接 direction/mode/inc/... (缺省由 HAL 补默认) */
     {
         int dma_arr[15];
-        int n = device_get_prop_int_array(pdev, "dma-cfg", dma_arr, 15);
-        if (n >= 6)
+        int result = device_get_prop_int_array(pdev, "dma-cfg", dma_arr, 15);
+        if (result >= 6)
         {
             cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
             cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
@@ -157,7 +157,7 @@ static int vfs_uart_priv_parse_dts(struct device* pdev, struct hal_uart_config* 
             cfg->dma_cfg.dma_priority = (uint32_t)dma_arr[3];
             cfg->dma_cfg.dma_memory_size = (uint32_t)dma_arr[4];
             cfg->dma_cfg.dma_enable = (uint32_t)dma_arr[5];
-            if (n >= 15)
+            if (result >= 15)
             {
                 cfg->dma_cfg.dma_direction = (uint32_t)dma_arr[6];
                 cfg->dma_cfg.dma_mode = (uint32_t)dma_arr[7];
@@ -274,9 +274,9 @@ static int vfs_uart_priv_remove(struct device* pdev)
     return MINI_OK;
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Client VFS*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* client 池宏见 board_define_uart.h */
 
 struct uart_vfs_client
@@ -422,9 +422,9 @@ static int uart_vfs_read(struct device* pdev, void* buf, size_t len, uint32_t ti
     return ret;
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*ioctl 命令映射表*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 typedef int (*uart_ioctl_fn_t)(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms);
 
 struct uart_ioctl_map
@@ -442,12 +442,14 @@ struct uart_ioctl_map
  */
 static int uart_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
-    const struct uart_transfer_arg* t = (const struct uart_transfer_arg*)arg;
+    const struct uart_transfer_arg* transfer_arg = (const struct uart_transfer_arg*)arg;
 
-    if (!t || arg_len != sizeof(*t) || (!t->tx && !t->rx))
+    if (!transfer_arg || arg_len != sizeof(*transfer_arg) ||
+        (!transfer_arg->tx && !transfer_arg->rx))
         return MINI_ERR_INVAL;
 
-    return uart_bus_transfer(pdev, t->tx, t->rx, t->tx_len, t->rx_len, timeout_ms);
+    return uart_bus_transfer(pdev, transfer_arg->tx, transfer_arg->rx, transfer_arg->tx_len,
+                             transfer_arg->rx_len, timeout_ms);
 }
 
 static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {

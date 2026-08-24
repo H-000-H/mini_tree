@@ -205,10 +205,10 @@ static int ina219_rd16(struct ina219_device* dev, uint8_t reg, int16_t* out, uin
  */
 static int ina219_cmd_read(struct ina219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct ina219_sample* o = (struct ina219_sample*)arg;
+    struct ina219_sample* sample = (struct ina219_sample*)arg;
     int16_t bus, cur, pwr;
     int ret;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = ina219_rd16(dev, 0x02, &bus, timeout_ms);
     if (ret != MINI_OK)
@@ -219,9 +219,9 @@ static int ina219_cmd_read(struct ina219_device* dev, void* arg, size_t len, uin
     ret = ina219_rd16(dev, 0x03, &pwr, timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    o->bus_mV = (int16_t)((bus >> 3) * 4);
-    o->current_mA = cur;
-    o->power_mW = (int16_t)(pwr * 20);
+    sample->bus_mV = (int16_t)((bus >> 3) * 4);
+    sample->current_mA = cur;
+    sample->power_mW = (int16_t)(pwr * 20);
     return MINI_OK;
 }
 

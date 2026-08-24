@@ -63,9 +63,9 @@ typedef struct
     tim_cmd_handler_t handler;
 } tim_ioctl_map_t;
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用 */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief TIM 命令: 强制停止定时器
@@ -148,8 +148,8 @@ static int tim_cmd_pwm_update(struct vfs_tim_priv* priv, void* arg, size_t arg_l
 {
     if (!arg || arg_len < sizeof(struct vfs_tim_arg))
         return MINI_ERR_INVAL;
-    const struct vfs_tim_arg* a = (const struct vfs_tim_arg*)arg;
-    return hal_tim_pwm_update(&priv->tim, a->channel, a->arr, a->ccr);
+    const struct vfs_tim_arg* tim_arg = (const struct vfs_tim_arg*)arg;
+    return hal_tim_pwm_update(&priv->tim, tim_arg->channel, tim_arg->arr, tim_arg->ccr);
 }
 
 /**
@@ -163,8 +163,8 @@ static int tim_cmd_get_capture(struct vfs_tim_priv* priv, void* arg, size_t arg_
 {
     if (!arg || arg_len < sizeof(struct vfs_tim_arg))
         return MINI_ERR_INVAL;
-    struct vfs_tim_arg* a = (struct vfs_tim_arg*)arg;
-    return hal_tim_get_capture_value(&priv->tim, a->channel, &a->value);
+    struct vfs_tim_arg* tim_arg = (struct vfs_tim_arg*)arg;
+    return hal_tim_get_capture_value(&priv->tim, tim_arg->channel, &tim_arg->value);
 }
 
 /**
@@ -416,9 +416,9 @@ static int tim_cmd_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
     }
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* ioctl 命令映射表 — index = (cmd & 0xFF) - 1, 与 TIM_CMD_* 编号一一对应 */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 
 static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
     [TIM_CMD_START - TIM_CMD_BASE - 1] = {tim_cmd_start},
@@ -499,43 +499,51 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             "oc%d-oc-n-polarity", "oc%d-oc-n-idle-state", "oc%d-channel-id",
             "oc%d-chn-mode",      "oc%d-chn-polarity",    "oc%d-chn-filter",
             "oc%d-chn-prescaler", "oc%d-chn-enable-comp"};
-        for (int i = 0; i < HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS; i++)
+        for (int chan_index = 0; chan_index < HAL_OUTPUT_COMPARE_TIM_MAX_CHANNELS; chan_index++)
         {
-            if (!(cfg->active_chn_mask & (1u << i)))
+            if (!(cfg->active_chn_mask & (1u << chan_index)))
                 continue;
-            char k[VFS_TIM_KEY_MAX];
-            hal_output_compare_config* c = &cfg->oc_mode.config[i];
-            hal_tim_channel_config* ch = &cfg->oc_mode.channel[i];
-            hal_tim_pin_config* p = &cfg->oc_mode.pin[i];
+            char key[VFS_TIM_KEY_MAX];
+            hal_output_compare_config* chan_cfg = &cfg->oc_mode.config[chan_index];
+            hal_tim_channel_config* ch = &cfg->oc_mode.channel[chan_index];
+            hal_tim_pin_config* pin_cfg = &cfg->oc_mode.pin[chan_index];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
-            int* dst[] = {(int*)&c->compare_value, (int*)&c->oc_mode,
-                          (int*)&c->oc_state,      (int*)&c->oc_polarity,
-                          (int*)&c->oc_idle_state, (int*)&c->oc_n_state,
-                          (int*)&c->oc_n_polarity, (int*)&c->oc_n_idle_state,
-                          (int*)&ch->channel_id,   (int*)&ch->mode,
-                          (int*)&ch->polarity,     (int*)&ch->filter,
-                          (int*)&ch->prescaler,    (int*)&ch->enable_complementary};
-            for (int j = 0; j < (int)(sizeof(fmt) / sizeof(fmt[0])); j++)
+            int* dst[] = {(int*)&chan_cfg->compare_value,
+                          (int*)&chan_cfg->oc_mode,
+                          (int*)&chan_cfg->oc_state,
+                          (int*)&chan_cfg->oc_polarity,
+                          (int*)&chan_cfg->oc_idle_state,
+                          (int*)&chan_cfg->oc_n_state,
+                          (int*)&chan_cfg->oc_n_polarity,
+                          (int*)&chan_cfg->oc_n_idle_state,
+                          (int*)&ch->channel_id,
+                          (int*)&ch->mode,
+                          (int*)&ch->polarity,
+                          (int*)&ch->filter,
+                          (int*)&ch->prescaler,
+                          (int*)&ch->enable_complementary};
+            for (int field_index = 0; field_index < (int)(sizeof(fmt) / sizeof(fmt[0]));
+                 field_index++)
             {
-                snprintf(k, sizeof(k), fmt[j], i);
-                if (device_get_prop_int(pdev, k, dst[j]) != MINI_OK)
-                    osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                snprintf(key, sizeof(key), fmt[field_index], chan_index);
+                if (device_get_prop_int(pdev, key, dst[field_index]) != MINI_OK)
+                    osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
             }
-            snprintf(k, sizeof(k), "oc%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
+            snprintf(key, sizeof(key), "oc%d-pin", chan_index);
+            if (device_get_prop_int_array(pdev, key, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
                 VFS_TIM_PIN_FIELD_COUNT)
             {
-                p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint16_t)pin_arr[1];
-                p->clk_bus = (uint32_t)pin_arr[2];
-                p->af = (uint32_t)pin_arr[3];
-                p->output_type = (uint32_t)pin_arr[4];
-                p->speed = (uint32_t)pin_arr[5];
-                p->mode = (uint32_t)pin_arr[6];
-                p->pull = (uint32_t)pin_arr[7];
+                pin_cfg->port = (uintptr_t)pin_arr[0];
+                pin_cfg->pin = (uint16_t)pin_arr[1];
+                pin_cfg->clk_bus = (uint32_t)pin_arr[2];
+                pin_cfg->af = (uint32_t)pin_arr[3];
+                pin_cfg->output_type = (uint32_t)pin_arr[4];
+                pin_cfg->speed = (uint32_t)pin_arr[5];
+                pin_cfg->mode = (uint32_t)pin_arr[6];
+                pin_cfg->pull = (uint32_t)pin_arr[7];
             }
             else
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
         }
         break;
     }
@@ -546,48 +554,49 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
             "ic%d-polarity",      "ic%d-filter",         "ic%d-prescaler",    "ic%d-active-input",
             "ic%d-channel-id",    "ic%d-chn-mode",       "ic%d-chn-polarity", "ic%d-chn-filter",
             "ic%d-chn-prescaler", "ic%d-chn-enable-comp"};
-        for (int i = 0; i < HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS; i++)
+        for (int chan_index = 0; chan_index < HAL_INPUT_CAPTURE_TIM_MAX_CHANNELS; chan_index++)
         {
-            if (!(cfg->active_chn_mask & (1u << i)))
+            if (!(cfg->active_chn_mask & (1u << chan_index)))
                 continue;
-            char k[VFS_TIM_KEY_MAX];
-            hal_input_capture_config* c = &cfg->ic_mode.config[i];
-            hal_tim_channel_config* ch = &cfg->ic_mode.channel[i];
-            hal_tim_pin_config* p = &cfg->ic_mode.pin[i];
+            char key[VFS_TIM_KEY_MAX];
+            hal_input_capture_config* chan_cfg = &cfg->ic_mode.config[chan_index];
+            hal_tim_channel_config* ch = &cfg->ic_mode.channel[chan_index];
+            hal_tim_pin_config* pin_cfg = &cfg->ic_mode.pin[chan_index];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
-            int* dst[] = {(int*)&c->polarity,    (int*)&c->filter,
-                          (int*)&c->prescaler,   (int*)&c->active_input,
-                          (int*)&ch->channel_id, (int*)&ch->mode,
-                          (int*)&ch->polarity,   (int*)&ch->filter,
-                          (int*)&ch->prescaler,  (int*)&ch->enable_complementary};
-            for (int j = 0; j < (int)(sizeof(fmt) / sizeof(fmt[0])); j++)
+            int* dst[] = {(int*)&chan_cfg->polarity,  (int*)&chan_cfg->filter,
+                          (int*)&chan_cfg->prescaler, (int*)&chan_cfg->active_input,
+                          (int*)&ch->channel_id,      (int*)&ch->mode,
+                          (int*)&ch->polarity,        (int*)&ch->filter,
+                          (int*)&ch->prescaler,       (int*)&ch->enable_complementary};
+            for (int field_index = 0; field_index < (int)(sizeof(fmt) / sizeof(fmt[0]));
+                 field_index++)
             {
-                snprintf(k, sizeof(k), fmt[j], i);
-                if (device_get_prop_int(pdev, k, dst[j]) != MINI_OK)
-                    osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                snprintf(key, sizeof(key), fmt[field_index], chan_index);
+                if (device_get_prop_int(pdev, key, dst[field_index]) != MINI_OK)
+                    osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
             }
-            snprintf(k, sizeof(k), "ic%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
+            snprintf(key, sizeof(key), "ic%d-pin", chan_index);
+            if (device_get_prop_int_array(pdev, key, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
                 VFS_TIM_PIN_FIELD_COUNT)
             {
-                p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint16_t)pin_arr[1];
-                p->clk_bus = (uint32_t)pin_arr[2];
-                p->af = (uint32_t)pin_arr[3];
-                p->output_type = (uint32_t)pin_arr[4];
-                p->speed = (uint32_t)pin_arr[5];
-                p->mode = (uint32_t)pin_arr[6];
-                p->pull = (uint32_t)pin_arr[7];
+                pin_cfg->port = (uintptr_t)pin_arr[0];
+                pin_cfg->pin = (uint16_t)pin_arr[1];
+                pin_cfg->clk_bus = (uint32_t)pin_arr[2];
+                pin_cfg->af = (uint32_t)pin_arr[3];
+                pin_cfg->output_type = (uint32_t)pin_arr[4];
+                pin_cfg->speed = (uint32_t)pin_arr[5];
+                pin_cfg->mode = (uint32_t)pin_arr[6];
+                pin_cfg->pull = (uint32_t)pin_arr[7];
             }
             else
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
         }
         break;
     }
 
     case HAL_TIM_MODE_ENCODER:
     {
-        hal_encoder_cfg* h = &cfg->encoder_mode.config.hw_cfg;
+        hal_encoder_cfg* encoder_cfg = &cfg->encoder_mode.config.hw_cfg;
         static const char* const cfg_keys[] = {"encoder-mode",
                                                "encoder-period",
                                                "encoder-ic1-active-input",
@@ -599,60 +608,62 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                                                "encoder-ic2-filter",
                                                "encoder-ic2-prescaler",
                                                "encoder-pulse-per-rev"};
-        int* cfg_dst[] = {(int*)&h->mode,
-                          (int*)&h->period,
-                          (int*)&h->ic1_active_input,
-                          (int*)&h->ic1_polarity,
-                          (int*)&h->ic1_filter,
-                          (int*)&h->ic1_prescaler,
-                          (int*)&h->ic2_active_input,
-                          (int*)&h->ic2_polarity,
-                          (int*)&h->ic2_filter,
-                          (int*)&h->ic2_prescaler,
+        int* cfg_dst[] = {(int*)&encoder_cfg->mode,
+                          (int*)&encoder_cfg->period,
+                          (int*)&encoder_cfg->ic1_active_input,
+                          (int*)&encoder_cfg->ic1_polarity,
+                          (int*)&encoder_cfg->ic1_filter,
+                          (int*)&encoder_cfg->ic1_prescaler,
+                          (int*)&encoder_cfg->ic2_active_input,
+                          (int*)&encoder_cfg->ic2_polarity,
+                          (int*)&encoder_cfg->ic2_filter,
+                          (int*)&encoder_cfg->ic2_prescaler,
                           (int*)&cfg->encoder_mode.config.pulse_per_rev};
-        for (int j = 0; j < (int)(sizeof(cfg_keys) / sizeof(cfg_keys[0])); j++)
-            if (device_get_prop_int(pdev, cfg_keys[j], cfg_dst[j]) != MINI_OK)
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", cfg_keys[j]);
+        for (int field_index = 0; field_index < (int)(sizeof(cfg_keys) / sizeof(cfg_keys[0]));
+             field_index++)
+            if (device_get_prop_int(pdev, cfg_keys[field_index], cfg_dst[field_index]) != MINI_OK)
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", cfg_keys[field_index]);
 
         static const char* const ch_fmt[] = {"encoder-ch%d-channel-id", "encoder-ch%d-chn-mode",
                                              "encoder-ch%d-chn-polarity", "encoder-ch%d-chn-filter",
                                              "encoder-ch%d-chn-prescaler"};
-        for (int i = 0; i < HAL_ENCODER_TIM_MAX_CHANNELS; i++)
+        for (int chan_index = 0; chan_index < HAL_ENCODER_TIM_MAX_CHANNELS; chan_index++)
         {
-            char k[VFS_TIM_KEY_MAX];
-            hal_tim_channel_config* ch = &cfg->encoder_mode.channel[i];
-            hal_tim_pin_config* p = &cfg->encoder_mode.pin[i];
+            char key[VFS_TIM_KEY_MAX];
+            hal_tim_channel_config* ch = &cfg->encoder_mode.channel[chan_index];
+            hal_tim_pin_config* pin_cfg = &cfg->encoder_mode.pin[chan_index];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
             int* dst[] = {(int*)&ch->channel_id, (int*)&ch->mode, (int*)&ch->polarity,
                           (int*)&ch->filter, (int*)&ch->prescaler};
-            for (int j = 0; j < (int)(sizeof(ch_fmt) / sizeof(ch_fmt[0])); j++)
+            for (int field_index = 0; field_index < (int)(sizeof(ch_fmt) / sizeof(ch_fmt[0]));
+                 field_index++)
             {
-                snprintf(k, sizeof(k), ch_fmt[j], i);
-                if (device_get_prop_int(pdev, k, dst[j]) != MINI_OK)
-                    osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                snprintf(key, sizeof(key), ch_fmt[field_index], chan_index);
+                if (device_get_prop_int(pdev, key, dst[field_index]) != MINI_OK)
+                    osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
             }
-            snprintf(k, sizeof(k), "encoder-ch%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
+            snprintf(key, sizeof(key), "encoder-ch%d-pin", chan_index);
+            if (device_get_prop_int_array(pdev, key, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
                 VFS_TIM_PIN_FIELD_COUNT)
             {
-                p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint16_t)pin_arr[1];
-                p->clk_bus = (uint32_t)pin_arr[2];
-                p->af = (uint32_t)pin_arr[3];
-                p->output_type = (uint32_t)pin_arr[4];
-                p->speed = (uint32_t)pin_arr[5];
-                p->mode = (uint32_t)pin_arr[6];
-                p->pull = (uint32_t)pin_arr[7];
+                pin_cfg->port = (uintptr_t)pin_arr[0];
+                pin_cfg->pin = (uint16_t)pin_arr[1];
+                pin_cfg->clk_bus = (uint32_t)pin_arr[2];
+                pin_cfg->af = (uint32_t)pin_arr[3];
+                pin_cfg->output_type = (uint32_t)pin_arr[4];
+                pin_cfg->speed = (uint32_t)pin_arr[5];
+                pin_cfg->mode = (uint32_t)pin_arr[6];
+                pin_cfg->pull = (uint32_t)pin_arr[7];
             }
             else
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
         }
         break;
     }
 
     case HAL_TIM_MODE_HALLSENSOR:
     {
-        hal_hall_config* c = &cfg->hall_mode.config;
+        hal_hall_config* chan_cfg = &cfg->hall_mode.config;
         static const char* const keys[] = {"hall-polarity",
                                            "hall-filter-time",
                                            "hall-prescaler",
@@ -662,38 +673,39 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                                            "hall-capture-chn-polarity",
                                            "hall-capture-chn-filter",
                                            "hall-capture-chn-prescaler"};
-        int* dst[] = {(int*)&c->hall_polarity,
-                      (int*)&c->hall_filter_time,
-                      (int*)&c->hall_prescaler,
-                      (int*)&c->hall_commutation_delay_time,
+        int* dst[] = {(int*)&chan_cfg->hall_polarity,
+                      (int*)&chan_cfg->hall_filter_time,
+                      (int*)&chan_cfg->hall_prescaler,
+                      (int*)&chan_cfg->hall_commutation_delay_time,
                       (int*)&cfg->hall_mode.capture_channel.channel_id,
                       (int*)&cfg->hall_mode.capture_channel.mode,
                       (int*)&cfg->hall_mode.capture_channel.polarity,
                       (int*)&cfg->hall_mode.capture_channel.filter,
                       (int*)&cfg->hall_mode.capture_channel.prescaler};
-        for (int j = 0; j < (int)(sizeof(keys) / sizeof(keys[0])); j++)
-            if (device_get_prop_int(pdev, keys[j], dst[j]) != MINI_OK)
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[j]);
-        for (int i = 0; i < HAL_HALL_TIM_MAX_CHANNELS; i++)
+        for (int field_index = 0; field_index < (int)(sizeof(keys) / sizeof(keys[0]));
+             field_index++)
+            if (device_get_prop_int(pdev, keys[field_index], dst[field_index]) != MINI_OK)
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[field_index]);
+        for (int chan_index = 0; chan_index < HAL_HALL_TIM_MAX_CHANNELS; chan_index++)
         {
-            char k[VFS_TIM_KEY_MAX];
-            hal_tim_pin_config* p = &cfg->hall_mode.phase_pins[i];
+            char key[VFS_TIM_KEY_MAX];
+            hal_tim_pin_config* pin_cfg = &cfg->hall_mode.phase_pins[chan_index];
             int pin_arr[VFS_TIM_PIN_FIELD_COUNT];
-            snprintf(k, sizeof(k), "hall-phase%d-pin", i);
-            if (device_get_prop_int_array(pdev, k, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
+            snprintf(key, sizeof(key), "hall-phase%d-pin", chan_index);
+            if (device_get_prop_int_array(pdev, key, pin_arr, VFS_TIM_PIN_FIELD_COUNT) ==
                 VFS_TIM_PIN_FIELD_COUNT)
             {
-                p->port = (uintptr_t)pin_arr[0];
-                p->pin = (uint16_t)pin_arr[1];
-                p->clk_bus = (uint32_t)pin_arr[2];
-                p->af = (uint32_t)pin_arr[3];
-                p->output_type = (uint32_t)pin_arr[4];
-                p->speed = (uint32_t)pin_arr[5];
-                p->mode = (uint32_t)pin_arr[6];
-                p->pull = (uint32_t)pin_arr[7];
+                pin_cfg->port = (uintptr_t)pin_arr[0];
+                pin_cfg->pin = (uint16_t)pin_arr[1];
+                pin_cfg->clk_bus = (uint32_t)pin_arr[2];
+                pin_cfg->af = (uint32_t)pin_arr[3];
+                pin_cfg->output_type = (uint32_t)pin_arr[4];
+                pin_cfg->speed = (uint32_t)pin_arr[5];
+                pin_cfg->mode = (uint32_t)pin_arr[6];
+                pin_cfg->pull = (uint32_t)pin_arr[7];
             }
             else
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", k);
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", key);
         }
         break;
     }
@@ -711,9 +723,10 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
                       (int*)&cfg->bdtr.break_polarity,   (int*)&cfg->bdtr.break_filter,
                       (int*)&cfg->bdtr.ossi_state,       (int*)&cfg->bdtr.ossr_state,
                       (int*)&cfg->bdtr.dead_time,        (int*)&cfg->bdtr.lock_level};
-        for (int j = 0; j < (int)(sizeof(keys) / sizeof(keys[0])); j++)
-            if (device_get_prop_int(pdev, keys[j], dst[j]) != MINI_OK)
-                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[j]);
+        for (int field_index = 0; field_index < (int)(sizeof(keys) / sizeof(keys[0]));
+             field_index++)
+            if (device_get_prop_int(pdev, keys[field_index], dst[field_index]) != MINI_OK)
+                osal_log(OSAL_LOG_WARN, k_tag, "missing DTS prop %s\n", keys[field_index]);
     }
 
     return MINI_OK;

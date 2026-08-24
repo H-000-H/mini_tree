@@ -49,9 +49,9 @@ typedef struct
     dac_cmd_handler_t handler;
 } dac_ioctl_map_t;
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* ioctl 命令处理函数 — 每个函数封装一个 HAL 调用 */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief DAC 命令: 写入 DAC 输出值
@@ -107,8 +107,8 @@ static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_le
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
         return MINI_ERR_INVAL;
-    const vfs_dac_arg* a = (const vfs_dac_arg*)arg;
-    if (a->pause)
+    const vfs_dac_arg* arg_data = (const vfs_dac_arg*)arg;
+    if (arg_data->pause)
         return hal_dac_dma_pause(&priv->dac);
     return hal_dac_resume(&priv->dac);
 }
@@ -152,10 +152,10 @@ static int dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, size_t
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
         return MINI_ERR_INVAL;
-    const vfs_dac_arg* a = (const vfs_dac_arg*)arg;
-    if (!a->data || !a->len)
+    const vfs_dac_arg* arg_data = (const vfs_dac_arg*)arg;
+    if (!arg_data->data || !arg_data->len)
         return MINI_ERR_INVAL;
-    return hal_dac_write_dma_buffer(&priv->dac, a->data, a->len);
+    return hal_dac_write_dma_buffer(&priv->dac, arg_data->data, arg_data->len);
 }
 
 /**
@@ -169,15 +169,15 @@ static int dac_cmd_base_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_l
 {
     if (!arg || arg_len < sizeof(vfs_dac_arg))
         return MINI_ERR_INVAL;
-    const vfs_dac_arg* a = (const vfs_dac_arg*)arg;
-    if (a->pause)
+    const vfs_dac_arg* arg_data = (const vfs_dac_arg*)arg;
+    if (arg_data->pause)
         return hal_dac_base_pause(&priv->dac);
     return hal_dac_resume(&priv->dac);
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* ioctl 命令映射表 — index = (cmd - DAC_CMD_BASE - 1), 与 DAC_CMD_* 编号一一对应 */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 
 static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
     [DAC_CMD_WRITE_VALUE - DAC_CMD_BASE - 1] = {dac_cmd_write_value},

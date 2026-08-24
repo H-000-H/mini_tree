@@ -184,25 +184,25 @@ struct air780e_ioctl_map
  */
 static int air780e_cmd_send(struct air780e_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct modem_at_buf* a = (struct modem_at_buf*)arg;
-    if (!dev->hw_ready || !a || len != sizeof(*a) || !a->tx || !a->tx_len)
+    struct modem_at_buf* at_buf = (struct modem_at_buf*)arg;
+    if (!dev->hw_ready || !at_buf || len != sizeof(*at_buf) || !at_buf->tx || !at_buf->tx_len)
         return MINI_ERR_INVAL;
-    return device_write(dev->uart_dev, a->tx, a->tx_len, timeout_ms);
+    return device_write(dev->uart_dev, at_buf->tx, at_buf->tx_len, timeout_ms);
 }
 /**
  * @brief MODEM_CMD_AT_RECV 实现：UART 接收 AT 应答并回填长度
  */
 static int air780e_cmd_recv(struct air780e_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    struct modem_at_buf* a = (struct modem_at_buf*)arg;
+    struct modem_at_buf* at_buf = (struct modem_at_buf*)arg;
     int ret;
 
-    if (!dev->hw_ready || !a || len != sizeof(*a) || !a->rx || a->rx_cap == 0U)
+    if (!dev->hw_ready || !at_buf || len != sizeof(*at_buf) || !at_buf->rx || at_buf->rx_cap == 0U)
         return MINI_ERR_INVAL;
-    ret = device_read(dev->uart_dev, a->rx, a->rx_cap, timeout_ms);
+    ret = device_read(dev->uart_dev, at_buf->rx, at_buf->rx_cap, timeout_ms);
     if (ret < 0)
         return ret;
-    a->rx_len = (size_t)ret;
+    at_buf->rx_len = (size_t)ret;
     return MINI_OK;
 }
 

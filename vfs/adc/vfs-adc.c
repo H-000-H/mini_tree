@@ -51,9 +51,9 @@ static uint8_t s_adc_dma_used[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
 static osal_pool_t s_adc_dma_pool_ctrl COMPAT_ALIGNED(4);
 static const char* const k_tag = "vfs-adc-host";
 
-/*=======================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* IOCTL 后台控制命令私有实现 */
-/*=======================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief ADC 命令: 读取指定通道 ADC 采样值
@@ -146,9 +146,9 @@ static int adc_cmd_close_channel(struct vfs_adc_priv* priv, void* arg, size_t ar
     return hal_adc_deinit_adcx_channel(&priv->adc, adc_arg->channel_id);
 }
 
-/*===========================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* ioctl 命令派发基础设施 — typedef + 映射表                                                    */
-/*===========================================================================================*/
+/* -------------------------------------------------------------------------- */
 typedef int (*adc_cmd_handler_t)(struct vfs_adc_priv* priv, void* arg, size_t arg_len);
 
 typedef struct
@@ -304,29 +304,29 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     else
         return MINI_ERR_INVAL;
 
-    for (int i = 0; i < channel_num; i++)
+    for (int chan_index = 0; chan_index < channel_num; chan_index++)
     {
-        char k[VFS_ADC_KEY_MAX];
+        char key[VFS_ADC_KEY_MAX];
         int ch_arr[VFS_ADC_CHANNEL_FIELD_COUNT];
 
-        snprintf(k, sizeof(k), "channel%d", i);
-        if (device_get_prop_int_array(pdev, k, ch_arr, VFS_ADC_CHANNEL_FIELD_COUNT) !=
+        snprintf(key, sizeof(key), "channel%d", chan_index);
+        if (device_get_prop_int_array(pdev, key, ch_arr, VFS_ADC_CHANNEL_FIELD_COUNT) !=
             VFS_ADC_CHANNEL_FIELD_COUNT)
             return MINI_ERR_INVAL;
 
-        cfg->channels[i].channel_id = (uint32_t)ch_arr[0];
-        cfg->channels[i].rank = (uint32_t)ch_arr[1];
-        cfg->channels[i].sample_time = (uint32_t)ch_arr[2];
-        cfg->channels[i].diff_mode = (uint32_t)ch_arr[3];
-        cfg->channels[i].attenuation = (uint32_t)ch_arr[4];
+        cfg->channels[chan_index].channel_id = (uint32_t)ch_arr[0];
+        cfg->channels[chan_index].rank = (uint32_t)ch_arr[1];
+        cfg->channels[chan_index].sample_time = (uint32_t)ch_arr[2];
+        cfg->channels[chan_index].diff_mode = (uint32_t)ch_arr[3];
+        cfg->channels[chan_index].attenuation = (uint32_t)ch_arr[4];
     }
 
     return MINI_OK;
 }
 
-/*=======================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* VFS 标准核心生命周期接口 */
-/*=======================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief ADC 设备打开: 引用计数, 首次打开时按配置启动转换 (poll/DMA/DMA+IT)

@@ -4,13 +4,13 @@
  *@brief i2c bus 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   I2C BUS 实现 — I2C 总线子系统 bus 层 (平台中立共享代码)
  *   静态池: s_i2c_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2c_clients[DEV_ID_COUNT]
  *   数据流:
  *   同步: VFS → i2c_bus_open/close/transfer|write|read(xfer_mode) → hal_i2c_*
  *   controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define I2C_BUS_IMPL
@@ -63,9 +63,9 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
 {
     COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
 }
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* Host pool helpers */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 通过 device 指针查找对应的 i2c_bus_host
  * @param[in] pdev host device 指针
@@ -73,9 +73,9 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
  */
 static struct i2c_bus_host* i2c_host_from_device(struct device* pdev)
 {
-    for (int i = 0; i < I2C_BUS_HOST_MAX; i++)
-        if (osal_pool_is_used(&s_i2c_host_pool_ctrl, i) && s_i2c_hosts[i].pdev == pdev)
-            return &s_i2c_hosts[i];
+    for (int index = 0; index < I2C_BUS_HOST_MAX; index++)
+        if (osal_pool_is_used(&s_i2c_host_pool_ctrl, index) && s_i2c_hosts[index].pdev == pdev)
+            return &s_i2c_hosts[index];
     return NULL;
 }
 
@@ -92,9 +92,9 @@ static struct i2c_bus_client* i2c_client_from_device(struct device* pdev)
     return &s_i2c_clients[id];
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* controller_ops (host 级操作) */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* 前向声明: s_i2c_controller_ops 引用 impl 函数, 但 impl 定义在 ops 表之后 */
 static int i2c_host_init_impl(struct device* pdev, const void* cfg);
 static int i2c_host_deinit_impl(struct device* pdev);
@@ -505,9 +505,9 @@ int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_
     return i2c_master_read_mode(client, rx, len, timeout_ms, xfer_mode);
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /* Slave API — 故意空壳: STM32 路径固定返回 NOTSUPP */
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
                        uint32_t timeout_ms)
 {

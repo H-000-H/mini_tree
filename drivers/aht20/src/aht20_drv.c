@@ -191,10 +191,10 @@ static int aht20_cmd_read(struct aht20_device* dev, void* arg, size_t len, uint3
 {
     const uint8_t trig[3] = {0xAC, 0x33, 0x00};
     uint8_t raw[6];
-    struct aht20_sample* o = (struct aht20_sample*)arg;
+    struct aht20_sample* sample = (struct aht20_sample*)arg;
     int ret;
     uint32_t rh, t;
-    if (!dev->hw_ready || !o || len != sizeof(*o))
+    if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = aht20_i2c_wr(dev, trig, 3, timeout_ms);
     if (ret != MINI_OK)
@@ -205,8 +205,8 @@ static int aht20_cmd_read(struct aht20_device* dev, void* arg, size_t len, uint3
         return ret;
     rh = ((uint32_t)raw[1] << 12) | ((uint32_t)raw[2] << 4) | (raw[3] >> 4);
     t = (((uint32_t)raw[3] & 0x0FU) << 16) | ((uint32_t)raw[4] << 8) | raw[5];
-    o->rh_x100 = (uint16_t)((rh * 10000U) / 1048576U);
-    o->temp_c_x100 = (int16_t)(((int32_t)t * 20000) / 1048576 - 5000);
+    sample->rh_x100 = (uint16_t)((rh * 10000U) / 1048576U);
+    sample->temp_c_x100 = (int16_t)(((int32_t)t * 20000) / 1048576 - 5000);
     return MINI_OK;
 }
 

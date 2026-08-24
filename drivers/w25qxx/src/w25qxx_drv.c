@@ -184,14 +184,14 @@ struct w25qxx_ioctl_map
 static int w25qxx_cmd_jedec(struct w25qxx_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     uint8_t tx[4] = {0x9F, 0, 0, 0}, rx[4] = {0};
-    struct w25qxx_jedec* j = (struct w25qxx_jedec*)arg;
-    if (!dev->hw_ready || !j || len != sizeof(*j))
+    struct w25qxx_jedec* jedec = (struct w25qxx_jedec*)arg;
+    if (!dev->hw_ready || !jedec || len != sizeof(*jedec))
         return MINI_ERR_INVAL;
     if (w25qxx_spi_xfer(dev, tx, rx, 4, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
-    j->id[0] = rx[1];
-    j->id[1] = rx[2];
-    j->id[2] = rx[3];
+    jedec->id[0] = rx[1];
+    jedec->id[1] = rx[2];
+    jedec->id[2] = rx[3];
     return MINI_OK;
 }
 static const struct w25qxx_ioctl_map s_w25qxx_map[W25QXX_CMD_COUNT] = {

@@ -4,7 +4,7 @@
  *@brief uart bus 实现
  *@author H-000-H
  *@details
- *   @=========================================================================================================================*
+ *   --------------------------------------------------------------------------
  *   UART BUS 实现 — UART 总线子系统 bus 层
  *   静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) + s_uart_clients[CLIENT_MAX]
  *   数据流: VFS → uart_bus_open/close/read/write/transfer → uart_client_from_device → hal_uart_*
@@ -14,7 +14,7 @@
  *   引用计数: register/unregister 改 ref_count (open/close 只 IO gate); deinit >0 拒绝销毁
  *   平台中立: 本文件不引用任何厂商 SDK, 所有硬件细节由 HAL 实现 (hal_uart_*.c) 承载。
  *   bus 层仅持有 hal_uart_bus_host (嵌入 host), 透传 hal_uart_config (VFS 从 DTSI 硬件直投填充)。
- *   @=========================================================================================================================
+ *   --------------------------------------------------------------------------
  */
 
 #define UART_BUS_IMPL
@@ -75,9 +75,9 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void uart_bus_pool_init(void)
         osal_pool_init(&s_uart_client_pool_ctrl, s_uart_client_used, UART_BUS_CLIENT_MAX));
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Host Pool*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 通过 device 指针查找对应的 uart_bus_host
  * @param[in] pdev host device 指针
@@ -85,15 +85,15 @@ pre_execution(PRE_EXEC_PRIO_RES_POOL) static void uart_bus_pool_init(void)
  */
 static struct uart_bus_host* uart_host_from_device(struct device* pdev)
 {
-    for (int i = 0; i < UART_BUS_HOST_MAX; i++)
-        if (osal_pool_is_used(&s_uart_host_pool_ctrl, i) && s_uart_hosts[i].pdev == pdev)
-            return &s_uart_hosts[i];
+    for (int index = 0; index < UART_BUS_HOST_MAX; index++)
+        if (osal_pool_is_used(&s_uart_host_pool_ctrl, index) && s_uart_hosts[index].pdev == pdev)
+            return &s_uart_hosts[index];
     return NULL;
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Client Pool*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief 通过 device 指针查找对应的 uart_bus_client
  * @param[in] pdev client device 指针
@@ -101,15 +101,16 @@ static struct uart_bus_host* uart_host_from_device(struct device* pdev)
  */
 static struct uart_bus_client* uart_client_from_device(struct device* pdev)
 {
-    for (int i = 0; i < UART_BUS_CLIENT_MAX; i++)
-        if (osal_pool_is_used(&s_uart_client_pool_ctrl, i) && s_uart_clients[i].pdev == pdev)
-            return &s_uart_clients[i];
+    for (int index = 0; index < UART_BUS_CLIENT_MAX; index++)
+        if (osal_pool_is_used(&s_uart_client_pool_ctrl, index) &&
+            s_uart_clients[index].pdev == pdev)
+            return &s_uart_clients[index];
     return NULL;
 }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*controller_ops (host 级操作)*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 static int uart_host_init_impl(struct device* pdev, const void* cfg);
 static int uart_host_deinit_impl(struct device* pdev);
 static int uart_host_role_impl(struct device* pdev);
@@ -124,9 +125,9 @@ static const struct bus_controller_ops s_uart_controller_ops = {
     .client_unregister = uart_client_unregister_impl,
 };
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Host API*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief host 初始化实现 (controller_ops.init): 分配 host 池, 调用 hal_uart_dev_init, 绑定
  * controller
@@ -229,9 +230,9 @@ int uart_bus_host_init(struct device* pdev, const struct hal_uart_config* cfg)
 
 int uart_bus_host_deinit(struct device* pdev) { return uart_host_deinit_impl(pdev); }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*Client API*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /**
  * @brief client 注册实现 (controller_ops.client_register): 分配 client, 绑定 host, 调用
  * hal_uart_dev_hw_open
@@ -328,9 +329,9 @@ int uart_bus_client_register(struct device* pdev)
 
 void uart_bus_client_unregister(struct device* pdev) { uart_client_unregister_impl(pdev); }
 
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 /*I/O API (VFS 层调用)*/
-/*===========================================================================================================================================================*/
+/* -------------------------------------------------------------------------- */
 int uart_bus_open(struct device* pdev)
 {
     struct uart_bus_client* cli = uart_client_from_device(pdev);
