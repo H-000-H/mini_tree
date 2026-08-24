@@ -39,7 +39,43 @@
 
 ---
 
-## 4. Worked Around (Won't Fix)
+## 4. Resolved
+
+| ID | Issue | Root Cause | Impact | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| P12 | Preemptive scheduler (xtask_preempt) TIM path non-functional | See detailed analysis below | TIM7 IRQ never fires → falls through to SysTick fallback → tick_count stays at 0 → tasks never expire → LED does not blink | Add `interrupt_hw_enable()` in `xtask_preempt.c`; bridge `hal_systick_irq_handler()` in `interrupt_stm32.c` SysTick_Handler |
+
+### P12 Detailed Analysis
+
+**Causal chain**: Cause 1 → TIM7 interrupt never fires → falls through to SysTick fallback → Cause 2 → tick_count stays at 0 → tasks never expire → LED does not blink
+
+| # | Root Cause | Location | Why cooperative scheduler is unaffected |
+| :---: | :--- | :--- | :--- |
+| 1 | TIM branch missing `interrupt_hw_enable()` — VIRQ registered but NVIC never enabled, hardware IRQ never triggers | `xtask_preempt.c` `xscheduler_start()` | Cooperative `xtask_coop.c` already has these 3 lines; NVIC enabled correctly |
+| 2 | SysTick fallback path: board-level strong `SysTick_Handler` only calls `HAL_IncTick()`, does not chain `hal_systick_irq_handler()` scheduler hook | `interrupt_stm32.c` | Cooperative uses TIM7 → `TIM7_IRQHandler` → VIRQ dispatch path; does not depend on SysTick hook |
+
+**Fix details**:
+
+1. `mini_tree/time_slice/task/xtask_preempt.c` — `xscheduler_start()` TIM branch: add NVIC enable:
+   ```c
+   int irqn = -1;
+   int priority = 5;
+   device_get_prop_int(tick_dev, "irqn", &irqn);
+   device_get_prop_int(tick_dev, "nvic-priority", &priority);
+   interrupt_hw_enable(irqn, (uint32_t)priority);
+   ```
+2. `hal/system/interrupt_stm32.c` — `SysTick_Handler`: bridge scheduler hook:
+   ```c
+   void SysTick_Handler(void)
+   {
+       HAL_IncTick();
+       hal_systick_irq_handler();  /* chain to scheduler */
+   }
+   ```
+
+---
+
+## 5. Worked Around (Won't Fix)
 
 | ID | Issue | Handling |
 | :--- | :--- | :--- |

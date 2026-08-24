@@ -10,10 +10,10 @@ set(MINI_TREE_LWIP_CMAKE_LOADED ON)
 set(MINI_TREE_LWIP_VERSION "STABLE-2_2_1_RELEASE" CACHE STRING "lwIP git tag")
 message(STATUS "mini_tree lwIP: ${MINI_TREE_LWIP_VERSION} (local-or-fetch on link)")
 
-# include 时求值: lwip.cmake 位于 cmake/, .config 与 lib/lwip 位于仓库根
-# （函数内 CMAKE_CURRENT_LIST_DIR 解析为调用点目录，须在函数外固化路径）
-set(MINI_TREE_LWIP_DOTCONFIG "${CMAKE_CURRENT_LIST_DIR}/../.config")
-set(MINI_TREE_LWIP_LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lwip")
+# 注意: 本文件可能被 add_subdirectory(mini_tree) 在其子作用域 include，
+# 若在函数外 set 普通变量(非 CACHE)，则顶层 CMakeLists 调用 mini_tree_link_lwip 时
+# 拿不到这些普通变量。CMAKE_CURRENT_LIST_DIR 在 function 内仍解析为本文件所在目录，
+# 故在函数内直接推导路径，避免跨作用域丢失。
 
 # Link lwIP into a target. Pass directory that contains lwipopts.h (and arch/).
 # Example: mini_tree_link_lwip(my_fw "${CMAKE_CURRENT_SOURCE_DIR}/port")
@@ -25,6 +25,12 @@ function(mini_tree_link_lwip target)
     if(NOT EXISTS "${_port_inc}/lwipopts.h")
         message(FATAL_ERROR "mini_tree_link_lwip: lwipopts.h not found in ${_port_inc}")
     endif()
+
+    # 本文件位于 mini_tree/cmake/，其上级即为 mini_tree 仓库根（含 .config 与 lib/lwip）。
+    # CMAKE_CURRENT_LIST_DIR 在 function 内仍指向本文件目录，不受调用点作用域影响。
+    set(_lwip_repo_root "${CMAKE_CURRENT_LIST_DIR}/..")
+    set(MINI_TREE_LWIP_DOTCONFIG "${_lwip_repo_root}/.config")
+    set(MINI_TREE_LWIP_LOCAL_DIR "${_lwip_repo_root}/lib/lwip")
 
     if(NOT TARGET mini_tree_lwip)
         mini_tree_dep_get(_lwip_source_dir

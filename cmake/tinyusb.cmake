@@ -8,12 +8,12 @@ set(MINI_TREE_TINYUSB_CMAKE_LOADED ON)
 set(MINI_TREE_TINYUSB_VERSION "0.21.0" CACHE STRING "TinyUSB git tag")
 message(STATUS "mini_tree TinyUSB: ${MINI_TREE_TINYUSB_VERSION} (local-or-fetch on link)")
 
-# include 时求值: 函数内 CMAKE_CURRENT_LIST_DIR 解析为调用点目录（依赖调用位置，
-# 与 lwip.cmake 的 MINI_TREE_LWIP_DOTCONFIG 同模式），须在函数外固化本文件路径。
-set(MINI_TREE_TINYUSB_LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/tinyusb")
-
 function(mini_tree_link_tinyusb target)
     if(NOT TARGET tinyusb)
+        # 本文件位于 mini_tree/cmake/，上级即 mini_tree 仓库根（含 lib/tinyusb）。
+        # CMAKE_CURRENT_LIST_DIR 在 function 内仍指向本文件目录，不受调用点作用域影响，
+        # 故在此直接推导本地路径，避免依赖函数外普通变量（add_subdirectory 子作用域会丢失）。
+        set(MINI_TREE_TINYUSB_LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/tinyusb")
         mini_tree_dep_get(_tinyusb_source_dir
             NAME tinyusb
             LOCAL_DIR "${MINI_TREE_TINYUSB_LOCAL_DIR}"

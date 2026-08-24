@@ -33,7 +33,15 @@ typedef enum
  * @param[in] fmt printf 格式串
  * @param[in] ... 格式化参数
  */
+/* osal_log 由 OSAL 层 (C 实现, 如 osal_null.c) 提供, 须以 C 链接; 此处加 extern "C"
+ * 守卫, 避免 C++ 翻译单元 (如 app/led/led.cpp) 按 C++ 名字修饰去链接而找不到符号。 */
+#ifdef __cplusplus
+extern "C" {
+#endif
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...);
+#ifdef __cplusplus
+}
+#endif
 #define SYS_LOGI(tag, fmt, ...) osal_log(OSAL_LOG_INFO, tag, fmt, ##__VA_ARGS__)
 #define SYS_LOGW(tag, fmt, ...) osal_log(OSAL_LOG_WARN, tag, fmt, ##__VA_ARGS__)
 #define SYS_LOGE(tag, fmt, ...) osal_log(OSAL_LOG_ERROR, tag, fmt, ##__VA_ARGS__)

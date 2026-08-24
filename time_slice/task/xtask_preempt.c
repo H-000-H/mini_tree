@@ -72,7 +72,8 @@ struct x_preempt_priv
     list_node sleep_head; /**< 休眠链表 */
     hal_tim_device* tim; /**< 定时器 (xscheduler_start 绑定, SysTick 路径为 NULL) */
     uint32_t tick_period; /**< 周期 ARR (WFI 后恢复, 仅通用 TIM 路径) */
-    int tick_delay; /**< 每次中断 tick 增量 (ms) */
+    int tick_delay; /**< 周期模式每次中断 tick 增量 (ms) */
+    uint32_t oneshot_ticks; /**< 当前 ARR 对应的 tick 增量 (单次休眠记账, 周期模式 = tick_delay) */
     bool systick_active; /**< 当前 tick 源为 SysTick (架构异常直连) */
     struct x_preempt_task task[CONFIG_X_PREEMPT_MAX_TASKS]; /**< 任务池 */
 };
@@ -195,13 +196,21 @@ static void idle_wfi(void)
         return;
     }
 
-    if (list_empty(&s_priv.sleep_head) || s_priv.tim == NULL)
+    if (list_empty(&s_priv.sleep_head) || s_priv.tim == NULL || s_priv.tick_period == 0)
         return;
 
     struct x_preempt_task* next =
         container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
     uint32_t remaining =
         COMPAT_ATOMIC_LOAD(&next->task.next_running, COMPAT_MO_RELAXED) - s_priv.tick_count;
+
+    /* 单次休眠钳位: 通用 TIM 计数器可能仅 16 位 (如 TIM7), ARR = period × remaining
+     * 超宽会被硬件截断 → 提前唤醒且记账失真。按 16 位上限截断休眠时长,
+     * 到期前分多次休眠, 每次按真实休眠时长记账。 */
+    uint32_t max_sleep = 0xFFFFu / s_priv.tick_period;
+    if (remaining > max_sleep)
+        remaining = max_sleep;
+
     uint32_t arr = s_priv.tick_period * remaining;
     if (arr == 0)
         return;
@@ -210,10 +219,25 @@ static void idle_wfi(void)
     tim_arg.obj = s_priv.tim;
     COMPAT_IGNORE_RESULT(vfs_tim_fast_set_counter(&tim_arg));
     tim_arg.arr = arr;
+    s_priv.oneshot_ticks = remaining; /* ISR 按本次休眠时长记账 */
     COMPAT_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
     COMPAT_WFI();
+
+    /* 非更新事件唤醒 (其他中断先行): 按计数器实际流逝补偿, 防 tick 欠账 */
+    tim_arg.value = 0;
+    if (vfs_tim_fast_get_counter(&tim_arg) == MINI_OK && tim_arg.value != 0)
+    {
+        uint32_t elapsed = tim_arg.value / s_priv.tick_period;
+        if (elapsed > 0)
+        {
+            s_priv.oneshot_ticks -= elapsed;
+            x_scheduler_tick(&g_scheduler, elapsed);
+        }
+    }
+
     tim_arg.arr = s_priv.tick_period;
     COMPAT_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
+    s_priv.oneshot_ticks = (uint32_t)s_priv.tick_delay; /* 恢复周期模式记账 */
 }
 
 /* -------------------------------------------------------------------------- */
@@ -231,6 +255,7 @@ pre_execution(PRE_EXEC_PRIO_SCHEDULER) static void xscheduler_early_init(void)
     s_priv.tim = NULL;
     s_priv.tick_period = 0;
     s_priv.tick_delay = 1;
+    s_priv.oneshot_ticks = 1;
     s_priv.systick_active = false;
 }
 
@@ -256,10 +281,17 @@ void xscheduler_start(void)
             tim_arg.obj = s_priv.tim;
             if (vfs_tim_fast_get_autoreload(&tim_arg) == MINI_OK && tim_arg.value != 0)
                 s_priv.tick_period = tim_arg.value;
+            s_priv.oneshot_ticks = (uint32_t)s_priv.tick_delay;
 
 #ifdef CONFIG_VIRQ
             COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
             interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &s_priv);
+
+            int irqn = -1;
+            int priority = 5;
+            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "irqn", &irqn));
+            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
+            interrupt_hw_enable(irqn, (uint32_t)priority);
 #endif
             return;
         }
@@ -352,7 +384,7 @@ int scheduler_tim_isr_top(void* context, uint16_t irq_num)
     struct vfs_tim_arg tim_arg = {0};
     tim_arg.obj = priv->tim;
     if (vfs_tim_fast_clear_update_flag(&tim_arg) == MINI_OK)
-        x_scheduler_tick(&g_scheduler, (unsigned int)priv->tick_delay);
+        x_scheduler_tick(&g_scheduler, (unsigned int)priv->oneshot_ticks);
     return MINI_OK;
 }
 

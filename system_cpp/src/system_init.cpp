@@ -26,6 +26,9 @@
 #ifdef CONFIG_OSAL_NULL
 extern "C" void x_scheduler_poll(void);
 #endif
+#ifdef CONFIG_USB
+extern "C" void usb_bus_task(void); 
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* 启动期全局中断控制 (平台抽象) */
@@ -197,6 +200,9 @@ extern "C" void mini_tree_system_loop(void)
 #endif
 #ifdef CONFIG_VIRQ
     interrupt_bottom_half_poll(); /**< 执行下半部队列 */
+#endif
+#ifdef CONFIG_USB
+    usb_bus_task(); /**< TinyUSB 事件轮询 (枚举 / CDC 收发推进) */
 #endif
 #ifdef CONFIG_OSAL_NULL
     x_scheduler_poll(); /**< 裸机调度器轮询 (coop/preempt 各实现同名函数) */
