@@ -46,3 +46,6 @@ endif()
 if(NOT _net_coremqtt_off)
     mini_tree_link_coremqtt(mini_tree_net "${CMAKE_CURRENT_SOURCE_DIR}/port/mqtt")
 endif()
+
+# 本地扩展 (不入库): 存在 local.cmake 时加载, 承载本地新增模块的源文件与链接
+include("${CMAKE_CURRENT_SOURCE_DIR}/local.cmake" OPTIONAL)

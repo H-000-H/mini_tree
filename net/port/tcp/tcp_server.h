@@ -63,6 +63,17 @@ extern "C"
      */
     int close_session(int session_id);
 
+    /**
+     * @brief 向指定 session 的客户端发送数据
+     * @note SPSC 约束: 同一 session_id 只能由一个生产者线程调用 (与接收侧消费者独立)
+     * @param[in] session_id 客户端会话 ID (0 ~ CONFIG_TCP_SERVER_MAX_CLIENTS - 1)
+     * @param[in] data       待发送数据 (内部拷贝, 返回后可释放)
+     * @param[in] len        数据长度
+     * @return int 成功为实际写入字节数 (可能因发送窗口不足小于 len, 需稍后重试);
+     *         失败为负 lwIP 错误码 (ERR_ARG 参数错误 / ERR_CONN 未连接)
+     */
+    int tcp_server_send(int session_id, const void* data, uint16_t len);
+
 #ifdef __cplusplus
 }
 #endif

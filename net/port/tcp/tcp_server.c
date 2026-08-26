@@ -5,7 +5,7 @@
  * @brief TCP Server 多客户端支持 (lwIP Raw API 驱动)
  * @note 每个连接独立分配一个 SPSC 无锁统一 FIFO，保证多客户端并发时数据完全隔离、不串流。
  * @note SPSC 约束: 每个 session 的 FIFO 生产者是 lwIP tcpip 线程, 消费侧必须保证同一
- *       session_id 只由一个线程读取 (多线程读同一 session 即退化为多消费者, 产生数据竞争)。
+ *       session_id 只由一个线程读取 (多线程读化为多消费者, 产生数据竞争)。
  */
 #include "tcp_server.h"
 
@@ -296,4 +296,31 @@ int close_session(int session_id)
     }
 
     return ERR_OK;
+}
+
+int tcp_server_send(int session_id, const void* data, uint16_t len)
+{
+    if (session_id < 0 || session_id >= MAX_CLIENT_COUNT || data == NULL || len == 0)
+        return ERR_ARG;
+
+    struct client_session* session = &s_sessions[session_id];
+    if (!session->is_used || session->pcb == NULL)
+        return ERR_CONN;
+
+    /* 按剩余发送窗口限长, 写满返回让调用方稍后重试 (不截断报文) */
+    uint16_t sndbuf = tcp_sndbuf(session->pcb);
+    if (sndbuf == 0)
+        return ERR_MEM;
+    uint16_t write_len = (len > sndbuf) ? sndbuf : len;
+
+    err_t ret = tcp_write(session->pcb, data, write_len, TCP_WRITE_FLAG_COPY);
+    if (ret != ERR_OK)
+        return ret;
+
+    /* 立即推动发送 (不等待 Nagle/延迟 ACK 时机, 交互类报文要求低延迟) */
+    ret = tcp_output(session->pcb);
+    if (ret != ERR_OK)
+        return ret;
+
+    return (int)write_len;
 }

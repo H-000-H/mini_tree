@@ -75,6 +75,9 @@ Thumbs.db
 # 详见 Kconfig.local 顶部注释; 需要时在 Kconfig.non_esp 末尾手动 source
 Kconfig.local
 
+net/local.cmake
+docs/cn/net_local.md
+
 # ---------------------------------------------
 # 编辑器个人目录（共享的 .vscode/ 可入库）
 # ---------------------------------------------
@@ -145,13 +148,14 @@ lib/uC-LIB/
 
 # ---------------------------------------------
 # net/ 只保留 mqtt 最小构建集 + pppif/usb 网卡
-# 屏蔽：http/https/udp/mqtts/tls/ethernet/arch/sys/CMakeLists/lwipopts
+# 屏蔽：http/https/udp/mqtts/tls/mqtt_broker/ethernet/arch/sys/CMakeLists/lwipopts
 # ---------------------------------------------
 /net/port/ethernet/
 /net/port/http/
 /net/port/https/
 /net/port/mqtt/mqtt_broker.c
 /net/port/mqtt/mqtt_broker.h
+/net/port/mqtt_broker/
 /net/port/mqtts/
 /net/port/tls/
 /net/port/udp/
