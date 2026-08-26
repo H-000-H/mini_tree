@@ -168,14 +168,14 @@ extern "C"
      * @param[in] cfg 总线配置
      */
     int hal_spi_bus_host_init(struct hal_spi_bus_host* host, int hw_idx,
-                              const struct hal_spi_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                              const struct hal_spi_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 释放 SPI 总线主机
      * @param[in] host 总线主机对象指针
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_bus_host_deinit(struct hal_spi_bus_host* host) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 初始化 SPI 设备
@@ -184,21 +184,21 @@ extern "C"
      * @param[in] dev_cfg 设备配置
      */
     int hal_spi_dev_init(struct hal_spi_dev* pdev, struct hal_spi_bus_host* host,
-                         const struct hal_spi_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
+                         const struct hal_spi_device_config* dev_cfg) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 打开 SPI 设备
      * @param[in] pdev 设备对象指针
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_dev_hw_open(struct hal_spi_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_dev_hw_open(struct hal_spi_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 关闭 SPI 设备
      * @param[in] pdev 设备对象指针
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
-    int hal_spi_dev_hw_close(struct hal_spi_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_spi_dev_hw_close(struct hal_spi_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 同步传输
@@ -211,7 +211,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int hal_spi_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                     uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t timeout_ms, uint32_t xfer_mode) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 异步传输
@@ -224,7 +224,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_transfer_async(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                               hal_spi_callback_t cb, void* userdata) COMPAT_WARN_UNUSED_RESULT;
+                               hal_spi_callback_t cb, void* userdata) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 异步传输轮询
@@ -233,7 +233,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_transfer_poll(struct hal_spi_dev* pdev,
-                              uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                              uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 获取传输结果
@@ -257,7 +257,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_slave_sync(struct hal_spi_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                           uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief SPI 从机队列传输
@@ -268,7 +268,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
      */
     int hal_spi_slave_queue_tx(struct hal_spi_dev* pdev, const uint8_t* data, size_t len,
-                               uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                               uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

@@ -41,17 +41,17 @@ struct vfs_can_priv
     int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_can_priv s_can_priv_pool[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_can_priv_used[CAN_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_can_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_can_priv s_can_priv_pool[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t s_can_priv_used[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_can_priv_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_host_tag = "can_vfs_host";
 
 /**
  * @brief CAN Host 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_can_priv_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_can_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
 }
 
@@ -81,36 +81,36 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
         device_get_prop_int(pdev, "rx-af", &rx_af) != MINI_OK)
         return MINI_ERR_INVAL;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-output-type", &tx_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-speed", &tx_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-mode", &tx_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-pull", &tx_pull));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-output-type", &rx_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-speed", &rx_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode", &rx_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull", &rx_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tx-output-type", &tx_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tx-speed", &tx_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tx-mode", &tx_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tx-pull", &tx_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "rx-output-type", &rx_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "rx-speed", &rx_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "rx-mode", &rx_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "rx-pull", &rx_pull));
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
     {
         int irqn = -1, irq_priority = 0, it_enable = 0;
         int prescaler = 16, mode = 0, sjw = 0, bs1 = 0, bs2 = 0;
         int auto_bus_off = 0, auto_wakeup = 0, auto_retransmit = 0;
         int rx_fifo_locked = 0, tx_fifo_prio = 0, tt_mode = 0;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &prescaler));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mode", &mode));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sjw", &sjw));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "bs1", &bs1));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "bs2", &bs2));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "auto-bus-off", &auto_bus_off));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "auto-wakeup", &auto_wakeup));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "auto-retransmit", &auto_retransmit));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "rx-fifo-locked", &rx_fifo_locked));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tx-fifo-prio", &tx_fifo_prio));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "tt-mode", &tt_mode));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &prescaler));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "mode", &mode));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sjw", &sjw));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "bs1", &bs1));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "bs2", &bs2));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "auto-bus-off", &auto_bus_off));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "auto-wakeup", &auto_wakeup));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "auto-retransmit", &auto_retransmit));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "rx-fifo-locked", &rx_fifo_locked));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tx-fifo-prio", &tx_fifo_prio));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tt-mode", &tt_mode));
 
         cfg->irqn = (int32_t)irqn;
         cfg->irq_priority = (uint32_t)irq_priority;
@@ -173,7 +173,7 @@ static int vfs_can_priv_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_can_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     ret = vfs_can_priv_parse_dts(pdev, &priv->cfg);
@@ -194,9 +194,9 @@ static int vfs_can_priv_probe(struct device* pdev)
     return MINI_OK;
 
 err_bus:
-    COMPAT_IGNORE_RESULT(can_bus_host_deinit(pdev));
+    MINI_IGNORE_RESULT(can_bus_host_deinit(pdev));
 err_pool:
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_can_priv_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_can_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -241,8 +241,8 @@ static int vfs_can_priv_remove(struct device* pdev)
         return ret;
     }
 
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_can_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_can_priv_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }
@@ -259,17 +259,17 @@ struct can_vfs_client
     int pool_idx; /**< 池索引 */
 };
 
-static struct can_vfs_client s_client_pool[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_client_used[CAN_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static struct can_vfs_client s_client_pool[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t s_client_used[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_client_tag = "can_vfs_client";
 
 /**
  * @brief CAN Client 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void can_vfs_client_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void can_vfs_client_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, CAN_VFS_CLIENT_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, CAN_VFS_CLIENT_COUNT));
 }
 
 /**
@@ -281,7 +281,7 @@ static int can_vfs_open(struct device* pdev, void* arg)
     int first;
     int ret;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -299,7 +299,7 @@ static int can_vfs_open(struct device* pdev, void* arg)
         ret = can_bus_open(pdev);
         if (ret != MINI_OK)
         {
-            COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, ret));
+            MINI_IGNORE_RESULT(can_hook_on_err(pdev, ret));
             dev_lc_open_abort(lc);
         }
         else
@@ -307,8 +307,8 @@ static int can_vfs_open(struct device* pdev, void* arg)
             ret = can_hook_on_open(pdev);
             if (ret != MINI_OK)
             {
-                COMPAT_IGNORE_RESULT(can_bus_close(pdev));
-                COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, ret));
+                MINI_IGNORE_RESULT(can_bus_close(pdev));
+                MINI_IGNORE_RESULT(can_hook_on_err(pdev, ret));
                 dev_lc_open_abort(lc);
             }
         }
@@ -341,8 +341,8 @@ static int can_vfs_close(struct device* pdev)
     {
         int fn_ret = can_hook_on_close(pdev);
         if (fn_ret != MINI_OK)
-            COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, fn_ret));
-        COMPAT_IGNORE_RESULT(can_bus_close(pdev));
+            MINI_IGNORE_RESULT(can_hook_on_err(pdev, fn_ret));
+        MINI_IGNORE_RESULT(can_bus_close(pdev));
     }
     dev_lc_close_end(lc);
     return MINI_OK;
@@ -368,13 +368,13 @@ static int can_vfs_do_tx(struct device* pdev, struct can_frame* frame, uint32_t 
     ret = can_hook_pre_tx(pdev, frame);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, ret));
+        MINI_IGNORE_RESULT(can_hook_on_err(pdev, ret));
         return ret;
     }
 
     ret = can_bus_transmit(pdev, frame, timeout_ms);
     if (ret != MINI_OK)
-        COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, ret));
+        MINI_IGNORE_RESULT(can_hook_on_err(pdev, ret));
 
     return can_hook_post_tx(pdev, frame, ret);
 }
@@ -388,13 +388,13 @@ static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t 
     ret = can_bus_receive(pdev, frame, fifo, timeout_ms);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, ret));
+        MINI_IGNORE_RESULT(can_hook_on_err(pdev, ret));
         return ret;
     }
 
     ret = can_vfs_apply_rx_hooks(pdev, frame);
     if (ret != MINI_OK && ret != MINI_ERR_AGAIN)
-        COMPAT_IGNORE_RESULT(can_hook_on_err(pdev, ret));
+        MINI_IGNORE_RESULT(can_hook_on_err(pdev, ret));
     return ret;
 }
 
@@ -509,7 +509,7 @@ static int can_cmd_set_filter(struct device* pdev, void* arg, size_t arg_len, ui
 {
     struct can_filter_arg* fa = (struct can_filter_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !fa || arg_len != sizeof(*fa))
         return MINI_ERR_INVAL;
 
@@ -528,7 +528,7 @@ static int can_cmd_get_state(struct device* pdev, void* arg, size_t arg_len, uin
 {
     struct can_state_arg* sa = (struct can_state_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !sa || arg_len != sizeof(*sa))
         return MINI_ERR_INVAL;
 
@@ -600,7 +600,7 @@ static int can_vfs_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_client_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     ret = can_bus_client_register(pdev, &bus_cli);
@@ -623,7 +623,7 @@ static int can_vfs_probe(struct device* pdev)
 err_pool:
     pdev->ops = NULL;
     dev_lc_reset(device_lc(pdev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -657,8 +657,8 @@ static int can_vfs_remove(struct device* pdev)
     }
 
     can_bus_client_unregister(pdev);
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

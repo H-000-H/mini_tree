@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define RELAY_CMD_BASE COMPAT_MAGIC(RELAY)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define RELAY_CMD_BASE MINI_MAGIC(RELAY)
 /** 设置继电器状态（arg: int*，0=断开 1=吸合） */
 #define RELAY_CMD_SET (RELAY_CMD_BASE + 0x01)
 /** 命令总数 */

@@ -57,7 +57,7 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 #include "compiler_compat.h"
 #define PACK_STRUCT_BEGIN
-#define PACK_STRUCT_STRUCT COMPAT_PACKED
+#define PACK_STRUCT_STRUCT MINI_PACKED
 #define PACK_STRUCT_END
 #define PACK_STRUCT_FIELD(x) x
 

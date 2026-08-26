@@ -86,7 +86,7 @@ void mini_tree::system_pre_os_init(void)
 
     /* RTC 硬件看门狗: 独立时钟, 在 CPU 总线停滞时仍存活 */
 #ifdef CONFIG_SYSTEM_WDT
-    COMPAT_IGNORE_RESULT(system_wdt_init_iwdg(8000));
+    MINI_IGNORE_RESULT(system_wdt_init_iwdg(8000));
 #endif
 
     /* 设备树初始化 (编译时生成的节点表) */
@@ -101,7 +101,7 @@ void mini_tree::system_pre_os_init(void)
         enter_safe_state("EventBus init failed");
         return;
     }
-    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
+    MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
 #endif
 
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
@@ -150,21 +150,21 @@ void mini_tree::system_start_tasks(void)
 
     /* TWDT 初始化 */
 #ifdef CONFIG_SYSTEM_WDT
-    COMPAT_IGNORE_RESULT(system_wdt_init(3000));
+    MINI_IGNORE_RESULT(system_wdt_init(3000));
 #endif
 
     /* Flash 位腐烂巡检 */
     /* Flash 位腐烂巡检 */
 #ifdef CONFIG_SYSTEM_SCRUBBER
-    COMPAT_IGNORE_RESULT(system_scrubber_init());
-    COMPAT_IGNORE_RESULT(system_scrubber_start());
+    MINI_IGNORE_RESULT(system_scrubber_init());
+    MINI_IGNORE_RESULT(system_scrubber_start());
 #endif
 
     /* 启动循环计数器清除 */
     safe_state_clear_bootloop();
 
 #ifdef CONFIG_EVENT_BUS
-    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
+    MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
     event_bus_seal();

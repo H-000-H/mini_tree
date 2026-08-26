@@ -18,8 +18,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define FT5X06_CMD_BASE COMPAT_MAGIC(FT5X06)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define FT5X06_CMD_BASE MINI_MAGIC(FT5X06)
 /** 读取触摸点（arg: struct ft5x06_touch*） */
 #define FT5X06_CMD_READ_TOUCH (FT5X06_CMD_BASE + 0x01)
 /** 命令总数 */

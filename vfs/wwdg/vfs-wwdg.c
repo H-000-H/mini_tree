@@ -36,7 +36,7 @@ static int vfs_wwdg_open(struct device* pdev, void* arg)
     struct vfs_wwdg_priv* priv;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     priv = container_of(pdev->ops, struct vfs_wwdg_priv, ops);
@@ -93,9 +93,9 @@ static int vfs_wwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     struct vfs_wwdg_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
-    COMPAT_IGNORE_RESULT(to);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(to);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     priv = container_of(pdev->ops, struct vfs_wwdg_priv, ops);
@@ -127,15 +127,15 @@ static int vfs_wwdg_probe(struct device* pdev)
     int value, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "window", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "window", &value));
     if (value)
         cfg.window = (uint32_t)value;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "counter", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "counter", &value));
     if (value)
         cfg.counter = (uint32_t)value;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &value));
     cfg.prescaler = (uint32_t)value;
-    COMPAT_MEM_SET(&s_priv, 0, sizeof(s_priv));
+    MINI_MEM_SET(&s_priv, 0, sizeof(s_priv));
     ret = hal_wwdg_init(&s_priv.wwdg, &cfg);
     if (ret != MINI_OK)
         return ret;

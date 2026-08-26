@@ -53,7 +53,7 @@ void system_wdt_iwdg_set_long_timeout(void)
 {
     if (!s_iwdg_active)
         return;
-    COMPAT_IGNORE_RESULT(hal_iwdg_set_long_timeout(&s_iwdg));
+    MINI_IGNORE_RESULT(hal_iwdg_set_long_timeout(&s_iwdg));
     SYS_LOGI(k_tag, "IWDG extended to hardware max (~32768ms) for OTA");
 }
 
@@ -64,7 +64,7 @@ void system_wdt_iwdg_restore_timeout(void)
 {
     if (!s_iwdg_active)
         return;
-    COMPAT_IGNORE_RESULT(hal_iwdg_restore_timeout(&s_iwdg));
+    MINI_IGNORE_RESULT(hal_iwdg_restore_timeout(&s_iwdg));
     SYS_LOGI(k_tag, "IWDG restored to %ums", (unsigned)s_iwdg.normal_timeout_ms);
 }
 
@@ -74,7 +74,7 @@ void system_wdt_iwdg_restore_timeout(void)
 void system_wdt_feed_iwdg(void)
 {
     if (s_iwdg_active)
-        COMPAT_IGNORE_RESULT(hal_iwdg_feed(&s_iwdg));
+        MINI_IGNORE_RESULT(hal_iwdg_feed(&s_iwdg));
 }
 
 struct stack_monitor_entry

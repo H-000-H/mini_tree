@@ -151,7 +151,7 @@ static int pppif_modem_dial(const char* apn)
         return ret;
     }
     /* 关闭命令回显 */
-    COMPAT_IGNORE_RESULT(pppif_at_send_expect("ATE0\r", "OK", PPPIF_AT_TIMEOUT_MS));
+    MINI_IGNORE_RESULT(pppif_at_send_expect("ATE0\r", "OK", PPPIF_AT_TIMEOUT_MS));
     if (apn && apn[0] != '\0')
     {
         /* 配置 PDP 上下文 / APN */
@@ -188,7 +188,7 @@ static uint32_t pppif_output_callback(ppp_pcb* pcb, const void* data, uint32_t l
 {
     struct pppif_context* pctx = (struct pppif_context*)ctx;
     int written;
-    COMPAT_IGNORE_RESULT(pcb);
+    MINI_IGNORE_RESULT(pcb);
     if (!pctx->modem_dev || !data || len == 0U)
         return 0;
     written = device_write(pctx->modem_dev, data, len, PPPIF_UART_TIMEOUT_MS);
@@ -374,12 +374,12 @@ int pppif_init(const char* modem_label, const char* apn, const char* username, c
 err_clean_ppp:
     if (s_pppif_context.ppp_pcb)
     {
-        COMPAT_IGNORE_RESULT(ppp_close(s_pppif_context.ppp_pcb, 1));
-        COMPAT_IGNORE_RESULT(ppp_free(s_pppif_context.ppp_pcb));
+        MINI_IGNORE_RESULT(ppp_close(s_pppif_context.ppp_pcb, 1));
+        MINI_IGNORE_RESULT(ppp_free(s_pppif_context.ppp_pcb));
         s_pppif_context.ppp_pcb = NULL;
     }
 err_clean_device:
-    COMPAT_IGNORE_RESULT(device_close(s_pppif_context.modem_dev));
+    MINI_IGNORE_RESULT(device_close(s_pppif_context.modem_dev));
     s_pppif_context.modem_dev = NULL;
     return ret;
 }
@@ -395,12 +395,12 @@ int pppif_deinit(void)
 
     /* 异步优雅断开 PPP (触发 PPPERR_USER 在状态回调中释放控制块) */
     if (s_pppif_context.ppp_pcb)
-        COMPAT_IGNORE_RESULT(ppp_close(s_pppif_context.ppp_pcb, 0));
+        MINI_IGNORE_RESULT(ppp_close(s_pppif_context.ppp_pcb, 0));
 
     /* 关闭底层模组设备 */
     if (s_pppif_context.modem_dev)
     {
-        COMPAT_IGNORE_RESULT(device_close(s_pppif_context.modem_dev));
+        MINI_IGNORE_RESULT(device_close(s_pppif_context.modem_dev));
         s_pppif_context.modem_dev = NULL;
     }
 

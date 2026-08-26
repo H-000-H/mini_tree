@@ -52,7 +52,7 @@ extern "C"
      * @brief 判断当前是否处于中断上下文 (读 IPSR/MCAUSE)
      * @return 非零 = 在 ISR; 0 = 在任务上下文
      */
-    COMPAT_STATIC_INLINE int hal_is_in_isr(void)
+    MINI_STATIC_INLINE int hal_is_in_isr(void)
     {
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
     defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
@@ -77,7 +77,7 @@ extern "C"
     {                                                                                              \
         if (hal_is_in_isr())                                                                       \
         {                                                                                          \
-            COMPAT_TRAP();                                                                         \
+            MINI_TRAP();                                                                         \
         }                                                                                          \
     } while (0)
 #endif
@@ -93,20 +93,20 @@ extern "C"
      * @brief 使能指定 NVIC 中断
      * @param[in] irq_num NVIC 中断号
      */
-    COMPAT_STATIC_INLINE void hal_irq_enable(int irq_num)
+    MINI_STATIC_INLINE void hal_irq_enable(int irq_num)
     {
         uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
-        COMPAT_REG_WRITE32(HAL_NVIC_ISER_BASE + reg, COMPAT_BIT(irq_num & 0x1F));
+        MINI_REG_WRITE32(HAL_NVIC_ISER_BASE + reg, MINI_BIT(irq_num & 0x1F));
     }
 
     /**
      * @brief 禁用指定 NVIC 中断
      * @param[in] irq_num NVIC 中断号
      */
-    COMPAT_STATIC_INLINE void hal_irq_disable(int irq_num)
+    MINI_STATIC_INLINE void hal_irq_disable(int irq_num)
     {
         uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
-        COMPAT_REG_WRITE32(HAL_NVIC_ICER_BASE + reg, COMPAT_BIT(irq_num & 0x1F));
+        MINI_REG_WRITE32(HAL_NVIC_ICER_BASE + reg, MINI_BIT(irq_num & 0x1F));
     }
 
     /**
@@ -114,9 +114,9 @@ extern "C"
      * @param[in] irq_num NVIC 中断号
      * @param[in] priority 优先级 (0=最高)
      */
-    COMPAT_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority)
+    MINI_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority)
     {
-        COMPAT_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF));
+        MINI_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF));
     }
 
     /**
@@ -124,9 +124,9 @@ extern "C"
      * @param[in] irq_num NVIC 中断号
      * @return 当前优先级
      */
-    COMPAT_STATIC_INLINE int hal_irq_get_priority(int irq_num)
+    MINI_STATIC_INLINE int hal_irq_get_priority(int irq_num)
     {
-        return COMPAT_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num);
+        return MINI_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num);
     }
     /* -------------------------------------------------------------------------- */
 
@@ -139,7 +139,7 @@ extern "C"
      * @brief 关闭全局中断并保存掩码 (临界区入口)
      * @return 中断掩码 (供 hal_irq_restore 恢复)
      */
-    COMPAT_STATIC_INLINE uint32_t hal_irq_disable_all(void)
+    MINI_STATIC_INLINE uint32_t hal_irq_disable_all(void)
     {
         uint32_t mask;
         __asm__ volatile("mrs %0, primask\n\t"
@@ -152,20 +152,20 @@ extern "C"
      * @brief 恢复全局中断掩码 (临界区出口)
      * @param[in] mask hal_irq_disable_all 返回的掩码
      */
-    COMPAT_STATIC_INLINE void hal_irq_restore(uint32_t mask)
+    MINI_STATIC_INLINE void hal_irq_restore(uint32_t mask)
     {
         __asm__ volatile("msr primask, %0" : : "r"(mask));
     }
 
 #else
 /* 非 ARM/RISC-V 平台的 fallback: 无全局中断开关, 仅透传 (API 语义同 #if 分支) */
-COMPAT_STATIC_INLINE uint32_t hal_irq_disable_all(void)
+MINI_STATIC_INLINE uint32_t hal_irq_disable_all(void)
 {
     uint32_t irq_mask;
     __asm__ volatile("" : "=r"(irq_mask));
     return irq_mask;
 }
-COMPAT_STATIC_INLINE void hal_irq_restore(uint32_t mask) { COMPAT_IGNORE_RESULT(mask); }
+MINI_STATIC_INLINE void hal_irq_restore(uint32_t mask) { MINI_IGNORE_RESULT(mask); }
 
 #endif
     /* -------------------------------------------------------------------------- */

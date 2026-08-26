@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define SN65HVD230_CMD_BASE COMPAT_MAGIC(SN65HVD230)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define SN65HVD230_CMD_BASE MINI_MAGIC(SN65HVD230)
 /** 设置待机模式（arg: int*，0=正常 1=待机） */
 #define SN65HVD230_CMD_SET_STANDBY (SN65HVD230_CMD_BASE + 0x01)
 /** 命令总数 */

@@ -99,7 +99,7 @@ extern "C"
      */
     int bus_controller_bind_full(struct device* pdev, bus_type_t type,
                                  const struct bus_controller_ops* ctlr_ops,
-                                 void* hw_ctx) COMPAT_WARN_UNUSED_RESULT;
+                                 void* hw_ctx) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查找 device 自身绑定的 controller (传 host)
@@ -108,7 +108,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
     int bus_controller_get(const struct device* pdev,
-                           struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
+                           struct bus_controller** out) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查找 client 所属的 controller
@@ -122,7 +122,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
      */
     int bus_controller_of(const struct device* pdev,
-                          struct bus_controller** out) COMPAT_WARN_UNUSED_RESULT;
+                          struct bus_controller** out) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 解绑 controller

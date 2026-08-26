@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define DFPLAYER_CMD_BASE COMPAT_MAGIC(DFPLAYER)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define DFPLAYER_CMD_BASE MINI_MAGIC(DFPLAYER)
 /** 播放曲目（arg: struct dfplayer_track*） */
 #define DFPLAYER_CMD_PLAY (DFPLAYER_CMD_BASE + 0x01)
 /** 设置音量（arg: int*，0..30） */

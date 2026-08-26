@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define SX1278_CMD_BASE COMPAT_MAGIC(SX1278)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define SX1278_CMD_BASE MINI_MAGIC(SX1278)
 /** 复位模块 */
 #define SX1278_CMD_RESET (SX1278_CMD_BASE + 0x01)
 /** 设置中心频率（arg: uint32_t*，Hz） */

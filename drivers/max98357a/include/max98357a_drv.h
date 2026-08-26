@@ -19,8 +19,8 @@ extern "C"
 {
 #endif
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define MAX98357A_CMD_BASE COMPAT_MAGIC(MAX98357A)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define MAX98357A_CMD_BASE MINI_MAGIC(MAX98357A)
 /** 功放使能控制（arg: int* 0=关 1=开） */
 #define MAX98357A_CMD_SET_ENABLE (MAX98357A_CMD_BASE + 0x01)
 /** 命令总数 */

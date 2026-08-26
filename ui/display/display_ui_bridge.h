@@ -38,7 +38,7 @@ extern "C"
      * @param[in] timeout_ms 超时（ms）
      * @return MINI_OK 或 VFS_ERR_*
      */
-    COMPAT_STATIC_INLINE int display_lvgl_flush_callback(void* display_device, int16_t start_x,
+    MINI_STATIC_INLINE int display_lvgl_flush_callback(void* display_device, int16_t start_x,
                                                          int16_t start_y, int16_t end_x,
                                                          int16_t end_y, const void* pixel_buffer,
                                                          uint8_t pixel_format, uint32_t timeout_ms)
@@ -67,7 +67,7 @@ extern "C"
      * @param[in] timeout_ms 超时（ms）
      * @return MINI_OK 或 VFS_ERR_*
      */
-    COMPAT_STATIC_INLINE int display_u8g2_flush_frame_buffer(void* display_device,
+    MINI_STATIC_INLINE int display_u8g2_flush_frame_buffer(void* display_device,
                                                              const uint8_t* frame_buffer,
                                                              size_t buffer_length,
                                                              uint32_t timeout_ms)

@@ -77,7 +77,7 @@ err_t sys_sem_new(sys_sem_t* sem, u8_t count)
     if (osal_sem_create_binary(sem) != OSAL_OK)
         return ERR_MEM;
     if (count >= 1) /*count =1补一次信号量就行*/
-        COMPAT_IGNORE_RESULT(osal_sem_post(*sem));
+        MINI_IGNORE_RESULT(osal_sem_post(*sem));
     return ERR_OK;
 }
 
@@ -85,7 +85,7 @@ void sys_sem_signal(sys_sem_t* sem)
 {
     if (sem == NULL || *sem == NULL)
         return;
-    COMPAT_IGNORE_RESULT(osal_sem_post(*sem));
+    MINI_IGNORE_RESULT(osal_sem_post(*sem));
 }
 
 void sys_sem_free(sys_sem_t* sem)
@@ -113,14 +113,14 @@ void sys_mutex_lock(sys_mutex_t* mutex)
 {
     if (mutex == NULL || *mutex == NULL)
         return;
-    COMPAT_IGNORE_RESULT(osal_mutex_lock(*mutex, OSAL_WAIT_FOREVER));
+    MINI_IGNORE_RESULT(osal_mutex_lock(*mutex, OSAL_WAIT_FOREVER));
 }
 
 void sys_mutex_unlock(sys_mutex_t* mutex)
 {
     if (mutex == NULL || *mutex == NULL)
         return;
-    COMPAT_IGNORE_RESULT(osal_mutex_unlock(*mutex));
+    MINI_IGNORE_RESULT(osal_mutex_unlock(*mutex));
 }
 
 void sys_mutex_free(sys_mutex_t* mutex)
@@ -149,7 +149,7 @@ void sys_mbox_post(sys_mbox_t* mbox, void* msg)
     if (mbox == NULL || *mbox == NULL)
         return;
     /*简单点直接不准失败，阻塞式*/
-    COMPAT_IGNORE_RESULT(osal_queue_send(*mbox, &msg, OSAL_WAIT_FOREVER));
+    MINI_IGNORE_RESULT(osal_queue_send(*mbox, &msg, OSAL_WAIT_FOREVER));
 }
 
 err_t sys_mbox_trypost(sys_mbox_t* mbox, void* msg)

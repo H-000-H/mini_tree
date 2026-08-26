@@ -34,8 +34,8 @@ _Static_assert(OSAL_MUTEX_POOL_SIZE >= DEV_ID_COUNT,
 /* -------------------------------------------------------------------------- */
 /* 运行时设备实例表 */
 /* -------------------------------------------------------------------------- */
-static struct device s_devices[DEV_ID_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
+static struct device s_devices[DEV_ID_COUNT] MINI_ALIGNED(4);
+static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
 
 /**
  * @brief 判断设备状态机是否允许 from→to 迁移
@@ -661,24 +661,24 @@ int device_open(struct device* pdev, void* arg)
         return MINI_ERR_BUSY;
     if (!pdev->ops || (!pdev->ops->open && !pdev->ops->init))
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
     if (pdev->status == DEVICE_STATUS_RUNNING)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_OK;
     }
     if (pdev->status != DEVICE_STATUS_PROBED)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
 
     int ret = pdev->ops->open ? pdev->ops->open(pdev, arg) : pdev->ops->init(pdev);
     if (ret == MINI_OK)
-        COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return ret;
 }
 
@@ -696,19 +696,19 @@ int device_close(struct device* pdev)
         return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->close)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
     if (pdev->status != DEVICE_STATUS_RUNNING && pdev->status != DEVICE_STATUS_SUSPENDED)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
 
     int ret = pdev->ops->close(pdev);
     if (ret == MINI_OK)
-        COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_PROBED));
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_PROBED));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return ret;
 }
 
@@ -729,11 +729,11 @@ int device_write(struct device* pdev, const void* buf, size_t len, uint32_t time
         return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->write || pdev->status != DEVICE_STATUS_RUNNING)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
     int ret = pdev->ops->write(pdev, buf, len, timeout_ms);
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return ret;
 }
 
@@ -754,11 +754,11 @@ int device_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
         return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->read || pdev->status != DEVICE_STATUS_RUNNING)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
     int ret = pdev->ops->read(pdev, buf, len, timeout_ms);
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return ret;
 }
 
@@ -780,11 +780,11 @@ int device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32
         return MINI_ERR_BUSY;
     if (!pdev->ops || !pdev->ops->ioctl || pdev->status != DEVICE_STATUS_RUNNING)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
     int ret = pdev->ops->ioctl(pdev, cmd, arg, arg_len, timeout_ms);
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return ret;
 }
 
@@ -803,7 +803,7 @@ int device_suspend(struct device* pdev)
         return MINI_ERR_BUSY;
     if (pdev->status != DEVICE_STATUS_RUNNING)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
 
@@ -813,12 +813,12 @@ int device_suspend(struct device* pdev)
         ret = pdev->ops->suspend(pdev);
         if (ret != MINI_OK)
         {
-            COMPAT_IGNORE_RESULT(device_unlock(pdev));
+            MINI_IGNORE_RESULT(device_unlock(pdev));
             return ret;
         }
     }
-    COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_SUSPENDED));
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_SUSPENDED));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return MINI_OK;
 }
 
@@ -837,7 +837,7 @@ int device_resume(struct device* pdev)
         return MINI_ERR_BUSY;
     if (pdev->status != DEVICE_STATUS_SUSPENDED)
     {
-        COMPAT_IGNORE_RESULT(device_unlock(pdev));
+        MINI_IGNORE_RESULT(device_unlock(pdev));
         return MINI_ERR_IO;
     }
 
@@ -847,12 +847,12 @@ int device_resume(struct device* pdev)
         ret = pdev->ops->resume(pdev);
         if (ret != MINI_OK)
         {
-            COMPAT_IGNORE_RESULT(device_unlock(pdev));
+            MINI_IGNORE_RESULT(device_unlock(pdev));
             return ret;
         }
     }
-    COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
     return MINI_OK;
 }
 
@@ -909,21 +909,21 @@ void device_ops_unregister(struct device* pdev)
     if (device_lock(pdev) != MINI_OK)
         return;
 
-    COMPAT_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_REMOVED));
+    MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_REMOVED));
 
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
 
 #ifdef CONFIG_EVENT_BUS
-    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_DEVICE_REMOVED, (uintptr_t)pdev));
+    MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_DEVICE_REMOVED, (uintptr_t)pdev));
 #endif
 
     if (device_lock(pdev) != MINI_OK)
         return;
 
-    COMPAT_IGNORE_RESULT(device_set_priv(pdev, NULL));
+    MINI_IGNORE_RESULT(device_set_priv(pdev, NULL));
     pdev->ops = NULL;
 
-    COMPAT_IGNORE_RESULT(device_unlock(pdev));
+    MINI_IGNORE_RESULT(device_unlock(pdev));
 }
 
 /**

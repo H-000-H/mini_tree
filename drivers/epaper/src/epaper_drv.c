@@ -52,17 +52,17 @@ struct epaper_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct epaper_device s_epaper_pool[EPAPER_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_epaper_used[EPAPER_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_epaper_pool_ctrl COMPAT_ALIGNED(4);
+static struct epaper_device s_epaper_pool[EPAPER_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_epaper_used[EPAPER_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_epaper_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "epaper";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void epaper_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void epaper_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT));
 }
 
 /**
@@ -169,13 +169,13 @@ static void epaper_hw_destroy(struct epaper_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+        MINI_IGNORE_RESULT(device_close(dev->spi_dev));
     if (dev->dc_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->dc_dev));
+        MINI_IGNORE_RESULT(device_close(dev->dc_dev));
     if (dev->rst_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->rst_dev));
+        MINI_IGNORE_RESULT(device_close(dev->rst_dev));
     if (dev->busy_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->busy_dev));
+        MINI_IGNORE_RESULT(device_close(dev->busy_dev));
     dev->hw_ready = 0;
 }
 
@@ -187,7 +187,7 @@ static int epaper_open(struct device* pdev, void* arg)
     struct epaper_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = epaper_get_drvdata(pdev);
@@ -254,8 +254,8 @@ static int epaper_cmd_clear(struct epaper_device* dev, void* arg, size_t len, ui
 {
     const struct display_clear_arg* darg = (const struct display_clear_arg*)arg;
     uint8_t blank = 0x00;
-    COMPAT_IGNORE_RESULT(darg);
-    COMPAT_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(darg);
+    MINI_IGNORE_RESULT(len);
     if (!dev->hw_ready)
         return MINI_ERR_INVAL;
     epaper_dc(dev, 1);
@@ -299,8 +299,8 @@ static int epaper_cmd_fill_rect(struct epaper_device* dev, void* arg, size_t len
 static int epaper_cmd_get_info(struct epaper_device* dev, void* arg, size_t len, uint32_t ms)
 {
     struct display_info_arg* info = (struct display_info_arg*)arg;
-    COMPAT_IGNORE_RESULT(dev);
-    COMPAT_IGNORE_RESULT(ms);
+    MINI_IGNORE_RESULT(dev);
+    MINI_IGNORE_RESULT(ms);
     if (!info || len != sizeof(*info))
         return MINI_ERR_INVAL;
     info->width = (uint16_t)dev->width;
@@ -313,10 +313,10 @@ static int epaper_cmd_get_info(struct epaper_device* dev, void* arg, size_t len,
  */
 static int epaper_cmd_set_brightness(struct epaper_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    COMPAT_IGNORE_RESULT(dev);
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(len);
-    COMPAT_IGNORE_RESULT(ms);
+    MINI_IGNORE_RESULT(dev);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(ms);
     return MINI_ERR_NOTSUPP;
 }
 static const struct epaper_ioctl_map s_epaper_map[DISPLAY_CMD_COUNT] = {
@@ -381,7 +381,7 @@ static int epaper_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_epaper_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->spi_dev = device_get_parent(pdev);
     if (!dev->spi_dev)
     {
@@ -422,8 +422,8 @@ static int epaper_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_epaper_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_epaper_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -452,8 +452,8 @@ static int epaper_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     epaper_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_epaper_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_epaper_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

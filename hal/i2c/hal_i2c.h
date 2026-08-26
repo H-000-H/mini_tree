@@ -134,25 +134,25 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int hal_i2c_bus_host_init(struct hal_i2c_bus_host* host, int hw_idx,
-                              const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                              const struct hal_i2c_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 I2C 总线主机, 释放硬件资源
      * @param[in] host 总线主机对象指针
      * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2c_bus_host_deinit(struct hal_i2c_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_bus_host_deinit(struct hal_i2c_bus_host* host) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 打开 I2C 设备硬件 (引用计数 +1, 首次触发底层 init)
      * @param[in] pdev I2C 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2c_dev_hw_open(struct hal_i2c_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dev_hw_open(struct hal_i2c_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 I2C 设备硬件 (引用计数 -1, 归零触发底层 deinit)
      * @param[in] pdev I2C 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2c_dev_hw_close(struct hal_i2c_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dev_hw_close(struct hal_i2c_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 绑定设备与主机并应用 client 级配置
      * @param[in] pdev I2C 设备对象指针
@@ -161,13 +161,13 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int hal_i2c_dev_init(struct hal_i2c_dev* pdev, struct hal_i2c_bus_host* host,
-                         const struct hal_i2c_device_config* dev_cfg) COMPAT_WARN_UNUSED_RESULT;
+                         const struct hal_i2c_device_config* dev_cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 解绑设备并复位 client 状态
      * @param[in] pdev I2C 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2c_dev_deinit(struct hal_i2c_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2c_dev_deinit(struct hal_i2c_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 主机同步传输 (组合: 先写后读 / 或分派到 write/read)
@@ -181,7 +181,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int hal_i2c_sync(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                     uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 主机同步写 (直接走 master write, 不经 sync 绕路)
      * @param[in] pdev I2C 设备对象指针
@@ -191,7 +191,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int hal_i2c_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
-                      uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                      uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 主机同步读 (直接走 master read, 不经 sync 绕路)
      * @param[in] pdev I2C 设备对象指针
@@ -201,7 +201,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int hal_i2c_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len,
-                     uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 主机 DMA 异步写 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev I2C 设备对象指针
@@ -211,7 +211,7 @@ extern "C"
      * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
     int hal_i2c_dma_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
-                          uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                          uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 主机 DMA 异步读 (无 OS 等待, 依赖 DMA TC 中断)
      * @param[in] pdev I2C 设备对象指针
@@ -221,7 +221,7 @@ extern "C"
      * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
     int hal_i2c_dma_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len,
-                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                         uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief DMA 先写后读 (中间 Repeated START, 无 STOP)
      * @param[in] pdev I2C 设备对象指针
@@ -232,7 +232,7 @@ extern "C"
      * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, 失败返回 VFS_ERR_*
      */
     int hal_i2c_dma_write_then_read(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx,
-                                    size_t len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                                    size_t len, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

@@ -195,7 +195,7 @@ void EventBus::start()
         SYS_LOGE(k_tag, "FATAL: osal_task_create_handle failed — event bus unusable");
         return;
     }
-    COMPAT_IGNORE_RESULT(system_wdt_subscribe(m_task));
+    MINI_IGNORE_RESULT(system_wdt_subscribe(m_task));
     SYS_LOGI(k_tag, "dispatch task started prio %lu", (unsigned long)kDispatchPrio);
 }
 

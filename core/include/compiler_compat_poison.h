@@ -26,7 +26,7 @@
  *
  * 注意: 不 poison system — Xtensa/ESP-IDF 头文件宏参数名会冲突.
  *
- * 内存 API: 项目代码须用 COMPAT_MEM_SET / COMPAT_MEM_COPY / COMPAT_MEM_MOVE
+ * 内存 API: 项目代码须用 MINI_MEM_SET / MINI_MEM_COPY / MINI_MEM_MOVE
  * (compiler_compat.h), 禁止直接调用 memset/memcpy/memmove; 官方 SDK 目录除外.
  */
 #if defined(__GNUC__)

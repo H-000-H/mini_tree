@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define RS485_MODBUS_CMD_BASE COMPAT_MAGIC(RS485_MODBUS)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define RS485_MODBUS_CMD_BASE MINI_MAGIC(RS485_MODBUS)
 /** 读保持寄存器（arg: struct modbus_read*，value 回填） */
 #define RS485_MODBUS_CMD_READ_HOLDING (RS485_MODBUS_CMD_BASE + 0x01)
 /** 写单寄存器（arg: struct modbus_write*） */

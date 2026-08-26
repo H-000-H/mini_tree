@@ -39,17 +39,17 @@ struct vfs_i2c_priv
     int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_i2c_priv s_i2c_priv_pool[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_i2c_priv_used[I2C_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_i2c_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_i2c_priv s_i2c_priv_pool[I2C_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t s_i2c_priv_used[I2C_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_i2c_priv_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_host_tag = "i2c_vfs_host";
 
 /**
  * @brief I2C Host 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
 }
 
@@ -80,22 +80,22 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
         device_get_prop_int(pdev, "sda-af", &sda_af) != MINI_OK)
         return MINI_ERR_INVAL;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-output-type", &scl_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-speed", &scl_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-mode", &scl_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "scl-pull", &scl_pull));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-output-type", &sda_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-speed", &sda_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-mode", &sda_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sda-pull", &sda_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "scl-output-type", &scl_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "scl-speed", &scl_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "scl-mode", &scl_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "scl-pull", &scl_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sda-output-type", &sda_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sda-speed", &sda_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sda-mode", &sda_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sda-pull", &sda_pull));
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
     {
         int irqn = -1, irq_priority = 0, it_enable = 0, mode = 0;
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "i2c-mode", &mode));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "i2c-mode", &mode));
         cfg->irqn = (int32_t)irqn;
         cfg->irq_priority = (uint32_t)irq_priority;
         cfg->it_enable = (uint32_t)it_enable;
@@ -131,7 +131,7 @@ static int vfs_i2c_priv_parse_dts(struct device* pdev, struct hal_i2c_bus_config
         int dma_arr[14];
         int result;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
 
         result = device_get_prop_int_array(pdev, "dma-tx-cfg", dma_arr, 14);
@@ -179,7 +179,7 @@ static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
         return MINI_ERR_NOMEM;
 
     priv = &s_i2c_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     ret = vfs_i2c_priv_parse_dts(pdev, &priv->cfg, bus_role);
@@ -201,9 +201,9 @@ static int vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
     return MINI_OK;
 
 err_bus:
-    COMPAT_IGNORE_RESULT(i2c_bus_host_deinit(pdev));
+    MINI_IGNORE_RESULT(i2c_bus_host_deinit(pdev));
 err_pool:
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_priv_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_i2c_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -268,8 +268,8 @@ static int vfs_i2c_priv_remove(struct device* pdev)
         return ret;
     }
 
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_i2c_priv_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }
@@ -289,17 +289,17 @@ struct i2c_vfs_client
     int pool_idx; /**< 池索引 */
 };
 
-static struct i2c_vfs_client s_client_pool[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_client_used[I2C_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static struct i2c_vfs_client s_client_pool[I2C_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t s_client_used[I2C_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_client_tag = "i2c_vfs_client";
 
 /**
  * @brief I2C Client 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
 }
 
 /**
@@ -314,7 +314,7 @@ static int i2c_vfs_open(struct device* pdev, void* arg)
     int first;
     int ret;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -360,7 +360,7 @@ static int i2c_vfs_close(struct device* pdev)
         return last;
 
     if (last)
-        COMPAT_IGNORE_RESULT(i2c_bus_close(pdev));
+        MINI_IGNORE_RESULT(i2c_bus_close(pdev));
     dev_lc_close_end(lc);
     return MINI_OK;
 }
@@ -506,7 +506,7 @@ static int i2c_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
     const struct i2c_xfer_mode_arg* ma = (const struct i2c_xfer_mode_arg*)arg;
     struct i2c_vfs_client* priv;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
         return MINI_ERR_INVAL;
     if (ma->xfer_mode > I2C_XFER_DMA)
@@ -531,7 +531,7 @@ static int i2c_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
     struct i2c_xfer_mode_arg* ma = (struct i2c_xfer_mode_arg*)arg;
     struct i2c_vfs_client* priv;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
         return MINI_ERR_INVAL;
 
@@ -638,15 +638,15 @@ static int i2c_vfs_parse_dts(struct device* pdev, struct hal_i2c_device_config* 
     int address = -1;
     int ack_enable = 1;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clock-frequency", &clock_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "clock-frequency", &clock_speed));
     if (device_get_prop_int(pdev, "reg", &address) != MINI_OK)
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "i2c-address", &address));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "i2c-address", &address));
     if (address < 0)
         return MINI_ERR_INVAL;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "ack-enable", &ack_enable));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "ack-enable", &ack_enable));
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
     cfg->clock_speed_hz = (uint32_t)(clock_speed > 0 ? clock_speed : 100000);
     cfg->address = (uint32_t)address;
     cfg->own_address = (uint32_t)address;
@@ -682,7 +682,7 @@ static int i2c_vfs_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_client_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
     priv->role = role;
     priv->xfer_mode = I2C_XFER_AUTO;
@@ -713,7 +713,7 @@ static int i2c_vfs_probe(struct device* pdev)
 err_pool:
     pdev->ops = NULL;
     dev_lc_reset(device_lc(pdev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -747,8 +747,8 @@ static int i2c_vfs_remove(struct device* pdev)
     }
 
     i2c_bus_client_unregister(pdev);
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

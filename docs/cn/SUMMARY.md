@@ -27,7 +27,7 @@
 | `getting_started.md` | 依赖（CMake ≥ 3.16、`lark`、`kconfiglib`）、Kconfig 双轨、CMake 集成、两段式点火、clangd | **P0** | [cn](getting_started.md) |
 | `faq.md` | 常见问题（生成物重跑、`lark` 安装等） | P2 | [cn](faq.md) |
 | `architecture.md` | 分层 `app→board→vfs→bus→hal(weak)→vendor`、数据流、启动时序 | **P0** | [cn](architecture.md) |
-| `patterns.md` | 关键机制解剖：pre_execution 注册链 / 两段式点火 / 编译期 probe 表 / xtask 调度 / VIRQ 上下半部 / SPSC 无锁通道 / dev_lifecycle / 非阻塞状态机 | P1 | [cn](patterns.md) |
+| `patterns.md` | 关键机制解剖：mini_pre_execution 注册链 / 两段式点火 / 编译期 probe 表 / xtask 调度 / VIRQ 上下半部 / SPSC 无锁通道 / dev_lifecycle / 非阻塞状态机 | P1 | [cn](patterns.md) |
 | `ecosystem.md` | 积木型链接：`lib/` 仅 vendor FreeRTOS/RT-Thread/ETL；TinyUSB/lwIP 为 **config-time** FetchContent，其余为 link-time；已接入开源库版本清单 | **P0** | [cn](ecosystem.md) |
 
 ### 1.2 平台移植

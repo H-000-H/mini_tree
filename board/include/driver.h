@@ -29,12 +29,12 @@ extern "C"
      * @brief 遍历设备树 → 匹配 driver → 逐一 probe 初始化
      * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
      */
-    int board_driver_probe_all(void) COMPAT_WARN_UNUSED_RESULT; /* 遍历设备 → 匹配 driver → probe */
+    int board_driver_probe_all(void) MINI_WARN_UNUSED_RESULT; /* 遍历设备 → 匹配 driver → probe */
     /**
      * @brief 按 probe 逆序逐一 remove, 安全停机全部设备
      * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
      */
-    int board_driver_remove_all(void) COMPAT_WARN_UNUSED_RESULT;
+    int board_driver_remove_all(void) MINI_WARN_UNUSED_RESULT;
 
     /* dtc-lite 编译期生成 probe/remove 函数表, 运行时无需注册 */
     /**

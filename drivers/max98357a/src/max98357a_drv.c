@@ -41,18 +41,18 @@ struct max98357a_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct max98357a_device s_max98357a_pool[MAX98357A_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_max98357a_used[MAX98357A_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_max98357a_pool_ctrl COMPAT_ALIGNED(4);
+static struct max98357a_device s_max98357a_pool[MAX98357A_COUNT] MINI_ALIGNED(4);
+static uint8_t s_max98357a_used[MAX98357A_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_max98357a_pool_ctrl MINI_ALIGNED(4);
 
 static const char* const k_tag = "max98357a";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void max98357a_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void max98357a_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_max98357a_pool_ctrl, s_max98357a_used, MAX98357A_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_max98357a_pool_ctrl, s_max98357a_used, MAX98357A_COUNT));
 }
 
 /**
@@ -96,14 +96,14 @@ static int max98357a_hw_create(struct max98357a_device* amp)
     ret = device_ioctl(amp->sdn_dev, GPIO_CMD_GET_LEVEL, &amp->sdn_gpio, sizeof(amp->sdn_gpio), 0);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(device_close(amp->sdn_dev));
+        MINI_IGNORE_RESULT(device_close(amp->sdn_dev));
         return ret;
     }
 
     ret = max98357a_set_level(amp, 1);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(device_close(amp->sdn_dev));
+        MINI_IGNORE_RESULT(device_close(amp->sdn_dev));
         amp->sdn_gpio.obj = NULL;
         return ret;
     }
@@ -119,9 +119,9 @@ static void max98357a_hw_destroy(struct max98357a_device* amp)
 {
     if (!amp || !amp->hw_ready)
         return;
-    COMPAT_IGNORE_RESULT(max98357a_set_level(amp, 0));
+    MINI_IGNORE_RESULT(max98357a_set_level(amp, 0));
     if (amp->sdn_dev)
-        COMPAT_IGNORE_RESULT(device_close(amp->sdn_dev));
+        MINI_IGNORE_RESULT(device_close(amp->sdn_dev));
     amp->sdn_gpio.obj = NULL;
     amp->hw_ready = 0;
 }
@@ -136,7 +136,7 @@ static int max98357a_open(struct device* pdev, void* arg)
     int first;
     int ret;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -204,7 +204,7 @@ static int max98357a_close(struct device* pdev)
 static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, size_t arg_len,
                                     uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!amp || !arg || arg_len != sizeof(int))
         return MINI_ERR_INVAL;
     if (!amp->hw_ready)
@@ -318,9 +318,9 @@ static int max98357a_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     amp = &s_max98357a_pool[pool_idx];
-    COMPAT_MEM_SET(amp, 0, sizeof(*amp));
+    MINI_MEM_SET(amp, 0, sizeof(*amp));
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "active-level", &active));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "active-level", &active));
     amp->sdn_dev = sdn_dev;
     amp->active_level = active ? 1 : 0;
     amp->hw_ready = 0;
@@ -340,8 +340,8 @@ static int max98357a_probe(struct device* pdev)
 
 err_pool:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(amp, 0, sizeof(*amp));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_max98357a_pool_ctrl, pool_idx));
+    MINI_MEM_SET(amp, 0, sizeof(*amp));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_max98357a_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -377,8 +377,8 @@ static int max98357a_remove(struct device* pdev)
     }
 
     max98357a_hw_destroy(amp);
-    COMPAT_MEM_SET(amp, 0, sizeof(*amp));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_max98357a_pool_ctrl, pool_idx));
+    MINI_MEM_SET(amp, 0, sizeof(*amp));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_max98357a_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

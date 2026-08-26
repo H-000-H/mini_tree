@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define NEO_M8N_CMD_BASE COMPAT_MAGIC(NEO_M8N)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define NEO_M8N_CMD_BASE MINI_MAGIC(NEO_M8N)
 /** 读取 NMEA 语句（arg: struct neo_m8n_buf*） */
 #define NEO_M8N_CMD_READ_NMEA (NEO_M8N_CMD_BASE + 0x01)
 /** 命令总数 */

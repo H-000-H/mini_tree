@@ -20,8 +20,8 @@ extern "C"
 {
 #endif
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define SHT30_CMD_BASE COMPAT_MAGIC(SHT30)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define SHT30_CMD_BASE MINI_MAGIC(SHT30)
 /** 读取温度/湿度（arg: struct sht30_sample*） */
 #define SHT30_CMD_READ_TEMP_RH (SHT30_CMD_BASE + 0x01)
 /** 命令总数 */

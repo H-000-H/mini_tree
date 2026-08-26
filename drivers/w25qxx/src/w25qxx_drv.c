@@ -39,17 +39,17 @@ struct w25qxx_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct w25qxx_device s_w25qxx_pool[W25QXX_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_w25qxx_used[W25QXX_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_w25qxx_pool_ctrl COMPAT_ALIGNED(4);
+static struct w25qxx_device s_w25qxx_pool[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_w25qxx_used[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_w25qxx_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "w25qxx";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void w25qxx_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void w25qxx_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_w25qxx_pool_ctrl, s_w25qxx_used, W25QXX_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_w25qxx_pool_ctrl, s_w25qxx_used, W25QXX_POOL_COUNT));
 }
 
 /**
@@ -106,7 +106,7 @@ static void w25qxx_hw_destroy(struct w25qxx_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+        MINI_IGNORE_RESULT(device_close(dev->spi_dev));
     dev->hw_ready = 0;
 }
 
@@ -118,7 +118,7 @@ static int w25qxx_open(struct device* pdev, void* arg)
     struct w25qxx_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = w25qxx_get_drvdata(pdev);
@@ -246,7 +246,7 @@ static int w25qxx_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_w25qxx_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->spi_dev = device_get_parent(pdev);
     if (!dev->spi_dev)
     {
@@ -265,8 +265,8 @@ static int w25qxx_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_w25qxx_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_w25qxx_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -295,8 +295,8 @@ static int w25qxx_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     w25qxx_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_w25qxx_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_w25qxx_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

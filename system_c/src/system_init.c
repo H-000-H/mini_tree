@@ -70,7 +70,7 @@ void mini_tree_pre_os_init(void)
     }
 
 #ifdef CONFIG_SYSTEM_WDT
-    COMPAT_IGNORE_RESULT(system_wdt_init_iwdg(8000));
+    MINI_IGNORE_RESULT(system_wdt_init_iwdg(8000));
 #endif
 
     if (device_tree_init() != MINI_OK)
@@ -83,7 +83,7 @@ void mini_tree_pre_os_init(void)
         enter_safe_state("EventBus init failed");
         return;
     }
-    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
+    MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
 #endif
 
     /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
@@ -108,18 +108,18 @@ void mini_tree_start_tasks(void)
         SYS_LOGW(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
 
 #ifdef CONFIG_SYSTEM_WDT
-    COMPAT_IGNORE_RESULT(system_wdt_init(3000));
+    MINI_IGNORE_RESULT(system_wdt_init(3000));
 #endif
 
 #ifdef CONFIG_SYSTEM_SCRUBBER
-    COMPAT_IGNORE_RESULT(system_scrubber_init());
-    COMPAT_IGNORE_RESULT(system_scrubber_start());
+    MINI_IGNORE_RESULT(system_scrubber_init());
+    MINI_IGNORE_RESULT(system_scrubber_start());
 #endif
 
     safe_state_clear_bootloop();
 
 #ifdef CONFIG_EVENT_BUS
-    COMPAT_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
+    MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_READY, 0));
 
     /* 封表: 此后 subscribe() 全部失败, ISR 中 post() 遍历只读静态表 */
     event_bus_seal();

@@ -40,15 +40,15 @@ struct vfs_adc_priv
     int dma_pool_idx; /**< DMA 私有配置池索引 (-1 = 未分配) */
 };
 
-static struct vfs_adc_priv s_adc_priv_pool[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_adc_priv_used[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_adc_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_adc_priv s_adc_priv_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t s_adc_priv_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_adc_priv_pool_ctrl MINI_ALIGNED(4);
 
 /* DMA 私有配置池：仅 DTS 启用 dma/dma_it 模式的实例才 claim，
  * 不用 DMA 的板子零开销（不再内嵌进 struct vfs_adc_priv）。 */
-static struct hal_adc_private_cfg s_adc_dma_pool[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(32);
-static uint8_t s_adc_dma_used[ADC_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_adc_dma_pool_ctrl COMPAT_ALIGNED(4);
+static struct hal_adc_private_cfg s_adc_dma_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(32);
+static uint8_t s_adc_dma_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_adc_dma_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "vfs-adc-host";
 
 /* -------------------------------------------------------------------------- */
@@ -168,11 +168,11 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
 /**
  * @brief ADC VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_init()
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_init()
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
 }
 
 /**
@@ -248,11 +248,11 @@ static int vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
     if (device_get_prop_int(pdev, "internal-ch-enable", &tmp) == MINI_OK)
         cfg->config.internal_ch_enable = (int32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "internal-ch-select", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "internal-ch-select", &tmp));
     cfg->config.internal_ch_select = (uint32_t)tmp;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-reg-mode", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-reg-mode", &tmp));
     cfg->config.dma_reg_mode = (uint32_t)tmp;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
     cfg->config.sw_trigger = (uint32_t)tmp;
 
     if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==
@@ -341,7 +341,7 @@ static int vfs_adc_open(struct device* pdev, void* arg)
     struct vfs_adc_priv* priv;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
 
     priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
     lc = device_lc(pdev);
@@ -394,7 +394,7 @@ static int vfs_adc_close(struct device* pdev)
         return last;
 
     if (last)
-        COMPAT_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
+        MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
 
     dev_lc_close_end(lc);
     return MINI_OK;
@@ -418,7 +418,7 @@ static int vfs_adc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     int ret;
     int32_t offset;
     uint8_t index;
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -475,7 +475,7 @@ static int vfs_adc_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_adc_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
     priv->dma_pool_idx = -1;
 
@@ -496,7 +496,7 @@ static int vfs_adc_probe(struct device* pdev)
             ret = MINI_ERR_NOMEM;
             goto err_pool;
         }
-        COMPAT_MEM_SET(&s_adc_dma_pool[dma_idx], 0, sizeof(s_adc_dma_pool[dma_idx]));
+        MINI_MEM_SET(&s_adc_dma_pool[dma_idx], 0, sizeof(s_adc_dma_pool[dma_idx]));
         priv->dma_pool_idx = dma_idx;
         priv->cfg.private_cfg = &s_adc_dma_pool[dma_idx];
     }
@@ -520,7 +520,7 @@ static int vfs_adc_probe(struct device* pdev)
                                &g_adc_dma_bottom_half_work, &priv->adc);
 
     int dma_irqn = -1;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));
     interrupt_hw_enable(dma_irqn, 5);
 #endif
 
@@ -538,18 +538,18 @@ static int vfs_adc_probe(struct device* pdev)
 
 err_hardware_deinit:
     pdev->ops = NULL;
-    COMPAT_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
+    MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
 err_deinit:
     /* 解绑设备: hal_adc_device_deinit */
-    COMPAT_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
+    MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
 err_pool:
     if (priv->cfg.private_cfg != NULL)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
         priv->cfg.private_cfg = NULL;
         priv->dma_pool_idx = -1;
     }
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -580,19 +580,19 @@ static int vfs_adc_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
 
-    COMPAT_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
-    COMPAT_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
+    MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
+    MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
 
     /* 归还 DMA 私有配置 (若有) */
     if (priv->cfg.private_cfg != NULL)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
         priv->cfg.private_cfg = NULL;
         priv->dma_pool_idx = -1;
     }
 
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_adc_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
     return MINI_OK;

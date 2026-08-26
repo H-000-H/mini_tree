@@ -20,8 +20,8 @@ extern "C"
 {
 #endif
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define MPU6050_CMD_BASE COMPAT_MAGIC(MPU6050)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define MPU6050_CMD_BASE MINI_MAGIC(MPU6050)
 /** 读取加速度/陀螺仪原始值（arg: struct mpu6050_sample*） */
 #define MPU6050_CMD_READ_ACCEL_GYRO (MPU6050_CMD_BASE + 0x01)
 /** 命令总数 */

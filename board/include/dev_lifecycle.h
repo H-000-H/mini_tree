@@ -5,7 +5,7 @@
  *@author H-000-H
  *@details
  *   dev_lifecycle.h — 设备 I/O 生命周期状态机 (CAS 哨兵版, 无锁)
- *   opens / io_active 使用 COMPAT_ATOMIC_INT, -1 哨兵表示 "teardown 已锁定".
+ *   opens / io_active 使用 MINI_ATOMIC_INT, -1 哨兵表示 "teardown 已锁定".
  *   open_begin / io_begin: CAS 循环递增, 遇 -1 或 state != LIVE 直接拒绝.
  *   remove_drain: CAS opens 0→-1, 成功后保持锁定并 CAS io_active 0→-1,
  *   两阶段全部成功才返回. 第一阶段失败 (opens 临时 +1) 重试等待稳定归零;
@@ -49,9 +49,9 @@ extern "C"
 
     struct dev_lifecycle
     {
-        COMPAT_ATOMIC_INT opens; /**< 当前打开计数 (-1 = teardown 锁定) */
-        COMPAT_ATOMIC_INT io_active; /**< 当前 I/O 活跃计数 (-1 = teardown 锁定) */
-        COMPAT_ATOMIC_INT state; /**< 状态机 (dev_lc_state_t) */
+        MINI_ATOMIC_INT opens; /**< 当前打开计数 (-1 = teardown 锁定) */
+        MINI_ATOMIC_INT io_active; /**< 当前 I/O 活跃计数 (-1 = teardown 锁定) */
+        MINI_ATOMIC_INT state; /**< 状态机 (dev_lc_state_t) */
     };
 
     /**
@@ -89,7 +89,7 @@ extern "C"
      * @param[in] lc 生命周期状态机指针
      * @return 允许打开返回 MINI_OK, teardown 或未 LIVE 返回 MINI_ERR_NODEV
      */
-    int dev_lc_open_begin(struct dev_lifecycle* lc) COMPAT_WARN_UNUSED_RESULT;
+    int dev_lc_open_begin(struct dev_lifecycle* lc) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 打开操作后段: 递减 opens (与 open_begin 配对)
      * @param[in] lc 生命周期状态机指针
@@ -106,7 +106,7 @@ extern "C"
      * @param[in] lc 生命周期状态机指针
      * @return 允许关闭返回 MINI_OK, 计数非法返回 MINI_ERR_INVAL
      */
-    int dev_lc_close_begin(struct dev_lifecycle* lc) COMPAT_WARN_UNUSED_RESULT;
+    int dev_lc_close_begin(struct dev_lifecycle* lc) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭操作后段: 递增 opens (与 close_begin 配对)
      * @param[in] lc 生命周期状态机指针
@@ -118,7 +118,7 @@ extern "C"
      * @param[in] lc 生命周期状态机指针
      * @return 允许 I/O 返回 MINI_OK, teardown 或未 LIVE 返回 MINI_ERR_NODEV
      */
-    int dev_lc_io_begin(struct dev_lifecycle* lc) COMPAT_WARN_UNUSED_RESULT;
+    int dev_lc_io_begin(struct dev_lifecycle* lc) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I/O 操作后段: 递减 io_active (与 io_begin 配对)
      * @param[in] lc 生命周期状态机指针
@@ -138,7 +138,7 @@ extern "C"
      * @return 排空完成返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
     int dev_lc_remove_drain(struct dev_lifecycle* lc,
-                            uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                            uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 移除完成: 复位计数器, 回到 UNINITIALIZED

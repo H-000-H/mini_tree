@@ -37,7 +37,7 @@ extern "C"
     /* -------------------------------------------------------------------------- */
     /* ioctl */
 /* -------------------------------------------------------------------------- */
-#define USB_CMD_BASE COMPAT_MAGIC(USB)
+#define USB_CMD_BASE MINI_MAGIC(USB)
 #define USB_CMD_SET_XFER_MODE (USB_CMD_BASE + 0x01) /**< 设置后续 write/read 的 xfer_mode */
 #define USB_CMD_GET_XFER_MODE (USB_CMD_BASE + 0x02) /**< 查询当前 xfer_mode */
 #define USB_CMD_COUNT 2

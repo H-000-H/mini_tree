@@ -165,13 +165,13 @@ extern "C"
      * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
      */
     int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
-                              const struct hal_i2s_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                              const struct hal_i2s_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 I2S 总线主机, 释放硬件资源
      * @param[in] host I2S host 对象指针
      * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 绑定 I2S 设备与主机并应用 client 配置
      * @param[in] pdev I2S 设备对象指针
@@ -180,25 +180,25 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
      */
     int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host,
-                         const struct hal_i2s_device_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                         const struct hal_i2s_device_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 解绑 I2S 设备并复位状态
      * @param[in] pdev I2S 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2s_dev_deinit(struct hal_i2s_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2s_dev_deinit(struct hal_i2s_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 打开 I2S 设备硬件 (引用计数 +1)
      * @param[in] pdev I2S 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2s_dev_hw_open(struct hal_i2s_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2s_dev_hw_open(struct hal_i2s_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 I2S 设备硬件 (引用计数 -1)
      * @param[in] pdev I2S 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2s_dev_hw_close(struct hal_i2s_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2s_dev_hw_close(struct hal_i2s_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2S 同步传输 (16-bit 采样)
      * @param[in] pdev I2S 设备对象指针
@@ -210,7 +210,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx, size_t samples,
-                     uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t timeout_ms, uint32_t xfer_mode) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 设置 DMA HT/TC 中断模式 (ioctl; circular 运行中返回 BUSY)
@@ -219,7 +219,7 @@ extern "C"
      * @return 成功返回 MINI_OK, circular 运行中返回 MINI_ERR_BUSY
      */
     int hal_i2s_set_dma_irq_mode(struct hal_i2s_dev* pdev,
-                                 uint32_t irq_mode) COMPAT_WARN_UNUSED_RESULT;
+                                 uint32_t irq_mode) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 查询 DMA HT/TC 中断模式
      * @param[in] pdev I2S 设备对象指针
@@ -227,7 +227,7 @@ extern "C"
      * @return 成功返回 MINI_OK, pdev 或 irq_mode 为空返回 MINI_ERR_INVAL
      */
     int hal_i2s_get_dma_irq_mode(struct hal_i2s_dev* pdev,
-                                 uint32_t* irq_mode) COMPAT_WARN_UNUSED_RESULT;
+                                 uint32_t* irq_mode) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 启动 DMA 循环缓冲传输
@@ -237,13 +237,13 @@ extern "C"
      * @return 成功返回 MINI_OK, DMA 未配置返回 MINI_ERR_NOTSUPP
      */
     int hal_i2s_dma_circ_start(struct hal_i2s_dev* pdev, int tx_enable,
-                               int rx_enable) COMPAT_WARN_UNUSED_RESULT;
+                               int rx_enable) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 停止 DMA 循环缓冲传输
      * @param[in] pdev I2S 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_i2s_dma_circ_stop(struct hal_i2s_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_i2s_dma_circ_stop(struct hal_i2s_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 向 DMA 循环 TX 缓冲写入采样
      * @param[in] pdev I2S 设备对象指针
@@ -252,7 +252,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 缓冲满返回 MINI_ERR_NOMEM, 失败返回 VFS_ERR_*
      */
     int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data,
-                               uint32_t samples) COMPAT_WARN_UNUSED_RESULT;
+                               uint32_t samples) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 从 DMA 循环 RX 缓冲读取采样
      * @param[in] pdev I2S 设备对象指针
@@ -261,7 +261,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 数据不足返回 MINI_ERR_AGAIN, 失败返回 VFS_ERR_*
      */
     int hal_i2s_dma_circ_read(struct hal_i2s_dev* pdev, uint16_t* data,
-                              uint32_t samples) COMPAT_WARN_UNUSED_RESULT;
+                              uint32_t samples) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief I2S 异步传输 (参数存档占位; DMA+IT 启动后续补)
@@ -275,7 +275,7 @@ extern "C"
      */
     int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
                                size_t samples, hal_i2s_callback_t cb,
-                               void* userdata) COMPAT_WARN_UNUSED_RESULT;
+                               void* userdata) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 轮询异步传输完成 (占位)
      * @param[in] pdev I2S 设备对象指针
@@ -283,7 +283,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int hal_i2s_transfer_poll(struct hal_i2s_dev* pdev,
-                              uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                              uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

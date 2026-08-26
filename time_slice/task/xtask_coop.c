@@ -37,7 +37,7 @@ static x_task* s_current_task;
 /** @brief 当前系统滴答 (协调式读 g_scheduler.tick_count) */
 uint32_t x_scheduler_now(void)
 {
-    return COMPAT_ATOMIC_LOAD(&g_scheduler.tick_count, COMPAT_MO_RELAXED);
+    return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED);
 }
 
 /** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
@@ -45,9 +45,9 @@ x_task* x_scheduler_current(void) { return s_current_task; }
 #endif /* CONFIG_XTASK_COROUTINE */
 
 /**
- * @brief 时间片调度器早期初始化 (pre_execution 自动调用)
+ * @brief 时间片调度器早期初始化 (mini_pre_execution 自动调用)
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void xscheduler_early_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void xscheduler_early_init(void)
 {
     x_scheduler_init(&g_scheduler);
     s_priv.tim = NULL;
@@ -72,13 +72,13 @@ void xscheduler_start(void)
         if (s_priv.tim != NULL)
         {
 #ifdef CONFIG_VIRQ
-            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
+            MINI_IGNORE_RESULT(device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
             interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL, &s_priv);
 
             int irqn = -1;
             int priority = 5;
-            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "irqn", &irqn));
-            COMPAT_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
+            MINI_IGNORE_RESULT(device_get_prop_int(tick_dev, "irqn", &irqn));
+            MINI_IGNORE_RESULT(device_get_prop_int(tick_dev, "nvic-priority", &priority));
             interrupt_hw_enable(irqn, (uint32_t)priority);
 #endif
             return;
@@ -114,7 +114,7 @@ void hal_systick_irq_handler(void)
  */
 int scheduler_tim_isr_top(void* context, uint16_t irq_num)
 {
-    COMPAT_IGNORE_RESULT(irq_num);
+    MINI_IGNORE_RESULT(irq_num);
     struct x_coop_priv* priv = (struct x_coop_priv*)context;
     if (priv == NULL)
         return MINI_IRQ_ENTRY_NOBOTTOM;
@@ -142,12 +142,12 @@ x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb
 
     task->name = name;
     task->xTask_cb = cb;
-    COMPAT_ATOMIC_STORE(&task->period, period_ms, COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->next_running,
-                        COMPAT_ATOMIC_LOAD(&g_scheduler.tick_count, COMPAT_MO_RELAXED) + period_ms,
-                        COMPAT_MO_RELAXED);
-    COMPAT_ATOMIC_STORE(&task->is_running, false,
-                        COMPAT_MO_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
+    MINI_ATOMIC_STORE(&task->period, period_ms, MINI_RELAXED);
+    MINI_ATOMIC_STORE(&task->next_running,
+                        MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED) + period_ms,
+                        MINI_RELAXED);
+    MINI_ATOMIC_STORE(&task->is_running, false,
+                        MINI_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
 #ifdef CONFIG_XTASK_COROUTINE
     task->pt_line = 0; /**< 协程让出点复位 (首次进入 case 0) */
 #endif
@@ -167,7 +167,7 @@ int x_scheduler_tick(x_scheduler* sched, unsigned int ms)
 {
     if (!sched)
         return MINI_ERR_INVAL;
-    COMPAT_ATOMIC_ADD_FETCH(&sched->tick_count, ms, COMPAT_MO_RELAXED);
+    MINI_ATOMIC_ADD_FETCH(&sched->tick_count, ms, MINI_RELAXED);
     return MINI_OK;
 }
 
@@ -189,11 +189,11 @@ int x_task_run(x_scheduler* sched)
         list_node* next = current->next;
         struct x_task* task = container_of(current, struct x_task, node);
 
-        if (!COMPAT_ATOMIC_LOAD(&task->is_running, COMPAT_MO_RELAXED)) /**< 非运行状态才允许进入 */
+        if (!MINI_ATOMIC_LOAD(&task->is_running, MINI_RELAXED)) /**< 非运行状态才允许进入 */
         {
-            COMPAT_ATOMIC_STORE(&task->is_running, true, COMPAT_MO_RELAXED);
-            uint32_t now = COMPAT_ATOMIC_LOAD(&sched->tick_count, COMPAT_MO_RELAXED);
-            uint32_t next_run = COMPAT_ATOMIC_LOAD(&task->next_running, COMPAT_MO_RELAXED);
+            MINI_ATOMIC_STORE(&task->is_running, true, MINI_RELAXED);
+            uint32_t now = MINI_ATOMIC_LOAD(&sched->tick_count, MINI_RELAXED);
+            uint32_t next_run = MINI_ATOMIC_LOAD(&task->next_running, MINI_RELAXED);
 
             if ((int32_t)(now - next_run) >= 0)
             {
@@ -204,20 +204,20 @@ int x_task_run(x_scheduler* sched)
                 if (task->pt_line == 0)
                 {
                     /* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
-                    COMPAT_ATOMIC_STORE(&task->next_running,
-                                        now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),
-                                        COMPAT_MO_RELAXED);
+                    MINI_ATOMIC_STORE(&task->next_running,
+                                        now + MINI_ATOMIC_LOAD(&task->period, MINI_RELAXED),
+                                        MINI_RELAXED);
                 }
                 /* else: 协程挂起中, PT_DELAY 已设 next_running, 保持到期时刻 */
 #else
                 task->xTask_cb(task);
-                COMPAT_ATOMIC_STORE(&task->next_running,
-                                    now + COMPAT_ATOMIC_LOAD(&task->period, COMPAT_MO_RELAXED),
-                                    COMPAT_MO_RELAXED);
+                MINI_ATOMIC_STORE(&task->next_running,
+                                    now + MINI_ATOMIC_LOAD(&task->period, MINI_RELAXED),
+                                    MINI_RELAXED);
 #endif
             }
             /* 无论到期与否都复位：否则未到期分支会把 is_running 卡在 true，任务永不调度 */
-            COMPAT_ATOMIC_STORE(&task->is_running, false, COMPAT_MO_RELAXED);
+            MINI_ATOMIC_STORE(&task->is_running, false, MINI_RELAXED);
         }
         current = next;
     }

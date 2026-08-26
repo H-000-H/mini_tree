@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define AHT20_CMD_BASE COMPAT_MAGIC(AHT20)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define AHT20_CMD_BASE MINI_MAGIC(AHT20)
 /** 读取温度/湿度（arg: struct aht20_sample*） */
 #define AHT20_CMD_READ_TEMP_RH (AHT20_CMD_BASE + 0x01)
 /** 命令总数 */

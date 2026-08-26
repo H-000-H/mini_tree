@@ -40,7 +40,7 @@
 | Document | Description |
 | :--- | :--- |
 | [architecture.md](architecture.md) | Layers and data flow |
-| [patterns.md](patterns.md) | Key mechanisms anatomy: pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines |
+| [patterns.md](patterns.md) | Key mechanisms anatomy: mini_pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines |
 | [ecosystem.md](ecosystem.md) | Brick-style linking: integrated open-source libraries and how to extend |
 | [design_decisions.md](design_decisions.md) | Design decisions still in force and author preferences |
 | [references.md](references.md) | External references: ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |

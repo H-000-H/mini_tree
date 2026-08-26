@@ -222,7 +222,7 @@ private:
 
     CmdMap m_commands; /**< 命令名 → 处理节点 映射 */
     mutable struct osal_spinlock* m_lock; /**< 自旋锁指针 (保护并发访问) */
-    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4); /**< 自旋锁存储区 */
+    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] MINI_ALIGNED(4); /**< 自旋锁存储区 */
 #else
     /* -------------------------------------------------------------------------- */
     /* Bare-metal 后端: 普通数组 + const char* + 无锁 */
@@ -266,7 +266,7 @@ inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&
                 return false;
         }
         Args typed_arg;
-        COMPAT_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
+        MINI_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
         auto* ctx = static_cast<Ctx*>(raw_ctx);
         return handler(typed_arg, ctx);
     };
@@ -322,7 +322,7 @@ inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&
         if (raw_ctx == nullptr)
             return false;
         Args typed_arg;
-        COMPAT_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
+        MINI_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
         const auto* ctx = static_cast<const Ctx*>(raw_ctx);
         return handler(typed_arg, ctx);
     };

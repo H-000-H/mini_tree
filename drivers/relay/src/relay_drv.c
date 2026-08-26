@@ -39,17 +39,17 @@ struct relay_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct relay_device s_relay_pool[RELAY_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_relay_used[RELAY_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_relay_pool_ctrl COMPAT_ALIGNED(4);
+static struct relay_device s_relay_pool[RELAY_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_relay_used[RELAY_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_relay_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "relay";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void relay_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void relay_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_relay_pool_ctrl, s_relay_used, RELAY_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_relay_pool_ctrl, s_relay_used, RELAY_POOL_COUNT));
 }
 
 /**
@@ -73,7 +73,7 @@ static int relay_gpio_on(struct relay_device* dev, struct device* g, struct vfs_
     ret = device_ioctl(g, GPIO_CMD_GET_LEVEL, a, sizeof(*a), 0);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(device_close(g));
+        MINI_IGNORE_RESULT(device_close(g));
         return ret;
     }
     return MINI_OK;
@@ -106,7 +106,7 @@ static void relay_hw_destroy(struct relay_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->gdev)
-        COMPAT_IGNORE_RESULT(device_close(dev->gdev));
+        MINI_IGNORE_RESULT(device_close(dev->gdev));
     dev->gpio.obj = NULL;
     dev->hw_ready = 0;
 }
@@ -119,7 +119,7 @@ static int relay_open(struct device* pdev, void* arg)
     struct relay_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = relay_get_drvdata(pdev);
@@ -184,7 +184,7 @@ struct relay_ioctl_map
  */
 static int relay_cmd(struct relay_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    COMPAT_IGNORE_RESULT(ms);
+    MINI_IGNORE_RESULT(ms);
     if (!dev->hw_ready || !arg || len != sizeof(int))
         return MINI_ERR_INVAL;
     dev->gpio.level = (*(int*)arg) ? 1 : 0;
@@ -243,7 +243,7 @@ static int relay_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_relay_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->gdev = device_get_phandle_dev(pdev, "ctl-gpio");
     if (IS_ERR(dev->gdev))
     {
@@ -262,8 +262,8 @@ static int relay_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_relay_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_relay_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -292,8 +292,8 @@ static int relay_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     relay_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_relay_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_relay_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

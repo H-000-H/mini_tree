@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define NRF24L01_CMD_BASE COMPAT_MAGIC(NRF24L01)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define NRF24L01_CMD_BASE MINI_MAGIC(NRF24L01)
 /** 写寄存器（arg: struct nrf24l01_reg*） */
 #define NRF24L01_CMD_WRITE_REG (NRF24L01_CMD_BASE + 0x01)
 /** 读寄存器（arg: struct nrf24l01_reg*，val 回填） */

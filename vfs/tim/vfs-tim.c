@@ -29,9 +29,9 @@ struct vfs_tim_priv
     int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_tim_priv s_tim_priv_pool[TIM_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_tim_priv_used[TIM_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_tim_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_tim_priv s_tim_priv_pool[TIM_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t s_tim_priv_used[TIM_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_tim_priv_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "vfs-tim-host";
 
 /**
@@ -76,8 +76,8 @@ typedef struct
  */
 static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_force_stop(&priv->tim);
 }
 
@@ -90,8 +90,8 @@ static int tim_cmd_stop(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
  */
 static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_base_stop(&priv->tim);
 }
 
@@ -104,8 +104,8 @@ static int tim_cmd_pause(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
  */
 static int tim_cmd_resume(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_base_start(&priv->tim);
 }
 
@@ -232,8 +232,8 @@ static int tim_cmd_get_autoreload(struct vfs_tim_priv* priv, void* arg, size_t a
  */
 static int tim_cmd_clear_update_flag(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_clear_update_flag(&priv->tim);
 }
 
@@ -330,8 +330,8 @@ static int tim_cmd_get_counter_mode(struct vfs_tim_priv* priv, void* arg, size_t
  */
 static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_enable_arr_preload(&priv->tim);
 }
 
@@ -344,8 +344,8 @@ static int tim_cmd_enable_arr_preload(struct vfs_tim_priv* priv, void* arg, size
  */
 static int tim_cmd_disable_arr_preload(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_disable_arr_preload(&priv->tim);
 }
 
@@ -386,8 +386,8 @@ static int tim_cmd_encoder_start(struct vfs_tim_priv* priv, void* arg, size_t ar
  */
 static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_tim_hall_start(&priv->tim);
 }
 
@@ -400,8 +400,8 @@ static int tim_cmd_hall_start(struct vfs_tim_priv* priv, void* arg, size_t arg_l
  */
 static int tim_cmd_start(struct vfs_tim_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     /* start 根据 mode 分发: encoder/hall 走专用启动, 其余走 base_start */
     switch (priv->cfg.mode)
     {
@@ -450,9 +450,9 @@ static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
 /**
  * @brief TIM Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init()
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init()
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_tim_priv_pool_ctrl, s_tim_priv_used, TIM_VFS_PRIV_COUNT));
 }
 
@@ -479,11 +479,11 @@ static int vfs_tim_priv_parse_dts(struct device* pdev, struct hal_tim_host_confi
         return MINI_ERR_INVAL;
 
     /* 选填字段 — 属性不存在时字段保持 0 */
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         device_get_prop_int(pdev, "clock-division", (int*)&cfg->base.clock_division));
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         device_get_prop_int(pdev, "repetition-counter", (int*)&cfg->base.repetition_counter));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "active-chn-mask", (int*)&cfg->active_chn_mask));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "active-chn-mask", (int*)&cfg->active_chn_mask));
 
     /* 宽容解析: 缺字段记 warn, 用默认值 0, 不 fail 整个初始化 */
     switch (cfg->mode)
@@ -743,7 +743,7 @@ static int vfs_tim_open(struct device* pdev, void* arg)
     struct vfs_tim_priv* priv;
     struct dev_lifecycle* lc;
     int first;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -792,7 +792,7 @@ static int vfs_tim_close(struct device* pdev)
         return last;
 
     if (last)
-        COMPAT_IGNORE_RESULT(hal_tim_close(&priv->tim));
+        MINI_IGNORE_RESULT(hal_tim_close(&priv->tim));
 
     dev_lc_close_end(lc);
     return MINI_OK;
@@ -816,7 +816,7 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     int ret;
     struct dev_lifecycle* lc;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -858,8 +858,8 @@ static int vfs_tim_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
  */
 static int vfs_tim_base_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     struct vfs_tim_priv* priv;
@@ -891,8 +891,8 @@ static int vfs_tim_base_write(struct device* pdev, const void* buf, size_t len, 
 {
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
-    COMPAT_IGNORE_RESULT(timeout_ms);
-    COMPAT_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(len);
     struct vfs_tim_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
@@ -1005,7 +1005,7 @@ static int vfs_tim_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_tim_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     if (vfs_tim_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
@@ -1026,9 +1026,9 @@ static int vfs_tim_probe(struct device* pdev)
             ret = MINI_ERR_INVAL;
             goto err_pool;
         }
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "clk-periph", &clk_periph));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "interrupt-mask", &int_mask));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "clk-periph", &clk_periph));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "interrupt-mask", &int_mask));
         priv->cfg.tim_handle = (uintptr_t)hw_instance;
         priv->cfg.clk_periph = (uint32_t)clk_periph;
         priv->cfg.irqn = irqn;
@@ -1056,9 +1056,9 @@ static int vfs_tim_probe(struct device* pdev)
 
 err_deinit:
     pdev->ops = NULL;
-    COMPAT_IGNORE_RESULT(hal_tim_device_deinit(&priv->tim));
+    MINI_IGNORE_RESULT(hal_tim_device_deinit(&priv->tim));
 err_pool:
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_tim_priv_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_tim_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -1092,11 +1092,11 @@ static int vfs_tim_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
 
-    COMPAT_IGNORE_RESULT(hal_tim_close(&priv->tim));
-    COMPAT_IGNORE_RESULT(hal_tim_device_deinit(&priv->tim));
+    MINI_IGNORE_RESULT(hal_tim_close(&priv->tim));
+    MINI_IGNORE_RESULT(hal_tim_device_deinit(&priv->tim));
 
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_tim_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_tim_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
     return MINI_OK;

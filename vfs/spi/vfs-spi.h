@@ -38,7 +38,7 @@ extern "C"
 /** @defgroup spi_vfs_ioctl SPI VFS ioctl 命令
  *  @{
  */
-#define SPI_CMD_BASE COMPAT_MAGIC(SPI)
+#define SPI_CMD_BASE MINI_MAGIC(SPI)
 #define SPI_CMD_TRANSFER SPI_CMD_BASE + 0x01 /**< Master 同步全双工 (arg.xfer_mode 可选路径) */
 #define SPI_CMD_QUEUE_TX SPI_CMD_BASE + 0x02 /**< Slave: 入队发送 */
 #define SPI_CMD_GET_TRANS_RESULT SPI_CMD_BASE + 0x03 /**< Slave: 取传输结果 */

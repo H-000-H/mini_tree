@@ -26,7 +26,7 @@ extern "C"
 {
 #endif
 
-#define WWDG_CMD_BASE COMPAT_MAGIC(WWDG)
+#define WWDG_CMD_BASE MINI_MAGIC(WWDG)
 #define WWDG_CMD_FEED (WWDG_CMD_BASE + 0x01) /**< 窗口内喂狗 */
 #define WWDG_CMD_COUNT 1
 

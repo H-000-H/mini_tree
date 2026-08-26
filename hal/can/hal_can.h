@@ -61,7 +61,7 @@ extern "C"
         uint8_t __pad; /**< 对齐填充 */
         uint8_t __res0; /**< 保留 */
         uint8_t __res1; /**< 保留 */
-        uint8_t data[CAN_MAX_DLEN] COMPAT_ALIGNED(8); /**< 载荷 */
+        uint8_t data[CAN_MAX_DLEN] MINI_ALIGNED(8); /**< 载荷 */
     };
 
 /** 过滤器模式 / 宽度 */
@@ -152,7 +152,7 @@ extern "C"
     struct hal_can_bus_host
     {
         struct hal_can_bus_config cfg; /**< 总线配置 (DTSI 直投) */
-        struct hal_can_hcan_blob hcan_storage COMPAT_ALIGNED(8); /**< 厂商句柄存储 */
+        struct hal_can_hcan_blob hcan_storage MINI_ALIGNED(8); /**< 厂商句柄存储 */
         uintptr_t can; /**< 缓存 cfg.can, fast path */
         int hw_idx; /**< host 池下标 */
         int ref_count; /**< 引用计数 */
@@ -177,25 +177,25 @@ extern "C"
      * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
      */
     int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx,
-                              const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                              const struct hal_can_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 CAN 总线主机, 释放硬件资源
      * @param[in] host CAN 主机对象指针
      * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
      */
-    int hal_can_bus_host_deinit(struct hal_can_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_bus_host_deinit(struct hal_can_bus_host* host) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 打开 CAN 设备硬件 (引用计数 +1, 首次触发底层 init)
      * @param[in] pdev CAN 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_can_dev_hw_open(struct hal_can_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_dev_hw_open(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 CAN 设备硬件 (引用计数 -1, 归零触发底层 deinit)
      * @param[in] pdev CAN 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_can_dev_hw_close(struct hal_can_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_dev_hw_close(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 绑定 CAN 设备与所属主机
      * @param[in] pdev CAN 设备对象指针
@@ -203,13 +203,13 @@ extern "C"
      * @return 成功返回 MINI_OK, pdev 或 host 为空返回 MINI_ERR_INVAL
      */
     int hal_can_dev_init(struct hal_can_dev* pdev,
-                         struct hal_can_bus_host* host) COMPAT_WARN_UNUSED_RESULT;
+                         struct hal_can_bus_host* host) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 解绑 CAN 设备并复位状态
      * @param[in] pdev CAN 设备对象指针
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int hal_can_dev_deinit(struct hal_can_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_can_dev_deinit(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 发送一帧经典 CAN
@@ -219,7 +219,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 非法帧返回 MINI_ERR_INVAL
      */
     int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame,
-                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                         uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 从指定 FIFO 接收一帧经典 CAN
@@ -230,20 +230,20 @@ extern "C"
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, FIFO 非法返回 MINI_ERR_INVAL
      */
     int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo,
-                        uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                        uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 配置硬件过滤器 (作用于 host/控制器)
      */
     int hal_can_filter_config(struct hal_can_bus_host* host,
-                              const struct hal_can_filter_config* filter) COMPAT_WARN_UNUSED_RESULT;
+                              const struct hal_can_filter_config* filter) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查询控制器状态
      * @param[out] out_state 输出 HAL_CAN_STATE_*
      */
     int hal_can_get_state(struct hal_can_bus_host* host,
-                          uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
+                          uint32_t* out_state) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

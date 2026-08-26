@@ -58,7 +58,7 @@ void enter_safe_state(const char* reason)
     (void)reason;
 
     /* 平台具体硬件闭锁 (PWM/I2S/SPI 停止, LED, 蜂鸣器) */
-    COMPAT_IGNORE_RESULT(hal_platform_critical_hardware_lock());
+    MINI_IGNORE_RESULT(hal_platform_critical_hardware_lock());
 
     /* 冻结 OS (单向不可恢复) */
     osal_sched_freeze();

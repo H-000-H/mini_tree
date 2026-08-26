@@ -37,7 +37,7 @@ int network_transport_disconnect(struct NetworkContext* context)
     if (context == NULL || context->tcp_client == NULL)
         return NET_ERR_INVAL;
 
-    COMPAT_IGNORE_RESULT(tcp_client_disconnect(context->tcp_client));
+    MINI_IGNORE_RESULT(tcp_client_disconnect(context->tcp_client));
     return NET_OK;
 }
 

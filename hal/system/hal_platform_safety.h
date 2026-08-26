@@ -28,7 +28,7 @@ extern "C"
      *   - 启动蜂鸣器报警 (2Hz 方波)
      *
      * @return MINI_OK 成功; 负的 VFS_ERR_* (如 MINI_ERR_IO) 表示某步失败.
-     * 调用方处于安全停机路径, 通常忽略返回值 (COMPAT_IGNORE_RESULT).
+     * 调用方处于安全停机路径, 通常忽略返回值 (MINI_IGNORE_RESULT).
      */
     int hal_platform_critical_hardware_lock(void);
 

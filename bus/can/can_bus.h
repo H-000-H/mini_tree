@@ -42,13 +42,13 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int can_bus_host_init(struct device* pdev,
-                          const struct hal_can_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                          const struct hal_can_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief CAN host 反初始化 (ref_count > 0 时返回 BUSY)
      * @param[in] pdev controller device (host)
      * @return 成功返回 MINI_OK, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
      */
-    int can_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int can_bus_host_deinit(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*Client API (VFS 层调用)*/
@@ -60,7 +60,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int can_bus_client_register(struct device* pdev,
-                                struct can_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+                                struct can_bus_client** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 注销 CAN client 并递减 host 引用计数 (ref_count -1, 清零槽位)
      * @param[in] pdev client device
@@ -72,13 +72,13 @@ extern "C"
      * @param[in] pdev client device
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int can_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int can_bus_open(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 CAN client 硬件 (幂等)
      * @param[in] pdev client device
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int can_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int can_bus_close(struct device* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief CAN 发送一帧
@@ -88,7 +88,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int can_bus_transmit(struct device* pdev, const struct can_frame* frame,
-                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                         uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief CAN 从指定 FIFO 接收一帧
      * @param[in] pdev client device
@@ -98,7 +98,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 失败返回 VFS_ERR_*
      */
     int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
-                        uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                        uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 配置 CAN 过滤器
      * @param[in] pdev client device
@@ -106,14 +106,14 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int can_bus_filter_config(struct device* pdev,
-                              const struct hal_can_filter_config* filter) COMPAT_WARN_UNUSED_RESULT;
+                              const struct hal_can_filter_config* filter) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 查询 CAN 控制器状态 (error-active / passive / bus-off / stopped)
      * @param[in] pdev client device
      * @param[out] out_state 输出 HAL_CAN_STATE_*
      */
-    int can_bus_get_state(struct device* pdev, uint32_t* out_state) COMPAT_WARN_UNUSED_RESULT;
+    int can_bus_get_state(struct device* pdev, uint32_t* out_state) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

@@ -40,17 +40,17 @@ struct rc522_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct rc522_device s_rc522_pool[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_rc522_used[RC522_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_rc522_pool_ctrl COMPAT_ALIGNED(4);
+static struct rc522_device s_rc522_pool[RC522_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_rc522_used[RC522_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_rc522_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "rc522";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void rc522_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void rc522_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_rc522_pool_ctrl, s_rc522_used, RC522_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_rc522_pool_ctrl, s_rc522_used, RC522_POOL_COUNT));
 }
 
 /**
@@ -108,7 +108,7 @@ static void rc522_hw_destroy(struct rc522_device* dev)
         return;
 
     if (dev->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+        MINI_IGNORE_RESULT(device_close(dev->spi_dev));
     dev->hw_ready = 0;
 }
 
@@ -120,7 +120,7 @@ static int rc522_open(struct device* pdev, void* arg)
     struct rc522_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = rc522_get_drvdata(pdev);
@@ -330,8 +330,8 @@ static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* s
 static int rc522_cmd_init(struct rc522_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     int ret;
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(len);
     if (!dev->hw_ready)
         return MINI_ERR_INVAL;
     ret = rc522_wreg(dev, RC522_REG_COMMAND, RC522_OP_SOFT_RESET, timeout_ms);
@@ -451,7 +451,7 @@ static int rc522_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_rc522_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->spi_dev = device_get_parent(pdev);
     if (!dev->spi_dev)
     {
@@ -470,8 +470,8 @@ static int rc522_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -500,8 +500,8 @@ static int rc522_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     rc522_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_rc522_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

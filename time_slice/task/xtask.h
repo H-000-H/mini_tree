@@ -40,7 +40,7 @@ extern "C"
      * @brief 初始化链表节点 (自环)
      * @param[in] node 节点
      */
-    COMPAT_STATIC_INLINE int list_init(list_node* node)
+    MINI_STATIC_INLINE int list_init(list_node* node)
     {
         node->next = node;
         node->prev = node;
@@ -53,7 +53,7 @@ extern "C"
      * @param[in] next 后继
      * @param[in] prev 前驱
      */
-    COMPAT_STATIC_INLINE int list_add(list_node* new_node, list_node* next, list_node* prev)
+    MINI_STATIC_INLINE int list_add(list_node* new_node, list_node* next, list_node* prev)
     {
         next->prev = new_node;
         new_node->prev = prev;
@@ -67,7 +67,7 @@ extern "C"
      * @param[in] new_node 新节点
      * @param[in] head 链表头
      */
-    COMPAT_STATIC_INLINE int list_add_tail(list_node* new_node, list_node* head)
+    MINI_STATIC_INLINE int list_add_tail(list_node* new_node, list_node* head)
     {
         return list_add(new_node, head, head->prev);
     }
@@ -76,7 +76,7 @@ extern "C"
      * @brief 从链表摘下节点 (自我删除)
      * @param[in] node 节点
      */
-    COMPAT_STATIC_INLINE void list_del(list_node* node)
+    MINI_STATIC_INLINE void list_del(list_node* node)
     {
         node->prev->next = node->next;
         node->next->prev = node->prev;
@@ -89,7 +89,7 @@ extern "C"
      * @param[in] head 链表头
      * @return true 空; false 非空
      */
-    COMPAT_STATIC_INLINE bool list_empty(const list_node* head) { return head->next == head; }
+    MINI_STATIC_INLINE bool list_empty(const list_node* head) { return head->next == head; }
 
     /* -------------------------------------------------------------------------- */
     /* 任务与调度器 */
@@ -100,9 +100,9 @@ extern "C"
     {
         const char* name; /**< 任务名 */
         void (*xTask_cb)(struct x_task* param); /**< 任务回调 */
-        COMPAT_ATOMIC_UINT period; /**< 周期 (ms) */
-        COMPAT_ATOMIC_UINT next_running; /**< 下次到期时刻 (tick) */
-        COMPAT_ATOMIC_BOOL is_running; /**< 运行中标志 (重入保护) */
+        MINI_ATOMIC_UINT period; /**< 周期 (ms) */
+        MINI_ATOMIC_UINT next_running; /**< 下次到期时刻 (tick) */
+        MINI_ATOMIC_BOOL is_running; /**< 运行中标志 (重入保护) */
 #ifdef CONFIG_XTASK_COROUTINE
         unsigned int pt_line; /**< protothread 让出点行号 (0 = 非协程/协程完成) */
 #endif
@@ -112,7 +112,7 @@ extern "C"
     /** 调度器 (coop/preempt 共用契约) */
     typedef struct x_scheduler
     {
-        COMPAT_ATOMIC_UINT tick_count; /**< 系统滴答计数 */
+        MINI_ATOMIC_UINT tick_count; /**< 系统滴答计数 */
         list_node task_list_head; /**< 任务链表头 */
     } x_scheduler;
 
@@ -122,9 +122,9 @@ extern "C"
      * @brief 初始化调度器
      * @param[in] sched 调度器
      */
-    COMPAT_STATIC_INLINE void x_scheduler_init(x_scheduler* sched)
+    MINI_STATIC_INLINE void x_scheduler_init(x_scheduler* sched)
     {
-        COMPAT_ATOMIC_STORE(&sched->tick_count, 0, COMPAT_MO_RELAXED);
+        MINI_ATOMIC_STORE(&sched->tick_count, 0, MINI_RELAXED);
         list_init(&sched->task_list_head);
     }
 
@@ -162,13 +162,13 @@ extern "C"
         case 0:
 #define PT_YIELD(task)                                                                             \
     (task)->pt_line = __LINE__;                                                                    \
-    COMPAT_FALLTHROUGH;                                                                            \
+    MINI_FALLTHROUGH;                                                                            \
     case __LINE__:
 #define PT_WAIT_UNTIL(task, cond)                                                                  \
     do                                                                                             \
     {                                                                                              \
         (task)->pt_line = __LINE__;                                                                \
-        COMPAT_FALLTHROUGH;                                                                        \
+        MINI_FALLTHROUGH;                                                                        \
     case __LINE__:                                                                                 \
         if (!(cond))                                                                               \
         {                                                                                          \
@@ -178,12 +178,12 @@ extern "C"
 #define PT_DELAY(task, ms)                                                                         \
     do                                                                                             \
     {                                                                                              \
-        COMPAT_ATOMIC_STORE(&(task)->next_running, x_scheduler_now() + (ms), COMPAT_MO_RELAXED);   \
+        MINI_ATOMIC_STORE(&(task)->next_running, x_scheduler_now() + (ms), MINI_RELAXED);   \
         (task)->pt_line = __LINE__;                                                                \
-        COMPAT_FALLTHROUGH;                                                                        \
+        MINI_FALLTHROUGH;                                                                        \
     case __LINE__:                                                                                 \
         if ((int32_t)(x_scheduler_now() -                                                          \
-                      COMPAT_ATOMIC_LOAD(&(task)->next_running, COMPAT_MO_RELAXED)) < 0)           \
+                      MINI_ATOMIC_LOAD(&(task)->next_running, MINI_RELAXED)) < 0)           \
         {                                                                                          \
             return;                                                                                \
         }                                                                                          \

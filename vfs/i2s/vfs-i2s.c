@@ -31,7 +31,7 @@ struct vfs_i2s_host_priv
 {
     struct hal_i2s_bus_config cfg; /**< host 总线配置 (DTSI 直投) */
     struct fifo_spsc circ_fifo; /**< circular 环缓 */
-    fifo_data_type circ_buf[I2S_CIRC_FIFO_SIZE] COMPAT_ALIGNED(32); /**< 环缓数据区 */
+    fifo_data_type circ_buf[I2S_CIRC_FIFO_SIZE] MINI_ALIGNED(32); /**< 环缓数据区 */
     int pool_idx; /**< 池索引 */
 };
 
@@ -58,10 +58,10 @@ static const char* k_cli = "i2s_vfs";
 /**
  * @brief Host/Client 私有池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void pools(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void pools(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool_ctrl, s_host_used, I2S_HOST_POOL));
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2S_CLIENT_POOL));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_host_pool_ctrl, s_host_used, I2S_HOST_POOL));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, I2S_CLIENT_POOL));
 }
 
 /**
@@ -76,7 +76,7 @@ static int parse_dma_tuple(struct device* pdev, const char* prop, struct hal_i2s
     int dma_arr[14];
     int result;
 
-    COMPAT_MEM_SET(d, 0, sizeof(*d));
+    MINI_MEM_SET(d, 0, sizeof(*d));
     result = device_get_prop_int_array(pdev, prop, dma_arr, 14);
     if (result < 6)
         return MINI_OK;
@@ -116,7 +116,7 @@ static int parse_one_pin(struct device* pdev, const char* port_k, const char* pi
 {
     int value;
 
-    COMPAT_MEM_SET(out, 0, sizeof(*out));
+    MINI_MEM_SET(out, 0, sizeof(*out));
     if (device_get_prop_int(pdev, port_k, &value) != MINI_OK)
         return MINI_OK;
 
@@ -145,7 +145,7 @@ static int parse_host(struct device* pdev, struct hal_i2s_bus_config* cfg, uint3
     int irq_priority = 0;
     int it_enable = 0;
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
     cfg->bus_role = role;
     cfg->irqn = -1;
     cfg->irqn_rx = -1;
@@ -167,12 +167,12 @@ static int parse_host(struct device* pdev, struct hal_i2s_bus_config* cfg, uint3
     (void)parse_dma_tuple(pdev, "dma-rx-cfg", &cfg->dma_rx);
 
     /* 虚拟中断 / NVIC: 对齐 ADC dma-irqn; 缺省不使能 */
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-tx-irqn", &irqn));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-rx-irqn", &irqn_rx));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-tx-irqn", &irqn));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-rx-irqn", &irqn_rx));
     if (irqn < 0)
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &irqn));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &irqn));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
     cfg->irqn = (int32_t)irqn;
     cfg->irqn_rx = (int32_t)irqn_rx;
     cfg->irq_priority = (uint32_t)irq_priority;
@@ -191,16 +191,16 @@ static int parse_client(struct device* pdev, struct hal_i2s_device_config* cfg)
 {
     int value;
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "i2s-mode", &value));
+    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "i2s-mode", &value));
     cfg->mode = (uint32_t)value;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "i2s-standard", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "i2s-standard", &value));
     cfg->standard = (uint32_t)value;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "data-format", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "data-format", &value));
     cfg->data_format = (uint32_t)value;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mclk-output", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "mclk-output", &value));
     cfg->mclk_output = (uint32_t)value;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "audio-freq", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "audio-freq", &value));
     cfg->audio_freq = (uint32_t)value;
     return MINI_OK;
 }
@@ -226,7 +226,7 @@ static int host_probe(struct device* pdev, uint32_t role)
         return MINI_ERR_NOMEM;
 
     priv = &s_host_pool[idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = idx;
 
     ret = parse_host(pdev, &priv->cfg, role);
@@ -246,7 +246,7 @@ static int host_probe(struct device* pdev, uint32_t role)
 
     if (device_set_priv(pdev, priv) != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(i2s_bus_host_deinit(pdev));
+        MINI_IGNORE_RESULT(i2s_bus_host_deinit(pdev));
         ret = MINI_ERR_IO;
         goto err;
     }
@@ -257,7 +257,7 @@ static int host_probe(struct device* pdev, uint32_t role)
     return MINI_OK;
 
 err:
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_host_pool_ctrl, idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_host_pool_ctrl, idx));
     return ret;
 }
 
@@ -279,7 +279,7 @@ static int host_remove(struct device* pdev)
     ret = i2s_bus_host_deinit(pdev);
     if (ret != MINI_OK)
         return ret;
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_host_pool_ctrl, idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_host_pool_ctrl, idx));
     return MINI_OK;
 }
 
@@ -309,7 +309,7 @@ static int i2s_open(struct device* pdev, void* arg)
     int first;
     int ret;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     lc = device_lc(pdev);
     if (IS_ERR(lc))
         return PTR_ERR(lc);
@@ -348,7 +348,7 @@ static int i2s_close(struct device* pdev)
     if (last < 0)
         return last;
     if (last == 1)
-        COMPAT_IGNORE_RESULT(i2s_bus_close(pdev));
+        MINI_IGNORE_RESULT(i2s_bus_close(pdev));
     dev_lc_close_end(lc);
     return MINI_OK;
 }
@@ -468,7 +468,7 @@ static int i2s_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
     const struct i2s_xfer_mode_arg* xfer_arg = (const struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !xfer_arg || arg_len != sizeof(*xfer_arg) ||
         xfer_arg->xfer_mode > I2S_XFER_DMA)
         return MINI_ERR_INVAL;
@@ -492,7 +492,7 @@ static int i2s_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
     struct i2s_xfer_mode_arg* xfer_arg = (struct i2s_xfer_mode_arg*)arg;
     struct vfs_i2s_client* priv;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !xfer_arg || arg_len != sizeof(*xfer_arg))
         return MINI_ERR_INVAL;
 
@@ -514,7 +514,7 @@ static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len
 {
     const struct i2s_transfer_async_arg* xfer_arg = (const struct i2s_transfer_async_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !xfer_arg || arg_len != sizeof(*xfer_arg) || xfer_arg->samples == 0)
         return MINI_ERR_INVAL;
     if (!xfer_arg->tx && !xfer_arg->rx)
@@ -534,8 +534,8 @@ static int i2s_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len
  */
 static int i2s_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     if (!pdev)
         return MINI_ERR_INVAL;
     return i2s_bus_transfer_poll(pdev, timeout_ms);
@@ -553,7 +553,7 @@ static int i2s_cmd_circ_start(struct device* pdev, void* arg, size_t arg_len, ui
 {
     const struct i2s_circ_arg* xfer_arg = (const struct i2s_circ_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !xfer_arg || arg_len != sizeof(*xfer_arg))
         return MINI_ERR_INVAL;
     return i2s_bus_dma_circ_start(pdev, (int)xfer_arg->tx_enable, (int)xfer_arg->rx_enable);
@@ -569,9 +569,9 @@ static int i2s_cmd_circ_start(struct device* pdev, void* arg, size_t arg_len, ui
  */
 static int i2s_cmd_circ_stop(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev)
         return MINI_ERR_INVAL;
     return i2s_bus_dma_circ_stop(pdev);
@@ -589,7 +589,7 @@ static int i2s_cmd_circ_write(struct device* pdev, void* arg, size_t arg_len, ui
 {
     const struct i2s_circ_buf_arg* xfer_arg = (const struct i2s_circ_buf_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !xfer_arg || arg_len != sizeof(*xfer_arg) || !xfer_arg->data ||
         xfer_arg->samples == 0)
         return MINI_ERR_INVAL;
@@ -608,7 +608,7 @@ static int i2s_cmd_circ_read(struct device* pdev, void* arg, size_t arg_len, uin
 {
     struct i2s_circ_buf_arg* xfer_arg = (struct i2s_circ_buf_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !xfer_arg || arg_len != sizeof(*xfer_arg) || !xfer_arg->data ||
         xfer_arg->samples == 0)
         return MINI_ERR_INVAL;
@@ -628,7 +628,7 @@ static int i2s_cmd_set_dma_irq_mode(struct device* pdev, void* arg, size_t arg_l
 {
     const struct i2s_dma_irq_mode_arg* xfer_arg = (const struct i2s_dma_irq_mode_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !xfer_arg || arg_len != sizeof(*xfer_arg) || xfer_arg->irq_mode > I2S_IRQ_HT_TC)
         return MINI_ERR_INVAL;
     return i2s_bus_set_dma_irq_mode(pdev, xfer_arg->irq_mode);
@@ -647,7 +647,7 @@ static int i2s_cmd_get_dma_irq_mode(struct device* pdev, void* arg, size_t arg_l
 {
     struct i2s_dma_irq_mode_arg* xfer_arg = (struct i2s_dma_irq_mode_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !xfer_arg || arg_len != sizeof(*xfer_arg))
         return MINI_ERR_INVAL;
     return i2s_bus_get_dma_irq_mode(pdev, &xfer_arg->irq_mode);
@@ -731,7 +731,7 @@ static int client_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_client_pool[idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = idx;
     priv->xfer_mode = I2S_XFER_AUTO;
 
@@ -758,7 +758,7 @@ static int client_probe(struct device* pdev)
     return MINI_OK;
 
 err:
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, idx));
     return ret;
 }
 
@@ -790,7 +790,7 @@ static int client_remove(struct device* pdev)
     }
 
     i2s_bus_client_unregister(pdev);
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

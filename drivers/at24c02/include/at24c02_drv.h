@@ -23,8 +23,8 @@ extern "C"
 /** 存储容量（字节） */
 #define AT24C02_SIZE 256U
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define AT24C02_CMD_BASE COMPAT_MAGIC(AT24C02)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define AT24C02_CMD_BASE MINI_MAGIC(AT24C02)
 /** 读数据（arg: struct at24c02_io_arg*） */
 #define AT24C02_CMD_READ (AT24C02_CMD_BASE + 0x01)
 /** 写数据（arg: struct at24c02_io_arg*） */

@@ -50,21 +50,21 @@ extern "C"
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
     int hal_iwdg_init(struct hal_iwdg_dev* pdev,
-                      const struct hal_iwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                      const struct hal_iwdg_config* cfg) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 写入 PR/RLR 并启动 IWDG (之后不可真正关闭)
      * @param[in] pdev 设备对象
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_iwdg_start(struct hal_iwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_iwdg_start(struct hal_iwdg_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 喂狗 (写 KR=0xAAAA)
      * @param[in] pdev 设备对象 (须已 start)
      * @return MINI_OK 或 MINI_ERR_NODEV
      */
-    int hal_iwdg_feed(struct hal_iwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_iwdg_feed(struct hal_iwdg_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 更新超时并重算 PR/RLR; 若已 start 则立即写保护序列热更新
@@ -73,21 +73,21 @@ extern "C"
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
     int hal_iwdg_set_timeout_ms(struct hal_iwdg_dev* pdev,
-                                uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                                uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 拉长超时至硬件上限 (~32768ms), 供 OTA 等长耗时场景
      * @param[in] pdev 设备对象
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_iwdg_set_long_timeout(struct hal_iwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_iwdg_set_long_timeout(struct hal_iwdg_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 恢复为 init 时记录的 normal_timeout_ms
      * @param[in] pdev 设备对象
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_iwdg_restore_timeout(struct hal_iwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_iwdg_restore_timeout(struct hal_iwdg_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

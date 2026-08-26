@@ -31,9 +31,9 @@ static const char* k_tag = "vfs_iwdg";
 /**
  * @brief IWDG VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1));
 }
 
 /**
@@ -47,7 +47,7 @@ static int vfs_iwdg_open(struct device* pdev, void* arg)
     struct vfs_iwdg_priv* priv;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     priv = container_of(pdev->ops, struct vfs_iwdg_priv, ops);
@@ -105,7 +105,7 @@ static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     struct vfs_iwdg_priv* priv;
     struct dev_lifecycle* lc;
     int ret;
-    COMPAT_IGNORE_RESULT(to);
+    MINI_IGNORE_RESULT(to);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     priv = container_of(pdev->ops, struct vfs_iwdg_priv, ops);
@@ -162,15 +162,15 @@ static int vfs_iwdg_probe(struct device* pdev)
     idx = osal_pool_claim(&s_pool);
     if (idx < 0)
         return MINI_ERR_NOMEM;
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "timeout-ms", &value));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "timeout-ms", &value));
     if (value > 0)
         cfg.timeout_ms = (uint32_t)value;
-    COMPAT_MEM_SET(&s_priv, 0, sizeof(s_priv));
+    MINI_MEM_SET(&s_priv, 0, sizeof(s_priv));
     s_priv.pool_idx = idx;
     ret = hal_iwdg_init(&s_priv.iwdg, &cfg);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_pool, idx));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_pool, idx));
         return ret;
     }
     s_priv.ops = s_fops;
@@ -178,7 +178,7 @@ static int vfs_iwdg_probe(struct device* pdev)
     device_lc_bind(pdev);
     if (device_set_priv(pdev, &s_priv) != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_pool, idx));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_pool, idx));
         return MINI_ERR_IO;
     }
     SYS_LOGI(k_tag, "probe OK");
@@ -192,9 +192,9 @@ static int vfs_iwdg_probe(struct device* pdev)
  */
 static int vfs_iwdg_remove(struct device* pdev)
 {
-    COMPAT_IGNORE_RESULT(pdev);
+    MINI_IGNORE_RESULT(pdev);
     device_ops_unregister(pdev);
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_pool, 0));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_pool, 0));
     return MINI_OK;
 }
 

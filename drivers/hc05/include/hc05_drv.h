@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define HC05_CMD_BASE COMPAT_MAGIC(HC05)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define HC05_CMD_BASE MINI_MAGIC(HC05)
 /** 发送 AT 命令（arg: struct hc05_at*） */
 #define HC05_CMD_AT_SEND (HC05_CMD_BASE + 0x01)
 /** 命令总数 */

@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define ADS1115_CMD_BASE COMPAT_MAGIC(ADS1115)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define ADS1115_CMD_BASE MINI_MAGIC(ADS1115)
 /** 读取指定通道原始值（arg: struct ads1115_sample*） */
 #define ADS1115_CMD_READ_CHANNEL (ADS1115_CMD_BASE + 0x01)
 /** 命令总数 */

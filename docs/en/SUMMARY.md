@@ -27,7 +27,7 @@ Key terms kept verbatim: `Device Tree (DTS/DTSI)`, `DRIVER_REGISTER`, `dtc-lite`
 | `getting_started.md` | Dependencies (CMake ≥ 3.16, `lark`, `kconfiglib`), Kconfig dual-track, CMake integration, two-phase boot, clangd | **P0** | [en](getting_started.md) |
 | `faq.md` | FAQ (regenerate artifacts, install `lark`, …) | P2 | [en](faq.md) |
 | `architecture.md` | Layering `app→board→vfs→bus→hal(weak)→vendor`, data flow, boot sequence | **P0** | [en](architecture.md) |
-| `patterns.md` | Key mechanisms anatomy: pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines | P1 | [en](patterns.md) |
+| `patterns.md` | Key mechanisms anatomy: mini_pre_execution chain / two-phase boot / compile-time probe table / xtask scheduling / VIRQ top-bottom halves / SPSC lock-free channel / dev_lifecycle / non-blocking state machines | P1 | [en](patterns.md) |
 | `ecosystem.md` | Brick-style linking: `lib/` vendors only; TinyUSB/lwIP are **config-time** FetchContent, rest link-time; OSS libs with versions | **P0** | [en](ecosystem.md) |
 
 ### 1.2 Porting

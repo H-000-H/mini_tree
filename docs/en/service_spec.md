@@ -65,7 +65,7 @@ return ret;
 
 Conventions:
 
-- HAL/bus APIs (`hal_*`/`*_bus_*`) return `int`; **never ignore by default** (`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`) to improve reliability of internal layers — use `COMPAT_IGNORE_RESULT()` to silence intentionally. Exception: fire-and-forget actions with no failure path by semantics (e.g. status flags inside ISRs, noreturn entries) may stay `void`.
+- HAL/bus APIs (`hal_*`/`*_bus_*`) return `int`; **never ignore by default** (`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`) to improve reliability of internal layers — use `MINI_IGNORE_RESULT()` to silence intentionally. Exception: fire-and-forget actions with no failure path by semantics (e.g. status flags inside ISRs, noreturn entries) may stay `void`.
 - device/VFS APIs (`device_open/read/write/ioctl`, etc.) return `int`; **ignoring is allowed by default** (`DEVICE_WARN_UNUSED_RESULT` is off by default); enable Kconfig `DEVICE_WARN_UNUSED_RESULT` to enforce strict checking, after which **never ignore** the result.
 - Timeouts in ms; use `OSAL_WAIT_FOREVER` only where blocking is explicitly acceptable.
 - Each `vfs-*.h` defines its `cmd` & argument layout; summarized in [peripherals.md](peripherals.md).

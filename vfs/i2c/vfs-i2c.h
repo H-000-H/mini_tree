@@ -26,7 +26,7 @@ extern "C"
 {
 #endif
 
-#define I2C_CMD_BASE COMPAT_MAGIC(I2C)
+#define I2C_CMD_BASE MINI_MAGIC(I2C)
 #define I2C_CMD_TRANSFER I2C_CMD_BASE + 0x01 /**< Master 同步传输 (arg.xfer_mode 可选) */
 #define I2C_CMD_QUEUE_TX I2C_CMD_BASE + 0x02 /**< Slave: 入队发送 */
 #define I2C_CMD_GET_TRANS_RESULT I2C_CMD_BASE + 0x03 /**< Slave: 取传输结果 */

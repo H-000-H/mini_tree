@@ -187,26 +187,26 @@ extern "C"
     {
         bottom_half_fn_t fn; /**< 下半部处理函数 */
         void* arg; /**< 处理函数参数 */
-        COMPAT_ATOMIC_BOOL pending; /**< 已在队列或正在执行 */
-        COMPAT_ATOMIC_BOOL executing; /**< run_pending 内 fn() 执行中 (仅消费者写) */
-        COMPAT_ATOMIC_BOOL rerun; /**< fn() 执行期间再次 trigger, run_pending 结束后补跑 */
+        MINI_ATOMIC_BOOL pending; /**< 已在队列或正在执行 */
+        MINI_ATOMIC_BOOL executing; /**< run_pending 内 fn() 执行中 (仅消费者写) */
+        MINI_ATOMIC_BOOL rerun; /**< fn() 执行期间再次 trigger, run_pending 结束后补跑 */
     };
 
 #define BOTTOM_HALF_WORK_INIT(work_fn, work_arg)                                                   \
     {.fn = (work_fn),                                                                              \
      .arg = (work_arg),                                                                            \
-     .pending = COMPAT_ATOMIC_INIT(false),                                                         \
-     .executing = COMPAT_ATOMIC_INIT(false),                                                       \
-     .rerun = COMPAT_ATOMIC_INIT(false)}
+     .pending = MINI_ATOMIC_INIT(false),                                                         \
+     .executing = MINI_ATOMIC_INIT(false),                                                       \
+     .rerun = MINI_ATOMIC_INIT(false)}
 
-    COMPAT_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) &&
+    MINI_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) &&
                              ((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U),
                          "BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
 
     /**
      * @brief 判断当前是否在中断上下文
      */
-    COMPAT_STATIC_INLINE bool bottom_half_in_isr(void) { return osal_in_isr() != 0; }
+    MINI_STATIC_INLINE bool bottom_half_in_isr(void) { return osal_in_isr() != 0; }
 
     /**
      * @brief 补跑入队 (内部使用)
@@ -214,19 +214,19 @@ extern "C"
      * @param[in] work  工作项指针
      * @return MINI_OK 成功; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE int bottom_half_submit_rerun(struct fifo_spsc* fifo,
+    MINI_STATIC_INLINE int bottom_half_submit_rerun(struct fifo_spsc* fifo,
                                                       struct bottom_half_work* work)
     {
         bool expected = false;
 
-        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL,
-                               COMPAT_MO_RELAXED))
+        if (!MINI_ATOMIC_CAS(&work->pending, &expected, true, MINI_ACQ_REL,
+                               MINI_RELAXED))
             return MINI_OK;
 
         if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) == BUFF_OK)
             return MINI_OK;
 
-        COMPAT_ATOMIC_STORE(&work->pending, false, COMPAT_MO_RELEASE);
+        MINI_ATOMIC_STORE(&work->pending, false, MINI_RELEASE);
         return MINI_ERR_NOSPC;
     }
 
@@ -238,7 +238,7 @@ extern "C"
      * 队列满 (work 被丢弃)
      * @note   本函数不执行 work->fn(); 调用方 return-from-ISR 后由消费者 run_pending
      */
-    COMPAT_STATIC_INLINE int bottom_half_submit_from_isr(struct fifo_spsc* fifo,
+    MINI_STATIC_INLINE int bottom_half_submit_from_isr(struct fifo_spsc* fifo,
                                                          struct bottom_half_work* work)
     {
         bool expected = false;
@@ -246,17 +246,17 @@ extern "C"
         if (!fifo || !work || !work->fn)
             return MINI_ERR_INVAL;
 
-        if (!COMPAT_ATOMIC_CAS(&work->pending, &expected, true, COMPAT_MO_ACQ_REL,
-                               COMPAT_MO_RELAXED))
+        if (!MINI_ATOMIC_CAS(&work->pending, &expected, true, MINI_ACQ_REL,
+                               MINI_RELAXED))
         {
-            if (COMPAT_ATOMIC_LOAD(&work->executing, COMPAT_MO_ACQUIRE))
-                COMPAT_ATOMIC_STORE(&work->rerun, true, COMPAT_MO_RELEASE);
+            if (MINI_ATOMIC_LOAD(&work->executing, MINI_ACQUIRE))
+                MINI_ATOMIC_STORE(&work->rerun, true, MINI_RELEASE);
             return MINI_OK;
         }
 
         if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) != BUFF_OK)
         {
-            COMPAT_ATOMIC_STORE(&work->pending, false, COMPAT_MO_RELEASE);
+            MINI_ATOMIC_STORE(&work->pending, false, MINI_RELEASE);
             return MINI_ERR_NOSPC;
         }
         return MINI_OK;
@@ -284,11 +284,11 @@ extern "C"
      * @brief 初始化裸机下半部轮询器
      * @param[in] poller 轮询器指针
      */
-    COMPAT_STATIC_INLINE void bottom_half_poller_init(struct bottom_half_poller* poller)
+    MINI_STATIC_INLINE void bottom_half_poller_init(struct bottom_half_poller* poller)
     {
         if (!poller)
             return;
-        COMPAT_IGNORE_RESULT(fifo_init(&poller->fifo, poller->ring, BOTTOM_HALF_QUEUE_DEPTH));
+        MINI_IGNORE_RESULT(fifo_init(&poller->fifo, poller->ring, BOTTOM_HALF_QUEUE_DEPTH));
         poller->pending_drain = false;
     }
 
@@ -299,7 +299,7 @@ extern "C"
      * @note   return-from-ISR 后, 主循环 bottom_half_poller_run() 才 run_pending
      * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE int bottom_half_poller_submit(struct bottom_half_poller* poller,
+    MINI_STATIC_INLINE int bottom_half_poller_submit(struct bottom_half_poller* poller,
                                                        struct bottom_half_work* work)
     {
         if (!poller)
@@ -335,7 +335,7 @@ extern "C"
      * @param[in] sem 二值信号量 (ISR 入队后用于唤醒)
      * @return MINI_OK 成功; MINI_ERR_INVAL 参数非法或 FIFO 初始化失败
      */
-    COMPAT_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task,
+    MINI_STATIC_INLINE int bottom_half_task_init(struct bottom_half_task* task,
                                                    struct osal_sem* sem)
     {
         if (!task || !sem)
@@ -353,7 +353,7 @@ extern "C"
      * @param[out] px_yield_required ISR 出口是否需要 yield
      * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
      */
-    COMPAT_STATIC_INLINE int bottom_half_task_submit_from_isr(struct bottom_half_task* task,
+    MINI_STATIC_INLINE int bottom_half_task_submit_from_isr(struct bottom_half_task* task,
                                                               struct bottom_half_work* work,
                                                               bool* px_yield_required)
     {
@@ -375,7 +375,7 @@ extern "C"
      * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_ISR 在 ISR 中调用; MINI_ERR_NOSPC
      * 队列满
      */
-    COMPAT_STATIC_INLINE int bottom_half_task_submit(struct bottom_half_task* task,
+    MINI_STATIC_INLINE int bottom_half_task_submit(struct bottom_half_task* task,
                                                      struct bottom_half_work* work)
     {
         if (!task || !task->sem)
@@ -396,7 +396,7 @@ extern "C"
      * @param[in] arg 指向 struct bottom_half_task 的指针
      * @note  sem wait 返回时已脱离中断; 随后 run_pending 执行下半部
      */
-    COMPAT_STATIC_INLINE void bottom_half_task_entry(void* arg)
+    MINI_STATIC_INLINE void bottom_half_task_entry(void* arg)
     {
         struct bottom_half_task* task = (struct bottom_half_task*)arg;
         if (!task || !task->sem)
@@ -418,7 +418,7 @@ extern "C"
      * @param[in] priority 优先级
      * @return 成功返回 MINI_OK, 创建失败返回负数错误码
      */
-    COMPAT_STATIC_INLINE int bottom_half_task_start(struct bottom_half_task* task, const char* name,
+    MINI_STATIC_INLINE int bottom_half_task_start(struct bottom_half_task* task, const char* name,
                                                     uint32_t stack_size, uint32_t priority)
     {
         if (!task)
@@ -452,7 +452,7 @@ extern "C"
     void interrupt_virtual_dispatch(uint16_t virq_num);
 
     /**
-     * @brief 初始化全局下半部实例 (pre_execution 自动调用)
+     * @brief 初始化全局下半部实例 (mini_pre_execution 自动调用)
      */
     void interrupt_bottom_half_init(void);
 

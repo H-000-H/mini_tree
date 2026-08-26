@@ -65,7 +65,7 @@ return ret;
 
 约定：
 
-- HAL/bus 层 API（`hal_*`/`*_bus_*`）：`int` 返回值，**默认禁止忽略**（`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`），以提升内部层可靠性；确需忽略用 `COMPAT_IGNORE_RESULT()`。例外：语义上无失败路径的 fire-and-forget 动作（如 ISR 内的状态标记、noreturn 入口）可保持 `void`。
+- HAL/bus 层 API（`hal_*`/`*_bus_*`）：`int` 返回值，**默认禁止忽略**（`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`），以提升内部层可靠性；确需忽略用 `MINI_IGNORE_RESULT()`。例外：语义上无失败路径的 fire-and-forget 动作（如 ISR 内的状态标记、noreturn 入口）可保持 `void`。
 - device/VFS 层 API（`device_open/read/write/ioctl` 等）：`int` 返回值，**默认可忽略**（`DEVICE_WARN_UNUSED_RESULT` 默认关闭）；需要严格检查时开启 Kconfig `DEVICE_WARN_UNUSED_RESULT`，开启后**禁止**忽略。
 - 超时用毫秒；`OSAL_WAIT_FOREVER` 仅在明确可接受阻塞处使用。
 - ioctl 的 `cmd` 与参数布局由各 `vfs-*.h` 定义；汇总见 [peripherals.md](peripherals.md)。

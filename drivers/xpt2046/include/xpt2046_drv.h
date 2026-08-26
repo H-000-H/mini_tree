@@ -18,8 +18,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define XPT2046_CMD_BASE COMPAT_MAGIC(XPT2046)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define XPT2046_CMD_BASE MINI_MAGIC(XPT2046)
 /** 读取坐标/按压状态（arg: struct xpt2046_xy*） */
 #define XPT2046_CMD_READ_XY (XPT2046_CMD_BASE + 0x01)
 /** 命令总数 */

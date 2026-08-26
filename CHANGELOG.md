@@ -37,8 +37,8 @@
   **Bare-metal C++ wrapper `osal_task.cpp` dual-branch**: `osal_task_create` now branches on `CONFIG_XTASK_PREEMPT` — cooperative uses `period` as cycle ms; preemptive adds a `priority` arg (higher = more urgent) and reuses `stack_size` as the cycle on bare metal. The C++ wrapper is no longer "fully disabled under preemptive".
 - **VFS TIM 新增命令与 inline**：`vfs-tim.h` 新增 `TIM_CMD_CLEAR_UPDATE_FLAG`（第 24 条命令）与 `vfs_tim_fast_clear_update_flag()` inline（ISR 上半部非阻塞清更新标志，无生命周期依赖）。
   **VFS TIM new command & inline**: `vfs-tim.h` adds `TIM_CMD_CLEAR_UPDATE_FLAG` (24th command) and `vfs_tim_fast_clear_update_flag()` inline (non-blocking update-flag clear for ISR top halves, no lifetime dependency).
-- **`compiler_compat.h` 新增 `COMPAT_WFI()`**：平台无关低功耗等待封装（Cortex-M `__WFI()` / RISC-V `wfi` / 其他空操作），供调度器空闲精确休眠使用。
-  **`compiler_compat.h` adds `COMPAT_WFI()`**: a platform-agnostic wait-for-interrupt wrapper (`__WFI()` on Cortex-M, `wfi` on RISC-V, no-op elsewhere), used by the scheduler's precise idle sleep.
+- **`compiler_compat.h` 新增 `MINI_WFI()`**：平台无关低功耗等待封装（Cortex-M `__WFI()` / RISC-V `wfi` / 其他空操作），供调度器空闲精确休眠使用。
+  **`compiler_compat.h` adds `MINI_WFI()`**: a platform-agnostic wait-for-interrupt wrapper (`__WFI()` on Cortex-M, `wfi` on RISC-V, no-op elsewhere), used by the scheduler's precise idle sleep.
 
 ### 工具链 / Toolchain
 

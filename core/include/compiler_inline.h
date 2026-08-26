@@ -12,9 +12,9 @@
 
 /** @brief static + always_inline 组合宏 */
 #if defined(__GNUC__) || defined(__clang__)
-#define COMPAT_STATIC_INLINE static inline __attribute__((always_inline))
+#define MINI_STATIC_INLINE static inline __attribute__((always_inline))
 #else
-#define COMPAT_STATIC_INLINE static inline
+#define MINI_STATIC_INLINE static inline
 #endif
 
 #endif /* COMPILER_INLINE_H */

@@ -34,8 +34,8 @@ extern "C"
         DISPLAY_FMT_RGB565, /**< 16bpp 彩色 RGB565（ST7789 等 TFT） */
     };
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define DISPLAY_CMD_BASE COMPAT_MAGIC(DISPLAY)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define DISPLAY_CMD_BASE MINI_MAGIC(DISPLAY)
 /** 获取面板信息（arg: struct display_info_arg*） */
 #define DISPLAY_CMD_GET_INFO (DISPLAY_CMD_BASE + 0x01)
 /** 全屏清屏（arg: struct display_clear_arg*） */

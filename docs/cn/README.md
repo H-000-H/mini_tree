@@ -40,7 +40,7 @@
 | 文档 | 说明 |
 | :--- | :--- |
 | [architecture.md](architecture.md) | 分层与数据流 |
-| [patterns.md](patterns.md) | 关键机制解剖：pre_execution 注册链 / 两段式点火 / 编译期 probe 表 / xtask 调度 / VIRQ 上下半部 / SPSC 无锁通道 / dev_lifecycle / 非阻塞状态机 |
+| [patterns.md](patterns.md) | 关键机制解剖：mini_pre_execution 注册链 / 两段式点火 / 编译期 probe 表 / xtask 调度 / VIRQ 上下半部 / SPSC 无锁通道 / dev_lifecycle / 非阻塞状态机 |
 | [ecosystem.md](ecosystem.md) | 积木型链接：已接入开源库清单与扩展方式 |
 | [design_decisions.md](design_decisions.md) | 仍生效的设计决策与作者偏好 |
 | [references.md](references.md) | 外部对照：ESP VFS / FreeRTOS / Linux / RTT / LVGL / Qt |

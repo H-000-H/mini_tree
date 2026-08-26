@@ -40,17 +40,17 @@ struct dfplayer_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct dfplayer_device s_dfplayer_pool[DFPLAYER_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_dfplayer_used[DFPLAYER_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_dfplayer_pool_ctrl COMPAT_ALIGNED(4);
+static struct dfplayer_device s_dfplayer_pool[DFPLAYER_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_dfplayer_used[DFPLAYER_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_dfplayer_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "dfplayer";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void dfplayer_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void dfplayer_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_dfplayer_pool_ctrl, s_dfplayer_used, DFPLAYER_POOL_COUNT));
 }
 
@@ -115,7 +115,7 @@ static void dfplayer_hw_destroy(struct dfplayer_device* dev)
         return;
 
     if (dev->uart_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->uart_dev));
+        MINI_IGNORE_RESULT(device_close(dev->uart_dev));
     dev->hw_ready = 0;
 }
 
@@ -127,7 +127,7 @@ static int dfplayer_open(struct device* pdev, void* arg)
     struct dfplayer_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = dfplayer_get_drvdata(pdev);
@@ -284,7 +284,7 @@ static int dfplayer_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_dfplayer_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->uart_dev = device_get_parent(pdev);
     if (!dev->uart_dev)
     {
@@ -303,8 +303,8 @@ static int dfplayer_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_dfplayer_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_dfplayer_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -333,8 +333,8 @@ static int dfplayer_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     dfplayer_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_dfplayer_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_dfplayer_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

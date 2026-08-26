@@ -30,11 +30,11 @@ extern "C"
 /* device/VFS 层是暴露给应用层的入口。默认关闭返回值强制检查 */
 /* (应用层调用 device_open/read/write/ioctl 等可忽略返回值); */
 /* 需要严格检查时在 Kconfig 开启 DEVICE_WARN_UNUSED_RESULT。 */
-/* 底层 HAL/bus 的 COMPAT_WARN_UNUSED_RESULT 不受此影响, 始终由 */
+/* 底层 HAL/bus 的 MINI_WARN_UNUSED_RESULT 不受此影响, 始终由 */
 /* CONFIG_COMPILER_WARN_UNUSED_RESULT 控制 (默认开启)。 */
 /* -------------------------------------------------------------------------- */
 #if defined(CONFIG_DEVICE_WARN_UNUSED_RESULT)
-#define DEVICE_WARN_UNUSED_RESULT COMPAT_WARN_UNUSED_RESULT
+#define DEVICE_WARN_UNUSED_RESULT MINI_WARN_UNUSED_RESULT
 #else
 #define DEVICE_WARN_UNUSED_RESULT
 #endif
@@ -42,7 +42,7 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 /* 设备树常量 */
 /* -------------------------------------------------------------------------- */
-#define MAX_DEVICES DEV_ID_COUNT
+#define MINI_MAX_DEVICES DEV_ID_COUNT
 
     /* -------------------------------------------------------------------------- */
     /* 编译期属性: dtc-lite 在构建期展开, runtime 只读静态表 */

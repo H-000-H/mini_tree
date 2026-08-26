@@ -46,7 +46,7 @@ extern "C"
      * @param[in] value 目标输出值 (0..4095 对应 12 位分辨率)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    COMPAT_STATIC_INLINE int vfs_write_dac_value(hal_dac_device* pdev, uint32_t value)
+    MINI_STATIC_INLINE int vfs_write_dac_value(hal_dac_device* pdev, uint32_t value)
     {
         if (!pdev)
             return MINI_ERR_INVAL;
@@ -59,7 +59,7 @@ extern "C"
      * @param[out] out_val 回传当前输出值
      * @return 成功返回 MINI_OK, pdev 或 out_val 为空返回 MINI_ERR_INVAL
      */
-    COMPAT_STATIC_INLINE int vfs_read_dac_value(hal_dac_device* pdev, uint32_t* out_val)
+    MINI_STATIC_INLINE int vfs_read_dac_value(hal_dac_device* pdev, uint32_t* out_val)
     {
         if (!pdev || !out_val)
             return MINI_ERR_INVAL;
@@ -69,7 +69,7 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 /* IOCTL 命令控制字定义 */
 /* -------------------------------------------------------------------------- */
-#define DAC_CMD_BASE COMPAT_MAGIC(DAC)
+#define DAC_CMD_BASE MINI_MAGIC(DAC)
 #define DAC_CMD_WRITE_VALUE (DAC_CMD_BASE + 1) /**< 单点写入并立即同步触发输出 */
 #define DAC_CMD_GET_VALUE (DAC_CMD_BASE + 2) /**< 读取当前寄存器锁存的值 */
 #define DAC_CMD_CALIBRATE_OFFSET (DAC_CMD_BASE + 3) /**< DAC 偏移量自校准 */

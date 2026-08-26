@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define W25QXX_CMD_BASE COMPAT_MAGIC(W25QXX)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define W25QXX_CMD_BASE MINI_MAGIC(W25QXX)
 /** 读取 JEDEC ID（arg: struct w25qxx_jedec*） */
 #define W25QXX_CMD_READ_JEDEC_ID (W25QXX_CMD_BASE + 0x01)
 /** 命令总数 */

@@ -41,17 +41,17 @@ struct ds18b20_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct ds18b20_device s_ds18b20_pool[DS18B20_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_ds18b20_used[DS18B20_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_ds18b20_pool_ctrl COMPAT_ALIGNED(4);
+static struct ds18b20_device s_ds18b20_pool[DS18B20_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_ds18b20_used[DS18B20_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_ds18b20_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "ds18b20";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ds18b20_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void ds18b20_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_ds18b20_pool_ctrl, s_ds18b20_used, DS18B20_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_ds18b20_pool_ctrl, s_ds18b20_used, DS18B20_POOL_COUNT));
 }
 
 /**
@@ -195,7 +195,7 @@ static void ds18b20_hw_destroy(struct ds18b20_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->data_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->data_dev));
+        MINI_IGNORE_RESULT(device_close(dev->data_dev));
     dev->hw_ready = 0;
 }
 
@@ -207,7 +207,7 @@ static int ds18b20_open(struct device* pdev, void* arg)
     struct ds18b20_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ds18b20_get_drvdata(pdev);
@@ -277,7 +277,7 @@ static int ds18b20_cmd_temp(struct ds18b20_device* dev, void* arg, size_t len, u
     uint8_t hi = 0;
     int16_t raw;
     int* temp_out = (int*)arg;
-    COMPAT_IGNORE_RESULT(ms);
+    MINI_IGNORE_RESULT(ms);
     if (!dev->hw_ready || !temp_out || len != sizeof(int))
         return MINI_ERR_INVAL;
     if (ds18b20_reset(dev) != MINI_OK)
@@ -353,7 +353,7 @@ static int ds18b20_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_ds18b20_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->data_dev = device_get_phandle_dev(pdev, "data-gpio");
     if (IS_ERR(dev->data_dev))
     {
@@ -372,8 +372,8 @@ static int ds18b20_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -402,8 +402,8 @@ static int ds18b20_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     ds18b20_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_ds18b20_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

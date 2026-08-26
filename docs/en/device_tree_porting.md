@@ -287,8 +287,8 @@ struct bmp280_device {
 };
 
 /* Static pool: fixed size at compile time, no runtime heap allocation */
-static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_bmp280_used[BMP280_POOL_COUNT] COMPAT_ALIGNED(4);
+static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
 
 static struct bmp280_device* bmp280_claim(void)
 {
@@ -523,7 +523,7 @@ static void led_task_cb(x_task* self)
 {
     struct vfs_gpio_arg arg = {0};
     int ret;
-    COMPAT_IGNORE_RESULT(self);
+    MINI_IGNORE_RESULT(self);
 
     if (s_led_dev == NULL)
     {
@@ -592,7 +592,7 @@ namespace App_Led
     {
         struct vfs_gpio_arg arg = {0};
         int ret;
-        COMPAT_IGNORE_RESULT(self);
+        MINI_IGNORE_RESULT(self);
 
         if (s_led_dev == nullptr)
         {

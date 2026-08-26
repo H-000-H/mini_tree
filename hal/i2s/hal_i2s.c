@@ -16,7 +16,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
+MINI_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
                                       const struct hal_i2s_bus_config* cfg)
 {
     (void)host;
@@ -25,13 +25,13 @@ COMPAT_WEAK int hal_i2s_bus_host_init(struct hal_i2s_bus_host* host, int hw_idx,
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host)
+MINI_WEAK int hal_i2s_bus_host_deinit(struct hal_i2s_bus_host* host)
 {
     (void)host;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host,
+MINI_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_host* host,
                                  const struct hal_i2s_device_config* cfg)
 {
     (void)pdev;
@@ -40,25 +40,25 @@ COMPAT_WEAK int hal_i2s_dev_init(struct hal_i2s_dev* pdev, struct hal_i2s_bus_ho
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dev_deinit(struct hal_i2s_dev* pdev)
+MINI_WEAK int hal_i2s_dev_deinit(struct hal_i2s_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dev_hw_open(struct hal_i2s_dev* pdev)
+MINI_WEAK int hal_i2s_dev_hw_open(struct hal_i2s_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dev_hw_close(struct hal_i2s_dev* pdev)
+MINI_WEAK int hal_i2s_dev_hw_close(struct hal_i2s_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
+MINI_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
                              size_t samples, uint32_t timeout_ms, uint32_t xfer_mode)
 {
     (void)pdev;
@@ -70,21 +70,21 @@ COMPAT_WEAK int hal_i2s_sync(struct hal_i2s_dev* pdev, const uint16_t* tx, uint1
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_set_dma_irq_mode(struct hal_i2s_dev* pdev, uint32_t irq_mode)
+MINI_WEAK int hal_i2s_set_dma_irq_mode(struct hal_i2s_dev* pdev, uint32_t irq_mode)
 {
     (void)pdev;
     (void)irq_mode;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_get_dma_irq_mode(struct hal_i2s_dev* pdev, uint32_t* irq_mode)
+MINI_WEAK int hal_i2s_get_dma_irq_mode(struct hal_i2s_dev* pdev, uint32_t* irq_mode)
 {
     (void)pdev;
     (void)irq_mode;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dma_circ_start(struct hal_i2s_dev* pdev, int tx_enable, int rx_enable)
+MINI_WEAK int hal_i2s_dma_circ_start(struct hal_i2s_dev* pdev, int tx_enable, int rx_enable)
 {
     (void)pdev;
     (void)tx_enable;
@@ -92,13 +92,13 @@ COMPAT_WEAK int hal_i2s_dma_circ_start(struct hal_i2s_dev* pdev, int tx_enable, 
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dma_circ_stop(struct hal_i2s_dev* pdev)
+MINI_WEAK int hal_i2s_dma_circ_stop(struct hal_i2s_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data,
+MINI_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t* data,
                                        uint32_t samples)
 {
     (void)pdev;
@@ -107,7 +107,7 @@ COMPAT_WEAK int hal_i2s_dma_circ_write(struct hal_i2s_dev* pdev, const uint16_t*
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_dma_circ_read(struct hal_i2s_dev* pdev, uint16_t* data, uint32_t samples)
+MINI_WEAK int hal_i2s_dma_circ_read(struct hal_i2s_dev* pdev, uint16_t* data, uint32_t samples)
 {
     (void)pdev;
     (void)data;
@@ -115,7 +115,7 @@ COMPAT_WEAK int hal_i2s_dma_circ_read(struct hal_i2s_dev* pdev, uint16_t* data, 
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
+MINI_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t* tx, uint16_t* rx,
                                        size_t samples, hal_i2s_callback_t cb, void* userdata)
 {
     (void)pdev;
@@ -127,7 +127,7 @@ COMPAT_WEAK int hal_i2s_transfer_async(struct hal_i2s_dev* pdev, const uint16_t*
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2s_transfer_poll(struct hal_i2s_dev* pdev, uint32_t timeout_ms)
+MINI_WEAK int hal_i2s_transfer_poll(struct hal_i2s_dev* pdev, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)timeout_ms;

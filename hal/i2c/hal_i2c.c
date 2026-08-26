@@ -16,7 +16,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_i2c_bus_host_init(struct hal_i2c_bus_host* host, int hw_idx,
+MINI_WEAK int hal_i2c_bus_host_init(struct hal_i2c_bus_host* host, int hw_idx,
                                       const struct hal_i2c_bus_config* cfg)
 {
     (void)host;
@@ -25,25 +25,25 @@ COMPAT_WEAK int hal_i2c_bus_host_init(struct hal_i2c_bus_host* host, int hw_idx,
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_bus_host_deinit(struct hal_i2c_bus_host* host)
+MINI_WEAK int hal_i2c_bus_host_deinit(struct hal_i2c_bus_host* host)
 {
     (void)host;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dev_hw_open(struct hal_i2c_dev* pdev)
+MINI_WEAK int hal_i2c_dev_hw_open(struct hal_i2c_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dev_hw_close(struct hal_i2c_dev* pdev)
+MINI_WEAK int hal_i2c_dev_hw_close(struct hal_i2c_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dev_init(struct hal_i2c_dev* pdev, struct hal_i2c_bus_host* host,
+MINI_WEAK int hal_i2c_dev_init(struct hal_i2c_dev* pdev, struct hal_i2c_bus_host* host,
                                  const struct hal_i2c_device_config* dev_cfg)
 {
     (void)pdev;
@@ -52,13 +52,13 @@ COMPAT_WEAK int hal_i2c_dev_init(struct hal_i2c_dev* pdev, struct hal_i2c_bus_ho
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dev_deinit(struct hal_i2c_dev* pdev)
+MINI_WEAK int hal_i2c_dev_deinit(struct hal_i2c_dev* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_sync(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
+MINI_WEAK int hal_i2c_sync(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
                              uint32_t timeout_ms)
 {
     (void)pdev;
@@ -69,7 +69,7 @@ COMPAT_WEAK int hal_i2c_sync(struct hal_i2c_dev* pdev, const uint8_t* tx, uint8_
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
+MINI_WEAK int hal_i2c_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
                               uint32_t timeout_ms)
 {
     (void)pdev;
@@ -79,7 +79,7 @@ COMPAT_WEAK int hal_i2c_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms)
+MINI_WEAK int hal_i2c_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     (void)pdev;
     (void)rx;
@@ -88,7 +88,7 @@ COMPAT_WEAK int hal_i2c_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len, 
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dma_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
+MINI_WEAK int hal_i2c_dma_write(struct hal_i2c_dev* pdev, const uint8_t* tx, size_t len,
                                   uint32_t timeout_ms)
 {
     (void)pdev;
@@ -98,7 +98,7 @@ COMPAT_WEAK int hal_i2c_dma_write(struct hal_i2c_dev* pdev, const uint8_t* tx, s
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dma_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len,
+MINI_WEAK int hal_i2c_dma_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t len,
                                  uint32_t timeout_ms)
 {
     (void)pdev;
@@ -108,7 +108,7 @@ COMPAT_WEAK int hal_i2c_dma_read(struct hal_i2c_dev* pdev, uint8_t* rx, size_t l
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_i2c_dma_write_then_read(struct hal_i2c_dev* pdev, const uint8_t* tx,
+MINI_WEAK int hal_i2c_dma_write_then_read(struct hal_i2c_dev* pdev, const uint8_t* tx,
                                             uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     (void)pdev;

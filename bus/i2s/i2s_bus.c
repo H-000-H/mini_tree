@@ -32,7 +32,7 @@ struct i2s_bus_host
 {
     struct device* pdev; /**< 关联设备 */
     struct hal_i2s_bus_host hal_host; /**< 嵌入 HAL host */
-    COMPAT_ATOMIC_INT ref_count; /**< atomic 引用计数 */
+    MINI_ATOMIC_INT ref_count; /**< atomic 引用计数 */
 };
 
 /** @brief I2S client 运行时描述符 (静态表, 按 device_id 索引) */
@@ -54,9 +54,9 @@ static const char* k_tag = "i2s_bus";
 /**
  * @brief 初始化 I2S 总线 host 对象池
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_host_pool, s_host_used, I2S_BUS_HOST_MAX));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_host_pool, s_host_used, I2S_BUS_HOST_MAX));
 }
 
 /**
@@ -120,20 +120,20 @@ static int i2s_host_init_impl(struct device* pdev, const void* cfg)
     if (idx < 0)
         return MINI_ERR_NOMEM;
     host = &s_hosts[idx];
-    COMPAT_MEM_SET(host, 0, sizeof(*host));
+    MINI_MEM_SET(host, 0, sizeof(*host));
     host->pdev = pdev;
-    COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
+    MINI_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
     ret = hal_i2s_bus_host_init(&host->hal_host, idx, host_cfg);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
         return ret;
     }
     ret = bus_controller_bind_full(pdev, BUS_TYPE_I2S, &s_ops, host);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(hal_i2s_bus_host_deinit(&host->hal_host));
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
+        MINI_IGNORE_RESULT(hal_i2s_bus_host_deinit(&host->hal_host));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
         return ret;
     }
     SYS_LOGI(k_tag, "host init OK: %s", device_get_name(pdev));
@@ -154,15 +154,15 @@ static int i2s_host_deinit_impl(struct device* pdev)
     host = host_from_dev(pdev);
     if (!host)
         return MINI_ERR_NODEV;
-    if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
+    if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0)
         return MINI_ERR_BUSY;
     idx = (int)(host - s_hosts);
     bus_controller_unbind(pdev);
     ret = hal_i2s_bus_host_deinit(&host->hal_host);
     if (ret == MINI_OK)
     {
-        COMPAT_MEM_SET(host, 0, sizeof(*host));
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
+        MINI_MEM_SET(host, 0, sizeof(*host));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_host_pool, idx));
     }
     return ret;
 }
@@ -222,11 +222,11 @@ static int i2s_client_register_impl(struct device* pdev, const void* cfg, void**
         *out = client;
         return MINI_OK;
     }
-    COMPAT_MEM_SET(client, 0, sizeof(*client));
+    MINI_MEM_SET(client, 0, sizeof(*client));
     client->pdev = pdev;
     client->host = host;
     client->cfg = *config;
-    (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
+    (void)MINI_ATOMIC_FETCH_ADD(&host->ref_count, 1, MINI_SEQ_CST);
     *out = client;
     return MINI_OK;
 }
@@ -241,10 +241,10 @@ static void i2s_client_unregister_impl(struct device* pdev)
     if (!client)
         return;
     if (client->hw_open)
-        COMPAT_IGNORE_RESULT(i2s_bus_close(pdev));
+        MINI_IGNORE_RESULT(i2s_bus_close(pdev));
     if (client->host)
-        (void)COMPAT_ATOMIC_FETCH_SUB(&client->host->ref_count, 1, COMPAT_MO_SEQ_CST);
-    COMPAT_MEM_SET(client, 0, sizeof(*client));
+        (void)MINI_ATOMIC_FETCH_SUB(&client->host->ref_count, 1, MINI_SEQ_CST);
+    MINI_MEM_SET(client, 0, sizeof(*client));
 }
 
 int i2s_bus_host_init(struct device* pdev, const struct hal_i2s_bus_config* cfg)
@@ -310,8 +310,8 @@ int i2s_bus_close(struct device* pdev)
         return MINI_ERR_NODEV;
     if (!client->hw_open)
         return MINI_OK;
-    COMPAT_IGNORE_RESULT(hal_i2s_dev_hw_close(&client->hal_i2s_dev));
-    COMPAT_IGNORE_RESULT(hal_i2s_dev_deinit(&client->hal_i2s_dev));
+    MINI_IGNORE_RESULT(hal_i2s_dev_hw_close(&client->hal_i2s_dev));
+    MINI_IGNORE_RESULT(hal_i2s_dev_deinit(&client->hal_i2s_dev));
     client->hw_open = 0;
     return MINI_OK;
 }
@@ -329,8 +329,8 @@ int i2s_bus_transfer_async(struct device* pdev, const uint16_t* tx, uint16_t* rx
                            void (*cb)(struct device*, const void*, void*), void* userdata)
 {
     struct i2s_bus_client* client = client_from_dev(pdev);
-    COMPAT_IGNORE_RESULT(cb);
-    COMPAT_IGNORE_RESULT(userdata);
+    MINI_IGNORE_RESULT(cb);
+    MINI_IGNORE_RESULT(userdata);
     if (!client || !client->hw_open)
         return MINI_ERR_NODEV;
     return hal_i2s_transfer_async(&client->hal_i2s_dev, tx, rx, samples, NULL, NULL);

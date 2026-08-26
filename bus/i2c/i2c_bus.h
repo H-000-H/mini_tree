@@ -45,19 +45,19 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_host_init(struct device* pdev,
-                          const struct hal_i2c_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                          const struct hal_i2c_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2C host 反初始化 (ref_count > 0 时返回 BUSY)
      * @param[in] pdev controller device (host)
      * @return 成功返回 MINI_OK, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_host_deinit(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 查询 I2C host 角色 (master/slave)
      * @param[in] pdev controller device (host)
      * @return master 返回 I2C_BUS_ROLE_MASTER, slave 返回 I2C_BUS_ROLE_SLAVE, 失败返回 -1
      */
-    int i2c_bus_host_role(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_host_role(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*Client API (VFS 层调用)*/
@@ -70,7 +70,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_client_register(struct device* pdev, const struct hal_i2c_device_config* cfg,
-                                struct i2c_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+                                struct i2c_bus_client** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 注销 I2C client 并递减 host 引用计数 (ref_count -1, 清零槽位)
      * @param[in] pdev client device
@@ -82,13 +82,13 @@ extern "C"
      * @param[in] pdev client device
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_open(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 I2C client 硬件 (幂等)
      * @param[in] pdev client device
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2c_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2c_bus_close(struct device* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief I2C 同步传输 (tx 非空 rx 空→写; tx 空 rx 非空→读; 两者非空→先写后读)
@@ -100,7 +100,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                         uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+                         uint32_t timeout_ms, uint32_t xfer_mode) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2C 读数据
      * @param[in] pdev client device
@@ -110,7 +110,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_ms,
-                     uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+                     uint32_t xfer_mode) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2C 写数据
      * @param[in] pdev client device
@@ -120,7 +120,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_write(struct device* pdev, const uint8_t* tx, size_t len, uint32_t timeout_ms,
-                      uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+                      uint32_t xfer_mode) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2C slave 模式同步传输 (空壳: STM32 返回 NOTSUPP)
      * @param[in] pdev client device
@@ -131,7 +131,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                           uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2C slave 模式排队发送 (空壳: STM32 返回 NOTSUPP)
      * @param[in] pdev client device
@@ -141,7 +141,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
-                               uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                               uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief I2C slave 模式获取传输结果 (空壳: STM32 返回 NOTSUPP)
      * @param[in] pdev client device
@@ -153,7 +153,7 @@ extern "C"
      */
     int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap,
                                        size_t* trans_len,
-                                       uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                                       uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

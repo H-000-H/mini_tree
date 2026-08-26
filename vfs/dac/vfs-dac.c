@@ -31,13 +31,13 @@ struct vfs_dac_priv
     struct hal_dac_platform_unique_cfg unique; /**< 平台特有配置 */
     struct hal_dac_dev dac; /**< HAL DAC 设备 */
     struct fifo_spsc dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
-    fifo_data_type dma_data_buf[DAC_DMA_BUFFER_SIZE] COMPAT_ALIGNED(32); /**< DMA 波形数据缓冲区 */
+    fifo_data_type dma_data_buf[DAC_DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 波形数据缓冲区 */
     int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_dac_priv s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_dac_priv_used[DAC_VFS_DEVICE_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_dac_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_dac_priv s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static uint8_t s_dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_dac_priv_pool_ctrl MINI_ALIGNED(4);
 
 /**
  * @brief DAC Ioctl 命令处理函数指针类型
@@ -90,9 +90,9 @@ static int dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_le
  */
 static int dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(priv);
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(priv);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return MINI_ERR_NOTSUPP;
 }
 
@@ -122,8 +122,8 @@ static int dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_le
  */
 static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_dac_start(&priv->dac);
 }
 
@@ -136,8 +136,8 @@ static int dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
  */
 static int dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     return hal_dac_force_stop(&priv->dac);
 }
 
@@ -193,9 +193,9 @@ static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
 /**
  * @brief DAC Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
 }
 
@@ -231,28 +231,28 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
         return MINI_ERR_INVAL;
     cfg->config.trigger_source = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "data-align", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "data-align", &tmp));
     cfg->config.data_align = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "output-buf", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "output-buf", &tmp));
     cfg->config.output_buf = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-enable", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-enable", &tmp));
     cfg->config.dma_enable = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &tmp));
     cfg->config.it_enable = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-mode", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-mode", &tmp));
     cfg->config.wave_auto_generation_mode = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-config", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-config", &tmp));
     cfg->config.wave_auto_generation_config = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
     cfg->config.dac_sw_trigger = (uint32_t)tmp;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
     cfg->config.dma_data_align = (uint32_t)tmp;
 
     if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) ==
@@ -284,31 +284,31 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
         cfg->dma_cfg.dma_data_size = (uint32_t)dma_arr[5];
         cfg->dma_cfg.dma_fifo_is_enable = (uint32_t)dma_arr[6];
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mode", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mode", &tmp));
         cfg->dma_cfg.dma_mode = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-mode", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-mode", &tmp));
         cfg->dma_cfg.dma_fifo_mode = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-burst", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-burst", &tmp));
         cfg->dma_cfg.dma_mem_burst = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-burst", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-burst", &tmp));
         cfg->dma_cfg.dma_periph_burst = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-direction", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-direction", &tmp));
         cfg->dma_cfg.dma_direction = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-inc", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-inc", &tmp));
         cfg->dma_cfg.dma_periph_inc = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-inc", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-inc", &tmp));
         cfg->dma_cfg.dma_mem_inc = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-data-size", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-data-size", &tmp));
         cfg->dma_cfg.dma_periph_data_size = (uint32_t)tmp;
 
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-threshold", &tmp));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-threshold", &tmp));
         cfg->dma_cfg.dma_fifo_threshold = (uint32_t)tmp;
     }
 
@@ -327,7 +327,7 @@ static int vfs_dac_open(struct device* pdev, void* arg)
     struct dev_lifecycle* lc;
     int first;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -377,7 +377,7 @@ static int vfs_dac_close(struct device* pdev)
         return last;
 
     if (last)
-        COMPAT_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
+        MINI_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
 
     dev_lc_close_end(lc);
     return MINI_OK;
@@ -398,8 +398,8 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
     int ret;
     const vfs_dac_arg* dac_arg;
 
-    COMPAT_IGNORE_RESULT(len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !buf)
         return MINI_ERR_INVAL;
 
@@ -434,8 +434,8 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
     int ret;
     vfs_dac_arg* dac_arg;
 
-    COMPAT_IGNORE_RESULT(len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !buf)
         return MINI_ERR_INVAL;
 
@@ -472,7 +472,7 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
     int ret;
     dac_cmd_handler_t handler = NULL;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -595,7 +595,7 @@ static int vfs_dac_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_dac_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
@@ -605,7 +605,7 @@ static int vfs_dac_probe(struct device* pdev)
         goto err_pool;
     }
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "private-cfg", &private_cfg));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "private-cfg", &private_cfg));
     priv->unique.private_cfg = (uintptr_t)private_cfg;
 
     if (priv->cfg.config.dma_enable)
@@ -646,10 +646,10 @@ static int vfs_dac_probe(struct device* pdev)
 
 err_deinit:
     pdev->ops = NULL;
-    COMPAT_IGNORE_RESULT(hal_dac_close(&priv->dac));
+    MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
 err_pool:
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_dac_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_dac_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -683,11 +683,11 @@ static int vfs_dac_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
 
-    COMPAT_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
-    COMPAT_IGNORE_RESULT(hal_dac_close(&priv->dac));
+    MINI_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
+    MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
 
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_dac_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_dac_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
     return MINI_OK;

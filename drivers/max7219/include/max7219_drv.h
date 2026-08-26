@@ -21,8 +21,8 @@ extern "C"
 {
 #endif
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define MAX7219_CMD_BASE COMPAT_MAGIC(MAX7219)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define MAX7219_CMD_BASE MINI_MAGIC(MAX7219)
 /** 初始化（含扫描/亮度/解码配置） */
 #define MAX7219_CMD_INIT (MAX7219_CMD_BASE + 0x01)
 /** 设置单个 digit（arg: struct max7219_digit*） */

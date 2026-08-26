@@ -38,9 +38,9 @@ void dev_lc_init(struct dev_lifecycle* lc)
 {
     if (!lc)
         return;
-    COMPAT_ATOMIC_STORE(&lc->opens, 0, COMPAT_MO_RELEASE);
-    COMPAT_ATOMIC_STORE(&lc->io_active, 0, COMPAT_MO_RELEASE);
-    COMPAT_ATOMIC_STORE(&lc->state, DEV_LC_LIVE, COMPAT_MO_RELEASE);
+    MINI_ATOMIC_STORE(&lc->opens, 0, MINI_RELEASE);
+    MINI_ATOMIC_STORE(&lc->io_active, 0, MINI_RELEASE);
+    MINI_ATOMIC_STORE(&lc->state, DEV_LC_LIVE, MINI_RELEASE);
 }
 
 /**
@@ -51,9 +51,9 @@ void dev_lc_reset(struct dev_lifecycle* lc)
 {
     if (!lc)
         return;
-    COMPAT_ATOMIC_STORE(&lc->opens, 0, COMPAT_MO_RELEASE);
-    COMPAT_ATOMIC_STORE(&lc->io_active, 0, COMPAT_MO_RELEASE);
-    COMPAT_ATOMIC_STORE(&lc->state, DEV_LC_UNINITIALIZED, COMPAT_MO_RELEASE);
+    MINI_ATOMIC_STORE(&lc->opens, 0, MINI_RELEASE);
+    MINI_ATOMIC_STORE(&lc->io_active, 0, MINI_RELEASE);
+    MINI_ATOMIC_STORE(&lc->state, DEV_LC_UNINITIALIZED, MINI_RELEASE);
 }
 
 /**
@@ -63,7 +63,7 @@ void dev_lc_reset(struct dev_lifecycle* lc)
  */
 dev_lc_state_t dev_lc_state(const struct dev_lifecycle* lc)
 {
-    return lc ? (dev_lc_state_t)COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) :
+    return lc ? (dev_lc_state_t)MINI_ATOMIC_LOAD(&lc->state, MINI_ACQUIRE) :
                 DEV_LC_UNINITIALIZED;
 }
 
@@ -74,7 +74,7 @@ dev_lc_state_t dev_lc_state(const struct dev_lifecycle* lc)
  */
 int dev_lc_opens(const struct dev_lifecycle* lc)
 {
-    int value = lc ? COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_ACQUIRE) : 0;
+    int value = lc ? MINI_ATOMIC_LOAD(&lc->opens, MINI_ACQUIRE) : 0;
     return value < 0 ? 0 : value;
 }
 
@@ -85,7 +85,7 @@ int dev_lc_opens(const struct dev_lifecycle* lc)
  */
 int dev_lc_io_active_count(const struct dev_lifecycle* lc)
 {
-    int value = lc ? COMPAT_ATOMIC_LOAD(&lc->io_active, COMPAT_MO_ACQUIRE) : 0;
+    int value = lc ? MINI_ATOMIC_LOAD(&lc->io_active, MINI_ACQUIRE) : 0;
     return value < 0 ? 0 : value;
 }
 
@@ -102,12 +102,12 @@ int dev_lc_open_begin(struct dev_lifecycle* lc)
     int old;
     do
     {
-        old = COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_RELAXED);
+        old = MINI_ATOMIC_LOAD(&lc->opens, MINI_RELAXED);
         if (old < 0)
             return MINI_ERR_NODEV;
-        if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
+        if (MINI_ATOMIC_LOAD(&lc->state, MINI_ACQUIRE) != DEV_LC_LIVE)
             return MINI_ERR_NODEV;
-    } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+    } while (!MINI_ATOMIC_CAS(&lc->opens, &old, old + 1, MINI_ACQ_REL, MINI_RELAXED));
 
     return (old + 1 == 1) ? 1 : 0;
 }
@@ -116,7 +116,7 @@ int dev_lc_open_begin(struct dev_lifecycle* lc)
  * @brief open 完成占位 (当前无额外逻辑)
  * @param[in] lc 生命周期对象指针
  */
-void dev_lc_open_end(struct dev_lifecycle* lc) { COMPAT_UNUSED_PARAM(lc); }
+void dev_lc_open_end(struct dev_lifecycle* lc) {MINI_UNUSED_PARAM(lc); }
 
 /**
  * @brief 中止 open (opens -1, 用于 open 中途失败回滚)
@@ -126,7 +126,7 @@ void dev_lc_open_abort(struct dev_lifecycle* lc)
 {
     if (!lc)
         return;
-    COMPAT_ATOMIC_SUB_FETCH(&lc->opens, 1, COMPAT_MO_RELEASE);
+    MINI_ATOMIC_SUB_FETCH(&lc->opens, 1, MINI_RELEASE);
 }
 
 /**
@@ -142,10 +142,10 @@ int dev_lc_close_begin(struct dev_lifecycle* lc)
     int old;
     do
     {
-        old = COMPAT_ATOMIC_LOAD(&lc->opens, COMPAT_MO_RELAXED);
+        old = MINI_ATOMIC_LOAD(&lc->opens, MINI_RELAXED);
         if (old <= 0)
             return MINI_ERR_IO;
-    } while (!COMPAT_ATOMIC_CAS(&lc->opens, &old, old - 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+    } while (!MINI_ATOMIC_CAS(&lc->opens, &old, old - 1, MINI_ACQ_REL, MINI_RELAXED));
 
     return (old - 1 == 0) ? 1 : 0;
 }
@@ -154,7 +154,7 @@ int dev_lc_close_begin(struct dev_lifecycle* lc)
  * @brief close 完成占位 (当前无额外逻辑)
  * @param[in] lc 生命周期对象指针
  */
-void dev_lc_close_end(struct dev_lifecycle* lc) { COMPAT_UNUSED_PARAM(lc); }
+void dev_lc_close_end(struct dev_lifecycle* lc) {MINI_UNUSED_PARAM(lc); }
 
 /**
  * @brief 开始 I/O (CAS 递增 io_active, teardown 或非 LIVE 拒绝)
@@ -169,13 +169,13 @@ int dev_lc_io_begin(struct dev_lifecycle* lc)
     int old;
     do
     {
-        old = COMPAT_ATOMIC_LOAD(&lc->io_active, COMPAT_MO_RELAXED);
+        old = MINI_ATOMIC_LOAD(&lc->io_active, MINI_RELAXED);
         if (old < 0)
             return MINI_ERR_NODEV;
-        if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_LIVE)
+        if (MINI_ATOMIC_LOAD(&lc->state, MINI_ACQUIRE) != DEV_LC_LIVE)
             return MINI_ERR_NODEV;
     } while (
-        !COMPAT_ATOMIC_CAS(&lc->io_active, &old, old + 1, COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED));
+        !MINI_ATOMIC_CAS(&lc->io_active, &old, old + 1, MINI_ACQ_REL, MINI_RELAXED));
 
     return MINI_OK;
 }
@@ -188,7 +188,7 @@ void dev_lc_io_end(struct dev_lifecycle* lc)
 {
     if (!lc)
         return;
-    COMPAT_ATOMIC_SUB_FETCH(&lc->io_active, 1, COMPAT_MO_RELEASE);
+    MINI_ATOMIC_SUB_FETCH(&lc->io_active, 1, MINI_RELEASE);
 }
 
 /**
@@ -199,7 +199,7 @@ void dev_lc_remove_start(struct dev_lifecycle* lc)
 {
     if (!lc)
         return;
-    COMPAT_ATOMIC_STORE(&lc->state, DEV_LC_REMOVING, COMPAT_MO_RELEASE);
+    MINI_ATOMIC_STORE(&lc->state, DEV_LC_REMOVING, MINI_RELEASE);
 }
 
 /**
@@ -213,23 +213,23 @@ int dev_lc_remove_drain(struct dev_lifecycle* lc, uint32_t timeout_ms)
     if (!lc)
         return MINI_ERR_INVAL;
 
-    if (COMPAT_ATOMIC_LOAD(&lc->state, COMPAT_MO_ACQUIRE) != DEV_LC_REMOVING)
+    if (MINI_ATOMIC_LOAD(&lc->state, MINI_ACQUIRE) != DEV_LC_REMOVING)
         return MINI_ERR_BUSY;
 
     const uint32_t start_ms = osal_time_ms();
     for (;;)
     {
         int opens_expected = 0;
-        if (COMPAT_ATOMIC_CAS(&lc->opens, &opens_expected, DEV_LC_LOCKED, COMPAT_MO_ACQ_REL,
-                              COMPAT_MO_RELAXED))
+        if (MINI_ATOMIC_CAS(&lc->opens, &opens_expected, DEV_LC_LOCKED, MINI_ACQ_REL,
+                              MINI_RELAXED))
         {
             /* opens 已锁定为 -1. 在 state == REMOVING 门控下 open_begin 必拒绝,
              * 因此 opens 一旦锁定即保持锁定, 不回滚到 0 (避免短暂暴露窗口). */
             for (;;)
             {
                 int io_expected = 0;
-                if (COMPAT_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED,
-                                      COMPAT_MO_ACQ_REL, COMPAT_MO_RELAXED))
+                if (MINI_ATOMIC_CAS(&lc->io_active, &io_expected, DEV_LC_LOCKED,
+                                      MINI_ACQ_REL, MINI_RELAXED))
                     return MINI_OK;
 
                 if (timeout_ms != OSAL_WAIT_FOREVER && (osal_time_ms() - start_ms) >= timeout_ms)

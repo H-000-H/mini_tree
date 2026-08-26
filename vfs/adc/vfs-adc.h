@@ -35,7 +35,7 @@ extern "C"
      * @param[out] out_val 回传转换值
      * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
      */
-    COMPAT_STATIC_INLINE int vfs_read_dma_it_adc_value(hal_adc_device* pdev, uint16_t* out_val)
+    MINI_STATIC_INLINE int vfs_read_dma_it_adc_value(hal_adc_device* pdev, uint16_t* out_val)
     {
         if (!pdev || !out_val)
             return MINI_ERR_INVAL;
@@ -48,7 +48,7 @@ extern "C"
      * @param[out] out_val 回传转换值
      * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
      */
-    COMPAT_STATIC_INLINE int vfs_read_dma_adc_value(hal_adc_device* pdev, uint16_t* out_val)
+    MINI_STATIC_INLINE int vfs_read_dma_adc_value(hal_adc_device* pdev, uint16_t* out_val)
     {
         if (!pdev || !out_val)
             return MINI_ERR_INVAL;
@@ -58,7 +58,7 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 /* IOCTL 命令控制字定义 */
 /* -------------------------------------------------------------------------- */
-#define ADC_CMD_BASE COMPAT_MAGIC(ADC)
+#define ADC_CMD_BASE MINI_MAGIC(ADC)
 #define ADC_CMD_GET_CHANNEL_SAMPLE_TIME (ADC_CMD_BASE + 1)
 #define ADC_CMD_GET_CHANNEL_ID (ADC_CMD_BASE + 2)
 #define ADC_CMD_GET_CHANNEL_COUNT (ADC_CMD_BASE + 3)

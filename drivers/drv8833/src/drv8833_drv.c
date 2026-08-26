@@ -45,17 +45,17 @@ struct drv8833_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct drv8833_device s_drv8833_pool[DRV8833_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_drv8833_used[DRV8833_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_drv8833_pool_ctrl COMPAT_ALIGNED(4);
+static struct drv8833_device s_drv8833_pool[DRV8833_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_drv8833_used[DRV8833_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_drv8833_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "drv8833";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void drv8833_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void drv8833_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT));
 }
 
 /**
@@ -105,13 +105,13 @@ static void drv8833_hw_destroy(struct drv8833_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->ain1_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->ain1_dev));
+        MINI_IGNORE_RESULT(device_close(dev->ain1_dev));
     if (dev->ain2_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->ain2_dev));
+        MINI_IGNORE_RESULT(device_close(dev->ain2_dev));
     if (dev->bin1_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->bin1_dev));
+        MINI_IGNORE_RESULT(device_close(dev->bin1_dev));
     if (dev->bin2_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->bin2_dev));
+        MINI_IGNORE_RESULT(device_close(dev->bin2_dev));
     dev->hw_ready = 0;
 }
 
@@ -123,7 +123,7 @@ static int drv8833_open(struct device* pdev, void* arg)
     struct drv8833_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = drv8833_get_drvdata(pdev);
@@ -187,7 +187,7 @@ struct drv8833_ioctl_map
 static void drv8833_apply(struct vfs_gpio_arg* gpio_args, int val)
 {
     gpio_args->level = val ? 1 : 0;
-    COMPAT_IGNORE_RESULT(vfs_gpio_set_level(gpio_args));
+    MINI_IGNORE_RESULT(vfs_gpio_set_level(gpio_args));
 }
 /**
  * @brief DRV8833_CMD_SET_MOTOR 实现：按方向差分驱动两路输入
@@ -195,7 +195,7 @@ static void drv8833_apply(struct vfs_gpio_arg* gpio_args, int val)
 static int drv8833_cmd_motor(struct drv8833_device* dev, void* arg, size_t len, uint32_t ms)
 {
     struct drv8833_motor* motor_arg = (struct drv8833_motor*)arg;
-    COMPAT_IGNORE_RESULT(ms);
+    MINI_IGNORE_RESULT(ms);
     if (!dev->hw_ready || !motor_arg || len != sizeof(*motor_arg))
         return MINI_ERR_INVAL;
     if (motor_arg->motor == 0)
@@ -262,7 +262,7 @@ static int drv8833_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_drv8833_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->ain1_dev = device_get_phandle_dev(pdev, "ain1-gpio");
     dev->ain2_dev = device_get_phandle_dev(pdev, "ain2-gpio");
     dev->bin1_dev = device_get_phandle_dev(pdev, "bin1-gpio");
@@ -285,8 +285,8 @@ static int drv8833_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_drv8833_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_drv8833_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -315,8 +315,8 @@ static int drv8833_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     drv8833_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_drv8833_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_drv8833_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

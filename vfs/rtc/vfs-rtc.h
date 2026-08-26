@@ -28,7 +28,7 @@ extern "C"
 {
 #endif
 
-#define RTC_CMD_BASE COMPAT_MAGIC(RTC)
+#define RTC_CMD_BASE MINI_MAGIC(RTC)
 #define RTC_CMD_SET_TIME (RTC_CMD_BASE + 0x01) /**< arg: rtc_time_arg */
 #define RTC_CMD_GET_TIME (RTC_CMD_BASE + 0x02) /**< arg: rtc_time_arg */
 #define RTC_CMD_SET_ALARM (RTC_CMD_BASE + 0x03) /**< arg: rtc_time_arg (callback 派发待补) */

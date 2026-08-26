@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define RC522_CMD_BASE COMPAT_MAGIC(RC522)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define RC522_CMD_BASE MINI_MAGIC(RC522)
 /** 初始化读卡器（含天线配置） */
 #define RC522_CMD_INIT (RC522_CMD_BASE + 0x01)
 /** 读取卡片 UID（arg: struct rc522_uid*） */

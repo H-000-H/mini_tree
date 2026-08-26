@@ -30,7 +30,7 @@ extern "C"
 {
 #endif
 
-#define UART_CMD_BASE COMPAT_MAGIC(UART)
+#define UART_CMD_BASE MINI_MAGIC(UART)
 #define UART_CMD_TRANSFER UART_CMD_BASE + 0x01
 #define UART_CMD_COUNT 1
 
@@ -48,14 +48,14 @@ extern "C"
      * @param[in] pdev 设备对象指针
      * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
-    int uart_vfs_probe(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int uart_vfs_probe(struct device* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief UART Client 设备移除: 拒新 IO, 排空已有 IO, 注销 client, 释放池槽
      * @param[in] pdev 设备对象指针
      * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
-    int uart_vfs_remove(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int uart_vfs_remove(struct device* pdev) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

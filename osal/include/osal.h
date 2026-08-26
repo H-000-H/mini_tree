@@ -7,7 +7,7 @@
  *   OSAL — 操作系统抽象层公共头文件
  *   定义平台无关的 RTOS 接口: 互斥锁/信号量/自旋锁/队列/任务/时间/内存
  *   上层仅依赖本头文件, 实现由 osal_freertos/osal_rtthread/osal_null 三后端提供
- *   含 OSAL_PANIC/CRITICAL_ASSERT 宏, 触发后调用 system_safety_hardware_shutdown
+ *   含 OSAL_PANIC/MINI_CRITICAL_ASSERT 宏, 触发后调用 system_safety_hardware_shutdown
  */
 
 #ifndef BOARD_OSAL_H
@@ -128,19 +128,19 @@ extern "C"
      * @param[in] lock 自旋锁指针
      * @return 成功返回 MINI_OK, lock 为空返回 MINI_ERR_INVAL
      */
-    int osal_spinlock_init(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
+    int osal_spinlock_init(struct osal_spinlock* lock) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 获取自旋锁 (ISR 安全, 禁止睡眠)
      * @param[in] lock 自旋锁指针
      * @return 成功返回 MINI_OK, lock 为空返回 MINI_ERR_INVAL
      */
-    int osal_spinlock_lock(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
+    int osal_spinlock_lock(struct osal_spinlock* lock) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 释放自旋锁
      * @param[in] lock 自旋锁指针
      * @return 成功返回 MINI_OK, lock 为空返回 MINI_ERR_INVAL
      */
-    int osal_spinlock_unlock(struct osal_spinlock* lock) COMPAT_WARN_UNUSED_RESULT;
+    int osal_spinlock_unlock(struct osal_spinlock* lock) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*调度器冻结 / 中断冻结 (单向不可恢复)*/
@@ -212,7 +212,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
     int osal_mutex_create_typed(struct osal_mutex** out,
-                                osal_mutex_type_t type) COMPAT_WARN_UNUSED_RESULT;
+                                osal_mutex_type_t type) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 创建互斥锁 (指定类型, 静态存储)
      * @param[out] out 回传互斥锁句柄
@@ -222,14 +222,14 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size,
-                                       osal_mutex_type_t type) COMPAT_WARN_UNUSED_RESULT;
+                                       osal_mutex_type_t type) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 创建普通非递归互斥锁 (池分配, 推荐)
      * @param[out] out 回传互斥锁句柄
      * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
-    int osal_mutex_create(struct osal_mutex** out) COMPAT_WARN_UNUSED_RESULT;
+    int osal_mutex_create(struct osal_mutex** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 创建普通非递归互斥锁 (静态存储)
      * @param[out] out 回传互斥锁句柄
@@ -238,14 +238,14 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static(struct osal_mutex** out, void* storage,
-                                 size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
+                                 size_t storage_size) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 创建递归互斥锁 (可嵌套 lock/unlock, 池分配)
      * @param[out] out 回传互斥锁句柄
      * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
-    int osal_mutex_create_recursive(struct osal_mutex** out) COMPAT_WARN_UNUSED_RESULT;
+    int osal_mutex_create_recursive(struct osal_mutex** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 创建递归互斥锁 (静态存储)
      * @param[out] out 回传互斥锁句柄
@@ -254,14 +254,14 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage,
-                                           size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
+                                           size_t storage_size) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 创建普通非递归互斥锁 (与 create 等价, 强调语义)
      * @param[out] out 回传互斥锁句柄
      * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
-    int osal_mutex_create_plain(struct osal_mutex** out) COMPAT_WARN_UNUSED_RESULT;
+    int osal_mutex_create_plain(struct osal_mutex** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 创建普通非递归互斥锁 (静态存储, 强调语义)
      * @param[out] out 回传互斥锁句柄
@@ -270,7 +270,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_mutex_create_static_plain(struct osal_mutex** out, void* storage,
-                                       size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
+                                       size_t storage_size) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*互斥锁 — 使用 API*/
@@ -286,7 +286,7 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (OSAL_WAIT_FOREVER 永久等待)
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
-    int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int osal_mutex_lock(struct osal_mutex* mutex, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 释放互斥锁
      * @param[in] mutex 互斥锁指针
@@ -332,7 +332,7 @@ extern "C"
      * @param[out] out 回传信号量句柄
      * @return 成功返回 MINI_OK, 池耗尽返回 MINI_ERR_NOMEM
      */
-    int osal_sem_create_binary(struct osal_sem** out) COMPAT_WARN_UNUSED_RESULT;
+    int osal_sem_create_binary(struct osal_sem** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 创建二值信号量 (静态存储)
      * @param[out] out 回传信号量句柄
@@ -341,7 +341,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_sem_create_binary_static(struct osal_sem** out, void* storage,
-                                      size_t storage_size) COMPAT_WARN_UNUSED_RESULT;
+                                      size_t storage_size) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 销毁信号量 (仅池分配创建的需要)
      * @param[in] sem 信号量句柄
@@ -353,13 +353,13 @@ extern "C"
      * @param[in] timeout_ms 超时毫秒数 (OSAL_WAIT_FOREVER 永久等待)
      * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
      */
-    int osal_sem_wait(struct osal_sem* sem, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int osal_sem_wait(struct osal_sem* sem, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 释放信号量 (task 上下文)
      * @param[in] sem 信号量句柄
      * @return 成功返回 true
      */
-    bool osal_sem_post(struct osal_sem* sem) COMPAT_WARN_UNUSED_RESULT;
+    bool osal_sem_post(struct osal_sem* sem) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 释放信号量 (ISR 上下文, 不内部 yield)
      * @param[in] sem 信号量句柄
@@ -367,7 +367,7 @@ extern "C"
      * @return 成功返回 true
      */
     bool osal_sem_post_from_isr(struct osal_sem* sem,
-                                bool* px_yield_required) COMPAT_WARN_UNUSED_RESULT;
+                                bool* px_yield_required) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*槽位池*/
@@ -399,20 +399,20 @@ extern "C"
      * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
      */
     int osal_pool_init(osal_pool_t* pool, volatile uint8_t* used_slots,
-                       size_t slot_count) COMPAT_WARN_UNUSED_RESULT;
+                       size_t slot_count) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 申请一个空闲槽位
      * @param[in] pool 槽位池指针
      * @return 成功返回槽位索引 (>=0), 池满返回负数错误码
      */
-    int osal_pool_claim(osal_pool_t* pool) COMPAT_WARN_UNUSED_RESULT;
+    int osal_pool_claim(osal_pool_t* pool) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 释放指定槽位
      * @param[in] pool 槽位池指针
      * @param[in] slot_index 槽位索引
      * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
      */
-    int osal_pool_release(osal_pool_t* pool, int slot_index) COMPAT_WARN_UNUSED_RESULT;
+    int osal_pool_release(osal_pool_t* pool, int slot_index) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 检查槽位是否被占用
      * @param[in] pool 槽位池指针
@@ -439,7 +439,7 @@ extern "C"
      */
     int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
                          osal_task_entry_t entry, void* param,
-                         int core_id) COMPAT_WARN_UNUSED_RESULT;
+                         int core_id) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 启动调度器 (OS 后端的统一封装)
@@ -470,7 +470,7 @@ extern "C"
      */
     int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
                                 osal_task_entry_t entry, void* param, int core_id,
-                                osal_task_handle_t* out_handle) COMPAT_WARN_UNUSED_RESULT;
+                                osal_task_handle_t* out_handle) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 当前任务自我删除
      */
@@ -524,7 +524,7 @@ extern "C"
      * @return 队列句柄; 创建失败返回 NULL
      */
     osal_queue_handle_t osal_queue_create(size_t queue_len,
-                                          size_t item_size) COMPAT_WARN_UNUSED_RESULT;
+                                          size_t item_size) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 删除消息队列
      * @param[in] queue 队列句柄
@@ -538,7 +538,7 @@ extern "C"
      * @return 成功返回 true, 超时返回 false
      */
     bool osal_queue_send(osal_queue_handle_t queue, const void* item,
-                         uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                         uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 入队 (ISR 上下文, 不内部 yield)
      * @param[in] queue 队列句柄
@@ -547,7 +547,7 @@ extern "C"
      * @return 成功返回 true
      */
     bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item,
-                                  bool* px_yield_required) COMPAT_WARN_UNUSED_RESULT;
+                                  bool* px_yield_required) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 出队 (task 上下文)
      * @param[in] queue 队列句柄
@@ -556,7 +556,7 @@ extern "C"
      * @return 成功返回 true, 超时返回 false
      */
     bool osal_queue_receive(osal_queue_handle_t queue, void* item,
-                            uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+                            uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 出队 (ISR 上下文, 不内部 yield)
      * @param[in] queue 队列句柄
@@ -565,7 +565,7 @@ extern "C"
      * @return 成功返回 true
      */
     bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item,
-                                     bool* px_yield_required) COMPAT_WARN_UNUSED_RESULT;
+                                     bool* px_yield_required) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*安全互锁与硬件关断*/
@@ -617,13 +617,13 @@ extern "C"
  * @details 关键断言时, 使用 osal_log_critical_assert 输出关键原因
  * @details 关键断言时, 使用 system_safety_hardware_shutdown 板级硬件安全关断
  */
-#define CRITICAL_ASSERT(cond, fmt, ...)                                                            \
+#define MINI_CRITICAL_ASSERT(cond, fmt, ...)                                                       \
     do                                                                                             \
     {                                                                                              \
         if (!(cond))                                                                               \
         {                                                                                          \
             osal_log_critical_assert(__FILE__, __LINE__, fmt, ##__VA_ARGS__);                      \
-            system_safety_hardware_shutdown("CRITICAL_ASSERT");                                    \
+            system_safety_hardware_shutdown("MINI_CRITICAL_ASSERT");                                \
             while (1)                                                                              \
             {                                                                                      \
                 ;                                                                                  \
@@ -647,7 +647,7 @@ extern "C"
      * @param[in] fmt printf 格式串
      * @param[in] ... 格式化参数
      */
-    void osal_log_fatal(const char* fmt, ...) COMPAT_FMT_PRINTF(1, 2);
+    void osal_log_fatal(const char* fmt, ...) MINI_FMT_PRINTF(1, 2);
     /**
      * @brief 关键断言失败日志 (含文件/行号)
      * @param[in] file 源文件名
@@ -656,7 +656,7 @@ extern "C"
      * @param[in] ... 格式化参数
      */
     void osal_log_critical_assert(const char* file, int line, const char* fmt, ...)
-        COMPAT_FMT_PRINTF(3, 4);
+        MINI_FMT_PRINTF(3, 4);
     /* -------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

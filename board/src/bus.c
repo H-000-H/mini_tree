@@ -22,8 +22,8 @@
 #include <stddef.h>
 #include <string.h>
 
-static struct bus_controller s_controllers[DEV_ID_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_controller_used[DEV_ID_COUNT] COMPAT_ALIGNED(4);
+static struct bus_controller s_controllers[DEV_ID_COUNT] MINI_ALIGNED(4);
+static uint8_t s_controller_used[DEV_ID_COUNT] MINI_ALIGNED(4);
 
 /**
  * @brief 将 device 转换为 device_id (通过 board_dev_find 线性扫描)
@@ -134,7 +134,7 @@ void bus_controller_unbind(struct device* pdev)
         return;
 
     s_controller_used[id] = 0;
-    COMPAT_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
+    MINI_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
 }
 
 /* -------------------------------------------------------------------------- */

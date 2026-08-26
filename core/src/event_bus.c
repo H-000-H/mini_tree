@@ -82,7 +82,7 @@ static struct event_bus s_bus = {0};
  */
 static void event_bus_dispatch_task(void* param)
 {
-    COMPAT_UNUSED_PARAM(param);
+   MINI_UNUSED_PARAM(param);
     struct event event;
 
     while (osal_queue_receive(s_bus.queue, &event, OSAL_WAIT_FOREVER))
@@ -289,7 +289,7 @@ void event_bus_start(void)
         SYS_LOGW(K_TAG, "dispatch task create failed");
         return;
     }
-    COMPAT_IGNORE_RESULT(system_wdt_subscribe(s_bus.task));
+    MINI_IGNORE_RESULT(system_wdt_subscribe(s_bus.task));
     SYS_LOGI(K_TAG, "dispatch task started prio %lu", (unsigned long)K_DISPATCH_PRIO);
 }
 
@@ -306,7 +306,7 @@ void event_bus_stop(void)
 
     /* 向队列发空事件唤醒 dispatch 线程 */
     const struct event dummy = {EVENT_SYS_FAULT, 0};
-    COMPAT_IGNORE_RESULT(osal_queue_send(s_bus.queue, &dummy, 0));
+    MINI_IGNORE_RESULT(osal_queue_send(s_bus.queue, &dummy, 0));
 
     uint32_t waited = 0;
     while (osal_task_is_running(handle) && waited < K_STOP_WAIT_MS)

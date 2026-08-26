@@ -40,17 +40,17 @@ struct sx1278_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sx1278_device s_sx1278_pool[SX1278_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_sx1278_used[SX1278_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_sx1278_pool_ctrl COMPAT_ALIGNED(4);
+static struct sx1278_device s_sx1278_pool[SX1278_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_sx1278_used[SX1278_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_sx1278_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "sx1278";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sx1278_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sx1278_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_sx1278_pool_ctrl, s_sx1278_used, SX1278_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_sx1278_pool_ctrl, s_sx1278_used, SX1278_POOL_COUNT));
 }
 
 /**
@@ -107,7 +107,7 @@ static void sx1278_hw_destroy(struct sx1278_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->spi_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->spi_dev));
+        MINI_IGNORE_RESULT(device_close(dev->spi_dev));
     dev->hw_ready = 0;
 }
 
@@ -119,7 +119,7 @@ static int sx1278_open(struct device* pdev, void* arg)
     struct sx1278_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sx1278_get_drvdata(pdev);
@@ -192,8 +192,8 @@ static int sx1278_wr_reg(struct sx1278_device* dev, uint8_t reg, uint8_t val, ui
  */
 static int sx1278_cmd_reset(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(len);
     if (sx1278_wr_reg(dev, 0x01, 0x00, timeout_ms) != MINI_OK)
         return MINI_ERR_IO;
     dev->opmode = 0;
@@ -237,7 +237,7 @@ static int sx1278_cmd_send(struct sx1278_device* dev, void* arg, size_t len, uin
         if (count > 255U)
             count = 255U;
         tx[0] = 0x80;
-        COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&tx[1], pl->data, count));
+        MINI_IGNORE_RESULT(MINI_MEM_COPY(&tx[1], pl->data, count));
         if (sx1278_spi_xfer(dev, tx, NULL, count + 1U, timeout_ms) != MINI_OK)
             return MINI_ERR_IO;
     }
@@ -253,7 +253,7 @@ static int sx1278_cmd_recv(struct sx1278_device* dev, void* arg, size_t len, uin
     uint8_t rx[2] = {0, 0};
     uint8_t* out;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pl || len != sizeof(*pl) || !pl->data || pl->len == 0U)
         return MINI_ERR_INVAL;
     if (sx1278_spi_xfer(dev, tx, rx, 2, 50) != MINI_OK)
@@ -318,7 +318,7 @@ static int sx1278_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_sx1278_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->spi_dev = device_get_parent(pdev);
     if (!dev->spi_dev)
     {
@@ -337,8 +337,8 @@ static int sx1278_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_sx1278_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_sx1278_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -367,8 +367,8 @@ static int sx1278_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     sx1278_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_sx1278_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_sx1278_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

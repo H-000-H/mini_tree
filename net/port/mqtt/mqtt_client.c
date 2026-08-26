@@ -63,9 +63,9 @@ static bool mqtt_event_callback(MQTTContext_t* mqtt_context, MQTTPacketInfo_t* p
                                 MQTTPropBuilder_t* send_props_buffer,
                                 MQTTPropBuilder_t* get_props_buffer)
 {
-    COMPAT_IGNORE_RESULT(reason_code);
-    COMPAT_IGNORE_RESULT(send_props_buffer);
-    COMPAT_IGNORE_RESULT(get_props_buffer);
+    MINI_IGNORE_RESULT(reason_code);
+    MINI_IGNORE_RESULT(send_props_buffer);
+    MINI_IGNORE_RESULT(get_props_buffer);
 
     struct mqtt_client_context* context =
         container_of(mqtt_context, struct mqtt_client_context, mqtt_context);
@@ -182,7 +182,7 @@ static void mqtt_reset_connection(struct mqtt_client_context* context)
     context->is_mqtt_connected = false;
     context->connect_requested = false;
     context->connack_pending = false;
-    COMPAT_IGNORE_RESULT(network_transport_disconnect(&context->network_context));
+    MINI_IGNORE_RESULT(network_transport_disconnect(&context->network_context));
 }
 
 int mqtt_client_do_connect(struct mqtt_client_context* context)
@@ -274,7 +274,7 @@ int mqtt_client_disconnect(struct mqtt_client_context* context)
 
     /* MQTT 会话建立时先发 DISCONNECT 报文, 通知 Broker 正常下线 (遗嘱不触发) */
     if (context->is_mqtt_connected)
-        COMPAT_IGNORE_RESULT(MQTT_Disconnect(&context->mqtt_context, NULL, NULL));
+        MINI_IGNORE_RESULT(MQTT_Disconnect(&context->mqtt_context, NULL, NULL));
 
     mqtt_reset_connection(context);
     SYS_LOGI(s_kTag, "mqtt disconnected");
@@ -387,7 +387,7 @@ int mqtt_client_process(struct mqtt_client_context* context)
     {
         if (network_transport_is_connected(&context->network_context))
         {
-            COMPAT_IGNORE_RESULT(mqtt_handshake(context));
+            MINI_IGNORE_RESULT(mqtt_handshake(context));
         }
         else if (network_transport_link_failed(&context->network_context) ||
                  ((osal_time_ms() - context->tcp_connect_start_ms) >= MQTT_TCP_CONNECT_TIMEOUT_MS))

@@ -50,7 +50,7 @@ extern "C"
      * @return 进入前的中断状态 (Cortex-M: PRIMASK; RISC-V: mstatus)
      * @note 必须与 osal_null_irq_restore 成对使用, 支持嵌套
      */
-    COMPAT_STATIC_INLINE uint32_t osal_null_irq_disable(void)
+    MINI_STATIC_INLINE uint32_t osal_null_irq_disable(void)
     {
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
     defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
@@ -71,7 +71,7 @@ extern "C"
      * @brief 恢复全局中断 (裸机临界区出口)
      * @param[in] state osal_null_irq_disable 返回的中断状态
      */
-    COMPAT_STATIC_INLINE void osal_null_irq_restore(uint32_t state)
+    MINI_STATIC_INLINE void osal_null_irq_restore(uint32_t state)
     {
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
     defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
@@ -80,7 +80,7 @@ extern "C"
     if (state & 8U)
         __asm__ volatile("csrsi mstatus, 8" ::: "memory");
 #else
-    COMPAT_UNUSED_PARAM(state);
+   MINI_UNUSED_PARAM(state);
 #endif
     }
 

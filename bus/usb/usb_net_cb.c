@@ -57,9 +57,9 @@ struct ubs_net_rx_frame
 /** @brief 静态接收帧队列: 统一 FIFO, 元素 = 完整帧 (SPSC: 生产 = tud_network_recv_cb, 消费 =
  * usb_net_frame_pop_rx) */
 static struct fifo_uni_spsc s_rx_fifo;
-static uint8_t s_rx_ring[USB_NET_QUEUE_DEPTH * sizeof(struct ubs_net_rx_frame)] COMPAT_ALIGNED(4);
+static uint8_t s_rx_ring[USB_NET_QUEUE_DEPTH * sizeof(struct ubs_net_rx_frame)] MINI_ALIGNED(4);
 
-static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] COMPAT_ALIGNED(4);
+static uint8_t s_tx_buffer[CFG_TUD_NET_MTU] MINI_ALIGNED(4);
 
 /**
  * @brief 网卡 MAC 地址定义 (0x02 起头为 locally administered 地址)
@@ -68,7 +68,7 @@ uint8_t tud_network_mac_address[6] = {0x02, 0x02, 0x84, 0x6A, 0x96, 0x00};
 
 void tud_network_init_cb()
 {
-    COMPAT_IGNORE_RESULT(fifo_uni_init(
+    MINI_IGNORE_RESULT(fifo_uni_init(
         &s_rx_fifo, s_rx_ring, (uint16_t)sizeof(struct ubs_net_rx_frame), USB_NET_QUEUE_DEPTH));
 }
 
@@ -90,9 +90,9 @@ bool tud_network_recv_cb(const uint8_t* src, uint16_t size)
     struct ubs_net_rx_frame* slot = (struct ubs_net_rx_frame*)slot_raw;
 
     /* 先拷数据与长度, 再 commit 发布 (release 内存序由 fifo 内部保证) */
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(slot->data, src, size));
+    MINI_IGNORE_RESULT(MINI_MEM_COPY(slot->data, src, size));
     slot->len = size;
-    COMPAT_IGNORE_RESULT(fifo_uni_write_commit(&s_rx_fifo));
+    MINI_IGNORE_RESULT(fifo_uni_write_commit(&s_rx_fifo));
     return true;
 }
 
@@ -108,7 +108,7 @@ uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg)
     if (!dst || !ref || arg == 0)
         return 0;
 
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(dst, ref, arg));
+    MINI_IGNORE_RESULT(MINI_MEM_COPY(dst, ref, arg));
 
     return arg;
 }
@@ -133,7 +133,7 @@ int usb_net_frame_push_tx(const void* frame, size_t len)
 #endif
     }
     /* 发送到缓存并通过参数直接传递至回调函数 */
-    COMPAT_MEM_COPY(s_tx_buffer, frame, len);
+    MINI_MEM_COPY(s_tx_buffer, frame, len);
     tud_network_xmit(s_tx_buffer, (uint16_t)len);
     return (int)len;
 }
@@ -153,11 +153,11 @@ int usb_net_frame_pop_rx(void* frame, size_t len)
     if ((size_t)frame_len > len)
     {
         /* 调用方缓冲放不下: 丢弃该帧避免死队, 调用方应加大接收缓冲 */
-        COMPAT_IGNORE_RESULT(fifo_uni_read_release(&s_rx_fifo));
+        MINI_IGNORE_RESULT(fifo_uni_read_release(&s_rx_fifo));
         return MINI_ERR_NOSPC;
     }
 
-    COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(frame, slot->data, frame_len));
-    COMPAT_IGNORE_RESULT(fifo_uni_read_release(&s_rx_fifo));
+    MINI_IGNORE_RESULT(MINI_MEM_COPY(frame, slot->data, frame_len));
+    MINI_IGNORE_RESULT(fifo_uni_read_release(&s_rx_fifo));
     return (int)frame_len;
 }

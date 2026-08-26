@@ -31,7 +31,7 @@ struct usb_bus_host
 {
     struct device* pdev;
     struct hal_usb_bus_host hal_host;
-    COMPAT_ATOMIC_INT ref_count;
+    MINI_ATOMIC_INT ref_count;
     int tusb_inited;
     uint8_t rhport;
 };
@@ -51,10 +51,10 @@ static struct usb_bus_client s_usb_clients[DEV_ID_COUNT];
 static struct usb_bus_host* s_irq_host;
 static const char* const k_tag = "usb_bus";
 
-/** host 池初始化 (pre_execution 阶段, 供 device 池复用) */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
+/** host 池初始化 (mini_pre_execution 阶段, 供 device 池复用) */
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
 }
 
 /**
@@ -121,10 +121,10 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
         return MINI_ERR_NOMEM;
 
     host = &s_usb_hosts[idx];
-    COMPAT_MEM_SET(host, 0, sizeof(*host));
+    MINI_MEM_SET(host, 0, sizeof(*host));
     host->pdev = pdev;
     host->rhport = (uint8_t)host_cfg->rhport;
-    COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
+    MINI_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     ret = hal_usb_bus_host_init(&host->hal_host, host_cfg);
     if (ret != MINI_OK)
@@ -132,20 +132,20 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
 
     if (usb_tusb_init(host->rhport) != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
+        MINI_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
         ret = MINI_ERR_IO;
         goto fail_pool;
     }
     host->tusb_inited = 1;
     s_irq_host = host;
-    COMPAT_IGNORE_RESULT(hal_usb_irq_enable(&host->hal_host));
+    MINI_IGNORE_RESULT(hal_usb_irq_enable(&host->hal_host));
 
     ret = bus_controller_bind_full(pdev, BUS_TYPE_USB, &s_usb_controller_ops, host);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(hal_usb_irq_disable(&host->hal_host));
+        MINI_IGNORE_RESULT(hal_usb_irq_disable(&host->hal_host));
         s_irq_host = NULL;
-        COMPAT_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
+        MINI_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
         goto fail_pool;
     }
 
@@ -153,8 +153,8 @@ static int usb_host_init_impl(struct device* pdev, const void* cfg)
     return MINI_OK;
 
 fail_pool:
-    COMPAT_MEM_SET(host, 0, sizeof(*host));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_usb_host_pool_ctrl, idx));
+    MINI_MEM_SET(host, 0, sizeof(*host));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_usb_host_pool_ctrl, idx));
     return ret;
 }
 
@@ -178,7 +178,7 @@ static int usb_host_deinit_impl(struct device* pdev)
     host = usb_host_from_device(pdev);
     if (!host)
         return MINI_ERR_NODEV;
-    if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
+    if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0)
         return MINI_ERR_BUSY;
 
     idx = (int)(host - s_usb_hosts);
@@ -188,8 +188,8 @@ static int usb_host_deinit_impl(struct device* pdev)
     ret = hal_usb_bus_host_deinit(&host->hal_host);
     if (ret == MINI_OK)
     {
-        COMPAT_MEM_SET(host, 0, sizeof(*host));
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_usb_host_pool_ctrl, idx));
+        MINI_MEM_SET(host, 0, sizeof(*host));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_usb_host_pool_ctrl, idx));
     }
     return ret;
 }
@@ -203,7 +203,7 @@ int usb_bus_host_deinit(struct device* pdev) { return usb_host_deinit_impl(pdev)
  */
 static int usb_host_role_impl(struct device* pdev)
 {
-    COMPAT_IGNORE_RESULT(pdev);
+    MINI_IGNORE_RESULT(pdev);
     return 0;
 }
 
@@ -245,11 +245,11 @@ static int usb_client_register_impl(struct device* pdev, const void* cfg, void**
         return MINI_OK;
     }
 
-    COMPAT_MEM_SET(client, 0, sizeof(*client));
+    MINI_MEM_SET(client, 0, sizeof(*client));
     client->pdev = pdev;
     client->host = host;
     client->cls = *pcls;
-    (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
+    (void)MINI_ATOMIC_FETCH_ADD(&host->ref_count, 1, MINI_SEQ_CST);
     *out = client;
     return MINI_OK;
 }
@@ -273,13 +273,13 @@ static void usb_client_unregister_impl(struct device* pdev)
         return;
     if (client->hw_open)
     {
-        COMPAT_IGNORE_RESULT(usb_bus_close(pdev));
+        MINI_IGNORE_RESULT(usb_bus_close(pdev));
         client->hw_open = 0;
     }
     host = client->host;
     if (host)
-        (void)COMPAT_ATOMIC_FETCH_SUB(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
-    COMPAT_MEM_SET(client, 0, sizeof(*client));
+        (void)MINI_ATOMIC_FETCH_SUB(&host->ref_count, 1, MINI_SEQ_CST);
+    MINI_MEM_SET(client, 0, sizeof(*client));
 }
 
 void usb_bus_client_unregister(struct device* pdev) { usb_client_unregister_impl(pdev); }
@@ -331,7 +331,7 @@ int usb_bus_cdc_write(struct device* pdev, const void* buf, size_t len, uint32_t
     size_t done = 0;
     int mode;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!usb_client || usb_client->cls != USB_CLIENT_CDC || !buf)
         return MINI_ERR_INVAL;
 
@@ -402,7 +402,7 @@ int usb_bus_ecm_write(struct device* pdev, const void* frame, size_t len, uint32
     struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     int mode;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!usb_client || usb_client->cls != USB_CLIENT_ECM || !frame || !len)
         return MINI_ERR_INVAL;
 
@@ -447,7 +447,7 @@ int usb_bus_hid_write(struct device* pdev, const void* report, size_t len, uint3
     struct usb_bus_client* usb_client = usb_client_from_device(pdev);
     int mode;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!usb_client || usb_client->cls != USB_CLIENT_HID || !report || !len)
         return MINI_ERR_INVAL;
 

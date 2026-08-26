@@ -45,11 +45,11 @@ static bool s_ready = false;
  */
 int production_log_init(void)
 {
-    COMPAT_IGNORE_RESULT(hal_storage_init());
+    MINI_IGNORE_RESULT(hal_storage_init());
 
-    COMPAT_MEM_SET(&s_state, 0, sizeof(s_state));
+    MINI_MEM_SET(&s_state, 0, sizeof(s_state));
     size_t len = sizeof(s_state);
-    COMPAT_IGNORE_RESULT(hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len));
+    MINI_IGNORE_RESULT(hal_storage_read_blob(PROD_LOG_STORAGE_SLOT, (uint8_t*)&s_state, &len));
 
     s_ready = true;
     return 0;
@@ -83,7 +83,7 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     if (osal_in_isr())
         return;
 
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state)));
 }
 
@@ -186,9 +186,9 @@ int production_log_init(void) { return 0; }
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
-    COMPAT_UNUSED_PARAM(level);
-    COMPAT_UNUSED_PARAM(tag);
-    COMPAT_UNUSED_PARAM(msg);
+   MINI_UNUSED_PARAM(level);
+   MINI_UNUSED_PARAM(tag);
+   MINI_UNUSED_PARAM(msg);
 }
 
 /**
@@ -200,9 +200,9 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    COMPAT_UNUSED_PARAM(level);
-    COMPAT_UNUSED_PARAM(tag);
-    COMPAT_UNUSED_PARAM(fmt);
+   MINI_UNUSED_PARAM(level);
+   MINI_UNUSED_PARAM(tag);
+   MINI_UNUSED_PARAM(fmt);
 }
 
 /**
@@ -218,7 +218,7 @@ int production_log_count(void) { return 0; }
  */
 const struct prod_log_entry* production_log_get(int index)
 {
-    COMPAT_UNUSED_PARAM(index);
+   MINI_UNUSED_PARAM(index);
     return NULL;
 }
 

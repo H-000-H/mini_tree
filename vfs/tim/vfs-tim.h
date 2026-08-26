@@ -31,7 +31,7 @@ extern "C"
 #include "hal_tim.h"
 #include <stdint.h>
 
-#define TIM_CMD_BASE COMPAT_MAGIC(TIM)
+#define TIM_CMD_BASE MINI_MAGIC(TIM)
 #define TIM_CMD_START (TIM_CMD_BASE + 0x01) /* 0: 启动定时器 (base/encoder/hall) */
 #define TIM_CMD_STOP (TIM_CMD_BASE + 0x02) /* 1: 强制停止 */
 #define TIM_CMD_PAUSE (TIM_CMD_BASE + 0x03) /* 2: 基础停止 (base_stop) */
@@ -88,7 +88,7 @@ extern "C"
     /**
      * @brief 快速 PWM 更新 (ARR + CCR 同步)
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_pwm_update(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_pwm_update(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -98,7 +98,7 @@ extern "C"
     /**
      * @brief 快速获取计数器值
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_get_counter(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_get_counter(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -108,7 +108,7 @@ extern "C"
     /**
      * @brief 快速设置计数器值
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_set_counter(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_set_counter(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -118,7 +118,7 @@ extern "C"
     /**
      * @brief 快速获取输入捕获值
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_get_capture(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_get_capture(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -128,7 +128,7 @@ extern "C"
     /**
      * @brief 快速获取编码器值
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_get_encoder(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_get_encoder(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -138,7 +138,7 @@ extern "C"
     /**
      * @brief 快速获取霍尔值
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_get_hall(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_get_hall(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -148,7 +148,7 @@ extern "C"
     /**
      * @brief 快速设置 ARR
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_set_autoreload(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_set_autoreload(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -158,7 +158,7 @@ extern "C"
     /**
      * @brief 快速获取 ARR
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_get_autoreload(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_get_autoreload(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -168,7 +168,7 @@ extern "C"
     /**
      * @brief 快速清更新标志 (ISR 上半部用, 非阻塞无生命周期)
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_clear_update_flag(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_clear_update_flag(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -178,7 +178,7 @@ extern "C"
     /**
      * @brief 快速设置分频器
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_set_prescaler(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_set_prescaler(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;
@@ -188,7 +188,7 @@ extern "C"
     /**
      * @brief 快速获取分频器
      */
-    COMPAT_STATIC_INLINE int vfs_tim_fast_get_prescaler(struct vfs_tim_arg* arg)
+    MINI_STATIC_INLINE int vfs_tim_fast_get_prescaler(struct vfs_tim_arg* arg)
     {
         if (!arg || !arg->obj)
             return MINI_ERR_INVAL;

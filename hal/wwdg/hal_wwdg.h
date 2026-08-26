@@ -49,21 +49,21 @@ extern "C"
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
     int hal_wwdg_init(struct hal_wwdg_dev* pdev,
-                      const struct hal_wwdg_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                      const struct hal_wwdg_config* cfg) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 使能 APB1 时钟并启动 WWDG (置 WDGA)
      * @param[in] pdev 设备对象
      * @return MINI_OK 或 MINI_ERR_INVAL
      */
-    int hal_wwdg_start(struct hal_wwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_wwdg_start(struct hal_wwdg_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 窗口内喂狗 (重写 CR 的 T 字段)
      * @param[in] pdev 设备对象 (须已 start); 调用方负责窗口时机
      * @return MINI_OK 或 MINI_ERR_NODEV
      */
-    int hal_wwdg_feed(struct hal_wwdg_dev* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int hal_wwdg_feed(struct hal_wwdg_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

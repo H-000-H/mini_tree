@@ -16,7 +16,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-COMPAT_WEAK int hal_adc_device_init(hal_adc_device* pdev,
+MINI_WEAK int hal_adc_device_init(hal_adc_device* pdev,
                                     hal_adc_platform_unique_config* unique_cfg,
                                     hal_adc_host_config* host)
 {
@@ -26,44 +26,44 @@ COMPAT_WEAK int hal_adc_device_init(hal_adc_device* pdev,
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_device_deinit(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_device_deinit(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_init(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_init(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_deinit_all_adcx(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_deinit_all_adcx(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_deinit_adcx_channel(hal_adc_device* pdev, uint32_t channel_id)
+MINI_WEAK int hal_adc_deinit_adcx_channel(hal_adc_device* pdev, uint32_t channel_id)
 {
     (void)pdev;
     (void)channel_id;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_start(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_start(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_stop(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_stop(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num, uint16_t* out_val)
+MINI_WEAK int hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num, uint16_t* out_val)
 {
     (void)pdev;
     (void)channel_num;
@@ -71,21 +71,21 @@ COMPAT_WEAK int hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num, u
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_poll_for_conversion(hal_adc_device* pdev, uint32_t* out_status)
+MINI_WEAK int hal_adc_poll_for_conversion(hal_adc_device* pdev, uint32_t* out_status)
 {
     (void)pdev;
     (void)out_status;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_get_channel_count(hal_adc_device* pdev, uint32_t* count)
+MINI_WEAK int hal_adc_get_channel_count(hal_adc_device* pdev, uint32_t* count)
 {
     (void)pdev;
     (void)count;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t* channel_id)
+MINI_WEAK int hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t* channel_id)
 {
     (void)pdev;
     (void)index;
@@ -93,7 +93,7 @@ COMPAT_WEAK int hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index,
+MINI_WEAK int hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index,
                                                 uint32_t* sample_time)
 {
     (void)pdev;
@@ -102,26 +102,26 @@ COMPAT_WEAK int hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index,
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_dma_start(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_dma_start(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_dma_it_start(hal_adc_device* pdev)
+MINI_WEAK int hal_adc_dma_it_start(hal_adc_device* pdev)
 {
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_dma_it_read_value(hal_adc_device* pdev, uint16_t* out_val)
+MINI_WEAK int hal_adc_dma_it_read_value(hal_adc_device* pdev, uint16_t* out_val)
 {
     (void)pdev;
     (void)out_val;
     return MINI_ERR_NOTSUPP;
 }
 
-COMPAT_WEAK int hal_adc_dma_read_value(hal_adc_device* pdev, uint16_t* out_val)
+MINI_WEAK int hal_adc_dma_read_value(hal_adc_device* pdev, uint16_t* out_val)
 {
     (void)pdev;
     (void)out_val;

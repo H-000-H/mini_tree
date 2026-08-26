@@ -35,7 +35,7 @@ osal_task_handle_t TaskManager::create(const struct board_task_config& config, T
     }
 
     /* 自动订阅 TWDT (如果 TWDT 已初始化) */
-    COMPAT_IGNORE_RESULT(system_wdt_subscribe(handle));
+    MINI_IGNORE_RESULT(system_wdt_subscribe(handle));
 
     return handle;
 }

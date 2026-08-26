@@ -16,7 +16,7 @@ SystemCmd::SystemCmd()
 #ifndef CONFIG_OSAL_NULL
 {
     m_lock = reinterpret_cast<struct osal_spinlock*>(m_lock_storage);
-    COMPAT_IGNORE_RESULT(osal_spinlock_init(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_init(m_lock));
 }
 #else
     : m_count(0)
@@ -51,19 +51,19 @@ int SystemCmd::register_cmd(const char* name, bool (*handler)())
 
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
-    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     if (m_commands.full())
     {
-        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+        MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return MINI_ERR_NOSPC;
     }
     if (m_commands.contains(cmd))
     {
-        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+        MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return MINI_ERR_BUSY;
     }
     bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
-    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
     for (size_t index = 0; index < m_count; index++)
@@ -87,16 +87,16 @@ int SystemCmd::unregister_cmd(const char* name)
         return MINI_ERR_INVAL;
 
 #ifndef CONFIG_OSAL_NULL
-    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     auto it = m_commands.find(key);
     if (it == m_commands.end())
     {
-        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+        MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return MINI_ERR_NODEV;
     }
     m_commands.erase(it);
-    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return MINI_OK;
 #else
     for (size_t index = 0; index < m_count; index++)
@@ -122,17 +122,17 @@ int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void*
         return MINI_ERR_INVAL;
 
 #ifndef CONFIG_OSAL_NULL
-    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     auto it = m_commands.find(key);
     if (it == m_commands.end())
     {
-        COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+        MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
         return MINI_ERR_NODEV;
     }
     /* 拷贝 HandlerNode 后再解锁, 避免 erase 导致悬垂引用 */
     HandlerNode node = it->second;
-    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
 
     if (expected_args_id && node.args_id != expected_args_id)
         return MINI_ERR_NOTSUPP;
@@ -165,10 +165,10 @@ bool SystemCmd::has_cmd(const char* name) const
         return false;
 
 #ifndef CONFIG_OSAL_NULL
-    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     CmdString key(name);
     bool found = m_commands.find(key) != m_commands.end();
-    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return found;
 #else
     for (size_t index = 0; index < m_count; index++)
@@ -181,9 +181,9 @@ bool SystemCmd::has_cmd(const char* name) const
 size_t SystemCmd::count() const
 {
 #ifndef CONFIG_OSAL_NULL
-    COMPAT_IGNORE_RESULT(osal_spinlock_lock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_lock(m_lock));
     size_t sz = m_commands.size();
-    COMPAT_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
+    MINI_IGNORE_RESULT(osal_spinlock_unlock(m_lock));
     return sz;
 #else
     return m_count;

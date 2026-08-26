@@ -63,10 +63,10 @@ int hal_systick_init(uint32_t tick_hz)
     reload -= 1u;
 
     /* 先关断再配置, 避免中间态触发 */
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, 0u);
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, reload);
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, HAL_SYSTICK_CTRL_CLKSOURCE |
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, 0u);
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, reload);
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, HAL_SYSTICK_CTRL_CLKSOURCE |
                                                                     HAL_SYSTICK_CTRL_TICKINT |
                                                                     HAL_SYSTICK_CTRL_ENABLE);
     return MINI_OK;
@@ -74,16 +74,16 @@ int hal_systick_init(uint32_t tick_hz)
 
 int hal_systick_deinit(void)
 {
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, 0u);
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, 0u);
-    COMPAT_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_CTRL, 0u);
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_LOAD, 0u);
+    MINI_REG_WRITE32(HAL_SYSTICK_BASE + HAL_SYSTICK_REG_VAL, 0u);
     return MINI_OK;
 }
 
 /**
  * @brief SysTick 异常入口 (weak, 允许板级/启动代码强覆盖)
  */
-COMPAT_WEAK void SysTick_Handler(void) { hal_systick_irq_handler(); }
+MINI_WEAK void SysTick_Handler(void) { hal_systick_irq_handler(); }
 
 #else /* 非 Cortex-M: 无 SysTick, 返回 NOTSUPP 让调度器回退 DTS chosen TIM */
 
@@ -101,5 +101,5 @@ int hal_systick_deinit(void) { return MINI_OK; }
  * @brief SysTick 中断业务钩子默认空实现 (weak)
  * @note  由调度器等使用方强符号覆盖; 本弱符号保证链接期总有定义。
  */
-COMPAT_WEAK void hal_systick_irq_handler(void) {}
+MINI_WEAK void hal_systick_irq_handler(void) {}
 #endif /* ESP_PLATFORM */

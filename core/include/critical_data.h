@@ -87,14 +87,14 @@ public:
     {
         m_data = val;
         uint32_t raw = 0;
-        COMPAT_MEM_COPY(&raw, &val, sizeof(T));
+        MINI_MEM_COPY(&raw, &val, sizeof(T));
         m_inv_data = ~raw;
     }
 
     bool validate() const
     {
         uint32_t raw = 0;
-        COMPAT_MEM_COPY(&raw, &m_data, sizeof(T));
+        MINI_MEM_COPY(&raw, &m_data, sizeof(T));
         return raw == ~m_inv_data;
     }
 

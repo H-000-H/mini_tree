@@ -39,17 +39,17 @@ struct at24c02_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct at24c02_device s_at24c02_pool[AT24C02_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_at24c02_used[AT24C02_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_at24c02_pool_ctrl COMPAT_ALIGNED(4);
+static struct at24c02_device s_at24c02_pool[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_at24c02_used[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_at24c02_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "at24c02";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void at24c02_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void at24c02_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_at24c02_pool_ctrl, s_at24c02_used, AT24C02_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_at24c02_pool_ctrl, s_at24c02_used, AT24C02_POOL_COUNT));
 }
 
 /**
@@ -112,7 +112,7 @@ static void at24c02_hw_destroy(struct at24c02_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+        MINI_IGNORE_RESULT(device_close(dev->i2c_dev));
     dev->hw_ready = 0;
 }
 
@@ -124,7 +124,7 @@ static int at24c02_open(struct device* pdev, void* arg)
     struct at24c02_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = at24c02_get_drvdata(pdev);
@@ -219,7 +219,7 @@ static int at24c02_cmd_write(struct at24c02_device* dev, void* arg, size_t len, 
         if (chunk_len > 16U)
             chunk_len = 16U;
         page_buf[0] = (uint8_t)(io->offset + offset);
-        COMPAT_IGNORE_RESULT(COMPAT_MEM_COPY(&page_buf[1], &io->buf[offset], chunk_len));
+        MINI_IGNORE_RESULT(MINI_MEM_COPY(&page_buf[1], &io->buf[offset], chunk_len));
         if (at24c02_i2c_wr(dev, page_buf, chunk_len + 1U, timeout_ms) != MINI_OK)
             return MINI_ERR_IO;
         osal_delay_ms(5);
@@ -280,7 +280,7 @@ static int at24c02_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_at24c02_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->i2c_dev = device_get_parent(pdev);
     if (!dev->i2c_dev)
     {
@@ -299,8 +299,8 @@ static int at24c02_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_at24c02_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_at24c02_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -329,8 +329,8 @@ static int at24c02_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     at24c02_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_at24c02_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_at24c02_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define VL53L0X_CMD_BASE COMPAT_MAGIC(VL53L0X)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define VL53L0X_CMD_BASE MINI_MAGIC(VL53L0X)
 /** 读取测距结果（arg: struct vl53l0x_sample*） */
 #define VL53L0X_CMD_READ_DISTANCE (VL53L0X_CMD_BASE + 0x01)
 /** 命令总数 */

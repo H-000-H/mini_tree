@@ -40,17 +40,17 @@ struct vl53l0x_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct vl53l0x_device s_vl53l0x_pool[VL53L0X_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_vl53l0x_used[VL53L0X_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_vl53l0x_pool_ctrl COMPAT_ALIGNED(4);
+static struct vl53l0x_device s_vl53l0x_pool[VL53L0X_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_vl53l0x_used[VL53L0X_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_vl53l0x_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "vl53l0x";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void vl53l0x_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void vl53l0x_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_vl53l0x_pool_ctrl, s_vl53l0x_used, VL53L0X_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_vl53l0x_pool_ctrl, s_vl53l0x_used, VL53L0X_POOL_COUNT));
 }
 
 /**
@@ -187,7 +187,7 @@ static int vl53l0x_hw_create(struct vl53l0x_device* dev)
     dev->hw_ready = 1;
     return MINI_OK;
 fail:
-    COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+    MINI_IGNORE_RESULT(device_close(dev->i2c_dev));
     return ret;
 }
 
@@ -200,7 +200,7 @@ static void vl53l0x_hw_destroy(struct vl53l0x_device* dev)
         return;
 
     if (dev->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+        MINI_IGNORE_RESULT(device_close(dev->i2c_dev));
     dev->hw_ready = 0;
 }
 
@@ -212,7 +212,7 @@ static int vl53l0x_open(struct device* pdev, void* arg)
     struct vl53l0x_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = vl53l0x_get_drvdata(pdev);
@@ -333,7 +333,7 @@ static int vl53l0x_cmd_read(struct vl53l0x_device* dev, void* arg, size_t len, u
     ret = vl53l0x_rd16(dev, 0x1E, &mm, timeout_ms); /* RESULT_RANGE_MILLIMETER */
     if (ret != MINI_OK)
         return ret;
-    COMPAT_IGNORE_RESULT(vl53l0x_wr8(dev, 0x0B, 0x01, timeout_ms)); /* clear interrupt */
+    MINI_IGNORE_RESULT(vl53l0x_wr8(dev, 0x0B, 0x01, timeout_ms)); /* clear interrupt */
     sample->mm = mm;
     return MINI_OK;
 }
@@ -390,7 +390,7 @@ static int vl53l0x_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_vl53l0x_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->i2c_dev = device_get_parent(pdev);
     if (!dev->i2c_dev)
     {
@@ -409,8 +409,8 @@ static int vl53l0x_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_vl53l0x_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_vl53l0x_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -439,8 +439,8 @@ static int vl53l0x_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     vl53l0x_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_vl53l0x_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_vl53l0x_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

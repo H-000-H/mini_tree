@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define SG90_CMD_BASE COMPAT_MAGIC(SG90)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define SG90_CMD_BASE MINI_MAGIC(SG90)
 /** 设置角度（arg: int*，0..180 度） */
 #define SG90_CMD_SET_ANGLE (SG90_CMD_BASE + 0x01)
 /** 命令总数 */

@@ -48,19 +48,19 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2s_bus_host_init(struct device* pdev,
-                          const struct hal_i2s_bus_config* cfg) COMPAT_WARN_UNUSED_RESULT;
+                          const struct hal_i2s_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 反初始化 I2S 总线主机, 释放硬件资源
      * @param[in] pdev controller device (host)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int i2s_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_host_deinit(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 查询 I2S 总线主机角色
      * @param[in] pdev controller device (host)
      * @return 主机角色 (I2S_BUS_ROLE_MASTER/SLAVE); 失败返回负错误码
      */
-    int i2s_bus_host_role(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_host_role(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 注册 I2S client 设备并绑定配置
      * @param[in] pdev controller device (host)
@@ -69,7 +69,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2s_bus_client_register(struct device* pdev, const struct hal_i2s_device_config* cfg,
-                                struct i2s_bus_client** out) COMPAT_WARN_UNUSED_RESULT;
+                                struct i2s_bus_client** out) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 注销 I2S client 设备
      * @param[in] pdev controller device (host)
@@ -80,13 +80,13 @@ extern "C"
      * @param[in] pdev controller device (host)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int i2s_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_open(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 关闭 I2S 设备 (引用计数 -1)
      * @param[in] pdev controller device (host)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int i2s_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_close(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 同步传输 (samples 为 16-bit 采样数)
      * @param[in] pdev controller device (host)
@@ -98,7 +98,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_* (超时 MINI_ERR_TIMEOUT)
      */
     int i2s_bus_transfer(struct device* pdev, const uint16_t* tx, uint16_t* rx, size_t samples,
-                         uint32_t timeout_ms, uint32_t xfer_mode) COMPAT_WARN_UNUSED_RESULT;
+                         uint32_t timeout_ms, uint32_t xfer_mode) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 异步传输 (参数存档占位; DMA+IT 后续补)
      * @param[in] pdev controller device (host)
@@ -111,14 +111,14 @@ extern "C"
      */
     int i2s_bus_transfer_async(struct device* pdev, const uint16_t* tx, uint16_t* rx,
                                size_t samples, void (*cb)(struct device*, const void*, void*),
-                               void* userdata) COMPAT_WARN_UNUSED_RESULT;
+                               void* userdata) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 轮询异步传输完成 (占位)
      * @param[in] pdev controller device (host)
      * @param[in] timeout_ms 超时毫秒数 (0=不等待)
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
-    int i2s_bus_transfer_poll(struct device* pdev, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_transfer_poll(struct device* pdev, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 设置 DMA 中断模式
@@ -126,14 +126,14 @@ extern "C"
      * @param[in] irq_mode 中断模式 (0=禁用, 1=启用)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int i2s_bus_set_dma_irq_mode(struct device* pdev, uint32_t irq_mode) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_set_dma_irq_mode(struct device* pdev, uint32_t irq_mode) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 获取 DMA 中断模式
      * @param[in] pdev controller device (host)
      * @param[out] irq_mode 回传当前中断模式
      * @return 成功返回 MINI_OK, pdev 或 irq_mode 为空返回 MINI_ERR_INVAL
      */
-    int i2s_bus_get_dma_irq_mode(struct device* pdev, uint32_t* irq_mode) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_get_dma_irq_mode(struct device* pdev, uint32_t* irq_mode) MINI_WARN_UNUSED_RESULT;
 
     /**
      * @brief 启动 DMA 循环缓冲传输
@@ -143,13 +143,13 @@ extern "C"
      * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
      */
     int i2s_bus_dma_circ_start(struct device* pdev, int tx_enable,
-                               int rx_enable) COMPAT_WARN_UNUSED_RESULT;
+                               int rx_enable) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 停止 DMA 循环缓冲传输
      * @param[in] pdev controller device (host)
      * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
      */
-    int i2s_bus_dma_circ_stop(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+    int i2s_bus_dma_circ_stop(struct device* pdev) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 向 DMA 循环 TX 缓冲写入采样
      * @param[in] pdev controller device (host)
@@ -158,7 +158,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 缓冲满返回 MINI_ERR_NOMEM, 失败返回 VFS_ERR_*
      */
     int i2s_bus_dma_circ_write(struct device* pdev, const uint16_t* data,
-                               uint32_t samples) COMPAT_WARN_UNUSED_RESULT;
+                               uint32_t samples) MINI_WARN_UNUSED_RESULT;
     /**
      * @brief 从 DMA 循环 RX 缓冲读取采样
      * @param[in] pdev controller device (host)
@@ -167,7 +167,7 @@ extern "C"
      * @return 成功返回 MINI_OK, 数据不足返回 MINI_ERR_AGAIN, 失败返回 VFS_ERR_*
      */
     int i2s_bus_dma_circ_read(struct device* pdev, uint16_t* data,
-                              uint32_t samples) COMPAT_WARN_UNUSED_RESULT;
+                              uint32_t samples) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

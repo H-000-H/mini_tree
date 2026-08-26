@@ -34,9 +34,9 @@ using osal_task_handle_t = x_task_handle_t;
  */
 etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t period, void (*entry)(x_task*),void* param1, void* param2, int core_id)
 {
-    COMPAT_IGNORE_RESULT(stack_size);
-    COMPAT_IGNORE_RESULT(param2);
-    COMPAT_IGNORE_RESULT(core_id);
+    MINI_IGNORE_RESULT(stack_size);
+    MINI_IGNORE_RESULT(param2);
+    MINI_IGNORE_RESULT(core_id);
     if (param1 == nullptr || entry == nullptr)
         return etl::nullopt;
 
@@ -63,9 +63,9 @@ etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t st
  */
 etl::optional<osal_task_handle_t> osal_task_create(const char* name, uint32_t stack_size,uint32_t priority, void (*entry)(x_task*),void* param1, void* param2, int core_id)
 {
-    COMPAT_IGNORE_RESULT(param1);
-    COMPAT_IGNORE_RESULT(param2);
-    COMPAT_IGNORE_RESULT(core_id);
+    MINI_IGNORE_RESULT(param1);
+    MINI_IGNORE_RESULT(param2);
+    MINI_IGNORE_RESULT(core_id);
     if (name == nullptr || entry == nullptr)
         return etl::nullopt;
 

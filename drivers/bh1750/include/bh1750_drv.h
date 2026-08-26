@@ -20,8 +20,8 @@ extern "C"
 {
 #endif
 
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define BH1750_CMD_BASE COMPAT_MAGIC(BH1750)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define BH1750_CMD_BASE MINI_MAGIC(BH1750)
 /** 读取光照强度（arg: uint16_t*，单位 lux） */
 #define BH1750_CMD_READ_LUX (BH1750_CMD_BASE + 0x01)
 /** 命令总数 */

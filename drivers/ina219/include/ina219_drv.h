@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define INA219_CMD_BASE COMPAT_MAGIC(INA219)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define INA219_CMD_BASE MINI_MAGIC(INA219)
 /** 读取电压/电流/功率（arg: struct ina219_sample*） */
 #define INA219_CMD_READ_POWER (INA219_CMD_BASE + 0x01)
 /** 命令总数 */

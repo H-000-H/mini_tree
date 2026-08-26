@@ -64,7 +64,7 @@
 extern const char ERR_SECTION_BASE;
 #define ERR_BASE ((uintptr_t)&ERR_SECTION_BASE)
 
-COMPAT_STATIC_INLINE void* ERR_PTR(int err)
+MINI_STATIC_INLINE void* ERR_PTR(int err)
 {
     int abs_err = (err < 0) ? -err : err;
 
@@ -78,20 +78,20 @@ COMPAT_STATIC_INLINE void* ERR_PTR(int err)
  * @param[in] PTR ERR_PTR 返回的指针
  * @return 负的错误码 (VFS_ERR_*)
  */
-COMPAT_STATIC_INLINE int PTR_ERR(const void* PTR) { return -(int)(((uintptr_t)PTR) - ERR_BASE); }
+MINI_STATIC_INLINE int PTR_ERR(const void* PTR) { return -(int)(((uintptr_t)PTR) - ERR_BASE); }
 
 /**
  * @brief 判断指针是否为 ERR_PTR 编码的错误指针
  * @param[in] ptr 待判断指针
  * @return 错误指针返回 true
  */
-COMPAT_STATIC_INLINE bool IS_ERR(const void* ptr) { return (uintptr_t)ptr >= ERR_BASE; }
+MINI_STATIC_INLINE bool IS_ERR(const void* ptr) { return (uintptr_t)ptr >= ERR_BASE; }
 
 /**
  * @brief 判断指针为 NULL 或 ERR_PTR 编码的错误指针
  * @param[in] ptr 待判断指针
  * @return NULL 或错误指针返回 true
  */
-COMPAT_STATIC_INLINE bool IS_ERR_OR_NULL(const void* ptr) { return (ptr == NULL) || IS_ERR(ptr); }
+MINI_STATIC_INLINE bool IS_ERR_OR_NULL(const void* ptr) { return (ptr == NULL) || IS_ERR(ptr); }
 
 #endif /* STATUS_H */

@@ -45,17 +45,17 @@ struct vfs_spi_priv
     int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_spi_priv s_spi_priv_pool[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_spi_priv_used[SPI_VFS_PRIV_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_spi_priv_pool_ctrl COMPAT_ALIGNED(4);
+static struct vfs_spi_priv s_spi_priv_pool[SPI_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t s_spi_priv_used[SPI_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_spi_priv_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_host_tag = "spi_vfs_host";
 
 /**
  * @brief SPI Host VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT));
 }
 
@@ -94,25 +94,25 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
         return MINI_ERR_INVAL;
     }
     /** pin_cfg 扩展字段: DTS 未定义时 LL_GPIO_Init 取 0 */
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-output-type", &mosi_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-speed", &mosi_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-mode", &mosi_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-pull", &mosi_pull));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-output-type", &miso_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-speed", &miso_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-mode", &miso_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "miso-pull", &miso_pull));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-output-type", &sclk_output_type));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-speed", &sclk_speed));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-mode", &sclk_mode));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-pull", &sclk_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-output-type", &mosi_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-speed", &mosi_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-mode", &mosi_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "mosi-pull", &mosi_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "miso-output-type", &miso_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "miso-speed", &miso_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "miso-mode", &miso_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "miso-pull", &miso_pull));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-output-type", &sclk_output_type));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-speed", &sclk_speed));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-mode", &sclk_mode));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sclk-pull", &sclk_pull));
 
     {
         int irqn = -1, irq_priority = 0, it_enable = 0;
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
-        COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &irqn));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irq-priority", &irq_priority));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &it_enable));
+        MINI_MEM_SET(cfg, 0, sizeof(*cfg));
         cfg->irqn = (int32_t)irqn;
         cfg->irq_priority = (uint32_t)irq_priority;
         cfg->it_enable = (uint32_t)it_enable;
@@ -154,9 +154,9 @@ static int vfs_spi_priv_parse_dts(struct device* pdev, struct hal_spi_bus_config
 
     {
         int max_transfer_sz = 0;
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "max-trans-buffer", &max_transfer_sz));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "max-trans-buffer", &max_transfer_sz));
         if (max_transfer_sz <= 0)
-            COMPAT_IGNORE_RESULT(
+            MINI_IGNORE_RESULT(
                 device_get_prop_int(pdev, "max-transfer-buffer", &max_transfer_sz));
         cfg->max_transfer_sz = (size_t)(max_transfer_sz > 0 ? max_transfer_sz : 0);
     }
@@ -236,7 +236,7 @@ static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
         return MINI_ERR_NOMEM;
 
     priv = &s_spi_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     ret = vfs_spi_priv_parse_dts(pdev, &priv->cfg, bus_role);
@@ -258,9 +258,9 @@ static int vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
     return MINI_OK;
 
 err_bus:
-    COMPAT_IGNORE_RESULT(spi_bus_host_deinit(pdev));
+    MINI_IGNORE_RESULT(spi_bus_host_deinit(pdev));
 err_pool:
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_spi_priv_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_spi_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -327,8 +327,8 @@ static int vfs_spi_priv_remove(struct device* pdev)
         return ret;
     }
 
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_spi_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_spi_priv_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
     return MINI_OK;
@@ -347,17 +347,17 @@ struct spi_vfs_client
     int pool_idx; /**< 池索引 */
 };
 
-static struct spi_vfs_client s_client_pool[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_client_used[SPI_VFS_CLIENT_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_client_pool_ctrl COMPAT_ALIGNED(4);
+static struct spi_vfs_client s_client_pool[SPI_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t s_client_used[SPI_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_client_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_client_tag = "spi_vfs_client";
 
 /**
  * @brief SPI Client VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -375,7 +375,7 @@ static int spi_vfs_open(struct device* pdev, void* arg)
     int first;
     int ret;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -423,7 +423,7 @@ static int spi_vfs_close(struct device* pdev)
         return last;
 
     if (last)
-        COMPAT_IGNORE_RESULT(spi_bus_close(pdev));
+        MINI_IGNORE_RESULT(spi_bus_close(pdev));
 
     dev_lc_close_end(lc);
     return MINI_OK;
@@ -575,7 +575,7 @@ static int spi_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
     const struct spi_xfer_mode_arg* ma = (const struct spi_xfer_mode_arg*)arg;
     struct spi_vfs_client* priv;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
         return MINI_ERR_INVAL;
     if (ma->xfer_mode > SPI_XFER_DMA)
@@ -600,7 +600,7 @@ static int spi_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len,
     struct spi_xfer_mode_arg* ma = (struct spi_xfer_mode_arg*)arg;
     struct spi_vfs_client* priv;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops || !ma || arg_len != sizeof(*ma))
         return MINI_ERR_INVAL;
 
@@ -622,7 +622,7 @@ static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len
 {
     const struct spi_transfer_async_arg* aa = (const struct spi_transfer_async_arg*)arg;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !aa || arg_len != sizeof(*aa) || aa->len == 0)
         return MINI_ERR_INVAL;
     if (!aa->tx && !aa->rx)
@@ -641,8 +641,8 @@ static int spi_cmd_transfer_async(struct device* pdev, void* arg, size_t arg_len
  */
 static int spi_cmd_async_wait(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(arg);
-    COMPAT_IGNORE_RESULT(arg_len);
+    MINI_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg_len);
     if (!pdev)
         return MINI_ERR_INVAL;
     return spi_bus_transfer_poll(pdev, timeout_ms);
@@ -757,7 +757,7 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
         device_get_prop_int(pdev, "spi-max-frequency", &freq) != MINI_OK)
         return MINI_ERR_INVAL;
 
-    COMPAT_MEM_SET(cfg, 0, sizeof(*cfg));
+    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
     cfg->cs_port = (uintptr_t)cs_port;
     cfg->cs_pin = (int32_t)cs_pin; /* 允许 -1: 无硬件 CS */
     cfg->cs_clk_periph = (uint32_t)cs_clk;
@@ -770,13 +770,13 @@ static int spi_vfs_parse_dts(struct device* pdev, struct hal_spi_device_config* 
     {
         int transfer_direction = 0, data_width = 0, nss = 0, bit_order = 0;
         int crc_calculation = 0, crc_poly = 0, standard = 0;
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "transfer-direction", &transfer_direction));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "data-width", &data_width));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "nss", &nss));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "bit-order", &bit_order));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "crc-calculation", &crc_calculation));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "crc-poly", &crc_poly));
-        COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "standard", &standard));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "transfer-direction", &transfer_direction));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "data-width", &data_width));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "nss", &nss));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "bit-order", &bit_order));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "crc-calculation", &crc_calculation));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "crc-poly", &crc_poly));
+        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "standard", &standard));
         cfg->transfer_direction = (uint32_t)transfer_direction;
         cfg->data_width = (uint32_t)data_width;
         cfg->nss = (uint32_t)nss;
@@ -820,7 +820,7 @@ static int spi_vfs_probe(struct device* pdev)
         return MINI_ERR_NOMEM;
 
     priv = &s_client_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
     priv->role = role;
     priv->xfer_mode = SPI_XFER_AUTO; /* write/read 默认隐式 */
@@ -851,7 +851,7 @@ static int spi_vfs_probe(struct device* pdev)
 err_pool:
     pdev->ops = NULL; /* 切断 fops, 防 UAF */
     dev_lc_reset(device_lc(pdev)); /* 重置生命周期 */
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -889,8 +889,8 @@ static int spi_vfs_remove(struct device* pdev)
     }
 
     spi_bus_client_unregister(pdev);
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_client_pool_ctrl, pool_idx));
 
     dev_lc_remove_finish(lc);
     return MINI_OK;

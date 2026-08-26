@@ -17,8 +17,8 @@
 extern "C"
 {
 #endif
-/** ioctl 命令基址（COMPAT_MAGIC 魔数，防跨模块冲突） */
-#define BME280_CMD_BASE COMPAT_MAGIC(BME280)
+/** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
+#define BME280_CMD_BASE MINI_MAGIC(BME280)
 /** 读取温度/湿度/气压（arg: struct bme280_env*） */
 #define BME280_CMD_READ_ENV (BME280_CMD_BASE + 0x01)
 /** 命令总数 */

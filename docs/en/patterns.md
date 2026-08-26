@@ -12,7 +12,7 @@
 
 ## Table of Contents
 
-1. [Compile-Time Registration Chain (pre_execution)](#1-compile-time-registration-chain-pre_execution)
+1. [Compile-Time Registration Chain (mini_pre_execution)](#1-compile-time-registration-chain-mini_pre_execution)
 2. [Two-Phase Boot - Why the Order Is Fixed](#2-two-phase-boot---why-the-order-is-fixed)
 3. [Compile-Time Probe Table (DRIVER_REGISTER + dtc-lite)](#3-compile-time-probe-table-driver_register--dtc-lite)
 4. [Single Time Base and Cooperative Scheduling (xtask)](#4-single-time-base-and-cooperative-scheduling-xtask)
@@ -23,17 +23,17 @@
 
 ---
 
-## 1. Compile-Time Registration Chain (pre_execution)
+## 1. Compile-Time Registration Chain (mini_pre_execution)
 
 ### Mechanism
 
 `core/include/compiler_compat.h` defines:
 
 ```c
-#define pre_execution(x) __attribute__((constructor((x) + 100)))
+#define mini_pre_execution(x) __attribute__((constructor((x) + 100)))
 ```
 
-`pre_execution(N)` emits a **GCC/Clang constructor function** that runs automatically before `main()`, ordered by priority. The larger `N`, the earlier it runs. All static initialization in the framework goes through this chain: **no hand-written init table, no runtime scanning**:
+`mini_pre_execution(N)` emits a **GCC/Clang constructor function** that runs automatically before `main()`, ordered by priority. The larger `N`, the earlier it runs. All static initialization in the framework goes through this chain: **no hand-written init table, no runtime scanning**:
 
 | Priority | Registration point | Initialization |
 | :---: | :--- | :--- |
@@ -48,7 +48,7 @@
 
 ### Common Pitfalls
 
-- Do not call runtime APIs such as `device_*` or `event_bus_post` inside a `pre_execution` function - `device_tree_init` has not run yet and the device table is still empty.
+- Do not call runtime APIs such as `device_*` or `event_bus_post` inside a `mini_pre_execution` function - `device_tree_init` has not run yet and the device table is still empty.
 - Ordering of **same-priority** constructors across translation units is undefined; do not rely on it.
 
 ---

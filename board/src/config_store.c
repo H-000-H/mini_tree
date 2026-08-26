@@ -435,7 +435,7 @@ static uint8_t read_slot_flag(void)
     if (!s_storage_ready)
         return 0xFF;
     uint8_t flag = 0xFF;
-    COMPAT_IGNORE_RESULT(hal_storage_read_flag(&flag));
+    MINI_IGNORE_RESULT(hal_storage_read_flag(&flag));
     return flag;
 }
 
@@ -758,7 +758,7 @@ int config_store_factory_reset(void)
         return load_factory_defaults() ? MINI_OK : MINI_ERR_INVAL;
     }
 
-    COMPAT_IGNORE_RESULT(hal_storage_erase_all());
+    MINI_IGNORE_RESULT(hal_storage_erase_all());
 
     s_entry_count = 0;
     s_health = 0;

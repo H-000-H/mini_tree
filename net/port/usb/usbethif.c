@@ -98,7 +98,7 @@ int usb_ethif_input(struct netif* netif, const uint8_t* frame, size_t len)
         SYS_LOGE(k_tag, "usb_ethif_input: pbuf_alloc failed (%u)", (unsigned)len);
         return ERR_BUF;
     }
-    COMPAT_IGNORE_RESULT(pbuf_take(temp_buf, frame, (u16_t)len));
+    MINI_IGNORE_RESULT(pbuf_take(temp_buf, frame, (u16_t)len));
 
     if (netif->input(temp_buf, netif) != ERR_OK)
     {
@@ -121,7 +121,7 @@ err_t usb_ethif_init(struct netif* netif)
     netif->input = ethernet_input;
     netif->mtu = USBETHIF_MTU;
     netif->hwaddr_len = 6;
-    COMPAT_MEM_COPY(netif->hwaddr, s_mac, 6);
+    MINI_MEM_COPY(netif->hwaddr, s_mac, 6);
     netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
     return ERR_OK;
 }
@@ -164,11 +164,11 @@ int usb_ethif_init_dev(const char* dev_name)
     if (idx < 0)
     {
         SYS_LOGE(k_tag, "usb_ethif_init_dev: no free netif slot");
-        COMPAT_IGNORE_RESULT(device_close(dev));
+        MINI_IGNORE_RESULT(device_close(dev));
         return -1;
     }
     s_usb_netif_used[idx] = 1;
-    COMPAT_MEM_SET(&s_usb_netif[idx], 0, sizeof(s_usb_netif[idx]));
+    MINI_MEM_SET(&s_usb_netif[idx], 0, sizeof(s_usb_netif[idx]));
 
     /* state 传 device, netif_add 会回调 usb_ethif_init 完成初始化 */
     nif = netif_add(&s_usb_netif[idx], NULL, NULL, NULL, dev, usb_ethif_init, ethernet_input);
@@ -176,7 +176,7 @@ int usb_ethif_init_dev(const char* dev_name)
     {
         SYS_LOGE(k_tag, "usb_ethif_init_dev: netif_add failed");
         s_usb_netif_used[idx] = 0;
-        COMPAT_IGNORE_RESULT(device_close(dev));
+        MINI_IGNORE_RESULT(device_close(dev));
         return -1;
     }
 

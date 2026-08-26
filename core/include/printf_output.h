@@ -25,7 +25,7 @@ extern "C"
      * @param[in] ... 格式化参数
      * @note 内部转调 vprintf; 便于 poison printf 后仍保留受控输出路径
      */
-    void my_printf_output(const char* fmt, ...) COMPAT_FMT_PRINTF(1, 2);
+    void my_printf_output(const char* fmt, ...) MINI_FMT_PRINTF(1, 2);
 
 #ifdef __cplusplus
 }

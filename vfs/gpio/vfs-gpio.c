@@ -36,17 +36,17 @@ struct vfs_gpio_priv
     int pool_idx; /**< 池索引 */
 };
 
-static struct vfs_gpio_priv s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_gpio_priv_used[VFS_GPIO_PIN_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_gpio_priv_pool_ctrl COMPAT_ALIGNED(4);
-static uint8_t s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE] COMPAT_ALIGNED(4);
+static struct vfs_gpio_priv s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
+static uint8_t s_gpio_priv_used[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_gpio_priv_pool_ctrl MINI_ALIGNED(4);
+static uint8_t s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
 
 /**
  * @brief GPIO VFS 私有数据池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(
+    MINI_IGNORE_RESULT(
         osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
 }
 
@@ -63,7 +63,7 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
     int first;
     int ret;
 
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -89,7 +89,7 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
             ret = hal_gpio_fast_set_level(&priv->obj, priv->default_level);
             if (ret != MINI_OK)
             {
-                COMPAT_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
+                MINI_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
                 dev_lc_open_abort(lc);
                 return ret;
             }
@@ -98,7 +98,7 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
         ret = hal_gpio_irq_enable(&priv->obj);
         if (ret != MINI_OK)
         {
-            COMPAT_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
+            MINI_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
             dev_lc_open_abort(lc);
             return ret;
         }
@@ -133,8 +133,8 @@ static int vfs_gpio_close(struct device* pdev)
 
     if (last)
     {
-        COMPAT_IGNORE_RESULT(hal_gpio_irq_disable(&priv->obj));
-        COMPAT_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
+        MINI_IGNORE_RESULT(hal_gpio_irq_disable(&priv->obj));
+        MINI_IGNORE_RESULT(hal_gpio_deinit(&priv->obj));
     }
 
     dev_lc_close_end(lc);
@@ -226,7 +226,7 @@ static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     int32_t offset;
     uint8_t index;
 
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
 
@@ -294,7 +294,7 @@ static int vfs_gpio_probe(struct device* pdev)
     }
 
     priv = &s_gpio_priv_pool[pool_idx];
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
     if (device_get_prop_int(pdev, "gpio-port", &port_val) != MINI_OK ||
@@ -307,13 +307,13 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_pool;
     }
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-speed", &speed_val));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-otype", &otype_val));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-af", &af_val));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-intr", &intr_val));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-deinit-mode", &deinit_mode_val));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-deinit-pull", &deinit_pull_val));
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "virq-idx", &virq_idx));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-speed", &speed_val));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-otype", &otype_val));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-af", &af_val));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-intr", &intr_val));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-deinit-mode", &deinit_mode_val));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "gpio-deinit-pull", &deinit_pull_val));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "virq-idx", &virq_idx));
 
     if (intr_val != 0 && (virq_idx < 0 || virq_idx >= (int)VIRTUAL_IRQ_BLOCK_SIZE))
     {
@@ -336,7 +336,7 @@ static int vfs_gpio_probe(struct device* pdev)
     priv->obj.cfg.deinit_mode = (uint32_t)deinit_mode_val;
     priv->obj.cfg.deinit_pull = (uint32_t)deinit_pull_val;
 
-    COMPAT_IGNORE_RESULT(device_get_prop_int(pdev, "default-level", &default_level));
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "default-level", &default_level));
     priv->default_level = default_level;
 
     if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx],
@@ -366,8 +366,8 @@ err_mutex:
     osal_mutex_destroy(priv->io_mutex);
     priv->io_mutex = NULL;
 err_pool:
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_gpio_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_gpio_priv_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -404,8 +404,8 @@ static int vfs_gpio_remove(struct device* pdev)
 
     osal_mutex_destroy(priv->io_mutex);
     priv->io_mutex = NULL;
-    COMPAT_MEM_SET(priv, 0, sizeof(*priv));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_gpio_priv_pool_ctrl, pool_idx));
+    MINI_MEM_SET(priv, 0, sizeof(*priv));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_gpio_priv_pool_ctrl, pool_idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

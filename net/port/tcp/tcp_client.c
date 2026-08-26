@@ -33,7 +33,7 @@ int tcp_client_poll_send(struct tcp_client_context* ctx)
     uint16_t read_bytes = 0;
 
     /* FIFO 空时 read_block 返回 BUFF_ERR_EMPTY, read_bytes 保持 0 */
-    COMPAT_IGNORE_RESULT(fifo_uni_read_block(&ctx->tx_fifo, temp_buf, chunk, &read_bytes));
+    MINI_IGNORE_RESULT(fifo_uni_read_block(&ctx->tx_fifo, temp_buf, chunk, &read_bytes));
 
     if (read_bytes > 0)
     {
@@ -115,7 +115,7 @@ static err_t tcp_client_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
         if (buf->len > 0)
         {
             uint16_t written = 0;
-            COMPAT_IGNORE_RESULT(fifo_uni_write_block(&ctx->rx_fifo, (const uint8_t*)buf->payload,
+            MINI_IGNORE_RESULT(fifo_uni_write_block(&ctx->rx_fifo, (const uint8_t*)buf->payload,
                                                       buf->len, &written));
             total_bytes = (uint16_t)(total_bytes + written);
             if (written < buf->len)
@@ -141,8 +141,8 @@ static err_t tcp_client_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
  */
 static err_t tcp_client_sent_callback(void* arg, struct tcp_pcb* pcb, uint16_t len)
 {
-    COMPAT_IGNORE_RESULT(pcb);
-    COMPAT_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(pcb);
+    MINI_IGNORE_RESULT(len);
     struct tcp_client_context* ctx = (struct tcp_client_context*)arg;
     if (ctx != NULL) /* 发送窗口释放，尝试继续发 TX FIFO 里的下一批数据 */
         tcp_client_poll_send(ctx);
@@ -193,9 +193,9 @@ int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* serv
     ctx->port = port;
     ctx->is_connected = false;
 
-    COMPAT_IGNORE_RESULT(fifo_uni_init(&ctx->rx_fifo, ctx->rx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
+    MINI_IGNORE_RESULT(fifo_uni_init(&ctx->rx_fifo, ctx->rx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
                                        TCP_CLIENT_RX_BUFFER_SIZE));
-    COMPAT_IGNORE_RESULT(fifo_uni_init(&ctx->tx_fifo, ctx->tx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
+    MINI_IGNORE_RESULT(fifo_uni_init(&ctx->tx_fifo, ctx->tx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
                                        TCP_CLIENT_TX_BUFFER_SIZE));
 
     /* 解析 IP */
@@ -243,7 +243,7 @@ int tcp_client_send(struct tcp_client_context* ctx, const void* data, uint16_t l
 
     uint16_t written = 0;
 
-    COMPAT_IGNORE_RESULT(fifo_uni_write_block(&ctx->tx_fifo, (const uint8_t*)data, len, &written));
+    MINI_IGNORE_RESULT(fifo_uni_write_block(&ctx->tx_fifo, (const uint8_t*)data, len, &written));
 
     tcp_client_poll_send(ctx);
 
@@ -259,7 +259,7 @@ int tcp_client_read(struct tcp_client_context* ctx, void* buf, uint16_t len, uin
 
     uint16_t read_bytes = 0;
 
-    COMPAT_IGNORE_RESULT(fifo_uni_read_block(&ctx->rx_fifo, (uint8_t*)buf, len, &read_bytes));
+    MINI_IGNORE_RESULT(fifo_uni_read_block(&ctx->rx_fifo, (uint8_t*)buf, len, &read_bytes));
     *recv_len = read_bytes;
     return ERR_OK;
 }

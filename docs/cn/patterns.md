@@ -12,7 +12,7 @@
 
 ## 目录
 
-1. [编译期注册链（pre_execution）](#1-编译期注册链pre_execution)
+1. [编译期注册链（mini_pre_execution）](#1-编译期注册链mini_pre_execution)
 2. [两段式点火——为什么顺序不可变](#2-两段式点火为什么顺序不可变)
 3. [编译期 probe 表（DRIVER_REGISTER + dtc-lite）](#3-编译期-probe-表driver_register--dtc-lite)
 4. [单一时基与协调式调度（xtask）](#4-单一时基与协调式调度xtask)
@@ -23,17 +23,17 @@
 
 ---
 
-## 1. 编译期注册链（pre_execution）
+## 1. 编译期注册链（mini_pre_execution）
 
 ### 机制
 
 `core/include/compiler_compat.h` 定义：
 
 ```c
-#define pre_execution(x) __attribute__((constructor((x) + 100)))
+#define mini_pre_execution(x) __attribute__((constructor((x) + 100)))
 ```
 
-`pre_execution(N)` 生成一个 **GCC/Clang 的 constructor 函数**，在 `main()` 之前按优先级自动执行。数字 `N` 越大执行越早。全框架的静态初始化都走这条链，**没有手写的 init 调用表，也没有运行时扫描**：
+`mini_pre_execution(N)` 生成一个 **GCC/Clang 的 constructor 函数**，在 `main()` 之前按优先级自动执行。数字 `N` 越大执行越早。全框架的静态初始化都走这条链，**没有手写的 init 调用表，也没有运行时扫描**：
 
 | 优先级 | 注册点 | 初始化内容 |
 | :---: | :--- | :--- |
@@ -48,7 +48,7 @@
 
 ### 常见坑
 
-- 不要在 `pre_execution` 函数里调用 `device_*`、`event_bus_post` 等运行时 API——此时 `device_tree_init` 尚未执行，设备表还是空态。
+- 不要在 `mini_pre_execution` 函数里调用 `device_*`、`event_bus_post` 等运行时 API——此时 `device_tree_init` 尚未执行，设备表还是空态。
 - 同一翻译单元里两个 constructor 的先后由编译期优先级决定，跨翻译单元的**同级** constructor 顺序未定义，不要依赖。
 
 ---

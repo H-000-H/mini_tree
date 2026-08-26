@@ -85,7 +85,7 @@ extern "C"
      * @param[in] sdio SDIO 实体指针
      * @return 成功返回 MINI_OK, sdio 为空返回 MINI_ERR_INVAL
      */
-    int hal_sdio_init_struct(struct hal_sdio* sdio) COMPAT_WARN_UNUSED_RESULT;
+    int hal_sdio_init_struct(struct hal_sdio* sdio) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
     /*安全停机*/
@@ -94,7 +94,7 @@ extern "C"
      * @brief 强制停止 SDIO 控制器 (安全停机/断电保护)
      * @return 成功返回 MINI_OK, 失败返回负数错误码
      */
-    int hal_sdio_force_stop(void) COMPAT_WARN_UNUSED_RESULT;
+    int hal_sdio_force_stop(void) MINI_WARN_UNUSED_RESULT;
     /* -------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

@@ -37,7 +37,7 @@ struct i2c_bus_host
 {
     struct device* pdev; /**< 关联设备 */
     struct hal_i2c_bus_host hal_host; /**< 嵌入 HAL host (非指针) */
-    COMPAT_ATOMIC_INT ref_count; /**< atomic 引用计数 */
+    MINI_ATOMIC_INT ref_count; /**< atomic 引用计数 */
 };
 
 /** @brief I2C client 运行时描述符 (静态表, 按 device_id 索引) */
@@ -59,9 +59,9 @@ static const char* const k_tag = "i2c_bus";
 /**
  * @brief I2C Host 池启动初始化
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
 }
 /* -------------------------------------------------------------------------- */
 /* Host pool helpers */
@@ -141,26 +141,26 @@ static int i2c_host_init_impl(struct device* pdev, const void* cfg)
 
     host = &s_i2c_hosts[idx];
 
-    COMPAT_MEM_SET(host, 0, sizeof(*host));
+    MINI_MEM_SET(host, 0, sizeof(*host));
 
     host->pdev = pdev;
 
-    COMPAT_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
+    MINI_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 
     ret = hal_i2c_bus_host_init(&host->hal_host, idx, host_cfg);
     if (ret != MINI_OK)
     {
-        COMPAT_MEM_SET(host, 0, sizeof(*host));
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
+        MINI_MEM_SET(host, 0, sizeof(*host));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
         return ret;
     }
 
     ret = bus_controller_bind_full(pdev, BUS_TYPE_I2C, &s_i2c_controller_ops, host);
     if (ret != MINI_OK)
     {
-        COMPAT_IGNORE_RESULT(hal_i2c_bus_host_deinit(&host->hal_host));
-        COMPAT_MEM_SET(host, 0, sizeof(*host));
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
+        MINI_IGNORE_RESULT(hal_i2c_bus_host_deinit(&host->hal_host));
+        MINI_MEM_SET(host, 0, sizeof(*host));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
         return ret;
     }
 
@@ -190,10 +190,10 @@ static int i2c_host_deinit_impl(struct device* pdev)
     if (!host)
         return MINI_ERR_NODEV;
 
-    if (COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST) != 0)
+    if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0)
     {
         SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
-                 COMPAT_ATOMIC_LOAD(&host->ref_count, COMPAT_MO_SEQ_CST));
+                 MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST));
         return MINI_ERR_BUSY;
     }
 
@@ -203,8 +203,8 @@ static int i2c_host_deinit_impl(struct device* pdev)
     ret = hal_i2c_bus_host_deinit(&host->hal_host);
     if (ret == MINI_OK)
     {
-        COMPAT_MEM_SET(host, 0, sizeof(*host));
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
+        MINI_MEM_SET(host, 0, sizeof(*host));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_i2c_host_pool_ctrl, idx));
     }
     return ret;
 }
@@ -284,12 +284,12 @@ static int i2c_client_register_impl(struct device* pdev, const void* cfg, void**
         return MINI_OK;
     }
 
-    COMPAT_MEM_SET(client, 0, sizeof(*client));
+    MINI_MEM_SET(client, 0, sizeof(*client));
     client->pdev = pdev;
     client->host = host;
     client->cfg = *client_cfg;
 
-    (void)COMPAT_ATOMIC_FETCH_ADD(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
+    (void)MINI_ATOMIC_FETCH_ADD(&host->ref_count, 1, MINI_SEQ_CST);
 
     *out = client;
     return MINI_OK;
@@ -317,15 +317,15 @@ static void i2c_client_unregister_impl(struct device* pdev)
     /* 若 client 仍 hw_open, 先 close 以释放 HAL 层 ref_count 与 HAL 句柄 */
     if (client->hw_open)
     {
-        COMPAT_IGNORE_RESULT(i2c_bus_close(pdev));
+        MINI_IGNORE_RESULT(i2c_bus_close(pdev));
         client->hw_open = 0;
     }
 
     host = client->host;
     if (host)
-        (void)COMPAT_ATOMIC_FETCH_SUB(&host->ref_count, 1, COMPAT_MO_SEQ_CST);
+        (void)MINI_ATOMIC_FETCH_SUB(&host->ref_count, 1, MINI_SEQ_CST);
 
-    COMPAT_MEM_SET(client, 0, sizeof(*client));
+    MINI_MEM_SET(client, 0, sizeof(*client));
 }
 
 void i2c_bus_client_unregister(struct device* pdev) { i2c_client_unregister_impl(pdev); }
@@ -342,7 +342,7 @@ int i2c_bus_open(struct device* pdev)
     if (client->hw_open)
         return MINI_OK;
 
-    COMPAT_IGNORE_RESULT(hal_i2c_dev_init(&client->hal_dev, &client->host->hal_host, &client->cfg));
+    MINI_IGNORE_RESULT(hal_i2c_dev_init(&client->hal_dev, &client->host->hal_host, &client->cfg));
     ret = hal_i2c_dev_hw_open(&client->hal_dev);
     if (ret != MINI_OK)
         return ret;
@@ -361,7 +361,7 @@ int i2c_bus_close(struct device* pdev)
 
     if (client->hw_open)
     {
-        COMPAT_IGNORE_RESULT(hal_i2c_dev_hw_close(&client->hal_dev));
+        MINI_IGNORE_RESULT(hal_i2c_dev_hw_close(&client->hal_dev));
         client->hw_open = 0;
     }
     return MINI_OK;
@@ -511,31 +511,31 @@ int i2c_bus_read(struct device* pdev, uint8_t* rx, size_t len, uint32_t timeout_
 int i2c_bus_slave_sync(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t len,
                        uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(pdev);
-    COMPAT_IGNORE_RESULT(tx);
-    COMPAT_IGNORE_RESULT(rx);
-    COMPAT_IGNORE_RESULT(len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(pdev);
+    MINI_IGNORE_RESULT(tx);
+    MINI_IGNORE_RESULT(rx);
+    MINI_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(timeout_ms);
     return MINI_ERR_NOTSUPP;
 }
 
 int i2c_bus_slave_queue_tx(struct device* pdev, const uint8_t* data, size_t len,
                            uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(pdev);
-    COMPAT_IGNORE_RESULT(data);
-    COMPAT_IGNORE_RESULT(len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(pdev);
+    MINI_IGNORE_RESULT(data);
+    MINI_IGNORE_RESULT(len);
+    MINI_IGNORE_RESULT(timeout_ms);
     return MINI_ERR_NOTSUPP;
 }
 
 int i2c_bus_slave_get_trans_result(struct device* pdev, uint8_t* rx_data, size_t rx_cap,
                                    size_t* trans_len, uint32_t timeout_ms)
 {
-    COMPAT_IGNORE_RESULT(pdev);
-    COMPAT_IGNORE_RESULT(rx_data);
-    COMPAT_IGNORE_RESULT(rx_cap);
-    COMPAT_IGNORE_RESULT(trans_len);
-    COMPAT_IGNORE_RESULT(timeout_ms);
+    MINI_IGNORE_RESULT(pdev);
+    MINI_IGNORE_RESULT(rx_data);
+    MINI_IGNORE_RESULT(rx_cap);
+    MINI_IGNORE_RESULT(trans_len);
+    MINI_IGNORE_RESULT(timeout_ms);
     return MINI_ERR_NOTSUPP;
 }

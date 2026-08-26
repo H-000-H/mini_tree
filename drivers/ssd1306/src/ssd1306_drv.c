@@ -39,17 +39,17 @@ struct ssd1306_device
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct ssd1306_device s_ssd1306_pool[SSD1306_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_ssd1306_used[SSD1306_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_ssd1306_pool_ctrl COMPAT_ALIGNED(4);
+static struct ssd1306_device s_ssd1306_pool[SSD1306_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_ssd1306_used[SSD1306_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_ssd1306_pool_ctrl MINI_ALIGNED(4);
 static const char* const k_tag = "ssd1306";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void ssd1306_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void ssd1306_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_ssd1306_pool_ctrl, s_ssd1306_used, SSD1306_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_ssd1306_pool_ctrl, s_ssd1306_used, SSD1306_POOL_COUNT));
 }
 
 /**
@@ -101,7 +101,7 @@ static void ssd1306_hw_destroy(struct ssd1306_device* dev)
     if (!dev || !dev->hw_ready)
         return;
     if (dev->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+        MINI_IGNORE_RESULT(device_close(dev->i2c_dev));
     dev->hw_ready = 0;
 }
 
@@ -113,7 +113,7 @@ static int ssd1306_open(struct device* pdev, void* arg)
     struct ssd1306_device* dev;
     struct dev_lifecycle* lc;
     int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ssd1306_get_drvdata(pdev);
@@ -224,8 +224,8 @@ static int ssd1306_cmd_clear(struct ssd1306_device* dev, void* arg, size_t len, 
 static int ssd1306_cmd_get_info(struct ssd1306_device* dev, void* arg, size_t len, uint32_t ms)
 {
     struct display_info_arg* info = (struct display_info_arg*)arg;
-    COMPAT_IGNORE_RESULT(dev);
-    COMPAT_IGNORE_RESULT(ms);
+    MINI_IGNORE_RESULT(dev);
+    MINI_IGNORE_RESULT(ms);
     if (!info || len != sizeof(*info))
         return MINI_ERR_INVAL;
     info->width = SSD1306_WIDTH;
@@ -281,8 +281,8 @@ static int ssd1306_cmd_draw_area(struct ssd1306_device* dev, void* arg, size_t l
             size_t chunk_len = SSD1306_WIDTH - off;
             if (chunk_len > 64U)
                 chunk_len = 64U;
-            COMPAT_IGNORE_RESULT(
-                COMPAT_MEM_COPY(&chunk[1], &darg->data[page * SSD1306_WIDTH + off], chunk_len));
+            MINI_IGNORE_RESULT(
+                MINI_MEM_COPY(&chunk[1], &darg->data[page * SSD1306_WIDTH + off], chunk_len));
             if (ssd1306_i2c_wr(dev, chunk, chunk_len + 1U, timeout_ms) != MINI_OK)
                 return MINI_ERR_IO;
             off += chunk_len;
@@ -375,7 +375,7 @@ static int ssd1306_probe(struct device* pdev)
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
     dev = &s_ssd1306_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->i2c_dev = device_get_parent(pdev);
     if (!dev->i2c_dev)
     {
@@ -394,8 +394,8 @@ static int ssd1306_probe(struct device* pdev)
     return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_ssd1306_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_ssd1306_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -424,8 +424,8 @@ static int ssd1306_remove(struct device* pdev)
         return MINI_ERR_IO;
     }
     ssd1306_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_ssd1306_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_ssd1306_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
     return MINI_OK;
 }

@@ -37,7 +37,7 @@
 #endif
 #endif
 
-static uint8_t s_rtt_heap[RTT_HEAP_SIZE] COMPAT_ALIGNED(4);
+static uint8_t s_rtt_heap[RTT_HEAP_SIZE] MINI_ALIGNED(4);
 static volatile int s_rtt_heap_inited = 0;
 
 /**
@@ -174,15 +174,15 @@ int osal_spinlock_unlock(struct osal_spinlock* lock)
 /* -------------------------------------------------------------------------- */
 /* 静态互斥锁池 */
 /* -------------------------------------------------------------------------- */
-static struct osal_mutex s_mutex_pool[OSAL_MUTEX_POOL_SIZE] COMPAT_ALIGNED(4);
-static uint8_t s_mutex_used[OSAL_MUTEX_POOL_SIZE] COMPAT_ALIGNED(4);
-static osal_pool_t s_mutex_pool_ctrl COMPAT_ALIGNED(4);
+static struct osal_mutex s_mutex_pool[OSAL_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t s_mutex_used[OSAL_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
+static osal_pool_t s_mutex_pool_ctrl MINI_ALIGNED(4);
 
 /**
  * @brief 初始化静态互斥锁池
- * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化互斥锁池控制结构体
+ * @details 上电时通过 mini_pre_execution 调用 osal_pool_init 初始化互斥锁池控制结构体
  */
-pre_execution(PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void osal_mutex_pool_boot_init(void)
 {
     osal_pool_init(&s_mutex_pool_ctrl, s_mutex_used, OSAL_MUTEX_POOL_SIZE);
 }
@@ -351,7 +351,7 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
     struct osal_mutex* mutex_obj = &s_mutex_pool[index];
     if (osal_mutex_init(mutex_obj, type, "osal_mtx") != OSAL_OK)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, index));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, index));
         return OSAL_ERR_NOMEM;
     }
     *out = (struct osal_mutex*)mutex_obj;
@@ -465,7 +465,7 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
     {
         if (&s_mutex_pool[iter_index] == mutex_obj)
         {
-            COMPAT_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, iter_index));
+            MINI_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, iter_index));
             break;
         }
     }
@@ -519,15 +519,15 @@ struct osal_sem
 
 _Static_assert(sizeof(struct osal_sem) <= OSAL_SEM_STORAGE_SIZE, "OSAL_SEM_STORAGE_SIZE too small");
 
-static struct osal_sem s_sem_pool[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
-static uint8_t s_sem_used[OSAL_SEM_POOL_SIZE] COMPAT_ALIGNED(4);
-static osal_pool_t s_sem_pool_ctrl COMPAT_ALIGNED(4);
+static struct osal_sem s_sem_pool[OSAL_SEM_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t s_sem_used[OSAL_SEM_POOL_SIZE] MINI_ALIGNED(4);
+static osal_pool_t s_sem_pool_ctrl MINI_ALIGNED(4);
 
 /**
  * @brief 初始化二值信号量池
- * @details 上电时通过 pre_execution 调用 osal_pool_init 初始化二值信号量池
+ * @details 上电时通过 mini_pre_execution 调用 osal_pool_init 初始化二值信号量池
  */
-pre_execution(PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void osal_sem_pool_boot_init(void)
 {
     osal_pool_init(&s_sem_pool_ctrl, s_sem_used, OSAL_SEM_POOL_SIZE);
 }
@@ -567,7 +567,7 @@ int osal_sem_create_binary(struct osal_sem** out)
     struct osal_sem* sem = &s_sem_pool[idx];
     if (osal_sem_init_binary(sem) != OSAL_OK)
     {
-        COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, idx));
+        MINI_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, idx));
         return OSAL_ERR_NOMEM;
     }
 
@@ -615,7 +615,7 @@ void osal_sem_destroy(struct osal_sem* sem)
         {
             if (&s_sem_pool[iter_index] == sem)
             {
-                COMPAT_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, (int)iter_index));
+                MINI_IGNORE_RESULT(osal_pool_release(&s_sem_pool_ctrl, (int)iter_index));
                 break;
             }
         }
@@ -658,7 +658,7 @@ bool osal_sem_post(struct osal_sem* sem)
  */
 bool osal_sem_post_from_isr(struct osal_sem* sem, bool* px_yield_required)
 {
-    COMPAT_UNUSED_PARAM(px_yield_required);
+   MINI_UNUSED_PARAM(px_yield_required);
 
     if (!sem || !sem->inited)
         return false;
@@ -670,7 +670,7 @@ bool osal_sem_post_from_isr(struct osal_sem* sem, bool* px_yield_required)
  * @brief 无 yield
  * @param[in] yield_required 忽略
  */
-void osal_yield_from_isr(bool yield_required) { COMPAT_UNUSED_PARAM(yield_required); }
+void osal_yield_from_isr(bool yield_required) {MINI_UNUSED_PARAM(yield_required); }
 
 /* -------------------------------------------------------------------------- */
 /* 任务创建 (无句柄, 创建后自动启动) */
@@ -698,7 +698,7 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
     if (core_id >= 0)
         rt_thread_control(thread, RT_THREAD_CTRL_BIND_CPU, (void*)(long)core_id);
 #else
-    COMPAT_UNUSED_PARAM(core_id);
+   MINI_UNUSED_PARAM(core_id);
 #endif
 
     rt_thread_startup(thread);
@@ -735,7 +735,7 @@ int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t prio
     if (core_id >= 0)
         rt_thread_control(thread, RT_THREAD_CTRL_BIND_CPU, (void*)(long)core_id);
 #else
-    COMPAT_UNUSED_PARAM(core_id);
+   MINI_UNUSED_PARAM(core_id);
 #endif
 
     rt_thread_startup(thread);
@@ -897,7 +897,7 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  */
 bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
-    COMPAT_UNUSED_PARAM(px_yield_required);
+   MINI_UNUSED_PARAM(px_yield_required);
 
     if (!queue || !item)
         return false;
@@ -930,9 +930,9 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
  */
 bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px_yield_required)
 {
-    COMPAT_UNUSED_PARAM(px_yield_required);
-    COMPAT_UNUSED_PARAM(queue);
-    COMPAT_UNUSED_PARAM(item);
+   MINI_UNUSED_PARAM(px_yield_required);
+   MINI_UNUSED_PARAM(queue);
+   MINI_UNUSED_PARAM(item);
     return false;
 }
 #else
@@ -944,8 +944,8 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
  */
 osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
 {
-    COMPAT_UNUSED_PARAM(queue_len);
-    COMPAT_UNUSED_PARAM(item_size);
+   MINI_UNUSED_PARAM(queue_len);
+   MINI_UNUSED_PARAM(item_size);
     return NULL;
 }
 
@@ -953,7 +953,7 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
  * @brief rt_mq_delete + free
  * @param[in] queue 句柄
  */
-void osal_queue_delete(osal_queue_handle_t queue) { COMPAT_UNUSED_PARAM(queue); }
+void osal_queue_delete(osal_queue_handle_t queue) {MINI_UNUSED_PARAM(queue); }
 
 /**
  * @brief rt_mq_send_wait
@@ -964,9 +964,9 @@ void osal_queue_delete(osal_queue_handle_t queue) { COMPAT_UNUSED_PARAM(queue); 
  */
 bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeout_ms)
 {
-    COMPAT_UNUSED_PARAM(queue);
-    COMPAT_UNUSED_PARAM(item);
-    COMPAT_UNUSED_PARAM(timeout_ms);
+   MINI_UNUSED_PARAM(queue);
+   MINI_UNUSED_PARAM(item);
+   MINI_UNUSED_PARAM(timeout_ms);
     return false;
 }
 
@@ -979,9 +979,9 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  */
 bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
-    COMPAT_UNUSED_PARAM(px_yield_required);
-    COMPAT_UNUSED_PARAM(queue);
-    COMPAT_UNUSED_PARAM(item);
+   MINI_UNUSED_PARAM(px_yield_required);
+   MINI_UNUSED_PARAM(queue);
+   MINI_UNUSED_PARAM(item);
     return false;
 }
 
@@ -994,9 +994,9 @@ bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool*
  */
 bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_ms)
 {
-    COMPAT_UNUSED_PARAM(queue);
-    COMPAT_UNUSED_PARAM(item);
-    COMPAT_UNUSED_PARAM(timeout_ms);
+   MINI_UNUSED_PARAM(queue);
+   MINI_UNUSED_PARAM(item);
+   MINI_UNUSED_PARAM(timeout_ms);
     return false;
 }
 
@@ -1009,9 +1009,9 @@ bool osal_queue_receive(osal_queue_handle_t queue, void* item, uint32_t timeout_
  */
 bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px_yield_required)
 {
-    COMPAT_UNUSED_PARAM(px_yield_required);
-    COMPAT_UNUSED_PARAM(queue);
-    COMPAT_UNUSED_PARAM(item);
+   MINI_UNUSED_PARAM(px_yield_required);
+   MINI_UNUSED_PARAM(queue);
+   MINI_UNUSED_PARAM(item);
     return false;
 }
 #endif /* RT_USING_MESSAGEQUEUE */
@@ -1022,7 +1022,7 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
 /**
  * @brief 弱符号硬件安全关断 (板级未覆盖时触发 trap)
  */
-COMPAT_WEAK void safety_hardware_shutdown(void) { COMPAT_TRAP(); }
+MINI_WEAK void safety_hardware_shutdown(void) { MINI_TRAP(); }
 
 /* -------------------------------------------------------------------------- */
 /* Panic 安全互锁 (weak, 板级可覆盖) */
@@ -1030,7 +1030,7 @@ COMPAT_WEAK void safety_hardware_shutdown(void) { COMPAT_TRAP(); }
 /**
  * @brief 弱符号 Panic 安全互锁 (板级可覆盖: 喂狗、切断执行器等)
  */
-COMPAT_WEAK void osal_panic_interlock(void) {}
+MINI_WEAK void osal_panic_interlock(void) {}
 
 /* -------------------------------------------------------------------------- */
 /* 调度器冻结 / 中断冻结 (单向不可恢复) */
@@ -1057,7 +1057,7 @@ void osal_int_freeze(void) { rt_hw_interrupt_disable(); }
  */
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    COMPAT_UNUSED_PARAM(level);
+   MINI_UNUSED_PARAM(level);
     if (!fmt)
         fmt = "(null)";
 
