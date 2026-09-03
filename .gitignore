@@ -162,7 +162,7 @@ lib/uC-LIB/
 /net/port/tls/
 /net/port/udp/
 # ---------------------------------------------
-# ui/ 只保留 display/，其余不提交
+# ui/ 只保留 display/
 # ---------------------------------------------
 /ui/CMakeLists.txt
 /ui/lvgl/
