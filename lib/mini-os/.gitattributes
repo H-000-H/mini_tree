@@ -1,0 +1,11 @@
+﻿# 统一使用 LF 行尾（即使 Windows 开发也保持 LF）
+*.c text eol=lf
+*.h text eol=lf
+*.S text eol=lf
+*.ld text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+.clang-format text eol=lf
+.clang-tidy text eol=lf
+.cmake text eol=lf
+CMakeLists.txt text eol=lf
