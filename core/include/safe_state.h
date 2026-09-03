@@ -18,29 +18,29 @@ extern "C"
 {
 #endif
 
-    /**
-     * @brief Bootloop 退避检测: 每次异常启动时调用
-     * @return 连续异常 ≥ 5 次返回 true (永久锁死, 拒绝 Flash 写入)
-     * @note SPI Flash 物理烧穿防御
-     */
-    bool safe_state_check_bootloop(void);
-    /**
-     * @brief 清除 Bootloop 计数 (正常冷启动/上电时调用)
-     */
-    void safe_state_clear_bootloop(void);
+/**
+ * @brief Bootloop 退避检测: 每次异常启动时调用
+ * @return 连续异常 ≥ 5 次返回 true (永久锁死, 拒绝 Flash 写入)
+ * @note SPI Flash 物理烧穿防御
+ */
+bool safe_state_check_bootloop(void);
+/**
+ * @brief 清除 Bootloop 计数 (正常冷启动/上电时调用)
+ */
+void safe_state_clear_bootloop(void);
 
-    /**
-     * @brief 进入不可恢复的安全状态 (永不返回)
-     * @param[in] reason 进入安全状态的原因
-     * @note 仅可从 Task 上下文调用; NMI/ISR 请用 safe_state_nmi_emergency_stamp()
-     */
-    void enter_safe_state(const char* reason) __attribute__((noreturn));
+/**
+ * @brief 进入不可恢复的安全状态 (永不返回)
+ * @param[in] reason 进入安全状态的原因
+ * @note 仅可从 Task 上下文调用; NMI/ISR 请用 safe_state_nmi_emergency_stamp()
+ */
+void enter_safe_state(const char* reason) __attribute__((noreturn));
 
-    /**
-     * @brief BOD NMI 紧急标记 (掉电保护)
-     * @note 由平台实现 (须置于 IRAM); 严禁 printf/mutex/RTOS API/Flash 访问
-     */
-    void safe_state_nmi_emergency_stamp(void);
+/**
+ * @brief BOD NMI 紧急标记 (掉电保护)
+ * @note 由平台实现 (须置于 IRAM); 严禁 printf/mutex/RTOS API/Flash 访问
+ */
+void safe_state_nmi_emergency_stamp(void);
 
 #ifdef __cplusplus
 }

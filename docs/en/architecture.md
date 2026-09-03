@@ -204,7 +204,7 @@ Key CMake cache variables: `BOARD_DTS`, `BOARD_DTSI_DIR`, `VENDOR_INC_DIRS`, `VE
 | This Repository Provides | The Platform Repository Provides |
 | :--- | :--- |
 | middleware source, weak HAL, placeholder DTS, docs, IDE stubs | `hal_*_<soc>.c`, full dts/dtsi, vendor `-I`, board linker scripts and startup files |
-| three OSAL backend skeletons | clocks, heap, SysTick/RTOS ports (if needed) |
+| four OSAL backend skeletons | clocks, heap, SysTick/RTOS ports (if needed) |
 
 On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_PORT` (absolute path) or a sibling `board_port.cmake`; the ESP-IDF path (triggered by `ESP_PLATFORM`, component mode) keeps its full build path in the `main` branch but requires special handling (see [getting_started.md](getting_started.md) §4.2). The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
 

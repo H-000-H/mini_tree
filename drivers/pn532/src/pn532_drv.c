@@ -33,16 +33,16 @@
 /** @brief PN532 驱动实例（嵌入 fops） */
 struct pn532_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* uart_dev; /**< 所属 UART client 设备 */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         uart_dev; /**< 所属 UART client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct pn532_device s_pn532_pool[PN532_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_pn532_used[PN532_POOL_COUNT] MINI_ALIGNED(4);
+static struct pn532_device           s_pn532_pool[PN532_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                       s_pn532_used[PN532_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_pn532_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "pn532";
+static const char* const             k_tag = "pn532";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void pn532_pool_boot_i
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct pn532_device* pn532_get_drvdata(struct device* pdev)
-{
-    return (struct pn532_device*)device_get_priv(pdev);
-}
+static struct pn532_device* pn532_get_drvdata(struct device* pdev) { return (struct pn532_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 UART 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int pn532_uart_wr(struct pn532_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int pn532_uart_wr(struct pn532_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -121,9 +117,9 @@ static void pn532_hw_destroy(struct pn532_device* dev)
  */
 static int pn532_open(struct device* pdev, void* arg)
 {
-    struct pn532_device* dev;
+    struct pn532_device*  dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -155,9 +151,9 @@ static int pn532_open(struct device* pdev, void* arg)
  */
 static int pn532_close(struct device* pdev)
 {
-    struct pn532_device* dev;
+    struct pn532_device*  dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = pn532_get_drvdata(pdev);
@@ -190,12 +186,11 @@ struct pn532_ioctl_map
 static int pn532_cmd_fw(struct pn532_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     /* HSU wake + GetFirmwareVersion 帧 */
-    static const uint8_t wake[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    static const uint8_t wake[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     static const uint8_t cmd[] = {0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD4, 0x02, 0x2A, 0x00};
-    uint8_t rx[32];
-    struct pn532_fw* fw = (struct pn532_fw*)arg;
-    int ret;
+    uint8_t              rx[32];
+    struct pn532_fw*     fw = (struct pn532_fw*)arg;
+    int                  ret;
     if (!dev->hw_ready || !fw || len != sizeof(*fw))
         return MINI_ERR_INVAL;
     ret = pn532_uart_wr(dev, wake, sizeof(wake), timeout_ms);
@@ -226,10 +221,10 @@ static const struct pn532_ioctl_map s_pn532_map[PN532_CMD_COUNT] = {
  */
 static int pn532_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct pn532_device* dev;
+    struct pn532_device*  dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = pn532_get_drvdata(pdev);
@@ -262,7 +257,7 @@ static const struct file_operations pn532_fops = {
 static int pn532_probe(struct device* pdev)
 {
     struct pn532_device* dev;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_pn532_pool_ctrl);
@@ -298,9 +293,9 @@ err:
  */
 static int pn532_remove(struct device* pdev)
 {
-    struct pn532_device* dev;
+    struct pn532_device*  dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = pn532_get_drvdata(pdev);

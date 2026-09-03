@@ -33,16 +33,16 @@
 /** @brief SH1106 驱动实例（嵌入 fops） */
 struct sh1106_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sh1106_device s_sh1106_pool[SH1106_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_sh1106_used[SH1106_POOL_COUNT] MINI_ALIGNED(4);
+static struct sh1106_device           s_sh1106_pool[SH1106_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_sh1106_used[SH1106_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_sh1106_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "sh1106";
+static const char* const              k_tag = "sh1106";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sh1106_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct sh1106_device* sh1106_get_drvdata(struct device* pdev)
-{
-    return (struct sh1106_device*)device_get_priv(pdev);
-}
+static struct sh1106_device* sh1106_get_drvdata(struct device* pdev) { return (struct sh1106_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int sh1106_i2c_wr(struct sh1106_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int sh1106_i2c_wr(struct sh1106_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -113,7 +109,7 @@ static int sh1106_open(struct device* pdev, void* arg)
 {
     struct sh1106_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -147,7 +143,7 @@ static int sh1106_close(struct device* pdev)
 {
     struct sh1106_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);
@@ -177,8 +173,7 @@ struct sh1106_ioctl_map
 /**
  * @brief 写 1B 命令/数据（ctrl 字节 + 值）
  */
-static int sh1106_cmd_byte(struct sh1106_device* dev, uint8_t ctrl, uint8_t val,
-                           uint32_t timeout_ms)
+static int sh1106_cmd_byte(struct sh1106_device* dev, uint8_t ctrl, uint8_t val, uint32_t timeout_ms)
 {
     uint8_t buf[2] = {ctrl, val};
     return sh1106_i2c_wr(dev, buf, 2, timeout_ms);
@@ -190,16 +185,13 @@ static int sh1106_cmd_byte(struct sh1106_device* dev, uint8_t ctrl, uint8_t val,
 static int sh1106_set_page_col(struct sh1106_device* dev, uint8_t page, uint32_t timeout_ms)
 {
     uint8_t col = SH1106_COL_OFFSET;
-    int ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD,
-                              (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)), timeout_ms);
+    int     ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_PAGE | (page & 0x07U)), timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD,
-                          (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)), timeout_ms);
+    ret = sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_COL_LO | (col & 0x0FU)), timeout_ms);
     if (ret != MINI_OK)
         return ret;
-    return sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD,
-                           (uint8_t)(SH1106_REG_SET_COL_HI | ((col >> 4) & 0x0FU)), timeout_ms);
+    return sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, (uint8_t)(SH1106_REG_SET_COL_HI | ((col >> 4) & 0x0FU)), timeout_ms);
 }
 
 /**
@@ -208,11 +200,11 @@ static int sh1106_set_page_col(struct sh1106_device* dev, uint8_t page, uint32_t
 static int sh1106_cmd_clear(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const struct display_clear_arg* darg = (const struct display_clear_arg*)arg;
-    uint8_t val;
-    int page_index;
-    uint32_t to_ms = timeout_ms ? timeout_ms : 100U;
-    uint8_t page_buf[1 + SH1106_WIDTH];
-    size_t index;
+    uint8_t                         val;
+    int                             page_index;
+    uint32_t                        to_ms = timeout_ms ? timeout_ms : 100U;
+    uint8_t                         page_buf[1 + SH1106_WIDTH];
+    size_t                          index;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
         return MINI_ERR_INVAL;
     val = darg->value ? 0xFFU : 0x00U;
@@ -234,8 +226,7 @@ static int sh1106_cmd_clear(struct sh1106_device* dev, void* arg, size_t len, ui
 /**
  * @brief DISPLAY_CMD_GET_INFO 实现：返回面板几何与像素格式
  */
-static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len,
-                               uint32_t timeout_ms)
+static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct display_info_arg* info = (struct display_info_arg*)arg;
     MINI_IGNORE_RESULT(dev);
@@ -251,11 +242,10 @@ static int sh1106_cmd_get_info(struct sh1106_device* dev, void* arg, size_t len,
 /**
  * @brief DISPLAY_CMD_FILL_RECT 实现：单色屏仅支持全屏矩形
  */
-static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len,
-                                uint32_t timeout_ms)
+static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const struct display_rect_arg* darg = (const struct display_rect_arg*)arg;
-    struct display_clear_arg clear_arg;
+    struct display_clear_arg       clear_arg;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
         return MINI_ERR_INVAL;
     if (darg->x != 0 || darg->y != 0 || darg->w != SH1106_WIDTH || darg->h != SH1106_HEIGHT)
@@ -267,21 +257,19 @@ static int sh1106_cmd_fill_rect(struct sh1106_device* dev, void* arg, size_t len
 /**
  * @brief DISPLAY_CMD_DRAW_AREA 实现：单色屏仅支持整帧 page-major 位图
  */
-static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len,
-                                uint32_t timeout_ms)
+static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
-    int page;
-    uint32_t to_ms = timeout_ms ? timeout_ms : 100U;
-    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
-        !darg->data)
+    int                            page;
+    uint32_t                       to_ms = timeout_ms ? timeout_ms : 100U;
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
         return MINI_ERR_INVAL;
     if (darg->x != 0 || darg->y != 0 || darg->w != SH1106_WIDTH || darg->h != SH1106_HEIGHT)
         return MINI_ERR_INVAL;
     for (page = 0; page < SH1106_PAGES; page++)
     {
         uint8_t chunk[1 + 64];
-        size_t off = 0;
+        size_t  off = 0;
         if (sh1106_set_page_col(dev, (uint8_t)page, to_ms) != MINI_OK)
             return MINI_ERR_IO;
         chunk[0] = SH1106_I2C_CTRL_DATA;
@@ -290,8 +278,7 @@ static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len
             size_t count = SH1106_WIDTH - off;
             if (count > 64U)
                 count = 64U;
-            MINI_IGNORE_RESULT(
-                MINI_MEM_COPY(&chunk[1], &darg->data[page * SH1106_WIDTH + off], count));
+            MINI_IGNORE_RESULT(MINI_MEM_COPY(&chunk[1], &darg->data[page * SH1106_WIDTH + off], count));
             if (sh1106_i2c_wr(dev, chunk, count + 1U, to_ms) != MINI_OK)
                 return MINI_ERR_IO;
             off += count;
@@ -306,8 +293,7 @@ static int sh1106_cmd_draw_area(struct sh1106_device* dev, void* arg, size_t len
 static int sh1106_cmd_flush(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const struct display_draw_arg* darg = (const struct display_draw_arg*)arg;
-    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP ||
-        !darg->data)
+    if (!dev->hw_ready || !darg || len != sizeof(*darg) || darg->format != DISPLAY_FMT_MONO_1BPP || !darg->data)
         return MINI_ERR_INVAL;
     return sh1106_cmd_draw_area(dev, (void*)darg, sizeof(*darg), timeout_ms);
 }
@@ -315,11 +301,10 @@ static int sh1106_cmd_flush(struct sh1106_device* dev, void* arg, size_t len, ui
 /**
  * @brief DISPLAY_CMD_SET_BRIGHTNESS 实现：亮度映射为对比度
  */
-static int sh1106_cmd_set_brightness(struct sh1106_device* dev, void* arg, size_t len,
-                                     uint32_t timeout_ms)
+static int sh1106_cmd_set_brightness(struct sh1106_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     const struct display_bright_arg* darg = (const struct display_bright_arg*)arg;
-    uint32_t to_ms = timeout_ms ? timeout_ms : 100U;
+    uint32_t                         to_ms = timeout_ms ? timeout_ms : 100U;
     if (!dev->hw_ready || !darg || len != sizeof(*darg))
         return MINI_ERR_INVAL;
     if (sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, SH1106_REG_SET_CONTRAST, to_ms) != MINI_OK)
@@ -343,8 +328,8 @@ static int sh1106_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct sh1106_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);
@@ -377,7 +362,7 @@ static const struct file_operations sh1106_fops = {
 static int sh1106_probe(struct device* pdev)
 {
     struct sh1106_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sh1106_pool_ctrl);
@@ -415,7 +400,7 @@ static int sh1106_remove(struct device* pdev)
 {
     struct sh1106_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = sh1106_get_drvdata(pdev);

@@ -22,40 +22,40 @@ extern "C"
 {
 #endif
 
-    /* -------------------------------------------------------------------------- */
-    /* Driver 核心 API */
-    /* -------------------------------------------------------------------------- */
-    /**
-     * @brief 遍历设备树 → 匹配 driver → 逐一 probe 初始化
-     * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
-     */
-    int board_driver_probe_all(void) MINI_WARN_UNUSED_RESULT; /* 遍历设备 → 匹配 driver → probe */
-    /**
-     * @brief 按 probe 逆序逐一 remove, 安全停机全部设备
-     * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
-     */
-    int board_driver_remove_all(void) MINI_WARN_UNUSED_RESULT;
+/* -------------------------------------------------------------------------- */
+/* Driver 核心 API */
+/* -------------------------------------------------------------------------- */
+/**
+ * @brief 遍历设备树 → 匹配 driver → 逐一 probe 初始化
+ * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
+ */
+int board_driver_probe_all(void) MINI_WARN_UNUSED_RESULT; /* 遍历设备 → 匹配 driver → probe */
+/**
+ * @brief 按 probe 逆序逐一 remove, 安全停机全部设备
+ * @return 全部成功返回 MINI_OK, 任一失败返回负数错误码
+ */
+int board_driver_remove_all(void) MINI_WARN_UNUSED_RESULT;
 
-    /* dtc-lite 编译期生成 probe/remove 函数表, 运行时无需注册 */
-    /**
-     * @brief 注册全部编译期生成的驱动 probe/remove 函数 (dtc-lite 生成)
-     */
-    void board_register_all_drivers(void);
+/* dtc-lite 编译期生成 probe/remove 函数表, 运行时无需注册 */
+/**
+ * @brief 注册全部编译期生成的驱动 probe/remove 函数 (dtc-lite 生成)
+ */
+void board_register_all_drivers(void);
 
-    /* -------------------------------------------------------------------------- */
-    /* 安全停机回调注册 (Observer 模式) */
-    /* 框架不感知具体执行器类型, */
-    /* 由各驱动在 probe 阶段注册自己的停机回调. */
-    /* 仅允许在调度器启动前 (probe 阶段) 注册, 运行期不可追加. */
-    /* -------------------------------------------------------------------------- */
-    typedef void (*safety_shutdown_fn_t)(void);
+/* -------------------------------------------------------------------------- */
+/* 安全停机回调注册 (Observer 模式) */
+/* 框架不感知具体执行器类型, */
+/* 由各驱动在 probe 阶段注册自己的停机回调. */
+/* 仅允许在调度器启动前 (probe 阶段) 注册, 运行期不可追加. */
+/* -------------------------------------------------------------------------- */
+typedef void (*safety_shutdown_fn_t)(void);
 
-    /**
-     * @brief 注册安全停机回调 (Observer 模式)
-     * @param[in] fn 停机回调 (可重复注册多个)
-     * @note 仅允许 probe 阶段注册; 调度器启动后调用行为未定义
-     */
-    void board_safety_register_shutdown(safety_shutdown_fn_t fn);
+/**
+ * @brief 注册安全停机回调 (Observer 模式)
+ * @param[in] fn 停机回调 (可重复注册多个)
+ * @note 仅允许 probe 阶段注册; 调度器启动后调用行为未定义
+ */
+void board_safety_register_shutdown(safety_shutdown_fn_t fn);
 
 /* -------------------------------------------------------------------------- */
 /* DRIVER_REGISTER 宏 */
@@ -71,8 +71,8 @@ extern "C"
 /* dev_lc_remove_finish(device_lc(pdev)); */
 /* probe 阶段: device_lc_bind(pdev); */
 /* -------------------------------------------------------------------------- */
-#define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)                                         \
-    int board_driver_probe_##name(struct device* pdev) { return probe_fn(pdev); }                  \
+#define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)                                                                                           \
+    int board_driver_probe_##name(struct device* pdev) { return probe_fn(pdev); }                                                                    \
     int board_driver_remove_##name(struct device* pdev) { return remove_fn(pdev); }
 
 #ifdef __cplusplus

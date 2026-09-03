@@ -24,22 +24,22 @@ extern "C"
 {
 #endif
 
-#define MODEM_CMD_BASE                                                                             \
-    MINI_MAGIC(MODEM) /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突）       \
-                         */
+#define MODEM_CMD_BASE                                                                                                                               \
+    MINI_MAGIC(MODEM)                             /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突）                                 \
+                                                   */
 #define MODEM_CMD_AT_SEND (MODEM_CMD_BASE + 0x01) /** 发送 AT 命令（arg: struct modem_at_buf*） */
 #define MODEM_CMD_AT_RECV (MODEM_CMD_BASE + 0x02) /** 接收 AT 应答（arg: struct modem_at_buf*） */
-#define MODEM_CMD_COUNT 2 /** 命令总数 */
+#define MODEM_CMD_COUNT 2                         /** 命令总数 */
 
-    /** @brief AT 命令收发缓冲（SEND 用 tx，RECV 用 rx/rx_cap，rx_len 回填） */
-    struct modem_at_buf
-    {
-        const uint8_t* tx; /**< 发送缓冲 */
-        size_t tx_len; /**< 发送长度 */
-        uint8_t* rx; /**< 接收缓冲 */
-        size_t rx_cap; /**< 接收容量 */
-        size_t rx_len; /**< 实际接收长度（回填） */
-    };
+/** @brief AT 命令收发缓冲（SEND 用 tx，RECV 用 rx/rx_cap，rx_len 回填） */
+struct modem_at_buf
+{
+    const uint8_t* tx;     /**< 发送缓冲 */
+    size_t         tx_len; /**< 发送长度 */
+    uint8_t*       rx;     /**< 接收缓冲 */
+    size_t         rx_cap; /**< 接收容量 */
+    size_t         rx_len; /**< 实际接收长度（回填） */
+};
 
 #ifdef __cplusplus
 }

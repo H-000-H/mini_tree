@@ -34,20 +34,20 @@
 /** @brief 蜂鸣器驱动实例（嵌入 fops 与双后端句柄） */
 struct buzzer_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* tim_dev; /**< PWM TIM 设备（phandle: pwm，可选） */
-    struct device* gpio_dev; /**< 电平 GPIO 设备（phandle: beep-gpio，可选） */
-    struct vfs_tim_arg tim; /**< PWM 参数（快路径） */
-    struct vfs_gpio_arg gpio; /**< GPIO 参数 */
-    int use_tim; /**< 后端选择：1=TIM PWM，0=GPIO */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         tim_dev;  /**< PWM TIM 设备（phandle: pwm，可选） */
+    struct device*         gpio_dev; /**< 电平 GPIO 设备（phandle: beep-gpio，可选） */
+    struct vfs_tim_arg     tim;      /**< PWM 参数（快路径） */
+    struct vfs_gpio_arg    gpio;     /**< GPIO 参数 */
+    int                    use_tim;  /**< 后端选择：1=TIM PWM，0=GPIO */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct buzzer_device s_buzzer_pool[BUZZER_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_buzzer_used[BUZZER_POOL_COUNT] MINI_ALIGNED(4);
+static struct buzzer_device           s_buzzer_pool[BUZZER_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_buzzer_used[BUZZER_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_buzzer_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "buzzer";
+static const char* const              k_tag = "buzzer";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -62,10 +62,7 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void buzzer_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct buzzer_device* buzzer_get_drvdata(struct device* pdev)
-{
-    return (struct buzzer_device*)device_get_priv(pdev);
-}
+static struct buzzer_device* buzzer_get_drvdata(struct device* pdev) { return (struct buzzer_device*)device_get_priv(pdev); }
 
 /**
  * @brief 首次 open 时打开对应后端（TIM 或 GPIO）
@@ -117,7 +114,7 @@ static int buzzer_open(struct device* pdev, void* arg)
 {
     struct buzzer_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -151,7 +148,7 @@ static int buzzer_close(struct device* pdev)
 {
     struct buzzer_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = buzzer_get_drvdata(pdev);
@@ -183,7 +180,7 @@ struct buzzer_ioctl_map
  */
 static int buzzer_cmd_beep(struct buzzer_device* dev, void* arg, size_t len, uint32_t ms)
 {
-    int on;
+    int      on;
     uint32_t dur;
     if (!dev->hw_ready || !arg || len != sizeof(int))
         return MINI_ERR_INVAL;
@@ -194,8 +191,7 @@ static int buzzer_cmd_beep(struct buzzer_device* dev, void* arg, size_t len, uin
         dev->tim.arr = 1000U;
         dev->tim.ccr = on ? 500U : 0U;
         dev->tim.channel = 1U;
-        MINI_IGNORE_RESULT(
-            device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 100));
+        MINI_IGNORE_RESULT(device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 100));
     }
     else if (dev->gpio_dev)
     {
@@ -217,8 +213,8 @@ static int buzzer_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct buzzer_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = buzzer_get_drvdata(pdev);
@@ -251,7 +247,7 @@ static const struct file_operations buzzer_fops = {
 static int buzzer_probe(struct device* pdev)
 {
     struct buzzer_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_buzzer_pool_ctrl);
@@ -295,7 +291,7 @@ static int buzzer_remove(struct device* pdev)
 {
     struct buzzer_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = buzzer_get_drvdata(pdev);

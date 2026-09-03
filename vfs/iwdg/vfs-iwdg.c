@@ -19,22 +19,19 @@
 
 struct vfs_iwdg_priv
 {
-    struct file_operations ops; /**< VFS 操作表 */
-    struct hal_iwdg_dev iwdg; /**< HAL IWDG 设备 */
-    int pool_idx; /**< 池索引 */
+    struct file_operations ops;      /**< VFS 操作表 */
+    struct hal_iwdg_dev    iwdg;     /**< HAL IWDG 设备 */
+    int                    pool_idx; /**< 池索引 */
 };
 static struct vfs_iwdg_priv s_priv;
-static uint8_t s_used;
-static osal_pool_t s_pool;
-static const char* k_tag = "vfs_iwdg";
+static uint8_t              s_used;
+static osal_pool_t          s_pool;
+static const char*          k_tag = "vfs_iwdg";
 
 /**
  * @brief IWDG VFS 私有数据池启动初始化
  */
-mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
-{
-    MINI_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1));
-}
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void) { MINI_IGNORE_RESULT(osal_pool_init(&s_pool, &s_used, 1)); }
 
 /**
  * @brief IWDG 打开: 引用计数, 首次打开时调用 hal_iwdg_start 启动独立看门狗
@@ -46,7 +43,7 @@ static int vfs_iwdg_open(struct device* pdev, void* arg)
 {
     struct vfs_iwdg_priv* priv;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -77,7 +74,7 @@ static int vfs_iwdg_open(struct device* pdev, void* arg)
 static int vfs_iwdg_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     lc = device_lc(pdev);
@@ -104,7 +101,7 @@ static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
 {
     struct vfs_iwdg_priv* priv;
     struct dev_lifecycle* lc;
-    int ret;
+    int                   ret;
     MINI_IGNORE_RESULT(to);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -123,9 +120,7 @@ static int vfs_iwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
     case IWDG_CMD_SET_TIMEOUT:
     {
         const struct iwdg_timeout_arg* timeout_arg = arg;
-        ret = (!timeout_arg || arg_len != sizeof(*timeout_arg)) ?
-                  MINI_ERR_INVAL :
-                  hal_iwdg_set_timeout_ms(&priv->iwdg, timeout_arg->timeout_ms);
+        ret = (!timeout_arg || arg_len != sizeof(*timeout_arg)) ? MINI_ERR_INVAL : hal_iwdg_set_timeout_ms(&priv->iwdg, timeout_arg->timeout_ms);
         break;
     }
     case IWDG_CMD_SET_LONG:
@@ -156,7 +151,7 @@ static const struct file_operations s_fops = {
 static int vfs_iwdg_probe(struct device* pdev)
 {
     struct hal_iwdg_config cfg = {.timeout_ms = 8000, .prer = 0xFFFFFFFFU, .rlr = 0xFFFFFFFFU};
-    int value, idx, ret;
+    int                    value, idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     idx = osal_pool_claim(&s_pool);

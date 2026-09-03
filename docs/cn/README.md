@@ -49,6 +49,7 @@
 | [peripherals.md](peripherals.md) | 外设 compatible / ioctl 一览 |
 | [usb_tusb_port.md](usb_tusb_port.md) | TinyUSB 板级契约 |
 | [amp.md](amp.md) | 双核 AMP |
+| [mini-os.md](mini-os.md) | mini-os 自研内核（调度/时间轮/PI/堆/port/集成接线） |
 | [osal_switching.md](osal_switching.md) | OSAL 后端切换 |
 | [net.md](net.md) | 网络协议栈胶水（MQTT / TCP / PPP / USB 网卡） |
 

@@ -16,10 +16,10 @@
 #include "compiler_compat_poison.h"
 
 static const char* k_tag = "SysWDT";
-static bool s_initialized = false;
+static bool        s_initialized = false;
 
 static struct hal_iwdg_dev s_iwdg;
-static bool s_iwdg_active = false;
+static bool                s_iwdg_active = false;
 
 /**
  * @brief 启动 IWDG
@@ -79,12 +79,12 @@ void system_wdt_feed_iwdg(void)
 
 struct stack_monitor_entry
 {
-    osal_task_handle_t task; /**< 被监控任务句柄 */
-    uint32_t alarm_threshold_bytes; /**< 栈剩余报警阈值 (字节) */
+    osal_task_handle_t task;                  /**< 被监控任务句柄 */
+    uint32_t           alarm_threshold_bytes; /**< 栈剩余报警阈值 (字节) */
 };
 
 static struct stack_monitor_entry s_stack_entries[BOARD_STACK_MONITOR_MAX_TASKS];
-static size_t s_stack_entry_count = 0;
+static size_t                     s_stack_entry_count = 0;
 
 /**
  * @brief 注册栈监控
@@ -123,18 +123,15 @@ void system_wdt_stack_check_all(void)
 
         if (wm_bytes == 0)
         {
-            SYS_LOGE(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!",
-                     osal_task_get_name(entry->task));
+            SYS_LOGE(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!", osal_task_get_name(entry->task));
             continue;
         }
 
         if (wm_bytes < entry->alarm_threshold_bytes)
-            SYS_LOGE(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u",
-                     osal_task_get_name(entry->task), (unsigned)wm_bytes,
+            SYS_LOGE(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u", osal_task_get_name(entry->task), (unsigned)wm_bytes,
                      (unsigned)entry->alarm_threshold_bytes);
         else if (wm_bytes < entry->alarm_threshold_bytes * 2)
-            SYS_LOGW(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)",
-                     osal_task_get_name(entry->task), (unsigned)wm_bytes,
+            SYS_LOGW(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)", osal_task_get_name(entry->task), (unsigned)wm_bytes,
                      (unsigned)entry->alarm_threshold_bytes);
     }
 }

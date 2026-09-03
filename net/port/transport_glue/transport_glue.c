@@ -63,9 +63,9 @@ int network_transport_write(struct NetworkContext* context, const void* buffer, 
         return NET_ERR_INVAL;
 
     struct tcp_client_context* tcp_client = context->tcp_client;
-    const uint8_t* data = (const uint8_t*)buffer;
-    size_t remaining = length;
-    uint32_t start_ms = osal_time_ms();
+    const uint8_t*             data = (const uint8_t*)buffer;
+    size_t                     remaining = length;
+    uint32_t                   start_ms = osal_time_ms();
 
     while (remaining > 0U)
     {
@@ -98,15 +98,13 @@ int network_transport_write(struct NetworkContext* context, const void* buffer, 
     return NET_OK;
 }
 
-int network_transport_read(struct NetworkContext* context, void* buffer, size_t length,
-                           size_t* read_length)
+int network_transport_read(struct NetworkContext* context, void* buffer, size_t length, size_t* read_length)
 {
-    if (context == NULL || context->tcp_client == NULL || buffer == NULL || length == 0U ||
-        read_length == NULL)
+    if (context == NULL || context->tcp_client == NULL || buffer == NULL || length == 0U || read_length == NULL)
         return NET_ERR_INVAL;
 
     struct tcp_client_context* tcp_client = context->tcp_client;
-    uint32_t start_ms = osal_time_ms();
+    uint32_t                   start_ms = osal_time_ms();
 
     for (;;)
     {
@@ -149,7 +147,7 @@ int32_t network_transport_send(struct NetworkContext* context, const void* buffe
 int32_t network_transport_recv(struct NetworkContext* context, void* buffer, size_t length)
 {
     size_t read_length = 0;
-    int err = network_transport_read(context, buffer, length, &read_length);
+    int    err = network_transport_read(context, buffer, length, &read_length);
     if (err != NET_OK)
         return -1;
     return (int32_t)read_length;

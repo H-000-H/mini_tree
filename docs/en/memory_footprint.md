@@ -58,28 +58,62 @@
 
 ## 4. Scheduler Comparison (minimal-firmware measured)
 
-> Measured with `arm-none-eabi-gcc 14.2.1`, `-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`. Minimal firmware = `startup` + `main` (system layer) + linking the whole `mini_tree` library (RTOS kernel included), linked with an STM32F4-like script. Units in bytes; `RAM total = data + bss`.
+> Measured with `arm-none-eabi-gcc 13.3.1` (Windows, older than the previous 14.2.1/Linux — builds fine on the older toolchain), `-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`. Minimal firmware = `startup` (vector table + Reset_Handler) + `main` (standard system-layer startup sequence) + linking the whole `mini_tree` library (RTOS kernel included, `--start-group` for circular references), linked with an STM32F4-like script (FLASH 1 MiB / RAM 128 KiB). Units in bytes; `RAM total = data + bss`. Two libc baselines are reported: **newlib-nano** (`--specs=nano.specs`, the usual minimal-size choice) and **full newlib** (the previous table's baseline); the `.config` baseline is the current repo default (event bus/WDT/OSAL logging on), unreferenced modules (lwIP/USB, etc.) are kept out of the closure by `--gc-sections`. Absolute values drift with toolchain and baseline config — **relative deltas** are the meaningful comparison.
+
+### 4.1 newlib-nano (recommended baseline)
 
 | Scheduler | system backend | text | data | bss | RAM total |
 | :--- | :--- | ---: | ---: | ---: | ---: |
-| Bare `while` (`XTASK_NONE`) | none | 86 | 0 | 0 | 0 |
-| Cooperative `XTASK_COOP` | C | 31240 | 1744 | 944 | 2688 |
-| Cooperative `XTASK_COOP` | C++ | 31240 | 1744 | 944 | 2688 |
-| Preemptive `XTASK_PREEMPT` | C | 31368 | 1744 | 1388 | 3132 |
-| Preemptive `XTASK_PREEMPT` | C++ | 31368 | 1744 | 1388 | 3132 |
-| FreeRTOS | C | 34312 | 1752 | 1304 | 3056 |
-| FreeRTOS | C++ | 34696 | 1752 | 1656 | 3408 |
-| RT-Thread | C | 40228 | 1892 | 1164 | 3056 |
-| RT-Thread | C++ | 40612 | 1892 | 1516 | 3408 |
+| Bare `while` (`XTASK_NONE`) | none | 134 | 0 | 512 | 512 |
+| Cooperative `XTASK_COOP` | C | 11153 | 116 | 4400 | 4516 |
+| Cooperative `XTASK_COOP` | C++ | 11237 | 120 | 4432 | 4552 |
+| Preemptive `XTASK_PREEMPT` | C | 11565 | 116 | 4848 | 4964 |
+| Preemptive `XTASK_PREEMPT` | C++ | 11649 | 120 | 4880 | 5000 |
+| mini-os | C | 14245 | 120 | 2620 | 2740 |
+| mini-os | C++ | 14381 | 128 | 3016 | 3144 |
+| FreeRTOS | C | 17492 | 108 | 12176 | 12284 |
+| FreeRTOS | C++ | 17628 | 116 | 12528 | 12644 |
+| RT-Thread | C | 17953 | 272 | 35084 | 35356 |
+| RT-Thread | C++ | 18057 | 280 | 35480 | 35760 |
 
-> Scope: under `XTASK_NONE`, `OSAL_NULL_TASK_CPP` is auto-disabled by Kconfig (`depends on !XTASK_NONE`) and the osal/system layer depends on the xtask interface (`osal_null.h` unconditionally includes `xtask.h`), so with no implementation it cannot link; the firmware degrades to a minimal closure (startup + hand-written main loop) without the system/osal layer. RTOS backends' `text` already includes their respective kernels; numbers include the whole library (board device model, etc.) — **relative deltas** are the meaningful comparison. The bare-metal scheduler tri-state (`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`) is selected via the `Kconfig.mini_tree` choice; CMake injects `MINI_TREE_XTASK_*` macros to decide whether `xtask_coop.c` or `xtask_preempt.c` is compiled. Preemptive and cooperative expose the identical API (`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`), so caller code switches transparently.
+### 4.2 Full newlib (previous table's baseline)
+
+| Scheduler | system backend | text | data | bss | RAM total |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| Bare `while` (`XTASK_NONE`) | none | 134 | 0 | 512 | 512 |
+| Cooperative `XTASK_COOP` | C | 35732 | 1768 | 4448 | 6216 |
+| Cooperative `XTASK_COOP` | C++ | 35820 | 1772 | 4480 | 6252 |
+| Preemptive `XTASK_PREEMPT` | C | 36148 | 1768 | 4896 | 6664 |
+| Preemptive `XTASK_PREEMPT` | C++ | 36228 | 1772 | 4928 | 6700 |
+| mini-os | C | 38776 | 1772 | 2664 | 4436 |
+| mini-os | C++ | 38912 | 1780 | 3064 | 4844 |
+| FreeRTOS | C | 42068 | 1764 | 12224 | 13988 |
+| FreeRTOS | C++ | 42204 | 1772 | 12576 | 14348 |
+| RT-Thread | C | 48984 | 1924 | 35136 | 37060 |
+| RT-Thread | C++ | 49088 | 1932 | 35528 | 37460 |
+
+### 4.3 Scope and conclusions
+
+**Heap accounting (why bss is not directly comparable across backends)**:
+
+- FreeRTOS: heap is a static array `ucHeap[CONFIG_FREERTOS_HEAP_SIZE]` (default 8192), **counted in bss**;
+- RT-Thread: heap is a static array `s_rtt_heap[CONFIG_RTT_HEAP_SIZE]` (default 32×1024, see `osal_rtthread.c`), **counted in bss**;
+- mini-os: heap is a link-time region (`__mini_os_heap_start`→`__mini_os_heap_end`, from end of bss to top of stack), **not counted in bss** — all remaining RAM goes to the heap;
+- bare-metal xtask: no heap.
+
+Framework bss excluding the configurable heap (nano / C++): coop 4432 · mini-os 3016 · FreeRTOS 4336 · RT-Thread 2712. The bare row's 512 B bss is the linker-script `._user_heap_stack` minimum-heap placeholder, not real usage; all other rows include it as well.
+
+Scope (as before): under `XTASK_NONE`, `OSAL_NULL_TASK_CPP` is auto-disabled by Kconfig (`depends on !XTASK_NONE`) and the osal/system layer depends on the xtask interface (`osal_null.h` unconditionally includes `xtask.h`), so with no implementation it cannot link; the firmware degrades to a minimal closure (startup + hand-written main loop) without the system/osal layer. RTOS backends' `text` already includes their respective kernels; numbers include the whole library (board device model, etc.) — **relative deltas** are the meaningful comparison. The bare-metal scheduler tri-state (`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`) is selected via the `Kconfig.mini_tree` choice; CMake injects `MINI_TREE_XTASK_*` macros to decide whether `xtask_coop.c` or `xtask_preempt.c` is compiled. Preemptive and cooperative expose the identical API (`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`), so caller code switches transparently.
 
 Conclusions:
-1. Bare `while` is smallest (86 B text, zero RAM) — at the cost of writing all scheduling logic yourself.
-2. Bare-metal xtask (coop/preempt, ~31 KB text) is ~3 KB smaller than the smallest RTOS kernel (FreeRTOS ~34 KB) and needs **no per-task stack** (run-to-completion, task stack reuses the main-loop stack); preempt adds a task pool to bss (~444 B: 8×48 B slots + bitmap/list heads).
-3. RTOS kernel cost ordering: FreeRTOS < RT-Thread (text 34.3 → 40.2 KB).
-4. C vs C++ system backend: identical for bare-metal (coop/preempt); under RTOS, C++ costs ~+300–380 B text and +350–440 B bss more than C. **Pick the C backend for minimum size.**
-5. Per-task extra cost: RTOS needs a TCB + dedicated task stack (stack sized per app, counted separately); xtask only has a static TCB (coop 28 B / preempt 48 B pool slot), no stack.
+
+1. Bare `while` is smallest (134 B text) — at the cost of writing all scheduling logic yourself.
+2. Bare-metal xtask (coop 11.2 KB) is the smallest "scheduling-capable" option and needs **no per-task stack** (run-to-completion, task stack reuses the main-loop stack); preempt adds a 448 B task pool to bss.
+3. RTOS kernel text: **mini-os (14.4 KB) < FreeRTOS (17.6 KB) < RT-Thread (18.1 KB)**; mini-os saves ~3.2 KB over FreeRTOS and ~3.7 KB over RT-Thread (mini-os does not yet implement SMP/MPU and similar parts — once finished the gap will be small: the kernels all land around 17–18 KB, the kernel sources are just that big and hard to shrink further unless features are actively trimmed).
+4. RTOS kernel text: **mini-os (14.4 KB) < FreeRTOS (17.6 KB) < RT-Thread (18.1 KB)**, mini-os currently saves ~3.2–3.7 KB; **the gap mainly comes from feature-set differences** — mini-os does not yet implement SMP/MPU/memory-protection parts, and once completed it is expected to be on par with FreeRTOS/RT-Thread (the 17–18 KB range). A complete kernel's text at this magnitude is normal; further compression only comes from trimming features, and `CONFIG_RTT_HEAP_SIZE`/`CONFIG_FREERTOS_HEAP_SIZE` etc. can be tuned to align.
+5. C vs C++ system backend: under RTOS, C++ costs ~+100–140 B text and +350–400 B bss more than C; nearly identical for bare-metal (+84 B text / +32 B bss). **Pick the C backend for minimum size.**
+6. **libc impact (4.1 vs 4.2)**: full newlib costs **~+24.6 KB text and ~+1.65 KB data** (stdio structures) over nano, bss only ~+48 B; RT-Thread is an outlier at ~+6.4 KB more (its kservice is configured to use libc formatting via `RT_KLIBC_USING_LIBC_VSNPRINTF`, pulling in the full vfprintf). libc is a constant overhead that does not affect cross-backend comparison; use `--specs=nano.specs` for minimum size.
+7. Per-task extra cost: RTOS needs a TCB + dedicated task stack (stack sized per app, counted separately); xtask only has a static TCB (coop 28 B / preempt 48 B pool slot), no stack.
 
 ---
 
@@ -132,6 +166,10 @@ Conclusions:
 4. **To reduce RAM further**: shrink the queue buffer (`CONFIG_OSAL_NULL_QUEUE_BUF_SZ`, currently 1024), disable `CONFIG_EVENT_BUS`/`CONFIG_VIRQ` (currently `y`), or shrink the task pool.
 
 ---
+
+### 6.4 About C++
+
+> C++ stays size-manageable given: `-fno-exceptions -fno-rtti` + avoiding iostream (use printf / raw output) + `--specs=nano.specs`. Untrimmed, C++ can add several KB — a configuration issue rather than a language issue; heavy template use also bloats the binary.
 
 ## Related Docs
 

@@ -9,10 +9,8 @@
 #include "compiler_compat.h"
 #include "lwip/err.h"
 #include "system_log.h"
-_Static_assert((TCP_CLIENT_TX_BUFFER_SIZE & (TCP_CLIENT_TX_BUFFER_SIZE - 1U)) == 0U,
-               "TCP_CLIENT_TX_BUFFER_SIZE must be power of 2");
-_Static_assert((TCP_CLIENT_RX_BUFFER_SIZE & (TCP_CLIENT_RX_BUFFER_SIZE - 1U)) == 0U,
-               "TCP_CLIENT_RX_BUFFER_SIZE must be power of 2");
+_Static_assert((TCP_CLIENT_TX_BUFFER_SIZE & (TCP_CLIENT_TX_BUFFER_SIZE - 1U)) == 0U, "TCP_CLIENT_TX_BUFFER_SIZE must be power of 2");
+_Static_assert((TCP_CLIENT_RX_BUFFER_SIZE & (TCP_CLIENT_RX_BUFFER_SIZE - 1U)) == 0U, "TCP_CLIENT_RX_BUFFER_SIZE must be power of 2");
 
 int tcp_client_poll_send(struct tcp_client_context* ctx)
 {
@@ -27,8 +25,7 @@ int tcp_client_poll_send(struct tcp_client_context* ctx)
     uint8_t temp_buf[128];
 
     /*限制最大发送块大小*/
-    uint16_t chunk =
-        (snd_buf_avail < sizeof(temp_buf)) ? snd_buf_avail : (uint16_t)sizeof(temp_buf);
+    uint16_t chunk = (snd_buf_avail < sizeof(temp_buf)) ? snd_buf_avail : (uint16_t)sizeof(temp_buf);
 
     uint16_t read_bytes = 0;
 
@@ -74,8 +71,7 @@ static void tcp_client_error_callback(void* arg, err_t err)
  * @param[in] err           错误码
  * @note 该函数在 TCP 接收到数据时调用
  */
-static err_t tcp_client_receive_callback(void* arg, struct tcp_pcb* pcb, struct pbuf* current_buf,
-                                         err_t err)
+static err_t tcp_client_receive_callback(void* arg, struct tcp_pcb* pcb, struct pbuf* current_buf, err_t err)
 {
     struct tcp_client_context* ctx = (struct tcp_client_context*)arg;
 
@@ -108,19 +104,17 @@ static err_t tcp_client_receive_callback(void* arg, struct tcp_pcb* pcb, struct 
     }
 
     struct pbuf* buf = current_buf;
-    uint16_t total_bytes = 0;
+    uint16_t     total_bytes = 0;
 
     while (buf)
     {
         if (buf->len > 0)
         {
             uint16_t written = 0;
-            MINI_IGNORE_RESULT(fifo_uni_write_block(&ctx->rx_fifo, (const uint8_t*)buf->payload,
-                                                      buf->len, &written));
+            MINI_IGNORE_RESULT(fifo_uni_write_block(&ctx->rx_fifo, (const uint8_t*)buf->payload, buf->len, &written));
             total_bytes = (uint16_t)(total_bytes + written);
             if (written < buf->len)
-                SYS_LOGW(k_tag, "RX FIFO full, dropped %u bytes\r\n",
-                         (unsigned int)(buf->len - written));
+                SYS_LOGW(k_tag, "RX FIFO full, dropped %u bytes\r\n", (unsigned int)(buf->len - written));
         }
         buf = buf->next;
     }
@@ -181,11 +175,10 @@ static err_t tcp_client_connected_callback(void* arg, struct tcp_pcb* pcb, err_t
     return ERR_OK;
 }
 
-int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* server_ip,
-                                uint16_t port)
+int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* server_ip, uint16_t port)
 {
     ip_addr_t dest_ip;
-    err_t ret;
+    err_t     ret;
 
     if (!ctx || !server_ip || port == 0)
         return ERR_ARG;
@@ -193,10 +186,8 @@ int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* serv
     ctx->port = port;
     ctx->is_connected = false;
 
-    MINI_IGNORE_RESULT(fifo_uni_init(&ctx->rx_fifo, ctx->rx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
-                                       TCP_CLIENT_RX_BUFFER_SIZE));
-    MINI_IGNORE_RESULT(fifo_uni_init(&ctx->tx_fifo, ctx->tx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
-                                       TCP_CLIENT_TX_BUFFER_SIZE));
+    MINI_IGNORE_RESULT(fifo_uni_init(&ctx->rx_fifo, ctx->rx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE, TCP_CLIENT_RX_BUFFER_SIZE));
+    MINI_IGNORE_RESULT(fifo_uni_init(&ctx->tx_fifo, ctx->tx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE, TCP_CLIENT_TX_BUFFER_SIZE));
 
     /* 解析 IP */
     if (!ip4addr_aton(server_ip, &dest_ip))
@@ -232,8 +223,7 @@ int tcp_client_init_and_connect(struct tcp_client_context* ctx, const char* serv
     return ERR_OK;
 }
 
-int tcp_client_send(struct tcp_client_context* ctx, const void* data, uint16_t len,
-                    uint16_t* sent_len)
+int tcp_client_send(struct tcp_client_context* ctx, const void* data, uint16_t len, uint16_t* sent_len)
 {
     if (!ctx || !data || len == 0)
         return ERR_ARG;

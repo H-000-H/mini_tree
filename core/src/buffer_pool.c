@@ -6,7 +6,7 @@
 
 #include "buffer_pool.h"
 
-#include <errno.h> /* EINVAL */
+#include <errno.h>  /* EINVAL */
 #include <stdlib.h> /* calloc/free */
 #include <string.h>
 #define CONFIG_BUFFER_POOL 1 /* 独立构建时强制启用 */
@@ -36,10 +36,7 @@ static inline uint32_t BUFF_POOL_CRITICAL_ENTER(void)
     return primask;
 }
 
-static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask)
-{
-    __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory");
-}
+static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask) { __asm__ volatile("msr PRIMASK, %0" ::"r"(primask) : "memory"); }
 
 #define BUFF_POOL_ATOMIC_LOAD(p) (*(p))
 #define BUFF_POOL_ATOMIC_STORE(p, v) (*(p) = (v))
@@ -50,7 +47,7 @@ static inline void BUFF_POOL_CRITICAL_EXIT(uint32_t primask)
 static inline int BUFF_POOL_ATOMIC_CAS(volatile uint32_t* p, uint32_t* expected, uint32_t desired)
 {
     uint32_t primask = BUFF_POOL_CRITICAL_ENTER();
-    int ok = (*p == *expected);
+    int      ok = (*p == *expected);
     if (ok)
         *p = desired;
     else
@@ -65,8 +62,7 @@ static inline int BUFF_POOL_ATOMIC_CAS(volatile uint32_t* p, uint32_t* expected,
 #define BUFF_POOL_ATOMIC_STORE(p, v) __atomic_store_n((p), (v), __ATOMIC_RELAXED)
 #define BUFF_POOL_ATOMIC_ADD_FETCH(p, v) __atomic_add_fetch((p), (v), __ATOMIC_RELAXED)
 #define BUFF_POOL_ATOMIC_SUB_FETCH(p, v) __atomic_sub_fetch((p), (v), __ATOMIC_RELAXED)
-#define BUFF_POOL_ATOMIC_CAS(p, e, d)                                                              \
-    __atomic_compare_exchange_n((p), (e), (d), 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
+#define BUFF_POOL_ATOMIC_CAS(p, e, d) __atomic_compare_exchange_n((p), (e), (d), 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)
 
 /* -------------------------------------------------------------------------- */
 /* ISR 临界区原语 (ARMv7-M+: PRIMASK; RISC-V: mie)                            */
@@ -100,10 +96,7 @@ static inline uint32_t BUFF_POOL_ISR_MASK_ENTER(void)
     return primask;
 }
 
-static inline void BUFF_POOL_ISR_MASK_EXIT(uint32_t prev)
-{
-    __asm__ volatile("msr PRIMASK, %0" ::"r"(prev) : "memory");
-}
+static inline void BUFF_POOL_ISR_MASK_EXIT(uint32_t prev) { __asm__ volatile("msr PRIMASK, %0" ::"r"(prev) : "memory"); }
 
 #endif
 
@@ -124,15 +117,14 @@ struct buff_pool_free_block
 {
     struct buff_pool_free_block* prev;
     struct buff_pool_free_block* next;
-    size_t size; /**< 本空闲块的数据区字节数 */
+    size_t                       size; /**< 本空闲块的数据区字节数 */
 };
 
 /* 统一头部大小: 空闲时为 free_block, 已分配时为 buffer_block_t */
-#define BUFF_POOL_HEAD_SIZE                                                                        \
-    (BUFF_POOL_ALIGN_UP((sizeof(struct buff_pool_free_block) > sizeof(buffer_block_t) ?            \
-                             sizeof(struct buff_pool_free_block) :                                 \
-                             sizeof(buffer_block_t)),                                              \
-                        BUFF_POOL_ALIGN_SIZE))
+#define BUFF_POOL_HEAD_SIZE                                                                                                                          \
+    (BUFF_POOL_ALIGN_UP(                                                                                                                             \
+        (sizeof(struct buff_pool_free_block) > sizeof(buffer_block_t) ? sizeof(struct buff_pool_free_block) : sizeof(buffer_block_t)),               \
+        BUFF_POOL_ALIGN_SIZE))
 
 #define BUFF_POOL_MAX_SEGS 4u /* 池段最大数量 (初始段 + 扩容段) */
 
@@ -140,23 +132,23 @@ struct buff_pool_free_block
 struct buff_pool_seg
 {
     uint8_t* base;
-    size_t len; /**< 段字节数 */
+    size_t   len; /**< 段字节数 */
 };
 
 struct buffer_pool
 {
-    const char* name;
-    buff_pool_atomic_uint_t lock; /**< 池锁 (自封装的 test-and-set / 关中断) */
-    bool use_static; /**< 是否启用静态池 (静态优先模式下有效) */
-    uint8_t* pool_base; /**< 初始静态池基址 */
-    size_t pool_size; /**< 初始静态池字节数 */
-    bool pool_owned; /**< true = 池内存由本池分配 (销毁时释放) */
-    struct buff_pool_free_block* free_list; /**< 空闲链表头 */
-    size_t total_size; /**< 所有段的累计大小 */
-    struct buff_pool_seg segs[BUFF_POOL_MAX_SEGS]; /**< 段表, 按长度升序排列 */
-    uint32_t seg_count; /**< 已注册的段数量 */
-    buff_pool_atomic_uint_t used_count; /**< 当前已分配的块数 */
-    buff_pool_atomic_uint_t peak; /**< 峰值使用量 */
+    const char*                  name;
+    buff_pool_atomic_uint_t      lock;                     /**< 池锁 (自封装的 test-and-set / 关中断) */
+    bool                         use_static;               /**< 是否启用静态池 (静态优先模式下有效) */
+    uint8_t*                     pool_base;                /**< 初始静态池基址 */
+    size_t                       pool_size;                /**< 初始静态池字节数 */
+    bool                         pool_owned;               /**< true = 池内存由本池分配 (销毁时释放) */
+    struct buff_pool_free_block* free_list;                /**< 空闲链表头 */
+    size_t                       total_size;               /**< 所有段的累计大小 */
+    struct buff_pool_seg         segs[BUFF_POOL_MAX_SEGS]; /**< 段表, 按长度升序排列 */
+    uint32_t                     seg_count;                /**< 已注册的段数量 */
+    buff_pool_atomic_uint_t      used_count;               /**< 当前已分配的块数 */
+    buff_pool_atomic_uint_t      peak;                     /**< 峰值使用量 */
 };
 
 /* 注册一个段, 保持段表按长度升序排列。
@@ -242,8 +234,8 @@ static void buff_pool_freelist_merge(struct buffer_pool* pool, struct buff_pool_
     while (it != NULL)
     {
         struct buff_pool_free_block* next = it->next;
-        uint8_t* it_end = (uint8_t*)it + BUFF_POOL_HEAD_SIZE + it->size;
-        uint8_t* blk_end = (uint8_t*)blk + BUFF_POOL_HEAD_SIZE + blk->size;
+        uint8_t*                     it_end = (uint8_t*)it + BUFF_POOL_HEAD_SIZE + it->size;
+        uint8_t*                     blk_end = (uint8_t*)blk + BUFF_POOL_HEAD_SIZE + blk->size;
 
         if (it_end == (uint8_t*)blk) /* it 紧邻 blk 前方 */
         {
@@ -264,12 +256,11 @@ static void buff_pool_freelist_merge(struct buffer_pool* pool, struct buff_pool_
 /* 首次适配: 查找数据区 >= size 的空闲块; 拆分并保留余量。
  * 若 seg != NULL, 仅考虑位于该段内的空闲块 (地址范围检查)。
  * 选中的块从链表移除并交给调用方; 拆分余量留在原位置。 */
-static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool* pool, size_t size,
-                                                             const struct buff_pool_seg* seg)
+static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool* pool, size_t size, const struct buff_pool_seg* seg)
 {
     struct buff_pool_free_block* it = pool->free_list;
-    uint8_t* s_base = seg ? seg->base : NULL;
-    uint8_t* s_end = seg ? seg->base + seg->len : NULL;
+    uint8_t*                     s_base = seg ? seg->base : NULL;
+    uint8_t*                     s_end = seg ? seg->base + seg->len : NULL;
     size = BUFF_POOL_ALIGN_UP(size, BUFF_POOL_ALIGN_SIZE);
     while (it != NULL)
     {
@@ -287,14 +278,13 @@ static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool*
             size_t remain = it->size - size;
             if (remain >= BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
             {
-                struct buff_pool_free_block* split =
-                    (struct buff_pool_free_block*)((uint8_t*)it + BUFF_POOL_HEAD_SIZE + size);
+                struct buff_pool_free_block* split = (struct buff_pool_free_block*)((uint8_t*)it + BUFF_POOL_HEAD_SIZE + size);
                 buff_pool_freelist_remove(pool, it);
                 split->prev = NULL;
                 split->next = NULL;
                 split->size = remain - BUFF_POOL_HEAD_SIZE;
                 buff_pool_freelist_push(pool, split); /* 余量留在链表 */
-                it->size = size; /* 缩小选中块 (已脱离链表) */
+                it->size = size;                      /* 缩小选中块 (已脱离链表) */
             }
             else
                 buff_pool_freelist_remove(pool, it);
@@ -306,13 +296,12 @@ static struct buff_pool_free_block* buff_pool_freelist_alloc(struct buffer_pool*
 }
 
 /* 单个段内最大的空闲块 (调用方持有锁) */
-static size_t buff_pool_seg_max_free(const struct buffer_pool* pool,
-                                     const struct buff_pool_seg* seg)
+static size_t buff_pool_seg_max_free(const struct buffer_pool* pool, const struct buff_pool_seg* seg)
 {
     const struct buff_pool_free_block* it = pool->free_list;
-    uint8_t* s_base = seg->base;
-    uint8_t* s_end = seg->base + seg->len;
-    size_t maxf = 0u;
+    uint8_t*                           s_base = seg->base;
+    uint8_t*                           s_end = seg->base + seg->len;
+    size_t                             maxf = 0u;
     while (it != NULL)
     {
         if ((uint8_t*)it >= s_base && (uint8_t*)it < s_end && it->size > maxf)
@@ -325,7 +314,7 @@ static size_t buff_pool_seg_max_free(const struct buffer_pool* pool,
 /* 所有段中最大的空闲块 */
 static size_t buff_pool_total_max_free(const struct buffer_pool* pool)
 {
-    size_t maxf = 0u;
+    size_t   maxf = 0u;
     uint32_t seg_index;
     for (seg_index = 0; seg_index < pool->seg_count; seg_index++)
     {
@@ -342,9 +331,9 @@ static size_t buff_pool_total_max_free(const struct buffer_pool* pool)
  * 无段可满足时返回 NULL。 */
 static buffer_block_t* buff_pool_alloc_static_impl(struct buffer_pool* pool, size_t size)
 {
-    uint32_t seg_index;
+    uint32_t                     seg_index;
     struct buff_pool_free_block* free_node;
-    buffer_block_t* blk;
+    buffer_block_t*              blk;
     if (pool->pool_base == NULL || pool->seg_count == 0u)
         return NULL;
     for (seg_index = 0; seg_index < pool->seg_count; seg_index++)
@@ -483,7 +472,7 @@ static void buff_pool_count_alloc(buffer_pool_t* pool, buffer_block_t* blk)
 int buffer_pool_alloc_static(buffer_pool_t* pool, size_t size, buffer_block_t** p_block)
 {
     buffer_block_t* blk;
-    uint32_t lock_state;
+    uint32_t        lock_state;
     if (pool == NULL || size == 0u || p_block == NULL)
         return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
@@ -500,7 +489,7 @@ int buffer_pool_alloc_static(buffer_pool_t* pool, size_t size, buffer_block_t** 
 int buffer_pool_alloc(buffer_pool_t* pool, size_t size, buffer_block_t** p_block)
 {
     buffer_block_t* blk;
-    uint32_t lock_state;
+    uint32_t        lock_state;
     if (pool == NULL || size == 0u || p_block == NULL)
         return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
@@ -527,7 +516,7 @@ int buffer_pool_alloc(buffer_pool_t* pool, size_t size, buffer_block_t** p_block
 int buffer_pool_expand(buffer_pool_t* pool, void* mem, size_t len)
 {
     struct buff_pool_free_block* seg;
-    uint32_t lock_state;
+    uint32_t                     lock_state;
     if (pool == NULL || mem == NULL || len < BUFF_POOL_HEAD_SIZE + BUFF_POOL_MIN_BLOCK)
         return BUFF_POOL_ERR_INVAL;
     buff_pool_lock_enter(pool, &lock_state);
@@ -579,7 +568,7 @@ int buffer_pool_free(buffer_pool_t* pool, buffer_block_t* block)
 int buffer_pool_alloc_isr(buffer_pool_t* pool, size_t size, buffer_block_t** p_block)
 {
     buffer_block_t* blk;
-    uint32_t lock_state;
+    uint32_t        lock_state;
     (void)lock_state; /* 未知架构构建下未使用 */
     if (pool == NULL || size == 0u || p_block == NULL)
         return BUFF_POOL_ERR_INVAL;
@@ -616,7 +605,7 @@ int buffer_pool_free_isr(buffer_pool_t* pool, buffer_block_t* block)
     if (pool == NULL || block == NULL)
         return BUFF_POOL_ERR_INVAL;
     if (!block->from_static)
-        return BUFF_POOL_ERR_INVAL; 
+        return BUFF_POOL_ERR_INVAL;
 #if defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
     buff_pool_lock_enter(pool, &lock_state);
 #elif defined(BUFF_POOL_ISR_MASK_ENTER)
@@ -664,7 +653,7 @@ int buffer_block_used(const buffer_block_t* block, size_t* p_used)
 int buffer_block_space(const buffer_block_t* block, size_t* p_space)
 {
     size_t used = 0u;
-    int ret;
+    int    ret;
     if (block == NULL || p_space == NULL)
         return BUFF_POOL_ERR_INVAL;
     ret = buffer_block_used(block, &used);
@@ -677,10 +666,10 @@ int buffer_block_space(const buffer_block_t* block, size_t* p_space)
 int buffer_block_write(buffer_block_t* block, const void* src, size_t len, size_t* actual)
 {
     const uint8_t* src_bytes = (const uint8_t*)src;
-    size_t space = 0u;
-    size_t first;
-    uint32_t head;
-    int ret;
+    size_t         space = 0u;
+    size_t         first;
+    uint32_t       head;
+    int            ret;
     if (actual != NULL)
         *actual = 0u;
     if (block == NULL || src == NULL || len == 0u)
@@ -708,10 +697,10 @@ int buffer_block_write(buffer_block_t* block, const void* src, size_t len, size_
 int buffer_block_read(buffer_block_t* block, void* dst, size_t len, size_t* actual)
 {
     uint8_t* dst_bytes = (uint8_t*)dst;
-    size_t used = 0u;
-    size_t first;
+    size_t   used = 0u;
+    size_t   first;
     uint32_t tail;
-    int ret;
+    int      ret;
     if (actual != NULL)
         *actual = 0u;
     if (block == NULL || dst == NULL || len == 0u)
@@ -760,8 +749,8 @@ int buffer_pool_size(const buffer_pool_t* pool, size_t* p_size)
 int buffer_pool_free_space(const buffer_pool_t* pool, size_t* p_free)
 {
     const struct buff_pool_free_block* it;
-    size_t total = 0u;
-    uint32_t lock_state;
+    size_t                             total = 0u;
+    uint32_t                           lock_state;
     if (pool == NULL || p_free == NULL)
         return BUFF_POOL_ERR_INVAL;
     if (pool->pool_base == NULL)

@@ -28,14 +28,13 @@
 #include "compiler_compat_poison.h"
 
 /* 编译期断言: 互斥锁池必须能覆盖最大设备数 */
-_Static_assert(OSAL_MUTEX_POOL_SIZE >= DEV_ID_COUNT,
-               "OSAL_MUTEX_POOL_SIZE too small for DEV_ID_COUNT devices");
+_Static_assert(OSAL_MUTEX_POOL_SIZE >= DEV_ID_COUNT, "OSAL_MUTEX_POOL_SIZE too small for DEV_ID_COUNT devices");
 
 /* -------------------------------------------------------------------------- */
 /* 运行时设备实例表 */
 /* -------------------------------------------------------------------------- */
 static struct device s_devices[DEV_ID_COUNT] MINI_ALIGNED(4);
-static uint8_t s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
+static uint8_t       s_device_lock_storage[DEV_ID_COUNT][OSAL_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
 
 /**
  * @brief 判断设备状态机是否允许 from→to 迁移
@@ -53,22 +52,17 @@ static int device_status_can_transit(enum device_status from, enum device_status
     case DEVICE_STATUS_DISABLED:
         return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_UNINIT;
     case DEVICE_STATUS_UNINIT:
-        return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_ERROR ||
-               to == DEVICE_STATUS_DISABLED;
+        return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_ERROR || to == DEVICE_STATUS_DISABLED;
     case DEVICE_STATUS_READY:
-        return to == DEVICE_STATUS_PROBED || to == DEVICE_STATUS_DISABLED ||
-               to == DEVICE_STATUS_ERROR;
+        return to == DEVICE_STATUS_PROBED || to == DEVICE_STATUS_DISABLED || to == DEVICE_STATUS_ERROR;
     case DEVICE_STATUS_PROBED:
-        return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_SUSPENDED ||
-               to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED ||
+        return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_SUSPENDED || to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED ||
                to == DEVICE_STATUS_ERROR;
     case DEVICE_STATUS_RUNNING:
-        return to == DEVICE_STATUS_SUSPENDED || to == DEVICE_STATUS_READY ||
-               to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR ||
+        return to == DEVICE_STATUS_SUSPENDED || to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR ||
                to == DEVICE_STATUS_PROBED;
     case DEVICE_STATUS_SUSPENDED:
-        return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_READY ||
-               to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR;
+        return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR;
     case DEVICE_STATUS_ERROR:
         return to == DEVICE_STATUS_REMOVED;
     case DEVICE_STATUS_REMOVED:
@@ -95,13 +89,11 @@ int device_tree_init(void)
         s_devices[index].platform_data = NULL;
         dev_lc_reset(&s_devices[index].lc);
 
-        if (node && s_devices[index].status != DEVICE_STATUS_DISABLED &&
-            !(node->flags & DEVICE_FLAG_DIRECT))
+        if (node && s_devices[index].status != DEVICE_STATUS_DISABLED && !(node->flags & DEVICE_FLAG_DIRECT))
         {
             /* pdev->lock 需要递归: osal_mutex_create_static_recursive */
             struct osal_mutex* lock = NULL;
-            if (osal_mutex_create_static_recursive(&lock, s_device_lock_storage[index],
-                                                   sizeof(s_device_lock_storage[index])) == OSAL_OK)
+            if (osal_mutex_create_static_recursive(&lock, s_device_lock_storage[index], sizeof(s_device_lock_storage[index])) == OSAL_OK)
             {
                 s_devices[index].lock = lock;
                 device_lc_bind(&s_devices[index]);
@@ -123,8 +115,7 @@ int device_tree_init(void)
 
     /* 池水位线预警 */
     if (board_dev_count() >= OSAL_MUTEX_POOL_SIZE * 9 / 10)
-        osal_log(OSAL_LOG_WARN, "board", "device_tree_init: mutex pool >90%% used (%d/%d)\n",
-                 board_dev_count(), OSAL_MUTEX_POOL_SIZE);
+        osal_log(OSAL_LOG_WARN, "board", "device_tree_init: mutex pool >90%% used (%d/%d)\n", board_dev_count(), OSAL_MUTEX_POOL_SIZE);
 
     return board_dev_count() > 0 ? MINI_OK : MINI_ERR_IO;
 }
@@ -267,7 +258,7 @@ static int safe_parse_int32(const char* str, int* out)
     if (!str || !*str || !out)
         return -1;
 
-    int sign = 1;
+    int         sign = 1;
     const char* cursor = str;
     if (*cursor == '-')
     {
@@ -302,7 +293,7 @@ static int safe_parse_int32(const char* str, int* out)
     if (!*cursor)
         return -1;
 
-    uint32_t val = 0;
+    uint32_t       val = 0;
     const uint32_t limit = (sign > 0) ? (uint32_t)INT32_MAX : (uint32_t)INT32_MAX + 1UL;
 
     while (*cursor)
@@ -387,7 +378,7 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
         return MINI_ERR_INVAL;
 
     /* 解析空格分隔的整数串 */
-    int count = 0;
+    int         count = 0;
     const char* cursor = value;
     while (*cursor && count < max_len)
     {
@@ -402,7 +393,7 @@ int device_get_prop_int_array(const struct device* pdev, const char* key, int* o
             cursor++;
 
         /* 复制 token 到临时缓冲区 */
-        char token[64];
+        char   token[64];
         size_t len = (size_t)(cursor - start);
         if (len >= sizeof(token))
             return MINI_ERR_INVAL;
@@ -447,10 +438,7 @@ int device_get_prop_str(const struct device* pdev, const char* key, const char**
  * @param[out] val 输出整型布尔值 (0/1)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-int device_get_prop_bool(const struct device* pdev, const char* key, int* val)
-{
-    return device_get_prop_int(pdev, key, val);
-}
+int device_get_prop_bool(const struct device* pdev, const char* key, int* val) { return device_get_prop_int(pdev, key, val); }
 
 /**
  * @brief 获取设备 reg 描述符
@@ -870,8 +858,7 @@ int device_lock(struct device* pdev)
         return MINI_ERR_INVAL;
     if (!pdev->lock)
         return MINI_ERR_BUSY;
-    return osal_mutex_lock(pdev->lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) == OSAL_OK ? MINI_OK :
-                                                                                  MINI_ERR_BUSY;
+    return osal_mutex_lock(pdev->lock, OSAL_LOCK_TIMEOUT_DEFAULT_MS) == OSAL_OK ? MINI_OK : MINI_ERR_BUSY;
 }
 
 /**

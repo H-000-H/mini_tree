@@ -2,6 +2,7 @@
 # osal — 操作系统抽象层 (OS Abstraction Layer)
 # ==============================================================================
 # 根据 Kconfig OSAL_BACKEND 选择编译对应的 RTOS 封装:
+#   CONFIG_OSAL_MINI_OS   → osal_mini_os.c   + link mini_os_kernel (自研 RTOS)
 #   CONFIG_OSAL_FREERTOS  → osal_freertos.c  + link freertos_kernel
 #   CONFIG_OSAL_RTTHREAD  → osal_rtthread.c  + link rtthread_kernel
 # ==============================================================================
@@ -10,8 +11,10 @@
 set(OSAL_BACKEND "NULL")
 set(_MINI_TREE_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../.config")
 if(EXISTS "${_MINI_TREE_CONFIG}")
-    file(STRINGS "${_MINI_TREE_CONFIG}" _osal_choice REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
-    if(_osal_choice STREQUAL "CONFIG_OSAL_FREERTOS=y")
+    file(STRINGS "${_MINI_TREE_CONFIG}" _osal_choice REGEX "^CONFIG_OSAL_(MINI_OS|FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
+    if(_osal_choice STREQUAL "CONFIG_OSAL_MINI_OS=y")
+        set(OSAL_BACKEND "MINI_OS")
+    elseif(_osal_choice STREQUAL "CONFIG_OSAL_FREERTOS=y")
         set(OSAL_BACKEND "FREERTOS")
     elseif(_osal_choice STREQUAL "CONFIG_OSAL_RTTHREAD=y")
         set(OSAL_BACKEND "RTTHREAD")
@@ -27,7 +30,15 @@ if(EXISTS "${_MINI_TREE_CONFIG}")
 endif()
 
 # ── 条件编译 ──
-if(OSAL_BACKEND STREQUAL "FREERTOS")
+if(OSAL_BACKEND STREQUAL "MINI_OS")
+    add_library(osal STATIC "src/osal_mini_os.c")
+
+    target_link_libraries(osal
+        PUBLIC
+            mini_os_kernel
+    )
+
+elseif(OSAL_BACKEND STREQUAL "FREERTOS")
     add_library(osal STATIC "src/osal_freertos.c")
 
     target_link_libraries(osal

@@ -16,8 +16,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-MINI_WEAK int hal_tim_device_init(hal_tim_device* pdev, hal_tim_platform_unique_config* unique,
-                                    hal_tim_host_config* host)
+MINI_WEAK int hal_tim_device_init(hal_tim_device* pdev, hal_tim_platform_unique_config* unique, hal_tim_host_config* host)
 {
     (void)pdev;
     (void)unique;
@@ -43,8 +42,7 @@ MINI_WEAK int hal_tim_close(hal_tim_device* pdev)
     return MINI_ERR_NOTSUPP;
 }
 
-MINI_WEAK int hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel, uint32_t frequency,
-                                   uint32_t duty)
+MINI_WEAK int hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel, uint32_t frequency, uint32_t duty)
 {
     (void)pdev;
     (void)channel;
@@ -67,8 +65,7 @@ MINI_WEAK int hal_tim_get_counter(const hal_tim_device* pdev, uint32_t* value)
     return MINI_ERR_NOTSUPP;
 }
 
-MINI_WEAK int hal_tim_get_capture_value(const hal_tim_device* pdev, uint32_t channel,
-                                          uint32_t* value)
+MINI_WEAK int hal_tim_get_capture_value(const hal_tim_device* pdev, uint32_t channel, uint32_t* value)
 {
     (void)pdev;
     (void)channel;

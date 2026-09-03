@@ -26,11 +26,11 @@ extern "C"
 /** 命令总数 */
 #define DFPLAYER_CMD_COUNT 2
 
-    /** @brief 曲目号参数 */
-    struct dfplayer_track
-    {
-        uint16_t track; /**< 曲目号（1..2999） */
-    };
+/** @brief 曲目号参数 */
+struct dfplayer_track
+{
+    uint16_t track; /**< 曲目号（1..2999） */
+};
 #ifdef __cplusplus
 }
 #endif

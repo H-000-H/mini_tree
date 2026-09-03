@@ -28,19 +28,19 @@ extern "C"
 /** 命令总数 */
 #define NRF24L01_CMD_COUNT 3
 
-    /** @brief 寄存器读写参数 */
-    struct nrf24l01_reg
-    {
-        uint8_t reg; /**< 寄存器地址 */
-        uint8_t val; /**< 写入值/读出值 */
-    };
+/** @brief 寄存器读写参数 */
+struct nrf24l01_reg
+{
+    uint8_t reg; /**< 寄存器地址 */
+    uint8_t val; /**< 写入值/读出值 */
+};
 
-    /** @brief 发送载荷参数（长度 ≤ NRF24L01_MAX_PAYLOAD） */
-    struct nrf24l01_payload
-    {
-        uint8_t* data; /**< 载荷缓冲 */
-        size_t len; /**< 载荷长度 */
-    };
+/** @brief 发送载荷参数（长度 ≤ NRF24L01_MAX_PAYLOAD） */
+struct nrf24l01_payload
+{
+    uint8_t* data; /**< 载荷缓冲 */
+    size_t   len;  /**< 载荷长度 */
+};
 #ifdef __cplusplus
 }
 #endif

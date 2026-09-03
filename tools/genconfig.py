@@ -8,9 +8,10 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import importlib
 from types import ModuleType
@@ -51,11 +52,18 @@ except AttributeError:
     _BOOL_TYPES = (BOOL,)
 
 
-def _atomic_write(path: Path, content: str) -> None:
-    """原子写入：先写临时文件再 mv 替换，防止生成残缺的 .h"""
-    tmp: Path = path.with_suffix(".tmp")
+def _atomic_write(path: Path, content: str, newline: Optional[str] = None) -> None:
+    """原子写入：先写临时文件再 mv 替换，防止生成残缺的 .h
+
+    newline=None 沿用 Python 默认换行翻译 (Windows 上 LF 会变 CRLF);
+    传 "\n" 强制 LF, 供入库的 .config 使用。
+    临时文件名用 <name>.tmp 而非 with_suffix: .config 与 .config.preserved
+    的 suffix 不同但 stem 相同, with_suffix 会让两者擞到同一个 .config.tmp。
+    """
+    tmp: Path = path.parent / (path.name + ".tmp")
     try:
-        tmp.write_text(content, encoding="utf-8")
+        with tmp.open("w", encoding="utf-8", newline=newline) as f:
+            f.write(content)
         tmp.replace(path)  # 同目录 rename，原子替换
     except Exception:
         tmp.unlink(missing_ok=True)
@@ -109,6 +117,130 @@ def _sync_dotconfig(kconfig_dir: Path, config_file: Path) -> None:
         dst.write_bytes(config_file.read_bytes())
 
 
+_SYM_LINE_RE = re.compile(r"^(?:#\s*)?CONFIG_(\w+)")
+
+_PRESERVE_HEADER = (
+    "#\n"
+    "# 当前不可见的符号 (genconfig 自动暂存, 勿手工编辑)\n"
+    "# 这些选项的 depends on 暂时不满足, kconfiglib 的 write_config 不会写出\n"
+    "# 它们。若直接丢弃, 依赖恢复后只能取 Kconfig 默认值, 自己定制会静默\n"
+    "# 丢失 (例如临时切一次 OSAL 后端, XTASK_* / X_PREEMPT_* 就会被冲掉)。\n"
+    "# 放在独立 sidecar (.config.preserved) 而非 .config 里, 是为了不让 CMake\n"
+    "# 的 file(STRINGS .config REGEX \"^CONFIG_X=y$\") 把暂存行误当成生效值。\n"
+    "# 依赖恢复后 write_config 会把它们写回 .config, 本文件随之自动缩小/删除。\n"
+    "#"
+)
+
+
+def _preserved_path(config_file: Path) -> Path:
+    """.config 的不可见符号 sidecar 路径: <name>.preserved (即 .config.preserved)。
+
+    单独成文件而非塞进 .config: CMake 侧用 file(STRINGS .config REGEX
+    "^CONFIG_X=y$") 读取, 不区分 "可见生效行" 与 "暂存保留行", 混在一起会让
+    暂存的 CONFIG_X=y 被当成当前生效值误读 (正是本轮在修的那类静默 bug)。
+    sidecar 只有 genconfig 自己读, .config 保持 kconfiglib 纯净输出, CMake
+    regex 读到的永远是当前后端真正生效的符号。
+    """
+    return config_file.parent / (config_file.name + ".preserved")
+
+
+def _config_symbol(line: str) -> Optional[str]:
+    """提取 .config 行的符号名; 非符号行返回 None。
+
+    识别两种形式: "CONFIG_FOO=y" / "CONFIG_FOO=123" 与 "# CONFIG_FOO is not set"。
+    """
+    m = _SYM_LINE_RE.match(line)
+    return m.group(1) if m is not None else None
+
+
+def _build_preserved(kconf: Kconfig, prev_content: str, new_content: str) -> Optional[str]:
+    """从回写前的已知状态里挑出本轮不可见的符号行, 组成 sidecar 内容。
+
+    prev_content 是 .config 与旧 sidecar 的拼接 (回写前的完整已知状态);
+    new_content 是本轮 write_config 的可见输出。二者符号差集就是当前不可见、
+    需要暂存的符号。只保留仍存在于 Kconfig 树 (kconf.syms) 的符号: 选项被删除
+    或改名后, 旧行不会被无限期带着走。保留顺序沿用 prev 中的出现顺序, 因此
+    幂等 —— 依赖状态不变时输出逐字节相同, _needs_update 判为无变化, 不触碰磁盘。
+    返回 None 表示没有需要暂存的符号 (调用方据此删除已存在的 sidecar)。
+    """
+    new_syms = set()
+    for line in new_content.splitlines():
+        sym = _config_symbol(line)
+        if sym is not None:
+            new_syms.add(sym)
+
+    kept: List[str] = []
+    seen = set()
+    for line in prev_content.splitlines():
+        sym = _config_symbol(line)
+        if sym is None or sym in new_syms or sym in seen:
+            continue
+        if sym not in kconf.syms:
+            continue  # 僵尸行: Kconfig 树里已无此符号
+        seen.add(sym)
+        kept.append(line)
+
+    if not kept:
+        return None
+    return _PRESERVE_HEADER + "\n" + "\n".join(kept) + "\n"
+
+
+def _refresh_dotconfig(kconf: Kconfig, config_file: Path) -> None:
+    """把 Kconfig 求值结果回写 .config (仅内容变化时, 原子替换)。
+
+    回写让陈旧 .config 每次构建自愈, CMake 的显式 "=y" 约定才真正等价于
+    Kconfig 语义。kconfiglib 的 write_config 自身就会对比内容、一致时不触
+    碰磁盘 (且比对走通用换行, 不受行尾影响), 因此不会因 .config 时间戳抖动
+    反复触发 CMAKE_CONFIGURE_DEPENDS 重配。
+
+    但 write_config 只写 "当前可见" 的符号: 依赖不满足的选项会整行消失, 依赖
+    恢复后只能取默认值 —— 对入库的 .config 来说就是静默丢配置。这些不可见
+    符号转存到 sidecar (.config.preserved), 下次 main() 先 load sidecar 再
+    load .config 合并, 依赖恢复时 kconfiglib 会把值写回 .config, sidecar 自动
+    缩小/删除。sidecar 独立成文件是为了不污染 CMake 读 .config 的 regex (见
+    _preserved_path)。
+
+    save_old=False: 构建期自愈不该每次留下 .config.old 噪声 (那是交互式
+    menuconfig 才需要的回滚快照)。
+    """
+    preserved_file: Path = _preserved_path(config_file)
+    # 回写前的完整已知状态 = 当前 .config + 旧 sidecar, 用于算出谁变不可见
+    prev_content: str = ""
+    if config_file.exists():
+        prev_content += config_file.read_text(encoding="utf-8")
+    if preserved_file.exists():
+        prev_content += preserved_file.read_text(encoding="utf-8")
+
+    tmp: Path = config_file.with_suffix(".tmp")
+    try:
+        kconf.write_config(str(tmp), save_old=False)
+        # kconfiglib 内部用 open(..., "w") 落盘, Windows 上会把 \n 翻译成
+        # \r\n; 而入库的 .config 是 LF, 直接搬过去会让整份文件行尾翻转
+        # (git 报 CRLF 警告, core.autocrlf 设置不同的人看到全文件 diff)。
+        # 读回时按通用换行归一, 再以 newline="\n" 显式写 LF。
+        new_content: str = tmp.read_text(encoding="utf-8")
+        if _needs_update(config_file, new_content):
+            with tmp.open("w", encoding="utf-8", newline="\n") as f:
+                f.write(new_content)
+            tmp.replace(config_file)  # 同目录 rename, 原子替换
+            print(f"[genconfig] Sync: {config_file} (Kconfig 求值结果回写)")
+        else:
+            tmp.unlink(missing_ok=True)
+
+        # 不可见符号 -> sidecar (独立文件, 不进 .config)
+        preserved: Optional[str] = _build_preserved(kconf, prev_content, new_content)
+        if preserved is None:
+            if preserved_file.exists():
+                preserved_file.unlink()
+                print(f"[genconfig] Clear: {preserved_file} (无不可见符号)")
+        elif _needs_update(preserved_file, preserved):
+            _atomic_write(preserved_file, preserved, newline="\n")
+            print(f"[genconfig] Preserve: {preserved_file} (暂存当前不可见符号)")
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Kconfig 工业级代码生成器")
     parser.add_argument("kconfig_path", type=Path, help="Kconfig 文件路径")
@@ -129,8 +261,16 @@ def main() -> None:
 
     kconf: Kconfig = Kconfig(str(kconfig_path), warn=False)
 
+    preserved: Path = _preserved_path(config_file)
     if config_file.exists():
-        kconf.load_config(str(config_file))
+        if preserved.exists():
+            # 先载入暂存的不可见符号, 再合并 .config; .config 后载入故优先
+            kconf.load_config(str(preserved))
+            kconf.load_config(str(config_file), replace=False)
+        else:
+            kconf.load_config(str(config_file))
+        # 回写求值结果, 补齐 default / select 产生但 .config 里缺失的符号
+        _refresh_dotconfig(kconf, config_file)
     else:
         kconf.write_config(str(config_file))
 

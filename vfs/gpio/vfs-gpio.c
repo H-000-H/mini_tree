@@ -29,25 +29,24 @@ static const char* const k_tag = "vfs-gpio";
 
 struct vfs_gpio_priv
 {
-    struct file_operations ops; /**< VFS 操作表 */
-    struct osal_mutex* io_mutex; /**< I/O 互斥锁 */
-    hal_gpio_dev_t obj; /**< HAL GPIO 设备对象 */
-    int default_level; /**< 默认电平 */
-    int pool_idx; /**< 池索引 */
+    struct file_operations ops;           /**< VFS 操作表 */
+    struct osal_mutex*     io_mutex;      /**< I/O 互斥锁 */
+    hal_gpio_dev_t         obj;           /**< HAL GPIO 设备对象 */
+    int                    default_level; /**< 默认电平 */
+    int                    pool_idx;      /**< 池索引 */
 };
 
-static struct vfs_gpio_priv s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
-static uint8_t s_gpio_priv_used[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
+static struct vfs_gpio_priv              s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
+static uint8_t                           s_gpio_priv_used[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_gpio_priv_pool_ctrl MINI_ALIGNED(4);
-static uint8_t s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
+static uint8_t                           s_gpio_mutex_storage[VFS_GPIO_PIN_COUNT][OSAL_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
 
 /**
  * @brief GPIO VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void)
 {
-    MINI_IGNORE_RESULT(
-        osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
 }
 
 /**
@@ -60,8 +59,8 @@ static int vfs_gpio_open(struct device* pdev, void* arg)
 {
     struct vfs_gpio_priv* priv;
     struct dev_lifecycle* lc;
-    int first;
-    int ret;
+    int                   first;
+    int                   ret;
 
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -117,7 +116,7 @@ static int vfs_gpio_close(struct device* pdev)
 {
     struct vfs_gpio_priv* priv;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -216,15 +215,14 @@ static const gpio_ioctl_map_t s_gpio_ioctl_map[GPIO_CMD_COUNT] = {
  * @param[in] timeout_ms 超时 (未使用)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                          uint32_t timeout_ms)
+static int vfs_gpio_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct vfs_gpio_priv* priv;
     struct dev_lifecycle* lc;
-    gpio_cmd_handler_t handler = NULL;
-    int ret;
-    int32_t offset;
-    uint8_t index;
+    gpio_cmd_handler_t    handler = NULL;
+    int                   ret;
+    int32_t               offset;
+    uint8_t               index;
 
     MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
@@ -275,13 +273,13 @@ static const struct file_operations gpio_fops = {
 static int vfs_gpio_probe(struct device* pdev)
 {
     struct vfs_gpio_priv* priv;
-    int port_val = 0, pin_val = 0, clk_val = 0;
-    int mode_val = 0, pull_val = 0, speed_val = 0;
-    int otype_val = 0, af_val = 0, intr_val = 0, default_level = 0;
-    int deinit_mode_val = 0, deinit_pull_val = 0;
-    int virq_idx = 0;
-    int pool_idx;
-    int ret;
+    int                   port_val = 0, pin_val = 0, clk_val = 0;
+    int                   mode_val = 0, pull_val = 0, speed_val = 0;
+    int                   otype_val = 0, af_val = 0, intr_val = 0, default_level = 0;
+    int                   deinit_mode_val = 0, deinit_pull_val = 0;
+    int                   virq_idx = 0;
+    int                   pool_idx;
+    int                   ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -297,10 +295,8 @@ static int vfs_gpio_probe(struct device* pdev)
     MINI_MEM_SET(priv, 0, sizeof(*priv));
     priv->pool_idx = pool_idx;
 
-    if (device_get_prop_int(pdev, "gpio-port", &port_val) != MINI_OK ||
-        device_get_prop_int(pdev, "gpio-pin", &pin_val) != MINI_OK ||
-        device_get_prop_int(pdev, "gpio-clk", &clk_val) != MINI_OK ||
-        device_get_prop_int(pdev, "gpio-mode", &mode_val) != MINI_OK ||
+    if (device_get_prop_int(pdev, "gpio-port", &port_val) != MINI_OK || device_get_prop_int(pdev, "gpio-pin", &pin_val) != MINI_OK ||
+        device_get_prop_int(pdev, "gpio-clk", &clk_val) != MINI_OK || device_get_prop_int(pdev, "gpio-mode", &mode_val) != MINI_OK ||
         device_get_prop_int(pdev, "gpio-pull", &pull_val) != MINI_OK)
     {
         ret = MINI_ERR_INVAL;
@@ -339,8 +335,7 @@ static int vfs_gpio_probe(struct device* pdev)
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "default-level", &default_level));
     priv->default_level = default_level;
 
-    if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx],
-                                 sizeof(s_gpio_mutex_storage[pool_idx])) != 0)
+    if (osal_mutex_create_static(&priv->io_mutex, s_gpio_mutex_storage[pool_idx], sizeof(s_gpio_mutex_storage[pool_idx])) != 0)
     {
         ret = MINI_ERR_NOMEM;
         goto err_pool;
@@ -356,8 +351,7 @@ static int vfs_gpio_probe(struct device* pdev)
         goto err_mutex;
     }
 
-    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val,
-             (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
+    SYS_LOGI(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
     return MINI_OK;
 
 err_mutex:
@@ -380,7 +374,7 @@ static int vfs_gpio_remove(struct device* pdev)
 {
     struct vfs_gpio_priv* priv;
     struct dev_lifecycle* lc;
-    int pool_idx;
+    int                   pool_idx;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;

@@ -25,7 +25,7 @@
 | :--- | :--- |
 | FreeRTOS official docs | reference for `CONFIG_OSAL_FREERTOS` backend |
 | RT-Thread official docs | reference for `CONFIG_OSAL_RTTHREAD` backend |
-| OSAL three-backend design | `osal/src/osal_{null,freertos,rtthread}.c` |
+| OSAL four-backend design | `osal/src/osal_{null,mini_os,freertos,rtthread}.c` |
 
 ---
 

@@ -33,16 +33,16 @@
 /** @brief MPU6050 驱动实例（嵌入 fops） */
 struct mpu6050_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct mpu6050_device s_mpu6050_pool[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_mpu6050_used[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
+static struct mpu6050_device           s_mpu6050_pool[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                         s_mpu6050_used[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_mpu6050_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "mpu6050";
+static const char* const               k_tag = "mpu6050";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void mpu6050_pool_boot
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct mpu6050_device* mpu6050_get_drvdata(struct device* pdev)
-{
-    return (struct mpu6050_device*)device_get_priv(pdev);
-}
+static struct mpu6050_device* mpu6050_get_drvdata(struct device* pdev) { return (struct mpu6050_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int mpu6050_i2c_wr(struct mpu6050_device* dev, const uint8_t* tx, size_t len,
-                          uint32_t timeout_ms)
+static int mpu6050_i2c_wr(struct mpu6050_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -122,8 +118,8 @@ static void mpu6050_hw_destroy(struct mpu6050_device* dev)
 static int mpu6050_open(struct device* pdev, void* arg)
 {
     struct mpu6050_device* dev;
-    struct dev_lifecycle* lc;
-    int first, ret;
+    struct dev_lifecycle*  lc;
+    int                    first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -156,8 +152,8 @@ static int mpu6050_open(struct device* pdev, void* arg)
 static int mpu6050_close(struct device* pdev)
 {
     struct mpu6050_device* dev;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*  lc;
+    int                    last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = mpu6050_get_drvdata(pdev);
@@ -178,8 +174,7 @@ static int mpu6050_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*mpu6050_ioctl_fn_t)(struct mpu6050_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct mpu6050_ioctl_map
 {
     mpu6050_ioctl_fn_t handler;
@@ -190,10 +185,10 @@ struct mpu6050_ioctl_map
  */
 static int mpu6050_cmd_read(struct mpu6050_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    const uint8_t reg = 0x3B;
-    uint8_t raw[14];
+    const uint8_t          reg = 0x3B;
+    uint8_t                raw[14];
     struct mpu6050_sample* sample = (struct mpu6050_sample*)arg;
-    int ret;
+    int                    ret;
     if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = mpu6050_i2c_wr(dev, &reg, 1, timeout_ms);
@@ -220,9 +215,9 @@ static const struct mpu6050_ioctl_map s_mpu6050_map[MPU6050_CMD_COUNT] = {
 static int mpu6050_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct mpu6050_device* dev;
-    struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int32_t                off;
+    int                    ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = mpu6050_get_drvdata(pdev);
@@ -255,7 +250,7 @@ static const struct file_operations mpu6050_fops = {
 static int mpu6050_probe(struct device* pdev)
 {
     struct mpu6050_device* dev;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_mpu6050_pool_ctrl);
@@ -292,8 +287,8 @@ err:
 static int mpu6050_remove(struct device* pdev)
 {
     struct mpu6050_device* dev;
-    struct dev_lifecycle* lc;
-    int idx;
+    struct dev_lifecycle*  lc;
+    int                    idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = mpu6050_get_drvdata(pdev);

@@ -16,7 +16,7 @@
 #else
 MINI_WEAK int hal_sdio_init_struct(struct hal_sdio* sdio)
 {
-   MINI_UNUSED_PARAM(sdio);
+    MINI_UNUSED_PARAM(sdio);
     return MINI_OK;
 }
 MINI_WEAK int hal_sdio_force_stop(void) { return MINI_OK; }

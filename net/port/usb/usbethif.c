@@ -32,7 +32,7 @@ static const char* const k_tag = "usb_ethif";
 /* 数量由 DTS ECM 节点数决定 (dtc-lite 生成, 缺省 1)。 */
 #define USBETHIF_NETIF_MAX DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ECM
 static struct netif s_usb_netif[USBETHIF_NETIF_MAX];
-static uint8_t s_usb_netif_used[USBETHIF_NETIF_MAX];
+static uint8_t      s_usb_netif_used[USBETHIF_NETIF_MAX];
 
 /* lwIP netif->mtu 为 IP MTU (不含 14 字节 ethhdr)*/
 #define USBETHIF_MTU (CONFIG_USB_NET_MTU - 14)
@@ -48,10 +48,7 @@ static uint8_t s_mac[6] = {CONFIG_USB_NET_MAC0, CONFIG_USB_NET_MAC1, CONFIG_USB_
  * @param[in] netif lwIP 网络接口
  * @return USB 网卡 device 或 NULL
  */
-static struct device* usb_ethif_dev(struct netif* netif)
-{
-    return (netif) ? (struct device*)netif->state : NULL;
-}
+static struct device* usb_ethif_dev(struct netif* netif) { return (netif) ? (struct device*)netif->state : NULL; }
 
 /**
  * @brief lwIP → USB 发送 (从 netif->state 取 device, 走 VFS device_write)
@@ -62,8 +59,8 @@ static struct device* usb_ethif_dev(struct netif* netif)
 static err_t usb_ethif_link_output(struct netif* netif, struct pbuf* pbuf)
 {
     struct device* dev = usb_ethif_dev(netif);
-    uint8_t* frame = NULL;
-    int sent = 0;
+    uint8_t*       frame = NULL;
+    int            sent = 0;
 
     if (!dev || !pbuf)
         return ERR_ARG;
@@ -129,10 +126,10 @@ err_t usb_ethif_init(struct netif* netif)
 int usb_ethif_init_dev(const char* dev_name)
 {
     struct device* dev;
-    struct netif* nif;
-    int ret;
-    int idx = -1;
-    int index;
+    struct netif*  nif;
+    int            ret;
+    int            idx = -1;
+    int            index;
 
     if (!dev_name)
         return -1;
@@ -189,8 +186,8 @@ int usb_ethif_init_dev(const char* dev_name)
 int usb_ethif_poll(struct netif* netif)
 {
     struct device* dev = usb_ethif_dev(netif);
-    uint8_t frame[USBETHIF_FRAME_MAX];
-    int ret;
+    uint8_t        frame[USBETHIF_FRAME_MAX];
+    int            ret;
 
     if (!dev || !netif)
         return 0;

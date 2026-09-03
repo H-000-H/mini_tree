@@ -24,15 +24,15 @@
 
 struct vfs_rtc_priv
 {
-    struct file_operations ops; /**< VFS 操作表 */
-    struct hal_rtc_dev rtc; /**< HAL RTC 设备 */
-    int pool_idx; /**< 池索引 */
+    struct file_operations ops;      /**< VFS 操作表 */
+    struct hal_rtc_dev     rtc;      /**< HAL RTC 设备 */
+    int                    pool_idx; /**< 池索引 */
 };
 
-static struct vfs_rtc_priv s_pool[RTC_VFS_POOL] MINI_ALIGNED(4);
-static uint8_t s_used[RTC_VFS_POOL] MINI_ALIGNED(4);
+static struct vfs_rtc_priv     s_pool[RTC_VFS_POOL] MINI_ALIGNED(4);
+static uint8_t                 s_used[RTC_VFS_POOL] MINI_ALIGNED(4);
 static osal_pool_t s_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "vfs_rtc";
+static const char* const       k_tag = "vfs_rtc";
 
 /**
  * @brief RTC VFS 私有数据池启动初始化
@@ -50,9 +50,9 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot
  */
 static int vfs_rtc_open(struct device* pdev, void* arg)
 {
-    struct vfs_rtc_priv* priv;
+    struct vfs_rtc_priv*  priv;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
 
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -83,9 +83,9 @@ static int vfs_rtc_open(struct device* pdev, void* arg)
  */
 static int vfs_rtc_close(struct device* pdev)
 {
-    struct vfs_rtc_priv* priv;
+    struct vfs_rtc_priv*  priv;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -222,12 +222,9 @@ static int rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_l
 
 typedef int (*rtc_ioctl_fn)(struct vfs_rtc_priv*, void*, size_t, uint32_t);
 static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
-    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,
-    [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,
-    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,
-    [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm,
-    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup,
-    [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
+    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,     [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,
+    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,   [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm,
+    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup, [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
     [RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1] = rtc_cmd_force_stop,
 };
 
@@ -240,13 +237,12 @@ static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
  * @param[in] timeout_ms 未使用 (透传给子命令)
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
-    struct vfs_rtc_priv* priv;
+    struct vfs_rtc_priv*  priv;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -308,7 +304,7 @@ static int vfs_rtc_parse_dts(struct device* pdev, struct hal_rtc_config* cfg)
 static int vfs_rtc_probe(struct device* pdev)
 {
     struct vfs_rtc_priv* priv;
-    int idx, ret;
+    int                  idx, ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -348,9 +344,9 @@ err:
  */
 static int vfs_rtc_remove(struct device* pdev)
 {
-    struct vfs_rtc_priv* priv;
+    struct vfs_rtc_priv*  priv;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
 
     if (!pdev)
         return MINI_ERR_INVAL;

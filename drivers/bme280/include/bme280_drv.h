@@ -24,13 +24,13 @@ extern "C"
 /** 命令总数 */
 #define BME280_CMD_COUNT 1
 
-    /** @brief BME280 环境采样结果 */
-    struct bme280_env
-    {
-        int16_t temp_c_x100; /**< 温度，摄氏度 ×100 */
-        uint16_t humidity_x100; /**< 相对湿度 ×100（0..10000） */
-        uint32_t pressure; /**< 气压，Pa */
-    };
+/** @brief BME280 环境采样结果 */
+struct bme280_env
+{
+    int16_t  temp_c_x100;   /**< 温度，摄氏度 ×100 */
+    uint16_t humidity_x100; /**< 相对湿度 ×100（0..10000） */
+    uint32_t pressure;      /**< 气压，Pa */
+};
 #ifdef __cplusplus
 }
 #endif

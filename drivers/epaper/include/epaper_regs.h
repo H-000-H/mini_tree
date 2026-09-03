@@ -16,7 +16,7 @@ extern "C"
 #endif
 
 #define EPAPER_BUSY_TIMEOUT_MS 2000U /**< BUSY 等待超时缺省值（ms，DTS busy-timeout-ms 可覆盖） */
-#define EPAPER_RESET_HOLD_MS 10U /**< 复位脉冲保持时间（ms） */
+#define EPAPER_RESET_HOLD_MS 10U     /**< 复位脉冲保持时间（ms） */
 
 #ifdef __cplusplus
 }

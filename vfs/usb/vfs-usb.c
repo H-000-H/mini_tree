@@ -35,19 +35,18 @@
 struct vfs_usb_priv
 {
     struct hal_usb_bus_config cfg;
-    int pool_idx;
+    int                       pool_idx;
 };
 
-static struct vfs_usb_priv s_usb_priv_pool[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t s_usb_priv_used[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static struct vfs_usb_priv              s_usb_priv_pool[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t                          s_usb_priv_used[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_usb_priv_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_host_tag = "usb_host_vfs";
+static const char* const                k_host_tag = "usb_host_vfs";
 
 /** 资源池初始化 (mini_pre_execution 阶段, 供 device 池复用) */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void)
 {
-    MINI_IGNORE_RESULT(
-        osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
 }
 
 /**
@@ -62,14 +61,10 @@ static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config
     int dp_port = 0, dp_pin = 0, dp_af = 0;
     int dm_port = 0, dm_pin = 0, dm_af = 0;
 
-    if (device_get_prop_int(pdev, "usb-base", &usb_base) != MINI_OK ||
-        device_get_prop_int(pdev, "rhport", &rhport) != MINI_OK ||
-        device_get_prop_int(pdev, "irqn", &irqn) != MINI_OK ||
-        device_get_prop_int(pdev, "dp-port", &dp_port) != MINI_OK ||
-        device_get_prop_int(pdev, "dp-pin", &dp_pin) != MINI_OK ||
-        device_get_prop_int(pdev, "dp-af", &dp_af) != MINI_OK ||
-        device_get_prop_int(pdev, "dm-port", &dm_port) != MINI_OK ||
-        device_get_prop_int(pdev, "dm-pin", &dm_pin) != MINI_OK ||
+    if (device_get_prop_int(pdev, "usb-base", &usb_base) != MINI_OK || device_get_prop_int(pdev, "rhport", &rhport) != MINI_OK ||
+        device_get_prop_int(pdev, "irqn", &irqn) != MINI_OK || device_get_prop_int(pdev, "dp-port", &dp_port) != MINI_OK ||
+        device_get_prop_int(pdev, "dp-pin", &dp_pin) != MINI_OK || device_get_prop_int(pdev, "dp-af", &dp_af) != MINI_OK ||
+        device_get_prop_int(pdev, "dm-port", &dm_port) != MINI_OK || device_get_prop_int(pdev, "dm-pin", &dm_pin) != MINI_OK ||
         device_get_prop_int(pdev, "dm-af", &dm_af) != MINI_OK)
         return MINI_ERR_INVAL;
 
@@ -99,7 +94,7 @@ static int vfs_usb_priv_parse_dts(struct device* pdev, struct hal_usb_bus_config
 static int vfs_usb_priv_probe(struct device* pdev)
 {
     struct vfs_usb_priv* priv;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -143,9 +138,9 @@ err_pool:
  */
 static int vfs_usb_priv_remove(struct device* pdev)
 {
-    struct vfs_usb_priv* priv;
+    struct vfs_usb_priv*  priv;
     struct dev_lifecycle* lc;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -186,15 +181,15 @@ static int vfs_usb_priv_remove(struct device* pdev)
 struct usb_vfs_client
 {
     struct file_operations ops;
-    enum usb_client_class cls;
-    uint32_t xfer_mode; /**< USB_XFER_*; write/read 默认 AUTO */
-    int pool_idx;
+    enum usb_client_class  cls;
+    uint32_t               xfer_mode; /**< USB_XFER_*; write/read 默认 AUTO */
+    int                    pool_idx;
 };
 
-static struct usb_vfs_client s_client_pool[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static uint8_t s_client_used[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static struct usb_vfs_client          s_client_pool[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_client_used[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_client_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_client_tag = "usb_client_vfs";
+static const char* const              k_client_tag = "usb_client_vfs";
 
 /** 客户端池初始化 (mini_pre_execution 阶段) */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void)
@@ -288,9 +283,9 @@ static int usb_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t 
  */
 static int usb_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
 {
-    struct usb_vfs_client* priv;
+    struct usb_vfs_client*          priv;
     const struct usb_xfer_mode_arg* ma = (const struct usb_xfer_mode_arg*)arg;
-    int mode;
+    int                             mode;
 
     if (!pdev || !pdev->ops || !ma || arg_len < sizeof(*ma))
         return MINI_ERR_INVAL;
@@ -316,7 +311,7 @@ static int usb_cmd_set_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
  */
 static int usb_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
 {
-    struct usb_vfs_client* priv;
+    struct usb_vfs_client*    priv;
     struct usb_xfer_mode_arg* ma = (struct usb_xfer_mode_arg*)arg;
 
     if (!pdev || !pdev->ops || !ma || arg_len < sizeof(*ma))
@@ -335,8 +330,7 @@ static int usb_cmd_get_xfer_mode(struct device* pdev, void* arg, size_t arg_len)
  * @param[in] timeout_ms 超时毫秒数 (未用)
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_NOTSUPP
  */
-static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int usb_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     MINI_IGNORE_RESULT(timeout_ms);
     if (cmd == USB_CMD_SET_XFER_MODE)
@@ -364,7 +358,7 @@ static int usb_vfs_client_probe_cls(struct device* pdev, enum usb_client_class c
 {
     struct usb_vfs_client* priv;
     struct usb_bus_client* bus_cli;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -410,8 +404,8 @@ err_pool:
 static int usb_vfs_client_remove(struct device* pdev)
 {
     struct usb_vfs_client* priv;
-    struct dev_lifecycle* lc;
-    int pool_idx;
+    struct dev_lifecycle*  lc;
+    int                    pool_idx;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -438,20 +432,11 @@ static int usb_vfs_client_remove(struct device* pdev)
 }
 
 /** CDC ACM 客户端 probe (DRIVER_REGISTER) */
-static int usb_cdc_probe(struct device* pdev)
-{
-    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_CDC);
-}
+static int usb_cdc_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_CDC); }
 /** CDC-ECM 客户端 probe (DRIVER_REGISTER) */
-static int usb_ecm_probe(struct device* pdev)
-{
-    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_ECM);
-}
+static int usb_ecm_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_ECM); }
 /** HID 客户端 probe (DRIVER_REGISTER) */
-static int usb_hid_probe(struct device* pdev)
-{
-    return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID);
-}
+static int usb_hid_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID); }
 
 DRIVER_REGISTER(usb_otg_host, "usb-otg-host", vfs_usb_priv_probe, vfs_usb_priv_remove)
 DRIVER_REGISTER(usb_cdc_acm, "heterogeneous,usb-cdc-acm", usb_cdc_probe, usb_vfs_client_remove)

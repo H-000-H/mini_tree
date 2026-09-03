@@ -1,6 +1,6 @@
 # OSAL Backend Switching Notes
 
-> Behavioral differences you must re-check when switching between FreeRTOS / RT-Thread / bare-metal (NULL).
+> Behavioral differences you must re-check when switching between mini-os / FreeRTOS / RT-Thread / bare-metal (NULL).
 
 | Item | Description |
 | :--- | :--- |
@@ -27,6 +27,7 @@
 | Macro | Implementation | Link deps | Task model |
 | :--- | :--- | :--- | :--- |
 | `CONFIG_OSAL_NULL` | `osal/src/osal_null.c`<br>+ `osal/src/osal_task.cpp` (when `CONFIG_OSAL_NULL_TASK_CPP=y` **and** `!XTASK_NONE`) | `time_slice/task` (`xtask_coop.c` or `xtask_preempt.c`, picked by the `Kconfig.mini_tree` bare-metal scheduler choice `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; shares `xtask.h` API) | No scheduler (`XTASK_NONE`, hand-written `while(1)`) <br>**or** cooperative round-robin (default, `XTASK_COOP`)<br>**or** N+1 preemptive multi-priority (`XTASK_PREEMPT`) |
+| `CONFIG_OSAL_MINI_OS` | `osal/src/osal_mini_os.c` | `lib/mini-os` (in-tree kernel, Cortex-M only; see [mini-os.md](mini-os.md)) | Preemptive (32-level ready bitmap, O(1)) |
 | `CONFIG_OSAL_FREERTOS` | `osal/src/osal_freertos.c` | `lib/freeRTOS` (v11.3.0) | Preemptive |
 | `CONFIG_OSAL_RTTHREAD` | `osal/src/osal_rtthread.c` | `lib/rtthread` (v5.3.0) | Preemptive |
 
@@ -37,7 +38,7 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) picks one scheduler from the "bare-m
 
 The public surface is `osal/include/osal.h`. Business code and VFS should depend on this header only.
 
-Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** are vendored; TinyUSB / lwIP are config-time FetchContent, and the rest (littlefs, FatFs, MultiButton, MCUBoot, coreMQTT, LVGL, u8g2, FlashDB, SFUD, EasyFlash, EasyLogger) are link-time FetchContent (`mini_tree_link_*`).
+Current `lib/` state: **mini-os (in-tree), FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** are vendored; TinyUSB / lwIP are config-time FetchContent, and the rest (littlefs, FatFs, MultiButton, MCUBoot, coreMQTT, LVGL, u8g2, FlashDB, SFUD, EasyFlash, EasyLogger) are link-time FetchContent (`mini_tree_link_*`).
 
 ---
 
@@ -57,6 +58,7 @@ Current `lib/` state: only **FreeRTOS (v11.3.0), RT-Thread (v5.3.0), and ETL** a
 | :--- | :--- |
 | FreeRTOS | **Higher** number = higher priority |
 | RT-Thread | **Lower** number = higher priority |
+| mini-os | **Lower** number = higher priority (same as RT-Thread, opposite of FreeRTOS) |
 | NULL (cooperative, `XTASK_COOP`) | C API ignores priority arguments |
 | NULL (preemptive, `XTASK_PREEMPT`) | N+1 linked-list multi-priority; higher number = higher priority |
 
@@ -78,6 +80,7 @@ The same business constants **must** be re-mapped when switching backends, or yo
 - Only use APIs in `osal.h` marked ISR-safe (if any); when in doubt, assume mutexes are **not** safe in ISRs.
 - The spinlock implementation is selected by `CONFIG_OSAL_SPINLOCK_IRQ_DISABLE` / `ATOMIC`; prefer atomic under AMP.
 - Business code must not `#include` `semphr.h` / `rthw.h` directly.
+- Switching to the mini-os backend needs the same board-wiring care: `SysTick_Handler` forwards to `mini_os_systick_handler()`, `PendSV_Handler` to `pendsv_handler()` (lowercase, symbol in port.S), and the linker script must include `lib/mini-os/mini-os-heap.ld`.
 
 ---
 
@@ -88,6 +91,7 @@ The same business constants **must** be re-mapped when switching backends, or yo
 | NULL | `for(;;) mini_tree_system_loop();` |
 | FreeRTOS | `vTaskStartScheduler();` |
 | RT-Thread | `rt_system_scheduler_start();` |
+| mini-os | `mini_os_schedule_start();` (inside `osal_scheduler_start`, the kernel is lazily booted first: `schedule_init` + idle thread + SysTick, then the scheduler starts) |
 
 Don't link or call RTOS scheduler entry points under a NULL configuration.
 
@@ -97,7 +101,7 @@ Don't link or call RTOS scheduler entry points under a NULL configuration.
 
 - **Bare-metal queue pool (OSAL_NULL only)**: `CONFIG_OSAL_NULL_MAX_QUEUES` is the **base queue count** (default 0, no RAM); enabling `CONFIG_EVENT_BUS` **auto-adds 1** (EventBus needs a queue). Manual `osal_queue_create` → set the base in Kconfig. Per-queue buffer `CONFIG_OSAL_NULL_QUEUE_BUF_SZ` (2048 B).
 - `CONFIG_OSAL_MUTEX_POOL_SIZE` must cover `DEV_ID_COUNT` (device locks) plus business locks.
-- **RTOS heaps are Kconfig-gated**: FreeRTOS dynamic heap `CONFIG_FREERTOS_HEAP_SIZE` (8 KB), RT-Thread static heap `CONFIG_RTT_HEAP_SIZE` (32 KB).
+- **RTOS heaps are Kconfig-gated**: FreeRTOS dynamic heap `CONFIG_FREERTOS_HEAP_SIZE` (8 KB), RT-Thread static heap `CONFIG_RTT_HEAP_SIZE` (32 KB); the mini-os heap comes from a linker region (`__mini_os_heap_start`/`__mini_os_heap_end`, no Kconfig heap size, **does not count into bss**, resize via the linker script).
 - Task stack size varies with backend stack overhead; re-measure headroom after switching.
 
 ---
@@ -117,4 +121,5 @@ Don't link or call RTOS scheduler entry points under a NULL configuration.
 ## Related Docs
 
 - [getting_started.md](getting_started.md) · [service_spec.md](service_spec.md)
+- [mini-os.md](mini-os.md) (mini-os kernel deep-dive) · [memory_footprint.md](memory_footprint.md) (four-backend memory benchmark)
 - [design_decisions.md](design_decisions.md)

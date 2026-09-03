@@ -16,5 +16,5 @@
 MINI_WEAK void hal_cpu_emergency_stop_all_cores(void) {}
 MINI_WEAK void hal_cpu_secondary_startup(void) {}
 MINI_WEAK void hal_cpu_baremetal_entry(void) {}
-MINI_WEAK int hal_cpu_get_id(void) { return 0; }
+MINI_WEAK int  hal_cpu_get_id(void) { return 0; }
 #endif /* ESP_PLATFORM */

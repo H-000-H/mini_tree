@@ -34,16 +34,16 @@
 /** @brief RC522 驱动实例（嵌入 fops） */
 struct rc522_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* spi_dev; /**< 所属 SPI client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         spi_dev; /**< 所属 SPI client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct rc522_device s_rc522_pool[RC522_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_rc522_used[RC522_POOL_COUNT] MINI_ALIGNED(4);
+static struct rc522_device           s_rc522_pool[RC522_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                       s_rc522_used[RC522_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_rc522_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "rc522";
+static const char* const             k_tag = "rc522";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -58,17 +58,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void rc522_pool_boot_i
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct rc522_device* rc522_get_drvdata(struct device* pdev)
-{
-    return (struct rc522_device*)device_get_priv(pdev);
-}
+static struct rc522_device* rc522_get_drvdata(struct device* pdev) { return (struct rc522_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int rc522_spi_xfer(struct rc522_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                          uint32_t timeout_ms)
+static int rc522_spi_xfer(struct rc522_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -117,9 +113,9 @@ static void rc522_hw_destroy(struct rc522_device* dev)
  */
 static int rc522_open(struct device* pdev, void* arg)
 {
-    struct rc522_device* dev;
+    struct rc522_device*  dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -151,9 +147,9 @@ static int rc522_open(struct device* pdev, void* arg)
  */
 static int rc522_close(struct device* pdev)
 {
-    struct rc522_device* dev;
+    struct rc522_device*  dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = rc522_get_drvdata(pdev);
@@ -197,7 +193,7 @@ static int rc522_rreg(struct rc522_device* dev, uint8_t reg, uint8_t* val, uint3
 {
     uint8_t tx[2] = {(uint8_t)(((reg << 1) & RC522_SPI_ADDR_MASK) | RC522_SPI_READ_FLAG), 0};
     uint8_t rx[2] = {0};
-    int ret = rc522_spi_xfer(dev, tx, rx, 2, timeout_ms);
+    int     ret = rc522_spi_xfer(dev, tx, rx, 2, timeout_ms);
     if (ret != MINI_OK)
         return ret;
     *val = rx[1];
@@ -210,7 +206,7 @@ static int rc522_rreg(struct rc522_device* dev, uint8_t reg, uint8_t* val, uint3
 static int rc522_set_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, uint32_t timeout_ms)
 {
     uint8_t val = 0;
-    int ret = rc522_rreg(dev, reg, &val, timeout_ms);
+    int     ret = rc522_rreg(dev, reg, &val, timeout_ms);
     if (ret != MINI_OK)
         return ret;
     return rc522_wreg(dev, reg, (uint8_t)(val | mask), timeout_ms);
@@ -222,7 +218,7 @@ static int rc522_set_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, u
 static int rc522_clr_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, uint32_t timeout_ms)
 {
     uint8_t val = 0;
-    int ret = rc522_rreg(dev, reg, &val, timeout_ms);
+    int     ret = rc522_rreg(dev, reg, &val, timeout_ms);
     if (ret != MINI_OK)
         return ret;
     return rc522_wreg(dev, reg, (uint8_t)(val & (uint8_t)~mask), timeout_ms);
@@ -235,15 +231,15 @@ static int rc522_clr_bits(struct rc522_device* dev, uint8_t reg, uint8_t mask, u
  * @param[in] back 回读缓冲（可空）
  * @param[in] back_len 回读比特数（可空）
  */
-static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send,
-                         uint8_t send_len, uint8_t* back, uint8_t* back_len, uint32_t timeout_ms)
+static int rc522_to_card(struct rc522_device* dev, uint8_t cmd, const uint8_t* send, uint8_t send_len, uint8_t* back, uint8_t* back_len,
+                         uint32_t timeout_ms)
 {
     uint8_t irq_en = 0;
     uint8_t wait_irq = 0;
     uint8_t count;
     uint8_t last_bits;
-    int index;
-    int ret;
+    int     index;
+    int     ret;
     if (cmd == RC522_OP_MF_AUTHENT)
     {
         irq_en = RC522_IRQ_AUTH_EN;
@@ -365,13 +361,13 @@ static int rc522_cmd_init(struct rc522_device* dev, void* arg, size_t len, uint3
 static int rc522_cmd_uid(struct rc522_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct rc522_uid* uid_out = (struct rc522_uid*)arg;
-    uint8_t req[1] = {RC522_PICC_REQA};
-    uint8_t atqa[2] = {0};
-    uint8_t atqa_bits = 0;
-    uint8_t anti[2] = {RC522_PICC_ANTICOLL1, RC522_PICC_SELECTNVB};
-    uint8_t uid[5] = {0};
-    uint8_t uid_bits = 0;
-    int ret;
+    uint8_t           req[1] = {RC522_PICC_REQA};
+    uint8_t           atqa[2] = {0};
+    uint8_t           atqa_bits = 0;
+    uint8_t           anti[2] = {RC522_PICC_ANTICOLL1, RC522_PICC_SELECTNVB};
+    uint8_t           uid[5] = {0};
+    uint8_t           uid_bits = 0;
+    int               ret;
     if (!dev->hw_ready || !uid_out || len != sizeof(*uid_out))
         return MINI_ERR_INVAL;
     ret = rc522_wreg(dev, RC522_REG_BIT_FRAMING, RC522_BIT_TX_LASTBITS7, timeout_ms);
@@ -408,10 +404,10 @@ static const struct rc522_ioctl_map s_rc522_map[RC522_CMD_COUNT] = {
  */
 static int rc522_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct rc522_device* dev;
+    struct rc522_device*  dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = rc522_get_drvdata(pdev);
@@ -444,7 +440,7 @@ static const struct file_operations rc522_fops = {
 static int rc522_probe(struct device* pdev)
 {
     struct rc522_device* dev;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_rc522_pool_ctrl);
@@ -480,9 +476,9 @@ err:
  */
 static int rc522_remove(struct device* pdev)
 {
-    struct rc522_device* dev;
+    struct rc522_device*  dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = rc522_get_drvdata(pdev);

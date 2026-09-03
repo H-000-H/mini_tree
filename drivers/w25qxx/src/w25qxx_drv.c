@@ -33,16 +33,16 @@
 /** @brief W25Qxx 驱动实例（嵌入 fops） */
 struct w25qxx_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* spi_dev; /**< 所属 SPI client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         spi_dev; /**< 所属 SPI client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct w25qxx_device s_w25qxx_pool[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_w25qxx_used[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
+static struct w25qxx_device           s_w25qxx_pool[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_w25qxx_used[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_w25qxx_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "w25qxx";
+static const char* const              k_tag = "w25qxx";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void w25qxx_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct w25qxx_device* w25qxx_get_drvdata(struct device* pdev)
-{
-    return (struct w25qxx_device*)device_get_priv(pdev);
-}
+static struct w25qxx_device* w25qxx_get_drvdata(struct device* pdev) { return (struct w25qxx_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int w25qxx_spi_xfer(struct w25qxx_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms)
+static int w25qxx_spi_xfer(struct w25qxx_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -117,7 +113,7 @@ static int w25qxx_open(struct device* pdev, void* arg)
 {
     struct w25qxx_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -151,7 +147,7 @@ static int w25qxx_close(struct device* pdev)
 {
     struct w25qxx_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = w25qxx_get_drvdata(pdev);
@@ -183,7 +179,7 @@ struct w25qxx_ioctl_map
  */
 static int w25qxx_cmd_jedec(struct w25qxx_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    uint8_t tx[4] = {0x9F, 0, 0, 0}, rx[4] = {0};
+    uint8_t              tx[4] = {0x9F, 0, 0, 0}, rx[4] = {0};
     struct w25qxx_jedec* jedec = (struct w25qxx_jedec*)arg;
     if (!dev->hw_ready || !jedec || len != sizeof(*jedec))
         return MINI_ERR_INVAL;
@@ -205,8 +201,8 @@ static int w25qxx_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct w25qxx_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = w25qxx_get_drvdata(pdev);
@@ -239,7 +235,7 @@ static const struct file_operations w25qxx_fops = {
 static int w25qxx_probe(struct device* pdev)
 {
     struct w25qxx_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_w25qxx_pool_ctrl);
@@ -277,7 +273,7 @@ static int w25qxx_remove(struct device* pdev)
 {
     struct w25qxx_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = w25qxx_get_drvdata(pdev);

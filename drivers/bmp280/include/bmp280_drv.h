@@ -24,12 +24,12 @@ extern "C"
 /** 命令总数 */
 #define BMP280_CMD_COUNT 1
 
-    /** @brief BMP280 采样结果 */
-    struct bmp280_sample
-    {
-        int32_t press_pa; /**< 气压，Pa */
-        int16_t temp_c_x100; /**< 温度，摄氏度 ×100 */
-    };
+/** @brief BMP280 采样结果 */
+struct bmp280_sample
+{
+    int32_t press_pa;    /**< 气压，Pa */
+    int16_t temp_c_x100; /**< 温度，摄氏度 ×100 */
+};
 #ifdef __cplusplus
 }
 #endif

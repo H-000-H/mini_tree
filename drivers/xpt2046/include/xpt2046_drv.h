@@ -25,13 +25,13 @@ extern "C"
 /** 命令总数 */
 #define XPT2046_CMD_COUNT 1
 
-    /** @brief XPT2046 采样结果 */
-    struct xpt2046_xy
-    {
-        uint16_t pos_x; /**< X 坐标 */
-        uint16_t pos_y; /**< Y 坐标 */
-        int pressed; /**< 按压状态：1=按下，0=抬起 */
-    };
+/** @brief XPT2046 采样结果 */
+struct xpt2046_xy
+{
+    uint16_t pos_x;   /**< X 坐标 */
+    uint16_t pos_y;   /**< Y 坐标 */
+    int      pressed; /**< 按压状态：1=按下，0=抬起 */
+};
 #ifdef __cplusplus
 }
 #endif

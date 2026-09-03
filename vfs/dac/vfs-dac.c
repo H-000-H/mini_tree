@@ -26,17 +26,17 @@ static const char* const k_tag = "vfs-dac";
 
 struct vfs_dac_priv
 {
-    struct file_operations ops; /**< VFS 操作表 */
-    struct hal_dac_host_cfg cfg; /**< host 配置 (DTSI 直投) */
-    struct hal_dac_platform_unique_cfg unique; /**< 平台特有配置 */
-    struct hal_dac_dev dac; /**< HAL DAC 设备 */
-    struct fifo_spsc dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
-    fifo_data_type dma_data_buf[DAC_DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 波形数据缓冲区 */
-    int pool_idx; /**< 池索引 */
+    struct file_operations             ops;                                                /**< VFS 操作表 */
+    struct hal_dac_host_cfg            cfg;                                                /**< host 配置 (DTSI 直投) */
+    struct hal_dac_platform_unique_cfg unique;                                             /**< 平台特有配置 */
+    struct hal_dac_dev                 dac;                                                /**< HAL DAC 设备 */
+    struct fifo_spsc                   dma_fifo;                                           /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
+    fifo_data_type                     dma_data_buf[DAC_DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 波形数据缓冲区 */
+    int                                pool_idx;                                           /**< 池索引 */
 };
 
-static struct vfs_dac_priv s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
-static uint8_t s_dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static struct vfs_dac_priv              s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static uint8_t                          s_dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_dac_priv_pool_ctrl MINI_ALIGNED(4);
 
 /**
@@ -195,8 +195,7 @@ static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
 {
-    MINI_IGNORE_RESULT(
-        osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
 }
 
 /**
@@ -255,8 +254,7 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
     cfg->config.dma_data_align = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) ==
-        VFS_DAC_PIN_FIELD_COUNT)
+    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) == VFS_DAC_PIN_FIELD_COUNT)
     {
         cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
         cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
@@ -272,8 +270,7 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
 
     if (cfg->config.dma_enable)
     {
-        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) !=
-            VFS_DAC_DMA_FIELD_COUNT)
+        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) != VFS_DAC_DMA_FIELD_COUNT)
             return MINI_ERR_INVAL;
 
         cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
@@ -323,9 +320,9 @@ static int vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* 
  */
 static int vfs_dac_open(struct device* pdev, void* arg)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int first;
+    int                   first;
 
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -360,9 +357,9 @@ static int vfs_dac_open(struct device* pdev, void* arg)
  */
 static int vfs_dac_close(struct device* pdev)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -393,10 +390,10 @@ static int vfs_dac_close(struct device* pdev)
  */
 static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int ret;
-    const vfs_dac_arg* dac_arg;
+    int                   ret;
+    const vfs_dac_arg*    dac_arg;
 
     MINI_IGNORE_RESULT(len);
     MINI_IGNORE_RESULT(timeout_ms);
@@ -429,10 +426,10 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
  */
 static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int ret;
-    vfs_dac_arg* dac_arg;
+    int                   ret;
+    vfs_dac_arg*          dac_arg;
 
     MINI_IGNORE_RESULT(len);
     MINI_IGNORE_RESULT(timeout_ms);
@@ -464,13 +461,12 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK 或写入采样数, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int ret;
-    dac_cmd_handler_t handler = NULL;
+    int                   ret;
+    dac_cmd_handler_t     handler = NULL;
 
     MINI_IGNORE_RESULT(timeout_ms);
     if (!pdev || !pdev->ops)
@@ -511,9 +507,9 @@ static int vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len
  */
 static int vfs_dac_suspend(struct device* pdev)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int ret;
+    int                   ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -540,9 +536,9 @@ static int vfs_dac_suspend(struct device* pdev)
  */
 static int vfs_dac_resume(struct device* pdev)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int ret;
+    int                   ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -583,9 +579,9 @@ static const struct file_operations fops = {
 static int vfs_dac_probe(struct device* pdev)
 {
     struct vfs_dac_priv* priv;
-    int pool_idx;
-    int ret;
-    int private_cfg = 0;
+    int                  pool_idx;
+    int                  ret;
+    int                  private_cfg = 0;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -660,9 +656,9 @@ err_pool:
  */
 static int vfs_dac_remove(struct device* pdev)
 {
-    struct vfs_dac_priv* priv;
+    struct vfs_dac_priv*  priv;
     struct dev_lifecycle* lc;
-    int pool_idx;
+    int                   pool_idx;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;

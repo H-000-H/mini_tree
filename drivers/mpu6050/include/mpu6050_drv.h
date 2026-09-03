@@ -27,12 +27,12 @@ extern "C"
 /** 命令总数 */
 #define MPU6050_CMD_COUNT 1
 
-    /** @brief MPU6050 六轴原始采样 */
-    struct mpu6050_sample
-    {
-        int16_t ax, ay, az; /**< 加速度计原始 LSB（量程由 DTS 配置） */
-        int16_t gx, gy, gz; /**< 陀螺仪原始 LSB（量程由 DTS 配置） */
-    };
+/** @brief MPU6050 六轴原始采样 */
+struct mpu6050_sample
+{
+    int16_t ax, ay, az; /**< 加速度计原始 LSB（量程由 DTS 配置） */
+    int16_t gx, gy, gz; /**< 陀螺仪原始 LSB（量程由 DTS 配置） */
+};
 
 #ifdef __cplusplus
 }

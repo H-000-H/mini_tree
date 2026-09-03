@@ -22,7 +22,7 @@ extern "C"
 {
 #endif
 
-    /* probe/remove 均为驱动内部 static，无需对外声明 */
+/* probe/remove 均为驱动内部 static，无需对外声明 */
 
 #ifdef __cplusplus
 }

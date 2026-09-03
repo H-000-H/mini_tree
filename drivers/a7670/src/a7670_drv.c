@@ -33,16 +33,16 @@
 /** @brief A7670 驱动实例（嵌入 fops） */
 struct a7670_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* uart_dev; /**< 所属 UART client 设备 */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         uart_dev; /**< 所属 UART client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct a7670_device s_a7670_pool[A7670_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_a7670_used[A7670_POOL_COUNT] MINI_ALIGNED(4);
+static struct a7670_device           s_a7670_pool[A7670_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                       s_a7670_used[A7670_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_a7670_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "a7670";
+static const char* const             k_tag = "a7670";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void a7670_pool_boot_i
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct a7670_device* a7670_get_drvdata(struct device* pdev)
-{
-    return (struct a7670_device*)device_get_priv(pdev);
-}
+static struct a7670_device* a7670_get_drvdata(struct device* pdev) { return (struct a7670_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 UART 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int a7670_uart_wr(struct a7670_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->uart_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -121,9 +117,9 @@ static void a7670_hw_destroy(struct a7670_device* dev)
  */
 static int a7670_open(struct device* pdev, void* arg)
 {
-    struct a7670_device* dev;
+    struct a7670_device*  dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -155,9 +151,9 @@ static int a7670_open(struct device* pdev, void* arg)
  */
 static int a7670_close(struct device* pdev)
 {
-    struct a7670_device* dev;
+    struct a7670_device*  dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
@@ -200,7 +196,7 @@ static int a7670_cmd_send(struct a7670_device* dev, void* arg, size_t len, uint3
 static int a7670_cmd_recv(struct a7670_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct modem_at_buf* at_buf = (struct modem_at_buf*)arg;
-    int ret;
+    int                  ret;
     if (!dev->hw_ready || !at_buf || len != sizeof(*at_buf) || !at_buf->rx || at_buf->rx_cap == 0U)
         return MINI_ERR_INVAL;
     ret = a7670_uart_rd(dev, at_buf->rx, at_buf->rx_cap, timeout_ms);
@@ -217,9 +213,9 @@ static int a7670_cmd_recv(struct a7670_device* dev, void* arg, size_t len, uint3
  */
 static int a7670_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
-    struct a7670_device* dev;
+    struct a7670_device*  dev;
     struct dev_lifecycle* lc;
-    int ret;
+    int                   ret;
     if (!pdev || !pdev->ops || !buffer || len == 0U)
         return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
@@ -245,9 +241,9 @@ static int a7670_write(struct device* pdev, const void* buffer, size_t len, uint
  */
 static int a7670_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
-    struct a7670_device* dev;
+    struct a7670_device*  dev;
     struct dev_lifecycle* lc;
-    int ret;
+    int                   ret;
     if (!pdev || !pdev->ops || !buffer || len == 0U)
         return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
@@ -276,10 +272,10 @@ static const struct a7670_ioctl_map s_a7670_map[MODEM_CMD_COUNT] = {
  */
 static int a7670_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct a7670_device* dev;
+    struct a7670_device*  dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);
@@ -314,7 +310,7 @@ static const struct file_operations a7670_fops = {
 static int a7670_probe(struct device* pdev)
 {
     struct a7670_device* dev;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_a7670_pool_ctrl);
@@ -350,9 +346,9 @@ err:
  */
 static int a7670_remove(struct device* pdev)
 {
-    struct a7670_device* dev;
+    struct a7670_device*  dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = a7670_get_drvdata(pdev);

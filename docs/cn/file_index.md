@@ -77,7 +77,7 @@
 | `core/src/*.c` | 上述实现 |
 | `osal/include/osal.h` | OSAL 总头 |
 | `osal/include/osal_null.h` | 裸机后端辅助接口 + C++ 任务重载声明（`CONFIG_OSAL_NULL_TASK_CPP`） |
-| `osal/src/osal_{null,freertos,rtthread}.c` | 三后端 |
+| `osal/src/osal_{null,mini_os,freertos,rtthread}.c` | 四后端 |
 | `osal/src/osal_task.cpp` | 裸机 C++ 任务创建封装（`CONFIG_OSAL_NULL_TASK_CPP`） |
 | `interrupt/interrupt.{c,h}` | VIRQ |
 | `system_c/` · `system_cpp/` | init、wdt、scrubber、safe_state、task_manager、cmd（Kconfig 选 C 或 C++） |
@@ -125,7 +125,7 @@
 | :--- | :--- |
 | `display/display_ui_bridge.h` | 面向 UI 库回调的入口（LVGL flush / u8g2 SendBuffer），走 `DISPLAY_CMD_*`，零第三方库依赖 |
 
-> `lib/` 现状：vendor 仅 **FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP** 为配置期 FetchContent，其余积木为链接期 FetchContent。
+> `lib/` 现状：vendor 仅 **mini-os、FreeRTOS、RT-Thread、ETL**；**TinyUSB / lwIP** 为配置期 FetchContent，其余积木为链接期 FetchContent。
 
 ---
 

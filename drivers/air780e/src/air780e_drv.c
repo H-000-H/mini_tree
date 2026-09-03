@@ -33,16 +33,16 @@
 /** @brief Air780E 驱动实例（嵌入 fops） */
 struct air780e_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* uart_dev; /**< 所属 UART client 设备 */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         uart_dev; /**< 所属 UART client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct air780e_device s_air780e_pool[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_air780e_used[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
+static struct air780e_device           s_air780e_pool[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                         s_air780e_used[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_air780e_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "air780e";
+static const char* const               k_tag = "air780e";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void air780e_pool_boot
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct air780e_device* air780e_get_drvdata(struct device* pdev)
-{
-    return (struct air780e_device*)device_get_priv(pdev);
-}
+static struct air780e_device* air780e_get_drvdata(struct device* pdev) { return (struct air780e_device*)device_get_priv(pdev); }
 
 /**
  * @brief UART 双向传输（UART_CMD_TRANSFER）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int air780e_uart_xchg(struct air780e_device* dev, const uint8_t* tx, size_t tx_len,
-                             uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
+static int air780e_uart_xchg(struct air780e_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
 {
     struct uart_transfer_arg arg;
     if (!dev || !dev->uart_dev)
@@ -116,8 +112,8 @@ static void air780e_hw_destroy(struct air780e_device* dev)
 static int air780e_open(struct device* pdev, void* arg)
 {
     struct air780e_device* dev;
-    struct dev_lifecycle* lc;
-    int first, ret;
+    struct dev_lifecycle*  lc;
+    int                    first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -150,8 +146,8 @@ static int air780e_open(struct device* pdev, void* arg)
 static int air780e_close(struct device* pdev)
 {
     struct air780e_device* dev;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*  lc;
+    int                    last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = air780e_get_drvdata(pdev);
@@ -172,8 +168,7 @@ static int air780e_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*air780e_ioctl_fn_t)(struct air780e_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*air780e_ioctl_fn_t)(struct air780e_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct air780e_ioctl_map
 {
     air780e_ioctl_fn_t handler;
@@ -195,7 +190,7 @@ static int air780e_cmd_send(struct air780e_device* dev, void* arg, size_t len, u
 static int air780e_cmd_recv(struct air780e_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct modem_at_buf* at_buf = (struct modem_at_buf*)arg;
-    int ret;
+    int                  ret;
 
     if (!dev->hw_ready || !at_buf || len != sizeof(*at_buf) || !at_buf->rx || at_buf->rx_cap == 0U)
         return MINI_ERR_INVAL;
@@ -214,8 +209,8 @@ static int air780e_cmd_recv(struct air780e_device* dev, void* arg, size_t len, u
 static int air780e_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct air780e_device* dev;
-    struct dev_lifecycle* lc;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int                    ret;
     if (!pdev || !pdev->ops || !buffer || len == 0U)
         return MINI_ERR_INVAL;
     dev = air780e_get_drvdata(pdev);
@@ -242,8 +237,8 @@ static int air780e_write(struct device* pdev, const void* buffer, size_t len, ui
 static int air780e_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct air780e_device* dev;
-    struct dev_lifecycle* lc;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int                    ret;
     if (!pdev || !pdev->ops || !buffer || len == 0U)
         return MINI_ERR_INVAL;
     dev = air780e_get_drvdata(pdev);
@@ -272,9 +267,9 @@ static const struct air780e_ioctl_map s_air780e_map[MODEM_CMD_COUNT] = {
 static int air780e_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct air780e_device* dev;
-    struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int32_t                off;
+    int                    ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = air780e_get_drvdata(pdev);
@@ -309,7 +304,7 @@ static const struct file_operations air780e_fops = {
 static int air780e_probe(struct device* pdev)
 {
     struct air780e_device* dev;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_air780e_pool_ctrl);
@@ -346,8 +341,8 @@ err:
 static int air780e_remove(struct device* pdev)
 {
     struct air780e_device* dev;
-    struct dev_lifecycle* lc;
-    int idx;
+    struct dev_lifecycle*  lc;
+    int                    idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = air780e_get_drvdata(pdev);

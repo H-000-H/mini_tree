@@ -77,7 +77,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `core/src/*.c` | implementations above |
 | `osal/include/osal.h` | OSAL master header |
 | `osal/include/osal_null.h` | bare-metal helper header + C++ task overload declaration |
-| `osal/src/osal_{null,freertos,rtthread}.c` | three backends |
+| `osal/src/osal_{null,mini_os,freertos,rtthread}.c` | four backends |
 | `osal/src/osal_task.cpp` | bare-metal C++ task wrapper |
 | `interrupt/interrupt.{c,h}` | VIRQ |
 | `system_c/` · `system_cpp/` | init, wdt, scrubber, safe_state, task_manager, cmd (C or C++ via Kconfig) |
@@ -125,7 +125,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | :--- | :--- |
 | `display/display_ui_bridge.h` | Entry point for UI library callbacks (LVGL flush / u8g2 SendBuffer), goes through `DISPLAY_CMD_*`, zero third-party library dependencies |
 
-> `lib/` status: only **FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP** are fetched at config time, all other bricks at link time.
+> `lib/` status: only **mini-os, FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP** are fetched at config time, all other bricks at link time.
 
 ---
 

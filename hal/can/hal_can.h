@@ -48,202 +48,196 @@ extern "C"
 #define CAN_ERR_FLAG 0x20000000U /**< 错误帧标志 (本 HAL 发送路径拒绝) */
 #define CAN_SFF_MASK 0x000007FFU /**< 标准帧 ID 掩码 (11-bit) */
 #define CAN_EFF_MASK 0x1FFFFFFFU /**< 扩展帧 ID 掩码 (29-bit) */
-#define CAN_MAX_DLEN 8U /**< 经典 CAN 最大数据长度 */
+#define CAN_MAX_DLEN 8U          /**< 经典 CAN 最大数据长度 */
 
-    /**
-     * @brief SocketCAN 风格经典 CAN 帧
-     * @note can_id 高位复用 EFF/RTR/ERR 标志；data 8 字节对齐便于 DMA/拷贝
-     */
-    struct can_frame
-    {
-        uint32_t can_id; /**< CAN ID + 标志位 (EFF/RTR/ERR) */
-        uint8_t can_dlc; /**< 数据长度 0..CAN_MAX_DLEN */
-        uint8_t __pad; /**< 对齐填充 */
-        uint8_t __res0; /**< 保留 */
-        uint8_t __res1; /**< 保留 */
-        uint8_t data[CAN_MAX_DLEN] MINI_ALIGNED(8); /**< 载荷 */
-    };
+/**
+ * @brief SocketCAN 风格经典 CAN 帧
+ * @note can_id 高位复用 EFF/RTR/ERR 标志；data 8 字节对齐便于 DMA/拷贝
+ */
+struct can_frame
+{
+    uint32_t can_id;                             /**< CAN ID + 标志位 (EFF/RTR/ERR) */
+    uint8_t  can_dlc;                            /**< 数据长度 0..CAN_MAX_DLEN */
+    uint8_t  __pad;                              /**< 对齐填充 */
+    uint8_t  __res0;                             /**< 保留 */
+    uint8_t  __res1;                             /**< 保留 */
+    uint8_t  data[CAN_MAX_DLEN] MINI_ALIGNED(8); /**< 载荷 */
+};
 
 /** 过滤器模式 / 宽度 */
-#define HAL_CAN_FILTER_MODE_MASK 0U /**< 掩码模式 (id + mask) */
-#define HAL_CAN_FILTER_MODE_LIST 1U /**< 列表模式 (精确 ID) */
+#define HAL_CAN_FILTER_MODE_MASK 0U   /**< 掩码模式 (id + mask) */
+#define HAL_CAN_FILTER_MODE_LIST 1U   /**< 列表模式 (精确 ID) */
 #define HAL_CAN_FILTER_SCALE_16BIT 0U /**< 16-bit 过滤器宽度 */
 #define HAL_CAN_FILTER_SCALE_32BIT 1U /**< 32-bit 过滤器宽度 */
 
 /** 控制器状态 */
-#define HAL_CAN_STATE_ERROR_ACTIVE 0U /**< error-active */
+#define HAL_CAN_STATE_ERROR_ACTIVE 0U  /**< error-active */
 #define HAL_CAN_STATE_ERROR_PASSIVE 1U /**< error-passive */
-#define HAL_CAN_STATE_BUS_OFF 2U /**< bus-off */
-#define HAL_CAN_STATE_STOPPED 3U /**< 已停止 / 未启动 */
+#define HAL_CAN_STATE_BUS_OFF 2U       /**< bus-off */
+#define HAL_CAN_STATE_STOPPED 3U       /**< 已停止 / 未启动 */
 
-    struct hal_can_dev;
+struct hal_can_dev;
 
-    /**
-     * @brief CAN TX/RX 引脚配置 (硬件直投)
-     * @note 纯数据实体: 字段由 DTSI 提供厂商宏值, HAL 零计算灌入 GPIO/AF 驱动
-     */
-    struct hal_can_pin_cfg
-    {
-        uintptr_t port; /**< GPIOx_BASE */
-        uint16_t pin; /**< GPIO_PIN_x */
-        uint32_t clk_bus; /**< LL_AHBx_GRPy_PERIPH_GPIOx */
-        uint32_t af; /**< GPIO_AFx_CANy */
-        uint32_t output_type; /**< LL_GPIO_OUTPUT_* */
-        uint32_t speed; /**< LL_GPIO_SPEED_* */
-        uint32_t mode; /**< LL_GPIO_MODE_* */
-        uint32_t pull; /**< LL_GPIO_PULL_* */
-    };
+/**
+ * @brief CAN TX/RX 引脚配置 (硬件直投)
+ * @note 纯数据实体: 字段由 DTSI 提供厂商宏值, HAL 零计算灌入 GPIO/AF 驱动
+ */
+struct hal_can_pin_cfg
+{
+    uintptr_t port;        /**< GPIOx_BASE */
+    uint16_t  pin;         /**< GPIO_PIN_x */
+    uint32_t  clk_bus;     /**< LL_AHBx_GRPy_PERIPH_GPIOx */
+    uint32_t  af;          /**< GPIO_AFx_CANy */
+    uint32_t  output_type; /**< LL_GPIO_OUTPUT_* */
+    uint32_t  speed;       /**< LL_GPIO_SPEED_* */
+    uint32_t  mode;        /**< LL_GPIO_MODE_* */
+    uint32_t  pull;        /**< LL_GPIO_PULL_* */
+};
 
-    /**
-     * @brief CAN 总线配置 (host 级, DTSI 直投)
-     * @note 位时序/模式等字段为厂商宏或原始寄存器语义, 由平台 .c 解释
-     *       F4 bxCAN 无 DMA；收发走 it_enable + NVIC/轮询
-     */
-    struct hal_can_bus_config
-    {
-        uintptr_t can; /**< CANx_BASE */
-        uint32_t can_clk_periph; /**< LL_APBx_GRPy_PERIPH_CANx */
-        uint32_t prescaler; /**< 位时序分频 */
-        uint32_t mode; /**< 工作模式 (normal/loopback/silent 等) */
-        uint32_t sjw; /**< 同步跳转宽度 */
-        uint32_t bs1; /**< 时间段 1 */
-        uint32_t bs2; /**< 时间段 2 */
-        uint32_t auto_bus_off; /**< 自动 bus-off 恢复: 0/1 */
-        uint32_t auto_wakeup; /**< 自动唤醒: 0/1 */
-        uint32_t auto_retransmit; /**< 自动重传: 0/1 */
-        uint32_t rx_fifo_locked; /**< RX FIFO 锁定: 0/1 */
-        uint32_t tx_fifo_prio; /**< TX 优先级按请求顺序: 0/1 */
-        uint32_t tt_mode; /**< 时间触发模式: 0/1 */
-        int32_t irqn; /**< NVIC 中断号; -1=无中断 */
-        uint32_t irq_priority; /**< NVIC 抢占优先级 */
-        uint32_t it_enable; /**< 中断使能: 0=禁用, 1=启用 */
-        struct hal_can_pin_cfg tx; /**< TX 引脚配置 */
-        struct hal_can_pin_cfg rx; /**< RX 引脚配置 */
-    };
+/**
+ * @brief CAN 总线配置 (host 级, DTSI 直投)
+ * @note 位时序/模式等字段为厂商宏或原始寄存器语义, 由平台 .c 解释
+ *       F4 bxCAN 无 DMA；收发走 it_enable + NVIC/轮询
+ */
+struct hal_can_bus_config
+{
+    uintptr_t              can;             /**< CANx_BASE */
+    uint32_t               can_clk_periph;  /**< LL_APBx_GRPy_PERIPH_CANx */
+    uint32_t               prescaler;       /**< 位时序分频 */
+    uint32_t               mode;            /**< 工作模式 (normal/loopback/silent 等) */
+    uint32_t               sjw;             /**< 同步跳转宽度 */
+    uint32_t               bs1;             /**< 时间段 1 */
+    uint32_t               bs2;             /**< 时间段 2 */
+    uint32_t               auto_bus_off;    /**< 自动 bus-off 恢复: 0/1 */
+    uint32_t               auto_wakeup;     /**< 自动唤醒: 0/1 */
+    uint32_t               auto_retransmit; /**< 自动重传: 0/1 */
+    uint32_t               rx_fifo_locked;  /**< RX FIFO 锁定: 0/1 */
+    uint32_t               tx_fifo_prio;    /**< TX 优先级按请求顺序: 0/1 */
+    uint32_t               tt_mode;         /**< 时间触发模式: 0/1 */
+    int32_t                irqn;            /**< NVIC 中断号; -1=无中断 */
+    uint32_t               irq_priority;    /**< NVIC 抢占优先级 */
+    uint32_t               it_enable;       /**< 中断使能: 0=禁用, 1=启用 */
+    struct hal_can_pin_cfg tx;              /**< TX 引脚配置 */
+    struct hal_can_pin_cfg rx;              /**< RX 引脚配置 */
+};
 
-    /**
-     * @brief CAN 硬件过滤器配置
-     */
-    struct hal_can_filter_config
-    {
-        uint32_t bank; /**< 过滤器 bank 编号 */
-        uint32_t mode; /**< HAL_CAN_FILTER_MODE_* */
-        uint32_t scale; /**< HAL_CAN_FILTER_SCALE_* */
-        uint32_t fifo; /**< 分配到的 RX FIFO (0 / 1) */
-        uint32_t id; /**< 过滤器 ID (或列表项) */
-        uint32_t mask; /**< 掩码 (list 模式时语义由平台决定) */
-        uint32_t ide; /**< IDE 匹配相关位 (平台宏/位域) */
-        uint32_t rtr; /**< RTR 匹配相关位 (平台宏/位域) */
-    };
+/**
+ * @brief CAN 硬件过滤器配置
+ */
+struct hal_can_filter_config
+{
+    uint32_t bank;  /**< 过滤器 bank 编号 */
+    uint32_t mode;  /**< HAL_CAN_FILTER_MODE_* */
+    uint32_t scale; /**< HAL_CAN_FILTER_SCALE_* */
+    uint32_t fifo;  /**< 分配到的 RX FIFO (0 / 1) */
+    uint32_t id;    /**< 过滤器 ID (或列表项) */
+    uint32_t mask;  /**< 掩码 (list 模式时语义由平台决定) */
+    uint32_t ide;   /**< IDE 匹配相关位 (平台宏/位域) */
+    uint32_t rtr;   /**< RTR 匹配相关位 (平台宏/位域) */
+};
 
-    /**
-     * @brief 厂商句柄不透明块
-     * @note 仅平台 .c 内按厂商句柄类型解释; 头文件保持中立
-     */
-    struct hal_can_hcan_blob
-    {
-        uint8_t bytes[HAL_CAN_HCAN_STORAGE_SIZE];
-    };
+/**
+ * @brief 厂商句柄不透明块
+ * @note 仅平台 .c 内按厂商句柄类型解释; 头文件保持中立
+ */
+struct hal_can_hcan_blob
+{
+    uint8_t bytes[HAL_CAN_HCAN_STORAGE_SIZE];
+};
 
-    /**
-     * @brief CAN host 运行时状态 (bus 层持有)
-     * @note 由 bus 层嵌入/持有; HAL 无池管理、无 vtable
-     */
-    struct hal_can_bus_host
-    {
-        struct hal_can_bus_config cfg; /**< 总线配置 (DTSI 直投) */
-        struct hal_can_hcan_blob hcan_storage MINI_ALIGNED(8); /**< 厂商句柄存储 */
-        uintptr_t can; /**< 缓存 cfg.can, fast path */
-        int hw_idx; /**< host 池下标 */
-        int ref_count; /**< 引用计数 */
-        bool bus_ready; /**< 总线就绪可收发 */
-        bool hw_inited; /**< 硬件已初始化 */
-    };
+/**
+ * @brief CAN host 运行时状态 (bus 层持有)
+ * @note 由 bus 层嵌入/持有; HAL 无池管理、无 vtable
+ */
+struct hal_can_bus_host
+{
+    struct hal_can_bus_config             cfg;             /**< 总线配置 (DTSI 直投) */
+    struct hal_can_hcan_blob hcan_storage MINI_ALIGNED(8); /**< 厂商句柄存储 */
+    uintptr_t                             can;             /**< 缓存 cfg.can, fast path */
+    int                                   hw_idx;          /**< host 池下标 */
+    int                                   ref_count;       /**< 引用计数 */
+    bool                                  bus_ready;       /**< 总线就绪可收发 */
+    bool                                  hw_inited;       /**< 硬件已初始化 */
+};
 
-    /**
-     * @brief CAN client 设备对象 (bus 层持有)
-     */
-    struct hal_can_dev
-    {
-        struct hal_can_bus_host* ctlr; /**< 所属 host */
-        int hw_open; /**< 硬件打开计数 */
-    };
+/**
+ * @brief CAN client 设备对象 (bus 层持有)
+ */
+struct hal_can_dev
+{
+    struct hal_can_bus_host* ctlr;    /**< 所属 host */
+    int                      hw_open; /**< 硬件打开计数 */
+};
 
-    /**
-     * @brief 初始化 CAN 总线主机
-     * @param[in] host CAN 主机对象指针
-     * @param[in] hw_idx host 池下标
-     * @param[in] cfg 总线配置 (DTSI 直投, 生命周期由调用方持有)
-     * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
-     */
-    int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx,
-                              const struct hal_can_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
-    /**
-     * @brief 反初始化 CAN 总线主机, 释放硬件资源
-     * @param[in] host CAN 主机对象指针
-     * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
-     */
-    int hal_can_bus_host_deinit(struct hal_can_bus_host* host) MINI_WARN_UNUSED_RESULT;
-    /**
-     * @brief 打开 CAN 设备硬件 (引用计数 +1, 首次触发底层 init)
-     * @param[in] pdev CAN 设备对象指针
-     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
-     */
-    int hal_can_dev_hw_open(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
-    /**
-     * @brief 关闭 CAN 设备硬件 (引用计数 -1, 归零触发底层 deinit)
-     * @param[in] pdev CAN 设备对象指针
-     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
-     */
-    int hal_can_dev_hw_close(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
-    /**
-     * @brief 绑定 CAN 设备与所属主机
-     * @param[in] pdev CAN 设备对象指针
-     * @param[in] host 所属总线主机指针
-     * @return 成功返回 MINI_OK, pdev 或 host 为空返回 MINI_ERR_INVAL
-     */
-    int hal_can_dev_init(struct hal_can_dev* pdev,
-                         struct hal_can_bus_host* host) MINI_WARN_UNUSED_RESULT;
-    /**
-     * @brief 解绑 CAN 设备并复位状态
-     * @param[in] pdev CAN 设备对象指针
-     * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
-     */
-    int hal_can_dev_deinit(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 初始化 CAN 总线主机
+ * @param[in] host CAN 主机对象指针
+ * @param[in] hw_idx host 池下标
+ * @param[in] cfg 总线配置 (DTSI 直投, 生命周期由调用方持有)
+ * @return 成功返回 MINI_OK, host 或 cfg 为空返回 MINI_ERR_INVAL
+ */
+int hal_can_bus_host_init(struct hal_can_bus_host* host, int hw_idx, const struct hal_can_bus_config* cfg) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 反初始化 CAN 总线主机, 释放硬件资源
+ * @param[in] host CAN 主机对象指针
+ * @return 成功返回 MINI_OK, host 为空返回 MINI_ERR_INVAL
+ */
+int hal_can_bus_host_deinit(struct hal_can_bus_host* host) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 打开 CAN 设备硬件 (引用计数 +1, 首次触发底层 init)
+ * @param[in] pdev CAN 设备对象指针
+ * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
+ */
+int hal_can_dev_hw_open(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 关闭 CAN 设备硬件 (引用计数 -1, 归零触发底层 deinit)
+ * @param[in] pdev CAN 设备对象指针
+ * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
+ */
+int hal_can_dev_hw_close(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 绑定 CAN 设备与所属主机
+ * @param[in] pdev CAN 设备对象指针
+ * @param[in] host 所属总线主机指针
+ * @return 成功返回 MINI_OK, pdev 或 host 为空返回 MINI_ERR_INVAL
+ */
+int hal_can_dev_init(struct hal_can_dev* pdev, struct hal_can_bus_host* host) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 解绑 CAN 设备并复位状态
+ * @param[in] pdev CAN 设备对象指针
+ * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
+ */
+int hal_can_dev_deinit(struct hal_can_dev* pdev) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief 发送一帧经典 CAN
-     * @param[in] pdev CAN 设备对象指针
-     * @param[in] frame 待发送帧 (拒绝 CAN_ERR_FLAG; data 长度受 CAN_MAX_DLEN 约束)
-     * @param[in] timeout_ms 等待空闲邮箱超时毫秒数 (0=不等待)
-     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 非法帧返回 MINI_ERR_INVAL
-     */
-    int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame,
-                         uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 发送一帧经典 CAN
+ * @param[in] pdev CAN 设备对象指针
+ * @param[in] frame 待发送帧 (拒绝 CAN_ERR_FLAG; data 长度受 CAN_MAX_DLEN 约束)
+ * @param[in] timeout_ms 等待空闲邮箱超时毫秒数 (0=不等待)
+ * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, 非法帧返回 MINI_ERR_INVAL
+ */
+int hal_can_transmit(struct hal_can_dev* pdev, const struct can_frame* frame, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief 从指定 FIFO 接收一帧经典 CAN
-     * @param[in] pdev CAN 设备对象指针
-     * @param[out] frame 回传接收到的帧
-     * @param[in] fifo 目标 RX FIFO 编号 (0 / 1)
-     * @param[in] timeout_ms 超时毫秒数 (0=不等待)
-     * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, FIFO 非法返回 MINI_ERR_INVAL
-     */
-    int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo,
-                        uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 从指定 FIFO 接收一帧经典 CAN
+ * @param[in] pdev CAN 设备对象指针
+ * @param[out] frame 回传接收到的帧
+ * @param[in] fifo 目标 RX FIFO 编号 (0 / 1)
+ * @param[in] timeout_ms 超时毫秒数 (0=不等待)
+ * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT, FIFO 非法返回 MINI_ERR_INVAL
+ */
+int hal_can_receive(struct hal_can_dev* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief 配置硬件过滤器 (作用于 host/控制器)
-     */
-    int hal_can_filter_config(struct hal_can_bus_host* host,
-                              const struct hal_can_filter_config* filter) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 配置硬件过滤器 (作用于 host/控制器)
+ */
+int hal_can_filter_config(struct hal_can_bus_host* host, const struct hal_can_filter_config* filter) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief 查询控制器状态
-     * @param[out] out_state 输出 HAL_CAN_STATE_*
-     */
-    int hal_can_get_state(struct hal_can_bus_host* host,
-                          uint32_t* out_state) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 查询控制器状态
+ * @param[out] out_state 输出 HAL_CAN_STATE_*
+ */
+int hal_can_get_state(struct hal_can_bus_host* host, uint32_t* out_state) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

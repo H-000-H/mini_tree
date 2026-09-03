@@ -33,16 +33,16 @@
 /** @brief AT24C02 驱动实例（嵌入 fops） */
 struct at24c02_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct at24c02_device s_at24c02_pool[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_at24c02_used[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
+static struct at24c02_device           s_at24c02_pool[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                         s_at24c02_used[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_at24c02_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "at24c02";
+static const char* const               k_tag = "at24c02";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void at24c02_pool_boot
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct at24c02_device* at24c02_get_drvdata(struct device* pdev)
-{
-    return (struct at24c02_device*)device_get_priv(pdev);
-}
+static struct at24c02_device* at24c02_get_drvdata(struct device* pdev) { return (struct at24c02_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int at24c02_i2c_wr(struct at24c02_device* dev, const uint8_t* tx, size_t len,
-                          uint32_t timeout_ms)
+static int at24c02_i2c_wr(struct at24c02_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -122,8 +118,8 @@ static void at24c02_hw_destroy(struct at24c02_device* dev)
 static int at24c02_open(struct device* pdev, void* arg)
 {
     struct at24c02_device* dev;
-    struct dev_lifecycle* lc;
-    int first, ret;
+    struct dev_lifecycle*  lc;
+    int                    first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -156,8 +152,8 @@ static int at24c02_open(struct device* pdev, void* arg)
 static int at24c02_close(struct device* pdev)
 {
     struct at24c02_device* dev;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*  lc;
+    int                    last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = at24c02_get_drvdata(pdev);
@@ -178,8 +174,7 @@ static int at24c02_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*at24c02_ioctl_fn_t)(struct at24c02_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*at24c02_ioctl_fn_t)(struct at24c02_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct at24c02_ioctl_map
 {
     at24c02_ioctl_fn_t handler;
@@ -191,7 +186,7 @@ struct at24c02_ioctl_map
 static int at24c02_cmd_read(struct at24c02_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct at24c02_io_arg* io = (struct at24c02_io_arg*)arg;
-    uint8_t addr;
+    uint8_t                addr;
     if (!dev->hw_ready || !io || len != sizeof(*io) || !io->buf || !io->len)
         return MINI_ERR_INVAL;
     if ((uint32_t)io->offset + io->len > AT24C02_SIZE)
@@ -207,8 +202,8 @@ static int at24c02_cmd_read(struct at24c02_device* dev, void* arg, size_t len, u
 static int at24c02_cmd_write(struct at24c02_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct at24c02_io_arg* io = (struct at24c02_io_arg*)arg;
-    uint8_t page_buf[17];
-    size_t chunk_len, offset = 0;
+    uint8_t                page_buf[17];
+    size_t                 chunk_len, offset = 0;
     if (!dev->hw_ready || !io || len != sizeof(*io) || !io->buf || !io->len)
         return MINI_ERR_INVAL;
     if ((uint32_t)io->offset + io->len > AT24C02_SIZE)
@@ -238,9 +233,9 @@ static const struct at24c02_ioctl_map s_at24c02_map[AT24C02_CMD_COUNT] = {
 static int at24c02_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct at24c02_device* dev;
-    struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int32_t                off;
+    int                    ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = at24c02_get_drvdata(pdev);
@@ -273,7 +268,7 @@ static const struct file_operations at24c02_fops = {
 static int at24c02_probe(struct device* pdev)
 {
     struct at24c02_device* dev;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_at24c02_pool_ctrl);
@@ -310,8 +305,8 @@ err:
 static int at24c02_remove(struct device* pdev)
 {
     struct at24c02_device* dev;
-    struct dev_lifecycle* lc;
-    int idx;
+    struct dev_lifecycle*  lc;
+    int                    idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = at24c02_get_drvdata(pdev);

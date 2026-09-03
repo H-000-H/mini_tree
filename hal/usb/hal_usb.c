@@ -17,8 +17,7 @@
 /* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
  * 实现, 缺失直接链接报错, 杜绝静默 -ENOSYS。非 ESP 构建保留 weak stub 兜底。 */
 #else
-MINI_WEAK int hal_usb_bus_host_init(struct hal_usb_bus_host* host,
-                                      const struct hal_usb_bus_config* cfg)
+MINI_WEAK int hal_usb_bus_host_init(struct hal_usb_bus_host* host, const struct hal_usb_bus_config* cfg)
 {
     (void)host;
     (void)cfg;
@@ -33,13 +32,13 @@ MINI_WEAK int hal_usb_bus_host_deinit(struct hal_usb_bus_host* host)
 
 MINI_WEAK int hal_usb_irq_enable(const struct hal_usb_bus_host* host)
 {
-   MINI_UNUSED_PARAM(host);
+    MINI_UNUSED_PARAM(host);
     return MINI_OK;
 }
 
 MINI_WEAK int hal_usb_irq_disable(const struct hal_usb_bus_host* host)
 {
-   MINI_UNUSED_PARAM(host);
+    MINI_UNUSED_PARAM(host);
     return MINI_OK;
 }
 

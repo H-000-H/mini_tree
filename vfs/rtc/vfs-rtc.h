@@ -29,8 +29,8 @@ extern "C"
 #endif
 
 #define RTC_CMD_BASE MINI_MAGIC(RTC)
-#define RTC_CMD_SET_TIME (RTC_CMD_BASE + 0x01) /**< arg: rtc_time_arg */
-#define RTC_CMD_GET_TIME (RTC_CMD_BASE + 0x02) /**< arg: rtc_time_arg */
+#define RTC_CMD_SET_TIME (RTC_CMD_BASE + 0x01)  /**< arg: rtc_time_arg */
+#define RTC_CMD_GET_TIME (RTC_CMD_BASE + 0x02)  /**< arg: rtc_time_arg */
 #define RTC_CMD_SET_ALARM (RTC_CMD_BASE + 0x03) /**< arg: rtc_time_arg (callback 派发待补) */
 #define RTC_CMD_CANCEL_ALARM (RTC_CMD_BASE + 0x04)
 #define RTC_CMD_SET_WAKEUP (RTC_CMD_BASE + 0x05) /**< arg: rtc_wakeup_arg */
@@ -38,15 +38,15 @@ extern "C"
 #define RTC_CMD_FORCE_STOP (RTC_CMD_BASE + 0x07)
 #define RTC_CMD_COUNT 7
 
-    struct rtc_time_arg
-    {
-        struct hal_rtc_time time; /**< 时间值 (年月日时分秒) */
-    };
+struct rtc_time_arg
+{
+    struct hal_rtc_time time; /**< 时间值 (年月日时分秒) */
+};
 
-    struct rtc_wakeup_arg
-    {
-        uint32_t seconds; /**< 唤醒倒计时秒数 */
-    };
+struct rtc_wakeup_arg
+{
+    uint32_t seconds; /**< 唤醒倒计时秒数 */
+};
 
 #ifdef __cplusplus
 }

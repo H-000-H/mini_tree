@@ -33,16 +33,16 @@
 /** @brief FT5x06 驱动实例（嵌入 fops） */
 struct ft5x06_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct ft5x06_device s_ft5x06_pool[FT5X06_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_ft5x06_used[FT5X06_POOL_COUNT] MINI_ALIGNED(4);
+static struct ft5x06_device           s_ft5x06_pool[FT5X06_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_ft5x06_used[FT5X06_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_ft5x06_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "ft5x06";
+static const char* const              k_tag = "ft5x06";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void ft5x06_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct ft5x06_device* ft5x06_get_drvdata(struct device* pdev)
-{
-    return (struct ft5x06_device*)device_get_priv(pdev);
-}
+static struct ft5x06_device* ft5x06_get_drvdata(struct device* pdev) { return (struct ft5x06_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int ft5x06_i2c_wr(struct ft5x06_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int ft5x06_i2c_wr(struct ft5x06_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -123,7 +119,7 @@ static int ft5x06_open(struct device* pdev, void* arg)
 {
     struct ft5x06_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -157,7 +153,7 @@ static int ft5x06_close(struct device* pdev)
 {
     struct ft5x06_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ft5x06_get_drvdata(pdev);
@@ -189,8 +185,8 @@ struct ft5x06_ioctl_map
  */
 static int ft5x06_cmd_touch(struct ft5x06_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    const uint8_t reg = 0x02;
-    uint8_t raw[6];
+    const uint8_t        reg = 0x02;
+    uint8_t              raw[6];
     struct ft5x06_touch* touch = (struct ft5x06_touch*)arg;
     if (!dev->hw_ready || !touch || len != sizeof(*touch))
         return MINI_ERR_INVAL;
@@ -214,8 +210,8 @@ static int ft5x06_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct ft5x06_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ft5x06_get_drvdata(pdev);
@@ -248,7 +244,7 @@ static const struct file_operations ft5x06_fops = {
 static int ft5x06_probe(struct device* pdev)
 {
     struct ft5x06_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ft5x06_pool_ctrl);
@@ -286,7 +282,7 @@ static int ft5x06_remove(struct device* pdev)
 {
     struct ft5x06_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = ft5x06_get_drvdata(pdev);

@@ -32,18 +32,18 @@
 /** @brief SG90 驱动实例（嵌入 fops 与 PWM 参数） */
 struct sg90_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* tim_dev; /**< PWM TIM 设备 */
-    struct vfs_tim_arg tim; /**< PWM 参数（快路径） */
-    uint32_t ch; /**< PWM 通道 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         tim_dev; /**< PWM TIM 设备 */
+    struct vfs_tim_arg     tim;     /**< PWM 参数（快路径） */
+    uint32_t               ch;      /**< PWM 通道 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sg90_device s_sg90_pool[SG90_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_sg90_used[SG90_POOL_COUNT] MINI_ALIGNED(4);
+static struct sg90_device           s_sg90_pool[SG90_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                      s_sg90_used[SG90_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_sg90_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "sg90";
+static const char* const            k_tag = "sg90";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -58,10 +58,7 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sg90_pool_boot_in
  * @param[in] pdev device 指针
  * @return sg90_device 私有数据指针
  */
-static struct sg90_device* sg90_get_drvdata(struct device* pdev)
-{
-    return (struct sg90_device*)device_get_priv(pdev);
-}
+static struct sg90_device* sg90_get_drvdata(struct device* pdev) { return (struct sg90_device*)device_get_priv(pdev); }
 
 /**
  * @brief 首次 open 时打开 TIM 并下发初始 PWM
@@ -102,9 +99,9 @@ static void sg90_hw_destroy(struct sg90_device* dev)
  */
 static int sg90_open(struct device* pdev, void* arg)
 {
-    struct sg90_device* dev;
+    struct sg90_device*   dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -136,9 +133,9 @@ static int sg90_open(struct device* pdev, void* arg)
  */
 static int sg90_close(struct device* pdev)
 {
-    struct sg90_device* dev;
+    struct sg90_device*   dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);
@@ -190,10 +187,10 @@ static const struct sg90_ioctl_map s_sg90_map[SG90_CMD_COUNT] = {
  */
 static int sg90_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct sg90_device* dev;
+    struct sg90_device*   dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);
@@ -226,7 +223,7 @@ static const struct file_operations sg90_fops = {
 static int sg90_probe(struct device* pdev)
 {
     struct sg90_device* dev;
-    int pool_idx, ret;
+    int                 pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sg90_pool_ctrl);
@@ -269,9 +266,9 @@ err:
  */
 static int sg90_remove(struct device* pdev)
 {
-    struct sg90_device* dev;
+    struct sg90_device*   dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = sg90_get_drvdata(pdev);

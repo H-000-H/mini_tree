@@ -32,19 +32,19 @@
 #define ENOSYS 38
 #endif
 
-#define MINI_ERR_INVAL (-EINVAL) /* 无效参数 */
-#define MINI_ERR_ISR (-EPERM) /* 中断上下文非法调用 */
-#define MINI_ERR_NOMEM (-ENOMEM) /* 内存不足 */
-#define MINI_ERR_IO (-EIO) /* 物理 IO 错误 */
-#define MINI_ERR_BUSY (-EBUSY) /* 设备忙 */
-#define MINI_ERR_AGAIN (-EAGAIN) /* 重试 */
-#define MINI_ERR_NOSPC (-ENOSPC) /* 无剩余空间/通道 */
-#define MINI_ERR_TIMEOUT (-ETIMEDOUT) /* 锁获取/操作超时 */
-#define MINI_ERR_HW_FATAL (-EHWPOISON) /* 硬件物理故障, 不可恢复 */
-#define MINI_ERR_DEFER (-EPROBE_DEFER) /* 依赖未就绪, 稍后重试 */
-#define MINI_ERR_NODEV (-ENODEV) /* 设备已拆除或不存在 */
-#define MINI_ERR_NOTSUPP (-ENOSYS) /* 操作不支持/未实现 */
-#define MINI_IRQ_ENTRY_BOTTOM (0X01U) /* 中断下部入口标识 */
+#define MINI_ERR_INVAL (-EINVAL)        /* 无效参数 */
+#define MINI_ERR_ISR (-EPERM)           /* 中断上下文非法调用 */
+#define MINI_ERR_NOMEM (-ENOMEM)        /* 内存不足 */
+#define MINI_ERR_IO (-EIO)              /* 物理 IO 错误 */
+#define MINI_ERR_BUSY (-EBUSY)          /* 设备忙 */
+#define MINI_ERR_AGAIN (-EAGAIN)        /* 重试 */
+#define MINI_ERR_NOSPC (-ENOSPC)        /* 无剩余空间/通道 */
+#define MINI_ERR_TIMEOUT (-ETIMEDOUT)   /* 锁获取/操作超时 */
+#define MINI_ERR_HW_FATAL (-EHWPOISON)  /* 硬件物理故障, 不可恢复 */
+#define MINI_ERR_DEFER (-EPROBE_DEFER)  /* 依赖未就绪, 稍后重试 */
+#define MINI_ERR_NODEV (-ENODEV)        /* 设备已拆除或不存在 */
+#define MINI_ERR_NOTSUPP (-ENOSYS)      /* 操作不支持/未实现 */
+#define MINI_IRQ_ENTRY_BOTTOM (0X01U)   /* 中断下部入口标识 */
 #define MINI_IRQ_ENTRY_NOBOTTOM (0X00U) /* 中断上部入口标识 */
 
 /**

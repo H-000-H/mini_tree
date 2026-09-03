@@ -50,8 +50,7 @@ int fifo_write_data(struct fifo_spsc* handle, fifo_data_type data)
     return BUFF_OK;
 }
 
-int fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data, uint16_t len,
-                     uint16_t* p_actual)
+int fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data, uint16_t len, uint16_t* p_actual)
 {
     uint16_t read_ptr;
     uint16_t write_ptr;
@@ -85,8 +84,7 @@ int fifo_write_block(struct fifo_spsc* handle, const fifo_data_type* p_data, uin
     else
     {
         BUFF_MEM_COPY(&handle->buf[w_idx], p_data, space_to_end * sizeof(fifo_data_type));
-        BUFF_MEM_COPY(&handle->buf[0], p_data + space_to_end,
-                      (len - space_to_end) * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(&handle->buf[0], p_data + space_to_end, (len - space_to_end) * sizeof(fifo_data_type));
     }
 
     BUFF_STORE_RELEASE(handle->w_ptr, (uint16_t)(write_ptr + len));
@@ -113,8 +111,7 @@ int fifo_read_data(struct fifo_spsc* handle, fifo_data_type* p_data)
     return BUFF_OK;
 }
 
-int fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint16_t len,
-                    uint16_t* p_actual)
+int fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint16_t len, uint16_t* p_actual)
 {
     uint16_t write_ptr;
     uint16_t read_ptr;
@@ -146,8 +143,7 @@ int fifo_read_block(struct fifo_spsc* handle, fifo_data_type* p_data, uint16_t l
     else
     {
         BUFF_MEM_COPY(p_data, &handle->buf[r_idx], space_to_end * sizeof(fifo_data_type));
-        BUFF_MEM_COPY(p_data + space_to_end, &handle->buf[0],
-                      (len - space_to_end) * sizeof(fifo_data_type));
+        BUFF_MEM_COPY(p_data + space_to_end, &handle->buf[0], (len - space_to_end) * sizeof(fifo_data_type));
     }
 
     BUFF_STORE_RELEASE(handle->r_ptr, (uint16_t)(read_ptr + len));
@@ -205,8 +201,7 @@ int fifo_isfull(struct fifo_spsc* handle, bool* p_full)
 int fifo_uni_init(struct fifo_uni_spsc* handle, void* buf, uint16_t item_size, uint16_t item_count)
 {
     /**< 防御性空指针 / 零宽度 / 2的幂次方 拦截 */
-    if (!handle || !buf || item_size == 0 || item_count == 0 ||
-        (item_count & (item_count - 1)) != 0)
+    if (!handle || !buf || item_size == 0 || item_count == 0 || (item_count & (item_count - 1)) != 0)
         return BUFF_ERR_INVAL;
 
     handle->buf = (uint8_t*)buf;
@@ -219,8 +214,7 @@ int fifo_uni_init(struct fifo_uni_spsc* handle, void* buf, uint16_t item_size, u
     return BUFF_OK;
 }
 
-int fifo_uni_write_block(struct fifo_uni_spsc* handle, const void* p_data, uint16_t count,
-                         uint16_t* p_actual)
+int fifo_uni_write_block(struct fifo_uni_spsc* handle, const void* p_data, uint16_t count, uint16_t* p_actual)
 {
     uint16_t read_ptr;
     uint16_t write_ptr;
@@ -265,8 +259,7 @@ int fifo_uni_write_block(struct fifo_uni_spsc* handle, const void* p_data, uint1
     return BUFF_OK;
 }
 
-int fifo_uni_read_block(struct fifo_uni_spsc* handle, void* p_data, uint16_t count,
-                        uint16_t* p_actual)
+int fifo_uni_read_block(struct fifo_uni_spsc* handle, void* p_data, uint16_t count, uint16_t* p_actual)
 {
     uint16_t write_ptr;
     uint16_t read_ptr;

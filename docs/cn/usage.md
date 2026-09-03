@@ -33,7 +33,7 @@
 | **硬件直投** | DTSI 宏值进入配置结构体，HAL 零翻译 | HAL 头字段注释 |
 | **Bus poison** | 未定义 `*_BUS_IMPL` 时禁止调 `hal_*` | `bus/*/*_bus.h` |
 | **VFS（本仓库）** | 设备 `file_operations` 层，**不是** Linux 内核 VFS | `vfs/*` |
-| **OSAL** | 操作系统抽象三后端：裸机 / FreeRTOS v11.3.0 / RT-Thread v5.3.0 | `osal/` |
+| **OSAL** | 操作系统抽象四后端：裸机 / mini-os（自研）/ FreeRTOS v11.3.0 / RT-Thread v5.3.0 | `osal/` |
 | **VIRQ** | 虚拟中断号 + 上/下半部 | `interrupt/` |
 | **status / MINI_ERR_*** | 统一错误码 | `core/include/status.h` |
 | **积木 / Brick** | 可选开源能力块（GUI/网络/FS…） | [ecosystem.md](ecosystem.md)；`mini_tree_link_*` |

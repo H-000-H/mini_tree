@@ -32,180 +32,180 @@ extern "C"
 #include <stdint.h>
 
 #define TIM_CMD_BASE MINI_MAGIC(TIM)
-#define TIM_CMD_START (TIM_CMD_BASE + 0x01) /* 0: 启动定时器 (base/encoder/hall) */
-#define TIM_CMD_STOP (TIM_CMD_BASE + 0x02) /* 1: 强制停止 */
-#define TIM_CMD_PAUSE (TIM_CMD_BASE + 0x03) /* 2: 基础停止 (base_stop) */
-#define TIM_CMD_RESUME (TIM_CMD_BASE + 0x04) /* 3: 基础启动 (base_start) */
-#define TIM_CMD_GET_COUNTER (TIM_CMD_BASE + 0x05) /* 4: 读计数器 */
-#define TIM_CMD_SET_COUNTER (TIM_CMD_BASE + 0x06) /* 5: 写计数器 */
-#define TIM_CMD_PWM_UPDATE (TIM_CMD_BASE + 0x07) /* 6: PWM 更新 (ch+arr+ccr) */
-#define TIM_CMD_GET_CAPTURE (TIM_CMD_BASE + 0x08) /* 7: 读输入捕获值 (ch) */
-#define TIM_CMD_GET_ENCODER (TIM_CMD_BASE + 0x09) /* 8: 读编码器值 */
-#define TIM_CMD_GET_HALL (TIM_CMD_BASE + 0x0A) /* 9: 读霍尔值 */
-#define TIM_CMD_SET_AUTORELOAD (TIM_CMD_BASE + 0x0B) /* 10: 设置 ARR */
-#define TIM_CMD_GET_AUTORELOAD (TIM_CMD_BASE + 0x0C) /* 11: 读取 ARR */
-#define TIM_CMD_SET_PRESCALER (TIM_CMD_BASE + 0x0D) /* 12: 设置 PSC */
-#define TIM_CMD_GET_PRESCALER (TIM_CMD_BASE + 0x0E) /* 13: 读取 PSC */
-#define TIM_CMD_SET_CLOCK_DIVISION (TIM_CMD_BASE + 0x0F) /* 14: 设置时钟分频 */
-#define TIM_CMD_GET_CLOCK_DIVISION (TIM_CMD_BASE + 0x10) /* 15: 读取时钟分频 */
-#define TIM_CMD_SET_COUNTER_MODE (TIM_CMD_BASE + 0x11) /* 16: 设置计数模式 */
-#define TIM_CMD_GET_COUNTER_MODE (TIM_CMD_BASE + 0x12) /* 17: 读取计数模式 */
-#define TIM_CMD_ENABLE_ARR_PRELOAD (TIM_CMD_BASE + 0x13) /* 18: 使能 ARR 预装载 */
+#define TIM_CMD_START (TIM_CMD_BASE + 0x01)               /* 0: 启动定时器 (base/encoder/hall) */
+#define TIM_CMD_STOP (TIM_CMD_BASE + 0x02)                /* 1: 强制停止 */
+#define TIM_CMD_PAUSE (TIM_CMD_BASE + 0x03)               /* 2: 基础停止 (base_stop) */
+#define TIM_CMD_RESUME (TIM_CMD_BASE + 0x04)              /* 3: 基础启动 (base_start) */
+#define TIM_CMD_GET_COUNTER (TIM_CMD_BASE + 0x05)         /* 4: 读计数器 */
+#define TIM_CMD_SET_COUNTER (TIM_CMD_BASE + 0x06)         /* 5: 写计数器 */
+#define TIM_CMD_PWM_UPDATE (TIM_CMD_BASE + 0x07)          /* 6: PWM 更新 (ch+arr+ccr) */
+#define TIM_CMD_GET_CAPTURE (TIM_CMD_BASE + 0x08)         /* 7: 读输入捕获值 (ch) */
+#define TIM_CMD_GET_ENCODER (TIM_CMD_BASE + 0x09)         /* 8: 读编码器值 */
+#define TIM_CMD_GET_HALL (TIM_CMD_BASE + 0x0A)            /* 9: 读霍尔值 */
+#define TIM_CMD_SET_AUTORELOAD (TIM_CMD_BASE + 0x0B)      /* 10: 设置 ARR */
+#define TIM_CMD_GET_AUTORELOAD (TIM_CMD_BASE + 0x0C)      /* 11: 读取 ARR */
+#define TIM_CMD_SET_PRESCALER (TIM_CMD_BASE + 0x0D)       /* 12: 设置 PSC */
+#define TIM_CMD_GET_PRESCALER (TIM_CMD_BASE + 0x0E)       /* 13: 读取 PSC */
+#define TIM_CMD_SET_CLOCK_DIVISION (TIM_CMD_BASE + 0x0F)  /* 14: 设置时钟分频 */
+#define TIM_CMD_GET_CLOCK_DIVISION (TIM_CMD_BASE + 0x10)  /* 15: 读取时钟分频 */
+#define TIM_CMD_SET_COUNTER_MODE (TIM_CMD_BASE + 0x11)    /* 16: 设置计数模式 */
+#define TIM_CMD_GET_COUNTER_MODE (TIM_CMD_BASE + 0x12)    /* 17: 读取计数模式 */
+#define TIM_CMD_ENABLE_ARR_PRELOAD (TIM_CMD_BASE + 0x13)  /* 18: 使能 ARR 预装载 */
 #define TIM_CMD_DISABLE_ARR_PRELOAD (TIM_CMD_BASE + 0x14) /* 19: 禁能 ARR 预装载 */
-#define TIM_CMD_SET_INTERRUPT (TIM_CMD_BASE + 0x15) /* 20: 配置中断 (DIER) */
-#define TIM_CMD_ENCODER_START (TIM_CMD_BASE + 0x16) /* 21: 启动编码器 */
-#define TIM_CMD_HALL_START (TIM_CMD_BASE + 0x17) /* 22: 启动霍尔 */
-#define TIM_CMD_CLEAR_UPDATE_FLAG (TIM_CMD_BASE + 0x18) /* 23: 清更新标志 (ISR 用) */
+#define TIM_CMD_SET_INTERRUPT (TIM_CMD_BASE + 0x15)       /* 20: 配置中断 (DIER) */
+#define TIM_CMD_ENCODER_START (TIM_CMD_BASE + 0x16)       /* 21: 启动编码器 */
+#define TIM_CMD_HALL_START (TIM_CMD_BASE + 0x17)          /* 22: 启动霍尔 */
+#define TIM_CMD_CLEAR_UPDATE_FLAG (TIM_CMD_BASE + 0x18)   /* 23: 清更新标志 (ISR 用) */
 #define TIM_CMD_COUNT 24
-    struct tim_start_arg
-    {
-        uint32_t frequency; /**< 目标频率 (Hz) */
-        uint32_t prescaler; /**< 预分频值 */
-        uint32_t period; /**< 周期 (ARR) */
-    };
+struct tim_start_arg
+{
+    uint32_t frequency; /**< 目标频率 (Hz) */
+    uint32_t prescaler; /**< 预分频值 */
+    uint32_t period;    /**< 周期 (ARR) */
+};
 
-    /* -------------------------------------------------------------------------- */
-    /* 快路径内联参数包 — 调用方填充后传给 vfs_tim_fast_* */
-    /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* 快路径内联参数包 — 调用方填充后传给 vfs_tim_fast_* */
+/* -------------------------------------------------------------------------- */
 
-    /**
-     * @brief TIM 快路径操作参数包
-     * @note obj 由 vfs_tim_open 成功后通过 ioctl 或 priv_data 获取
-     */
-    struct vfs_tim_arg
-    {
-        hal_tim_device* obj; /**< 指向 VFS priv 嵌入的 HAL 对象 */
-        uint32_t channel; /**< 通道号 1..4 */
-        uint32_t arr; /**< ARR 值 (PWM 频率 / 自动重装载) */
-        uint32_t ccr; /**< CCR 值 (PWM 占空比 / 比较值) */
-        uint32_t value; /**< 读出的值 (counter / capture / compare) */
-    };
+/**
+ * @brief TIM 快路径操作参数包
+ * @note obj 由 vfs_tim_open 成功后通过 ioctl 或 priv_data 获取
+ */
+struct vfs_tim_arg
+{
+    hal_tim_device* obj;     /**< 指向 VFS priv 嵌入的 HAL 对象 */
+    uint32_t        channel; /**< 通道号 1..4 */
+    uint32_t        arr;     /**< ARR 值 (PWM 频率 / 自动重装载) */
+    uint32_t        ccr;     /**< CCR 值 (PWM 占空比 / 比较值) */
+    uint32_t        value;   /**< 读出的值 (counter / capture / compare) */
+};
 
-    /* -------------------------------------------------------------------------- */
-    /* 快路径内联 — 调用 hal_tim.c 普通函数, 不走 lifecycle 保护 */
-    /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* 快路径内联 — 调用 hal_tim.c 普通函数, 不走 lifecycle 保护 */
+/* -------------------------------------------------------------------------- */
 
-    /**
-     * @brief 快速 PWM 更新 (ARR + CCR 同步)
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_pwm_update(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_pwm_update(arg->obj, arg->channel, arg->arr, arg->ccr);
-    }
+/**
+ * @brief 快速 PWM 更新 (ARR + CCR 同步)
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_pwm_update(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_pwm_update(arg->obj, arg->channel, arg->arr, arg->ccr);
+}
 
-    /**
-     * @brief 快速获取计数器值
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_get_counter(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_get_counter(arg->obj, &arg->value);
-    }
+/**
+ * @brief 快速获取计数器值
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_get_counter(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_get_counter(arg->obj, &arg->value);
+}
 
-    /**
-     * @brief 快速设置计数器值
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_set_counter(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_set_counter(arg->obj, arg->value);
-    }
+/**
+ * @brief 快速设置计数器值
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_set_counter(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_set_counter(arg->obj, arg->value);
+}
 
-    /**
-     * @brief 快速获取输入捕获值
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_get_capture(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_get_capture_value(arg->obj, arg->channel, &arg->value);
-    }
+/**
+ * @brief 快速获取输入捕获值
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_get_capture(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_get_capture_value(arg->obj, arg->channel, &arg->value);
+}
 
-    /**
-     * @brief 快速获取编码器值
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_get_encoder(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_get_encoder_value(arg->obj, &arg->value);
-    }
+/**
+ * @brief 快速获取编码器值
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_get_encoder(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_get_encoder_value(arg->obj, &arg->value);
+}
 
-    /**
-     * @brief 快速获取霍尔值
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_get_hall(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_get_hall_value(arg->obj, &arg->value);
-    }
+/**
+ * @brief 快速获取霍尔值
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_get_hall(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_get_hall_value(arg->obj, &arg->value);
+}
 
-    /**
-     * @brief 快速设置 ARR
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_set_autoreload(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_set_autoreload(arg->obj, arg->arr);
-    }
+/**
+ * @brief 快速设置 ARR
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_set_autoreload(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_set_autoreload(arg->obj, arg->arr);
+}
 
-    /**
-     * @brief 快速获取 ARR
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_get_autoreload(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_get_autoreload(arg->obj, &arg->value);
-    }
+/**
+ * @brief 快速获取 ARR
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_get_autoreload(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_get_autoreload(arg->obj, &arg->value);
+}
 
-    /**
-     * @brief 快速清更新标志 (ISR 上半部用, 非阻塞无生命周期)
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_clear_update_flag(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_clear_update_flag(arg->obj);
-    }
+/**
+ * @brief 快速清更新标志 (ISR 上半部用, 非阻塞无生命周期)
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_clear_update_flag(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_clear_update_flag(arg->obj);
+}
 
-    /**
-     * @brief 快速设置分频器
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_set_prescaler(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_set_prescaler(arg->obj, arg->value);
-    }
+/**
+ * @brief 快速设置分频器
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_set_prescaler(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_set_prescaler(arg->obj, arg->value);
+}
 
-    /**
-     * @brief 快速获取分频器
-     */
-    MINI_STATIC_INLINE int vfs_tim_fast_get_prescaler(struct vfs_tim_arg* arg)
-    {
-        if (!arg || !arg->obj)
-            return MINI_ERR_INVAL;
-        return hal_tim_get_prescaler(arg->obj, &arg->value);
-    }
+/**
+ * @brief 快速获取分频器
+ */
+MINI_STATIC_INLINE int vfs_tim_fast_get_prescaler(struct vfs_tim_arg* arg)
+{
+    if (!arg || !arg->obj)
+        return MINI_ERR_INVAL;
+    return hal_tim_get_prescaler(arg->obj, &arg->value);
+}
 
-    /* -------------------------------------------------------------------------- */
-    /* HAL 设备获取 — 供调度器等外部模块从 device 拿 hal_tim_device (用于 ISR top_half 清 flag) */
-    /* -------------------------------------------------------------------------- */
-    struct device;
-    /**
-     * @brief 从 device 获取 hal_tim_device (供调度器等外部模块用)
-     * @param[in] pdev device 指针 (TIM VFS 设备)
-     * @return hal_tim_device 指针; pdev 非法返回 NULL
-     * @note 典型用途: ISR top_half 清 update flag
-     */
-    hal_tim_device* vfs_tim_get_hal_dev(struct device* pdev);
+/* -------------------------------------------------------------------------- */
+/* HAL 设备获取 — 供调度器等外部模块从 device 拿 hal_tim_device (用于 ISR top_half 清 flag) */
+/* -------------------------------------------------------------------------- */
+struct device;
+/**
+ * @brief 从 device 获取 hal_tim_device (供调度器等外部模块用)
+ * @param[in] pdev device 指针 (TIM VFS 设备)
+ * @return hal_tim_device 指针; pdev 非法返回 NULL
+ * @note 典型用途: ISR top_half 清 update flag
+ */
+hal_tim_device* vfs_tim_get_hal_dev(struct device* pdev);
 
 #ifdef __cplusplus
 }

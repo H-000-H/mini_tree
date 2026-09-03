@@ -37,22 +37,21 @@
 /** @brief CAN Host 私有数据 (静态池, 存 host 配置 + 池索引) */
 struct vfs_can_priv
 {
-    struct hal_can_bus_config cfg; /**< host 总线配置 (DTSI 直投) */
-    int pool_idx; /**< 池索引 */
+    struct hal_can_bus_config cfg;      /**< host 总线配置 (DTSI 直投) */
+    int                       pool_idx; /**< 池索引 */
 };
 
-static struct vfs_can_priv s_can_priv_pool[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t s_can_priv_used[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static struct vfs_can_priv              s_can_priv_pool[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t                          s_can_priv_used[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_can_priv_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_host_tag = "can_vfs_host";
+static const char* const                k_host_tag = "can_vfs_host";
 
 /**
  * @brief CAN Host 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_can_priv_pool_init(void)
 {
-    MINI_IGNORE_RESULT(
-        osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
 }
 
 /**
@@ -69,16 +68,11 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
     int tx_output_type = 0, tx_speed = 0, tx_mode = 0, tx_pull = 0;
     int rx_output_type = 0, rx_speed = 0, rx_mode = 0, rx_pull = 0;
 
-    if (device_get_prop_int(pdev, "can-base", &can_base) != MINI_OK ||
-        device_get_prop_int(pdev, "can-clk", &can_clk) != MINI_OK ||
-        device_get_prop_int(pdev, "tx-port", &tx_port) != MINI_OK ||
-        device_get_prop_int(pdev, "tx-pin", &tx_pin) != MINI_OK ||
-        device_get_prop_int(pdev, "tx-clk", &tx_clk) != MINI_OK ||
-        device_get_prop_int(pdev, "tx-af", &tx_af) != MINI_OK ||
-        device_get_prop_int(pdev, "rx-port", &rx_port) != MINI_OK ||
-        device_get_prop_int(pdev, "rx-pin", &rx_pin) != MINI_OK ||
-        device_get_prop_int(pdev, "rx-clk", &rx_clk) != MINI_OK ||
-        device_get_prop_int(pdev, "rx-af", &rx_af) != MINI_OK)
+    if (device_get_prop_int(pdev, "can-base", &can_base) != MINI_OK || device_get_prop_int(pdev, "can-clk", &can_clk) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-port", &tx_port) != MINI_OK || device_get_prop_int(pdev, "tx-pin", &tx_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "tx-clk", &tx_clk) != MINI_OK || device_get_prop_int(pdev, "tx-af", &tx_af) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-port", &rx_port) != MINI_OK || device_get_prop_int(pdev, "rx-pin", &rx_pin) != MINI_OK ||
+        device_get_prop_int(pdev, "rx-clk", &rx_clk) != MINI_OK || device_get_prop_int(pdev, "rx-af", &rx_af) != MINI_OK)
         return MINI_ERR_INVAL;
 
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "tx-output-type", &tx_output_type));
@@ -162,8 +156,8 @@ static int vfs_can_priv_parse_dts(struct device* pdev, struct hal_can_bus_config
 static int vfs_can_priv_probe(struct device* pdev)
 {
     struct vfs_can_priv* priv;
-    int pool_idx;
-    int ret;
+    int                  pool_idx;
+    int                  ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -207,10 +201,10 @@ err_pool:
  */
 static int vfs_can_priv_remove(struct device* pdev)
 {
-    struct vfs_can_priv* priv;
+    struct vfs_can_priv*  priv;
     struct dev_lifecycle* lc;
-    int pool_idx;
-    int ret;
+    int                   pool_idx;
+    int                   ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -255,14 +249,14 @@ static int vfs_can_priv_remove(struct device* pdev)
 /** @brief CAN Client 运行时对象 (静态池, 含 fops + 池索引) */
 struct can_vfs_client
 {
-    struct file_operations ops; /**< VFS 操作表 */
-    int pool_idx; /**< 池索引 */
+    struct file_operations ops;      /**< VFS 操作表 */
+    int                    pool_idx; /**< 池索引 */
 };
 
-static struct can_vfs_client s_client_pool[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static uint8_t s_client_used[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static struct can_vfs_client          s_client_pool[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_client_used[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_client_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_client_tag = "can_vfs_client";
+static const char* const              k_client_tag = "can_vfs_client";
 
 /**
  * @brief CAN Client 私有数据池启动初始化
@@ -278,8 +272,8 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void can_vfs_client_po
 static int can_vfs_open(struct device* pdev, void* arg)
 {
     struct dev_lifecycle* lc;
-    int first;
-    int ret;
+    int                   first;
+    int                   ret;
 
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -324,7 +318,7 @@ static int can_vfs_open(struct device* pdev, void* arg)
 static int can_vfs_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -380,8 +374,7 @@ static int can_vfs_do_tx(struct device* pdev, struct can_frame* frame, uint32_t 
 }
 
 /** RX: bus_receive → filter_match → on_rx */
-static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t fifo,
-                         uint32_t timeout_ms)
+static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
 {
     int ret;
 
@@ -404,8 +397,8 @@ static int can_vfs_do_rx(struct device* pdev, struct can_frame* frame, uint32_t 
 static int can_vfs_write(struct device* pdev, const void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    struct can_frame local;
-    int ret;
+    struct can_frame      local;
+    int                   ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -437,8 +430,8 @@ static int can_vfs_write(struct device* pdev, const void* buffer, size_t len, ui
 static int can_vfs_read(struct device* pdev, void* buffer, size_t len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    struct can_frame* frame;
-    int ret;
+    struct can_frame*     frame;
+    int                   ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -482,7 +475,7 @@ struct can_ioctl_map
 static int can_cmd_transfer(struct device* pdev, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct can_transfer_arg* ta = (struct can_transfer_arg*)arg;
-    int ret;
+    int                      ret;
 
     if (!pdev || !pdev->ops || !ta || arg_len != sizeof(*ta))
         return MINI_ERR_INVAL;
@@ -544,12 +537,11 @@ static const struct can_ioctl_map s_can_ioctl_map[CAN_CMD_COUNT] = {
 /**
  * @brief CAN Client ioctl 派发入口
  */
-static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                         uint32_t timeout_ms)
+static int can_vfs_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct dev_lifecycle* lc;
-    int32_t offset;
-    int ret;
+    int32_t               offset;
+    int                   ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -589,8 +581,8 @@ static int can_vfs_probe(struct device* pdev)
 {
     struct can_vfs_client* priv;
     struct can_bus_client* bus_cli;
-    int pool_idx;
-    int ret;
+    int                    pool_idx;
+    int                    ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -635,8 +627,8 @@ err_pool:
 static int can_vfs_remove(struct device* pdev)
 {
     struct can_vfs_client* priv;
-    struct dev_lifecycle* lc;
-    int pool_idx;
+    struct dev_lifecycle*  lc;
+    int                    pool_idx;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;

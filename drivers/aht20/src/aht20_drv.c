@@ -33,16 +33,16 @@
 /** @brief AHT20 驱动实例（嵌入 fops） */
 struct aht20_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct aht20_device s_aht20_pool[AHT20_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_aht20_used[AHT20_POOL_COUNT] MINI_ALIGNED(4);
+static struct aht20_device           s_aht20_pool[AHT20_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                       s_aht20_used[AHT20_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_aht20_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "aht20";
+static const char* const             k_tag = "aht20";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void aht20_pool_boot_i
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct aht20_device* aht20_get_drvdata(struct device* pdev)
-{
-    return (struct aht20_device*)device_get_priv(pdev);
-}
+static struct aht20_device* aht20_get_drvdata(struct device* pdev) { return (struct aht20_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int aht20_i2c_wr(struct aht20_device* dev, const uint8_t* tx, size_t len,
-                        uint32_t timeout_ms)
+static int aht20_i2c_wr(struct aht20_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -121,9 +117,9 @@ static void aht20_hw_destroy(struct aht20_device* dev)
  */
 static int aht20_open(struct device* pdev, void* arg)
 {
-    struct aht20_device* dev;
+    struct aht20_device*  dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -155,9 +151,9 @@ static int aht20_open(struct device* pdev, void* arg)
  */
 static int aht20_close(struct device* pdev)
 {
-    struct aht20_device* dev;
+    struct aht20_device*  dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = aht20_get_drvdata(pdev);
@@ -189,11 +185,11 @@ struct aht20_ioctl_map
  */
 static int aht20_cmd_read(struct aht20_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    const uint8_t trig[3] = {0xAC, 0x33, 0x00};
-    uint8_t raw[6];
+    const uint8_t        trig[3] = {0xAC, 0x33, 0x00};
+    uint8_t              raw[6];
     struct aht20_sample* sample = (struct aht20_sample*)arg;
-    int ret;
-    uint32_t rh, t;
+    int                  ret;
+    uint32_t             rh, t;
     if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = aht20_i2c_wr(dev, trig, 3, timeout_ms);
@@ -219,10 +215,10 @@ static const struct aht20_ioctl_map s_aht20_map[AHT20_CMD_COUNT] = {
  */
 static int aht20_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct aht20_device* dev;
+    struct aht20_device*  dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = aht20_get_drvdata(pdev);
@@ -255,7 +251,7 @@ static const struct file_operations aht20_fops = {
 static int aht20_probe(struct device* pdev)
 {
     struct aht20_device* dev;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_aht20_pool_ctrl);
@@ -291,9 +287,9 @@ err:
  */
 static int aht20_remove(struct device* pdev)
 {
-    struct aht20_device* dev;
+    struct aht20_device*  dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = aht20_get_drvdata(pdev);

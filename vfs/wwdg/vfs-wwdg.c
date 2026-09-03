@@ -19,11 +19,11 @@
 
 struct vfs_wwdg_priv
 {
-    struct file_operations ops; /**< VFS 操作表 */
-    struct hal_wwdg_dev wwdg; /**< HAL WWDG 设备 */
+    struct file_operations ops;  /**< VFS 操作表 */
+    struct hal_wwdg_dev    wwdg; /**< HAL WWDG 设备 */
 };
 static struct vfs_wwdg_priv s_priv;
-static const char* k_tag = "vfs_wwdg";
+static const char*          k_tag = "vfs_wwdg";
 
 /**
  * @brief WWDG 打开: 引用计数, 首次打开时调用 hal_wwdg_start 启动窗口看门狗
@@ -35,7 +35,7 @@ static int vfs_wwdg_open(struct device* pdev, void* arg)
 {
     struct vfs_wwdg_priv* priv;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -66,7 +66,7 @@ static int vfs_wwdg_open(struct device* pdev, void* arg)
 static int vfs_wwdg_close(struct device* pdev)
 {
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     lc = device_lc(pdev);
@@ -92,7 +92,7 @@ static int vfs_wwdg_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_le
 {
     struct vfs_wwdg_priv* priv;
     struct dev_lifecycle* lc;
-    int ret;
+    int                   ret;
     MINI_IGNORE_RESULT(arg);
     MINI_IGNORE_RESULT(arg_len);
     MINI_IGNORE_RESULT(to);
@@ -124,7 +124,7 @@ static const struct file_operations s_fops = {
 static int vfs_wwdg_probe(struct device* pdev)
 {
     struct hal_wwdg_config cfg = {.window = 0x50, .counter = 0x7F, .prescaler = 1, .ewi_enable = 0};
-    int value, ret;
+    int                    value, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "window", &value));

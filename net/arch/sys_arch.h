@@ -22,30 +22,30 @@ extern "C"
 #include "lwip/opt.h"
 #include "osal.h"
 
-    /* -------------------------------------------------------------------------- */
-    /* lwIP -> OSAL type mapping                                                  */
-    /* NO_SYS=0 (RTOS): sys_* 原语为 OSAL 指针句柄;                               */
-    /* NO_SYS=1 (裸机): lwip/sys.h 已将 sys_sem/mutex/mbox_t 定义为 u8_t 空桩,      */
-    /* -------------------------------------------------------------------------- */
-    typedef struct osal_mutex* osal_mutex_t; /* 互斥锁 */
-    typedef struct osal_sem* osal_sem_t; /* 信号量 */
-    typedef osal_task_handle_t osal_thread_t; /* 线程句柄 */
-    typedef osal_queue_handle_t osal_mbox_t; /* 邮箱 */
+/* -------------------------------------------------------------------------- */
+/* lwIP -> OSAL type mapping                                                  */
+/* NO_SYS=0 (RTOS): sys_* 原语为 OSAL 指针句柄;                               */
+/* NO_SYS=1 (裸机): lwip/sys.h 已将 sys_sem/mutex/mbox_t 定义为 u8_t 空桩,      */
+/* -------------------------------------------------------------------------- */
+typedef struct osal_mutex*  osal_mutex_t;  /* 互斥锁 */
+typedef struct osal_sem*    osal_sem_t;    /* 信号量 */
+typedef osal_task_handle_t  osal_thread_t; /* 线程句柄 */
+typedef osal_queue_handle_t osal_mbox_t;   /* 邮箱 */
 
 #if NO_SYS == 0
-    typedef osal_mutex_t sys_mutex_t; /* 互斥锁 */
-    typedef osal_sem_t sys_sem_t; /* 信号量 */
-    typedef osal_mbox_t sys_mbox_t; /* 邮箱 */
-#endif /* NO_SYS == 0 */
+typedef osal_mutex_t sys_mutex_t; /* 互斥锁 */
+typedef osal_sem_t   sys_sem_t;   /* 信号量 */
+typedef osal_mbox_t  sys_mbox_t;  /* 邮箱 */
+#endif                            /* NO_SYS == 0 */
 
-    typedef osal_thread_t sys_thread_t; /* 线程句柄 */
+typedef osal_thread_t sys_thread_t; /* 线程句柄 */
 
 /* -------------------------------------------------------------------------- */
 /* Invalid handles                                                            */
 /* -------------------------------------------------------------------------- */
-#define SYS_MBOX_NULL NULL /* 邮箱空句柄 */
-#define SYS_SEM_NULL NULL /* 信号量空句柄 */
-#define SYS_MUTEX_NULL NULL /* 互斥锁空句柄 */
+#define SYS_MBOX_NULL NULL   /* 邮箱空句柄 */
+#define SYS_SEM_NULL NULL    /* 信号量空句柄 */
+#define SYS_MUTEX_NULL NULL  /* 互斥锁空句柄 */
 #define SYS_THREAD_NULL NULL /* 线程空句柄 */
 
 /* -------------------------------------------------------------------------- */
@@ -55,33 +55,33 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 #if NO_SYS == 0
 #define sys_sem_valid(sem) (((sem) != NULL) && (*(sem) != NULL))
-#define sys_sem_set_invalid(sem)                                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        if ((sem) != NULL)                                                                         \
-        {                                                                                          \
-            *(sem) = NULL;                                                                         \
-        }                                                                                          \
+#define sys_sem_set_invalid(sem)                                                                                                                     \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        if ((sem) != NULL)                                                                                                                           \
+        {                                                                                                                                            \
+            *(sem) = NULL;                                                                                                                           \
+        }                                                                                                                                            \
     } while (0)
 
 #define sys_mutex_valid(mutex) (((mutex) != NULL) && (*(mutex) != NULL))
-#define sys_mutex_set_invalid(mutex)                                                               \
-    do                                                                                             \
-    {                                                                                              \
-        if ((mutex) != NULL)                                                                       \
-        {                                                                                          \
-            *(mutex) = NULL;                                                                       \
-        }                                                                                          \
+#define sys_mutex_set_invalid(mutex)                                                                                                                 \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        if ((mutex) != NULL)                                                                                                                         \
+        {                                                                                                                                            \
+            *(mutex) = NULL;                                                                                                                         \
+        }                                                                                                                                            \
     } while (0)
 
 #define sys_mbox_valid(mbox) (((mbox) != NULL) && (*(mbox) != NULL))
-#define sys_mbox_set_invalid(mbox)                                                                 \
-    do                                                                                             \
-    {                                                                                              \
-        if ((mbox) != NULL)                                                                        \
-        {                                                                                          \
-            *(mbox) = NULL;                                                                        \
-        }                                                                                          \
+#define sys_mbox_set_invalid(mbox)                                                                                                                   \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        if ((mbox) != NULL)                                                                                                                          \
+        {                                                                                                                                            \
+            *(mbox) = NULL;                                                                                                                          \
+        }                                                                                                                                            \
     } while (0)
 
 #define sys_sem_valid_val(sem) sys_sem_valid(&(sem))

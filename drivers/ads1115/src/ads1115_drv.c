@@ -33,16 +33,16 @@
 /** @brief ADS1115 驱动实例（嵌入 fops） */
 struct ads1115_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct ads1115_device s_ads1115_pool[ADS1115_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_ads1115_used[ADS1115_POOL_COUNT] MINI_ALIGNED(4);
+static struct ads1115_device           s_ads1115_pool[ADS1115_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                         s_ads1115_used[ADS1115_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_ads1115_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "ads1115";
+static const char* const               k_tag = "ads1115";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void ads1115_pool_boot
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct ads1115_device* ads1115_get_drvdata(struct device* pdev)
-{
-    return (struct ads1115_device*)device_get_priv(pdev);
-}
+static struct ads1115_device* ads1115_get_drvdata(struct device* pdev) { return (struct ads1115_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int ads1115_i2c_wr(struct ads1115_device* dev, const uint8_t* tx, size_t len,
-                          uint32_t timeout_ms)
+static int ads1115_i2c_wr(struct ads1115_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -122,8 +118,8 @@ static void ads1115_hw_destroy(struct ads1115_device* dev)
 static int ads1115_open(struct device* pdev, void* arg)
 {
     struct ads1115_device* dev;
-    struct dev_lifecycle* lc;
-    int first, ret;
+    struct dev_lifecycle*  lc;
+    int                    first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -156,8 +152,8 @@ static int ads1115_open(struct device* pdev, void* arg)
 static int ads1115_close(struct device* pdev)
 {
     struct ads1115_device* dev;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*  lc;
+    int                    last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ads1115_get_drvdata(pdev);
@@ -178,8 +174,7 @@ static int ads1115_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*ads1115_ioctl_fn_t)(struct ads1115_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*ads1115_ioctl_fn_t)(struct ads1115_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct ads1115_ioctl_map
 {
     ads1115_ioctl_fn_t handler;
@@ -191,13 +186,12 @@ struct ads1115_ioctl_map
 static int ads1115_cmd_read(struct ads1115_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct ads1115_sample* sample = (struct ads1115_sample*)arg;
-    uint8_t cfg[3];
-    uint8_t ptr = 0x00;
-    uint8_t raw[2];
-    uint16_t mux;
-    int ret;
-    if (!dev->hw_ready || !sample || len != sizeof(*sample) || sample->channel < 0 ||
-        sample->channel > 3)
+    uint8_t                cfg[3];
+    uint8_t                ptr = 0x00;
+    uint8_t                raw[2];
+    uint16_t               mux;
+    int                    ret;
+    if (!dev->hw_ready || !sample || len != sizeof(*sample) || sample->channel < 0 || sample->channel > 3)
         return MINI_ERR_INVAL;
     mux = (uint16_t)(0x8000U | ((uint16_t)(sample->channel + 4) << 12) | 0x0200U | 0x0100U);
     cfg[0] = 0x01;
@@ -227,9 +221,9 @@ static const struct ads1115_ioctl_map s_ads1115_map[ADS1115_CMD_COUNT] = {
 static int ads1115_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct ads1115_device* dev;
-    struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int32_t                off;
+    int                    ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ads1115_get_drvdata(pdev);
@@ -262,7 +256,7 @@ static const struct file_operations ads1115_fops = {
 static int ads1115_probe(struct device* pdev)
 {
     struct ads1115_device* dev;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ads1115_pool_ctrl);
@@ -299,8 +293,8 @@ err:
 static int ads1115_remove(struct device* pdev)
 {
     struct ads1115_device* dev;
-    struct dev_lifecycle* lc;
-    int idx;
+    struct dev_lifecycle*  lc;
+    int                    idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = ads1115_get_drvdata(pdev);

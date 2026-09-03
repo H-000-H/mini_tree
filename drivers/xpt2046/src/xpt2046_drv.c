@@ -34,19 +34,19 @@
 /** @brief XPT2046 驱动实例（嵌入 fops 与 SPI/IRQ 句柄） */
 struct xpt2046_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* spi_dev; /**< 所属 SPI client 设备 */
-    struct device* irq_dev; /**< 中断引脚 GPIO 设备（phandle: irq-gpio，可选） */
-    struct vfs_gpio_arg irq_gpio; /**< 中断引脚 GPIO 参数 */
-    int has_irq; /**< 已配置 irq-gpio */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         spi_dev;  /**< 所属 SPI client 设备 */
+    struct device*         irq_dev;  /**< 中断引脚 GPIO 设备（phandle: irq-gpio，可选） */
+    struct vfs_gpio_arg    irq_gpio; /**< 中断引脚 GPIO 参数 */
+    int                    has_irq;  /**< 已配置 irq-gpio */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct xpt2046_device s_xpt2046_pool[XPT2046_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_xpt2046_used[XPT2046_POOL_COUNT] MINI_ALIGNED(4);
+static struct xpt2046_device           s_xpt2046_pool[XPT2046_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                         s_xpt2046_used[XPT2046_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_xpt2046_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "xpt2046";
+static const char* const               k_tag = "xpt2046";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -61,17 +61,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void xpt2046_pool_boot
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct xpt2046_device* xpt2046_get_drvdata(struct device* pdev)
-{
-    return (struct xpt2046_device*)device_get_priv(pdev);
-}
+static struct xpt2046_device* xpt2046_get_drvdata(struct device* pdev) { return (struct xpt2046_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int xpt2046_spi_xfer(struct xpt2046_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                            uint32_t timeout_ms)
+static int xpt2046_spi_xfer(struct xpt2046_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -120,8 +116,8 @@ static void xpt2046_hw_destroy(struct xpt2046_device* dev)
 static int xpt2046_open(struct device* pdev, void* arg)
 {
     struct xpt2046_device* dev;
-    struct dev_lifecycle* lc;
-    int first, ret;
+    struct dev_lifecycle*  lc;
+    int                    first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -154,8 +150,8 @@ static int xpt2046_open(struct device* pdev, void* arg)
 static int xpt2046_close(struct device* pdev)
 {
     struct xpt2046_device* dev;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*  lc;
+    int                    last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);
@@ -176,8 +172,7 @@ static int xpt2046_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*xpt2046_ioctl_fn_t)(struct xpt2046_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*xpt2046_ioctl_fn_t)(struct xpt2046_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct xpt2046_ioctl_map
 {
     xpt2046_ioctl_fn_t handler;
@@ -188,7 +183,7 @@ struct xpt2046_ioctl_map
  */
 static int xpt2046_cmd_xy(struct xpt2046_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    uint8_t tx[3] = {0x90, 0, 0}, rx[3] = {0};
+    uint8_t            tx[3] = {0x90, 0, 0}, rx[3] = {0};
     struct xpt2046_xy* xy = (struct xpt2046_xy*)arg;
     if (!dev->hw_ready || !xy || len != sizeof(*xy))
         return MINI_ERR_INVAL;
@@ -212,9 +207,9 @@ static const struct xpt2046_ioctl_map s_xpt2046_map[XPT2046_CMD_COUNT] = {
 static int xpt2046_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct xpt2046_device* dev;
-    struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int32_t                off;
+    int                    ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);
@@ -247,7 +242,7 @@ static const struct file_operations xpt2046_fops = {
 static int xpt2046_probe(struct device* pdev)
 {
     struct xpt2046_device* dev;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_xpt2046_pool_ctrl);
@@ -292,8 +287,8 @@ err:
 static int xpt2046_remove(struct device* pdev)
 {
     struct xpt2046_device* dev;
-    struct dev_lifecycle* lc;
-    int idx;
+    struct dev_lifecycle*  lc;
+    int                    idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = xpt2046_get_drvdata(pdev);

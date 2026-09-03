@@ -31,6 +31,23 @@
 #define RT_USING_MUTEX
 #define RT_USING_MESSAGEQUEUE
 
+/* ── 事件集 (Kconfig CONFIG_RTTHREAD_EVENT 控制, 默认关闭) ──
+ * 关闭时 src/ipc.c 内 #ifdef RT_USING_EVENT 包裹的 rt_event_* 代码段
+ * 整体不参与编译 (对象/链表字段与 API 均不生成)。
+ * CONFIG_OSAL_EVENT 会自动 select CONFIG_RTTHREAD_EVENT:
+ * osal_rtthread.c 的 osal_event_* 直接映射 rt_event_*。
+ * 未开 OSAL_EVENT 时本项仅供直接调用 rt_event_create /
+ * rt_event_recv 的工程使用, 故默认不开。
+ * CONFIG_RTTHREAD_EVENT 来自 kconfig 生成的 config.h — RT-Thread 内核源
+ * 文件并不包含 config.h, 因此 lib/rtthread/CMakeLists.txt 额外用 -D 注入
+ * MINI_TREE_RTTHREAD_EVENT 作为等效开关 (PUBLIC 传播, 保证 osal 层与内核
+ * 看到同一份 rtconfig.h 展开结果), 两个宏任一命中即视为开启。
+ * 与 FreeRTOS 的 CONFIG_FREERTOS_EVENT_GROUPS、mini-os 的
+ * CONFIG_MINI_OS_EVENT 对称: 三个 RTOS 后端的事件组一律默认关闭。 */
+#if defined(CONFIG_RTTHREAD_EVENT) || defined(MINI_TREE_RTTHREAD_EVENT)
+#define RT_USING_EVENT
+#endif
+
 /* ── Memory ── */
 #define RT_USING_HEAP
 #define RT_USING_SMALL_MEM

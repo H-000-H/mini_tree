@@ -32,17 +32,17 @@
 /** @brief 继电器驱动实例（嵌入 fops 与 GPIO 句柄） */
 struct relay_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* gdev; /**< GPIO 设备（phandle: relay-gpio） */
-    struct vfs_gpio_arg gpio; /**< GPIO 操作参数 */
+    struct file_operations ops;  /**< 挂入 device 的 fops */
+    struct device*         gdev; /**< GPIO 设备（phandle: relay-gpio） */
+    struct vfs_gpio_arg    gpio; /**< GPIO 操作参数 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct relay_device s_relay_pool[RELAY_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_relay_used[RELAY_POOL_COUNT] MINI_ALIGNED(4);
+static struct relay_device           s_relay_pool[RELAY_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                       s_relay_used[RELAY_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_relay_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "relay";
+static const char* const             k_tag = "relay";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,10 +57,7 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void relay_pool_boot_i
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct relay_device* relay_get_drvdata(struct device* pdev)
-{
-    return (struct relay_device*)device_get_priv(pdev);
-}
+static struct relay_device* relay_get_drvdata(struct device* pdev) { return (struct relay_device*)device_get_priv(pdev); }
 
 /**
  * @brief 打开 GPIO 设备并绑定参数（失败回滚关闭）
@@ -116,9 +113,9 @@ static void relay_hw_destroy(struct relay_device* dev)
  */
 static int relay_open(struct device* pdev, void* arg)
 {
-    struct relay_device* dev;
+    struct relay_device*  dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -150,9 +147,9 @@ static int relay_open(struct device* pdev, void* arg)
  */
 static int relay_close(struct device* pdev)
 {
-    struct relay_device* dev;
+    struct relay_device*  dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = relay_get_drvdata(pdev);
@@ -200,10 +197,10 @@ static const struct relay_ioctl_map s_relay_map[RELAY_CMD_COUNT] = {
  */
 static int relay_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct relay_device* dev;
+    struct relay_device*  dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = relay_get_drvdata(pdev);
@@ -236,7 +233,7 @@ static const struct file_operations relay_fops = {
 static int relay_probe(struct device* pdev)
 {
     struct relay_device* dev;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_relay_pool_ctrl);
@@ -272,9 +269,9 @@ err:
  */
 static int relay_remove(struct device* pdev)
 {
-    struct relay_device* dev;
+    struct relay_device*  dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = relay_get_drvdata(pdev);

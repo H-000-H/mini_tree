@@ -33,17 +33,17 @@
 /** @brief NEO-M8N 驱动实例（嵌入 fops 与接收缓冲） */
 struct neo_m8n_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* uart_dev; /**< 所属 UART client 设备 */
-    uint8_t rxbuf[128]; /**< 接收缓冲（预留） */
+    struct file_operations ops;        /**< 挂入 device 的 fops */
+    struct device*         uart_dev;   /**< 所属 UART client 设备 */
+    uint8_t                rxbuf[128]; /**< 接收缓冲（预留） */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct neo_m8n_device s_neo_m8n_pool[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_neo_m8n_used[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
+static struct neo_m8n_device           s_neo_m8n_pool[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                         s_neo_m8n_used[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_neo_m8n_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "neo_m8n";
+static const char* const               k_tag = "neo_m8n";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -58,17 +58,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void neo_m8n_pool_boot
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct neo_m8n_device* neo_m8n_get_drvdata(struct device* pdev)
-{
-    return (struct neo_m8n_device*)device_get_priv(pdev);
-}
+static struct neo_m8n_device* neo_m8n_get_drvdata(struct device* pdev) { return (struct neo_m8n_device*)device_get_priv(pdev); }
 
 /**
  * @brief UART 双向传输（UART_CMD_TRANSFER）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int neo_m8n_uart_xchg(struct neo_m8n_device* dev, const uint8_t* tx, size_t tx_len,
-                             uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
+static int neo_m8n_uart_xchg(struct neo_m8n_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
 {
     struct uart_transfer_arg arg;
     if (!dev || !dev->uart_dev)
@@ -117,8 +113,8 @@ static void neo_m8n_hw_destroy(struct neo_m8n_device* dev)
 static int neo_m8n_open(struct device* pdev, void* arg)
 {
     struct neo_m8n_device* dev;
-    struct dev_lifecycle* lc;
-    int first, ret;
+    struct dev_lifecycle*  lc;
+    int                    first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -151,8 +147,8 @@ static int neo_m8n_open(struct device* pdev, void* arg)
 static int neo_m8n_close(struct device* pdev)
 {
     struct neo_m8n_device* dev;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*  lc;
+    int                    last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = neo_m8n_get_drvdata(pdev);
@@ -173,8 +169,7 @@ static int neo_m8n_close(struct device* pdev)
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*neo_m8n_ioctl_fn_t)(struct neo_m8n_device* dev, void* arg, size_t arg_len,
-                                  uint32_t ms);
+typedef int (*neo_m8n_ioctl_fn_t)(struct neo_m8n_device* dev, void* arg, size_t arg_len, uint32_t ms);
 struct neo_m8n_ioctl_map
 {
     neo_m8n_ioctl_fn_t handler;
@@ -186,8 +181,8 @@ struct neo_m8n_ioctl_map
 static int neo_m8n_cmd_nmea(struct neo_m8n_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct neo_m8n_buf* buf = (struct neo_m8n_buf*)arg;
-    size_t got = 0;
-    int ret;
+    size_t              got = 0;
+    int                 ret;
 
     if (!dev->hw_ready || !buf || len != sizeof(*buf) || !buf->data || buf->cap == 0U)
         return MINI_ERR_INVAL;
@@ -218,9 +213,9 @@ static const struct neo_m8n_ioctl_map s_neo_m8n_map[NEO_M8N_CMD_COUNT] = {
 static int neo_m8n_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
     struct neo_m8n_device* dev;
-    struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    struct dev_lifecycle*  lc;
+    int32_t                off;
+    int                    ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = neo_m8n_get_drvdata(pdev);
@@ -253,7 +248,7 @@ static const struct file_operations neo_m8n_fops = {
 static int neo_m8n_probe(struct device* pdev)
 {
     struct neo_m8n_device* dev;
-    int pool_idx, ret;
+    int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_neo_m8n_pool_ctrl);
@@ -290,8 +285,8 @@ err:
 static int neo_m8n_remove(struct device* pdev)
 {
     struct neo_m8n_device* dev;
-    struct dev_lifecycle* lc;
-    int idx;
+    struct dev_lifecycle*  lc;
+    int                    idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = neo_m8n_get_drvdata(pdev);

@@ -29,13 +29,13 @@ extern "C"
 {
 #endif
 
-    /**
-     * @brief 推进 TinyUSB 事件 (应用主循环应周期调用)
-     */
-    void usb_bus_task(void);
+/**
+ * @brief 推进 TinyUSB 事件 (应用主循环应周期调用)
+ */
+void usb_bus_task(void);
 
-    /* -------------------------------------------------------------------------- */
-    /* ioctl */
+/* -------------------------------------------------------------------------- */
+/* ioctl */
 /* -------------------------------------------------------------------------- */
 #define USB_CMD_BASE MINI_MAGIC(USB)
 #define USB_CMD_SET_XFER_MODE (USB_CMD_BASE + 0x01) /**< 设置后续 write/read 的 xfer_mode */
@@ -45,15 +45,15 @@ extern "C"
 /** 与 HAL_USB_XFER_* 同值 */
 #define USB_XFER_AUTO 0U /**< 隐式: dma_enable 非 0 则 DMA, 否则 poll */
 #define USB_XFER_POLL 1U /**< 强制普通路径 */
-#define USB_XFER_DMA 2U /**< 强制 DMA; host 未开 dma-enable 则 NOTSUPP */
+#define USB_XFER_DMA 2U  /**< 强制 DMA; host 未开 dma-enable 则 NOTSUPP */
 
-    /**
-     * @brief 传输模式参数 (SET_XFER_MODE / GET_XFER_MODE)
-     */
-    struct usb_xfer_mode_arg
-    {
-        uint32_t xfer_mode; /**< USB_XFER_AUTO / POLL / DMA */
-    };
+/**
+ * @brief 传输模式参数 (SET_XFER_MODE / GET_XFER_MODE)
+ */
+struct usb_xfer_mode_arg
+{
+    uint32_t xfer_mode; /**< USB_XFER_AUTO / POLL / DMA */
+};
 
 #ifdef __cplusplus
 }

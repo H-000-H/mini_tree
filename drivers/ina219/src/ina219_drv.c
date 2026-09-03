@@ -33,16 +33,16 @@
 /** @brief INA219 驱动实例（嵌入 fops） */
 struct ina219_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct ina219_device s_ina219_pool[INA219_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_ina219_used[INA219_POOL_COUNT] MINI_ALIGNED(4);
+static struct ina219_device           s_ina219_pool[INA219_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_ina219_used[INA219_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_ina219_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "ina219";
+static const char* const              k_tag = "ina219";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void ina219_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct ina219_device* ina219_get_drvdata(struct device* pdev)
-{
-    return (struct ina219_device*)device_get_priv(pdev);
-}
+static struct ina219_device* ina219_get_drvdata(struct device* pdev) { return (struct ina219_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int ina219_i2c_wr(struct ina219_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int ina219_i2c_wr(struct ina219_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -123,7 +119,7 @@ static int ina219_open(struct device* pdev, void* arg)
 {
     struct ina219_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -157,7 +153,7 @@ static int ina219_close(struct device* pdev)
 {
     struct ina219_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ina219_get_drvdata(pdev);
@@ -191,7 +187,7 @@ struct ina219_ioctl_map
 static int ina219_rd16(struct ina219_device* dev, uint8_t reg, int16_t* out, uint32_t timeout_ms)
 {
     uint8_t raw[2];
-    int ret = ina219_i2c_wr(dev, &reg, 1, timeout_ms);
+    int     ret = ina219_i2c_wr(dev, &reg, 1, timeout_ms);
     if (ret != MINI_OK)
         return ret;
     ret = ina219_i2c_rd(dev, raw, 2, timeout_ms);
@@ -206,8 +202,8 @@ static int ina219_rd16(struct ina219_device* dev, uint8_t reg, int16_t* out, uin
 static int ina219_cmd_read(struct ina219_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct ina219_sample* sample = (struct ina219_sample*)arg;
-    int16_t bus, cur, pwr;
-    int ret;
+    int16_t               bus, cur, pwr;
+    int                   ret;
     if (!dev->hw_ready || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = ina219_rd16(dev, 0x02, &bus, timeout_ms);
@@ -236,8 +232,8 @@ static int ina219_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct ina219_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = ina219_get_drvdata(pdev);
@@ -270,7 +266,7 @@ static const struct file_operations ina219_fops = {
 static int ina219_probe(struct device* pdev)
 {
     struct ina219_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_ina219_pool_ctrl);
@@ -308,7 +304,7 @@ static int ina219_remove(struct device* pdev)
 {
     struct ina219_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = ina219_get_drvdata(pdev);

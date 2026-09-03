@@ -204,7 +204,7 @@ CMake 关键缓存变量：`BOARD_DTS`、`BOARD_DTSI_DIR`、`VENDOR_INC_DIRS`、
 | 本仓库提供 | 平台仓库提供 |
 | :--- | :--- |
 | 中间件源码、weak HAL、占位 DTS、文档、ide stubs | `hal_*_<soc>.c`、完整 dts/dtsi、厂商 `-I`、板级链接脚本与启动文件 |
-| OSAL 三后端骨架 | 时钟、堆、SysTick/RTOS 端口（若需要） |
+| OSAL 四后端骨架 | 时钟、堆、SysTick/RTOS 端口（若需要） |
 
 通用 CMake 路径下，平台通过 `MINI_TREE_BOARD_PORT`（绝对路径）或同级 `board_port.cmake` 注入板级；ESP-IDF 路径（由 `ESP_PLATFORM` 触发组件模式）在主仓 `main` 分支已保留完整构建路径，但需要特殊处理（详见 [getting_started.md](getting_started.md) §4.2）。验证矩阵以各 `platform/*/mini_tree` 工程为准，不在本 shelf 内绑定具体 SoC。
 

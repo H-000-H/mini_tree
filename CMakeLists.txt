@@ -79,7 +79,34 @@ include("${CMAKE_CURRENT_LIST_DIR}/hal/paths.cmake")
 set(KCONFIG_DOT "${CMAKE_CURRENT_LIST_DIR}/.config")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 
-file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
+# config.h 输出目录 (定义提前到此处, 供下方配置期 Kconfig 同步使用)
+set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
+set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
+
+# ── 配置期先跑一次 genconfig: 把 Kconfig 求值结果回写 .config ──
+# 下面所有 file(STRINGS ${KCONFIG_DOT} ... REGEX "^CONFIG_X=y$") 只认 .config
+# 里显式写着的 =y; 而 default y 与被 select 拉起的符号要经 kconfiglib 求解
+# 后才会出现。.config 陈旧时 (新增了 Kconfig 项 / 用户没重跑 menuconfig)
+# 两侧就会打架: config.h 说开了, CMake 却没把对应源文件编进来 ——
+# 中间件产物是静态库, 不报未定义符号, 要到最后链接 ELF 才炸。
+# genconfig.py 的回写幂等且内容一致时不触碰磁盘, 不会因时间戳抖动
+# 反复触发 CMAKE_CONFIGURE_DEPENDS 重配; 顺带把 config.h 也提前生成好。
+# (构建期的 add_custom_command 仍保留, 负责 .config / Kconfig 变动后重生。)
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${KCONFIG_GEN_DIR}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/tools/genconfig.py"
+            "${CMAKE_CURRENT_LIST_DIR}/Kconfig.non_esp"
+            "${KCONFIG_GEN_DIR}"
+            --config "${KCONFIG_DOT}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+    RESULT_VARIABLE _kconfig_sync_rc
+)
+if(NOT _kconfig_sync_rc EQUAL 0)
+    message(FATAL_ERROR "genconfig.py 配置期同步失败 (rc=${_kconfig_sync_rc}): "
+                        "请确认 Python3 与 kconfiglib 可用 (tools/_vendor 已内置)")
+endif()
+
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(MINI_OS|FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
 # System / EventBus 软编码：对齐 Kconfig 语义 — 显式 "=y" 才编入，缺失/未置位一律不编入，
@@ -179,6 +206,9 @@ if(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_FREERTOS=y")
 elseif(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_RTTHREAD=y")
     set(OSAL_SRCS "osal/src/osal_rtthread.c")
     set(OSAL_DEFINE CONFIG_OSAL_RTTHREAD)
+elseif(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_MINI_OS=y")
+    set(OSAL_SRCS "osal/src/osal_mini_os.c")
+    set(OSAL_DEFINE CONFIG_OSAL_MINI_OS)
 elseif(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_THREADX=y")
     set(OSAL_SRCS "osal/src/osal_threadx.c")
     set(OSAL_DEFINE CONFIG_OSAL_THREADX)
@@ -277,8 +307,7 @@ if(MINI_TREE_USB)
     list(APPEND DRIVER_SRCS "bus/usb/usb_net_cb.c")
 endif()
 
-set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
-set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
+# KCONFIG_GEN_DIR / KCONFIG_OUT 已在文件头部 (配置期 Kconfig 同步处) 定义
 
 set(SCRUBBER_GEN_DIR    "${CMAKE_BINARY_DIR}/generated/scrubber/mini_tree")
 set(SCRUBBER_CRC_HDR    "${SCRUBBER_GEN_DIR}/system_scrubber_crc_gen.h")
@@ -582,6 +611,8 @@ file(STRINGS "${KCONFIG_DOT}" MINI_TREE_LWIP_ON REGEX "^CONFIG_LWIP=y$")
 if(MINI_TREE_LWIP_ON)
     add_subdirectory(net)
     add_dependencies(mini_tree_net mini_tree_gen)
+
+    target_link_libraries(mini_tree_net PUBLIC lib)
     target_link_libraries(mini_tree PUBLIC mini_tree_net)
 endif()
 

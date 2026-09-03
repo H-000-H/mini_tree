@@ -49,6 +49,7 @@
 | [peripherals.md](peripherals.md) | Peripheral compatible / ioctl overview |
 | [usb_tusb_port.md](usb_tusb_port.md) | TinyUSB board-level contract |
 | [amp.md](amp.md) | Dual-core AMP |
+| [mini-os.md](mini-os.md) | In-tree mini-os kernel (scheduler/time wheels/PI/heap/port/integration) |
 | [osal_switching.md](osal_switching.md) | OSAL backend switching |
 | [net.md](net.md) | Network protocol stack glue (MQTT / TCP / PPP / USB NIC) |
 

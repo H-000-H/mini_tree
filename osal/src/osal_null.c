@@ -68,22 +68,22 @@
  */
 struct osal_queue_obj
 {
-    struct fifo_spsc fifo; /**<队列*/
-    fifo_data_type buf[OSAL_NULL_QUEUE_ELEM_COUNT] MINI_ALIGNED(32); /**<队列缓冲区*/
-    size_t elements_per_item; /**<每个队列元素包含的元素个数*/
+    struct fifo_spsc fifo;                                             /**<队列*/
+    fifo_data_type   buf[OSAL_NULL_QUEUE_ELEM_COUNT] MINI_ALIGNED(32); /**<队列缓冲区*/
+    size_t           elements_per_item;                                /**<每个队列元素包含的元素个数*/
 };
 
 #if OSAL_NULL_QUEUE_POOL_SIZE > 0
-static struct osal_queue_obj s_queues[OSAL_NULL_QUEUE_POOL_SIZE] MINI_ALIGNED(64); /**<队列池*/
-static uint8_t s_queue_used[OSAL_NULL_QUEUE_POOL_SIZE] MINI_ALIGNED(4); /**<队列使用情况*/
-static osal_pool_t s_queue_pool_ctrl MINI_ALIGNED(4); /**<队列池控制句柄*/
+static struct osal_queue_obj         s_queues[OSAL_NULL_QUEUE_POOL_SIZE] MINI_ALIGNED(64);    /**<队列池*/
+static uint8_t                       s_queue_used[OSAL_NULL_QUEUE_POOL_SIZE] MINI_ALIGNED(4); /**<队列使用情况*/
+static osal_pool_t s_queue_pool_ctrl MINI_ALIGNED(4);                                         /**<队列池控制句柄*/
 
 /** @brief 取队列池第 idx 个对象 (池为 0 时恒 NULL) */
 MINI_STATIC_INLINE struct osal_queue_obj* queue_at(int idx) { return &s_queues[idx]; }
 #else
 MINI_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
 {
-   MINI_UNUSED_PARAM(idx);
+    MINI_UNUSED_PARAM(idx);
     return NULL;
 }
 #endif /* OSAL_NULL_QUEUE_POOL_SIZE > 0 */
@@ -95,13 +95,12 @@ MINI_STATIC_INLINE struct osal_queue_obj* queue_at(int idx)
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_QUEUE_POOL) static void osal_null_queue_pool_boot_init(void)
 {
-    MINI_IGNORE_RESULT(
-        osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_QUEUE_POOL_SIZE));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_queue_pool_ctrl, s_queue_used, OSAL_NULL_QUEUE_POOL_SIZE));
 }
 #endif /* OSAL_NULL_QUEUE_POOL_SIZE > 0 */
 
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
-    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
+    defined(__ARM_ARCH_8M_MAIN__)
 /**
  * @brief 执行 WFI 等待中断 (Cortex-M 低功耗忙等)
  */
@@ -147,12 +146,11 @@ void osal_null_isr_exit(void)
 /* -------------------------------------------------------------------------- */
 struct osal_mutex
 {
-    osal_mutex_type_t type; /**<互斥锁类型*/
-    MINI_ATOMIC_UINT lock; /**<互斥锁状态*/
-    MINI_ATOMIC_UINT depth; /**<互斥锁深度*/
+    osal_mutex_type_t type;  /**<互斥锁类型*/
+    MINI_ATOMIC_UINT  lock;  /**<互斥锁状态*/
+    MINI_ATOMIC_UINT  depth; /**<互斥锁深度*/
 };
-_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE,
-               "osal_null: OSAL_MUTEX_STORAGE_SIZE too small");
+_Static_assert(sizeof(struct osal_mutex) <= OSAL_MUTEX_STORAGE_SIZE, "osal_null: OSAL_MUTEX_STORAGE_SIZE too small");
 
 /**
  * @brief 互斥锁初始化
@@ -178,8 +176,8 @@ static int osal_mutex_init(struct osal_mutex* mutex, osal_mutex_type_t type)
  * @brief 互斥锁池
  * @details 互斥锁池 主要是互斥锁的缓冲区 互斥锁的使用情况 互斥锁的池控制句柄
  */
-static struct osal_mutex s_mutex_pool[OSAL_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
-static uint8_t s_mutex_used[OSAL_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
+static struct osal_mutex             s_mutex_pool[OSAL_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t                       s_mutex_used[OSAL_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
 static osal_pool_t s_mutex_pool_ctrl MINI_ALIGNED(4);
 
 /**
@@ -200,8 +198,8 @@ int osal_in_isr(void)
     if (s_isr_nest > 0U)
         return 1;
 
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||           \
-    defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
+    defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
     uint32_t ipsr;
     __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
     return (ipsr & 0xFFU) != 0U;
@@ -246,7 +244,7 @@ int osal_pool_claim(osal_pool_t* pool)
         return OSAL_ERR_INVAL;
 
     uint32_t irq = osal_null_irq_disable();
-    int claimed = -1;
+    int      claimed = -1;
     for (size_t index = 0; index < pool->slot_count; index++)
     {
         if (!pool->used_slots[index])
@@ -300,13 +298,12 @@ MINI_STATIC_INLINE int queue_index_of(osal_queue_handle_t queue)
 #if OSAL_NULL_QUEUE_POOL_SIZE > 0
     if (!queue)
         return -1;
-    int idx = (int)((struct osal_queue_obj*)queue -
-                    s_queues); /**< 计算出队列在静态队列池中的索引queue的地址减去全局起始地址 */
+    int idx = (int)((struct osal_queue_obj*)queue - s_queues); /**< 计算出队列在静态队列池中的索引queue的地址减去全局起始地址 */
     if (idx < 0 || idx >= OSAL_NULL_QUEUE_POOL_SIZE || !s_queue_used[idx])
         return -1;
     return idx;
 #else
-   MINI_UNUSED_PARAM(queue);
+    MINI_UNUSED_PARAM(queue);
     return -1; /* 队列池未启用 (OSAL_NULL_QUEUE_POOL_SIZE=0) */
 #endif
 }
@@ -314,7 +311,6 @@ MINI_STATIC_INLINE int queue_index_of(osal_queue_handle_t queue)
 /**
  * @brief 自旋锁
  * @details 默认 CONFIG_OSAL_SPINLOCK_IRQ_DISABLE: 单核下退化为关中断临界区,
- * @details  与 RT-Thread 后端语义一致, 保留 nest 支持嵌套 lock/unlock.
  * @details  CONFIG_OSAL_SPINLOCK_ATOMIC: 与 FreeRTOS 非 ESP 后端一致,
  * @details  使用原子 test-and-set 忙等自旋锁 (仅适合 SMP).
  */
@@ -322,7 +318,7 @@ struct osal_spinlock
 {
 #ifdef CONFIG_OSAL_SPINLOCK_IRQ_DISABLE
     uint32_t irq_saved; /**< IRQ 状态保存 */
-    uint32_t nest; /**< 嵌套计数 */
+    uint32_t nest;      /**< 嵌套计数 */
 #else
     volatile int locked; /**< 原子锁标志 (0=空闲, 1=持有) */
 #endif
@@ -409,10 +405,7 @@ MINI_UNUSED MINI_STATIC_INLINE bool osal_spinlock_is_locked(struct osal_spinlock
  * @brief xtask tick_count 毫秒时钟
  * @return 毫秒
  */
-uint32_t osal_time_ms(void)
-{
-    return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED);
-}
+uint32_t osal_time_ms(void) { return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED); }
 
 #define OSAL_NULL_TICK_HANG_THRESHOLD 10000U
 /**
@@ -534,8 +527,7 @@ int osal_mutex_create_typed(struct osal_mutex** out, osal_mutex_type_t type)
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size,
-                                   osal_mutex_type_t type)
+int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_t storage_size, osal_mutex_type_t type)
 {
     if (!out || !storage || storage_size < sizeof(struct osal_mutex))
         return OSAL_ERR_INVAL;
@@ -557,10 +549,7 @@ int osal_mutex_create_static_typed(struct osal_mutex** out, void* storage, size_
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create(struct osal_mutex** out)
-{
-    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
-}
+int osal_mutex_create(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
 
 /**
  * @brief storage 内创建普通互斥锁
@@ -579,10 +568,7 @@ int osal_mutex_create_static(struct osal_mutex** out, void* storage, size_t stor
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_recursive(struct osal_mutex** out)
-{
-    return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE);
-}
+int osal_mutex_create_recursive(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_RECURSIVE); }
 
 /**
  * @brief storage 内创建递归互斥锁
@@ -601,10 +587,7 @@ int osal_mutex_create_static_recursive(struct osal_mutex** out, void* storage, s
  * @param ... 见签名
  * @return OSAL_OK 或错误码
  */
-int osal_mutex_create_plain(struct osal_mutex** out)
-{
-    return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN);
-}
+int osal_mutex_create_plain(struct osal_mutex** out) { return osal_mutex_create_typed(out, OSAL_MUTEX_PLAIN); }
 
 /**
  * @brief storage 内显式普通互斥锁
@@ -633,10 +616,10 @@ void osal_mutex_destroy(struct osal_mutex* mutex)
     if (mutex < s_mutex_pool || mutex >= &s_mutex_pool[OSAL_MUTEX_POOL_SIZE])
         return;
 
-    MINI_ATOMIC_STORE(&mutex->lock, 0U, MINI_RELEASE); /**< 释放互斥锁 */
+    MINI_ATOMIC_STORE(&mutex->lock, 0U, MINI_RELEASE);  /**< 释放互斥锁 */
     MINI_ATOMIC_STORE(&mutex->depth, 0U, MINI_RELEASE); /**< 释放互斥锁深度 */
 
-    int idx = (int)(mutex - s_mutex_pool); /**< 计算互斥锁在静态互斥锁池中的索引 */
+    int idx = (int)(mutex - s_mutex_pool);                          /**< 计算互斥锁在静态互斥锁池中的索引 */
     MINI_IGNORE_RESULT(osal_pool_release(&s_mutex_pool_ctrl, idx)); /**< 释放互斥锁索引 */
 }
 
@@ -813,15 +796,14 @@ __attribute__((unused)) static void osal_periodic_task_stub(void* param)
  * @param[in] core_id 忽略
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
-                     osal_task_entry_t entry, void* param, int core_id)
+int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id)
 {
-   MINI_UNUSED_PARAM(name);
-   MINI_UNUSED_PARAM(stack_size);
-   MINI_UNUSED_PARAM(priority);
-   MINI_UNUSED_PARAM(entry);
-   MINI_UNUSED_PARAM(param);
-   MINI_UNUSED_PARAM(core_id);
+    MINI_UNUSED_PARAM(name);
+    MINI_UNUSED_PARAM(stack_size);
+    MINI_UNUSED_PARAM(priority);
+    MINI_UNUSED_PARAM(entry);
+    MINI_UNUSED_PARAM(param);
+    MINI_UNUSED_PARAM(core_id);
     return OSAL_ERR_NOTSUPP;
 }
 
@@ -836,18 +818,17 @@ int osal_task_create(const char* name, uint32_t stack_size, uint32_t priority,
  * @param[out] out_handle 输出
  * @return OSAL_ERR_NOTSUPP
  */
-int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority,
-                            osal_task_entry_t entry, void* param, int core_id,
+int osal_task_create_handle(const char* name, uint32_t stack_size, uint32_t priority, osal_task_entry_t entry, void* param, int core_id,
                             osal_task_handle_t* out_handle)
 {
     if (!out_handle)
         return OSAL_ERR_INVAL;
-   MINI_UNUSED_PARAM(name);
-   MINI_UNUSED_PARAM(stack_size);
-   MINI_UNUSED_PARAM(priority);
-   MINI_UNUSED_PARAM(entry);
-   MINI_UNUSED_PARAM(param);
-   MINI_UNUSED_PARAM(core_id);
+    MINI_UNUSED_PARAM(name);
+    MINI_UNUSED_PARAM(stack_size);
+    MINI_UNUSED_PARAM(priority);
+    MINI_UNUSED_PARAM(entry);
+    MINI_UNUSED_PARAM(param);
+    MINI_UNUSED_PARAM(core_id);
     *out_handle = NULL;
     return OSAL_ERR_NOTSUPP;
 }
@@ -865,7 +846,7 @@ void osal_task_self_delete(void)
  * @brief 空操作
  * @param[in] task 忽略
  */
-void osal_task_delete(osal_task_handle_t task) {MINI_UNUSED_PARAM(task); }
+void osal_task_delete(osal_task_handle_t task) { MINI_UNUSED_PARAM(task); }
 
 /**
  * @brief 恒 false
@@ -874,7 +855,7 @@ void osal_task_delete(osal_task_handle_t task) {MINI_UNUSED_PARAM(task); }
  */
 bool osal_task_is_running(osal_task_handle_t task)
 {
-   MINI_UNUSED_PARAM(task);
+    MINI_UNUSED_PARAM(task);
     return false;
 }
 
@@ -885,7 +866,7 @@ bool osal_task_is_running(osal_task_handle_t task)
  */
 const char* osal_task_get_name(osal_task_handle_t task)
 {
-   MINI_UNUSED_PARAM(task);
+    MINI_UNUSED_PARAM(task);
     return "baremetal";
 }
 
@@ -896,7 +877,7 @@ const char* osal_task_get_name(osal_task_handle_t task)
  */
 uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
 {
-   MINI_UNUSED_PARAM(task);
+    MINI_UNUSED_PARAM(task);
     return 0U;
 }
 
@@ -908,8 +889,8 @@ uint32_t osal_task_get_stack_watermark(osal_task_handle_t task)
  */
 struct osal_sem
 {
-    MINI_ATOMIC_UINT signaled; /**< 信号量状态 (0=空, >0=有信号) */
-    bool from_pool; /**< 是否从池中分配 */
+    MINI_ATOMIC_UINT signaled;  /**< 信号量状态 (0=空, >0=有信号) */
+    bool             from_pool; /**< 是否从池中分配 */
 };
 
 _Static_assert(sizeof(struct osal_sem) <= OSAL_SEM_STORAGE_SIZE, "OSAL_SEM_STORAGE_SIZE too small");
@@ -920,8 +901,8 @@ _Static_assert(sizeof(struct osal_sem) <= OSAL_SEM_STORAGE_SIZE, "OSAL_SEM_STORA
  * @param[in] s_sem_used 信号量使用情况
  * @param[in] s_sem_pool_ctrl 信号量池控制
  */
-static struct osal_sem s_sem_pool[OSAL_SEM_POOL_SIZE] MINI_ALIGNED(4);
-static uint8_t s_sem_used[OSAL_SEM_POOL_SIZE] MINI_ALIGNED(4);
+static struct osal_sem             s_sem_pool[OSAL_SEM_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t                     s_sem_used[OSAL_SEM_POOL_SIZE] MINI_ALIGNED(4);
 static osal_pool_t s_sem_pool_ctrl MINI_ALIGNED(4);
 
 /**
@@ -1099,11 +1080,8 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
     if (item_size % sizeof(fifo_data_type) != 0)
         return NULL;
 
-    size_t elements_per_item =
-        item_size / sizeof(fifo_data_type); /**< 计算出一个消息 item 占用了多少个 FIFO 基础单元 */
-    size_t total_elements =
-        queue_len *
-        elements_per_item; /**< 计算总元素个数,因为底层fifo就没有%和//所以这里必须2的整数倍 */
+    size_t elements_per_item = item_size / sizeof(fifo_data_type); /**< 计算出一个消息 item 占用了多少个 FIFO 基础单元 */
+    size_t total_elements = queue_len * elements_per_item;         /**< 计算总元素个数,因为底层fifo就没有%和//所以这里必须2的整数倍 */
 
     if ((total_elements & (total_elements - 1)) != 0) /**< 判断总元素个数是否为2的整数倍 */
         MINI_TRAP();
@@ -1126,7 +1104,7 @@ osal_queue_handle_t osal_queue_create(size_t queue_len, size_t item_size)
 
     return (osal_queue_handle_t)queue;
 #else
-   MINI_UNUSED_PARAM(total_elements);
+    MINI_UNUSED_PARAM(total_elements);
     return NULL; /* 队列池未启用, 需在 Kconfig 设置基础队列数或开启 EVENT_BUS */
 #endif
 }
@@ -1143,7 +1121,7 @@ void osal_queue_delete(osal_queue_handle_t queue)
         return;
     MINI_IGNORE_RESULT(osal_pool_release(&s_queue_pool_ctrl, idx));
 #else
-   MINI_UNUSED_PARAM(queue);
+    MINI_UNUSED_PARAM(queue);
 #endif
 }
 
@@ -1186,7 +1164,7 @@ static bool queue_send_internal(osal_queue_handle_t queue, const void* item)
  */
 bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeout_ms)
 {
-   MINI_UNUSED_PARAM(timeout_ms);
+    MINI_UNUSED_PARAM(timeout_ms);
 
     if (osal_in_isr())
         return false;
@@ -1203,7 +1181,7 @@ bool osal_queue_send(osal_queue_handle_t queue, const void* item, uint32_t timeo
  */
 bool osal_queue_send_from_isr(osal_queue_handle_t queue, const void* item, bool* px_yield_required)
 {
-   MINI_UNUSED_PARAM(px_yield_required);
+    MINI_UNUSED_PARAM(px_yield_required);
     return queue_send_internal(queue, item);
 }
 
@@ -1297,6 +1275,313 @@ bool osal_queue_receive_from_isr(osal_queue_handle_t queue, void* item, bool* px
 }
 
 /* -------------------------------------------------------------------------- */
+/* 事件组 (CONFIG_OSAL_EVENT 门控; 裸机无内核支持, 用原子标志字 + CAS 自实现) */
+/* -------------------------------------------------------------------------- */
+#ifdef CONFIG_OSAL_EVENT
+/**
+ * @brief 裸机事件组
+ * @details 三个 RTOS 后端都内嵌内核对象, 本后端没有可用原语,
+ *          因此直接用一个 32 位原子标志字 + CAS 循环自己实现,
+ *          对外语义 (AND/OR、auto_clear、超时) 与三后端一致。
+ *          单核下并发只可能来自 ISR 与主流程之间, CAS 循环足以保证
+ *          置位/清位/消费三个动作不丢更新。
+ */
+struct osal_event
+{
+    MINI_ATOMIC_UINT  flags;      /**< 事件标志字 (原子) */
+    osal_event_mode_t mode;       /**< 创建期固定的 AND/OR 模式 */
+    bool              auto_clear; /**< 创建期固定的自动消费标志 */
+    bool              from_pool;  /**< 是否从池中分配 */
+};
+
+_Static_assert(sizeof(struct osal_event) <= OSAL_EVENT_STORAGE_SIZE, "OSAL_EVENT_STORAGE_SIZE too small");
+
+/**
+ * @brief 事件组池
+ */
+static struct osal_event             s_event_pool[OSAL_EVENT_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t                       s_event_used[OSAL_EVENT_POOL_SIZE] MINI_ALIGNED(4);
+static osal_pool_t s_event_pool_ctrl MINI_ALIGNED(4);
+
+/**
+ * @brief null OSAL 事件组池启动初始化
+ */
+mini_pre_execution(MINI_PRE_EXEC_PRIO_EVENT_POOL) static void osal_null_event_pool_boot_init(void)
+{
+    MINI_IGNORE_RESULT(osal_pool_init(&s_event_pool_ctrl, s_event_used, OSAL_EVENT_POOL_SIZE));
+}
+
+/**
+ * @brief 校验标志掩码 (非 0 且不越出 OSAL 可用位区)
+ * @param[in] bits 待校验掩码
+ * @return true 合法
+ * @details 本后端的标志字是全 32 位可用的, 但抽象层按四后端最小公约数
+ *          (FreeRTOS 只剩 bit0..23) 收口, 保证业务代码换后端不改行为;
+ *          见 osal.h 的 OSAL_EVENT_BITS / OSAL_EVENT_MASK。
+ */
+MINI_STATIC_INLINE bool osal_event_bits_valid(uint32_t bits) { return (bits != 0U) && ((bits & ~OSAL_EVENT_MASK) == 0U); }
+
+/**
+ * @brief 判定当前标志是否满足等待掩码
+ * @param[in] ev 事件组
+ * @param[in] cur 当前标志快照
+ * @param[in] bits 等待掩码
+ * @return true 满足
+ */
+MINI_STATIC_INLINE bool osal_null_event_satisfied(const struct osal_event* ev, uint32_t cur, uint32_t bits)
+{
+    if (ev->mode == OSAL_EVENT_AND)
+        return (cur & bits) == bits;
+    return (cur & bits) != 0U;
+}
+
+/**
+ * @brief 原子把 bits 并入标志字
+ * @param[in] ev 事件组
+ * @param[in] bits 要置位的掩码
+ * @details CAS 失败时 cur 已被刷成最新值, 重算 cur|bits 再试即可;
+ *          不用 fetch_or 是为了只依赖 compiler_compat.h 已有的原子宏集。
+ */
+MINI_STATIC_INLINE void osal_null_event_or(struct osal_event* ev, uint32_t bits)
+{
+    uint32_t cur = MINI_ATOMIC_LOAD(&ev->flags, MINI_RELAXED);
+    for (;;)
+    {
+        uint32_t want = cur | bits;
+        if (MINI_ATOMIC_CAS(&ev->flags, &cur, want, MINI_ACQ_REL, MINI_RELAXED))
+            return;
+    }
+}
+
+/**
+ * @brief 原子从标志字清掉 bits
+ * @param[in] ev 事件组
+ * @param[in] bits 要清除的掩码
+ */
+MINI_STATIC_INLINE void osal_null_event_and_not(struct osal_event* ev, uint32_t bits)
+{
+    uint32_t cur = MINI_ATOMIC_LOAD(&ev->flags, MINI_RELAXED);
+    for (;;)
+    {
+        uint32_t want = cur & ~bits;
+        if (MINI_ATOMIC_CAS(&ev->flags, &cur, want, MINI_ACQ_REL, MINI_RELAXED))
+            return;
+    }
+}
+
+/**
+ * @brief 单次非阻塞尝试: 满足则 (按需) 消费并回报相关位
+ * @param[in] ev 事件组
+ * @param[in] bits 等待掩码
+ * @param[out] out_bits 回传消费前的相关位 (可为 NULL)
+ * @return 满足 OSAL_OK; 未满足 OSAL_ERR_TIMEOUT
+ * @details "判定满足"与"消费位"必须在同一个 CAS 里完成: 否则两个
+ *          auto_clear 等待者可能都看到满足而重复消费同一组事件。
+ *          CAS 成功后 cur 仍是交换前的值, 正好用来回报。
+ */
+static int osal_null_event_try_wait(struct osal_event* ev, uint32_t bits, uint32_t* out_bits)
+{
+    uint32_t cur = MINI_ATOMIC_LOAD(&ev->flags, MINI_ACQUIRE);
+    for (;;)
+    {
+        if (!osal_null_event_satisfied(ev, cur, bits))
+            return OSAL_ERR_TIMEOUT;
+
+        uint32_t want = ev->auto_clear ? (cur & ~bits) : cur;
+        if (MINI_ATOMIC_CAS(&ev->flags, &cur, want, MINI_ACQ_REL, MINI_ACQUIRE))
+        {
+            if (out_bits != NULL)
+                *out_bits = cur & bits;
+            return OSAL_OK;
+        }
+        /* CAS 失败: cur 已刷新, 重新判定 (并发方可能刚置位或刚清位) */
+    }
+}
+
+/**
+ * @brief 池化事件组
+ * @param[out] out 输出
+ * @param[in] mode AND/OR 等待模式
+ * @param[in] auto_clear 等待成功后自动消费已满足的位
+ * @return OSAL_OK 或错误码
+ */
+int osal_event_create(struct osal_event** out, osal_event_mode_t mode, bool auto_clear)
+{
+    if (!out)
+        return OSAL_ERR_INVAL;
+    if (mode != OSAL_EVENT_OR && mode != OSAL_EVENT_AND)
+        return OSAL_ERR_INVAL;
+
+    int idx = osal_pool_claim(&s_event_pool_ctrl);
+    if (idx < 0)
+        return OSAL_ERR_NOMEM;
+
+    struct osal_event* ev = &s_event_pool[idx];
+    MINI_ATOMIC_STORE(&ev->flags, 0U, MINI_RELEASE); /**< 初始标志 0 */
+    ev->mode = mode;
+    ev->auto_clear = auto_clear;
+    ev->from_pool = true;
+    *out = ev;
+    return OSAL_OK;
+}
+
+/**
+ * @brief 静态存储事件组
+ * @param[out] out 输出
+ * @param[in] storage 存储
+ * @param[in] storage_size 大小
+ * @param[in] mode AND/OR 等待模式
+ * @param[in] auto_clear 等待成功后自动消费已满足的位
+ * @return OSAL_OK 或错误码
+ */
+int osal_event_create_static(struct osal_event** out, void* storage, size_t storage_size, osal_event_mode_t mode, bool auto_clear)
+{
+    if (!out || !storage || storage_size < sizeof(struct osal_event))
+        return OSAL_ERR_INVAL;
+    if (mode != OSAL_EVENT_OR && mode != OSAL_EVENT_AND)
+        return OSAL_ERR_INVAL;
+
+    struct osal_event* ev = (struct osal_event*)storage;
+    MINI_ATOMIC_STORE(&ev->flags, 0U, MINI_RELEASE);
+    ev->mode = mode;
+    ev->auto_clear = auto_clear;
+    ev->from_pool = false;
+    *out = ev;
+    return OSAL_OK;
+}
+
+/**
+ * @brief 销毁事件组
+ * @param[in] ev 事件组
+ * @details 裸机没有阻塞等待者队列 (wait 是忙等), 因此无需判忙;
+ *          清零标志后归还池槽, 池外/非法指针直接拒绍避免越界写。
+ */
+void osal_event_destroy(struct osal_event* ev)
+{
+    if (!ev)
+        return;
+
+    if (ev->from_pool)
+    {
+        if (ev < s_event_pool || ev >= &s_event_pool[OSAL_EVENT_POOL_SIZE])
+            return;
+
+        MINI_ATOMIC_STORE(&ev->flags, 0U, MINI_RELEASE);
+        int idx = (int)(ev - s_event_pool);
+        MINI_IGNORE_RESULT(osal_pool_release(&s_event_pool_ctrl, idx));
+    }
+}
+
+/**
+ * @brief 置位事件标志 (task 上下文)
+ * @param[in] ev 事件组
+ * @param[in] bits 要置位的掩码 (> 0, 仅 bit0..23)
+ * @return OSAL_OK 或错误码
+ * @details 裸机无调度器可唤醒, 置位后正在忙等的 osal_event_wait 会在
+ *          下一轮重试时自行看到。
+ */
+int osal_event_set(struct osal_event* ev, uint32_t bits)
+{
+    if (!ev || !osal_event_bits_valid(bits))
+        return OSAL_ERR_INVAL;
+
+    osal_null_event_or(ev, bits);
+    return OSAL_OK;
+}
+
+/**
+ * @brief 置位事件标志 (ISR 上下文, 裸机与 task 同构)
+ * @param[in] ev 事件组
+ * @param[in] bits 要置位的掩码 (> 0, 仅 bit0..23)
+ * @param[out] px_yield_required yield 标志 (裸机无调度, 忽略)
+ * @return OSAL_OK 或错误码
+ */
+int osal_event_set_from_isr(struct osal_event* ev, uint32_t bits, bool* px_yield_required)
+{
+    MINI_IGNORE_RESULT(px_yield_required);
+    return osal_event_set(ev, bits);
+}
+
+/**
+ * @brief 清除事件标志
+ * @param[in] ev 事件组
+ * @param[in] bits 要清除的掩码 (> 0, 仅 bit0..23)
+ * @return OSAL_OK 或错误码
+ */
+int osal_event_clear(struct osal_event* ev, uint32_t bits)
+{
+    if (!ev || !osal_event_bits_valid(bits))
+        return OSAL_ERR_INVAL;
+
+    osal_null_event_and_not(ev, bits);
+    return OSAL_OK;
+}
+
+/**
+ * @brief 读取当前事件标志 (不阻塞、不消费)
+ * @param[in] ev 事件组
+ * @param[out] out_bits 回传当前标志 (可为 NULL, 则仅做存在性检查)
+ * @return OSAL_OK 或错误码
+ */
+int osal_event_get(struct osal_event* ev, uint32_t* out_bits)
+{
+    if (!ev)
+        return OSAL_ERR_INVAL;
+    if (out_bits == NULL)
+        return OSAL_OK;
+
+    *out_bits = MINI_ATOMIC_LOAD(&ev->flags, MINI_ACQUIRE);
+    return OSAL_OK;
+}
+
+/**
+ * @brief 等待事件标志 (忙等)
+ * @param[in] ev 事件组
+ * @param[in] bits 等待的掩码 (> 0, 仅 bit0..23)
+ * @param[in] timeout_ms 超时毫秒 (0 = 不阻塞, OSAL_WAIT_FOREVER = 永久)
+ * @param[out] out_bits 回传实际已置位的相关位 (可为 NULL)
+ * @return 满足 OSAL_OK; 未满足/超时 OSAL_ERR_TIMEOUT; 参数非法 OSAL_ERR_INVAL
+ * @details 忙等结构与 osal_sem_wait 完全一致 (先试一次 → 0 超时直接返回 →
+ *          FOREVER 死循环 → 否则按 osal_time_ms 卡截止时间)。
+ * @note CONFIG_OSAL_NULL_WFI 开启时循环体走 WFI 省电, 但置位方必须来自
+ *       中断 (否则无人能唤醒 WFI), 与信号量/队列等待的限制相同。
+ */
+int osal_event_wait(struct osal_event* ev, uint32_t bits, uint32_t timeout_ms, uint32_t* out_bits)
+{
+    if (!ev || !osal_event_bits_valid(bits))
+        return OSAL_ERR_INVAL;
+
+    if (osal_null_event_try_wait(ev, bits, out_bits) == OSAL_OK)
+        return OSAL_OK;
+
+    if (timeout_ms == 0U)
+        return OSAL_ERR_TIMEOUT;
+
+    if (timeout_ms == OSAL_WAIT_FOREVER)
+    {
+        while (osal_null_event_try_wait(ev, bits, out_bits) != OSAL_OK)
+        {
+#ifdef CONFIG_OSAL_NULL_WFI
+            osal_null_wfi();
+#endif
+        }
+        return OSAL_OK;
+    }
+
+    uint32_t start = osal_time_ms();
+    while (osal_null_event_try_wait(ev, bits, out_bits) != OSAL_OK)
+    {
+        if ((osal_time_ms() - start) >= timeout_ms)
+            return OSAL_ERR_TIMEOUT;
+#ifdef CONFIG_OSAL_NULL_WFI
+        osal_null_wfi();
+#endif
+    }
+    return OSAL_OK;
+}
+#endif /* CONFIG_OSAL_EVENT */
+
+/* -------------------------------------------------------------------------- */
 /* 硬件安全关断 & 日志 */
 /* /** */
 /* @brief 弱符号硬件安全关断 (板级未覆盖时触发 trap) */
@@ -1327,7 +1612,7 @@ void osal_int_freeze(void) { (void)osal_null_irq_disable(); }
  */
 void osal_log(osal_log_level_t level, const char* tag, const char* fmt, ...)
 {
-   MINI_UNUSED_PARAM(level);
+    MINI_UNUSED_PARAM(level);
     if (!fmt)
         fmt = "(null)";
 

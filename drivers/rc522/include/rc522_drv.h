@@ -26,12 +26,12 @@ extern "C"
 /** 命令总数 */
 #define RC522_CMD_COUNT 2
 
-    /** @brief 卡片 UID（最长 10B，len 为有效长度） */
-    struct rc522_uid
-    {
-        uint8_t uid[10]; /**< UID 字节 */
-        uint8_t len; /**< 有效长度 */
-    };
+/** @brief 卡片 UID（最长 10B，len 为有效长度） */
+struct rc522_uid
+{
+    uint8_t uid[10]; /**< UID 字节 */
+    uint8_t len;     /**< 有效长度 */
+};
 #ifdef __cplusplus
 }
 #endif

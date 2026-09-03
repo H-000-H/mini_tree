@@ -33,16 +33,16 @@
 /** @brief HC-05 驱动实例（嵌入 fops） */
 struct hc05_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* uart_dev; /**< 所属 UART client 设备 */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         uart_dev; /**< 所属 UART client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct hc05_device s_hc05_pool[HC05_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_hc05_used[HC05_POOL_COUNT] MINI_ALIGNED(4);
+static struct hc05_device           s_hc05_pool[HC05_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                      s_hc05_used[HC05_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_hc05_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "hc05";
+static const char* const            k_tag = "hc05";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -57,17 +57,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void hc05_pool_boot_in
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct hc05_device* hc05_get_drvdata(struct device* pdev)
-{
-    return (struct hc05_device*)device_get_priv(pdev);
-}
+static struct hc05_device* hc05_get_drvdata(struct device* pdev) { return (struct hc05_device*)device_get_priv(pdev); }
 
 /**
  * @brief UART 双向传输（UART_CMD_TRANSFER）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int hc05_uart_xchg(struct hc05_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx,
-                          size_t rx_len, uint32_t timeout_ms)
+static int hc05_uart_xchg(struct hc05_device* dev, const uint8_t* tx, size_t tx_len, uint8_t* rx, size_t rx_len, uint32_t timeout_ms)
 {
     struct uart_transfer_arg arg;
     if (!dev || !dev->uart_dev)
@@ -115,9 +111,9 @@ static void hc05_hw_destroy(struct hc05_device* dev)
  */
 static int hc05_open(struct device* pdev, void* arg)
 {
-    struct hc05_device* dev;
+    struct hc05_device*   dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -149,9 +145,9 @@ static int hc05_open(struct device* pdev, void* arg)
  */
 static int hc05_close(struct device* pdev)
 {
-    struct hc05_device* dev;
+    struct hc05_device*   dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = hc05_get_drvdata(pdev);
@@ -197,10 +193,10 @@ static const struct hc05_ioctl_map s_hc05_map[HC05_CMD_COUNT] = {
  */
 static int hc05_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct hc05_device* dev;
+    struct hc05_device*   dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = hc05_get_drvdata(pdev);
@@ -233,7 +229,7 @@ static const struct file_operations hc05_fops = {
 static int hc05_probe(struct device* pdev)
 {
     struct hc05_device* dev;
-    int pool_idx, ret;
+    int                 pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_hc05_pool_ctrl);
@@ -269,9 +265,9 @@ err:
  */
 static int hc05_remove(struct device* pdev)
 {
-    struct hc05_device* dev;
+    struct hc05_device*   dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = hc05_get_drvdata(pdev);

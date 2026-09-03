@@ -25,7 +25,7 @@
 | :--- | :--- |
 | FreeRTOS 官方文档 | `CONFIG_OSAL_FREERTOS` 后端参考 |
 | RT-Thread 官方文档 | `CONFIG_OSAL_RTTHREAD` 后端参考 |
-| OSAL 三后端设计 | `osal/src/osal_{null,freertos,rtthread}.c` |
+| OSAL 四后端设计 | `osal/src/osal_{null,mini_os,freertos,rtthread}.c` |
 
 ---
 

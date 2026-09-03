@@ -30,25 +30,25 @@
 /** @brief CAN host 运行时描述符 (静态池, 含 HAL 嵌入 + atomic ref_count) */
 struct can_bus_host
 {
-    struct device* pdev; /**< 关联设备 */
-    struct hal_can_bus_host hal_host; /**< 嵌入 HAL host (非指针) */
-    MINI_ATOMIC_INT ref_count; /**< atomic 引用计数 */
+    struct device*          pdev;      /**< 关联设备 */
+    struct hal_can_bus_host hal_host;  /**< 嵌入 HAL host (非指针) */
+    MINI_ATOMIC_INT         ref_count; /**< atomic 引用计数 */
 };
 
 /** @brief CAN client 运行时描述符 (静态表, 按 device_id 索引) */
 struct can_bus_client
 {
-    struct device* pdev; /**< 关联设备 */
-    struct can_bus_host* host; /**< 所属 host */
-    struct hal_can_dev hal_dev; /**< HAL 设备对象 */
-    int hw_open; /**< 硬件打开计数 */
+    struct device*       pdev;    /**< 关联设备 */
+    struct can_bus_host* host;    /**< 所属 host */
+    struct hal_can_dev   hal_dev; /**< HAL 设备对象 */
+    int                  hw_open; /**< 硬件打开计数 */
 };
 
-static struct can_bus_host s_can_hosts[CAN_BUS_HOST_MAX];
-static uint8_t s_can_host_used[CAN_BUS_HOST_MAX];
-static osal_pool_t s_can_host_pool_ctrl;
+static struct can_bus_host   s_can_hosts[CAN_BUS_HOST_MAX];
+static uint8_t               s_can_host_used[CAN_BUS_HOST_MAX];
+static osal_pool_t           s_can_host_pool_ctrl;
 static struct can_bus_client s_can_clients[DEV_ID_COUNT];
-static const char* const k_tag = "can_bus";
+static const char* const     k_tag = "can_bus";
 
 /**
  * @brief CAN Host 池启动初始化
@@ -90,10 +90,10 @@ static struct can_bus_client* can_client_from_device(struct device* pdev)
 /* -------------------------------------------------------------------------- */
 /* controller_ops (host 级操作) */
 /* -------------------------------------------------------------------------- */
-static int can_host_init_impl(struct device* pdev, const void* cfg);
-static int can_host_deinit_impl(struct device* pdev);
-static int can_host_role_impl(struct device* pdev);
-static int can_client_register_impl(struct device* pdev, const void* cfg, void** out);
+static int  can_host_init_impl(struct device* pdev, const void* cfg);
+static int  can_host_deinit_impl(struct device* pdev);
+static int  can_host_role_impl(struct device* pdev);
+static int  can_client_register_impl(struct device* pdev, const void* cfg, void** out);
 static void can_client_unregister_impl(struct device* pdev);
 
 /**
@@ -116,9 +116,9 @@ static const struct bus_controller_ops s_can_controller_ops = {
 static int can_host_init_impl(struct device* pdev, const void* cfg)
 {
     const struct hal_can_bus_config* host_cfg;
-    struct can_bus_host* host;
-    int idx;
-    int ret;
+    struct can_bus_host*             host;
+    int                              idx;
+    int                              ret;
 
     if (!pdev || !cfg)
         return MINI_ERR_INVAL;
@@ -160,10 +160,7 @@ static int can_host_init_impl(struct device* pdev, const void* cfg)
     return MINI_OK;
 }
 
-int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg)
-{
-    return can_host_init_impl(pdev, cfg);
-}
+int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg) { return can_host_init_impl(pdev, cfg); }
 
 /**
  * @brief CAN 总线主机销毁实现
@@ -173,8 +170,8 @@ int can_bus_host_init(struct device* pdev, const struct hal_can_bus_config* cfg)
 static int can_host_deinit_impl(struct device* pdev)
 {
     struct can_bus_host* host;
-    int idx;
-    int ret;
+    int                  idx;
+    int                  ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -185,8 +182,7 @@ static int can_host_deinit_impl(struct device* pdev)
 
     if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0)
     {
-        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d",
-                 MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST));
+        SYS_LOGW(k_tag, "host deinit busy: ref_count=%d", MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST));
         return MINI_ERR_BUSY;
     }
 
@@ -225,9 +221,9 @@ static int can_host_role_impl(struct device* pdev)
 static int can_client_register_impl(struct device* pdev, const void* cfg, void** out)
 {
     struct bus_controller* ctlr;
-    struct can_bus_host* host;
+    struct can_bus_host*   host;
     struct can_bus_client* client;
-    int id;
+    int                    id;
 
     MINI_IGNORE_RESULT(cfg);
 
@@ -265,10 +261,7 @@ static int can_client_register_impl(struct device* pdev, const void* cfg, void**
     return MINI_OK;
 }
 
-int can_bus_client_register(struct device* pdev, struct can_bus_client** out)
-{
-    return can_client_register_impl(pdev, NULL, (void**)out);
-}
+int can_bus_client_register(struct device* pdev, struct can_bus_client** out) { return can_client_register_impl(pdev, NULL, (void**)out); }
 
 /**
  * @brief CAN 总线客户端销毁实现 (关 hw / 减 host 引用 / 清槽)
@@ -277,7 +270,7 @@ int can_bus_client_register(struct device* pdev, struct can_bus_client** out)
 static void can_client_unregister_impl(struct device* pdev)
 {
     struct can_bus_client* client;
-    struct can_bus_host* host;
+    struct can_bus_host*   host;
 
     client = can_client_from_device(pdev);
     if (!client)
@@ -301,7 +294,7 @@ void can_bus_client_unregister(struct device* pdev) { can_client_unregister_impl
 int can_bus_open(struct device* pdev)
 {
     struct can_bus_client* client;
-    int ret;
+    int                    ret;
 
     client = can_client_from_device(pdev);
     if (!client)
@@ -349,8 +342,7 @@ int can_bus_transmit(struct device* pdev, const struct can_frame* frame, uint32_
     return hal_can_transmit(&client->hal_dev, frame, timeout_ms);
 }
 
-int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo,
-                    uint32_t timeout_ms)
+int can_bus_receive(struct device* pdev, struct can_frame* frame, uint32_t fifo, uint32_t timeout_ms)
 {
     struct can_bus_client* client;
 

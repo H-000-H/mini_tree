@@ -24,14 +24,14 @@ extern "C"
 /** 命令总数 */
 #define PN532_CMD_COUNT 1
 
-    /** @brief PN532 固件版本信息 */
-    struct pn532_fw
-    {
-        uint8_t ic; /**< IC 型号 */
-        uint8_t ver; /**< 主版本 */
-        uint8_t rev; /**< 修订版本 */
-        uint8_t support; /**< 支持位图 */
-    };
+/** @brief PN532 固件版本信息 */
+struct pn532_fw
+{
+    uint8_t ic;      /**< IC 型号 */
+    uint8_t ver;     /**< 主版本 */
+    uint8_t rev;     /**< 修订版本 */
+    uint8_t support; /**< 支持位图 */
+};
 #ifdef __cplusplus
 }
 #endif

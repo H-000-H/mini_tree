@@ -25,13 +25,13 @@ extern "C"
 /** 命令总数 */
 #define FT5X06_CMD_COUNT 1
 
-    /** @brief FT5x06 触摸结果（首触点坐标） */
-    struct ft5x06_touch
-    {
-        uint8_t points; /**< 有效触点数量（0=无触摸） */
-        uint16_t pos_x; /**< 首触点 X 坐标 */
-        uint16_t pos_y; /**< 首触点 Y 坐标 */
-    };
+/** @brief FT5x06 触摸结果（首触点坐标） */
+struct ft5x06_touch
+{
+    uint8_t  points; /**< 有效触点数量（0=无触摸） */
+    uint16_t pos_x;  /**< 首触点 X 坐标 */
+    uint16_t pos_y;  /**< 首触点 Y 坐标 */
+};
 #ifdef __cplusplus
 }
 #endif

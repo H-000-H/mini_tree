@@ -24,12 +24,12 @@ extern "C"
 /** 命令总数 */
 #define DRV8833_CMD_COUNT 1
 
-    /** @brief 电机选择与方向参数 */
-    struct drv8833_motor
-    {
-        int motor; /**< 电机编号（0/1） */
-        int fwd; /**< 方向：1=正转，0=反转 */
-    };
+/** @brief 电机选择与方向参数 */
+struct drv8833_motor
+{
+    int motor; /**< 电机编号（0/1） */
+    int fwd;   /**< 方向：1=正转，0=反转 */
+};
 #ifdef __cplusplus
 }
 #endif

@@ -23,42 +23,42 @@
 extern "C"
 {
 #endif
-    /* -------------------------------------------------------------------------- */
-    /* 宏定义 */
-    /* -------------------------------------------------------------------------- */
-    /**
-     * @brief SysTick 寄存器基址 (Cortex-M SCS 私有外设总线, 架构固定)
-     * @note  默认 0xE000E010; 板级/工程可通过编译宏覆盖 (视为写死, 亦可经 DTS 注入)
-     */
+/* -------------------------------------------------------------------------- */
+/* 宏定义 */
+/* -------------------------------------------------------------------------- */
+/**
+ * @brief SysTick 寄存器基址 (Cortex-M SCS 私有外设总线, 架构固定)
+ * @note  默认 0xE000E010; 板级/工程可通过编译宏覆盖 (视为写死, 亦可经 DTS 注入)
+ */
 #ifndef HAL_SYSTICK_BASE
 #define HAL_SYSTICK_BASE 0xE000E010u
 #endif
 
-    /* -------------------------------------------------------------------------- */
-    /* 硬件直投层核心 API */
-    /* -------------------------------------------------------------------------- */
-    /**
-     * @brief 初始化并启动 SysTick
-     * @param[in] tick_hz tick 中断频率 (Hz), 来自 DTS chosen tick-rate (DTC_GEN_TICK_RATE_HZ)
-     * @return MINI_OK 成功; MINI_ERR_NOTSUPP 平台无 SysTick (非 Cortex-M); 负的 VFS_ERR_* 配置失败
-     * @note  CPU 主频从 DTS /cpus/cpu@0 clock-frequency (DTC_GEN_CPU_CLOCK_HZ) 读取,
-     *        由此计算 LOAD 装载值; 非 Cortex-M 平台返回 MINI_ERR_NOTSUPP, 调度器回退 DTS chosen
-     * TIM。
-     */
-    int MINI_WARN_UNUSED_RESULT hal_systick_init(uint32_t tick_hz);
+/* -------------------------------------------------------------------------- */
+/* 硬件直投层核心 API */
+/* -------------------------------------------------------------------------- */
+/**
+ * @brief 初始化并启动 SysTick
+ * @param[in] tick_hz tick 中断频率 (Hz), 来自 DTS chosen tick-rate (DTC_GEN_TICK_RATE_HZ)
+ * @return MINI_OK 成功; MINI_ERR_NOTSUPP 平台无 SysTick (非 Cortex-M); 负的 VFS_ERR_* 配置失败
+ * @note  CPU 主频从 DTS /cpus/cpu@0 clock-frequency (DTC_GEN_CPU_CLOCK_HZ) 读取,
+ *        由此计算 LOAD 装载值; 非 Cortex-M 平台返回 MINI_ERR_NOTSUPP, 调度器回退 DTS chosen
+ * TIM。
+ */
+int MINI_WARN_UNUSED_RESULT hal_systick_init(uint32_t tick_hz);
 
-    /**
-     * @brief 停止并关闭 SysTick
-     * @return MINI_OK 成功
-     */
-    int MINI_WARN_UNUSED_RESULT hal_systick_deinit(void);
+/**
+ * @brief 停止并关闭 SysTick
+ * @return MINI_OK 成功
+ */
+int MINI_WARN_UNUSED_RESULT hal_systick_deinit(void);
 
-    /**
-     * @brief SysTick 中断业务钩子 — 由 SysTick_Handler 调用
-     * @note  默认空实现 (weak); 使用方 (如调度器) 以强符号覆盖, 在其中累加系统滴答。
-     *        之所以留空: SysTick 中断如何驱动业务 (累加 tick) 由上层决定, HAL 不耦合具体调度器。
-     */
-    void hal_systick_irq_handler(void);
+/**
+ * @brief SysTick 中断业务钩子 — 由 SysTick_Handler 调用
+ * @note  默认空实现 (weak); 使用方 (如调度器) 以强符号覆盖, 在其中累加系统滴答。
+ *        之所以留空: SysTick 中断如何驱动业务 (累加 tick) 由上层决定, HAL 不耦合具体调度器。
+ */
+void hal_systick_irq_handler(void);
 
 #ifdef __cplusplus
 }

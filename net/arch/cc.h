@@ -28,11 +28,11 @@ extern "C"
 {
 #endif
 
-    /* -------------------------------------------------------------------------- */
-    /* sys_prot_t: lwIP 轻量级临界区保护 (SYS_ARCH_PROTECT) 的状态类型。           */
-    /* uint32_t 足以容纳各后端关中断前的 primask 状态。加上我也不喜欢u16这种写法     */
-    /* -------------------------------------------------------------------------- */
-    typedef uint32_t sys_prot_t;
+/* -------------------------------------------------------------------------- */
+/* sys_prot_t: lwIP 轻量级临界区保护 (SYS_ARCH_PROTECT) 的状态类型。           */
+/* uint32_t 足以容纳各后端关中断前的 primask 状态。加上我也不喜欢u16这种写法     */
+/* -------------------------------------------------------------------------- */
+typedef uint32_t sys_prot_t;
 
 /* -------------------------------------------------------------------------- */
 /* 格式化输出占位符宏 (lwIP 内部 LWIP_PLATFORM_DIAG 用)                        */
@@ -61,27 +61,27 @@ extern "C"
 #define PACK_STRUCT_END
 #define PACK_STRUCT_FIELD(x) x
 
-    /* -------------------------------------------------------------------------- */
-    /* 诊断输出 / 断言 (走 OSAL, 轻量且后端统一)                                  */
-    /*   LWIP_PLATFORM_DIAG(x) 的 x 是 "(fmt, args...)" 双括号形式;                */
-    /* -------------------------------------------------------------------------- */
-    /**
-     * @brief lwIP 诊断输出
-     * @param[in] x 双括号形式的参数列表 (fmt, args...)
-     */
-    void lwip_diag(const char* fmt, ...);
+/* -------------------------------------------------------------------------- */
+/* 诊断输出 / 断言 (走 OSAL, 轻量且后端统一)                                  */
+/*   LWIP_PLATFORM_DIAG(x) 的 x 是 "(fmt, args...)" 双括号形式;                */
+/* -------------------------------------------------------------------------- */
+/**
+ * @brief lwIP 诊断输出
+ * @param[in] x 双括号形式的参数列表 (fmt, args...)
+ */
+void lwip_diag(const char* fmt, ...);
 
-#define LWIP_PLATFORM_DIAG(x)                                                                      \
-    do                                                                                             \
-    {                                                                                              \
-        lwip_diag x;                                                                               \
+#define LWIP_PLATFORM_DIAG(x)                                                                                                                        \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        lwip_diag x;                                                                                                                                 \
     } while (0)
-#define LWIP_PLATFORM_ASSERT(x)                                                                    \
-    do                                                                                             \
-    {                                                                                              \
-        SYS_LOGE("lwIP", "Assertion \"%s\" failed at line %d in %s", x, __LINE__, __FILE__);       \
-        while (1)                                                                                  \
-            ;                                                                                      \
+#define LWIP_PLATFORM_ASSERT(x)                                                                                                                      \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        SYS_LOGE("lwIP", "Assertion \"%s\" failed at line %d in %s", x, __LINE__, __FILE__);                                                         \
+        while (1)                                                                                                                                    \
+            ;                                                                                                                                        \
     } while (0)
 
 /* -------------------------------------------------------------------------- */

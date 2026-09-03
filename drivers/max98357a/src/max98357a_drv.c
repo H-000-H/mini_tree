@@ -34,15 +34,15 @@
 /** @brief MAX98357A 驱动实例（嵌入 fops 与 SDN 引脚） */
 struct max98357a_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* sdn_dev; /**< SDN 引脚 GPIO 设备（phandle: sdn-gpio） */
-    struct vfs_gpio_arg sdn_gpio; /**< SDN 引脚操作参数 */
-    int active_level; /**< 使能有效电平（DTS active-level） */
-    int hw_ready; /**< 硬件已初始化标志 */
+    struct file_operations ops;          /**< 挂入 device 的 fops */
+    struct device*         sdn_dev;      /**< SDN 引脚 GPIO 设备（phandle: sdn-gpio） */
+    struct vfs_gpio_arg    sdn_gpio;     /**< SDN 引脚操作参数 */
+    int                    active_level; /**< 使能有效电平（DTS active-level） */
+    int                    hw_ready;     /**< 硬件已初始化标志 */
 };
 
-static struct max98357a_device s_max98357a_pool[MAX98357A_COUNT] MINI_ALIGNED(4);
-static uint8_t s_max98357a_used[MAX98357A_COUNT] MINI_ALIGNED(4);
+static struct max98357a_device           s_max98357a_pool[MAX98357A_COUNT] MINI_ALIGNED(4);
+static uint8_t                           s_max98357a_used[MAX98357A_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_max98357a_pool_ctrl MINI_ALIGNED(4);
 
 static const char* const k_tag = "max98357a";
@@ -60,10 +60,7 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void max98357a_pool_bo
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct max98357a_device* max98357a_get_drvdata(struct device* pdev)
-{
-    return (struct max98357a_device*)device_get_priv(pdev);
-}
+static struct max98357a_device* max98357a_get_drvdata(struct device* pdev) { return (struct max98357a_device*)device_get_priv(pdev); }
 
 /**
  * @brief 设置 SDN 电平（按有效极性换算）
@@ -132,9 +129,9 @@ static void max98357a_hw_destroy(struct max98357a_device* amp)
 static int max98357a_open(struct device* pdev, void* arg)
 {
     struct max98357a_device* amp;
-    struct dev_lifecycle* lc;
-    int first;
-    int ret;
+    struct dev_lifecycle*    lc;
+    int                      first;
+    int                      ret;
 
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
@@ -173,8 +170,8 @@ static int max98357a_open(struct device* pdev, void* arg)
 static int max98357a_close(struct device* pdev)
 {
     struct max98357a_device* amp;
-    struct dev_lifecycle* lc;
-    int last;
+    struct dev_lifecycle*    lc;
+    int                      last;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -201,8 +198,7 @@ static int max98357a_close(struct device* pdev)
 /**
  * @brief MAX98357A_CMD_SET_ENABLE 实现：功放使能/关闭
  */
-static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms)
+static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     MINI_IGNORE_RESULT(timeout_ms);
     if (!amp || !arg || arg_len != sizeof(int))
@@ -215,8 +211,7 @@ static int max98357a_cmd_set_enable(struct max98357a_device* amp, void* arg, siz
 /**
  * @brief ioctl 命令分发类型（命令处理函数由 map 绑定）
  */
-typedef int (*max98357a_ioctl_fn_t)(struct max98357a_device* amp, void* arg, size_t arg_len,
-                                    uint32_t timeout_ms);
+typedef int (*max98357a_ioctl_fn_t)(struct max98357a_device* amp, void* arg, size_t arg_len, uint32_t timeout_ms);
 
 struct max98357a_ioctl_map
 {
@@ -230,13 +225,12 @@ static const struct max98357a_ioctl_map s_max98357a_ioctl_map[MAX98357A_CMD_COUN
 /**
  * @brief fops.ioctl：查表分发命令，持 io 生命周期锁
  */
-static int max98357a_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
-                           uint32_t timeout_ms)
+static int max98357a_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
 {
     struct max98357a_device* amp;
-    struct dev_lifecycle* lc;
-    int32_t offset;
-    int ret;
+    struct dev_lifecycle*    lc;
+    int32_t                  offset;
+    int                      ret;
 
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -301,10 +295,10 @@ static const struct file_operations max98357a_fops = {
 static int max98357a_probe(struct device* pdev)
 {
     struct max98357a_device* amp;
-    struct device* sdn_dev;
-    int active = 1;
-    int pool_idx;
-    int ret;
+    struct device*           sdn_dev;
+    int                      active = 1;
+    int                      pool_idx;
+    int                      ret;
 
     if (!pdev)
         return MINI_ERR_INVAL;
@@ -334,8 +328,7 @@ static int max98357a_probe(struct device* pdev)
     amp->ops = max98357a_fops;
     pdev->ops = &amp->ops;
 
-    SYS_LOGI(k_tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev),
-             amp->active_level);
+    SYS_LOGI(k_tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev), amp->active_level);
     return MINI_OK;
 
 err_pool:
@@ -351,8 +344,8 @@ err_pool:
 static int max98357a_remove(struct device* pdev)
 {
     struct max98357a_device* amp;
-    struct dev_lifecycle* lc;
-    int pool_idx;
+    struct dev_lifecycle*    lc;
+    int                      pool_idx;
 
     if (!pdev)
         return MINI_ERR_INVAL;

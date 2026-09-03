@@ -34,29 +34,29 @@
 /** @brief BMP280 驱动实例（嵌入 fops 与校准系数） */
 struct bmp280_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
-    uint16_t dig_T1; /**< 温度校准 T1（小端） */
-    int16_t dig_T2; /**< 温度校准 T2 */
-    int16_t dig_T3; /**< 温度校准 T3 */
-    uint16_t dig_P1; /**< 气压校准 P1 */
-    int16_t dig_P2; /**< 气压校准 P2 */
-    int16_t dig_P3; /**< 气压校准 P3 */
-    int16_t dig_P4; /**< 气压校准 P4 */
-    int16_t dig_P5; /**< 气压校准 P5 */
-    int16_t dig_P6; /**< 气压校准 P6 */
-    int16_t dig_P7; /**< 气压校准 P7 */
-    int16_t dig_P8; /**< 气压校准 P8 */
-    int16_t dig_P9; /**< 气压校准 P9 */
-    int32_t t_fine; /**< 温度补偿中间量（共享给 P） */
-    int calib_ok; /**< 校准参数已加载 */
-    int hw_ready; /**< 硬件已初始化标志 */
+    struct file_operations ops;      /**< 挂入 device 的 fops */
+    struct device*         i2c_dev;  /**< 所属 I2C client 设备 */
+    uint16_t               dig_T1;   /**< 温度校准 T1（小端） */
+    int16_t                dig_T2;   /**< 温度校准 T2 */
+    int16_t                dig_T3;   /**< 温度校准 T3 */
+    uint16_t               dig_P1;   /**< 气压校准 P1 */
+    int16_t                dig_P2;   /**< 气压校准 P2 */
+    int16_t                dig_P3;   /**< 气压校准 P3 */
+    int16_t                dig_P4;   /**< 气压校准 P4 */
+    int16_t                dig_P5;   /**< 气压校准 P5 */
+    int16_t                dig_P6;   /**< 气压校准 P6 */
+    int16_t                dig_P7;   /**< 气压校准 P7 */
+    int16_t                dig_P8;   /**< 气压校准 P8 */
+    int16_t                dig_P9;   /**< 气压校准 P9 */
+    int32_t                t_fine;   /**< 温度补偿中间量（共享给 P） */
+    int                    calib_ok; /**< 校准参数已加载 */
+    int                    hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static struct bmp280_device           s_bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_bmp280_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "bmp280";
+static const char* const              k_tag = "bmp280";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -71,10 +71,7 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void bmp280_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct bmp280_device* bmp280_get_drvdata(struct device* pdev)
-{
-    return (struct bmp280_device*)device_get_priv(pdev);
-}
+static struct bmp280_device* bmp280_get_drvdata(struct device* pdev) { return (struct bmp280_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
@@ -84,8 +81,7 @@ static struct bmp280_device* bmp280_get_drvdata(struct device* pdev)
  * @param[in] timeout_ms 超时（ms）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len,
-                         uint32_t timeout_ms)
+static int bmp280_i2c_wr(struct bmp280_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
         return MINI_ERR_INVAL;
@@ -111,8 +107,7 @@ static int bmp280_i2c_rd(struct bmp280_device* dev, uint8_t* rx, size_t len, uin
  * @param[in] start 起始寄存器地址
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* buf, size_t len,
-                            uint32_t timeout_ms)
+static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* buf, size_t len, uint32_t timeout_ms)
 {
     int ret = bmp280_i2c_wr(dev, &start, 1, timeout_ms);
     if (ret != MINI_OK)
@@ -127,7 +122,7 @@ static int bmp280_read_regs(struct bmp280_device* dev, uint8_t start, uint8_t* b
 static int bmp280_load_calib(struct bmp280_device* dev, uint32_t timeout_ms)
 {
     uint8_t calib_raw[24];
-    int ret = bmp280_read_regs(dev, BMP280_REG_DIG_T1, calib_raw, sizeof(calib_raw), timeout_ms);
+    int     ret = bmp280_read_regs(dev, BMP280_REG_DIG_T1, calib_raw, sizeof(calib_raw), timeout_ms);
     if (ret != MINI_OK)
         return ret;
     dev->dig_T1 = (uint16_t)(calib_raw[0] | ((uint16_t)calib_raw[1] << 8));
@@ -157,10 +152,7 @@ static int32_t bmp280_compensate_t(struct bmp280_device* dev, int32_t adc_t)
     int32_t var1;
     int32_t var2;
     var1 = ((((adc_t >> 3) - ((int32_t)dev->dig_T1 << 1))) * ((int32_t)dev->dig_T2)) >> 11;
-    var2 = (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >>
-             12) *
-            ((int32_t)dev->dig_T3)) >>
-           14;
+    var2 = (((((adc_t >> 4) - ((int32_t)dev->dig_T1)) * ((adc_t >> 4) - ((int32_t)dev->dig_T1))) >> 12) * ((int32_t)dev->dig_T3)) >> 14;
     dev->t_fine = var1 + var2;
     return (dev->t_fine * 5 + 128) >> 8; /* 0.01°C */
 }
@@ -197,7 +189,7 @@ static uint32_t bmp280_compensate_p(struct bmp280_device* dev, int32_t adc_p)
  */
 static int bmp280_hw_create(struct bmp280_device* dev)
 {
-    int ret;
+    int           ret;
     const uint8_t soft_rst[2] = {BMP280_REG_SOFT_RESET, BMP280_SOFT_RESET_VAL};
     if (!dev)
         return MINI_ERR_INVAL;
@@ -243,7 +235,7 @@ static int bmp280_open(struct device* pdev, void* arg)
 {
     struct bmp280_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -277,7 +269,7 @@ static int bmp280_close(struct device* pdev)
 {
     struct bmp280_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);
@@ -309,13 +301,13 @@ struct bmp280_ioctl_map
  */
 static int bmp280_cmd_read(struct bmp280_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    const uint8_t ctrl[2] = {BMP280_REG_CTRL_MEAS, BMP280_CTRL_FORCED_X1};
-    uint8_t raw[6];
+    const uint8_t         ctrl[2] = {BMP280_REG_CTRL_MEAS, BMP280_CTRL_FORCED_X1};
+    uint8_t               raw[6];
     struct bmp280_sample* sample = (struct bmp280_sample*)arg;
-    int ret;
-    int32_t adc_p;
-    int32_t adc_t;
-    int32_t t_x100;
+    int                   ret;
+    int32_t               adc_p;
+    int32_t               adc_t;
+    int32_t               t_x100;
     if (!dev->hw_ready || !dev->calib_ok || !sample || len != sizeof(*sample))
         return MINI_ERR_INVAL;
     ret = bmp280_i2c_wr(dev, ctrl, 2, timeout_ms);
@@ -344,8 +336,8 @@ static int bmp280_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct bmp280_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);
@@ -378,7 +370,7 @@ static const struct file_operations bmp280_fops = {
 static int bmp280_probe(struct device* pdev)
 {
     struct bmp280_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_bmp280_pool_ctrl);
@@ -416,7 +408,7 @@ static int bmp280_remove(struct device* pdev)
 {
     struct bmp280_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = bmp280_get_drvdata(pdev);

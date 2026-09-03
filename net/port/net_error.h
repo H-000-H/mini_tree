@@ -17,12 +17,12 @@ extern "C"
 {
 #endif
 
-#define NET_OK 0 /**< 成功 */
-#define NET_ERR_INVAL (-EINVAL) /**< 入参非法 (指针为 NULL、长度为 0、枚举越界) */
-#define NET_ERR_CONN (-ENOTCONN) /**< 链路错误 (未连接即收发 / 对端断开 / 建连失败) */
+#define NET_OK 0                     /**< 成功 */
+#define NET_ERR_INVAL (-EINVAL)      /**< 入参非法 (指针为 NULL、长度为 0、枚举越界) */
+#define NET_ERR_CONN (-ENOTCONN)     /**< 链路错误 (未连接即收发 / 对端断开 / 建连失败) */
 #define NET_ERR_TIMEOUT (-ETIMEDOUT) /**< 等待超时 (TCP 建连 / 响应接收 / TX FIFO 腾挪) */
-#define NET_ERR_NOSPC (-ENOSPC) /**< 缓冲不足 (请求头组装 / 报文序列化放不下) */
-#define NET_ERR_STATE (-EISCONN) /**< 状态冲突 (已连接/建连中重复发起连接) */
+#define NET_ERR_NOSPC (-ENOSPC)      /**< 缓冲不足 (请求头组装 / 报文序列化放不下) */
+#define NET_ERR_STATE (-EISCONN)     /**< 状态冲突 (已连接/建连中重复发起连接) */
 
 #ifdef __cplusplus
 }

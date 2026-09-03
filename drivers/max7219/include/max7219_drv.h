@@ -34,19 +34,19 @@ extern "C"
 /** 命令总数 */
 #define MAX7219_CMD_COUNT 4
 
-    /** @brief 单 digit 写入参数 */
-    struct max7219_digit
-    {
-        uint8_t digit; /**< 位号 1..8 */
-        uint8_t value; /**< 段值（按芯片段编码） */
-    };
+/** @brief 单 digit 写入参数 */
+struct max7219_digit
+{
+    uint8_t digit; /**< 位号 1..8 */
+    uint8_t value; /**< 段值（按芯片段编码） */
+};
 
-    /** 8 行点阵，每字节一行（MSB=左） */
-    struct max7219_fb
-    {
-        const uint8_t* rows; /**< 长度 MAX7219_MATRIX_BYTES */
-        size_t len; /**< 帧长度 */
-    };
+/** 8 行点阵，每字节一行（MSB=左） */
+struct max7219_fb
+{
+    const uint8_t* rows; /**< 长度 MAX7219_MATRIX_BYTES */
+    size_t         len;  /**< 帧长度 */
+};
 
 #ifdef __cplusplus
 }

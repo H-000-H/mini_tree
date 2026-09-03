@@ -27,49 +27,49 @@ extern "C"
 #endif
 
 #define I2C_CMD_BASE MINI_MAGIC(I2C)
-#define I2C_CMD_TRANSFER I2C_CMD_BASE + 0x01 /**< Master 同步传输 (arg.xfer_mode 可选) */
-#define I2C_CMD_QUEUE_TX I2C_CMD_BASE + 0x02 /**< Slave: 入队发送 */
+#define I2C_CMD_TRANSFER I2C_CMD_BASE + 0x01         /**< Master 同步传输 (arg.xfer_mode 可选) */
+#define I2C_CMD_QUEUE_TX I2C_CMD_BASE + 0x02         /**< Slave: 入队发送 */
 #define I2C_CMD_GET_TRANS_RESULT I2C_CMD_BASE + 0x03 /**< Slave: 取传输结果 */
-#define I2C_CMD_SET_XFER_MODE                                                                      \
-    I2C_CMD_BASE + 0x04 /**< 设置后续 write/read/transfer 的 xfer_mode                        \
-                         */
+#define I2C_CMD_SET_XFER_MODE                                                                                                                        \
+    I2C_CMD_BASE + 0x04                           /**< 设置后续 write/read/transfer 的 xfer_mode                                                \
+                                                   */
 #define I2C_CMD_GET_XFER_MODE I2C_CMD_BASE + 0x05 /**< 查询当前 xfer_mode */
 #define I2C_CMD_COUNT 5
 
 /** 与 HAL_I2C_XFER_* 同值 */
 #define I2C_XFER_AUTO 0U /**< 隐式: DMA 可用则 DMA, 否则 poll */
 #define I2C_XFER_POLL 1U /**< 强制 poll */
-#define I2C_XFER_DMA 2U /**< 强制 DMA, 不可用返回 NOTSUPP */
+#define I2C_XFER_DMA 2U  /**< 强制 DMA, 不可用返回 NOTSUPP */
 
-    /** @brief I2C 传输参数 (ioctl TRANSFER) */
-    struct i2c_transfer_arg
-    {
-        const uint8_t* tx; /**< 发送缓冲区 (可为 NULL) */
-        uint8_t* rx; /**< 接收缓冲区 (可为 NULL) */
-        size_t len; /**< 传输字节数 */
-        uint32_t xfer_mode; /**< AUTO 时用 client 偏好 */
-    };
+/** @brief I2C 传输参数 (ioctl TRANSFER) */
+struct i2c_transfer_arg
+{
+    const uint8_t* tx;        /**< 发送缓冲区 (可为 NULL) */
+    uint8_t*       rx;        /**< 接收缓冲区 (可为 NULL) */
+    size_t         len;       /**< 传输字节数 */
+    uint32_t       xfer_mode; /**< AUTO 时用 client 偏好 */
+};
 
-    /** @brief I2C 传输模式切换参数 (ioctl SET_XFER_MODE / GET_XFER_MODE) */
-    struct i2c_xfer_mode_arg
-    {
-        uint32_t xfer_mode; /**< I2C_XFER_AUTO / POLL / DMA */
-    };
+/** @brief I2C 传输模式切换参数 (ioctl SET_XFER_MODE / GET_XFER_MODE) */
+struct i2c_xfer_mode_arg
+{
+    uint32_t xfer_mode; /**< I2C_XFER_AUTO / POLL / DMA */
+};
 
-    /** @brief I2C 写队列参数 (ioctl WRITE) */
-    struct i2c_queue_arg
-    {
-        const uint8_t* data; /**< 待发送数据 */
-        size_t len; /**< 数据长度 */
-    };
+/** @brief I2C 写队列参数 (ioctl WRITE) */
+struct i2c_queue_arg
+{
+    const uint8_t* data; /**< 待发送数据 */
+    size_t         len;  /**< 数据长度 */
+};
 
-    /** @brief I2C 读结果参数 (ioctl READ) */
-    struct i2c_trans_result_arg
-    {
-        uint8_t* data; /**< 接收缓冲区 */
-        size_t len; /**< 缓冲区容量 */
-        size_t* trans_len; /**< 输出: 实际接收字节数 */
-    };
+/** @brief I2C 读结果参数 (ioctl READ) */
+struct i2c_trans_result_arg
+{
+    uint8_t* data;      /**< 接收缓冲区 */
+    size_t   len;       /**< 缓冲区容量 */
+    size_t*  trans_len; /**< 输出: 实际接收字节数 */
+};
 
 #ifdef __cplusplus
 }

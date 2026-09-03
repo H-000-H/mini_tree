@@ -24,13 +24,13 @@ extern "C"
 /** 命令总数 */
 #define INA219_CMD_COUNT 1
 
-    /** @brief INA219 电源监测结果 */
-    struct ina219_sample
-    {
-        int16_t bus_mV; /**< 总线电压，mV */
-        int16_t current_mA; /**< 分流电流，mA */
-        int16_t power_mW; /**< 功率，mW */
-    };
+/** @brief INA219 电源监测结果 */
+struct ina219_sample
+{
+    int16_t bus_mV;     /**< 总线电压，mV */
+    int16_t current_mA; /**< 分流电流，mA */
+    int16_t power_mW;   /**< 功率，mW */
+};
 #ifdef __cplusplus
 }
 #endif

@@ -26,21 +26,21 @@ extern "C"
 /** 命令总数 */
 #define RS485_MODBUS_CMD_COUNT 2
 
-    /** @brief Modbus 读保持寄存器参数 */
-    struct modbus_read
-    {
-        uint8_t slave; /**< 从站地址（1..247） */
-        uint16_t addr; /**< 寄存器地址（0 基） */
-        uint16_t value; /**< 读回值（回填） */
-    };
+/** @brief Modbus 读保持寄存器参数 */
+struct modbus_read
+{
+    uint8_t  slave; /**< 从站地址（1..247） */
+    uint16_t addr;  /**< 寄存器地址（0 基） */
+    uint16_t value; /**< 读回值（回填） */
+};
 
-    /** @brief Modbus 写单寄存器参数 */
-    struct modbus_write
-    {
-        uint8_t slave; /**< 从站地址（1..247） */
-        uint16_t addr; /**< 寄存器地址（0 基） */
-        uint16_t value; /**< 写入值 */
-    };
+/** @brief Modbus 写单寄存器参数 */
+struct modbus_write
+{
+    uint8_t  slave; /**< 从站地址（1..247） */
+    uint16_t addr;  /**< 寄存器地址（0 基） */
+    uint16_t value; /**< 写入值 */
+};
 #ifdef __cplusplus
 }
 #endif

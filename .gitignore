@@ -68,6 +68,8 @@ Thumbs.db
 # 本地环境 / 配置备份（勿提交本机路径）
 # ---------------------------------------------
 .config.old
+# genconfig 暂存的当前不可见符号 (依赖不满足的选项), 构建期自动维护
+.config.preserved
 *.user
 *.workspace
 
@@ -102,7 +104,7 @@ ide/third_party/etl/
 
 # ---------------------------------------------
 # 开源积木：默认 FetchContent，勿提交进 git
-# lib/ 仅保留 vendor：freeRTOS / rtthread
+# lib/ 仅保留 vendor：mini-os（自研）/ freeRTOS / rtthread
 # 若需离线，可手动 clone 到对应路径（cmake 会优先用本地）
 # ---------------------------------------------
 lib/tinyusb/

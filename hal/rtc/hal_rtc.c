@@ -55,8 +55,7 @@ MINI_WEAK int hal_rtc_get_time(struct hal_rtc_dev* pdev, struct hal_rtc_time* ti
     return MINI_ERR_NOTSUPP;
 }
 
-MINI_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm,
-                                  hal_rtc_alarm_cb_t cb, void* user)
+MINI_WEAK int hal_rtc_set_alarm(struct hal_rtc_dev* pdev, const struct hal_rtc_time* alarm, hal_rtc_alarm_cb_t cb, void* user)
 {
     (void)pdev;
     (void)alarm;

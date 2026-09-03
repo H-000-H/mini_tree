@@ -33,17 +33,17 @@
 /** @brief SX1278 驱动实例（嵌入 fops 与操作模式状态） */
 struct sx1278_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* spi_dev; /**< 所属 SPI client 设备 */
-    uint8_t opmode; /**< 当前工作模式（OPMODE 寄存器缓存） */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         spi_dev; /**< 所属 SPI client 设备 */
+    uint8_t                opmode;  /**< 当前工作模式（OPMODE 寄存器缓存） */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sx1278_device s_sx1278_pool[SX1278_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_sx1278_used[SX1278_POOL_COUNT] MINI_ALIGNED(4);
+static struct sx1278_device           s_sx1278_pool[SX1278_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                        s_sx1278_used[SX1278_POOL_COUNT] MINI_ALIGNED(4);
 static osal_pool_t s_sx1278_pool_ctrl MINI_ALIGNED(4);
-static const char* const k_tag = "sx1278";
+static const char* const              k_tag = "sx1278";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -58,17 +58,13 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sx1278_pool_boot_
  * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct sx1278_device* sx1278_get_drvdata(struct device* pdev)
-{
-    return (struct sx1278_device*)device_get_priv(pdev);
-}
+static struct sx1278_device* sx1278_get_drvdata(struct device* pdev) { return (struct sx1278_device*)device_get_priv(pdev); }
 
 /**
  * @brief SPI 全双工传输（AUTO 模式）
  * @return MINI_OK 或 VFS_ERR_*
  */
-static int sx1278_spi_xfer(struct sx1278_device* dev, const uint8_t* tx, uint8_t* rx, size_t len,
-                           uint32_t timeout_ms)
+static int sx1278_spi_xfer(struct sx1278_device* dev, const uint8_t* tx, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     struct spi_transfer_arg arg;
     if (!dev || !dev->spi_dev || len == 0U)
@@ -118,7 +114,7 @@ static int sx1278_open(struct device* pdev, void* arg)
 {
     struct sx1278_device* dev;
     struct dev_lifecycle* lc;
-    int first, ret;
+    int                   first, ret;
     MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
@@ -152,7 +148,7 @@ static int sx1278_close(struct device* pdev)
 {
     struct sx1278_device* dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sx1278_get_drvdata(pdev);
@@ -205,7 +201,7 @@ static int sx1278_cmd_reset(struct sx1278_device* dev, void* arg, size_t len, ui
 static int sx1278_cmd_freq(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     uint32_t hz;
-    uint8_t frf[3];
+    uint8_t  frf[3];
     uint64_t freq;
     if (!arg || len != sizeof(uint32_t))
         return MINI_ERR_INVAL;
@@ -233,7 +229,7 @@ static int sx1278_cmd_send(struct sx1278_device* dev, void* arg, size_t len, uin
         return MINI_ERR_IO;
     {
         uint8_t tx[257];
-        size_t count = pl->len;
+        size_t  count = pl->len;
         if (count > 255U)
             count = 255U;
         tx[0] = 0x80;
@@ -249,9 +245,9 @@ static int sx1278_cmd_send(struct sx1278_device* dev, void* arg, size_t len, uin
 static int sx1278_cmd_recv(struct sx1278_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
     struct sx1278_payload* pl = (struct sx1278_payload*)arg;
-    uint8_t tx[2] = {0, 0};
-    uint8_t rx[2] = {0, 0};
-    uint8_t* out;
+    uint8_t                tx[2] = {0, 0};
+    uint8_t                rx[2] = {0, 0};
+    uint8_t*               out;
 
     MINI_IGNORE_RESULT(timeout_ms);
     if (!pl || len != sizeof(*pl) || !pl->data || pl->len == 0U)
@@ -277,8 +273,8 @@ static int sx1278_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len,
 {
     struct sx1278_device* dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
         return MINI_ERR_INVAL;
     dev = sx1278_get_drvdata(pdev);
@@ -311,7 +307,7 @@ static const struct file_operations sx1278_fops = {
 static int sx1278_probe(struct device* pdev)
 {
     struct sx1278_device* dev;
-    int pool_idx, ret;
+    int                   pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sx1278_pool_ctrl);
@@ -349,7 +345,7 @@ static int sx1278_remove(struct device* pdev)
 {
     struct sx1278_device* dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
         return MINI_ERR_INVAL;
     dev = sx1278_get_drvdata(pdev);

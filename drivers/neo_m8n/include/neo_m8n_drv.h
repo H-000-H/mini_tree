@@ -24,13 +24,13 @@ extern "C"
 /** 命令总数 */
 #define NEO_M8N_CMD_COUNT 1
 
-    /** @brief NMEA 语句接收缓冲（len 回填实际长度） */
-    struct neo_m8n_buf
-    {
-        char* data; /**< 接收缓冲 */
-        size_t cap; /**< 缓冲容量 */
-        size_t len; /**< 实际长度（回填） */
-    };
+/** @brief NMEA 语句接收缓冲（len 回填实际长度） */
+struct neo_m8n_buf
+{
+    char*  data; /**< 接收缓冲 */
+    size_t cap;  /**< 缓冲容量 */
+    size_t len;  /**< 实际长度（回填） */
+};
 #ifdef __cplusplus
 }
 #endif

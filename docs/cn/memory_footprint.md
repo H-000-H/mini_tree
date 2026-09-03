@@ -58,28 +58,62 @@
 
 ## 4. 调度方案对比（最小固件实测）
 
-> 实测：`arm-none-eabi-gcc 14.2.1`，`-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`；最小固件 = `startup` + `main`（system 层）+ 链接 `mini_tree` 全库（含 RTOS 内核），链接脚本仿 STM32F4。单位 B，`RAM 合计 = data + bss`。
+> 实测：`arm-none-eabi-gcc 13.3.1`（Windows，旧于旧版 14.2.1/Linux——旧编译链验证可编过），`-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`；最小固件 = `startup`（向量表 + Reset_Handler）+ `main`（system 层标准启动序列）+ 链接 `mini_tree` 全库（含 RTOS 内核，`--start-group` 解决循环引用），链接脚本仿 STM32F4（FLASH 1 MiB / RAM 128 KiB）。单位 B，`RAM 合计 = data + bss`。分两套 libc 口径：**newlib-nano**（`--specs=nano.specs`，最小体积常规选择）与**完整 newlib**（旧表口径）；`.config` 基线为仓库当前默认（事件总线/WDT/OSAL 日志开），未引用模块（lwIP/USB 等）经 `--gc-sections` 不进闭包。绝对值随工具链与基线配置漂移，**相对差**更有效。
+
+### 4.1 newlib-nano（推荐口径）
 
 | 调度方案 | system 后端 | text | data | bss | RAM 合计 |
 | :--- | :--- | ---: | ---: | ---: | ---: |
-| 全裸 `while`（`XTASK_NONE`） | 无 | 86 | 0 | 0 | 0 |
-| 协调式 `XTASK_COOP` | C | 31240 | 1744 | 944 | 2688 |
-| 协调式 `XTASK_COOP` | C++ | 31240 | 1744 | 944 | 2688 |
-| 抢占式 `XTASK_PREEMPT` | C | 31368 | 1744 | 1388 | 3132 |
-| 抢占式 `XTASK_PREEMPT` | C++ | 31368 | 1744 | 1388 | 3132 |
-| FreeRTOS | C | 34312 | 1752 | 1304 | 3056 |
-| FreeRTOS | C++ | 34696 | 1752 | 1656 | 3408 |
-| RT-Thread | C | 40228 | 1892 | 1164 | 3056 |
-| RT-Thread | C++ | 40612 | 1892 | 1516 | 3408 |
+| 全裸 `while`（`XTASK_NONE`） | 无 | 134 | 0 | 512 | 512 |
+| 协调式 `XTASK_COOP` | C | 11153 | 116 | 4400 | 4516 |
+| 协调式 `XTASK_COOP` | C++ | 11237 | 120 | 4432 | 4552 |
+| 抢占式 `XTASK_PREEMPT` | C | 11565 | 116 | 4848 | 4964 |
+| 抢占式 `XTASK_PREEMPT` | C++ | 11649 | 120 | 4880 | 5000 |
+| mini-os | C | 14245 | 120 | 2620 | 2740 |
+| mini-os | C++ | 14381 | 128 | 3016 | 3144 |
+| FreeRTOS | C | 17492 | 108 | 12176 | 12284 |
+| FreeRTOS | C++ | 17628 | 116 | 12528 | 12644 |
+| RT-Thread | C | 17953 | 272 | 35084 | 35356 |
+| RT-Thread | C++ | 18057 | 280 | 35480 | 35760 |
 
-> 口径：全裸（`XTASK_NONE`）下 `OSAL_NULL_TASK_CPP` 由 Kconfig 自动关闭（`depends on !XTASK_NONE`），且 osal/system 层依赖 xtask 接口（`osal_null.h` 无条件 include `xtask.h`），无实现时无法链接，固件退化为最小闭包（startup + 主循环手动轮询），不含 system/osal 层；RTOS 后端 `text` 已含各自内核；数字含全库（board 设备模型等），**相对差**更有效。裸机调度三态（`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`）由 `Kconfig.mini_tree` 的 choice 选择，CMake 据此注入 `MINI_TREE_XTASK_*` 宏决定编译 `xtask_coop.c` 或 `xtask_preempt.c`；抢占式与协调式对外 API 完全一致（`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`），调用方无感切换。
+### 4.2 完整 newlib（旧表口径）
+
+| 调度方案 | system 后端 | text | data | bss | RAM 合计 |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| 全裸 `while`（`XTASK_NONE`） | 无 | 134 | 0 | 512 | 512 |
+| 协调式 `XTASK_COOP` | C | 35732 | 1768 | 4448 | 6216 |
+| 协调式 `XTASK_COOP` | C++ | 35820 | 1772 | 4480 | 6252 |
+| 抢占式 `XTASK_PREEMPT` | C | 36148 | 1768 | 4896 | 6664 |
+| 抢占式 `XTASK_PREEMPT` | C++ | 36228 | 1772 | 4928 | 6700 |
+| mini-os | C | 38776 | 1772 | 2664 | 4436 |
+| mini-os | C++ | 38912 | 1780 | 3064 | 4844 |
+| FreeRTOS | C | 42068 | 1764 | 12224 | 13988 |
+| FreeRTOS | C++ | 42204 | 1772 | 12576 | 14348 |
+| RT-Thread | C | 48984 | 1924 | 35136 | 37060 |
+| RT-Thread | C++ | 49088 | 1932 | 35528 | 37460 |
+
+### 4.3 口径与结论
+
+**堆口径（bss 不可直接横比的原因）**：
+
+- FreeRTOS：堆为静态数组 `ucHeap[CONFIG_FREERTOS_HEAP_SIZE]`（默认 8192），**计入 bss**；
+- RT-Thread：堆为静态数组 `s_rtt_heap[CONFIG_RTT_HEAP_SIZE]`（默认 32×1024，见 `osal_rtthread.c`），**计入 bss**；
+- mini-os：堆为链接期区域（`__mini_os_heap_start`→`__mini_os_heap_end`，bss 末尾到栈顶），**不计入 bss**——剩余 RAM 全归堆；
+- 裸机 xtask：无堆。
+
+剔除可配堆后的框架 bss（nano / C++）：coop 4432 · mini-os 3016 · FreeRTOS 4336 · RT-Thread 2712。全裸行的 bss 512 为链接脚本 `._user_heap_stack` 的最小堆占位，非真实占用；其余各行同样包含。
+
+范围说明（沿旧表）：全裸（`XTASK_NONE`）下 `OSAL_NULL_TASK_CPP` 由 Kconfig 自动关闭（`depends on !XTASK_NONE`），且 osal/system 层依赖 xtask 接口（`osal_null.h` 无条件 include `xtask.h`），无实现时无法链接，固件退化为最小闭包（startup + 主循环手动轮询），不含 system/osal 层；RTOS 后端 `text` 已含各自内核；数字含全库（board 设备模型等），**相对差**更有效。裸机调度三态（`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`）由 `Kconfig.mini_tree` 的 choice 选择，CMake 据此注入 `MINI_TREE_XTASK_*` 宏决定编译 `xtask_coop.c` 或 `xtask_preempt.c`；抢占式与协调式对外 API 完全一致（`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`），调用方无感切换。
 
 结论：
-1. 全裸最省（86 B text，零 RAM）；代价是调度逻辑全部自写。
-2. 裸机 xtask（coop/preempt，~31 KB text）比最小 RTOS 内核（FreeRTOS ~34 KB）还省 ~3 KB，且 **无独立任务栈**（run-to-completion，任务栈复用主循环栈）；preempt 的 bss 多出任务池（8×48 B + 位图/链表头 ≈ 444 B）。
-3. RTOS 内核开销：FreeRTOS < RT-Thread（text 34.3 → 40.2 KB）。
-4. C/C++ system 后端：裸机（coop/preempt）完全一致；RTOS 下 C++ 比 C 约多 +300~380 B text、+350~440 B bss。**选 C 后端最省**。
-5. 每任务额外成本：RTOS 需 TCB + 独立任务栈（栈按应用配置另计）；xtask 仅静态 TCB（coop 28 B / preempt 48 B 池槽），无栈。
+
+1. 全裸最省（134 B text）；代价是调度逻辑全部自写。
+2. 裸机 xtask（coop 11.2 KB）是最省的"带调度"方案，且**无独立任务栈**（run-to-completion，任务栈复用主循环栈）；preempt 的 bss 多出任务池（448 B）。
+3. RTOS 内核 text：**mini-os（14.4 KB）< FreeRTOS（17.6 KB）< RT-Thread（18.1 KB）**；mini-os 比 FreeRTOS 省 ~3.2 KB、比 RT-Thread 省 ~3.7 KB(mini-os未做smp mpu等部件做完差距不大都在17kb到18kb左右内核源码就这么大不太好压了除非主动裁剪功能)。
+4. RTOS 内核 text：**mini-os（14.4 KB）< FreeRTOS（17.6 KB）< RT-Thread（18.1 KB）**，mini-os 当前省～3.2–3.7 KB；**该差距主要来自功能集差异**——mini-os 未实现 SMP/MPU/ 内存保护等部件，补齐后预计与 FreeRTOS/RT-Thread 同级（17–18 KB 区间）。完整内核的 text 本体在此量级属正常，进一步压缩只能靠裁剪功能，调 `CONFIG_RTT_HEAP_SIZE`/`CONFIG_FREERTOS_HEAP_SIZE` 等可对齐。
+5. C/C++ system 后端：RTOS 下 C++ 比 C 约 +100~140 B text、+350~400 B bss；裸机几乎一致（+84 B text / +32 B bss）。**选 C 后端最省**。
+6. **libc 的影响（4.1 vs 4.2）**：完整 newlib 比 nano 普遍 **+24.6 KB text、+~1.65 KB data**（stdio 结构），bss 仅 +~48 B；RT-Thread 例外多 ~6.4 KB（其 kservice 配置为复用 libc 格式化 `RT_KLIBC_USING_LIBC_VSNPRINTF`，拉入完整 vfprintf）。libc 为常量开销，不影响后端间相对比较；追求最小体积用 `--specs=nano.specs`。
+7. 每任务额外成本：RTOS 需 TCB + 独立任务栈（栈按应用配置另计）；xtask 仅静态 TCB（coop 28 B / preempt 48 B 池槽），无栈。
 
 ---
 
@@ -132,7 +166,8 @@
 4. **若需进一步压 RAM**：调小队列缓冲（`CONFIG_OSAL_NULL_QUEUE_BUF_SZ`，当前 1024）、关 `CONFIG_EVENT_BUS`/`CONFIG_VIRQ`（当前为 `y`）、收缩任务池。
 
 ---
-
+### 6.4 关于cpp
+>C++ 体积可控的前提：`-fno-exceptions -fno-rtti` + 避免 iostream（用 printf / 裸输出）+ `--specs=nano.specs`。未裁剪时 C++ 可能 + 数 KB，属配置问题而非语言问题，但如果大量使用模板也会导致体积膨胀。
 ## 相关文档
 
 - [getting_started.md](getting_started.md) · [design_decisions.md](design_decisions.md)

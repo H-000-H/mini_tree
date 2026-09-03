@@ -31,13 +31,13 @@
 struct prod_log_persist
 
 {
-    uint16_t head; /**< 环形缓冲头指针 */
-    uint32_t seq; /**< 全局序列号 */
+    uint16_t              head;                      /**< 环形缓冲头指针 */
+    uint32_t              seq;                       /**< 全局序列号 */
     struct prod_log_entry ring[PROD_LOG_SLOT_COUNT]; /**< 日志环形缓冲 */
 };
 
 static struct prod_log_persist s_state;
-static bool s_ready = false;
+static bool                    s_ready = false;
 
 /**
  * @brief init 并从 storage 恢复
@@ -83,8 +83,7 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
     if (osal_in_isr())
         return;
 
-    MINI_IGNORE_RESULT(
-        hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state)));
+    MINI_IGNORE_RESULT(hal_storage_write_blob(PROD_LOG_STORAGE_SLOT, (const uint8_t*)&s_state, sizeof(s_state)));
 }
 
 /**
@@ -96,7 +95,7 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
-    char msg[PROD_LOG_MSG_LEN];
+    char    msg[PROD_LOG_MSG_LEN];
     va_list args;
     va_start(args, fmt);
     vsnprintf(msg, sizeof(msg), fmt, args);
@@ -111,8 +110,7 @@ void production_log_push_fmt(prod_log_level_t level, const char* tag, const char
 int production_log_count(void)
 {
     for (int slot_index = 0; slot_index < PROD_LOG_SLOT_COUNT; slot_index++)
-        if (s_state.ring[slot_index].seq == 0 && s_state.ring[slot_index].level == 0 &&
-            s_state.ring[slot_index].msg[0] == '\0')
+        if (s_state.ring[slot_index].seq == 0 && s_state.ring[slot_index].level == 0 && s_state.ring[slot_index].msg[0] == '\0')
             return slot_index;
     return PROD_LOG_SLOT_COUNT;
 }
@@ -144,7 +142,7 @@ void production_log_dump(void (*sink)(const char* line))
     int oldest = s_state.head;
     for (int slot_index = 0; slot_index < PROD_LOG_SLOT_COUNT; slot_index++)
     {
-        int idx = (oldest + slot_index) % PROD_LOG_SLOT_COUNT;
+        int                          idx = (oldest + slot_index) % PROD_LOG_SLOT_COUNT;
         const struct prod_log_entry* entry = &s_state.ring[idx];
         if (entry->seq == 0 && entry->msg[0] == '\0')
             continue;
@@ -163,8 +161,7 @@ void production_log_dump(void (*sink)(const char* line))
             break;
         }
 
-        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)entry->seq, lvl_str,
-                 entry->tag, entry->msg);
+        snprintf(buf, sizeof(buf), "[%lu] %s %s: %s", (unsigned long)entry->seq, lvl_str, entry->tag, entry->msg);
         sink(buf);
     }
     sink("=== END ===");
@@ -186,9 +183,9 @@ int production_log_init(void) { return 0; }
  */
 void production_log_push(prod_log_level_t level, const char* tag, const char* msg)
 {
-   MINI_UNUSED_PARAM(level);
-   MINI_UNUSED_PARAM(tag);
-   MINI_UNUSED_PARAM(msg);
+    MINI_UNUSED_PARAM(level);
+    MINI_UNUSED_PARAM(tag);
+    MINI_UNUSED_PARAM(msg);
 }
 
 /**
@@ -200,9 +197,9 @@ void production_log_push(prod_log_level_t level, const char* tag, const char* ms
  */
 void production_log_push_fmt(prod_log_level_t level, const char* tag, const char* fmt, ...)
 {
-   MINI_UNUSED_PARAM(level);
-   MINI_UNUSED_PARAM(tag);
-   MINI_UNUSED_PARAM(fmt);
+    MINI_UNUSED_PARAM(level);
+    MINI_UNUSED_PARAM(tag);
+    MINI_UNUSED_PARAM(fmt);
 }
 
 /**
@@ -218,7 +215,7 @@ int production_log_count(void) { return 0; }
  */
 const struct prod_log_entry* production_log_get(int index)
 {
-   MINI_UNUSED_PARAM(index);
+    MINI_UNUSED_PARAM(index);
     return NULL;
 }
 

@@ -22,8 +22,8 @@
 /* 协调式私有状态 (集中定时器状态) */
 struct x_coop_priv
 {
-    hal_tim_device* tim; /**< 定时器 (xscheduler_start 绑定) */
-    int tick_delay; /**< 每次中断 tick 增量 */
+    hal_tim_device* tim;        /**< 定时器 (xscheduler_start 绑定) */
+    int             tick_delay; /**< 每次中断 tick 增量 */
 };
 
 static struct x_coop_priv s_priv;
@@ -35,10 +35,7 @@ x_scheduler g_scheduler;
 static x_task* s_current_task;
 
 /** @brief 当前系统滴答 (协调式读 g_scheduler.tick_count) */
-uint32_t x_scheduler_now(void)
-{
-    return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED);
-}
+uint32_t x_scheduler_now(void) { return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED); }
 
 /** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
 x_task* x_scheduler_current(void) { return s_current_task; }
@@ -101,10 +98,7 @@ void xscheduler_start(void)
  * @brief SysTick 中断业务钩子 (强符号覆盖 hal_systick 的 weak 空实现)
  * @note  仅 SysTick 作为默认 tick 源时由硬件中断调用; 累加系统滴答。
  */
-void hal_systick_irq_handler(void)
-{
-    x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay);
-}
+void hal_systick_irq_handler(void) { x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay); }
 
 /**
  * @brief 定时器 ISR 上半部
@@ -134,8 +128,7 @@ int scheduler_tim_isr_top(void* context, uint16_t irq_num)
  * @param[in] period_ms 周期
  * @return 句柄
  */
-x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*),
-                                       unsigned int period_ms)
+x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb)(x_task*), unsigned int period_ms)
 {
     if (!task || !cb || !name)
         return MINI_ERR_INVAL;
@@ -143,11 +136,8 @@ x_task_handle_t xscheduler_task_create(x_task* task, const char* name, void (*cb
     task->name = name;
     task->xTask_cb = cb;
     MINI_ATOMIC_STORE(&task->period, period_ms, MINI_RELAXED);
-    MINI_ATOMIC_STORE(&task->next_running,
-                        MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED) + period_ms,
-                        MINI_RELAXED);
-    MINI_ATOMIC_STORE(&task->is_running, false,
-                        MINI_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
+    MINI_ATOMIC_STORE(&task->next_running, MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED) + period_ms, MINI_RELAXED);
+    MINI_ATOMIC_STORE(&task->is_running, false, MINI_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
 #ifdef CONFIG_XTASK_COROUTINE
     task->pt_line = 0; /**< 协程让出点复位 (首次进入 case 0) */
 #endif
@@ -186,7 +176,7 @@ int x_task_run(x_scheduler* sched)
 
     while (current != head)
     {
-        list_node* next = current->next;
+        list_node*     next = current->next;
         struct x_task* task = container_of(current, struct x_task, node);
 
         if (!MINI_ATOMIC_LOAD(&task->is_running, MINI_RELAXED)) /**< 非运行状态才允许进入 */
@@ -204,16 +194,12 @@ int x_task_run(x_scheduler* sched)
                 if (task->pt_line == 0)
                 {
                     /* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
-                    MINI_ATOMIC_STORE(&task->next_running,
-                                        now + MINI_ATOMIC_LOAD(&task->period, MINI_RELAXED),
-                                        MINI_RELAXED);
+                    MINI_ATOMIC_STORE(&task->next_running, now + MINI_ATOMIC_LOAD(&task->period, MINI_RELAXED), MINI_RELAXED);
                 }
                 /* else: 协程挂起中, PT_DELAY 已设 next_running, 保持到期时刻 */
 #else
                 task->xTask_cb(task);
-                MINI_ATOMIC_STORE(&task->next_running,
-                                    now + MINI_ATOMIC_LOAD(&task->period, MINI_RELAXED),
-                                    MINI_RELAXED);
+                MINI_ATOMIC_STORE(&task->next_running, now + MINI_ATOMIC_LOAD(&task->period, MINI_RELAXED), MINI_RELAXED);
 #endif
             }
             /* 无论到期与否都复位：否则未到期分支会把 is_running 卡在 true，任务永不调度 */

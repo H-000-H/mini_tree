@@ -33,14 +33,13 @@
 /* -------------------------------------------------------------------------- */
 /* 通用: 初始化 / 时钟 / 诊断                                                 */
 /* -------------------------------------------------------------------------- */
-void sys_init(void)
-{ /*lwip必须tcpip第一步调用,但是系统两阶段初始化已经将 OSAL 初始化完成 此处什么都不需要做*/ }
+void sys_init(void) { /*lwip必须tcpip第一步调用,但是系统两阶段初始化已经将 OSAL 初始化完成 此处什么都不需要做*/ }
 
 u32_t sys_now(void) { return (u32_t)osal_time_ms(); }
 
 void lwip_diag(const char* fmt, ...)
 {
-    char buf[128];
+    char    buf[128];
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
@@ -185,11 +184,10 @@ void sys_mbox_free(sys_mbox_t* mbox)
 /* Thread                                                                     */
 /* -------------------------------------------------------------------------- */
 /*裸机不可能线程不需要想为什么我调度器有了两个但是依然只有os的时候才有这个东西*/
-sys_thread_t sys_thread_new(const char* name, lwip_thread_fn thread, void* arg, int stacksize,
-                            int prio)
+sys_thread_t sys_thread_new(const char* name, lwip_thread_fn thread, void* arg, int stacksize, int prio)
 {
     osal_task_handle_t task_handle = NULL;
-    int ret = osal_task_create_handle(name, stacksize, prio, thread, arg, -1, &task_handle);
+    int                ret = osal_task_create_handle(name, stacksize, prio, thread, arg, -1, &task_handle);
     if (ret != OSAL_OK)
     {
         SYS_LOGE("lwIP", "Failed to create thread %s: %d", name, ret);
@@ -222,7 +220,7 @@ uint32_t sys_arch_mbox_fetch(sys_mbox_t* mbox, void** msg, uint32_t timeout)
     if (mbox == NULL || *mbox == NULL)
         return SYS_ARCH_TIMEOUT;
 
-    void* dummy_msg = NULL;
+    void*  dummy_msg = NULL;
     void** msg_ptr = (msg != NULL) ? msg : &dummy_msg;
 
     uint32_t osal_timeout = (timeout == 0) ? UINT32_MAX : timeout;
@@ -244,7 +242,7 @@ uint32_t sys_arch_mbox_tryfetch(sys_mbox_t* mbox, void** msg)
     if (mbox == NULL || *mbox == NULL)
         return SYS_MBOX_EMPTY;
 
-    void* dummy_msg = NULL;
+    void*  dummy_msg = NULL;
     void** msg_ptr = (msg != NULL) ? msg : &dummy_msg;
 
     if (osal_queue_receive(*mbox, msg_ptr, 0) == OSAL_OK)
