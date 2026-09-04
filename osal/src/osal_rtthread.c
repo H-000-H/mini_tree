@@ -351,6 +351,12 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
  * @param[in] size 每个元素字节数
  * @return 成功返回指针, 失败返回 NULL
  */
+void* osal_malloc(size_t size)
+{
+    rtt_heap_init_once();
+    return rt_malloc(size);
+}
+
 void* osal_calloc(size_t count, size_t size)
 {
     rtt_heap_init_once();

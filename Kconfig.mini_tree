@@ -175,6 +175,33 @@ config OSAL_NULL_QUEUE_BUF_SZ
       2048 B = 512 base units; EventBus (64×8 B) uses ~1/4.
       Lower bound 512 B keeps the default EventBus queue (128 units) creatable.
 
+config OSAL_NULL_MINI_OS_MEM
+    bool "裸机 osal_malloc/osal_calloc/free 走 mini-os 内存模块 (默认关, 走 libc 堆) / Bare-metal osal_malloc/osal_calloc/free via the mini-os memory module (default off, libc heap)"
+    default n
+    depends on OSAL_NULL
+    help
+      裸机下 osal_malloc/osal_calloc/osal_free 的内存来源开关:
+      关闭 (默认): 走 libc malloc/calloc/free (newlib 堆, 依赖 _sbrk);
+      开启: 转发到随仓自研内核 lib/mini-os 的内存模块 (memory.c 单文件,
+            first-fit + 相邻合并 + magic 双值防 double-free, 无调度器依赖),
+            堆区由链接脚本提供 __mini_os_heap_start/__mini_os_heap_end
+            (可 INCLUDE mini-os-heap.ld, 或板级脚本自行定义),
+            首次分配时惰性初始化, 无需启动遍历 .init_array。
+      注意: 该堆的空闲链表无锁 (与 libc malloc 一致), ISR 内禁止调用
+      osal_malloc/osal_calloc/osal_free。
+
+      Memory source for bare-metal osal_malloc/osal_calloc/osal_free:
+      off (default): libc malloc/calloc/free (newlib heap, needs _sbrk);
+      on: forwards to the in-tree mini-os memory module (memory.c single
+          file, first-fit + adjacent coalescing + magic double-free guard,
+          no scheduler dependency). The heap zone is provided by the linker
+          script via __mini_os_heap_start/__mini_os_heap_end (INCLUDE
+          mini-os-heap.ld or define the symbols in the board script);
+          lazy init on the first allocation, no .init_array traversal
+          required.
+      Note: the free list is unlocked (same as libc malloc) — never call
+      osal_malloc/osal_calloc/osal_free from an ISR.
+
 config OSAL_NULL_WFI
     bool "裸机忙等用 WFI 休眠唤醒 (默认关, 纯轮询) / Bare-metal busy-wait via WFI (default off, plain spin)"
     default n

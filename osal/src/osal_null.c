@@ -28,6 +28,9 @@
 #include "compiler_compat.h"
 #include "config.h"
 #include "osal.h"
+#ifdef CONFIG_OSAL_NULL_MINI_OS_MEM
+#include "memory.h" /* mini-os 内存模块: osal_calloc/osal_free 转发目标 */
+#endif
 #include "xtask.h"
 #include <stdarg.h>
 #include <stdbool.h>
@@ -474,12 +477,33 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
 /* -------------------------------------------------------------------------- */
 /* 内存 (不推荐使用) */
 /* /** */
-/* @brief calloc 分配 */
+/* @brief calloc 分配 (CONFIG_OSAL_NULL_MINI_OS_MEM 开启时走 mini-os 内存模块) */
 /* @param[in] count 数量 */
 /* @param[in] size 大小 */
 /* @return 指针 */
 /* -------------------------------------------------------------------------- */
-void* osal_calloc(size_t count, size_t size) { return calloc(count, size); }
+void* osal_malloc(size_t size)
+{
+#ifdef CONFIG_OSAL_NULL_MINI_OS_MEM
+    if (mini_os_heap_ensure_init() != MINI_OS_OK)
+        return NULL;
+    return mini_os_malloc(size); /* ISR 内禁止 */
+#else
+    return malloc(size);
+#endif
+}
+
+void* osal_calloc(size_t count, size_t size)
+{
+#ifdef CONFIG_OSAL_NULL_MINI_OS_MEM
+    /* 首次调用惰性接管链接脚本堆区 */
+    if (mini_os_heap_ensure_init() != MINI_OS_OK)
+        return NULL;
+    return mini_os_calloc(count, size); /* ISR 内禁止 */
+#else
+    return calloc(count, size);
+#endif
+}
 
 /**
  * @brief free 释放
@@ -488,7 +512,11 @@ void* osal_calloc(size_t count, size_t size) { return calloc(count, size); }
  */
 int osal_free(void* ptr)
 {
+#ifdef CONFIG_OSAL_NULL_MINI_OS_MEM
+    MINI_IGNORE_RESULT(mini_os_free(ptr)); /* magic 校验, double-free 静默拒绝 */
+#else
     free(ptr);
+#endif
     return OSAL_OK;
 }
 

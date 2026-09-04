@@ -148,6 +148,8 @@ mini-os 的 PI 是 **per-thread 跟踪** 模型：
 - **可选 slab**：定长类 16/32/64/128/256（`MINI_OS_SLAB_LONG` 再加 512），页大小 2 KiB（2 的幂 ≤ 64 KiB）；页可从堆按 `1/MINI_OS_SLAB_PROPORTION`（默认 1/4）划出，或用 `MINI_OS_SLAB_STATIC` 指定独立静态区；超出最大类的请求直走 free list。
 
 > 与 mini_tree 其他后端不同：`osal_calloc/osal_free`（mini-os 后端）走 mini-os 自有堆而非 libc，因此 RT-Thread/FreeRTOS 后端的 `s_rtt_heap`/`ucHeap` 式 bss 大数组在这里不存在。
+>
+> **内存模块可单独复用（裸机）**：`memory.c` 不依赖调度器/port，可单文件编入裸机固件 —— 开启 `CONFIG_OSAL_NULL_MINI_OS_MEM`（默认关）后，裸机后端的 `osal_malloc/osal_calloc/osal_free` 从 libc 堆切换为 mini-os 堆；首次分配时惰性接管堆区（`mini_os_heap_ensure_init()`，幂等），无需启动遍历 `.init_array`。板级链接脚本需提供 `__mini_os_heap_start/__mini_os_heap_end`（可 `INCLUDE mini-os-heap.ld`）。空闲链表无锁（与 libc malloc 同），ISR 内禁止调用。
 
 ---
 

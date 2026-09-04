@@ -446,6 +446,8 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
  * @param[in] size 大小
  * @return 指针
  */
+void* osal_malloc(size_t size) { return malloc(size); }
+
 void* osal_calloc(size_t count, size_t size) { return calloc(count, size); }
 
 /**

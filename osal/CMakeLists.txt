@@ -95,6 +95,26 @@ if(NOT _task_cpp_off)
     )
 endif()
 
+# ── 裸机可选: osal_malloc/osal_calloc/osal_free 走 mini-os 内存模块 (默认走 libc 堆) ──
+# 只编 lib/mini-os/src/memory.c 单文件 (无调度器/port 依赖), 不链整个内核;
+# 缺省视为关闭 (对齐 Kconfig default n), 仅显式 =y 启用。
+set(_MINI_OS_DIR "${PROJECT_SOURCE_DIR}/lib/mini-os")
+file(STRINGS "${_MINI_TREE_CONFIG}" _null_mini_os_mem REGEX "^CONFIG_OSAL_NULL_MINI_OS_MEM=y$")
+if(OSAL_BACKEND STREQUAL "NULL" AND _null_mini_os_mem)
+    add_library(mini_os_mem STATIC "${_MINI_OS_DIR}/src/memory.c")
+    target_include_directories(mini_os_mem
+        PUBLIC
+            "${_MINI_OS_DIR}/inc"
+    )
+    add_dependencies(mini_os_mem kconfig_generate)
+    target_link_libraries(osal
+        PUBLIC
+            mini_os_mem
+    )
+    message(STATUS "osal: bare-metal osal_malloc/osal_calloc/osal_free -> mini-os memory module (CONFIG_OSAL_NULL_MINI_OS_MEM); "
+                   "board linker script must provide __mini_os_heap_start/__mini_os_heap_end (INCLUDE mini-os-heap.ld)")
+endif()
+
 target_include_directories(osal
     PUBLIC
         "include"

@@ -148,6 +148,8 @@ Implementation in `lib/mini-os/src/memory.c` (~840 lines) + `inc/mem_heap.h`:
 - **Optional slab**: fixed-size classes 16/32/64/128/256 (plus 512 with `MINI_OS_SLAB_LONG`), page size 2 KiB (power of two ≤ 64 KiB); pages are carved from the heap by `1/MINI_OS_SLAB_PROPORTION` (default 1/4), or served from an independent static region via `MINI_OS_SLAB_STATIC`; requests above the largest class fall through to the free list.
 
 > Unlike the other mini_tree backends: `osal_calloc/osal_free` (mini-os backend) use the mini-os own heap instead of libc, so the `s_rtt_heap`/`ucHeap`-style large bss arrays seen with RT-Thread/FreeRTOS do not exist here.
+>
+> **The memory module is reusable standalone (bare-metal)**: `memory.c` has no scheduler/port dependency and can be compiled into a bare-metal firmware as a single file — with `CONFIG_OSAL_NULL_MINI_OS_MEM` (default off) the bare-metal backend's `osal_malloc/osal_calloc/osal_free` switch from the libc heap to the mini-os heap; the heap zone is taken over lazily on the first allocation (`mini_os_heap_ensure_init()`, idempotent), no `.init_array` traversal needed. The board linker script must provide `__mini_os_heap_start/__mini_os_heap_end` (`INCLUDE mini-os-heap.ld`). The free list is unlocked (same as libc malloc) — never call from an ISR.
 
 ---
 

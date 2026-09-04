@@ -92,6 +92,12 @@ osal_tick_t osal_ticks_from_ms(uint32_t ms);
  */
 osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms);
 /**
+ * @brief 分配内存 (malloc, 不清零)
+ * @param[in] size 字节数
+ * @return 内存指针; 失败返回 NULL
+ */
+void* osal_malloc(size_t size);
+/**
  * @brief 分配并清零内存 (calloc)
  * @param[in] count 数量
  * @param[in] size 单元素大小

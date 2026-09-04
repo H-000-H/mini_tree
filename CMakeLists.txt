@@ -230,6 +230,14 @@ if(MINI_TREE_XTASK AND CONFIG_OSAL_NULL_TASK_CPP_ON)
     list(APPEND OSAL_SRCS "osal/src/osal_task.cpp")
 endif()
 
+# 裸机可选: osal_malloc/osal_calloc/osal_free 走 mini-os 内存模块 (Kconfig CONFIG_OSAL_NULL_MINI_OS_MEM, 默认关)。
+# 只编 lib/mini-os/src/memory.c 单文件 (无调度器/port 依赖), 不链整个 mini-os 内核;
+# 堆区由板级链接脚本提供 __mini_os_heap_start/__mini_os_heap_end (可 INCLUDE mini-os-heap.ld)。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_MINI_OS_MEM_ON REGEX "^CONFIG_OSAL_NULL_MINI_OS_MEM=y$")
+if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND CONFIG_OSAL_NULL_MINI_OS_MEM_ON)
+    list(APPEND OSAL_SRCS "lib/mini-os/src/memory.c")
+endif()
+
 if(MINI_TREE_SYSTEM)
     if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
         set(SYSTEM_SRCS
@@ -565,6 +573,14 @@ target_include_directories(mini_tree
 if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
     target_include_directories(mini_tree PUBLIC
         "${CMAKE_CURRENT_LIST_DIR}/time_slice/task"
+    )
+endif()
+
+# mini-os 内存模块头路径 (裸机 osal_malloc/osal_calloc/osal_free 转发目标, 见 CONFIG_OSAL_NULL_MINI_OS_MEM);
+# 仅在开关开启时暴露, 避免与其它模块的头文件同名冲突 (memory.h)
+if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND CONFIG_OSAL_NULL_MINI_OS_MEM_ON)
+    target_include_directories(mini_tree PUBLIC
+        "${CMAKE_CURRENT_LIST_DIR}/lib/mini-os/inc"
     )
 endif()
 

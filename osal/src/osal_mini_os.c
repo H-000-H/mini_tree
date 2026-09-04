@@ -783,6 +783,8 @@ osal_tick_t osal_timeout_to_ticks(uint32_t timeout_ms)
  * @param[in] size 单元素大小
  * @return 指针; 失败返回 NULL
  */
+void* osal_malloc(size_t size) { return mini_os_malloc(size); }
+
 void* osal_calloc(size_t count, size_t size) { return mini_os_calloc(count, size); }
 
 /**
