@@ -287,8 +287,8 @@ struct bmp280_device {
 };
 
 /* Static pool: fixed size at compile time, no runtime heap allocation */
-static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_bmp280_used[BMP280_POOL_COUNT] COMPAT_ALIGNED(4);
+static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t s_bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
 
 static struct bmp280_device* bmp280_claim(void)
 {
@@ -307,12 +307,12 @@ static int bmp280_probe(struct device* pdev)
 {
     struct bmp280_device* dev = bmp280_claim();
     if (dev == NULL)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
 
     /* 1. read board-level properties (reg = I2C address) */
     dev->addr = device_get_prop_int(pdev, "reg", -1);
     if (dev->addr < 0)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
 
     /* 2. get the bus dependency (compile-time enum, zero lookup) */
     dev->bus = board_dev_get(DEV_ID_i2c0);
@@ -323,14 +323,14 @@ static int bmp280_probe(struct device* pdev)
     /* device_lc_bind(pdev); */
 
     SYS_LOGI("bmp280", "probed @0x%02x on i2c0", dev->addr);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 static int bmp280_remove(struct device* pdev)
 {
     /* dev_lc_remove_start / device_ops_unregister / dev_lc_remove_drain /
        dev_lc_remove_finish standard sequence, see driver.h comments */
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
@@ -342,7 +342,7 @@ See §5 (copy as-is).
 
 ### 8.3 CMake injection (platform project)
 
-The platform project injects its tree via these variables (on the ESP path set by `board_port.cmake` before `idf_component_register`, see [esp_idf_cmake.md §3](esp_idf_cmake.md)):
+The platform project injects its tree via these variables (set before `add_subdirectory(mini_tree)`):
 
 ```cmake
 set(MINI_TREE_BOARD_PORT   ${CMAKE_CURRENT_SOURCE_DIR}/boards/my_board)
@@ -392,7 +392,7 @@ set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # contains my_soc.dts
 | Cortex-M | Set | **chosen TIM explicit override** (`CHOSEN_SCHEDULER_TIM` resolved at compile time; free up SysTick by using a generic TIM) |
 | RISC-V | **Required** | chosen TIM (mtime / SoC timer as a normal `tim` node); SysTick path is compiled out |
 
-> **Frequency via DTS**: SysTick's tick frequency comes from `/chosen` `tick-rate` (`DTC_GEN_TICK_RATE_HZ`), CPU clock from `/cpus/cpu@0` `clock-frequency` (`DTC_GEN_CPU_CLOCK_HZ`); `hal_systick` only hard-codes the register base (`HAL_SYSTICK_BASE`, default `0xE000E010`, overridable), never any frequency. RISC-V boards must set `scheduler-tim` explicitly, otherwise `hal_systick_init` returns `VFS_ERR_NOTSUPP` and the scheduler won't start.
+> **Frequency via DTS**: SysTick's tick frequency comes from `/chosen` `tick-rate` (`DTC_GEN_TICK_RATE_HZ`), CPU clock from `/cpus/cpu@0` `clock-frequency` (`DTC_GEN_CPU_CLOCK_HZ`); `hal_systick` only hard-codes the register base (`HAL_SYSTICK_BASE`, default `0xE000E010`, overridable), never any frequency. RISC-V boards must set `scheduler-tim` explicitly, otherwise `hal_systick_init` returns `MINI_ERR_NOTSUPP` and the scheduler won't start.
 
 #### 9.2.1 SysTick DTS configuration (no VFS layer; dtc-lite macro injection)
 
@@ -479,7 +479,9 @@ int main(void)
     for (;;)
         x_scheduler_poll();           /* bare-metal time-slice poll (incl. preemptive) */
 #elif defined(CONFIG_OSAL_FREERTOS)
-    vTaskStartScheduler();            /* ESP-IDF already starts it; this is a generic example */
+    vTaskStartScheduler();
+#elif defined(CONFIG_OSAL_RTTHREAD)
+    rt_system_scheduler_start();
 #endif
     return 0;
 }
@@ -521,14 +523,14 @@ static void led_task_cb(x_task* self)
 {
     struct vfs_gpio_arg arg = {0};
     int ret;
-    COMPAT_IGNORE_RESULT(self);
+    MINI_IGNORE_RESULT(self);
 
     if (s_led_dev == NULL)
     {
         struct device* pdev = device_find_by_label("led");
         if (IS_ERR_OR_NULL(pdev))
             return;
-        if (device_open(pdev, NULL) != VFS_OK)
+        if (device_open(pdev, NULL) != MINI_OK)
         {
             SYS_LOGE(s_kTag, "device_open(led) failed");
             return;
@@ -537,7 +539,7 @@ static void led_task_cb(x_task* self)
     }
 
     ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         SYS_LOGE(s_kTag, "device_ioctl(TOGGLE) failed: %d", ret);
 }
 
@@ -590,14 +592,14 @@ namespace App_Led
     {
         struct vfs_gpio_arg arg = {0};
         int ret;
-        COMPAT_IGNORE_RESULT(self);
+        MINI_IGNORE_RESULT(self);
 
         if (s_led_dev == nullptr)
         {
             struct device* pdev = device_find_by_label("led");
             if (IS_ERR_OR_NULL(pdev))
                 return;
-            if (device_open(pdev, nullptr) != VFS_OK)
+            if (device_open(pdev, nullptr) != MINI_OK)
             {
                 SYS_LOGE(kName.c_str(), "device_open(led) failed");
                 return;
@@ -606,7 +608,7 @@ namespace App_Led
         }
 
         ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
             SYS_LOGE(kName.c_str(), "device_ioctl(TOGGLE) failed: %d", ret);
     }
 
@@ -618,7 +620,7 @@ namespace App_Led
                                        led_task_cb, nullptr);
         if (!handle)
             return etl::nullopt;
-        return etl::make_optional(VFS_OK);
+        return etl::make_optional(MINI_OK);
     }
 } // namespace App_Led
 ```
@@ -629,7 +631,7 @@ namespace App_Led
 
 ## 10. Verification flow
 
-1. **Kconfig**: on the ESP path via `idf.py menuconfig` (`sdkconfig.h`); confirm `CONFIG_*` matches your selection.
+1. **genconfig**: `.config` → `config.h`; confirm `CONFIG_*` matches your selection.
 2. **dtc-lite**: runs automatically at build; check `<build>/generated/board/mini_tree/board_nodes.h` contains `DEV_ID_bmp280`, and `dt_config_gen.h` has `DTC_GEN_COUNT_BOSCH_BMP280 >= 1`.
 3. **Compile**: build the `mini_tree` static lib; confirm `board_driver_probe_bmp280` is collected and there are no undefined symbols (`board_dev_get` comes from the generated `board_devtable.c`).
 4. **Run**: `board_driver_probe_all()` runs early in boot; the log should print `bmp280 probed @0x76 on i2c0`.
@@ -644,7 +646,7 @@ namespace App_Led
 | `DEV_ID_xxx` not generated | node `status="disabled"` or template not included | enable it at board level: `&label { status = "okay"; }` |
 | `&label { status="okay" }` leaves the node `DISABLED` / frequency not applied | **label `label` was never declared in any dtsi**; dtc-lite silently *phantoms* an orphan node under `/soc`, so the override never reaches the target | add the label to the target node, e.g. `cpu0: cpu@0 { ... }`, so `&cpu0` resolves exactly; verify `.status` / properties via `git diff` on `board_devtable.c` |
 | probe never called | `DRIVER_REGISTER` compat ≠ dtsi `compatible` (space/case) | make them exactly identical; rerun dtc-lite |
-| pool overflow / `VFS_ERR_NOMEM` | more board nodes than expected | `DTC_GEN_COUNT_*` follows node count; check for un-enabled nodes |
+| pool overflow / `MINI_ERR_NOMEM` | more board nodes than expected | `DTC_GEN_COUNT_*` follows node count; check for un-enabled nodes |
 | driver can't find bus | `board_dev_get(DEV_ID_i2c0)` errors | confirm `i2c0` is `status="okay"` and has an enum in `board_nodes.h` |
 | changed dts not effective | incremental build didn't rerun dtc-lite | clean `<build>/generated` or trigger CMake reconfigure (dts / `.config` are `CONFIGURE_DEPENDS`) |
 | vendor macros not found | dt-bindings path missing | put in `board/dt-bindings/` or use `VENDOR_INC_DIRS` |

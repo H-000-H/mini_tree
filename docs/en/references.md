@@ -24,7 +24,8 @@
 | Resource | Description |
 | :--- | :--- |
 | FreeRTOS official docs | reference for `CONFIG_OSAL_FREERTOS` backend |
-| OSAL two-backend design | `osal/src/osal_{null,freertos}.c` |
+| RT-Thread official docs | reference for `CONFIG_OSAL_RTTHREAD` backend |
+| OSAL four-backend design | `osal/src/osal_{null,mini_os,freertos,rtthread}.c` |
 
 ---
 
@@ -34,7 +35,6 @@
 | :--- | :--- |
 | TinyUSB | USB device/host stack (`lib/tinyusb`, Fetch) |
 | lwIP | networking stack (Fetch) |
-| cJSON | JSON parser (Fetch) |
 | ETL | embedded template library (`lib/etl`, vendored) |
 | FreeRTOS / RT-Thread | vendored (see [ecosystem.md](ecosystem.md)) |
 
@@ -46,8 +46,8 @@
 | :--- | :--- |
 | ARMCLANG (AC6) | recommended compiler (ARMCC v5 unsupported) |
 | clangd | editing / indexing (see [getting_started.md](getting_started.md) §7) |
-| CMake / ESP-IDF | build system |
-| VSCode family (VS Code / Cursor / Qoder) | main IDE, with clangd |
+| CMake | build system |
+| Keil Studio | works (I've tried it, see [keil_integration.md](keil_integration.md)) |
 
 ---
 

@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * CAN VFS — SocketCAN 风格帧 + 现有 host/client
- *
- * Driver: can-host / heterogeneous,can-client
- * write/read: struct can_frame; ioctl: TRANSFER / SET_FILTER / GET_STATE
- *@=========================================================================================================================*/
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file vfs-can.h
+ *@brief vfs-can 头文件
+ *@author H-000-H
+ *@details
+ *   --------------------------------------------------------------------------
+ *   CAN VFS — SocketCAN 风格帧 + 现有 host/client
+ *   Driver: can-host / heterogeneous,can-client
+ *   write/read: struct can_frame; ioctl: TRANSFER / SET_FILTER / GET_STATE
+ *   --------------------------------------------------------------------------
+ */
+
 #ifndef CAN_VFS_H
 #define CAN_VFS_H
 
@@ -19,29 +25,29 @@ extern "C"
 {
 #endif
 
-#define CAN_CMD_BASE COMPAT_MAGIC(CAN)
+#define CAN_CMD_BASE MINI_MAGIC(CAN)
 #define CAN_CMD_TRANSFER (CAN_CMD_BASE + 0x01)
 #define CAN_CMD_SET_FILTER (CAN_CMD_BASE + 0x02)
 #define CAN_CMD_GET_STATE (CAN_CMD_BASE + 0x03)
 #define CAN_CMD_COUNT 3
 
-    struct can_transfer_arg
-    {
-        struct can_frame tx;
-        struct can_frame rx;
-        uint32_t rx_fifo;
-        uint32_t do_rx;
-    };
+struct can_transfer_arg
+{
+    struct can_frame tx;
+    struct can_frame rx;
+    uint32_t         rx_fifo;
+    uint32_t         do_rx;
+};
 
-    struct can_filter_arg
-    {
-        struct hal_can_filter_config filter;
-    };
+struct can_filter_arg
+{
+    struct hal_can_filter_config filter;
+};
 
-    struct can_state_arg
-    {
-        uint32_t state;
-    };
+struct can_state_arg
+{
+    uint32_t state;
+};
 
 #ifdef __cplusplus
 }

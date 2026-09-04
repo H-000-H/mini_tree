@@ -8,21 +8,25 @@
 #pragma once
 
 #include "osal.h"
+#include "status.h"
 #include <stddef.h>
 #include <stdint.h>
 
-/* ── 框架级事件 ID (框架内部使用, 不涉及任何业务语义) ── */
+/* -------------------------------------------------------------------------- */
+/* 框架级事件 ID (框架内部使用, 不涉及任何业务语义) */
+/* -------------------------------------------------------------------------- */
 #define EVENT_SYS_BOOT 0x0000 /* 系统冷启动完成 */
 #define EVENT_SYS_READY 0x0001 /* 所有框架任务已就绪 */
 #define EVENT_SYS_FAULT 0x0002 /* 系统级故障, 进入安全状态 */
 #define EVENT_SYS_DEVICE_REMOVED 0x0003 /* 设备从设备树中移除 */
 
-/* ── 用户事件基线 ──
- * 用户工程在业务代码中基于此值定义自有事件:
- *   #define EVENT_MY_FEATURE  (EVENT_USER_BASE + 0)
- *   #define EVENT_MY_TIMER    (EVENT_USER_BASE + 1)
- * 框架只搬运事件 ID, 不解释其含义.
- */
+/* -------------------------------------------------------------------------- */
+/* 用户事件基线 */
+/* 用户工程在业务代码中基于此值定义自有事件: */
+/* #define EVENT_MY_FEATURE  (EVENT_USER_BASE + 0) */
+/* #define EVENT_MY_TIMER    (EVENT_USER_BASE + 1) */
+/* 框架只搬运事件 ID, 不解释其含义. */
+/* -------------------------------------------------------------------------- */
 #define EVENT_USER_BASE 0x1000u
 
 #ifdef __cplusplus
@@ -37,18 +41,21 @@ extern "C"
         uintptr_t arg; /**< 事件附带参数 (由发送者/接收者自行解释) */
     };
 
-    /* ── C 接口 (extern "C", 供 .c 文件调用) ── */
-    bool event_bus_init(void); /**< 初始化事件总线 (队列 + 互斥锁) */
-    bool event_bus_post(uint32_t id, uintptr_t arg); /**< 发布事件 (任务上下文) */
-    bool event_bus_post_from_isr(uint32_t id, uintptr_t arg,
-                                 bool* px_yield_required); /**< 发布事件 (ISR 上下文) */
+    /* -------------------------------------------------------------------------- */
+    /* C 接口 (extern "C", 供 .c 文件调用, 统一返回 MINI_OK / MINI_ERR_*) */
+    /* -------------------------------------------------------------------------- */
+    int event_bus_init(void); /**< 初始化事件总线 (队列 + 互斥锁) */
+    int event_bus_post(uint32_t id, uintptr_t arg); /**< 发布事件 (任务上下文) */
+    int event_bus_post_from_isr(uint32_t id, uintptr_t arg,bool* px_yield_required); /**< 发布事件 (ISR 上下文) */
     void event_bus_start(void); /**< 启动事件分发任务 */
     void event_bus_seal(void); /**< 封表: 禁止运行时动态订阅 */
 
 #ifdef __cplusplus
 }
 
-/* ── C++ 事件回调类型 ── */
+/* -------------------------------------------------------------------------- */
+/* C++ 事件回调类型 */
+/* -------------------------------------------------------------------------- */
 using EventCallback = void (*)(const event& event, void* user_data); /**< 事件回调函数指针 */
 
 /**
@@ -63,17 +70,35 @@ class EventBus
 public:
     static EventBus& get_instance(); /**< 获取单例引用 */
 
-    bool init(); /**< 初始化事件总线 (队列 + 互斥锁 + 订阅表) */
+    int init(); /**< 初始化事件总线 (队列 + 互斥锁 + 订阅表); MINI_OK 成功, MINI_ERR_NOMEM 资源不足 */
 
     /** 订阅事件范围 [id_min, id_max] (含两端).
-     *  单事件订阅: subscribe(id, id, cb, ud) */
-    bool subscribe(uint32_t id_min, uint32_t id_max, EventCallback callback,
-                   void* user_data = nullptr);
+     *  单事件订阅: subscribe(id, id, cb, ud)
+     *  @return MINI_OK 成功; MINI_ERR_ISR/MINI_ERR_NOTSUPP/MINI_ERR_INVAL/MINI_ERR_TIMEOUT/MINI_ERR_NOSPC 失败 */
+    int subscribe(uint32_t id_min, uint32_t id_max, EventCallback callback,
+                  void* user_data = nullptr);
 
-    bool post(uint32_t id, uintptr_t arg = 0); /**< 发布事件 (任务上下文) */
-    bool post_from_isr(uint32_t id, uintptr_t arg,
-                       bool* px_yield_required); /**< 发布事件 (ISR 上下文) */
-    size_t dropped_count() const; /**< 累计丢弃事件数 (队列溢出) */
+    /**
+     * @brief 发布事件 (任务上下文)
+     * @param[in] id 事件 ID (框架级或用户自定义)
+     * @param[in] arg 事件参数 (指针或整数值)
+     * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文; MINI_ERR_AGAIN 未就绪; MINI_ERR_NOSPC 队列满
+     */
+    int post(uint32_t id, uintptr_t arg = 0);
+    /**
+     * @brief 发布事件 (ISR 上下文, 不内部 yield)
+     * @param[in] id 事件 ID
+     * @param[in] arg 事件参数
+     * @param[out] px_yield_required ISR 出口是否需要上下文切换 (可为 nullptr)
+     * @return MINI_OK 成功; MINI_ERR_AGAIN 未就绪; MINI_ERR_NOSPC 队列满
+     */
+    int post_from_isr(uint32_t id, uintptr_t arg,
+                      bool* px_yield_required);
+    /**
+     * @brief 查询累计丢弃事件数 (队列溢出)
+     * @return 丢弃事件数
+     */
+    size_t dropped_count() const;
     /** 启动事件分发任务.
      *  分发任务优先级: FreeRTOS 后端 = 30, RT-Thread 后端 = 1.
      *  在两套后端语义下均为框架内最高任务优先级, 确保事件队列快速排空.
@@ -126,7 +151,7 @@ private:
     static void dispatch_task(void* param); /**< 分发任务入口 (静态) */
 
     /** @brief 内部发布实现 (任务/ISR 共用) */
-    bool post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required);
+    int post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required);
 };
 
 #endif /* __cplusplus */

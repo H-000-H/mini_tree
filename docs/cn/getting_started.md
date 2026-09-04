@@ -1,14 +1,14 @@
 # 快速开始
 
-> 从零把 `mini_tree`（ESP-IDF 专用分支）接入你的 **ESP-IDF** 工程：依赖 → 配置 → CMake → 点火。
+> 从零把 `mini_tree` 配进你的平台工程：依赖 → 配置 → CMake → 点火。
 >
-> 本分支为纯 ESP-IDF 组件：Kconfig 走 `idf.py menuconfig`，`CONFIG_*` 写入 `sdkconfig.h`，第三方依赖走 IDF Component Manager / registry。非 ESP（裸机 / 其他 RTOS）支持见 mini_tree 主仓库。
+> **参考模板工程**：[Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)——mini_tree 的配套平台示例，含完整移植（DTS、HAL、`board_port.cmake`、AMP）。
 
 | 项 | 内容 |
 | :--- | :--- |
-| **读者** | 平台/应用工程师（ESP-IDF 项目） |
-| **前置** | ESP-IDF 环境、基本 C；有一块 ESP32 目标板 |
-| **相关** | [esp_idf_cmake.md](esp_idf_cmake.md) · [device_tree_porting.md](device_tree_porting.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) |
+| **读者** | 平台/应用工程师 |
+| **前置** | CMake、基本 C；有一块目标板或至少能链出固件 |
+| **相关** | [device_tree_porting.md](device_tree_porting.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
 
 ---
 
@@ -29,89 +29,129 @@
 
 | 依赖 | 用途 | 备注 |
 | :--- | :--- | :--- |
-| ESP-IDF（≥ 5.0） | 构建与 Kconfig | `idf.py` / `idf_component_manager` |
-| Python 3 | dtc-lite | — |
+| CMake ≥ 3.16 | 构建静态库 | Ninja / Make 均可 |
+| Python 3 | genconfig、dtc-lite、gen_compile_db | — |
 | `lark` | dtc-lite 解析 | `pip install lark` |
+| 内置 kconfiglib（`tools/_vendor/`） | menuconfig / guiconfig | 仓库自带，**无需安装**；两种界面见 [tools_guide.md](../tools_guide.md) |
 | clang-format ≥ 15 / clang-tidy（可选） | 代码风格与命名检查 | 见 [coding_style.md](coding_style.md) |
-
-Kconfig 库（kconfiglib）**由 ESP-IDF 自带**，本分支不再 vendor，`tools/_vendor/` 已移除。
+| 平台工具链 + SDK | 真机 | **只**链在平台工程，不进中间件公共头 |
 
 ---
 
 ## 2. 获取与目录
 
-将本分支作为 `components/mini_tree` 放入你的 ESP-IDF 工程（submodule / symlink / 拷贝均可）。你可以用 IDF Component Manager 直接声明依赖：
-
-```yaml
-# idf_component.yml
-dependencies:
-  h-000-h/mini_tree: "1.2.0"
-```
-
-或手动放置后 `idf.py reconfigure`。你需要经常碰的路径：
+将本仓库作为子目录或 submodule，例如 `third_party/mini_tree`。你需要经常碰的路径：
 
 | 路径 | 用途 |
 | :--- | :--- |
-| `cmake/esp_idf.cmake` | ESP 组件入口（`idf_component_register`） |
-| `Kconfig.projbuild` / `Kconfig.mini_tree` | ESP Kconfig（经 `idf.py menuconfig`） |
-| `board/dts/board.dts` | 默认占位（必被板级覆盖） |
-| `board/dtsi/` | 节点模板库：`example-soc.dtsi` + `vfs/`（11）+ `drivers/`（37），参数全 0 占位，板级拷走填值（见 [driver_guide.md](driver_guide.md) §1） |
+| `CMakeLists.txt` | `add_subdirectory` 入口 |
+| `.config` / `Kconfig` | 功能裁剪 |
+| `board/dts/board.dts` | 默认占位（必被平台覆盖） |
+| `board/dtsi/` | 节点模板库：`example-soc.dtsi` + `vfs/`（11）+ `drivers/`（39），参数全 0 占位，板级拷走填值（见 [driver_guide.md](driver_guide.md) §1） |
 | `ide/stubs/` | 无生成物时的 IDE 头 |
 
 ---
 
 ## 3. 配置系统（Kconfig）
 
-### 3.0 入口
+### 3.0 文件结构
 
-本分支配置**完全走 ESP-IDF Kconfig**，不再有独立的非 ESP 入口：
+Kconfig 入口按构建后端分两套，共用同一份公共配置树 `Kconfig.mini_tree`，避免分叉：
 
-| 文件 | 路径 | 作用 |
-| :--- | :--- | :--- |
-| `Kconfig.mini_tree` | 仓库根 | 公共配置树（`menu "mini_tree Configuration" ... endmenu`），不含 `mainmenu` |
-| `Kconfig.projbuild` | 仓库根 | ESP-IDF 入口：`orsource "Kconfig.mini_tree"`，被 IDF confgen 注入顶层 Kconfig 树 |
+| 文件 | 路径 | 作用 | 谁用 |
+| :--- | :--- | :--- | :--- |
+| `Kconfig.mini_tree` | 仓库根 | 公共配置树（`menu "mini_tree Configuration" ... endmenu`），不含 `mainmenu` | 两套入口各自 `source` |
+| `Kconfig.non_esp` | 仓库根 | 非 ESP 入口：`mainmenu` + `source "Kconfig.mini_tree"`（改名避免被 IDF 组件扫描自动收录，造成与 `Kconfig.projbuild` 双重 source） | `tools/genconfig.py` / `menuconfig.py` / 非 ESP `CMakeLists.txt` |
+| `Kconfig.projbuild` | 仓库根 | ESP-IDF 入口：`orsource "Kconfig.mini_tree"`（相对本文件目录），被 IDF confgen 注入顶层 Kconfig 树 | ESP-IDF（`idf.py menuconfig` / `idf.py reconfigure`） |
 
-`idf.py menuconfig` 即可在顶层菜单看到 "mini_tree Configuration" 子菜单，所有 `OSAL_*` / `SYSTEM_*` / `EVENT_BUS` 等开关经 IDF 的 `depends on` / `default` / `range` 正确求值后写入 `sdkconfig.h`。无需手编 `.config`，也无需 `tools/genconfig.py`（已移除）。
+ESP 路径下，`idf.py menuconfig` 即可在顶层菜单看到 "mini_tree Configuration" 子菜单，所有 `OSAL_*` / `SYSTEM_*` / `EVENT_BUS` 等开关经 IDF 的 `depends on` / `default` / `range` 正确求值后写入 `sdkconfig.h`，无需再手编 `.config`。
 
 ### 3.1 生成 `config.h`
 
-ESP 路径下 `config.h` 仅是 `sdkconfig.h` 的转发头（由 `cmake/esp_idf.cmake` 生成），真值全部来自 `sdkconfig.h`。不需要手动运行任何 genconfig。
+```bash
+cd path/to/mini_tree
+python3 tools/genconfig.py Kconfig build/generated/kconfig/mini_tree --config .config
+```
+
+根 `CMakeLists.txt` 在配置阶段也会调用同等逻辑（ESP 路径不调用 genconfig，改由 IDF 的 `sdkconfig.h` 注入 `CONFIG_*`）。
 
 ### 3.2 常用选项
 
 | 菜单 | 符号 | 说明 |
 | :--- | :--- | :--- |
-| Platform | `PLATFORM_ESP32` | 平台身份声明（默认开启，本分支仅 ESP） |
+| Platform | `PLATFORM_ARM_CM4F` 等 | 架构提示（与工具链配合） |
 | Multi-core | `CPU_CORES` / `AMP_MODE` | 1=单核；2=AMP |
-| OSAL | `OSAL_FREERTOS`（默认） / `OSAL_NULL` | 运行时后端：IDF 内置 FreeRTOS / 裸机后备 |
-| OSAL 容量 | `OSAL_NULL_MAX_QUEUES`（基础队列数，EventBus 开自动 +1）/ `OSAL_NULL_QUEUE_BUF_SZ` | 队列内存（仅 `OSAL_NULL` 可见） |
+| OSAL | `OSAL_NULL` / `MINI_OS` / `FREERTOS` / `RTTHREAD` | 运行时后端：裸机 / mini-os（自研，仅 Cortex-M）/ FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
+| OSAL 容量 | `OSAL_NULL_MAX_QUEUES`（基础队列数，EventBus 开自动 +1）/ `OSAL_NULL_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | 队列/堆内存（仅对应后端可见） |
 | System | `SYSTEM` / `SYSTEM_CPP` / `SYSTEM_C` | 总开关（默认自开）+ 语言后端 |
-| Log | `SYS_LOG_USE_PRINTF` / `SYS_LOG_USE_ESP` | `SYS_LOG*` 后端（ESP 推荐 `SYS_LOG_USE_ESP`） |
-| Board Features | `SYSTEM_WDT`（默认开）/ `SYSTEM_SCRUBBER`（默认关）等 | 框架看门狗 / CRC 巡检 |
-| Runtime | `EVENT_BUS`（默认开）/ `SYSTEM_CMD`（默认开）/ `OSAL_MUTEX_POOL_SIZE` / `BOTTOM_HALF_QUEUE_DEPTH` | 总开关 + 容量 |
+| Log | `SYS_LOG_USE_PRINTF` / `OSAL` | `SYS_LOG*` 后端 |
+| Board Features | `SYSTEM_WDT` / `SYSTEM_SCRUBBER` 等 | 框架看门狗（默认开）/ CRC 巡检（默认关），依赖 `SYSTEM` |
+| Runtime | `EVENT_BUS` / `EVENT_BUS_*` / `OSAL_MUTEX_POOL_SIZE` / `BOTTOM_HALF_QUEUE_DEPTH` | 总开关 + 容量 |
 
-`SYSTEM` 为**默认自开启**的可选模块；`EVENT_BUS`、`SYSTEM_CMD`、`PRODUCTION_LOG` 现为**默认开启**（纯软件功能）。ESP 路径下 FreeRTOS 定时器/堆由 IDF 自身管理（`CONFIG_FREERTOS_TIMERS` / IDF 堆），不归本 shelf。
+`SYSTEM` 为**默认自开启**的可选模块，`EVENT_BUS` 与 `SYSTEM_CMD` 为**默认关闭**：关闭 `SYSTEM` 后 `system_c/`、`system_cpp/` 与 EventBus 一并裁剪；仅开启 `EVENT_BUS` 则保留两阶段启动与看门狗，加上发布/订阅总线。
+
+仓库自带 `.config` 常见默认：`OSAL_NULL` + `SYSTEM`/`SYSTEM_CPP` + `SYSTEM_WDT` + `SYS_LOG_USE_PRINTF`（`EVENT_BUS` / `SYSTEM_CMD` / `SYSTEM_SCRUBBER` 默认关）。
 
 ---
 
 ## 4. CMake 集成
 
-将本分支放在 ESP-IDF 工程的 `components/mini_tree` 下，IDF 在 `ESP_PLATFORM` 时自动 `include(cmake/esp_idf.cmake)` 并 `idf_component_register`。板级通过 `components/board_port.cmake`（或 `MINI_TREE_BOARD_PORT`）注入：
-
 ```cmake
-# components/board_port.cmake —— 板级注入契约（详见 esp_idf_cmake.md §3）
-get_filename_component(_BOARD_ROOT "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+# 平台工程 CMakeLists.txt（示意）
+add_subdirectory(third_party/mini_tree)
 
-set(BOARD_DTS      "${_BOARD_ROOT}/board_<soc>/dts/board.dts")   # 板级设备树
-set(BOARD_DTSI_DIR "${_BOARD_ROOT}/board_<soc>/dtsi")            # dtsi 片段目录
+add_executable(my_fw
+    Core/Src/main.c
+    platform/hal_gpio_stm32.c          # 例：强符号覆盖
+    platform/hal_uart_stm32.c
+    # …
+)
 
-# 芯片专属 dtc 参数（-I 与目标宏）
-list(APPEND MINI_TREE_DTC_EXTRA_ARGS "-DCONFIG_IDF_TARGET_<CHIP>=1")
+target_link_libraries(my_fw PRIVATE mini_tree)
+
+# 覆盖设备树（必须）
+set(BOARD_DTS      "${CMAKE_SOURCE_DIR}/board/dts/my_board.dts" CACHE FILEPATH "" FORCE)
+set(BOARD_DTSI_DIR "${CMAKE_SOURCE_DIR}/board/dtsi" CACHE PATH "" FORCE)
+
+# 供 dtsi #include 厂商头展开宏（按需）
+set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 ```
 
-HAL 强实现放在独立组件 `hal_<soc>`（`WHOLE_ARCHIVE`），见 [esp_idf_cmake.md §7](esp_idf_cmake.md#7-halesp-全屏蔽--板级-strong-实现)。
+### 4.1 平台常设 CACHE / 变量
 
-**不要**对本分支根目录直接 `add_subdirectory` 进 IDF —— ESP 路径走组件化，具体见 **[esp_idf_cmake.md](esp_idf_cmake.md)**。
+| 变量 | 类型 | 作用 |
+| :--- | :--- | :--- |
+| `BOARD_DTS` | `FILEPATH` | 板级入口 `.dts`（**必须**覆盖默认占位） |
+| `BOARD_DTSI_DIR` | `PATH` | dtsi 搜索目录 |
+| `VENDOR_INC_DIRS` | `STRING` | 厂商头 `-I`，供 dtc/cpp 展开宏 |
+| `VENDOR_DEFINES` | `STRING` | 额外 `-D`（少用） |
+| ETL（`cmake/etl.cmake`） | — | **vendor 于 `lib/etl`**（仅 include + cmake）；根 CMake 始终 link（缺失时 Fetch 兜底） |
+| 其它开源积木 | — | TinyUSB / lwIP 为**配置期** FetchContent（根 CMake 直接 include 对应 `cmake/*.cmake`），其余（LVGL、u8g2、littlefs、FatFs、SFUD、coreMQTT、MCUBoot、MultiButton、EasyFlash、EasyLogger、FlashDB）均为链接期 FetchContent，由 `mini_tree_link_*` 点亮，首次联网 Fetch，见 [ecosystem.md](ecosystem.md) |
+| `mini_tree_add_rust_crate` | — | 可选；见 `cmake/rust.cmake` |
+| `CONFIG_BUILD_DISASM` | Kconfig | 启用后可对目标加反汇编 post-build（`cmake/disasm.cmake`） |
+
+在 `add_subdirectory(mini_tree)` **之前** `set(... CACHE ... FORCE)` 最稳妥，避免首次配置锁死默认占位 DTS。
+
+`mini_tree` 目标会：
+
+1. 跑 `genconfig.py`
+2. 跑 `dtc-lite`（扫描 vfs/bus/drivers 中的 `DRIVER_REGISTER`，生成编译期 probe 表）
+3. 按 `.config` 挑选 OSAL / SYSTEM 源；链入 `lib/` 中的 vendor 内核（mini-os / FreeRTOS v11.3.0 / RT-Thread v5.3.0）
+4. 配置期积木（TinyUSB / lwIP）由根 CMake 直接 `include` 对应 `cmake/*.cmake`；其余可选积木由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）
+
+语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)；积木清单见 [ecosystem.md](ecosystem.md)。
+
+### 4.2 ESP-IDF？
+
+主仓 `main` 保留了完整的 ESP-IDF 构建路径（`cmake/esp_idf.cmake`、`Kconfig.projbuild`、`idf_component.yml`），但**不能**像普通平台一样直接 `add_subdirectory`——需要走 IDF 组件路径（由 `ESP_PLATFORM` 触发 → `cmake/esp_idf.cmake`）。
+
+完整参考板工程和移植指南在 **`esp` 分支**（`espidf-branch`）维护：
+
+```bash
+git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
+```
+
+也可通过乐鑫组件注册表拉取：在 `idf_component.yml` 里添加 `h-000-h/mini_tree: ">=1.2.0"`。
 
 ---
 
@@ -123,9 +163,9 @@ HAL 强实现放在独立组件 `hal_<soc>`（`WHOLE_ARCHIVE`），见 [esp_idf_
 
 - 入口 `.dts`（model/compatible、chosen、status）
 - SoC / 外设 `.dtsi`
-- 需要时在节点里写厂商宏（经 `MINI_TREE_DTC_EXTRA_ARGS` 的芯片 `-I` cpp）
+- 需要时在节点里写厂商宏（经 `VENDOR_INC_DIRS` cpp）
 
-细节与 compatible 列表见 [driver_guide.md](driver_guide.md) 与 [esp_idf_cmake.md §6](esp_idf_cmake.md#6-dts-与生成物)。
+细节与 compatible 列表见 [driver_guide.md](driver_guide.md)。
 
 ---
 
@@ -137,8 +177,10 @@ HAL 强实现放在独立组件 `hal_<soc>`（`WHOLE_ARCHIVE`），见 [esp_idf_
 #include "system_init.h"
 #include "config.h"
 
-void app_main(void)
+int main(void)
 {
+    /* 平台：时钟、堆、控制台 … */
+
     mini_tree_pre_os_init();
     /* 可选：业务服务静态 init */
 
@@ -147,17 +189,24 @@ void app_main(void)
 
     system_init_complete();
 
-    /* ESP-IDF 已运行 FreeRTOS 调度器；若选 OSAL_NULL 则自行写循环 */
-#if defined(CONFIG_OSAL_FREERTOS)
-    /* 框架任务已并入 IDF 调度的 FreeRTOS，无需额外启动 */
+#if defined(CONFIG_OSAL_NULL)
+    for (;;)
+        mini_tree_system_loop();
+#elif defined(CONFIG_OSAL_MINI_OS)
+    mini_os_schedule_start();
+#elif defined(CONFIG_OSAL_FREERTOS)
+    vTaskStartScheduler();
+#elif defined(CONFIG_OSAL_RTTHREAD)
+    rt_system_scheduler_start();
 #endif
+    return 0;
 }
 ```
 
 ### 6.2 C++（`system_init.hpp`）
 
 ```cpp
-#include "config.h"            // CONFIG_OSAL_* 等宏为相关头所需
+#include "config.h"            // CONFIG_OSAL_* / CONFIG_XTASK_PREEMPT 等宏为相关头所需
 #include "system_init.hpp"
 
 mini_tree::system_pre_os_init();
@@ -166,12 +215,15 @@ mini_tree::system_start_tasks();   /* probe + 框架任务 */
 /* 可选：osal_task_create 业务任务 */
 
 system_init_complete();
-// ESP-IDF 已运行 FreeRTOS 调度器，无需额外启动
+// 再启动调度器（vTaskStartScheduler / rt_system_scheduler_start / mini_tree_system_loop）
 ```
 
 > 裸机（`CONFIG_OSAL_NULL`）下 `osal_task_create` **C 版恒返回 `OSAL_ERR_NOTSUPP`**：
-> C++ 工程请用 `osal_null.h` 的 C++ 重载 `osal_task_create`（`CONFIG_OSAL_NULL_TASK_CPP`，默认开启）；
-> C 工程直接调 `xscheduler_task_create`（见 `time_slice/task/xtask.h`）。FreeRTOS 后端无此限制。
+> C++ 工程请用 `osal_null.h` 的 C++ 重载 `osal_task_create`（`CONFIG_OSAL_NULL_TASK_CPP`，默认开启；
+> `period` 参数为任务周期 ms，`param1` 为调用方静态分配的 `x_task*` TCB）；
+> C 工程直接调 `xscheduler_task_create`（见 `time_slice/task/xtask.h`）。OS 后端无此限制。
+>
+> **抢占式 (`CONFIG_XTASK_PREEMPT=y`) 注意**: C++ 重载仍提供, 但 `osal_task_create` 切换为带 `priority` 的分支（`stack_size` 在裸机下复用为周期）; 也可走 `xscheduler_task_create` 原生 API. 调度器实现换成 `xtask_preempt.c` (N+1 多优先级, 已完整实现可编译).
 
 阶段含义见 [architecture.md §3](architecture.md#3-启动时序两段式点火)。
 
@@ -182,26 +234,36 @@ system_init_complete();
 1. 用编辑器打开 **mini_tree 仓库根**（不要只开子文件夹）。
 2. 确认存在根目录 `compile_flags.txt`，**删除**任何子目录里的 `compile_flags.txt`。
 3. ETL 头：已在 `lib/etl`；clangd 用根 `compile_flags.txt`（含 `-Ilib/etl/include`）即可。
-4. 在 ESP-IDF 工程里可 `idf.py build` 后由 `build/compile_commands.json` 提供索引。
+4. 需要 `compile_commands.json` 时，在 mini_tree 根运行 `python3 tools/gen_compile_db.py` 生成（覆盖 `.c/.cpp` 与 `.h/.hpp` 头文件条目，父项目 configure 也不会覆盖）。
 5. 命令面板：`Clangd: Restart language server`。
 
-无真机构建时，靠 `ide/stubs/` 里的 `config.h`、`board_nodes.h` 等占位头消除红线。
+无真机构建时，靠 `ide/stubs/` 里的 `config.h`、`board_nodes.h` 等占位头消除红线。积木策略见 [ecosystem.md](ecosystem.md)。
+
+### 7.1 操作系统选择（Linux / Windows）
+
+本仓是基于 **CMake + clangd** 的跨系统架构，**编译器层面 Windows 与 Linux 没有区别**（同一套 ARM GCC / Clang、同一份 CMake 流程），因此两边都能正常开发：
+
+| 维度 | 说明 |
+| :--- | :--- |
+| **Linux（推荐）** | 如果你熟悉这套工具链，**推荐直接去 Linux 里写 MCU**：CMake / Python 脚本 / 生成头流程在 Linux 上更快、更顺、权限与路径管理也更干净，日常构建与依赖管理更省心；同时也能**为你进入 Linux 开发环境做提前准备**（服务端、CI、交叉编译大多在 Linux）。 |
+| **Windows（同样支持）** | Windows 这边同样完全可用——编译器无区别、工程结构一致，clangd / Keil Studio（Keil 6）在 Windows 上也能跑通本仓 CMake 流程；只是脚本与权限细节不如 Linux 顺手。 |
+
+> 结论：**优先 Linux，不排斥 Windows**。两边产物一致，按需选顺手的即可；团队里想练 Linux 的人可直接切过去，不影响交付。
 
 ---
 
 ## 8. 验收清单
 
-- [ ] `idf.py build` 通过，生成 `board_probe.c` / `dt_config_gen.h`
-- [ ] `sdkconfig.h` 中 OSAL/SYSTEM 宏符合预期（默认 `OSAL_FREERTOS`）
+- [ ] `config.h` 生成且 OSAL/SYSTEM 宏符合预期
 - [ ] dtc-lite 产出 `board_nodes.h`，`DEV_ID_COUNT` ≥ 1（真实板应远大于占位）
-- [ ] 板级 `hal_<soc>` 组件带 `WHOLE_ARCHIVE`，实现 ESP 构建引用的全部 `hal_*`
-- [ ] 链接后 GPIO/UART 等 HAL 为板级实现（非一直 `VFS_ERR_NOTSUPP`）
+- [ ] 链接后 GPIO/UART 等 HAL 为平台实现（非一直 `MINI_ERR_NOTSUPP`）
 - [ ] `board_driver_probe_all` 无意外 FATAL
-- [ ] 烧录后业务任务稳定跑
+- [ ] 开中断后业务任务或裸机 loop 稳定跑
 
 ---
 
 ## 相关文档
 
-- [esp_idf_cmake.md](esp_idf_cmake.md) · [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
+- [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
 - [osal_switching.md](osal_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)
+- [tools_guide.md](../tools_guide.md)

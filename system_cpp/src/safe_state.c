@@ -1,11 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * safe_state.c — 安全状态与启动循环退避实现
- *
- * s_panic_counter 累计异常启动次数, ≥5 (BOOTLOOP_THRESHOLD) 触发永久锁死
- * enter_safe_state 顺序: hal_platform_critical_hardware_lock → 挂起调度器 → 关中断 → 死循环
- * NMI 紧急标记委托 hal_platform_nmi_emergency_stamp (平台须置于 IRAM)
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file safe_state.c
+ *@brief safe state 实现
+ *@author H-000-H
+ *@details
+ *   safe_state.c — 安全状态与启动循环退避实现
+ *   s_panic_counter 累计异常启动次数, ≥5 (BOOTLOOP_THRESHOLD) 触发永久锁死
+ *   enter_safe_state 顺序: hal_platform_critical_hardware_lock → 挂起调度器 → 关中断 → 死循环
+ *   NMI 紧急标记委托 hal_platform_nmi_emergency_stamp (平台须置于 IRAM)
  */
+
 #include "safe_state.h"
 
 #include "hal_amp.h"
@@ -47,14 +51,14 @@ void safe_state_clear_bootloop(void) { s_panic_counter = 0; }
 
 /**
  * @brief 进入不可恢复的安全状态 (硬件闭锁 → 冻结调度 → 关中断 → 死循环)
- * @param reason 触发原因描述 (当前忽略, 预留日志)
+ * @param[in] reason 触发原因描述 (当前忽略, 预留日志)
  */
 void enter_safe_state(const char* reason)
 {
     (void)reason;
 
     /* 平台具体硬件闭锁 (PWM/I2S/SPI 停止, LED, 蜂鸣器) */
-    COMPAT_IGNORE_RESULT(hal_platform_critical_hardware_lock());
+    MINI_IGNORE_RESULT(hal_platform_critical_hardware_lock());
 
     /* 冻结 OS (单向不可恢复) */
     osal_sched_freeze();

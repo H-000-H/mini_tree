@@ -23,7 +23,7 @@ function(mini_tree_link_coremqtt target)
             NAME coremqtt
             LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/coreMQTT"
             MARKER "source/include/core_mqtt.h"
-            GIT_REPOSITORY https://github.com/FreeRTOS/coreMQTT.git
+            GIT_REPOSITORY git@github.com:FreeRTOS/coreMQTT.git
             GIT_TAG ${MINI_TREE_COREMQTT_VERSION}
         )
         set(_mqtt_src "${_mqtt_root}/source")

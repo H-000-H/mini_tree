@@ -65,7 +65,7 @@ With `CONFIG_BUILD_DISASM=y` and `cmake/disasm.cmake` (enabled by the platform p
 | Item | Correct Practice |
 | :--- | :--- |
 | Workspace root | The mini_tree repo root |
-| Compilation database | Root `compile_flags.txt`; in an ESP project, `idf.py build` produces `build/compile_commands.json` for indexing |
+| Compilation database | Root `compile_flags.txt`; or run `tools/gen_compile_db.py` to generate `compile_commands.json` (includes header entries, so clang-tidy can check headers standalone) |
 | Forbidden | Putting another `compile_flags.txt` in a subdirectory |
 | Stub headers | `ide/stubs/` |
 | After config changes | `Clangd: Restart language server` |

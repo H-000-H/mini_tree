@@ -1,2 +1,5 @@
-# 格式化时忽略 vendored 第三方代码（需要 clang-format >= 17，低版本忽略此文件）
-lib/
+# mini-os 作为独立 vendored/子模块组件,其代码风格由自身 .clang-format 定义,
+# 不跟随 mini_tree 主工程。此处显式排除,避免:
+#   - 直接对单个文件运行 clang-format / IDE 插件时,被主工程配置重排;
+#   - 主工程后续若放开对 lib/ 的排除,也不会误格式化 mini-os。
+lib/mini-os/

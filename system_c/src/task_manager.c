@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * task_manager (C 实现) — 任务创建与 TWDT 自动订阅
- *
- * task_manager_create: 按 board_task_config 创建任务并自动订阅 TWDT。
- * task_manager_create_task: 便捷包装, 内部构造 config 后委托 create。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file task_manager.c
+ *@brief task manager 实现
+ *@author H-000-H
+ *@details
+ *   task_manager (C 实现) — 任务创建与 TWDT 自动订阅
+ *   task_manager_create: 按 board_task_config 创建任务并自动订阅 TWDT。
+ *   task_manager_create_task: 便捷包装, 内部构造 config 后委托 create。
  */
+
 #include "task_manager.h"
 
 #include "system_cfg.h"
@@ -16,13 +20,12 @@ static const char* k_tag = "TaskManager";
 
 /**
  * @brief 按 board_task_config 创建 OSAL 任务并自动订阅 TWDT
- * @param config 任务配置 (名称/栈/优先级/绑核)
- * @param entry 任务入口函数
- * @param param 传入 entry 的用户参数
+ * @param[in] config 任务配置 (名称/栈/优先级/绑核)
+ * @param[in] entry 任务入口函数
+ * @param[in] param 传入 entry 的用户参数
  * @return 任务句柄; 失败返回 NULL
  */
-osal_task_handle_t task_manager_create(const struct board_task_config* config, void (*entry)(void*),
-                                       void* param)
+osal_task_handle_t task_manager_create(const struct board_task_config* config, void (*entry)(void*), void* param)
 {
     if (entry == NULL || config == NULL)
     {
@@ -32,8 +35,7 @@ osal_task_handle_t task_manager_create(const struct board_task_config* config, v
     }
 
     osal_task_handle_t handle = NULL;
-    int ret = osal_task_create_handle(config->name, config->stack_size, config->priority, entry,
-                                      param, config->core_id, &handle);
+    int                ret = osal_task_create_handle(config->name, config->stack_size, config->priority, entry, param, config->core_id, &handle);
     if (ret != 0)
     {
         SYS_LOGE(k_tag, "failed to create task: %s", config->name);
@@ -41,24 +43,22 @@ osal_task_handle_t task_manager_create(const struct board_task_config* config, v
     }
 
     /* 自动订阅 TWDT (如果 TWDT 已初始化) */
-    system_wdt_subscribe(handle);
+    MINI_IGNORE_RESULT(system_wdt_subscribe(handle));
 
     return handle;
 }
 
 /**
  * @brief 便捷创建任务 (内部构造 board_task_config 后调用 task_manager_create)
- * @param name 任务名称
- * @param stack_size 栈大小 (字节)
- * @param priority 任务优先级 (语义取决于 OSAL 后端)
- * @param entry 任务入口函数
- * @param param 传入 entry 的用户参数
- * @param core_id 绑核 ID (-1 或 0 视后端而定)
+ * @param[in] name 任务名称
+ * @param[in] stack_size 栈大小 (字节)
+ * @param[in] priority 任务优先级 (语义取决于 OSAL 后端)
+ * @param[in] entry 任务入口函数
+ * @param[in] param 传入 entry 的用户参数
+ * @param[in] core_id 绑核 ID (-1 或 0 视后端而定)
  * @return 任务句柄; 失败返回 NULL
  */
-osal_task_handle_t task_manager_create_task(const char* name, uint32_t stack_size,
-                                            uint32_t priority, void (*entry)(void*), void* param,
-                                            int core_id)
+osal_task_handle_t task_manager_create_task(const char* name, uint32_t stack_size, uint32_t priority, void (*entry)(void*), void* param, int core_id)
 {
     struct board_task_config cfg = {0};
     cfg.name = name ? name : "unknown";

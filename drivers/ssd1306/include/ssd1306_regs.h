@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file ssd1306_regs.h
- * @brief SSD1306 面板寄存器 / 几何 / I2C 控制字节
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file ssd1306_regs.h
+ *@brief SSD1306 面板寄存器 / 几何 / I2C 控制字节
+ *@author H-000-H
+
  */
+
 #ifndef SSD1306_REGS_H
 #define SSD1306_REGS_H
 

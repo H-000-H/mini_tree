@@ -1,5 +1,6 @@
 -std=gnu17
 -DCONFIG_OSAL_NULL=1
+-DCONFIG_OSAL_NULL_TASK_CPP=1
 -DCONFIG_SYS_LOG_USE_PRINTF=1
 -DCONFIG_SYSTEM_CPP=1
 -DETL_NO_STL
@@ -79,6 +80,7 @@
 -Ibus/i2c
 -Ibus/can
 -Ibus/usb
+-Ilib/tinyusb/src
 -Ibus/i2s
 -Ivfs/gpio
 -Ivfs/spi
@@ -93,3 +95,10 @@
 -Ivfs/tim
 -Ivfs/adc
 -Ivfs/dac
+-Ilib/lwip/src/include
+-Inet
+-DCONFIG_PPP_SUPPORT=1
+-DCONFIG_PPPOS_SUPPORT=1
+-DCONFIG_PPP_AUTH_SUPPORT=1
+-DCONFIG_PAP_SUPPORT=1
+-DCONFIG_CHAP_SUPPORT=1

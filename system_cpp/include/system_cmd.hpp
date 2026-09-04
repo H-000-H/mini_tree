@@ -12,6 +12,7 @@
 #pragma once
 
 #include "osal.h"
+#include "status.h"
 #include <etl/char_traits.h>
 #include <etl/placement_new.h>
 #include <etl/string.h>
@@ -33,12 +34,13 @@
 #define SYS_CMD_WRAPPER_FN_SZ 40
 #endif
 
-/* ═══════════════════════════════════════════════════════════════════════
- * CmdFn — 固定容量内联函数包装器 (Small-Buffer-Optimized Callable Wrapper)
- *
- * 通用后端, 不依赖 ETL / OSAL, 两个后端共用.
- * ═══════════════════════════════════════════════════════════════════════ */
-template <size_t StorageSz = SYS_CMD_WRAPPER_FN_SZ> class CmdFn
+/* -------------------------------------------------------------------------- */
+/* CmdFn — 固定容量内联函数包装器 (Small-Buffer-Optimized Callable Wrapper) */
+/*  */
+/* 通用后端, 不依赖 ETL / OSAL, 两个后端共用. */
+/* -------------------------------------------------------------------------- */
+template <size_t StorageSz = SYS_CMD_WRAPPER_FN_SZ> 
+class CmdFn
 {
     /** @brief 虚函数表 — 类型擦除后的操作入口 */
     struct Vtable
@@ -127,14 +129,12 @@ const typename CmdFn<StorageSz>::Vtable CmdFn<StorageSz>::k_vtable = {
     &CmdFn<StorageSz>::template invoke_fn<F>, &CmdFn<StorageSz>::template copy_fn<F>,
     &CmdFn<StorageSz>::template destroy_fn<F>};
 
-/* ═══════════════════════════════════════════════════════════════════════
- * SystemCmd — 平台无关 API
- * ═══════════════════════════════════════════════════════════════════════ */
-/**
- * @brief 系统命令分发器 — 单例模式, 双后端 (OS / Bare-metal)
- *
- * 支持注册/注销/分发命令, 带轻量级 RTTI 类型安全校验
- */
+/* -------------------------------------------------------------------------- */
+/* SystemCmd — 平台无关 API */
+/* /** */
+/* @brief 系统命令分发器 — 单例模式, 双后端 (OS / Bare-metal) */
+/* 支持注册/注销/分发命令, 带轻量级 RTTI 类型安全校验 */
+/* -------------------------------------------------------------------------- */
 class SystemCmd
 {
 public:
@@ -160,41 +160,46 @@ public:
         TypeIdToken ctx_id; /**< 上下文类型令牌 (用于分发时校验) */
     };
 
-    /* ── 后端无关的公共 API ── */
+    /* -------------------------------------------------------------------------- */
+    /* 后端无关的公共 API */
+    /* -------------------------------------------------------------------------- */
     static SystemCmd& get_instance(); /**< 获取单例引用 */
 
-    /** @brief 注册命令: handler(const Args&, Ctx*) */
+    /** @brief 注册命令: handler(const Args&, Ctx*)
+     * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 表满; MINI_ERR_BUSY 重复注册 */
     template <typename Args, typename Ctx = void>
-    bool register_cmd(const char* name, bool (*handler)(const Args&, Ctx*));
+    int register_cmd(const char* name, bool (*handler)(const Args&, Ctx*));
 
-    /** @brief 注册命令: handler(const Args&, const Ctx*) */
+    /** @brief 注册命令: handler(const Args&, const Ctx*)
+     * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 表满; MINI_ERR_BUSY 重复注册 */
     template <typename Args, typename Ctx>
-    bool register_cmd(const char* name, bool (*handler)(const Args&, const Ctx*));
+    int register_cmd(const char* name, bool (*handler)(const Args&, const Ctx*));
 
-    /** @brief 注册命令: handler(Ctx*), 无参数 */
-    template <typename Ctx = void> bool register_cmd(const char* name, bool (*handler)(Ctx*));
+    /** @brief 注册命令: handler(Ctx*), 无参数
+     * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 表满; MINI_ERR_BUSY 重复注册 */
+    template <typename Ctx = void> int register_cmd(const char* name, bool (*handler)(Ctx*));
 
     /** @brief 注册命令: handler(), 无参数无上下文 */
-    bool register_cmd(const char* name, bool (*handler)());
+    int register_cmd(const char* name, bool (*handler)());
 
-    bool unregister_cmd(const char* name); /**< 注销已注册命令 */
+    int unregister_cmd(const char* name); /**< 注销已注册命令 */
     bool has_cmd(const char* name) const; /**< 查询命令是否已注册 */
     size_t count() const; /**< 当前已注册命令数 */
 
     /** @brief 原始分发 (无类型校验, 内部使用) */
-    bool dispatch(const char* name, const void* arg, size_t arg_len, void* ctx = nullptr,
-                  TypeIdToken expected_args_id = nullptr,
-                  TypeIdToken expected_ctx_id = nullptr) const;
+    int dispatch(const char* name, const void* arg, size_t arg_len, void* ctx = nullptr,
+                 TypeIdToken expected_args_id = nullptr,
+                 TypeIdToken expected_ctx_id = nullptr) const;
 
     /** @brief 类型安全分发 (带参数 + 上下文) */
     template <typename Args, typename Ctx = void>
-    bool dispatch_secure(const char* name, const Args& arg, Ctx* ctx = nullptr) const
+    int dispatch_secure(const char* name, const Args& arg, Ctx* ctx = nullptr) const
     {
         return dispatch(name, &arg, sizeof(Args), ctx, get_type_id<Args>(), get_type_id<Ctx>());
     }
 
     /** @brief 类型安全分发 (无参数, 仅上下文) */
-    template <typename Ctx = void> bool dispatch_secure(const char* name, Ctx* ctx = nullptr) const
+    template <typename Ctx = void> int dispatch_secure(const char* name, Ctx* ctx = nullptr) const
     {
         return dispatch(name, nullptr, 0, ctx, get_type_id<void>(), get_type_id<Ctx>());
     }
@@ -205,19 +210,23 @@ private:
     SystemCmd(const SystemCmd&) = delete; /**< 禁止拷贝 */
     SystemCmd& operator=(const SystemCmd&) = delete; /**< 禁止赋值 */
 
-    /* ════════════════════════════════════════════════════════════════════
-     *  后端存储
-     * ════════════════════════════════════════════════════════════════════ */
+    /* -------------------------------------------------------------------------- */
+    /* 后端存储 */
+    /* -------------------------------------------------------------------------- */
 #ifndef CONFIG_OSAL_NULL
-    /* ── OS 后端: etl::map + spinlock ── */
+    /* -------------------------------------------------------------------------- */
+    /* OS 后端: etl::map + spinlock */
+    /* -------------------------------------------------------------------------- */
     using CmdString = etl::string<k_max_cmd_name_len>; /**< 命令名存储类型 */
     using CmdMap = etl::map<CmdString, HandlerNode, k_max_commands>; /**< 命令映射表 */
 
     CmdMap m_commands; /**< 命令名 → 处理节点 映射 */
     mutable struct osal_spinlock* m_lock; /**< 自旋锁指针 (保护并发访问) */
-    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] COMPAT_ALIGNED(4); /**< 自旋锁存储区 */
+    uint8_t m_lock_storage[OSAL_SPINLOCK_STORAGE_SIZE] MINI_ALIGNED(4); /**< 自旋锁存储区 */
 #else
-    /* ── Bare-metal 后端: 普通数组 + const char* + 无锁 ── */
+    /* -------------------------------------------------------------------------- */
+    /* Bare-metal 后端: 普通数组 + const char* + 无锁 */
+    /* -------------------------------------------------------------------------- */
     /** @brief 命令条目 (bare-metal 后端) */
     struct CmdEntry
     {
@@ -229,18 +238,17 @@ private:
 #endif
 };
 
-/* ═══════════════════════════════════════════════════════════════════════
- *  register_cmd 模板实现 — 双后端条件分支
- * ═══════════════════════════════════════════════════════════════════════ */
-
+/* -------------------------------------------------------------------------- */
+/* register_cmd 模板实现 — 双后端条件分支 */
+/* -------------------------------------------------------------------------- */
 template <typename Args, typename Ctx>
-inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, Ctx*))
+inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, Ctx*))
 {
     if (!name || !handler)
-        return false;
+        return MINI_ERR_INVAL;
     const size_t name_len = etl::strlen(name);
     if (name_len >= k_max_cmd_name_len)
-        return false;
+        return MINI_ERR_INVAL;
 
     static_assert(etl::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
     static_assert(etl::is_default_constructible_v<Args>, "Args must be default constructible");
@@ -258,7 +266,7 @@ inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args
                 return false;
         }
         Args typed_arg;
-        COMPAT_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
+        MINI_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
         auto* ctx = static_cast<Ctx*>(raw_ctx);
         return handler(typed_arg, ctx);
     };
@@ -266,35 +274,40 @@ inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
     osal_spinlock_lock(m_lock);
-    if (m_commands.full() || m_commands.contains(cmd))
+    if (m_commands.full())
     {
         osal_spinlock_unlock(m_lock);
-        return false;
+        return MINI_ERR_NOSPC;
+    }
+    if (m_commands.contains(cmd))
+    {
+        osal_spinlock_unlock(m_lock);
+        return MINI_ERR_BUSY;
     }
     bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
     osal_spinlock_unlock(m_lock);
-    return success;
+    return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
-            return false;
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
+            return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
-        return false;
+        return MINI_ERR_NOSPC;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
     m_count++;
-    return true;
+    return MINI_OK;
 #endif
 }
 
 template <typename Args, typename Ctx>
-inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, const Ctx*))
+inline int SystemCmd::register_cmd(const char* name, bool (*handler)(const Args&, const Ctx*))
 {
     if (!name || !handler)
-        return false;
+        return MINI_ERR_INVAL;
     const size_t name_len = etl::strlen(name);
     if (name_len >= k_max_cmd_name_len)
-        return false;
+        return MINI_ERR_INVAL;
 
     static_assert(etl::is_trivially_copyable_v<Args>, "Args must be trivially copyable");
     static_assert(etl::is_default_constructible_v<Args>, "Args must be default constructible");
@@ -309,7 +322,7 @@ inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args
         if (raw_ctx == nullptr)
             return false;
         Args typed_arg;
-        COMPAT_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
+        MINI_MEM_COPY(&typed_arg, raw_arg, sizeof(Args));
         const auto* ctx = static_cast<const Ctx*>(raw_ctx);
         return handler(typed_arg, ctx);
     };
@@ -317,34 +330,39 @@ inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(const Args
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
     osal_spinlock_lock(m_lock);
-    if (m_commands.full() || m_commands.contains(cmd))
+    if (m_commands.full())
     {
         osal_spinlock_unlock(m_lock);
-        return false;
+        return MINI_ERR_NOSPC;
+    }
+    if (m_commands.contains(cmd))
+    {
+        osal_spinlock_unlock(m_lock);
+        return MINI_ERR_BUSY;
     }
     bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
     osal_spinlock_unlock(m_lock);
-    return success;
+    return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
-            return false;
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
+            return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
-        return false;
+        return MINI_ERR_NOSPC;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
     m_count++;
-    return true;
+    return MINI_OK;
 #endif
 }
 
-template <typename Ctx> inline bool SystemCmd::register_cmd(const char* name, bool (*handler)(Ctx*))
+template <typename Ctx> inline int SystemCmd::register_cmd(const char* name, bool (*handler)(Ctx*))
 {
     if (!name || !handler)
-        return false;
+        return MINI_ERR_INVAL;
     const size_t name_len = etl::strlen(name);
     if (name_len >= k_max_cmd_name_len)
-        return false;
+        return MINI_ERR_INVAL;
 
     HandlerNode node;
     node.args_id = get_type_id<void>();
@@ -363,23 +381,28 @@ template <typename Ctx> inline bool SystemCmd::register_cmd(const char* name, bo
 #ifndef CONFIG_OSAL_NULL
     CmdString cmd(name);
     osal_spinlock_lock(m_lock);
-    if (m_commands.full() || m_commands.contains(cmd))
+    if (m_commands.full())
     {
         osal_spinlock_unlock(m_lock);
-        return false;
+        return MINI_ERR_NOSPC;
+    }
+    if (m_commands.contains(cmd))
+    {
+        osal_spinlock_unlock(m_lock);
+        return MINI_ERR_BUSY;
     }
     bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
     osal_spinlock_unlock(m_lock);
-    return success;
+    return success ? MINI_OK : MINI_ERR_NOMEM;
 #else
-    for (size_t i = 0; i < m_count; i++)
-        if (strcmp(m_entries[i].name, name) == 0)
-            return false;
+    for (size_t index = 0; index < m_count; index++)
+        if (strcmp(m_entries[index].name, name) == 0)
+            return MINI_ERR_BUSY;
     if (m_count >= k_max_commands)
-        return false;
+        return MINI_ERR_NOSPC;
     m_entries[m_count].name = name;
     m_entries[m_count].node = node;
     m_count++;
-    return true;
+    return MINI_OK;
 #endif
 }

@@ -39,7 +39,7 @@
 | `board/dts/board.dts` | **Placeholder** root node (`mini-tree,placeholder` only, no peripherals); boards override via `BOARD_DTS` |
 | `board/dtsi/` | **Node-template library**: `example-soc.dtsi` (SoC skeleton: cpus/gpio/uart) + `vfs/` (one file per VFS) + `drivers/` (one file per product driver); all-0 placeholders with usage comments; `BOARD_DTSI_DIR` may point at platform-owned dtsi |
 | `board/dt-bindings/{gpio,spi,uart,tim}/` | Generic `#define`s for dtsi `#include <dt-bindings/...>` |
-| `drivers/<chip>/{include,src}` | Product drivers (37); GLOB-scanned by CMake / `dtc-lite` |
+| `drivers/<chip>/{include,src}` | Product drivers (39); GLOB-scanned by CMake / `dtc-lite` |
 
 > **How to use the templates**: drivers templates mount on labels defined by the vfs templates (e.g. `&i2c0 { aht20: aht20@0 {...} }`). The board enables both the bus node and the device node (`status = "okay"`); the instance pool size auto-equals `DTC_GEN_COUNT_*` (count of same-compatible nodes, default 1) — no manual tuning.
 
@@ -52,14 +52,13 @@ dtsi/<soc>.dtsi                    # SoC / bus / product fragments
 dtsi/<soc>-product-drivers.dtsi
 …
 # HAL strong symbols: components/hal_esp32s3/
-# Exception driver: components/driver_ws2812/
 ```
 
 > Above: the `BOARD_DTS` entry, SoC/product dtsi fragments, HAL strong symbols, and the exception driver all live in the platform project (ESP reference).
 
 CMake: `BOARD_DTS`, `BOARD_DTSI_DIR`; vendor header search: `VENDOR_INC_DIRS` / `VENDOR_DEFINES`.
 
-Product drivers and ESP wiring: see [esp_idf_cmake.md](esp_idf_cmake.md).
+Product drivers and ESP wiring: see [getting_started.md](getting_started.md) §4.2.
 
 ---
 
@@ -112,9 +111,9 @@ Rules:
 
 - `name`: C identifier, globally unique
 - `compatible`: **exactly** matches the DTS node's `compatible = "..."`
-- `probe`/`remove`: return `VFS_OK` or `VFS_ERR_*`
+- `probe`/`remove`: return `MINI_OK` or `MINI_ERR_*`
 
-Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-identifier-naming`): `x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::`, etc.; `.clang-format` uses Allman braces, no braces on single statements, 4-space indent, 100 columns. Recommended at `app`, mandatory below `app`.
+Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-identifier-naming`): `x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` / `mini_tree::`, etc.; `.clang-format` uses Allman braces, no braces on single statements, 4-space indent, 200 columns. Recommended at `app`, mandatory below `app`.
 
 ---
 
@@ -128,9 +127,8 @@ Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-iden
 | `vfs/can` | host + client |
 | `vfs/usb` | `usb-otg-host`, `heterogeneous,usb-cdc-acm/ecm`, `heterogeneous,usb-hid` |
 | `vfs/gpio` · `adc` · `dac` · `tim` · `rtc` · `iwdg` · `wwdg` | Per-peripheral compatibles |
-| `drivers/<chip>/` | 37 product drivers (GLOB-scanned); e.g. `winbond,w25qxx`, `sitronix,st7789`, `solomon,ssd1306`, `modbus,rtu-rs485`, … |
+| `drivers/<chip>/` | 39 product drivers (GLOB-scanned); e.g. `winbond,w25qxx`, `sitronix,st7789`, `solomon,ssd1306`, `modbus,rtu-rs485`, … |
 | `board` | `board,safety-hw` |
-| Out-of-tree `driver_ws2812` | `worldsemi,ws2812` (the only vendor-RMT exception) |
 
 Product drivers follow `drivers/<chip>/{include,src}`. CMake / dtc-lite scan with `drivers/*/src` — **don't** maintain per-file lists.
 
@@ -138,7 +136,7 @@ The `DRIVER_REGISTER` entries in the source are authoritative; re-run dtc-lite a
 
 The **ioctl / read-write semantics summary** lives in [peripherals.md](peripherals.md).
 
-ESP wiring details: see [esp_idf_cmake.md](esp_idf_cmake.md).
+ESP wiring details: see [getting_started.md](getting_started.md) §4.2.
 
 ---
 

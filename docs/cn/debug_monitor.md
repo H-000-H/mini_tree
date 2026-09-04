@@ -65,7 +65,7 @@ IDE 无构建时用 `ide/stubs/*` 对齐符号名，但 **ID 数量是占位**�
 | 项 | 正确做法 |
 | :--- | :--- |
 | 工作区根 | mini_tree 仓库根 |
-| 编译数据库 | 根 `compile_flags.txt`；ESP 工程可用 `idf.py build` 后由 `build/compile_commands.json` 提供索引 |
+| 编译数据库 | 根 `compile_flags.txt`；或运行 `tools/gen_compile_db.py` 生成 `compile_commands.json`（含头文件条目，便于 clang-tidy 单独检查头文件） |
 | 禁止 | 子目录再放 `compile_flags.txt` |
 | 占位头 | `ide/stubs/` |
 | 改配置后 | `Clangd: Restart language server` |

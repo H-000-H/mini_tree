@@ -4,7 +4,7 @@
 >
 > Capability expansion follows a **link-as-a-block** model: link in the needed open-source library on demand, and supply configuration plus hardware glue through a board-level port.
 >
-> **`lib/` holds only the ETL vendor**; all other open-source blocks come through the **ESP-IDF component ecosystem** (`idf_component.yml` / registry), no more FetchContent. Closed-source middleware requiring paid commercial licenses is **not** integrated. Licenses live in each library and in [`NOTICE`](../NOTICE).
+> **`lib/` holds only the vendors** (mini-os, FreeRTOS, RT-Thread, ETL); TinyUSB / lwIP are **config-time FetchContent** (the root CMake directly `include`s their `cmake/*.cmake`), and all other open-source blocks are **link-time FetchContent** (a local `lib/<Name>` still wins; clone manually for offline use). Closed-source middleware requiring paid commercial licenses is **not** integrated. Licenses live in each library and in [`NOTICE`](../NOTICE).
 
 | Item | Content |
 | :--- | :--- |
@@ -13,15 +13,20 @@
 
 ---
 
-## 0. Dependency Strategy
+## 0. Infrastructure Vendors vs. Fetched Blocks
 
 | Strategy | Behavior | Components |
 | :--- | :--- | :--- |
-| **Vendor (in git)** | Sources in `lib/`, committed with the repo | **ETL** (only) |
-| **IDF components** | Pulled via `idf_component.yml` / `idf.py add-dependency` from the registry | FreeRTOS, TinyUSB, lwIP, cJSON, LVGL, mbedtls, etc. (on demand) |
-| **C++ base (in by default)** | ETL in `lib/etl`; `cmake/esp_idf.cmake` links `lib/etl/include` by default | Upper-layer C++ / `SYSTEM_CPP` base |
+| **Vendor (in git)** | Sources in `lib/`, committed with the repo | **mini-os**, **FreeRTOS**, **RT-Thread**, **ETL** |
+| **Config-time Fetch** | Root CMake directly `include`s `cmake/*.cmake`, local-or-fetch | **TinyUSB**, **lwIP** |
+| **Link-time Fetch** | Pulled only when `mini_tree_link_*` is called; clone to `lib/<Name>` for offline | littlefs, FatFs, MultiButton, MCUBoot, coreMQTT, LVGL, u8g2, FlashDB, SFUD, EasyFlash, EasyLogger… |
+| **C++ base (in by default)** | ETL in `lib/etl`; root CMake always `mini_tree_link_etl(mini_tree)` | Upper-layer C++ / `SYSTEM_CPP` base |
 
-> This branch no longer uses `cmake/dep_fetch.cmake` / FetchContent / `mini_tree_link_*` (removed). FreeRTOS is provided by ESP-IDF; `CONFIG_OSAL_FREERTOS` pairs with the IDF built-in kernel.
+Implementation: `mini_tree_dep_get()` in `cmake/dep_fetch.cmake` (uses the local copy when its marker file exists, otherwise `FetchContent`).
+
+Optional block paths are listed in the root [`.gitignore`](../.gitignore).
+
+> **Change**: `cmake/tinyusb.cmake` tolerates the offline case where `src/CMakeLists.txt` is not provided locally — the TinyUSB core sources are left empty instead of failing (the `mini_tree` static library does not link tinyusb by default; only the board-level USB port needs it).
 
 ---
 
@@ -29,20 +34,21 @@
 
 | Principle | Meaning |
 | :--- | :--- |
-| **Open-source blocks** | All open source; re-check each library's `LICENSE` before commercial use (e.g. libmodbus is LGPL) |
-| **IDF components on demand** | Keeps the tree small; declare the component in `idf_component.yml` and let the IDF Component Manager handle version and download |
-| **Core stays lean** | The middleware never binds a vendor SDK, nor forces GUI / TLS / filesystems in |
-| **Link on demand** | Optional blocks are not built into firmware by default; they enter the image only when declared in `idf_component.yml` |
-| **ETL ships by default** | **Not an optional block**: it is the C++ foundation for upper layers, source lives in `lib/etl`, and `cmake/esp_idf.cmake` links it in by default |
+| **Open-source blocks** | All open source; re-check each library's `LICENSE` before commercial use |
+| **Vendors for infrastructure, Fetch for the rest** | Keeps the tree small; OS/ETL are resident; every block needs network or a local copy at first link |
+| **Core stays lean** | The middleware never binds a vendor SDK, nor forces GUI / filesystems in |
+| **Link on demand** | Optional blocks are not built into firmware by default; they enter the image only when `mini_tree_link_*` (or the OSAL Kconfig) is used |
+| **ETL ships by default** | **Not an optional block**: it is the C++ foundation for upper layers, source lives in `lib/etl`, and the root CMake links it into `mini_tree` by default |
+| **One CMake entry per block** | Most libraries have a `cmake/<name>.cmake` exposing `mini_tree_link_<name>(target …)` |
 | **Board supplies the port** | Config headers (e.g. `lv_conf.h`, `lwipopts.h`) and diskio/SPI/display-flush glue come from the platform |
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  App / product strategy (pick blocks: net? GUI? OTA? FS?) │
 └────────────────────────────┬─────────────────────────────┘
-                             │ declare deps in idf_component.yml
+                             │ mini_tree_link_* / Kconfig
 ┌────────────────────────────▼─────────────────────────────┐
-│  IDF component ecosystem (registry/managed) + lib/ETL      │
+│  Infrastructure lib/ (OS·ETL) + on-demand Fetch blocks     │
 └────────────────────────────┬─────────────────────────────┘
                              │ device / ioctl / EventBus
 ┌────────────────────────────▼─────────────────────────────┐
@@ -53,66 +59,49 @@
 │  Chip SDK / pins / Flash layout / display & NIC hardware   │
 └──────────────────────────────────────────────────────────┘
 ```
-(Layering: app picks blocks → IDF component ecosystem → core → board hardware.)
+(Layering: app picks blocks → infrastructure lib/Fetch → core → board hardware.)
 
-You can keep adding more **open-source** libraries on this model: declare the corresponding component in `idf_component.yml`.
+You can keep adding more **open-source** libraries on this model: rely on Fetch or drop the sources into `lib/<Name>`, add a `cmake/<name>.cmake`, and call `mini_tree_link_*` from your product CMake.
 
 ---
 
 ## 2. Integrated Open-Source Libraries
 
-Grouped by capability. Versions follow the ESP Component Registry / IDF component declaration.
+Grouped by capability. Versions are pinned by `*_VERSION` / `GIT_TAG` in the matching `cmake/*.cmake`.
 
-"Integration" means how to enable the block in an ESP project (mostly by declaring it in `idf_component.yml`).
+A `lib/...` path is the conventional location; **fetched blocks may exist only in the build cache**.
 
 ### 2.1 Kernels & Scheduling (Infrastructure)
 
 | Library | Path | Version | Role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| FreeRTOS | ESP-IDF built-in | IDF | RTOS kernel | `CONFIG_OSAL_FREERTOS` (default) |
+| mini-os | `lib/mini-os` | in-tree | Minimal RTOS kernel (Cortex-M only, freestanding) | `CONFIG_OSAL_MINI_OS` |
+| FreeRTOS | `lib/freeRTOS` | Kernel V11.3.0 | RTOS kernel | `CONFIG_OSAL_FREERTOS` |
+| RT-Thread | `lib/rtthread` | v5.3.0 | RTOS kernel | `CONFIG_OSAL_RTTHREAD` |
 | (Bare metal) | `time_slice/task` | — | Cooperative scheduling | `CONFIG_OSAL_NULL` |
 
 ### 2.2 Connectivity & Protocols
 
 | Library | Path | Version | Role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| TinyUSB | `esp_tinyusb` (registry) | IDF | USB device/host stack | Board-level `usb_tusb_port` |
-| lwIP | ESP-IDF built-in | IDF | TCP/IP | IDF network component + `lwipopts.h` |
-| coreMQTT | registry component | registry | MQTT client | declare in `idf_component.yml` + `core_mqtt_config.h` |
-| coreHTTP | registry component | registry | HTTP client | declare in `idf_component.yml` + `core_http_config.h` |
-| libmodbus | registry component | registry | Modbus RTU/TCP | declare in `idf_component.yml` (prefer POSIX/RTOS) |
-| FreeModbus | registry component | registry | Modbus RTU slave | declare in `idf_component.yml` + `mbport.h` |
-| mbedtls | ESP-IDF built-in | IDF | TLS & crypto | IDF built-in component + `mbedtls_config.h` |
+| TinyUSB | Fetch / `lib/tinyusb` | 0.21.0 | USB device/host stack | Board-level `usb_tusb_port` |
+| lwIP | Fetch / `lib/lwip` | 2.2.1 | TCP/IP | `mini_tree_link_lwip` + `lwipopts.h` |
+| coreMQTT | Fetch / `lib/coreMQTT` | v5.0.2 | MQTT client | `mini_tree_link_coremqtt` + `core_mqtt_config.h` |
 
-### 2.3 Storage & Upgrade
+### 2.3 HMI & Input
 
 | Library | Path | Version | Role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| SFUD | registry component | registry | Unified SPI Flash driver | declare in `idf_component.yml` + `sfud_cfg.h` |
-| littlefs | registry component | registry | Power-loss-safe filesystem | declare in `idf_component.yml` |
-| FatFs | registry component | registry | FAT/exFAT | declare in `idf_component.yml` + `ffconf.h` |
-| EasyFlash | registry component | registry | Flash ENV/IAP | declare in `idf_component.yml` |
-| FlashDB | registry component | registry | KV + time-series DB | declare in `idf_component.yml` + `fdb_cfg.h` |
-| MCUBoot | registry component | registry | Secure Boot / OTA | declare in `idf_component.yml` |
+| LVGL | Fetch / `lib/lvgl` | v9.5.0 | Color GUI | `mini_tree_link_lvgl` + `lv_conf.h` |
+| u8g2 | Fetch / `lib/u8g2` | 2.37.1 | Monochrome/OLED | `mini_tree_link_u8g2` |
+| MultiButton | Fetch / `lib/MultiButton` | master | Multi-button state machine | `mini_tree_link_multibutton` |
 
-### 2.4 HMI & Input
+### 2.4 Logging
 
 | Library | Path | Version | Role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| LVGL | `lvgl` / `esp_lvgl_port` (registry) | registry | Color GUI | declare in `idf_component.yml` + `lv_conf.h` |
-| u8g2 | registry component | registry | Monochrome/OLED | declare in `idf_component.yml` |
-| MultiButton | registry component | registry | Multi-button state machine | declare in `idf_component.yml` |
-
-### 2.5 Data, Logging & Compute
-
-| Library | Path | Version | Role | Integration |
-| :--- | :--- | :--- | :--- | :--- |
-| cJSON | registry component | registry | JSON | declare in `idf_component.yml` |
 | ETL | `lib/etl` | 20.48.1 | **C++ foundation for upper layers** | **ships by default** |
-| nanopb | registry component | registry | Protobuf | declare in `idf_component.yml` |
-| EasyLogger | registry component | registry | Logging | declare in `idf_component.yml` |
-| CMSIS-DSP | registry component | registry | DSP | declare in `idf_component.yml` |
-| miniz | registry component | registry | zlib-compatible compression | declare in `idf_component.yml` |
+| EasyLogger | Fetch / `lib/EasyLogger` | 2.2.0 | Logging | `mini_tree_link_easylogger` |
 
 ---
 
@@ -120,32 +109,31 @@ Grouped by capability. Versions follow the ESP Component Registry / IDF componen
 
 | Product Form | Suggested Blocks |
 | :--- | :--- |
-| Bare-metal instrument / small display | OSAL_NULL + u8g2 or LVGL + MultiButton + EasyLogger |
-| Networked sensor | FreeRTOS + lwIP + coreMQTT/coreHTTP + mbedtls + cJSON/nanopb |
-| SPI-Flash data logger | SFUD + littlefs or FlashDB + EasyLogger (+ optionally miniz) |
+| Bare-metal instrument / small display | OSAL_NULL + u8g2 or LVGL (via `ui/` glue layer + `DISPLAY_CMD_*`) + MultiButton + EasyLogger |
+| Networked sensor | FreeRTOS/RTT + lwIP + coreMQTT |
 | USB mass storage / NIC | TinyUSB (+ optionally) FatFs / lwIP |
-| OTA-capable production device | MCUBoot + mbedtls (signature verify) + download channel (USB/network) (+ optionally miniz) |
-| Industrial slave | FreeModbus (RTU) or libmodbus (POSIX) |
 
 ---
 
 ## 4. Adding a New Block
 
-1. Declare the component in the ESP project's `idf_component.yml` (`idf.py add-dependency` or edit by hand).
-2. If it needs a board-level port (display, network, etc.), provide the port in the board project.
-3. Update `README` / this doc / [`NOTICE`](../NOTICE).
+1. Prefer `mini_tree_dep_get()` + Fetch; clone into `lib/<Name>` only when offline.
+2. Add `cmake/<name>.cmake`: do **not** link it by default; provide `mini_tree_link_<name>(target …)`.
+3. `include` it in the root `CMakeLists.txt`; update `README` / this doc / [`NOTICE`](../NOTICE); add it to `.gitignore`.
+4. The product project provides the port, then calls the link function.
 
-Policy: **open source only; go through the IDF component system; never commit bulk third-party sources.**
+Policy: **open source only; prefer Fetch for everything except infrastructure; never commit bulk third-party sources.**
 
 ---
 
 ## 5. Boundary with the Middleware Core
 
 - **Allowed**: Call open-source library APIs from applications or board services; cooperate with the middleware via `device_*` / EventBus.
-- **Avoid**: Hard-binding a GUI/TLS implementation in `vfs/` / `bus/` public headers, or leaking vendor HAL typedefs into the middleware public API.
+- **Avoid**: Hard-binding a GUI implementation in `vfs/` / `bus/` public headers, or leaking vendor HAL typedefs into the middleware public API.
 - **Southbound**: Flash/display/NIC still touch hardware through board-level HAL or port callbacks, keeping "hardware direct-inject, middleware never binds an SDK".
+- **UI glue layer (`ui/`)**: LVGL / u8g2 flush callbacks go through the unified entry point `ui/display/display_ui_bridge.h`, which calls `device_ioctl(DISPLAY_CMD_*)` to reach display hardware; no direct `bus_*` / `hal_*` calls — swapping displays only requires changing the device pointer.
 
-The 37 product drivers live in `drivers/<chip>/{include,src}`; they are part of the ecosystem but follow this repo's `DRIVER_REGISTER` contract and stay independent of the block libraries.
+The 39 product drivers live in `drivers/<chip>/{include,src}`; they are part of the ecosystem but follow this repo's `DRIVER_REGISTER` contract and stay independent of the block libraries.
 
 ---
 
@@ -160,21 +148,13 @@ mini_tree's block ecosystem stands on the shoulders of many open-source authors 
 | TinyUSB | Ha Thach & contributors | Portable USB stack |
 | lwIP | Savannah / lwIP community | Lightweight TCP/IP |
 | coreMQTT | FreeRTOS / Amazon | Embedded MQTT |
-| libmodbus | Stéphane Raimbault & contributors | Modbus protocol stack |
-| Mbed TLS | TrustedFirmware / Mbed-TLS | TLS & cryptography |
-| SFUD / EasyFlash / FlashDB / EasyLogger | armink & contributors | Flash & logging toolchain |
+| SFUD / EasyFlash / FlashDB / EasyLogger | armink & contributors | Flash drivers & logging toolchain |
 | littlefs | littlefs-project | Power-loss-safe filesystem |
 | FatFs | ChaN | General-purpose FAT filesystem |
 | MCUBoot | MCUBoot, Zephyr & contributors | Secure boot & upgrade |
 | LVGL | kisvegabor & LVGL community | Embedded GUI |
 | u8g2 | olikraus & contributors | Monochrome display library |
 | MultiButton | 0x1abin & contributors | Button state machine |
-| cJSON | Dave Gamble & contributors | JSON parsing |
-| nanopb | Petteri Aimonen & contributors | Embedded Protobuf |
 | ETL | John Wellbelove / ETLCPP | Heap-free template library |
-| CMSIS-DSP | Arm & contributors | DSP algorithm library |
-| coreHTTP | FreeRTOS / Amazon (incl. llhttp) | Embedded HTTP |
-| miniz | Rich Geldreich & contributors | zlib-compatible compression |
-| FreeModbus | Christian Walter & contributors | Modbus slave |
 
 If a credit is missing or a license statement is wrong, feel free to open an Issue / PR. Full copyright and license statements are governed by the files inside each component and by [`NOTICE`](../NOTICE).

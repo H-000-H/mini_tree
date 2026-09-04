@@ -27,7 +27,7 @@
 先从根 `compile_flags.txt` 找 clangd（否则 IDE 只有残缺索引）：
 
 - `Clangd: Restart language server`
-- 改了宏 / 配置 → 重跑 `idf.py build`（ESP 路径见 [getting_started.md](getting_started.md)）
+- 改了宏 / 配置 → 重跑 genconfig（见 [getting_started.md](getting_started.md)）
 
 格式与命名：**交给工具**，不要手改。
 
@@ -43,7 +43,7 @@
 | 大括号 | Allman（换行） |
 | 单语句去括号 | `true`（即单语句 `if/for/while` 也去掉 `{}`，见上例） |
 | 缩进 | 4 空格 |
-| 列宽 | 100 |
+| 列宽 | 200 |
 | 指针/引用对齐 | 左对齐（`int *p`） |
 
 平台工程若想自定义，复制一份改 `ColumnLimit`，但 **不要** 破坏 Allman / 4 空格主干约定。
@@ -72,7 +72,7 @@
 | 函数 / 变量 | `snake_case` |
 | 类型（`struct/typedef`） | 小写（`device`、`hal_can_config`） |
 | 命名空间（`system_cpp`） | `mini_tree::` |
-| 宏 / 枚举值 | 大写 `SNAKE_CASE`（`DEV_ID_UART0`、`VFS_ERR_*`） |
+| 宏 / 枚举值 | 大写 `SNAKE_CASE`（`DEV_ID_UART0`、`MINI_ERR_*`） |
 
 `app` 层为建议，app 以下为强规定。
 

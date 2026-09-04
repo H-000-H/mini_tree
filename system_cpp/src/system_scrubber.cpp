@@ -71,8 +71,8 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t* data, size_t len)
         0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D,
     };
 
-    for (size_t i = 0; i < len; i++)
-        crc = k_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+    for (size_t index = 0; index < len; index++)
+        crc = k_table[(crc ^ data[index]) & 0xFF] ^ (crc >> 8);
     return crc;
 }
 
@@ -119,7 +119,7 @@ static void scrubber_task(void* param)
             uint32_t read_len =
                 (remaining < SYSTEM_SCRUBBER_CHUNK_BYTES) ? remaining : SYSTEM_SCRUBBER_CHUNK_BYTES;
 
-            if (hal_flash_read(base_addr + offset, chunk, read_len))
+            if (hal_flash_read(base_addr + offset, chunk, read_len) == MINI_OK)
             {
                 crc = crc32_update(crc, chunk, read_len);
                 offset += read_len;
@@ -149,12 +149,12 @@ static void scrubber_task(void* param)
     osal_task_self_delete();
 }
 
-bool system_scrubber_init(void) { return true; }
+int system_scrubber_init(void) { return MINI_OK; }
 
-bool system_scrubber_start(void)
+int system_scrubber_start(void)
 {
     if (s_running)
-        return true;
+        return MINI_OK;
 
     s_running = true;
     int ret = osal_task_create_handle("scrubber", kScrubberStack, kScrubberPrio, scrubber_task,
@@ -163,11 +163,11 @@ bool system_scrubber_start(void)
     {
         SYS_LOGE(k_tag, "failed to create scrubber task");
         s_running = false;
-        return false;
+        return MINI_ERR_NOMEM;
     }
 
     SYS_LOGI(k_tag, "scrubber task created, prio=%u", (unsigned)kScrubberPrio);
-    return true;
+    return MINI_OK;
 }
 
 bool system_scrubber_is_running(void) { return s_running; }

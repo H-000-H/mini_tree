@@ -24,6 +24,8 @@ IndentCaseLabels: false
 
 # ── 大括号：Allman 风格（左大括号独占一行）──
 BreakBeforeBraces: Allman
+# extern "C" {} 块内不额外缩进（保持函数/宏定义顶格）
+IndentExternBlock: false
 
 # 单语句 if/for/while 去掉大括号：
 #   if (err) { return -1; }  →  if (err)
@@ -37,7 +39,7 @@ AllowShortFunctionsOnASingleLine: All
 AllowShortBlocksOnASingleLine: Never
 
 # ── 行宽 ──
-ColumnLimit: 100
+ColumnLimit: 150
 
 # ── 指针 / 引用 ──
 DerivePointerAlignment: false
@@ -54,11 +56,16 @@ IncludeCategories:
   - Regex: '.*'
     Priority: 1
 
-# ── 对齐（内核 / Google 风格均不对齐）──
+# ── 对齐（结构体成员与尾部注释对齐）──
 AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlignConsecutiveDeclarations: true
 AlignConsecutiveMacros: false
-AlignTrailingComments: false
+# 允许预处理行(#if/#define)的尾注与普通代码行尾注在同一组对齐，
+# 这样 #if 块里的结构体字段尾注才能与外层字段对齐
+AlignTrailingComments:
+  Kind: Always
+  AlignPPAndNotPP: true
+  OverEmptyLines: 0
 SpacesBeforeTrailingComments: 1
 
 # ── 运算符换行（运算符留在行尾）──

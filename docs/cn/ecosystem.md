@@ -4,7 +4,7 @@
 >
 > 能力扩展走 **积木型链接**：需要什么能力，就按需链入对应开源库，用板级 port 补齐配置与硬件胶水。
 >
-> **`lib/` 只保留 vendor ETL**；其余开源积木走 **ESP-IDF 组件生态**（`idf_component.yml` / registry），不再使用 FetchContent。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
+> **`lib/` 只保留 vendor**（mini-os、FreeRTOS、RT-Thread、ETL 四个）；TinyUSB / lwIP 为**配置期 FetchContent**（根 CMake 直接 include 对应 `cmake/*.cmake`），其余开源积木为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -13,15 +13,20 @@
 
 ---
 
-## 0. 依赖策略
+## 0. 基础设施 vendor 与其余 Fetch
 
 | 策略 | 做法 | 组件 |
 | :--- | :--- | :--- |
-| **vendor（进 git）** | 源码在 `lib/`，随仓库提交 | **ETL**（唯一） |
-| **IDF 组件** | 经 `idf_component.yml` / `idf.py add-dependency` 从 registry 拉取 | FreeRTOS、TinyUSB、lwIP、cJSON、LVGL、mbedtls 等（按需） |
-| **C++ 基础（默认进库）** | ETL 在 `lib/etl`；`cmake/esp_idf.cmake` 默认链入 `lib/etl/include` | 上层 C++ / `SYSTEM_CPP` 基座 |
+| **vendor（进 git）** | 源码在 `lib/`，随仓库提交 | **mini-os**、**FreeRTOS**、**RT-Thread**、**ETL** |
+| **配置期 Fetch** | 根 CMake 直接 `include(cmake/*.cmake)`，local-or-fetch | **TinyUSB**、**lwIP** |
+| **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | littlefs、FatFs、MultiButton、MCUBoot、coreMQTT、LVGL、u8g2、FlashDB、SFUD、EasyFlash、EasyLogger… |
+| **C++ 基础（默认进库）** | ETL 在 `lib/etl`；根 CMake **始终** `mini_tree_link_etl(mini_tree)` | 上层 C++ / `SYSTEM_CPP` 基座 |
 
-> 本分支不再使用 `cmake/dep_fetch.cmake` / FetchContent / `mini_tree_link_*` 体系（已移除）。FreeRTOS 由 ESP-IDF 内置提供，`CONFIG_OSAL_FREERTOS` 对接 IDF 内核。
+实现：`cmake/dep_fetch.cmake` 的 `mini_tree_dep_get()`（本地标记文件存在则用本地，否则 `FetchContent`）。
+
+可选积木路径已写入根 [`.gitignore`](../.gitignore)。
+
+> **变更**：`cmake/tinyusb.cmake` 对「本地未提供 `src/CMakeLists.txt`」的离线场景容错——TinyUSB 核心源置空而不报错（`mini_tree` 静态库默认不链接 tinyusb，仅板级 USB port 需要）。
 
 ---
 
@@ -29,20 +34,21 @@
 
 | 原则 | 含义 |
 | :--- | :--- |
-| **开源积木** | 均为开源项目；商用前请复核各库 `LICENSE`（如 libmodbus 为 LGPL） |
-| **IDF 组件按需拉取** | 控体积；在 `idf_component.yml` 声明所需组件即可，由 IDF Component Manager 托管版本与下载 |
-| **核心保持瘦** | 中间件不绑定厂商 SDK，也不强制带齐 GUI / TLS / 文件系统 |
-| **按需链接** | 可选积木默认不编进固件；在 `idf_component.yml` 声明依赖时才进入镜像 |
-| **ETL 默认进库** | **不是可选积木**：上层 C++ 基础，源码在 `lib/etl`，`cmake/esp_idf.cmake` 默认链入 |
+| **开源积木** | 均为开源项目；商用前请复核各库 `LICENSE` |
+| **基础设施 vendor，其余 Fetch** | 控体积；OS/ETL 常驻，全部积木首次链接需联网或预置本地 |
+| **核心保持瘦** | 中间件不绑定厂商 SDK，也不强制带齐 GUI / 文件系统 |
+| **按需链接** | 可选积木默认不编进固件；调用 `mini_tree_link_*`（或 OSAL Kconfig）时才进入镜像 |
+| **ETL 默认进库** | **不是可选积木**：上层 C++ 基础，源码在 `lib/etl`，根 CMake 默认链入 `mini_tree` |
+| **CMake 一块积木一个入口** | 多数库有 `cmake/<name>.cmake`，提供 `mini_tree_link_<name>(target …)` |
 | **板级补 port** | 配置头（如 `lv_conf.h`、`lwipopts.h`）与 diskio/SPI/显示 flush 等由平台提供 |
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  应用 / 产品策略（选积木：网络？GUI？OTA？存储？）          │
 └────────────────────────────┬─────────────────────────────┘
-                             │ idf_component.yml 声明依赖
+                             │ mini_tree_link_* / Kconfig
 ┌────────────────────────────▼─────────────────────────────┐
-│  IDF 组件体系（registry / managed_components）+ lib/ETL  │
+│  基础设施 lib/（OS·ETL）+ 按需 Fetch 积木（link 时）   │
 └────────────────────────────┬─────────────────────────────┘
                              │ 设备 / ioctl / EventBus
 ┌────────────────────────────▼─────────────────────────────┐
@@ -53,66 +59,49 @@
 │  芯片 SDK / 引脚 / Flash 分区 / 显示与网卡硬件             │
 └──────────────────────────────────────────────────────────┘
 ```
-（分层示意：应用选积木 → IDF 组件体系 → 核心 → 板级硬件。）
+（分层示意：应用选积木 → 基础设施 lib/Fetch → 核心 → 板级硬件。）
 
-各位可以在此模型上继续接入更多**开源**库：在 `idf_component.yml` 声明对应组件即可。
+各位可以在此模型上继续接入更多**开源**库：依赖 Fetch 或放入 `lib/<Name>`，补一个 `cmake/<name>.cmake`，在产品 CMake 里 `mini_tree_link_*` 即可。
 
 ---
 
 ## 2. 已接入的开源库
 
-按能力分类。版本以 ESP Component Registry / IDF 组件声明为准。
+按能力分类。版本钉在对应 `cmake/*.cmake` 的 `*_VERSION` / `GIT_TAG`。
 
-「接入方式」指在 ESP 工程里如何启用该积木（多经 `idf_component.yml` 声明）。
+路径写 `lib/...` 表示约定位置；**Fetch 积木可能仅在构建缓存中存在**。
 
 ### 2.1 内核 / 调度（基础设施）
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| FreeRTOS | ESP-IDF 内置 | IDF 随附 | RTOS 内核 | `CONFIG_OSAL_FREERTOS`（默认） |
+| mini-os | `lib/mini-os` | 随仓自研 | 最小 RTOS 内核（仅 Cortex-M，freestanding） | `CONFIG_OSAL_MINI_OS` |
+| FreeRTOS | `lib/freeRTOS` | Kernel V11.3.0 | RTOS 内核 | `CONFIG_OSAL_FREERTOS` |
+| RT-Thread | `lib/rtthread` | v5.3.0 | RTOS 内核 | `CONFIG_OSAL_RTTHREAD` |
 | （裸机） | `time_slice/task` | — | 协作式调度 | `CONFIG_OSAL_NULL` |
 
 ### 2.2 连接与协议
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| TinyUSB | `esp_tinyusb`（registry） | IDF 随附 | USB 设备/主机栈 | 板级 `usb_tusb_port` |
-| lwIP | ESP-IDF 内置 | IDF 随附 | TCP/IP | IDF 网络组件 + `lwipopts.h` |
-| coreMQTT | registry 组件 | registry | MQTT 客户端 | `idf_component.yml` 声明 + `core_mqtt_config.h` |
-| coreHTTP | registry 组件 | registry | HTTP 客户端 | `idf_component.yml` 声明 + `core_http_config.h` |
-| libmodbus | registry 组件 | registry | Modbus RTU/TCP | `idf_component.yml` 声明（宜 POSIX/RTOS） |
-| FreeModbus | registry 组件 | registry | Modbus RTU 从站 | `idf_component.yml` 声明 + `mbport.h` |
-| mbedtls | ESP-IDF 内置 | IDF 随附 | TLS / 密码学 | IDF 内置组件 + `mbedtls_config.h` |
+| TinyUSB | Fetch / `lib/tinyusb` | 0.21.0 | USB 设备/主机栈 | 板级 `usb_tusb_port` |
+| lwIP | Fetch / `lib/lwip` | 2.2.1 | TCP/IP | `mini_tree_link_lwip` + `lwipopts.h` |
+| coreMQTT | Fetch / `lib/coreMQTT` | v5.0.2 | MQTT 客户端 | `mini_tree_link_coremqtt` + `core_mqtt_config.h` |
 
-### 2.3 存储与升级
+### 2.3 人机与输入
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| SFUD | registry 组件 | registry | SPI Flash 统一驱动 | `idf_component.yml` 声明 + `sfud_cfg.h` |
-| littlefs | registry 组件 | registry | 掉电安全文件系统 | `idf_component.yml` 声明 |
-| FatFs | registry 组件 | registry | FAT/exFAT | `idf_component.yml` 声明 + `ffconf.h` |
-| EasyFlash | registry 组件 | registry | Flash ENV/IAP | `idf_component.yml` 声明 |
-| FlashDB | registry 组件 | registry | KV + 时序库 | `idf_component.yml` 声明 + `fdb_cfg.h` |
-| MCUBoot | registry 组件 | registry | 安全 Boot / OTA | `idf_component.yml` 声明 |
+| LVGL | Fetch / `lib/lvgl` | v9.5.0 | 彩色 GUI | `mini_tree_link_lvgl` + `lv_conf.h` |
+| u8g2 | Fetch / `lib/u8g2` | 2.37.1 | 单色/OLED | `mini_tree_link_u8g2` |
+| MultiButton | Fetch / `lib/MultiButton` | master | 多按键状态机 | `mini_tree_link_multibutton` |
 
-### 2.4 人机与输入
+### 2.4 日志
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| LVGL | `lvgl` / `esp_lvgl_port`（registry） | registry | 彩色 GUI | `idf_component.yml` 声明 + `lv_conf.h` |
-| u8g2 | registry 组件 | registry | 单色/OLED | `idf_component.yml` 声明 |
-| MultiButton | registry 组件 | registry | 多按键状态机 | `idf_component.yml` 声明 |
-
-### 2.5 数据、日志与计算
-
-| 库 | 路径 | 版本 | 作用 | 接入方式 |
-| :--- | :--- | :--- | :--- | :--- |
-| cJSON | registry 组件 | registry | JSON | `idf_component.yml` 声明 |
 | ETL | `lib/etl` | 20.48.1 | **上层 C++ 基础** | **默认进库** |
-| nanopb | registry 组件 | registry | Protobuf | `idf_component.yml` 声明 |
-| EasyLogger | registry 组件 | registry | 日志 | `idf_component.yml` 声明 |
-| CMSIS-DSP | registry 组件 | registry | DSP | `idf_component.yml` 声明 |
-| miniz | registry 组件 | registry | zlib 兼容压缩 | `idf_component.yml` 声明 |
+| EasyLogger | Fetch / `lib/EasyLogger` | 2.2.0 | 日志 | `mini_tree_link_easylogger` |
 
 ---
 
@@ -120,32 +109,31 @@
 
 | 产品形态 | 建议积木 |
 | :--- | :--- |
-| 裸机仪表 / 小屏 | OSAL_NULL + u8g2 或 LVGL + MultiButton + EasyLogger |
-| 联网传感器 | FreeRTOS + lwIP + coreMQTT/coreHTTP + mbedtls + cJSON/nanopb |
-| 带 SPI Flash 记录仪 | SFUD + littlefs 或 FlashDB + EasyLogger +（可选 miniz） |
+| 裸机仪表 / 小屏 | OSAL_NULL + u8g2 或 LVGL（经 `ui/` 胶水层 + `DISPLAY_CMD_*`）+ MultiButton + EasyLogger |
+| 联网传感器 | FreeRTOS/RTT + lwIP + coreMQTT |
 | USB 大容量 / 网卡 | TinyUSB +（可选）FatFs / lwIP |
-| 可 OTA 量产机 | MCUBoot + mbedtls（验签）+ 下载通道（USB/网络）+（可选 miniz） |
-| 工控从站 | FreeModbus（RTU）或 libmodbus（POSIX） |
 
 ---
 
 ## 4. 怎么再接一块新积木
 
-1. 在 ESP 工程 `idf_component.yml` 声明组件（`idf.py add-dependency` 或手动编辑）。
-2. 需要板级 port 的（如显示、网络），在板级工程提供 port。
-3. 更新 `README` / 本文档 / [`NOTICE`](../NOTICE)。
+1. 优先用 `mini_tree_dep_get()` + Fetch；需要离线时再 clone 到 `lib/<Name>`。
+2. 新增 `cmake/<name>.cmake`：默认 **不**链入；提供 `mini_tree_link_<name>(target …)`。
+3. 在根 `CMakeLists.txt` 中 `include`；更新 `README` / 本文档 / [`NOTICE`](../NOTICE)；加入 `.gitignore`。
+4. 产品工程提供 port，再调用 link 函数。
 
-策略：**只接开源；依赖走 IDF 组件体系，不主动提交巨量源码。**
+策略：**只接开源；除基础设施外优先 Fetch，不主动提交巨量源码。**
 
 ---
 
 ## 5. 和中间件核心的边界
 
 - **可以**：在应用或板级服务里调用开源库 API；经 `device_*` / EventBus 与中间件协作。
-- **不要**：在 `vfs/` / `bus/` 公共头强绑某个 GUI/TLS 实现，或把厂商 HAL typedef 泄漏进中间件公共 API。
+- **不要**：在 `vfs/` / `bus/` 公共头强绑某个 GUI 实现，或把厂商 HAL typedef 泄漏进中间件公共 API。
 - **南向**：Flash/显示/网卡仍通过板级 HAL 或 port 回调接触硬件，保持「硬件直投、中间件不绑 SDK」。
+- **UI 胶水层 (`ui/`)**：LVGL / u8g2 的 flush 回调经 `ui/display/display_ui_bridge.h` 统一入口，走 `device_ioctl(DISPLAY_CMD_*)` 触显示硬件；不直调 `bus_*` / `hal_*`，换屏仅需更换 device 指针。
 
-产品驱动（37 个）位于 `drivers/<chip>/{include,src}`，是生态的一部分但走本仓 `DRIVER_REGISTER` 契约，与积木库互不绑定。
+产品驱动（39 个）位于 `drivers/<chip>/{include,src}`，是生态的一部分但走本仓 `DRIVER_REGISTER` 契约，与积木库互不绑定。
 
 ---
 
@@ -160,21 +148,13 @@ mini_tree 的积木生态建立在广大开源作者与社区之上。感谢（�
 | TinyUSB | Ha Thach 与贡献者 | 可移植 USB 栈 |
 | lwIP | Savannah / lwIP 社区 | 轻量 TCP/IP |
 | coreMQTT | FreeRTOS / Amazon | 嵌入式 MQTT |
-| libmodbus | Stéphane Raimbault 与贡献者 | Modbus 协议栈 |
-| Mbed TLS | TrustedFirmware / Mbed-TLS | TLS 与密码学 |
-| SFUD / EasyFlash / FlashDB / EasyLogger | armink 与贡献者 | Flash 与日志工具链 |
+| SFUD / EasyFlash / FlashDB / EasyLogger | armink 与贡献者 | Flash 驱动与日志工具链 |
 | littlefs | littlefs-project | 掉电安全文件系统 |
 | FatFs | ChaN | 通用 FAT 文件系统 |
 | MCUBoot | MCUBoot / Zephyr 等贡献者 | 安全启动与升级 |
 | LVGL | kisvegabor 与 LVGL 社区 | 嵌入式 GUI |
 | u8g2 | olikraus 与贡献者 | 单色显示库 |
 | MultiButton | 0x1abin 与贡献者 | 按键状态机 |
-| cJSON | Dave Gamble 与贡献者 | JSON 解析 |
-| nanopb | Petteri Aimonen 与贡献者 | 嵌入式 Protobuf |
 | ETL | John Wellbelove / ETLCPP | 无堆模板库 |
-| CMSIS-DSP | Arm 与贡献者 | DSP 算法库 |
-| coreHTTP | FreeRTOS / Amazon（含 llhttp） | 嵌入式 HTTP |
-| miniz | Rich Geldreich 与贡献者 | zlib 兼容压缩 |
-| FreeModbus | Christian Walter 与贡献者 | Modbus 从站 |
 
 若遗漏署名或许可表述有误，欢迎提 Issue / PR 更正。完整版权与许可声明以各组件目录内文件及 [`NOTICE`](../NOTICE) 为准。

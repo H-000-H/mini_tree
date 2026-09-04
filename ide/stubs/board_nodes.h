@@ -1,12 +1,20 @@
-/* IDE-only stub — real header from dtc-lite at build time.
- * Minimal device_id_t / DEV_ID_COUNT so board/device/bus/vfs headers parse.
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_nodes.h
+ *@brief board nodes 头文件
+ *@author H-000-H
+ *@details
+ *   IDE-only stub — real header from dtc-lite at build time.
+ *   Minimal device_id_t / DEV_ID_COUNT so board/device/bus/vfs headers parse.
  */
+
 #ifndef BOARD_NODES_H
 #define BOARD_NODES_H
 
 #include <stdint.h>
 
-typedef enum {
+typedef enum
+{
     DEV_ID_NONE = 0,
     DEV_ID_COUNT = 1
 } device_id_t;

@@ -9,17 +9,7 @@
 
 get_filename_component(MINI_TREE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-# ESP-IDF 路径下 CONFIG_* 全部来自原生 IDF（sdkconfig → sdkconfig.h），
-# 不再维护 mini_tree/.config 副本，避免与 IDF 配置脱节。
-# sdkconfig 默认在工程根（SDKCONFIG=${project_dir}/sdkconfig），configure 早期即已生成；
-# 若读取失败（如 requirements 脚本模式拿不到工程根）再回退到组件内 .config。
-if(DEFINED SDKCONFIG)
-    set(KCONFIG_DOT "${SDKCONFIG}")
-elseif(EXISTS "${MINI_TREE_DIR}/../../sdkconfig")
-    set(KCONFIG_DOT "${MINI_TREE_DIR}/../../sdkconfig")
-else()
-    set(KCONFIG_DOT "${MINI_TREE_DIR}/.config")
-endif()
+set(KCONFIG_DOT "${MINI_TREE_DIR}/.config")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 
 file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|NULL)=y$")

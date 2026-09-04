@@ -26,7 +26,7 @@
 | 头 / 模块 | 用途 |
 | :--- | :--- |
 | `device.h` | 查找设备、open/read/write/ioctl |
-| `status.h` | `VFS_OK` / `VFS_ERR_*` |
+| `status.h` | `MINI_OK` / `MINI_ERR_*` |
 | `osal.h` | 任务、锁、队列、延时、日志级别配合 |
 | `event_bus.h` / `event_bus.hpp` | 发布订阅 |
 | `buffer_pool.h` · `algorithm/buffer` | 缓冲 |
@@ -40,7 +40,7 @@
 | 禁止 | 原因 |
 | :--- | :--- |
 | `hal_*.h`（业务里） | 破坏分层；应走 device/vfs |
-| `FreeRTOS.h`（业务里） | 应走 OSAL，便于切后端 |
+| `FreeRTOS.h` / `rtthread.h`（业务里） | 应走 OSAL，便于切后端 |
 | 厂商寄存器头 | 不可移植 |
 | 随意 `malloc` / `printf` / `memset` | 可能被 `compiler_compat_poison` 毒杀；用 `COMPAT_MEM_*` / 池 |
 
@@ -55,7 +55,7 @@ if (IS_ERR(dev))
     return PTR_ERR(dev);
 
 int ret = device_open(dev, NULL);
-if (ret != VFS_OK)
+if (ret != MINI_OK)
     return ret;
 
 ret = device_write(dev, buf, len, 100 /* ms */);
@@ -65,7 +65,7 @@ return ret;
 
 约定：
 
-- HAL/bus 层 API（`hal_*`/`*_bus_*`）：`int` 返回值，**默认禁止忽略**（`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`），以提升内部层可靠性；确需忽略用 `COMPAT_IGNORE_RESULT()`。例外：语义上无失败路径的 fire-and-forget 动作（如 ISR 内的状态标记、noreturn 入口）可保持 `void`。
+- HAL/bus 层 API（`hal_*`/`*_bus_*`）：`int` 返回值，**默认禁止忽略**（`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`），以提升内部层可靠性；确需忽略用 `MINI_IGNORE_RESULT()`。例外：语义上无失败路径的 fire-and-forget 动作（如 ISR 内的状态标记、noreturn 入口）可保持 `void`。
 - device/VFS 层 API（`device_open/read/write/ioctl` 等）：`int` 返回值，**默认可忽略**（`DEVICE_WARN_UNUSED_RESULT` 默认关闭）；需要严格检查时开启 Kconfig `DEVICE_WARN_UNUSED_RESULT`，开启后**禁止**忽略。
 - 超时用毫秒；`OSAL_WAIT_FOREVER` 仅在明确可接受阻塞处使用。
 - ioctl 的 `cmd` 与参数布局由各 `vfs-*.h` 定义；汇总见 [peripherals.md](peripherals.md)。

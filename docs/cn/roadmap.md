@@ -34,8 +34,8 @@
 | 方向 | 内容 |
 | :--- | :--- |
 | 网络栈整合 | lwIP 经 VFS 暴露标准化接口 |
-| Rust 互操作 | 实验性接入 |
-| 非 VSCode IDE | 本分支只维护 VSCode 系（VS Code / Cursor / Qoder），不跟进传统 Keil |
+| Rust 互操作 | `cmake/rust.cmake` 实验性接入 |
+| Keil Studio 验证 | 已试过能用，想用 Keil 直接上 Keil Studio 即可（见 [keil_integration.md](keil_integration.md)） |
 
 ---
 
@@ -43,7 +43,8 @@
 
 | 方向 | 原因 |
 | :--- | :--- |
-| 传统 Keil µVision 官方支持 | 不提供、不跟进（本分支只维护 VSCode 系） |
+| 经典 Keil µVision 官方支持 | 架构不契合，本仓库不提供、不跟进，见 [keil_integration.md](keil_integration.md) |
+| ARMCC v5 支持 | 仅 ARMCLANG (AC6) |
 
 ---
 

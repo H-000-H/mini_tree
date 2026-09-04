@@ -55,7 +55,7 @@ Layer topology (top-down calls; horizontal bands are base capabilities):
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Horizontal: core · osal · interrupt · system_c|cpp · time_slice · can_hook · tools
+Horizontal: core · osal · interrupt · system_c|cpp · time_slice · can_hook · net · ui · tools
 
 ### 1.1 Inter-Layer Contracts
 
@@ -80,14 +80,16 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `vfs/` | drivers bound by compatible | `vfs_spi_probe`, uart/can/usb… |
 | `bus/` | controller host + client sessions | `spi_bus_open`, `can_bus_transmit` |
 | `hal/` | abstract register operations | `hal_gpio_fast_set_level`, `hal_uart_write` |
-| `core/` | error codes, compat macros, events, buffer pools, logging | `VFS_ERR_*`, `event_bus_*` |
+| `core/` | error codes, compat macros, events, buffer pools, logging | `MINI_ERR_*`, `event_bus_*` |
 | `osal/` | locks, queues, tasks, time | `osal_mutex_lock` |
 | `interrupt/` | VIRQ, top/bottom halves | `interrupt_virtual_dispatch` |
 | `system_c` / `system_cpp` | startup, WDT, scrubber, safe_state | `mini_tree_pre_os_init` / `mini_tree::system_pre_os_init` |
-| `time_slice/` | bare-metal scheduling — cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, experimental) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
-| `drivers/<chip>/` | product drivers (37, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
+| `time_slice/` | bare-metal scheduling — selected by the `Kconfig.mini_tree` tri-state choice (`XTASK_NONE` / `XTASK_COOP` / `XTASK_PREEMPT`); cooperative (`xtask_coop.c`, default) and preemptive (`xtask_preempt.c`, N+1 multi-priority) are mutually exclusive, sharing `xtask.h` API; dual-gated by CMake (`MINI_TREE_XTASK_*`) + `#ifdef`; only used under `OSAL_NULL` | `x_scheduler` / `x_task` |
+| `drivers/<chip>/` | product drivers (39, `{include,src}` layout) | `DRIVER_REGISTER` / ioctl; dtc-lite compile-time probe |
 | `can_hook/` | CAN hook extensions | — |
-| `lib/` | vendored **ETL** (only) | C++ foundation for upper layers; FreeRTOS via IDF built-in, other third-party via IDF components (see [ecosystem.md](ecosystem.md)) |
+| `net/` | Network protocol stack glue (MQTT client / PPP netif / USB netif), via lwIP + coreMQTT etc., hardware access only through device/VFS model | `mqtt_client_*`, `pppif_*`, `usbethif_*` |
+| `ui/` | UI library glue layer (LVGL / u8g2 display bridge), hardware access only through device/VFS model (`DISPLAY_CMD_*`) | `display_lvgl_flush_callback`, `display_u8g2_flush_frame_buffer` |
+| `lib/` + `cmake/*.cmake` | vendored: mini-os / FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP are config-time FetchContent, the rest link-time | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |
 
 ### 2.1 Peripheral Coverage (Current)
 
@@ -112,7 +114,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | — | (optional) business/platform prep | static config, extra registrations |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`, TWDT, Flash Scrubber |
 | 3 | `system_init_complete()` | re-enable global interrupts |
-| 4 | scheduler or bare-metal loop | FreeRTOS: ESP-IDF already starts the scheduler; bare-metal (`OSAL_NULL`): `mini_tree_system_loop` |
+| 4 | scheduler or bare-metal loop | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_os_schedule_start` / `mini_tree_system_loop` |
 
 ### 3.2 C++ API (`system_cpp`)
 
@@ -154,7 +156,7 @@ Publish/subscribe in `core`; module switch `CONFIG_EVENT_BUS` (off by default, d
 
 ### 4.4 Errors & Pointers
 
-- Return values: `int`, `VFS_OK` or negative `VFS_ERR_*`
+- Return values: `int`, `MINI_OK` or negative `MINI_ERR_*`
 - Special pointers: `ERR_PTR` / `IS_ERR` / `PTR_ERR` (rely on `ERR_SECTION_BASE` from `error_symbols.ld`)
 
 ---
@@ -163,10 +165,10 @@ Publish/subscribe in `core`; module switch `CONFIG_EVENT_BUS` (off by default, d
 
 | Input | Tool | Output Directory (Typical) |
 | :--- | :--- | :--- |
-| `Kconfig.projbuild` + `Kconfig.mini_tree` | ESP-IDF confgen (`idf.py menuconfig` → `sdkconfig.h`) | `config.h` (forwarder) |
+| `Kconfig` + `.config` | `tools/genconfig.py` | `generated/kconfig/mini_tree/config.h` |
 | `BOARD_DTS` + dtsi + `VENDOR_INC_*` | `tools/dtc-lite.py` | `generated/board/mini_tree/*` |
 | scrubber stub | CMake copy | `generated/scrubber/.../system_scrubber_crc_gen.h` |
-| root `compile_flags.txt` | ESP-IDF (`idf.py build`) | `build/compile_commands.json` |
+| root `compile_flags.txt` | `tools/gen_compile_db.py` | `compile_commands.json` (including header entries) |
 
 Kconfig menus: Platform, Multi-core/AMP, OSAL, Spinlock, System Log, System Runtime (`SYSTEM` master switch + C/CPP backend), Components (USB), Board Features (WDT/Scrubber/…), Runtime Capacity (`EVENT_BUS` master switch + capacity), Compiler, Build.
 
@@ -202,9 +204,9 @@ Key CMake cache variables: `BOARD_DTS`, `BOARD_DTSI_DIR`, `VENDOR_INC_DIRS`, `VE
 | This Repository Provides | The Platform Repository Provides |
 | :--- | :--- |
 | middleware source, weak HAL, placeholder DTS, docs, IDE stubs | `hal_*_<soc>.c`, full dts/dtsi, vendor `-I`, board linker scripts and startup files |
-| three OSAL backend skeletons | clocks, heap, SysTick/RTOS ports (if needed) |
+| four OSAL backend skeletons | clocks, heap, SysTick/RTOS ports (if needed) |
 
-On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_PORT` (absolute path) or a sibling `board_port.cmake`; the ESP-IDF path is triggered by `ESP_PLATFORM` and uses the component mode. The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
+On the generic CMake path, the platform injects its board via `MINI_TREE_BOARD_PORT` (absolute path) or a sibling `board_port.cmake`; the ESP-IDF path (triggered by `ESP_PLATFORM`, component mode) keeps its full build path in the `main` branch but requires special handling (see [getting_started.md](getting_started.md) §4.2). The validation matrix lives in each `platform/*/mini_tree` project; this shelf does not bind to a specific SoC.
 
 ---
 

@@ -70,7 +70,7 @@
 - **使用 lambda 表达式** — 局部回调清晰、可捕获上下文；捕获列表要短，避免大对象按值捕获
 - **上层 cpp 走容器而不是裸 `char*` / `uint8_t*`** — 容器带长度与边界语义，减少越界/长度丢失；缓冲优先 span/string_view
 - **返回值优先用 `etl::optional<T>` 而不是一般类型** — 显式表达有无值，杜绝 -1/NULL 等哨兵歧义
-- **错误码/status 而非异常** — 与中间件 `VFS_ERR_*` 一致、可检查、不依赖 EH
+- **错误码/status 而非异常** — 与中间件 `MINI_ERR_*` 一致、可检查、不依赖 EH
 - **缓冲传参用 span/string_view** — 带长度零拷贝，减少裸指针长度丢失
 - **固定表用 array 或 constexpr** — 数据进 Flash、无堆、启动即可用
 - **`enum class` 替代宏枚举** — 强类型、作用域清晰、少污染
@@ -109,7 +109,7 @@
 - **禁止 `malloc`/`free`/`realloc`** — 同堆问题；全部静态或池化
 - **禁止应用层直接调 `hal_*` 或厂商 SDK** — service_spec：只走 device/VFS/EventBus/OSAL
 - **禁止 ISR 里 mutex/malloc/打印/重逻辑** — fast_path 红线，易死锁与抖动
-- **开启 `DEVICE_WARN_UNUSED_RESULT` 后禁止忽略 `device_*` 返回值** — 该开关默认关闭（应用层可宽松）；开启后忽略 `device_open/read/write/ioctl` 返回值会报警。底层 HAL/bus 的 `COMPAT_WARN_UNUSED_RESULT` 默认开启始终强制，确需忽略用 `COMPAT_IGNORE_RESULT()`
+- **开启 `DEVICE_WARN_UNUSED_RESULT` 后禁止忽略 `device_*` 返回值** — 该开关默认关闭（应用层可宽松）；开启后忽略 `device_open/read/write/ioctl` 返回值会报警。底层 HAL/bus 的 `MINI_WARN_UNUSED_RESULT` 默认开启始终强制，确需忽略用 `MINI_IGNORE_RESULT()`
 - **禁止 C 风格 VLA** — 栈大小运行期不定，易溢出
 - **禁止依赖未定义行为** — 未初始化/越界难复现
 - **禁止头文件放非 inline 重定义实体** — ODR 与代码膨胀

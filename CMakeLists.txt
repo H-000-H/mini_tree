@@ -1,4 +1,14 @@
 # mini_tree (generic CMake build for non-ESP-IDF projects)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    # 独立构建：需要声明最低版本与工程名
+    cmake_minimum_required(VERSION 3.16)
+    project(mini_tree LANGUAGES C CXX)
+endif()
+
+# 策略兼容：本文件可被父工程 include，也可独立构建（CMakePresets.json）
+if(POLICY CMP0003)
+    cmake_policy(SET CMP0003 NEW)
+endif()
 
 if(ESP_PLATFORM)
     # 纯架构：不硬编码某一 MCU。板级通过下列之一注入 BOARD_DTS / dtc -I/-D / 树外扫描：
@@ -39,7 +49,7 @@ if(ESP_PLATFORM)
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/esp_idf.cmake")
     return()
 endif()
-
+option(MINI_TREE_LWIP "Enable lwIP TCP/IP stack (mini_tree_net port layer)" OFF)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/dep_fetch.cmake")
@@ -69,19 +79,47 @@ include("${CMAKE_CURRENT_LIST_DIR}/hal/paths.cmake")
 set(KCONFIG_DOT "${CMAKE_CURRENT_LIST_DIR}/.config")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${KCONFIG_DOT}")
 
-file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
+# config.h 输出目录 (定义提前到此处, 供下方配置期 Kconfig 同步使用)
+set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
+set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
+
+# ── 配置期先跑一次 genconfig: 把 Kconfig 求值结果回写 .config ──
+# 下面所有 file(STRINGS ${KCONFIG_DOT} ... REGEX "^CONFIG_X=y$") 只认 .config
+# 里显式写着的 =y; 而 default y 与被 select 拉起的符号要经 kconfiglib 求解
+# 后才会出现。.config 陈旧时 (新增了 Kconfig 项 / 用户没重跑 menuconfig)
+# 两侧就会打架: config.h 说开了, CMake 却没把对应源文件编进来 ——
+# 中间件产物是静态库, 不报未定义符号, 要到最后链接 ELF 才炸。
+# genconfig.py 的回写幂等且内容一致时不触碰磁盘, 不会因时间戳抖动
+# 反复触发 CMAKE_CONFIGURE_DEPENDS 重配; 顺带把 config.h 也提前生成好。
+# (构建期的 add_custom_command 仍保留, 负责 .config / Kconfig 变动后重生。)
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${KCONFIG_GEN_DIR}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/tools/genconfig.py"
+            "${CMAKE_CURRENT_LIST_DIR}/Kconfig.non_esp"
+            "${KCONFIG_GEN_DIR}"
+            --config "${KCONFIG_DOT}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+    RESULT_VARIABLE _kconfig_sync_rc
+)
+if(NOT _kconfig_sync_rc EQUAL 0)
+    message(FATAL_ERROR "genconfig.py 配置期同步失败 (rc=${_kconfig_sync_rc}): "
+                        "请确认 Python3 与 kconfiglib 可用 (tools/_vendor 已内置)")
+endif()
+
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_ENTRY   REGEX "^CONFIG_OSAL_(MINI_OS|FREERTOS|RTTHREAD|THREADX|UCOS_III|UCOS_II|NULL)=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ENTRY REGEX "^CONFIG_SYSTEM_(C|CPP)=y$")
 
-# System / EventBus 软编码：.config 显式 "# CONFIG_SYSTEM is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_OFF REGEX "^# CONFIG_SYSTEM is not set$")
-if(CONFIG_SYSTEM_OFF)
-    set(MINI_TREE_SYSTEM OFF)
-else()
+# System / EventBus 软编码：对齐 Kconfig 语义 — 显式 "=y" 才编入，缺失/未置位一律不编入，
+# 避免 .config 缺符号时误拉依赖。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_SYSTEM_ON REGEX "^CONFIG_SYSTEM=y$")
+if(CONFIG_SYSTEM_ON)
     set(MINI_TREE_SYSTEM ON)
+else()
+    set(MINI_TREE_SYSTEM OFF)
 endif()
-file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_OFF REGEX "^# CONFIG_EVENT_BUS is not set$")
+file(STRINGS "${KCONFIG_DOT}" CONFIG_EVENT_BUS_ON REGEX "^CONFIG_EVENT_BUS=y$")
 # EVENT_BUS 依赖 SYSTEM: .config 手写 y 但 SYSTEM=n 时按 Kconfig 语义视为关
-if(CONFIG_EVENT_BUS_OFF OR NOT MINI_TREE_SYSTEM)
+if(NOT CONFIG_EVENT_BUS_ON OR NOT MINI_TREE_SYSTEM)
     set(MINI_TREE_EVENT_BUS OFF)
 else()
     set(MINI_TREE_EVENT_BUS ON)
@@ -95,28 +133,29 @@ else()
     set(MINI_TREE_SYSTEM_CMD OFF)
 endif()
 
-# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
-if(CONFIG_USB_OFF)
-    set(MINI_TREE_USB OFF)
-else()
+# USB 软编码：对齐 Kconfig 语义 — 显式 "CONFIG_USB=y" 才编入 (并拉 TinyUSB)，
+# .config 未置位时不编入，避免缺符号时误拉网络依赖。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_USB_ON REGEX "^CONFIG_USB=y$")
+if(CONFIG_USB_ON)
     set(MINI_TREE_USB ON)
+else()
+    set(MINI_TREE_USB OFF)
 endif()
 if(MINI_TREE_USB)
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/tinyusb.cmake")
 endif()
 
-# VIRQ 软编码：.config 显式 "# CONFIG_VIRQ is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${KCONFIG_DOT}" CONFIG_VIRQ_OFF REGEX "^# CONFIG_VIRQ is not set$")
-if(CONFIG_VIRQ_OFF)
-    set(MINI_TREE_VIRQ OFF)
-else()
+# VIRQ 软编码：对齐 Kconfig 语义 — 显式 "CONFIG_VIRQ=y" 才编入，缺失/未置位不编入。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_VIRQ_ON REGEX "^CONFIG_VIRQ=y$")
+if(CONFIG_VIRQ_ON)
     set(MINI_TREE_VIRQ ON)
+else()
+    set(MINI_TREE_VIRQ OFF)
 endif()
 
 # 裸机调度器三态 (choice: XTASK_NONE / XTASK_COOP / XTASK_PREEMPT)：
 #   - 显式 "CONFIG_XTASK_COOP=y"  → 协调式
-#   - 显式 "CONFIG_XTASK_PREEMPT=y" → 抢占式 (实验性)
+#   - 显式 "CONFIG_XTASK_PREEMPT=y" → 抢占式 (已完工可编译)
 #   - 均未显式 =y → 无调度器 (XTASK_NONE, 应用层自写 while 循环)
 file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_COOP_ON REGEX "^CONFIG_XTASK_COOP=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_XTASK_PREEMPT_ON REGEX "^CONFIG_XTASK_PREEMPT=y$")
@@ -167,6 +206,9 @@ if(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_FREERTOS=y")
 elseif(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_RTTHREAD=y")
     set(OSAL_SRCS "osal/src/osal_rtthread.c")
     set(OSAL_DEFINE CONFIG_OSAL_RTTHREAD)
+elseif(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_MINI_OS=y")
+    set(OSAL_SRCS "osal/src/osal_mini_os.c")
+    set(OSAL_DEFINE CONFIG_OSAL_MINI_OS)
 elseif(CONFIG_OSAL_ENTRY STREQUAL "CONFIG_OSAL_THREADX=y")
     set(OSAL_SRCS "osal/src/osal_threadx.c")
     set(OSAL_DEFINE CONFIG_OSAL_THREADX)
@@ -181,11 +223,19 @@ else()
     set(OSAL_DEFINE CONFIG_OSAL_NULL)
 endif()
 
-# C++ 任务创建封装 (osal_task.cpp) — 软编码: .config 显式 "# CONFIG_OSAL_NULL_TASK_CPP is not set" 才裁剪;
-# 缺省视为启用 (对齐 Kconfig default y)。依赖 xtask 原生 API, 需 CONFIG_XTASK。
-file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_TASK_CPP_OFF REGEX "^# CONFIG_OSAL_NULL_TASK_CPP is not set$")
-if(MINI_TREE_XTASK AND NOT CONFIG_OSAL_NULL_TASK_CPP_OFF)
+# C++ 任务创建封装 (osal_task.cpp) — 软编码: 对齐 Kconfig 语义, 显式 "=y" 才编入。
+# 依赖 xtask 原生 API, 需 CONFIG_XTASK。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_TASK_CPP_ON REGEX "^CONFIG_OSAL_NULL_TASK_CPP=y$")
+if(MINI_TREE_XTASK AND CONFIG_OSAL_NULL_TASK_CPP_ON)
     list(APPEND OSAL_SRCS "osal/src/osal_task.cpp")
+endif()
+
+# 裸机可选: osal_malloc/osal_calloc/osal_free 走 mini-os 内存模块 (Kconfig CONFIG_OSAL_NULL_MINI_OS_MEM, 默认关)。
+# 只编 lib/mini-os/src/memory.c 单文件 (无调度器/port 依赖), 不链整个 mini-os 内核;
+# 堆区由板级链接脚本提供 __mini_os_heap_start/__mini_os_heap_end (可 INCLUDE mini-os-heap.ld)。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OSAL_NULL_MINI_OS_MEM_ON REGEX "^CONFIG_OSAL_NULL_MINI_OS_MEM=y$")
+if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND CONFIG_OSAL_NULL_MINI_OS_MEM_ON)
+    list(APPEND OSAL_SRCS "lib/mini-os/src/memory.c")
 endif()
 
 if(MINI_TREE_SYSTEM)
@@ -262,10 +312,10 @@ set(DRIVER_SRCS
 
 if(MINI_TREE_USB)
     list(APPEND DRIVER_SRCS "bus/usb/usb_bus.c")
+    list(APPEND DRIVER_SRCS "bus/usb/usb_net_cb.c")
 endif()
 
-set(KCONFIG_GEN_DIR "${CMAKE_BINARY_DIR}/generated/kconfig/mini_tree")
-set(KCONFIG_OUT     "${KCONFIG_GEN_DIR}/config.h")
+# KCONFIG_GEN_DIR / KCONFIG_OUT 已在文件头部 (配置期 Kconfig 同步处) 定义
 
 set(SCRUBBER_GEN_DIR    "${CMAKE_BINARY_DIR}/generated/scrubber/mini_tree")
 set(SCRUBBER_CRC_HDR    "${SCRUBBER_GEN_DIR}/system_scrubber_crc_gen.h")
@@ -523,25 +573,75 @@ target_include_directories(mini_tree
 if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND MINI_TREE_XTASK)
     target_include_directories(mini_tree PUBLIC
         "${CMAKE_CURRENT_LIST_DIR}/time_slice/task"
-        "${CMAKE_CURRENT_LIST_DIR}/time_slice/time"
+    )
+endif()
+
+# mini-os 内存模块头路径 (裸机 osal_malloc/osal_calloc/osal_free 转发目标, 见 CONFIG_OSAL_NULL_MINI_OS_MEM);
+# 仅在开关开启时暴露, 避免与其它模块的头文件同名冲突 (memory.h)
+if(OSAL_DEFINE STREQUAL "CONFIG_OSAL_NULL" AND CONFIG_OSAL_NULL_MINI_OS_MEM_ON)
+    target_include_directories(mini_tree PUBLIC
+        "${CMAKE_CURRENT_LIST_DIR}/lib/mini-os/inc"
     )
 endif()
 
 target_compile_definitions(mini_tree PUBLIC ${OSAL_DEFINE})
 if(CONFIG_SYSTEM_ENTRY STREQUAL "CONFIG_SYSTEM_CPP=y")
     target_compile_definitions(mini_tree PRIVATE CONFIG_SYSTEM_CPP)
-    target_compile_options(mini_tree PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
-        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
-    )
+    if(MSVC)
+        target_compile_options(mini_tree PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/GR->
+            $<$<COMPILE_LANGUAGE:CXX>:/EHs-c->
+        )
+    else()
+        target_compile_options(mini_tree PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+            $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        )
+    endif()
 endif()
 
 # 第三方库：FreeRTOS / RT-Thread（按 .config）
 add_subdirectory(lib)
 target_link_libraries(mini_tree PUBLIC lib)
 
-target_compile_options(mini_tree PRIVATE -Wno-unused-value)
+if(MSVC)
+    target_compile_options(mini_tree PRIVATE /wd4100 /wd4101 /wd4102)
+else()
+    target_compile_options(mini_tree PRIVATE -Wno-unused-value -Wno-unused-variable)
+endif()
 # 上层 C++ 基础：ETL 默认进 mini_tree（SYSTEM_CPP / event_bus 等依赖）
 mini_tree_link_etl(mini_tree)
 add_custom_target(mini_tree_gen DEPENDS "${KCONFIG_OUT}" ${GEN_SRCS} ${GEN_HDRS} "${SCRUBBER_CRC_HDR}")
 add_dependencies(mini_tree mini_tree_gen)
+
+# TinyUSB: 仅 USB 使能时链接。usb_net_cb.c / usb_bus.c 需要 tusb.h 的
+# include 路径 (lib/tinyusb/src), 且 TINYUSB_OS 与 OSAL 联动 (Kconfig select)。
+if(MINI_TREE_USB)
+    mini_tree_link_tinyusb(mini_tree)
+endif()
+
+# lwIP 移植层 (net/) 是否编入, 由 Kconfig 总开关 CONFIG_LWIP 桥接决定。
+# 仿照仓库既有 file(STRINGS KCONFIG_DOT ...) 范式, 从 .config 提取开关,
+# 避免直接引用 Kconfig 未回流到 CMake 的 CONFIG_* 宏。
+file(STRINGS "${KCONFIG_DOT}" MINI_TREE_LWIP_ON REGEX "^CONFIG_LWIP=y$")
+if(MINI_TREE_LWIP_ON)
+    add_subdirectory(net)
+    add_dependencies(mini_tree_net mini_tree_gen)
+
+    target_link_libraries(mini_tree_net PUBLIC lib)
+    target_link_libraries(mini_tree PUBLIC mini_tree_net)
+endif()
+
+# UI 胶水层 (ui/): LVGL / u8g2 移植, 只经 device/VFS 模型触硬件。
+# 同样从 .config 提取开关 (CONFIG_UI_LVGL / CONFIG_UI_U8G2), 两者任一开启即编入。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_LVGL_ON REGEX "^CONFIG_UI_LVGL=y$")
+file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_U8G2_ON REGEX "^CONFIG_UI_U8G2=y$")
+if(CONFIG_UI_LVGL_ON OR CONFIG_UI_U8G2_ON)
+    add_subdirectory(ui)
+    add_dependencies(mini_tree_ui mini_tree_gen)
+    target_link_libraries(mini_tree PUBLIC mini_tree_ui)
+endif()
+
+if(MINI_TREE_USB)
+    target_link_libraries(mini_tree PUBLIC tinyusb)
+endif()

@@ -75,7 +75,7 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 
 | 核 | 角色 |
 | :--- | :--- |
-| Core 0 | 跑 RTOS（FreeRTOS）+ mini_tree 主栈（probe、VFS、业务） |
+| Core 0 | 跑 RTOS（FreeRTOS / RT-Thread）+ mini_tree 主栈（probe、VFS、业务） |
 | Core 1 | 裸机或轻循环：快路径、专用外设；经共享内存 / IPC 与 Core 0 通信 |
 
 启动顺序建议：

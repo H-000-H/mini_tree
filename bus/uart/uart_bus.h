@@ -1,16 +1,20 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*@=========================================================================================================================*
- * UART BUS — UART 总线子系统 bus 层
- *
- * 架构: VFS → [Bus (本文件)] → HAL; hal_uart_bus_host 嵌入 uart_bus_host (无 vtable)
- * 职责: host/client 池 + atomic ref_count + controller_ops + client I/O (open/close/read/write)
- *
- * 隔离: 未定义 UART_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_uart_*;
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file uart_bus.h
+ *@brief uart bus 头文件
+ *@author H-000-H
+ *@details
+ *   --------------------------------------------------------------------------
+ *   UART BUS — UART 总线子系统 bus 层
+ *   架构: VFS → [Bus (本文件)] → HAL; hal_uart_bus_host 嵌入 uart_bus_host (无 vtable)
+ *   职责: host/client 池 + atomic ref_count + controller_ops + client I/O (open/close/read/write)
+ *   隔离: 未定义 UART_BUS_IMPL 时 #pragma GCC poison 禁止外部调 hal_uart_*;
  *   允许 hal_uart_config 供 VFS 填充, 强制走 uart_bus API
- *
- * 引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
- * @see bus/bus.h  通用总线框架
- *@=========================================================================================================================*/
+ *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY
+ *   @see bus/bus.h  通用总线框架
+ *   --------------------------------------------------------------------------
+ */
+
 #ifndef UART_BUS_H
 #define UART_BUS_H
 
@@ -24,88 +28,84 @@ extern "C"
 {
 #endif
 
-    struct device;
+struct device;
 
-    /*===========================================================================================================================================================*/
-    /*Host API (VFS 层调用)*/
-    /*===========================================================================================================================================================*/
-    /**
-     * @brief UART host 初始化 (config 类型直接用 hal_uart_config, bus 零翻译透传)
-     * @param pdev controller device (host)
-     * @param cfg host 配置 (VFS 填充 DTSI 硬件直投值)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
-     */
-    int uart_bus_host_init(struct device* pdev,
-                           const struct hal_uart_config* cfg) COMPAT_WARN_UNUSED_RESULT;
-    /**
-     * @brief UART host 反初始化 (ref_count > 0 时返回 BUSY)
-     * @param pdev controller device (host)
-     * @return 成功返回 VFS_OK, BUSY 返回 VFS_ERR_BUSY, 失败返回 VFS_ERR_*
-     */
-    int uart_bus_host_deinit(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+/* -------------------------------------------------------------------------- */
+/*Host API (VFS 层调用)*/
+/* -------------------------------------------------------------------------- */
+/**
+ * @brief UART host 初始化 (config 类型直接用 hal_uart_config, bus 零翻译透传)
+ * @param[in] pdev controller device (host)
+ * @param[in] cfg host 配置 (VFS 填充 DTSI 硬件直投值)
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
+ */
+int uart_bus_host_init(struct device* pdev, const struct hal_uart_config* cfg) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief UART host 反初始化 (ref_count > 0 时返回 BUSY)
+ * @param[in] pdev controller device (host)
+ * @return 成功返回 MINI_OK, BUSY 返回 MINI_ERR_BUSY, 失败返回 VFS_ERR_*
+ */
+int uart_bus_host_deinit(struct device* pdev) MINI_WARN_UNUSED_RESULT;
 
-    /*===========================================================================================================================================================*/
-    /*Client API (VFS 层调用)*/
-    /*===========================================================================================================================================================*/
-    /**
-     * @brief UART client 注册 (UART 无 per-client 配置, 单 host 单 client, 无需 cfg)
-     * @param pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
-     */
-    int uart_bus_client_register(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
-    /**
-     * @brief UART client 注销 (ref_count -1, 清零槽位)
-     * @param pdev client device
-     */
-    void uart_bus_client_unregister(struct device* pdev);
+/* -------------------------------------------------------------------------- */
+/*Client API (VFS 层调用)*/
+/* -------------------------------------------------------------------------- */
+/**
+ * @brief UART client 注册 (UART 无 per-client 配置, 单 host 单 client, 无需 cfg)
+ * @param[in] pdev client device
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
+ */
+int uart_bus_client_register(struct device* pdev) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief UART client 注销 (ref_count -1, 清零槽位)
+ * @param[in] pdev client device
+ */
+void uart_bus_client_unregister(struct device* pdev);
 
-    /**
-     * @brief 打开 UART client (ref_count 在 register/unregister 维护, 此处仅 IO gate)
-     * @param pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
-     */
-    int uart_bus_open(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
-    /**
-     * @brief 关闭 UART client (仅 IO gate, 不改 ref_count)
-     * @param pdev client device
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_NODEV
-     */
-    int uart_bus_close(struct device* pdev) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief 打开 UART client (ref_count 在 register/unregister 维护, 此处仅 IO gate)
+ * @param[in] pdev client device
+ * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
+ */
+int uart_bus_open(struct device* pdev) MINI_WARN_UNUSED_RESULT;
+/**
+ * @brief 关闭 UART client (仅 IO gate, 不改 ref_count)
+ * @param[in] pdev client device
+ * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
+ */
+int uart_bus_close(struct device* pdev) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief UART 写数据
-     * @param pdev client device
-     * @param data 待写入数据
-     * @param len 数据长度
-     * @param timeout_ms 超时 (ms, 0=平台默认)
-     * @return 成功返回 VFS_OK, 失败返回 VFS_ERR_*
-     */
-    int uart_bus_write(struct device* pdev, const uint8_t* data, size_t len,
-                       uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief UART 写数据
+ * @param[in] pdev client device
+ * @param[in] data 待写入数据
+ * @param[in] len 数据长度
+ * @param[in] timeout_ms 超时 (ms, 0=平台默认)
+ * @return 成功返回 MINI_OK, 失败返回 VFS_ERR_*
+ */
+int uart_bus_write(struct device* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief UART 读数据
-     * @param pdev client device
-     * @param data 读取缓冲区
-     * @param len 读取长度
-     * @param timeout_ms 超时 (ms, 0=平台默认)
-     * @return 成功返回已读字节数或 VFS_OK, 失败返回 VFS_ERR_*
-     */
-    int uart_bus_read(struct device* pdev, uint8_t* data, size_t len,
-                      uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief UART 读数据
+ * @param[in] pdev client device
+ * @param[out] data 读取缓冲区
+ * @param[out] len 读取长度
+ * @param[in] timeout_ms 超时 (ms, 0=平台默认)
+ * @return 成功返回已读字节数或 MINI_OK, 失败返回 VFS_ERR_*
+ */
+int uart_bus_read(struct device* pdev, uint8_t* data, size_t len, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief UART 半双工组合传输 (先写后读)
-     * @param pdev client device
-     * @param tx 发送缓冲 (可 NULL 表示只读)
-     * @param rx 接收缓冲 (可 NULL 表示只写)
-     * @param tx_len 发送长度
-     * @param rx_len 接收长度
-     * @param timeout_ms 超时 (ms, 0=平台默认; 写/读各自使用该超时)
-     * @return 成功返回 VFS_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
-     */
-    int uart_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t tx_len,
-                          size_t rx_len, uint32_t timeout_ms) COMPAT_WARN_UNUSED_RESULT;
+/**
+ * @brief UART 半双工组合传输 (先写后读)
+ * @param[in] pdev client device
+ * @param[in] tx 发送缓冲 (可 NULL 表示只读)
+ * @param[out] rx 接收缓冲 (可 NULL 表示只写)
+ * @param[in] tx_len 发送长度
+ * @param[out] rx_len 接收长度
+ * @param[in] timeout_ms 超时 (ms, 0=平台默认; 写/读各自使用该超时)
+ * @return 成功返回 MINI_OK (有读时返回已读字节数), 失败返回 VFS_ERR_*
+ */
+int uart_bus_transfer(struct device* pdev, const uint8_t* tx, uint8_t* rx, size_t tx_len, size_t rx_len, uint32_t timeout_ms) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

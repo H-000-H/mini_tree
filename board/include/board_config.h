@@ -1,15 +1,22 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_config.h
+ *@brief board config 头文件
+ *@author H-000-H
+
+ */
+
 #ifndef BOARD_CONFIG_H
 #define BOARD_CONFIG_H
 
-/* ── 板级配置聚合层 ──
- *
- * 配置真相源:
- *   1. board/dts/, board/dtsi/, board/dt-bindings/ — 硬件实例与属性
- *   2. dt_config_gen.h      — DTC 编译期聚合 (DTC_GEN_COUNT_*)
- *   3. system_scrubber_crc_gen.h — 构建后 CRC 基线
- *   4. config.h (Kconfig)   — 运行时容量 (OSAL 池、栈监控等)
- */
+/* -------------------------------------------------------------------------- */
+/* 板级配置聚合层 */
+/* 配置真相源: */
+/* 1. board/dts/, board/dtsi/, board/dt-bindings/ — 硬件实例与属性 */
+/* 2. dt_config_gen.h      — DTC 编译期聚合 (DTC_GEN_COUNT_*) */
+/* 3. system_scrubber_crc_gen.h — 构建后 CRC 基线 */
+/* 4. config.h (Kconfig)   — 运行时容量 (OSAL 池、栈监控等) */
+/* -------------------------------------------------------------------------- */
 
 #include "dt_config_gen.h"
 

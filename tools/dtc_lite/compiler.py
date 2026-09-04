@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import glob
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from collections import deque
@@ -279,16 +281,95 @@ class DTSCompiler:
                 if ename not in self._macros:
                     self._macros[ename] = f'0x{val:X}'
 
+    # ── C 预处理器查找 (工具链探测) ──────────────────────────
+    # 同一来源内 arm-none-eabi-gcc > arm-none-eabi-cpp > gcc > cpp,
+    # 保证与固件实际工具链一致 (避免宿主 x86 gcc 预处理 ARM 寄存器头)。
+    _CPP_CANDIDATES: Tuple[str, ...] = (
+        'arm-none-eabi-gcc', 'arm-none-eabi-cpp', 'gcc', 'cpp')
+    # 环境变量 (值可为可执行文件全路径, 或工具链根/bin 目录), 用户显式指定优先级最高
+    _CPP_ENV_VARS: Tuple[str, ...] = (
+        'ARM_NONE_EABI_GCC_PATH',   # 直接指向 arm-none-eabi-gcc 或其 bin 目录
+        'GNUARM_TOOLCHAIN_PATH',    # Zephyr 惯用的工具链根目录 (自动补 bin/)
+        'ARM_TOOLCHAIN_PATH',
+        'GCC_ARM_TOOLCHAIN_DIR',
+    )
+
     @staticmethod
-    def _find_cpp() -> Optional[str]:
-        """优先选择 arm-none-eabi-gcc (与项目工具链一致), 退到 gcc/cpp."""
-        for c in ('arm-none-eabi-gcc', 'arm-none-eabi-cpp', 'gcc', 'cpp'):
-            try:
-                subprocess.run([c, '--version'], capture_output=True,
+    def _cpp_usable(exe: str) -> bool:
+        """候选预处理器可用性验证: --version 必须正常退出 (拦截同名假命令)."""
+        try:
+            r = subprocess.run([exe, '--version'], capture_output=True,
                                timeout=3, check=False)
-                return c
-            except (FileNotFoundError, subprocess.TimeoutExpired):
+            return r.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
+    def _common_toolchain_dirs() -> List[str]:
+        """常见非 PATH 安装位置兜底探测。
+
+        Windows: 官方安装器 (GNU Arm Embedded / Arm GNU Toolchain) 与
+                 STM32CubeCLT 自带的 GNU 工具 (未勾选"加入 PATH"时仍可找到)。
+        *nix:    /opt 下的手动解压安装。
+        注: xPack 安装结构因版本而异 (.content 层), 请用环境变量显式指定。
+        """
+        dirs: List[str] = []
+        if os.name == 'nt':
+            roots = [os.environ.get('ProgramFiles', r'C:\Program Files'),
+                     os.environ.get('ProgramFiles(x86)',
+                                    r'C:\Program Files (x86)')]
+            for root in roots:
+                dirs += glob.glob(os.path.join(
+                    root, 'GNU Arm Embedded Toolchain', '*', 'bin'))
+                dirs += glob.glob(os.path.join(
+                    root, 'Arm GNU Toolchain*', '*', 'bin'))
+            dirs += glob.glob(r'C:\ST\STM32CubeCLT*\GNU-tools-for-STM32\bin')
+        else:
+            dirs += glob.glob('/opt/gcc-arm-none-eabi*/bin')
+            dirs += glob.glob('/opt/arm-gnu-toolchain*/bin')
+            dirs += glob.glob(os.path.expanduser('~/opt/gcc-arm*/bin'))
+        # 版本目录倒序: 多版本并存时优先最新
+        return sorted({d for d in dirs if os.path.isdir(d)}, reverse=True)
+
+    @classmethod
+    def _find_cpp(cls) -> Optional[str]:
+        """优先选择 arm-none-eabi-gcc (与项目工具链一致), 退到 gcc/cpp.
+
+        查找顺序:
+          1. 环境变量 ARM_NONE_EABI_GCC_PATH / GNUARM_TOOLCHAIN_PATH /
+             ARM_TOOLCHAIN_PATH / GCC_ARM_TOOLCHAIN_DIR
+          2. PATH —— shutil.which 预检 (Windows 下自动解析 .exe / PATHEXT,
+             避免盲启进程探测)
+          3. 常见安装目录兜底 (Program Files / STM32CubeCLT / /opt ...)
+        每个候选均以 --version 退出码验证可用后才返回。
+        """
+        # 1) 环境变量: 用户显式指定, 最高优先
+        for var in cls._CPP_ENV_VARS:
+            val = os.environ.get(var)
+            if not val:
                 continue
+            p = Path(val)
+            if p.is_file():
+                if cls._cpp_usable(str(p)):
+                    return str(p)
+                continue
+            for d in (p, p / 'bin'):
+                if not d.is_dir():
+                    continue
+                for c in cls._CPP_CANDIDATES:
+                    exe = shutil.which(os.path.join(str(d), c))
+                    if exe and cls._cpp_usable(exe):
+                        return exe
+        # 2) PATH + 3) 常见安装目录
+        extra_dirs = cls._common_toolchain_dirs()
+        for c in cls._CPP_CANDIDATES:
+            exe = shutil.which(c)
+            if exe and cls._cpp_usable(exe):
+                return exe
+            for d in extra_dirs:
+                exe = shutil.which(os.path.join(d, c))
+                if exe and cls._cpp_usable(exe):
+                    return exe
         return None
 
     # ───────────────────────── 预处理 ─────────────────────────
@@ -603,6 +684,21 @@ class DTSCompiler:
         # 把 C 的位运算符原样保留 (Python 语法一致); 但 << / >> 已是 Python 运算符
         # 把单独的 = 滤掉 (避免被 eval 误判为赋值)
         s = s.replace('=', '')
+        # C 无幂运算符: 残留的 ** 只能来自病态输入, 直接拒绝
+        # (同时阻断 eval 的 ** 指数爆炸, 如 9**9**9**9)
+        if '**' in s:
+            return None
+        # C 八进制 → Python 0o 形式: Python3 裸 0777 是 SyntaxError.
+        # 正则只匹配 0 后跟 1+ 个八进制数字 (0x/0b 前缀与十进制不会误伤:
+        # x/b 不是 [0-7], 十进制内 0 前无词边界; 纯 0 不匹配也无需转换).
+        # 须在白名单之后执行: 0o 的 o 不在白名单字符集内.
+        s = re.sub(r'\b0[0-7]+\b', lambda m: '0o' + m.group(0)[1:], s)
+        # C 整数除法 → Python 整除: eval 的 / 产生 float (24000000/6 得
+        # 4000000.0) 过不了 int 检查, 历史上所有除法宏均求值失败;
+        # // 对正数与 C 截断语义一致 (负数场景 C 向零截断 / Python 向下
+        # 取整有差, 但寄存器/时钟宏实际均为正数).
+        # 注释已在上面剥除, 剩余的 / 必为除号.
+        s = s.replace('/', '//')
         # C 的逻辑非 ! → Python not (注意: != 上面已把 = 删掉, 剩 ! 等于 not X)
         # 用简单替换: 独立的 ! 替成 ' not '
         s = re.sub(r'(?<![!=!])!(?!=)', ' not ', s)

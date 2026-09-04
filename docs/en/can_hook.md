@@ -55,7 +55,7 @@ Declared in `can_hook/can_hook.h`; frames use `struct can_frame` from `hal_can.h
 
 ## 3. Return Conventions
 
-Consistent with the rest of the repo: `VFS_OK` (or hook-defined 0) on success; `VFS_ERR_*` on failure.
+Consistent with the rest of the repo: `MINI_OK` (or hook-defined 0) on success; `MINI_ERR_*` on failure.
 
 | Scenario | Guidance |
 | :--- | :--- |
@@ -77,7 +77,7 @@ int can_hook_pre_tx(struct device* pdev, struct can_frame* frame)
     /* e.g. rewrite ID or reject */
     (void)pdev;
     (void)frame;
-    return VFS_OK;
+    return MINI_OK;
 }
 ```
 

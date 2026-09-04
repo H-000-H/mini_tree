@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * critical_data — 关键安全变量双重反码存储防护
- *
- * 关键变量存正码+反码两份, 每次读取校验, 应对掉电/位翻转
- * 提供 C 宏 CRITICAL_VAR_* 与 C++ CriticalStorage 模板 (≤32 位 POD)
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file critical_data.h
+ *@brief critical data 头文件
+ *@author H-000-H
+ *@details
+ *   critical_data — 关键安全变量双重反码存储防护
+ *   关键变量存正码+反码两份, 每次读取校验, 应对掉电/位翻转
+ *   提供 C 宏 CRITICAL_VAR_* 与 C++ CriticalStorage 模板 (≤32 位 POD)
  */
+
 #pragma once
 
 #include "compiler_compat.h"
@@ -16,41 +20,40 @@ extern "C"
 {
 #endif
 
-    /*
-     * 关键安全变量的双重反码存储
-     *
-     * 应对 Brown-Out / 电压跌落 / 宇宙射线位翻转.
-     * 每个关键变量存储正码 + 反码两份副本, 每次读取自动校验.
-     *
-     * volatile 强制每次从物理 RAM 重读, 防止 GCC -O2/-Os 将
-     * 优化删除 (编译器可静态证明此恒真).
-     *
-     * 用法:
-     *   CRITICAL_VAR_DECL(int32_t, g_infusion_rate_ml_h);
-     *   CRITICAL_VAR_WRITE(g_infusion_rate_ml_h, 50);
-     *
-     *   int32_t rate;
-     *   if (CRITICAL_VAR_READ(g_infusion_rate_ml_h, &rate))
-     {
-     *       // 校验通过
-     *   } else {
-     *       enter_safe_state("CRITICAL_VAR corruption");
-     *   }
-     */
+/*
+ * 关键安全变量的双重反码存储
+ *
+ * 应对 Brown-Out / 电压跌落 / 宇宙射线位翻转.
+ * 每个关键变量存储正码 + 反码两份副本, 每次读取自动校验.
+ *
+ * volatile 强制每次从物理 RAM 重读, 防止 GCC -O2/-Os 将
+ * 优化删除 (编译器可静态证明此恒真).
+ *
+ * 用法:
+ *   CRITICAL_VAR_DECL(int32_t, g_infusion_rate_ml_h);
+ *   CRITICAL_VAR_WRITE(g_infusion_rate_ml_h, 50);
+ *
+ *   int32_t rate;
+ *   if (CRITICAL_VAR_READ(g_infusion_rate_ml_h, &rate))
+ {
+ *       // 校验通过
+ *   } else {
+ *       enter_safe_state("CRITICAL_VAR corruption");
+ *   }
+ */
 
-#define CRITICAL_VAR_DECL(type, name)                                                              \
-    volatile type name;                                                                            \
+#define CRITICAL_VAR_DECL(type, name)                                                                                                                \
+    volatile type name;                                                                                                                              \
     volatile type name##_inv
 
-#define CRITICAL_VAR_WRITE(name, val)                                                              \
-    do                                                                                             \
-    {                                                                                              \
-        (name) = (val);                                                                            \
-        (name##_inv) = ~(val);                                                                     \
+#define CRITICAL_VAR_WRITE(name, val)                                                                                                                \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        (name) = (val);                                                                                                                              \
+        (name##_inv) = ~(val);                                                                                                                       \
     } while (0)
 
-#define CRITICAL_VAR_READ(name, out)                                                               \
-    (((name) == ~(name##_inv)) ? ((void)(*(out) = (name)), true) : (false))
+#define CRITICAL_VAR_READ(name, out) (((name) == ~(name##_inv)) ? ((void)(*(out) = (name)), true) : (false))
 
 #ifdef __cplusplus
 }
@@ -83,14 +86,14 @@ public:
     {
         m_data = val;
         uint32_t raw = 0;
-        COMPAT_MEM_COPY(&raw, &val, sizeof(T));
+        MINI_MEM_COPY(&raw, &val, sizeof(T));
         m_inv_data = ~raw;
     }
 
     bool validate() const
     {
         uint32_t raw = 0;
-        COMPAT_MEM_COPY(&raw, &m_data, sizeof(T));
+        MINI_MEM_COPY(&raw, &m_data, sizeof(T));
         return raw == ~m_inv_data;
     }
 
@@ -108,7 +111,7 @@ public:
     }
 
 private:
-    volatile T m_data;
+    volatile T        m_data;
     volatile uint32_t m_inv_data;
 };
 

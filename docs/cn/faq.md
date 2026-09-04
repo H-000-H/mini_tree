@@ -31,15 +31,15 @@ ETL 是 **上层 C++ 基础库**，vendor 于 `lib/etl`（仅 include + cmake）
 
 若 IDE 仍报 `etl/string.h` not found：确认 `lib/etl/include` 存在，或刷新 `compile_commands.json` / 根 `compile_flags.txt`（已含 `-Ilib/etl/include`）。详见 [ecosystem.md](ecosystem.md)。
 
-### 用什么 IDE？
+### 能不能用 Keil 当主 IDE？
 
-日常使用基于 **VSCode** 的编辑器/IDE（**VS Code / Cursor / Qoder** 等），配合 clangd（见 [getting_started.md §7](getting_started.md) 与 [debug_monitor.md](debug_monitor.md)）。本分支不跟进传统 Keil 等非 VSCode 平台。
+**本仓库不提供、不跟进传统 Keil 5 作为主 IDE。** 若客户强制要工程文件，降级路径是：CMake 生成头之后，用 **Python 自动生成 `.uvprojx`**（远古有过类似做法，现不维护）。日常还是用 Cursor / VS Code / CLion / Qoder 更顺手；想用 Keil 的话直接上 Keil Studio（我试过能用，见 [keil_integration.md](keil_integration.md)）。
 
 ---
 
 ## 构建与链接
 
-### HAL 调用总是 `VFS_ERR_NOTSUPP`
+### HAL 调用总是 `MINI_ERR_NOTSUPP`
 
 平台强符号未链入，仍在用中间件 weak 空实现。检查目标源文件列表与链接顺序。
 
@@ -86,7 +86,7 @@ FreeRTOS 经 `FreeRTOSConfig.h` 的 `vPortSVCHandler` / `xPortPendSVHandler` 宏
 
 ### 裸机无调度
 
-`CONFIG_OSAL_NULL` 下用 `mini_tree_system_loop` + 裸机调度器（`x_scheduler` / `x_task`，见 `time_slice/task/xtask.h`；协调式 `xtask_coop.c` 与抢占式 `xtask_preempt.c` 二选一，由 `CONFIG_XTASK_PREEMPT` 控制），不要调用 `vTaskStartScheduler`。
+`CONFIG_OSAL_NULL` 下用 `mini_tree_system_loop` + 裸机调度器（`x_scheduler` / `x_task`，见 `time_slice/task/xtask.h`）。调度器由 `Kconfig.mini_tree` 的「裸机调度器」choice 三选一：`XTASK_NONE`（自写 `while(1)`）/ `XTASK_COOP`（协调式 `xtask_coop.c`，默认）/ `XTASK_PREEMPT`（抢占式 `xtask_preempt.c`，已完工可编译）。不要调用 `vTaskStartScheduler`。
 
 ### 切 RTOS 后优先级行为相反
 

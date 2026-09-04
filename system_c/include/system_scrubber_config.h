@@ -1,9 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * system_scrubber_config — Flash bit-rot 巡检策略 (非 DTS 派生)
- *
- * CRC 基线由构建期 system_scrubber_crc_gen.h 提供, 运行时按 chunk 比对。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file system_scrubber_config.h
+ *@brief system scrubber config 头文件
+ *@author H-000-H
+ *@details
+ *   system_scrubber_config — Flash bit-rot 巡检策略 (非 DTS 派生)
+ *   CRC 基线由构建期 system_scrubber_crc_gen.h 提供, 运行时按 chunk 比对。
  */
+
 #ifndef SYSTEM_SCRUBBER_CONFIG_H
 #define SYSTEM_SCRUBBER_CONFIG_H
 

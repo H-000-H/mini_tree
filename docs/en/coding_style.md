@@ -27,7 +27,7 @@
 Find clangd from the root `compile_flags.txt` first (otherwise the IDE only has a partial index):
 
 - `Clangd: Restart language server`
-- After changing macros / config → re-run `idf.py build` (ESP path; see [getting_started.md](getting_started.md))
+- After changing macros / config → re-run genconfig (see [getting_started.md](getting_started.md))
 
 Formatting and naming: **let the tools do it** — don't hand-edit.
 
@@ -43,7 +43,7 @@ Root `.clang-format`:
 | Braces | Allman (next line) |
 | AllowShortBlocksOnASingleLine | `true` (drop `{}` for single-statement `if/for/while`) |
 | Indent | 4 spaces |
-| ColumnLimit | 100 |
+| ColumnLimit | 200 |
 | Pointer/reference alignment | left (`int *p`) |
 
 A platform project may copy and tweak `ColumnLimit`, but must **not** break the Allman / 4-space spine.
@@ -72,7 +72,7 @@ Uniform lowercase (enforced by `readability-identifier-naming`):
 | functions / variables | `snake_case` |
 | types (`struct/typedef`) | lowercase (`device`, `hal_can_config`) |
 | namespace (`system_cpp`) | `mini_tree::` |
-| macros / enum values | UPPER `SNAKE_CASE` (`DEV_ID_UART0`, `VFS_ERR_*`) |
+| macros / enum values | UPPER `SNAKE_CASE` (`DEV_ID_UART0`, `MINI_ERR_*`) |
 
 Recommended at the `app` layer; mandatory below `app`.
 

@@ -1,8 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * I2S VFS 板级配置宏 (vfs/i2s) — 中间件默认值 + 板级覆盖入口
- * 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_define_i2s.h
+ *@brief board define i2s 头文件
+ *@author H-000-H
+ *@details
+ *   I2S VFS 板级配置宏 (vfs/i2s) — 中间件默认值 + 板级覆盖入口
+ *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
  */
+
 #ifndef BOARD_DEFINE_I2S_H
 #define BOARD_DEFINE_I2S_H
 
@@ -25,8 +30,7 @@
 #define DTC_GEN_COUNT_HETEROGENEOUS_I2S_SLAVE_CLIENT 1
 #endif
 #ifndef I2S_CLIENT_POOL
-#define I2S_CLIENT_POOL \
-    (DTC_GEN_COUNT_HETEROGENEOUS_I2S_MASTER_CLIENT + DTC_GEN_COUNT_HETEROGENEOUS_I2S_SLAVE_CLIENT)
+#define I2S_CLIENT_POOL (DTC_GEN_COUNT_HETEROGENEOUS_I2S_MASTER_CLIENT + DTC_GEN_COUNT_HETEROGENEOUS_I2S_SLAVE_CLIENT)
 #endif
 
 /* 环形 FIFO 深度 (必须是 2 的幂) */

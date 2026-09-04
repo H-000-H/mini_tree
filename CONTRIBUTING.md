@@ -24,7 +24,7 @@
    Docs and code go in the same PR: at least update [docs/file_index.md](docs/cn/file_index.md) or the corresponding `docs/*`; new open-source components also update [docs/ecosystem.md](docs/cn/ecosystem.md) + [NOTICE](NOTICE) (version, copyright holder, license).
 6. 遵守 [docs/fast_path.md](docs/cn/fast_path.md) 与分层 poison。  
    Follow [docs/fast_path.md](docs/cn/fast_path.md) and the layered poison.
-7. **语言规范**：`.clang-format`（Allman 大括号、单语句 if/for/while 去括号、4 空格缩进、100 列、指针靠左）+ 分层 `.clang-tidy`（根 = 内核区，全小写无前缀；`app/`、`system_cpp/` = Google 区，类型 PascalCase + `s_`/`g_`/`k_` 前缀）；app 层为建议、app 以下为强规定；命名由 `.clang-tidy` 强制、格式由 `.clang-format` 强制。详见 [docs/coding_style.md](docs/cn/coding_style.md)。  
+7. **语言规范**：`.clang-format`（Allman 大括号、单语句 if/for/while 去括号、4 空格缩进、200 列、指针靠左）+ 分层 `.clang-tidy`（根 = 内核区，全小写无前缀；`app/`、`system_cpp/` = Google 区，类型 PascalCase + `s_`/`g_`/`k_` 前缀）；app 层为建议、app 以下为强规定；命名由 `.clang-tidy` 强制、格式由 `.clang-format` 强制。详见 [docs/coding_style.md](docs/cn/coding_style.md)。  
    **Coding style**: `.clang-format` (Allman braces, no braces around single-statement if/for/while, 4-space indent, 100 columns, pointer-on-left) plus layered `.clang-tidy` (root = kernel zone, all-lowercase without prefixes; `app/`, `system_cpp/` = Google zone, PascalCase types + `s_`/`g_`/`k_` prefixes); advisory in `app/`, mandatory below `app/`; naming enforced by `.clang-tidy`, formatting by `.clang-format`. See [docs/coding_style.md](docs/cn/coding_style.md).
 
 ---
@@ -35,7 +35,7 @@
 | :--- | :--- |
 | CMake + Ninja/Make | 构建 / Build |
 | Python3 + `lark` | dtc-lite |
-| ESP-IDF（自带 kconfiglib） | `idf.py menuconfig` / `sdkconfig.h` |
+| 内置 kconfiglib（`tools/_vendor/`） | menuconfig / guiconfig，**无需安装** |
 | clangd | 打开仓库根；用根 `compile_flags.txt` / Open the repo root; use the root `compile_flags.txt` |
 
 ```bash
@@ -53,7 +53,7 @@ pip install lark
 | DTS 契约变更 / DTS contract changes | 同步 `docs/cn/driver_guide.md` / Update `docs/cn/driver_guide.md` |
 | 文档位置 / Doc placement | 新专题进 `docs/`；勿在根目录再堆手册 / New topics go to `docs/`; do not pile more manuals in the root |
 | 不提交 / Do not commit | 密钥、本机绝对路径、子目录 `compile_flags.txt`、SoC 专用 dtsi 冒充默认板 / Secrets, machine-local absolute paths, per-directory `compile_flags.txt`, SoC-specific dtsi masquerading as the default board |
-| 平台 / Platform | 本分支为纯 **ESP-IDF** 组件，主 IDE 为 VSCode 系（VS Code / Cursor / Qoder）；不接受传统 Keil 5（经典 µVision / MDK）工程相关的 PR、issue、分支 / This branch is a pure **ESP-IDF** component; the main IDEs are VSCode-based (VS Code / Cursor / Qoder). No traditional Keil 5 (classic µVision / MDK) project PRs, issues, or branches |
+| Keil 5 工程 / Keil 5 projects | **不接受**传统 Keil 5（经典 µVision / MDK）工程相关的 PR、issue、分支；兼容工具请走独立仓或 `tools/` 子模块，可收录进 [docs/ecosystem.md](docs/cn/ecosystem.md)。详见 [docs/keil_integration.md](docs/cn/keil_integration.md) §4 / **No** traditional Keil 5 (classic µVision / MDK) project PRs, issues, or branches; compatibility tools belong in a separate repo or `tools/` submodule and may be listed in [docs/ecosystem.md](docs/cn/ecosystem.md). See [docs/keil_integration.md](docs/cn/keil_integration.md) §4 |
 | 测试说明 / Testing notes | 至少：生成物是否更新、相关外设是否编过 / At minimum: whether generated artifacts were updated and whether the affected peripherals compile |
 
 ---

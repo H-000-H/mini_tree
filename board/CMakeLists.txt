@@ -12,14 +12,15 @@
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-# USB 软编码：.config 显式 "# CONFIG_USB is not set" 才裁剪；缺省视为启用（对齐 Kconfig default y）
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../.config" CONFIG_USB_OFF REGEX "^# CONFIG_USB is not set$")
-if(CONFIG_USB_OFF)
-    set(USB_DTC_SCAN_DIRS "")
-else()
+# USB 软编码：对齐 Kconfig 语义 — .config 显式 "CONFIG_USB=y" 才编入；
+# 未置位或 "# CONFIG_USB is not set" 时不编入（对齐 Kconfig default n）
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../.config" CONFIG_USB_ON REGEX "^CONFIG_USB=y$")
+if(CONFIG_USB_ON)
     set(USB_DTC_SCAN_DIRS
         "${CMAKE_CURRENT_SOURCE_DIR}/../bus/usb"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vfs/usb")
+else()
+    set(USB_DTC_SCAN_DIRS "")
 endif()
 
 set(BOARD_DTS             "${CMAKE_CURRENT_SOURCE_DIR}/dts/board.dts" CACHE FILEPATH "板级 DTS (各平台覆盖)")

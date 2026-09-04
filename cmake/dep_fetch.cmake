@@ -43,6 +43,14 @@ function(mini_tree_dep_get out_source_dir)
     FetchContent_GetProperties(${_fc_name})
     if(NOT ${_fc_name_lower}_POPULATED)
         message(STATUS "mini_tree ${ARG_NAME}: FetchContent ${ARG_GIT_REPOSITORY} @ ${ARG_GIT_TAG}")
+        # 本工程刻意只用 FetchContent_Populate 取 SOURCE_DIR，不调用 add_subdirectory
+        # (TinyUSB/lwIP 自带 CMakeLists 在父工程 project() 后执行会触发 CMP0000 硬错误)。
+        # CMake 4.x 将 "FetchContent_Populate(name)" 标记弃用并建议改用 MakeAvailable，
+        # 但 MakeAvailable 必然 add_subdirectory，与本设计冲突。按 CMP0169 文档允许的
+        # 过渡方式，在此作用域显式回退到 OLD 语义以消除 dev 警告，待后续迁移 ExternalProject。
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
         FetchContent_Populate(${_fc_name})
     endif()
 

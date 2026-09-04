@@ -13,8 +13,10 @@
 
 | Path | Description |
 | :--- | :--- |
-| `CMakeLists.txt` | ESP component entry (routes to `cmake/esp_idf.cmake`) |
-| `Kconfig.projbuild` / `Kconfig.mini_tree` | ESP-IDF Kconfig (`idf.py menuconfig` → `sdkconfig.h`) |
+| `CMakeLists.txt` | static lib `mini_tree`, genconfig, dtc-lite, source set |
+| `Kconfig.mini_tree` | public config tree (in git) |
+| `Kconfig.non_esp` / `Kconfig.projbuild` | non-ESP / ESP-IDF entry (each sources `Kconfig.mini_tree`) |
+| `.config` | feature-trim dotfile |
 | `compile_flags.txt` / `.clangd` | clangd compilation database |
 | `.clang-format` · `.clang-format-ignore` · layered `.clang-tidy` | code style: formatting + naming rules; suggested at app layer, enforced below |
 | `error_symbols.ld` | `ERR_SECTION_BASE` |
@@ -23,7 +25,7 @@
 | `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md` | entry, changelog, contributing (kept at root per OSS convention) |
 | `docs/` | all topical docs (see README.md) |
 
-> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`; an ESP-IDF component path (`cmake/esp_idf.cmake`) is also provided.
+> Build is generic CMake: HAL ships weak empty implementations, and the board is injected via `MINI_TREE_BOARD_PORT` / `BOARD_DTS` / `BOARD_DTSI_DIR`. The ESP-IDF component path (`cmake/esp_idf.cmake`) keeps its full build path in the `main` branch but requires the IDF component mode (see [getting_started.md](getting_started.md) §4.2).
 
 ---
 
@@ -36,7 +38,6 @@
 | `include/bus.h` | bus controller abstraction |
 | `include/dev_lifecycle.h` | driver I/O lifecycle |
 | `include/board_config.h` | capacity macro aggregation, `dt_config_gen` / `config.h` |
-| `include/VFS.h` | compatibility wrapper (forwards status, etc.) |
 | `src/board_device.c` | device instances and lookup |
 | `src/board_driver.c` | probe scheduling, safety-hw registration |
 | `src/bus.c` | controller table |
@@ -67,7 +68,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 
 | Path | Description |
 | :--- | :--- |
-| `core/include/status.h` | `VFS_ERR_*`, `ERR_PTR` |
+| `core/include/status.h` | `MINI_ERR_*`, `ERR_PTR` |
 | `core/include/compiler_compat.h` | portable attributes & mem API |
 | `core/include/compiler_compat_poison.h` | poison layer |
 | `core/include/event_bus.h` · `event_bus.hpp` | event bus |
@@ -76,7 +77,7 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | `core/src/*.c` | implementations above |
 | `osal/include/osal.h` | OSAL master header |
 | `osal/include/osal_null.h` | bare-metal helper header + C++ task overload declaration |
-| `osal/src/osal_{null,freertos}.c` | two backends (bare-metal / FreeRTOS) |
+| `osal/src/osal_{null,mini_os,freertos,rtthread}.c` | four backends |
 | `osal/src/osal_task.cpp` | bare-metal C++ task wrapper |
 | `interrupt/interrupt.{c,h}` | VIRQ |
 | `system_c/` · `system_cpp/` | init, wdt, scrubber, safe_state, task_manager, cmd (C or C++ via Kconfig) |
@@ -89,15 +90,42 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 | Path | Description |
 | :--- | :--- |
 | `tools/dtc-lite.py` · `tools/dtc_lite/` | device tree compiler package |
+| `tools/genconfig.py` | Kconfig → `config.h` |
 | `tools/system_scrubber_crc_stub.h` | CRC stub |
 | `ide/stubs/` | generated-header stubs for clangd |
-| `drivers/<chip>/` | **37** product drivers (`include/` + `src/`, `DRIVER_REGISTER` + dtc-lite compile-time probe); e.g. `w25qxx`, `st7789`, `ssd1306`…; no legacy `drivers/flash` |
+| `drivers/<chip>/` | **39** product drivers (`include/` + `src/`, `DRIVER_REGISTER` + dtc-lite compile-time probe); e.g. `w25qxx`, `st7789`, `ssd1306`…; no legacy `drivers/flash` |
 | `can_hook/` | CAN protocol superset hooks |
 | `algorithm/buffer/` | ring & double buffers |
-| `cmake/esp_idf.cmake` | ESP component entry (`idf_component_register`) |
-| `cmake/etl.cmake` | ETL link helper (kept; the ESP path uses `lib/etl/include` directly) |
+| `cmake/*.cmake` | `dep_fetch` + `mini_tree_link_*` helpers; also `disasm` / `rust` / `esp_idf` |
 
-> `lib/` status: only **ETL** is vendored; other third-party libs (FreeRTOS, TinyUSB, cJSON, etc.) come through the **ESP-IDF component system** (see [ecosystem.md](ecosystem.md)).
+---
+
+## net/ (Network Protocol Stack Glue)
+
+> Most subdirectories are gitignored; only MQTT / TCP / transport adapter / PPP netif / USB netif are committed.
+
+| Path | Description |
+| :--- | :--- |
+| `port/mqtt/mqtt_client.{c,h}` | coreMQTT v5 thin wrapper, `NET_*` error codes |
+| `port/mqtt/core_mqtt_config.h` | coreMQTT configuration header |
+| `port/tcp/tcp_client.{c,h}` | TCP client (FIFO + async send + connection state machine) |
+| `port/tcp/tcp_server.{c,h}` | TCP server |
+| `port/transport_glue/transport_glue.{c,h}` | `network_transport_*` adapter, bridges tcp_client to coreMQTT `int32_t` signatures |
+| `port/net_error.h` | `NET_OK` / `NET_ERR_*` error code system |
+| `port/pppif/pppif.{c,h}` | PPP netif adapter for lwIP |
+| `port/usb/usbethif.{c,h}` | TinyUSB CDC-NCM/RNDIS netif adapter for lwIP |
+
+---
+
+## ui/ (UI Library Glue Layer)
+
+> Most subdirectories are gitignored; only `display/` unified bridge header is committed.
+
+| Path | Description |
+| :--- | :--- |
+| `display/display_ui_bridge.h` | Entry point for UI library callbacks (LVGL flush / u8g2 SendBuffer), goes through `DISPLAY_CMD_*`, zero third-party library dependencies |
+
+> `lib/` status: only **mini-os, FreeRTOS, RT-Thread, ETL** are vendored; **TinyUSB / lwIP** are fetched at config time, all other bricks at link time.
 
 ---
 

@@ -1,8 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * TIM VFS 板级配置宏 (vfs/tim) — 中间件默认值 + 板级覆盖入口
- * 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_define_tim.h
+ *@brief board define tim 头文件
+ *@author H-000-H
+ *@details
+ *   TIM VFS 板级配置宏 (vfs/tim) — 中间件默认值 + 板级覆盖入口
+ *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
  */
+
 #ifndef BOARD_DEFINE_TIM_H
 #define BOARD_DEFINE_TIM_H
 

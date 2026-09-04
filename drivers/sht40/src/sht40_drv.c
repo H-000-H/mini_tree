@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file sht40_drv.c
- * @brief SHT40 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *
- * 静态池: s_sht40_pool[SHT40_POOL_COUNT]，probe 时 claim、remove 时 release；
- * ioctl 命令与采样结构见 sht40_drv.h。
- *
- * 数据流: VFS ioctl → sht40_cmd_read → device_read/write(I2C) → HAL
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file sht40_drv.c
+ *@brief SHT40 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ *@author H-000-H
+ *@details
+ *   静态池: s_sht40_pool[SHT40_POOL_COUNT]，probe 时 claim、remove 时 release；
+ *   ioctl 命令与采样结构见 sht40_drv.h。
+ *   数据流: VFS ioctl → sht40_cmd_read → device_read/write(I2C) → HAL
  */
+
 #include "sht40_drv.h"
 
 #include "compiler_compat.h"
@@ -32,73 +33,70 @@
 /** @brief SHT40 驱动实例（嵌入 fops） */
 struct sht40_device
 {
-    struct file_operations ops; /**< 挂入 device 的 fops */
-    struct device* i2c_dev; /**< 所属 I2C client 设备 */
+    struct file_operations ops;     /**< 挂入 device 的 fops */
+    struct device*         i2c_dev; /**< 所属 I2C client 设备 */
 
     int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sht40_device s_sht40_pool[SHT40_POOL_COUNT] COMPAT_ALIGNED(4);
-static uint8_t s_sht40_used[SHT40_POOL_COUNT] COMPAT_ALIGNED(4);
-static osal_pool_t s_sht40_pool_ctrl COMPAT_ALIGNED(4);
-static const char* const k_tag = "sht40";
+static struct sht40_device           s_sht40_pool[SHT40_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t                       s_sht40_used[SHT40_POOL_COUNT] MINI_ALIGNED(4);
+static osal_pool_t s_sht40_pool_ctrl MINI_ALIGNED(4);
+static const char* const             k_tag = "sht40";
 
 /**
- * @brief 驱动池启动初始化（pre_execution 阶段，创建静态对象池）
+ * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
-pre_execution(PRE_EXEC_PRIO_DRIVER_POOL) static void sht40_pool_boot_init(void)
+mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sht40_pool_boot_init(void)
 {
-    COMPAT_IGNORE_RESULT(osal_pool_init(&s_sht40_pool_ctrl, s_sht40_used, SHT40_POOL_COUNT));
+    MINI_IGNORE_RESULT(osal_pool_init(&s_sht40_pool_ctrl, s_sht40_used, SHT40_POOL_COUNT));
 }
 
 /**
  * @brief 取驱动私有数据
- * @param pdev device 指针
+ * @param[in] pdev device 指针
  * @return 驱动实例指针，无效时 ERR_PTR
  */
-static struct sht40_device* sht40_get_drvdata(struct device* pdev)
-{
-    return (struct sht40_device*)device_get_priv(pdev);
-}
+static struct sht40_device* sht40_get_drvdata(struct device* pdev) { return (struct sht40_device*)device_get_priv(pdev); }
 
 /**
  * @brief 向 I2C 总线写数据
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sht40_i2c_wr(struct sht40_device* dev, const uint8_t* tx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !tx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_write(dev->i2c_dev, tx, len, timeout_ms);
 }
 /**
  * @brief 从 I2C 总线读数据
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sht40_i2c_rd(struct sht40_device* dev, uint8_t* rx, size_t len, uint32_t timeout_ms)
 {
     if (!dev || !dev->i2c_dev || !rx || len == 0U)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     return device_read(dev->i2c_dev, rx, len, timeout_ms);
 }
 
 /**
  * @brief 首次 open 时打开 I2C 总线（空实现，仅确保 hw_ready）
- * @return VFS_OK 或 VFS_ERR_*
+ * @return MINI_OK 或 VFS_ERR_*
  */
 static int sht40_hw_create(struct sht40_device* dev)
 {
     int ret;
     if (!dev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     if (dev->hw_ready)
-        return VFS_OK;
+        return MINI_OK;
     ret = device_open(dev->i2c_dev, NULL);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
 
     dev->hw_ready = 1;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -110,7 +108,7 @@ static void sht40_hw_destroy(struct sht40_device* dev)
         return;
 
     if (dev->i2c_dev)
-        COMPAT_IGNORE_RESULT(device_close(dev->i2c_dev));
+        MINI_IGNORE_RESULT(device_close(dev->i2c_dev));
     dev->hw_ready = 0;
 }
 
@@ -119,12 +117,12 @@ static void sht40_hw_destroy(struct sht40_device* dev)
  */
 static int sht40_open(struct device* pdev, void* arg)
 {
-    struct sht40_device* dev;
+    struct sht40_device*  dev;
     struct dev_lifecycle* lc;
-    int first, ret;
-    COMPAT_IGNORE_RESULT(arg);
+    int                   first, ret;
+    MINI_IGNORE_RESULT(arg);
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sht40_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -134,18 +132,18 @@ static int sht40_open(struct device* pdev, void* arg)
     first = dev_lc_open_begin(lc);
     if (first < 0)
         return first;
-    ret = VFS_OK;
+    ret = MINI_OK;
     if (first == 1)
     {
         ret = sht40_hw_create(dev);
-        if (ret != VFS_OK)
+        if (ret != MINI_OK)
         {
             dev_lc_open_abort(lc);
             return ret;
         }
     }
     dev_lc_open_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -153,11 +151,11 @@ static int sht40_open(struct device* pdev, void* arg)
  */
 static int sht40_close(struct device* pdev)
 {
-    struct sht40_device* dev;
+    struct sht40_device*  dev;
     struct dev_lifecycle* lc;
-    int last;
+    int                   last;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sht40_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -170,7 +168,7 @@ static int sht40_close(struct device* pdev)
     if (last)
         sht40_hw_destroy(dev);
     dev_lc_close_end(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 /**
@@ -187,19 +185,19 @@ struct sht40_ioctl_map
  */
 static int sht40_cmd_read(struct sht40_device* dev, void* arg, size_t len, uint32_t timeout_ms)
 {
-    const uint8_t cmd = 0xFD;
-    uint8_t raw[6];
+    const uint8_t        cmd = 0xFD;
+    uint8_t              raw[6];
     struct sht40_sample* out = (struct sht40_sample*)arg;
-    int ret;
-    uint16_t raw_t, raw_h;
+    int                  ret;
+    uint16_t             raw_t, raw_h;
     if (!dev->hw_ready || !out || len != sizeof(*out))
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     ret = sht40_i2c_wr(dev, &cmd, 1, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     osal_delay_ms(10);
     ret = sht40_i2c_rd(dev, raw, 6, timeout_ms);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     raw_t = (uint16_t)((raw[0] << 8) | raw[1]);
     raw_h = (uint16_t)((raw[3] << 8) | raw[4]);
@@ -207,7 +205,7 @@ static int sht40_cmd_read(struct sht40_device* dev, void* arg, size_t len, uint3
     out->rh_x100 = (uint16_t)(((uint32_t)raw_h * 12500U) / 65535U);
     if (out->rh_x100 > 10000U)
         out->rh_x100 = 10000U;
-    return VFS_OK;
+    return MINI_OK;
 }
 
 static const struct sht40_ioctl_map s_sht40_map[SHT40_CMD_COUNT] = {
@@ -219,12 +217,12 @@ static const struct sht40_ioctl_map s_sht40_map[SHT40_CMD_COUNT] = {
  */
 static int sht40_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t ms)
 {
-    struct sht40_device* dev;
+    struct sht40_device*  dev;
     struct dev_lifecycle* lc;
-    int32_t off;
-    int ret;
+    int32_t               off;
+    int                   ret;
     if (!pdev || !pdev->ops)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sht40_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -232,11 +230,11 @@ static int sht40_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, 
     if (IS_ERR(lc))
         return PTR_ERR(lc);
     ret = dev_lc_io_begin(lc);
-    if (ret != VFS_OK)
+    if (ret != MINI_OK)
         return ret;
     off = (int32_t)cmd - (int32_t)SHT40_CMD_BASE;
     if (off < 1 || off > SHT40_CMD_COUNT || !s_sht40_map[off - 1].handler)
-        ret = VFS_ERR_INVAL;
+        ret = MINI_ERR_INVAL;
     else
         ret = s_sht40_map[off - 1].handler(dev, arg, arg_len, ms);
     dev_lc_io_end(lc);
@@ -255,34 +253,34 @@ static const struct file_operations sht40_fops = {
 static int sht40_probe(struct device* pdev)
 {
     struct sht40_device* dev;
-    int pool_idx, ret;
+    int                  pool_idx, ret;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     pool_idx = osal_pool_claim(&s_sht40_pool_ctrl);
     if (pool_idx < 0)
-        return VFS_ERR_NOMEM;
+        return MINI_ERR_NOMEM;
     dev = &s_sht40_pool[pool_idx];
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
     dev->i2c_dev = device_get_parent(pdev);
     if (!dev->i2c_dev)
     {
-        ret = VFS_ERR_NODEV;
+        ret = MINI_ERR_NODEV;
         goto err;
     }
 
-    if (device_set_priv(pdev, dev) != VFS_OK)
+    if (device_set_priv(pdev, dev) != MINI_OK)
     {
-        ret = VFS_ERR_IO;
+        ret = MINI_ERR_IO;
         goto err;
     }
     dev->ops = sht40_fops;
     pdev->ops = &dev->ops;
     SYS_LOGI(k_tag, "probe OK pool=%dev", pool_idx);
-    return VFS_OK;
+    return MINI_OK;
 err:
     pdev->ops = NULL;
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_sht40_pool_ctrl, pool_idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_sht40_pool_ctrl, pool_idx));
     return ret;
 }
 
@@ -291,11 +289,11 @@ err:
  */
 static int sht40_remove(struct device* pdev)
 {
-    struct sht40_device* dev;
+    struct sht40_device*  dev;
     struct dev_lifecycle* lc;
-    int idx;
+    int                   idx;
     if (!pdev)
-        return VFS_ERR_INVAL;
+        return MINI_ERR_INVAL;
     dev = sht40_get_drvdata(pdev);
     if (IS_ERR(dev))
         return PTR_ERR(dev);
@@ -305,16 +303,16 @@ static int sht40_remove(struct device* pdev)
     idx = (int)(dev - s_sht40_pool);
     dev_lc_remove_start(lc);
     device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != VFS_OK)
+    if (dev_lc_remove_drain(lc, OSAL_WAIT_FOREVER) != MINI_OK)
     {
         dev_lc_remove_finish(lc);
-        return VFS_ERR_IO;
+        return MINI_ERR_IO;
     }
     sht40_hw_destroy(dev);
-    COMPAT_MEM_SET(dev, 0, sizeof(*dev));
-    COMPAT_IGNORE_RESULT(osal_pool_release(&s_sht40_pool_ctrl, idx));
+    MINI_MEM_SET(dev, 0, sizeof(*dev));
+    MINI_IGNORE_RESULT(osal_pool_release(&s_sht40_pool_ctrl, idx));
     dev_lc_remove_finish(lc);
-    return VFS_OK;
+    return MINI_OK;
 }
 
 DRIVER_REGISTER(sht40, "sensirion,sht40", sht40_probe, sht40_remove)

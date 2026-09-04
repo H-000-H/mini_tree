@@ -91,7 +91,7 @@ ISR 禁止：`printf`、长时间锁、无界工作 — [fast_path.md](fast_path
 | GPIO 硬件中断路由 | `hal_gpio` 的 `virq_idx` 槽位形同虚设 |
 | 板级/驱动 ISR | 不得再调 `interrupt_virtual_dispatch()` / `interrupt_virtual_register()`，否则链接失败 |
 
-**内存收益 ≈ 1.3 KB RAM + 1 KB Flash**（三张 VIRQ 表 864 B + 下半部 poller 320 B + 工作项；FIFO 深度 `CONFIG_BOTTOM_HALF_QUEUE_DEPTH` 每槽 4 B）。详见 [memory_footprint.md](memory_footprint.md) §3.6。
+**内存收益 ≈ 1.3 KB RAM + 1 KB Flash**（三张 VIRQ 表 864 B + 下半部 poller 320 B + 工作项；FIFO 深度 `CONFIG_BOTTOM_HALF_QUEUE_DEPTH` 每槽 4 B）。详见 [memory_footprint.md](memory_footprint.md)。
 
 ---
 

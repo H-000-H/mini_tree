@@ -26,7 +26,7 @@
 | Header & Module | Use |
 | :--- | :--- |
 | `device.h` | device lookup & I/O |
-| `status.h` | `VFS_OK` / `VFS_ERR_*` |
+| `status.h` | `MINI_OK` / `MINI_ERR_*` |
 | `osal.h` | tasks, locks, queues, delays, log levels |
 | `event_bus.h` / `event_bus.hpp` | pub-sub |
 | `buffer_pool.h` · `algorithm/buffer` | buffers |
@@ -40,7 +40,7 @@
 | Forbidden | Why |
 | :--- | :--- |
 | `hal_*.h` (in business code) | breaks layering; go through device/vfs |
-| `FreeRTOS.h` (in business code) | use OSAL for backend portability |
+| `FreeRTOS.h` / `rtthread.h` (in business code) | use OSAL for backend portability |
 | Vendor register headers | not portable |
 | ad-hoc `malloc` / `printf` / `memset` | may be poisoned; use `COMPAT_MEM_*` / pools |
 
@@ -55,7 +55,7 @@ if (IS_ERR(dev))
     return PTR_ERR(dev);
 
 int ret = device_open(dev, NULL);
-if (ret != VFS_OK)
+if (ret != MINI_OK)
     return ret;
 
 ret = device_write(dev, buf, len, 100 /* ms */);
@@ -65,7 +65,7 @@ return ret;
 
 Conventions:
 
-- HAL/bus APIs (`hal_*`/`*_bus_*`) return `int`; **never ignore by default** (`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`) to improve reliability of internal layers — use `COMPAT_IGNORE_RESULT()` to silence intentionally. Exception: fire-and-forget actions with no failure path by semantics (e.g. status flags inside ISRs, noreturn entries) may stay `void`.
+- HAL/bus APIs (`hal_*`/`*_bus_*`) return `int`; **never ignore by default** (`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`) to improve reliability of internal layers — use `MINI_IGNORE_RESULT()` to silence intentionally. Exception: fire-and-forget actions with no failure path by semantics (e.g. status flags inside ISRs, noreturn entries) may stay `void`.
 - device/VFS APIs (`device_open/read/write/ioctl`, etc.) return `int`; **ignoring is allowed by default** (`DEVICE_WARN_UNUSED_RESULT` is off by default); enable Kconfig `DEVICE_WARN_UNUSED_RESULT` to enforce strict checking, after which **never ignore** the result.
 - Timeouts in ms; use `OSAL_WAIT_FOREVER` only where blocking is explicitly acceptable.
 - Each `vfs-*.h` defines its `cmd` & argument layout; summarized in [peripherals.md](peripherals.md).
@@ -77,7 +77,7 @@ Conventions:
 - Create tasks via `osal_task_create` / `osal_task_create_handle` (never raw `xTaskCreate`).
   Bare-metal exception: the C API always returns `OSAL_ERR_NOTSUPP`; create tasks through the
   C++ overload in `osal_null.h` (`CONFIG_OSAL_NULL_TASK_CPP`, on by default) or `xscheduler_task_create` directly.
-  **Under preemptive (`CONFIG_XTASK_PREEMPT=y`)**: the cooperative C++ overload is closed; use `xscheduler_task_create` directly (shared `xtask.h`).
+  **Under preemptive (`XTASK_PREEMPT=y`)**: the C++ overload is still provided but switches to the `priority` branch (`stack_size` reused as the period); you may also use `xscheduler_task_create` directly (shared `xtask.h`).
 - Priority-value semantics **depend on the OSAL backend** (see [osal_switching.md](osal_switching.md)).
 - Device locks are held by the `device_*` wrappers; don't stack a deadlock-prone lock order on the same device.
 - ISRs do short work only; hand the rest to EventBus / bottom halves / tasks.

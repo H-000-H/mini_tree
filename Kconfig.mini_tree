@@ -73,31 +73,26 @@ choice
     prompt "RTOS backend"
     default OSAL_FREERTOS
     help
-      选择 OS 抽象层后端。ESP 路径默认并推荐 FreeRTOS (对接 IDF 内置内核);
-      裸机 (OSAL_NULL) 选项保留作无 RTOS 场景的后备。
+      选择 OS 抽象层后端。
 
-      Select the OS abstraction layer backend. On the ESP path FreeRTOS
-      is the default and recommended (pairs with the IDF-built-in kernel);
-      the bare-metal (OSAL_NULL) option is kept as a no-RTOS fallback.
+      Select the OS abstraction layer backend.
 
 config OSAL_FREERTOS
-    bool "FreeRTOS"
+    bool "FreeRTOS (ESP-IDF 内置)"
+    select USB_TUSB_OS_FREERTOS
     help
-      使用 ESP-IDF 内置 FreeRTOS (cmake/esp_idf.cmake 强制对接)。
-      ESP 路径默认后端, 不再依赖仓库 vendored FreeRTOS。
+      使用 ESP-IDF 内置的 FreeRTOS 内核 (不随组件携带 RTOS 源码)。
 
-      Use the ESP-IDF built-in FreeRTOS (forced by cmake/esp_idf.cmake).
-      Default backend on the ESP path; no longer relies on a vendored
-      FreeRTOS tree.
+      Use the FreeRTOS kernel bundled with ESP-IDF (no RTOS source is
+      shipped in this component).
 
 config OSAL_NULL
     bool "None (bare-metal)"
+    select USB_TUSB_OS_NONE
     help
       无 RTOS。队列使用环形缓冲 + 忙等待。
-      裸机场景后备选项。
 
       No RTOS. Queue uses ring buffer + busy-wait.
-      Fallback option for bare-metal scenarios.
 endchoice
 
 config OSAL_NULL_MAX_QUEUES
@@ -149,6 +144,114 @@ config OSAL_NULL_WFI
           latency, at the cost of power. Under the preemptive scheduler
           (XTASK_PREEMPT) keep this off in most cases.
 
+config OSAL_EVENT
+    bool "OSAL 事件组抽象 (osal_event_*)"
+    default y
+    select FREERTOS_EVENT_GROUPS if OSAL_FREERTOS
+    help
+      OSAL 层的事件组抽象 (osal/include/osal.h 中 #ifdef
+      CONFIG_OSAL_EVENT 包裹的 osal_event_create / _create_static /
+      _destroy / _set / _set_from_isr / _clear / _get / _wait)。
+
+      默认开启: 四后端 (裸机 / mini-os / FreeRTOS / RT-Thread) 提供完全
+      一致的语义, 业务只调 osal_event_*, 换后端不需改一行代码。
+      代价很小: 每个后端一个 OSAL_EVENT_POOL_SIZE (默认 4) 槽的静态池
+      + 当前后端内核事件组自身的开销。
+
+      本项不是 "二选一" 开关: 开启后屏蔽层与原生 API 两条路并存,
+      按调用点自由选:
+      - 走屏蔽层: osal_event_*, 四后端语义一致, 换后端不改代码;
+      - 走原生 API: 本项已经把内核事件组一起编入 (见下方 select),
+        所以 mini_os_event_* / xEventGroup* / rt_event_* 可以直接调,
+        用于屏蔽层没暴露的内核特性 (如 FreeRTOS 的 xEventGroupSync、
+        RT-Thread 的等待期动态改 AND/OR、mini-os 的
+        mini_os_event_group_delete); 代价是这段代码绑定到具体后端。
+      两条路各管各的对象: osal_event 句柄是 OSAL 自己包了一层的
+      struct osal_event (对业务不透明), 不能喂给内核 API; 走原生路
+      就自己 create 一个内核原生事件组。三个内核的 include 目录都是
+      PUBLIC, 经 lib(INTERFACE) -> mini_tree 传递, app 层直接
+      #include "event.h" / "event_groups.h" / <rtthread.h> 即可。
+
+      关闭本项 (n) 则是纯粹的裁剪: osal.h 里的 osal_event_* 声明与
+      四后端实现整体消失, 不占 Flash/RAM, 误用会在编译期因符号缺失
+      直接报错 (不是链接期)。注意三个内核事件组开关自身默认也是 n,
+      所以关掉本项后原生 API 也一并没了; 只想用原生 API 不要屏蔽层
+      的话, 关本项 + 单独打开当前后端的原生开关即可。
+      (裸机 OSAL_NULL 没有 "原生事件 API" 这一说: 它的事件组完全由
+      osal_null.c 用原子标志字自实现, 关掉本项就等于没有事件组。)
+
+      开启时本项会自动带上当前后端对应的事件组开关:
+      - OSAL_FREERTOS  -> FREERTOS_EVENT_GROUPS (event_groups.c, 并连带
+                          FREERTOS_USE_TIMERS: xEventGroupSetBitsFromISR
+                          经软件定时器守护任务代理)
+      - OSAL_NULL      -> 无需内核支持, osal_null.c 用原子标志字 +
+                          忙等自实现 (语义与 FreeRTOS 后端一致)
+      注意: 被 select 的符号由 tools/genconfig.py 回写到 mini_tree/.config
+      (根 CMakeLists 在配置期先跑一次, 构建期再跑一次), 所以 config.h 与
+      .config 两侧真值一致; 三处 lib 的 CMakeLists 额外把 CONFIG_OSAL_EVENT
+      也算作编入事件组源文件的兜底触发条件, 以覆盖绕过回写的构建路径。
+
+      AND/OR 与 auto_clear 在创建时固定 (不是等待时传参): mini-os 的
+      等待模式是创建期属性, 抽象层取三后端最小公约数, FreeRTOS 与
+      RT-Thread 后端在等待时把创建期保存的模式转成内核参数, 四后端
+      行为一致。可用标志位统一为低 24 位 (OSAL_EVENT_BITS), 因为
+      FreeRTOS 把高 8 位留作内核控制位。
+
+      The OSAL event-group abstraction (the osal_event_* API in
+      osal/include/osal.h, wrapped in #ifdef CONFIG_OSAL_EVENT).
+
+      Default on: all four backends (bare-metal / mini-os / FreeRTOS /
+      RT-Thread) expose identical semantics, so application code only
+      calls osal_event_* and survives a backend switch untouched. The
+      cost is small: one static pool of OSAL_EVENT_POOL_SIZE (4) slots
+      per backend plus whatever the kernel event group itself needs.
+
+      This is not an either/or switch: with it on, the abstraction and
+      the native API coexist and every call site picks freely.
+      - abstraction: osal_event_*, identical semantics on all four
+        backends, survives a backend switch;
+      - native API: this option already compiles the kernel event group
+        in (see the select lines below), so mini_os_event_* /
+        xEventGroup* / rt_event_* can be called directly for kernel
+        features the abstraction does not expose (FreeRTOS
+        xEventGroupSync, per-wait AND/OR on RT-Thread,
+        mini_os_event_group_delete), at the cost of binding that code to
+        one backend.
+      Each route owns its objects: an osal_event handle is OSAL's own
+      struct osal_event wrapper (opaque to application code) and must not
+      be passed to kernel APIs — create a native kernel event group
+      separately when taking the native route. All three kernels export
+      their include dirs PUBLIC, propagated through lib(INTERFACE) ->
+      mini_tree, so application code can simply #include "event.h" /
+      "event_groups.h" / <rtthread.h>.
+
+      Turning this off (n) is a plain trimming switch: the osal_event_*
+      declarations and all four backend implementations disappear (no
+      Flash/RAM cost) and misuse fails at compile time because the
+      symbols simply do not exist. The three kernel event switches are
+      themselves default n, so disabling this option removes the native
+      API as well; to keep only the native route, turn this off and
+      enable the current backend's native switch on its own.
+      (The bare-metal OSAL_NULL backend has no "native event API" at all:
+      its event group lives entirely inside osal_null.c over an atomic
+      flag word, so turning this off means no event groups whatsoever.)
+
+      When on, this symbol automatically pulls in the event-group switch
+      of the selected backend (FREERTOS_EVENT_GROUPS, which in turn
+      selects FREERTOS_USE_TIMERS for the FromISR path); OSAL_NULL needs
+      no kernel support and implements the same semantics over an atomic
+      flag word plus a busy-wait.
+      Note that tools/genconfig.py writes selected symbols back to
+      mini_tree/.config (the root CMakeLists runs it once at configure time
+      and again at build time), so config.h and .config always agree; the
+      three lib CMakeLists additionally treat CONFIG_OSAL_EVENT as a
+      fallback trigger for the event sources, covering build paths that
+      bypass that write-back.
+      AND/OR and auto_clear are fixed at creation time rather than
+      passed per wait, which is the smallest common denominator of the
+      three kernels; usable flags are the low 24 bits (OSAL_EVENT_BITS)
+      because FreeRTOS reserves the top 8 as control bits.
+
 choice
     prompt "裸机调度器 (Bare-metal scheduler)"
     default XTASK_COOP
@@ -176,15 +279,15 @@ config XTASK_NONE
 config XTASK_COOP
     bool "协调式时间片 (xtask_coop.c) / Cooperative round-robin"
     help
-      普通 (裸机) 协调式时间片调度器 (time_slice/task/xtask_coop.c +
-      time_slice/time)。提供 xscheduler_task_create() / x_scheduler_poll()
+      普通 (裸机) 协调式时间片调度器 (time_slice/task/xtask_coop.c)。
+      提供 xscheduler_task_create() / x_scheduler_poll()
       等原生 API, 也是 OSAL_NULL_TASK_CPP C++ 封装 (osal_task.cpp) 的底层。
       默认 tick 源为 Cortex-M SysTick (内核异常, 不经 VIRQ), 关闭 VIRQ 时
       SysTick 路径照常 tick; 仅当 DTS 显式配 chosen TIM (走通用 TIM + VIRQ)
       时, 关闭 VIRQ 才导致该 TIM 中断无法路由、调度器无 tick。
 
       Bare-metal cooperative round-robin time-slice scheduler
-      (time_slice/task/xtask_coop.c + time_slice/time). Exposes the
+      (time_slice/task/xtask_coop.c). Exposes the
       native xscheduler_task_create() / x_scheduler_poll() APIs that the
       OSAL_NULL_TASK_CPP C++ wrapper (osal_task.cpp) builds on.
       The default tick source is the Cortex-M SysTick (core exception, not
@@ -193,24 +296,27 @@ config XTASK_COOP
       VIRQ break TIM IRQ routing and leave the scheduler with no tick.
 
 config XTASK_PREEMPT
-    bool "抢占式 (xtask_preempt.c, 实验性) / Preemptive (experimental)"
+    bool "抢占式 (xtask_preempt.c) / Preemptive"
     help
       N+1 链表多优先级抢占式调度器 (可延迟/可休眠/可抢占), 独立编译为
       time_slice/task/xtask_preempt.c, 与协调式 xtask_coop.c 共用 xtask.h。
       开启后**替换**协调式 (xtask_coop.c 不再编入), 两套实现提供同一套
       对外 API (xscheduler_task_create / x_scheduler_poll / xscheduler_start 等),
       调用方代码无需任何改动。
-      实验性, 默认关闭; 代码尚未完工, 开启后可能编不过 (g_scheduler_arr 等
-      待修)。仅当你在裸机上需要更接近 RTOS 的调度体验时再开启。
-      Experimental N+1 linked-list multi-priority preemptive scheduler
+      已完工可编译 (分组优先级 + CLZ 定位最高就绪, O(1); 无就绪任务时精确
+      WFI 到最早到期时刻)。choice 默认仍是 XTASK_COOP, 需要更接近 RTOS 的
+      调度体验时切换到本项。
+      N+1 linked-list multi-priority preemptive scheduler
       (delayable / sleepable / preemptive), compiled separately as
       time_slice/task/xtask_preempt.c, sharing xtask.h with the basic
       round-robin xtask_coop.c. When enabled, it REPLACES xtask_coop.c
       (the cooperative version is no longer compiled); both implementations
       expose the same API (xscheduler_task_create / x_scheduler_poll /
       xscheduler_start, etc.), so caller code needs no changes.
-      Off by default; not finished yet — enabling may fail to compile.
-      Turn on only if you need a more RTOS-like scheduling experience on bare-metal.
+      Finished & compilable (grouped priorities + CLZ for O(1) highest-ready
+      selection; precise WFI to the earliest deadline when idle). The choice
+      still defaults to XTASK_COOP; pick this one when you want a more
+      RTOS-like scheduling experience on bare-metal.
 
 endchoice
 
@@ -264,11 +370,19 @@ config OSAL_NULL_TASK_CPP
       always goes through the standard C API.
 
 config HARD_PRIORITY
-    int "Generate Hardware interrupt priority Max Number"
+    int "Maximum hardware interrupt priority levels (N+1 preemptive scheduler)"
     default 8
     depends on XTASK_PREEMPT
-    help 
-      N+1链表的最大硬件优先级的数量默认和虚拟中断数一样,不要大于虚拟中断的数量不然容易虚拟中断越界
+    help
+      抢占式调度器 (xtask_preempt.c) N+1 链表中硬件中断优先级的数量上限。
+      该值决定调度器为硬件中断上下文预留的优先级槽位数, 不应超过
+      VIRQ 虚拟中断号总数 (CONFIG_VIRQ_MAX), 否则可能导致虚拟中断越界。
+      默认 8, 与 VIRQ 默认值对齐。
+
+      Maximum hardware interrupt priority slots reserved in the N+1
+      preemptive scheduler linked-list. Must not exceed the total VIRQ
+      count (CONFIG_VIRQ_MAX) to avoid virtual IRQ index overflow.
+      Default 8, aligned with the default VIRQ capacity.
 
 config X_PREEMPT_MAX_TASKS
     int "Preemptive scheduler task pool size"
@@ -359,6 +473,64 @@ config X_PREEMPT_PRIO_PER_GROUP
       Group count must be ≤ 32 (uint32_t bitmap limit) and PER_GROUP
       must divide LEVELS.
 
+config FREERTOS_USE_TIMERS
+    bool "FreeRTOS software timers"
+    default n
+    depends on OSAL_FREERTOS
+    help
+      开启 FreeRTOS 软件定时器（对应 lib/freeRTOS/FreeRTOSConfig.h 中的
+      configUSE_TIMERS）。默认关闭。
+
+      Enable FreeRTOS software timers (configUSE_TIMERS in
+      lib/freeRTOS/FreeRTOSConfig.h). Default off.
+
+config FREERTOS_HEAP_SIZE
+    int "FreeRTOS heap size (bytes)"
+    default 8192
+    range 2048 131072
+    depends on OSAL_FREERTOS
+    help
+      FreeRTOS 动态堆大小 (configTOTAL_HEAP_SIZE), 供任务栈/信号量/队列分配。
+      默认 8 KB; 任务多/栈大时按需调大。
+      FreeRTOS dynamic heap (configTOTAL_HEAP_SIZE) for task stacks,
+      semaphores and queues. Default 8 KB; raise when many/large tasks.
+
+config FREERTOS_EVENT_GROUPS
+    bool "FreeRTOS 事件组 (event groups)"
+    default n
+    select FREERTOS_USE_TIMERS
+    depends on OSAL_FREERTOS
+    help
+      开启 FreeRTOS 事件组 (对应 lib/freeRTOS/FreeRTOSConfig.h 中的
+      configUSE_EVENT_GROUPS)。默认关闭。
+      注意: FreeRTOS.h 在未定义 configUSE_EVENT_GROUPS 时会默认置 1,
+      因此本项必须显式定义 0/1 才能真正关掉; 关闭后
+      lib/freeRTOS/CMakeLists.txt 不再将 event_groups.c 编入内核库。
+      自身默认 n, 但 OSAL_EVENT (默认 y) 会 select 本项;
+      osal_freertos.c 的 osal_event_* 映射 xEventGroup*。编入后两条路
+      并存: 既可调 osal_event_* 屏蔽层, 也可直接调
+      xEventGroupCreate/xEventGroupWaitBits/xEventGroupSync 等原生 API
+      (屏蔽层没暴露 Sync 与等待期动态 AND/OR)。只开本项、关掉
+      OSAL_EVENT 时则只剩原生 API 这一条路。
+      事件组依赖软件定时器守护任务, 开启本项会自动带上
+      FREERTOS_USE_TIMERS。
+
+      Enable FreeRTOS event groups (configUSE_EVENT_GROUPS in
+      lib/freeRTOS/FreeRTOSConfig.h). Default off.
+      Note: FreeRTOS.h falls back to 1 when configUSE_EVENT_GROUPS is
+      undefined, so this option must define 0/1 explicitly to really
+      disable it; when off, lib/freeRTOS/CMakeLists.txt drops
+      event_groups.c from the kernel library.
+      Default n on its own, but OSAL_EVENT (default y) selects it;
+      osal_event_* in osal_freertos.c maps onto xEventGroup*. Once
+      compiled in, both routes coexist: the osal_event_* abstraction and
+      the native xEventGroupCreate / xEventGroupWaitBits /
+      xEventGroupSync API (the abstraction exposes neither Sync nor
+      per-wait AND/OR). Enabling this option alone while OSAL_EVENT is
+      off leaves only the native route.
+      Event groups rely on the timer daemon task, so this option
+      selects FREERTOS_USE_TIMERS automatically.
+
 endmenu
 
 menu "OSAL Spinlock"
@@ -367,8 +539,19 @@ choice
     default OSAL_SPINLOCK_IRQ_DISABLE
     help
       选择底层自旋锁实现。
+      例外: mini-os 后端 (CONFIG_OSAL_MINI_OS) 直接复用内核
+      inc/spinlock.h 的 mini_os_spinlock_t, 锁模式属于编译期内核
+      ABI (结构体布局随模式变), OSAL 层无权覆盖, 因此由
+      MINI_OS_SPINLOCK_ATOMIC 决定; 本 choice 对 mini-os 后端无效
+      (不一致时 osal_mini_os.c 会给 #warning)。
 
       Select the underlying spinlock implementation.
+      Exception: the mini-os backend (CONFIG_OSAL_MINI_OS) reuses the
+      in-kernel mini_os_spinlock_t from inc/spinlock.h, where the lock
+      mode is compile-time kernel ABI (the struct layout changes with
+      the mode). OSAL cannot override it, so MINI_OS_SPINLOCK_ATOMIC
+      decides; this choice has no effect on the mini-os backend
+      (osal_mini_os.c emits a #warning when they disagree).
 
 config OSAL_SPINLOCK_IRQ_DISABLE
     bool "Disable interrupts (single-core safe)"
@@ -386,6 +569,7 @@ config OSAL_SPINLOCK_ATOMIC
       仅在 SMP/多核系统安全，且持有上下文可运行于另一核。
       注意：在 M0/M0+ (ARMv6-M, 无 LDREX/STREX) 上会退化为
       libatomic 软件实现（IRQ 锁），单核正确但无法提供跨核互斥。
+      mini-os 后端请改用 MINI_OS_SPINLOCK_ATOMIC (本项对其无效)。
 
       True busy-wait spinlock using atomic test-and-set.
       Only safe on SMP/multi-core systems where the owning
@@ -394,6 +578,8 @@ config OSAL_SPINLOCK_ATOMIC
       back to the libatomic software implementation (IRQ-lock),
       which is correct on a single core but cannot provide
       cross-core mutual exclusion.
+      For the mini-os backend use MINI_OS_SPINLOCK_ATOMIC instead
+      (this option has no effect there).
 endchoice
 endmenu
 
@@ -477,41 +663,266 @@ endchoice
 
 config SYSTEM_CMD
     bool "System command infra (SystemCmd)"
-    default y
+    default n
     depends on SYSTEM_CPP
     help
       SystemCmd 命令注册/派发基础设施 (system_cpp/src/system_cmd.cpp)。
-      纯软件功能, 默认开启。
-      SystemCmd command register/dispatch infra. Pure-software feature; on by default.
+      默认关闭; 需要命令行接口时再开启。
+      SystemCmd command register/dispatch infra. Default off;
+      enable only when a command-line interface is needed.
 endmenu
 
 menu "Components"
 
 config USB
     bool "USB bus/VFS (TinyUSB)"
-    default y
+    default n
     help
       USB host/client 总线与 VFS（bus/usb + vfs/usb + hal/usb）。
       启用时板级必须提供 usb_tusb_port 粘合层（docs/usb_tusb_port.md）
       并自行链接 TinyUSB DCD；置 "not set" 时整条 USB 通路与
-      TinyUSB 均不编入（CMake 按 .config 裁剪，缺省视为启用）。
+      TinyUSB 均不编入（CMake 对齐 Kconfig 语义：显式 =y 才编入）。
 
       USB host/client bus and VFS (bus/usb + vfs/usb + hal/usb).
       When enabled, the board must supply the usb_tusb_port glue layer
       (docs/usb_tusb_port.md) and link TinyUSB DCD itself; setting it
-      "not set" excludes the whole USB path and TinyUSB (CMake trims by
-      .config; unset is treated as enabled by default).
+      "not set" excludes the whole USB path and TinyUSB (CMake aligns
+      with Kconfig semantics: only explicit =y pulls USB in).
+
+    menu "TinyUSB 适配层"
+
+        config USB_TUSB_MCU
+            int "TinyUSB MCU target (OPT_MCU_* value)"
+            default 901
+            depends on USB
+            help
+              TinyUSB 编译期芯片目标, 直接填 tusb_option.h 的 OPT_MCU_* 数值
+              (tusb_config.h 里 #define CFG_TUSB_MCU CONFIG_USB_TUSB_MCU):
+                900 ESP32-S2   901 ESP32-S3   903 ESP32-C3
+                304 STM32F4    306 STM32H7    1100 RP2040
+              其他芯片查 lib/tinyusb/src/tusb_option.h 第 62-150 行的 OPT_MCU_*。
+
+        choice
+            prompt "TinyUSB OS port (auto-follow OSAL)"
+            default USB_TUSB_OS_NONE
+            depends on USB
+            help
+              由 OSAL Backend 自动派生 (select 联动), 无需手填。
+              对应 tusb_option.h 的 OPT_OS_*:
+                NONE=1 / FREERTOS=2 / RTTHREAD=3
+              注意: 选 uC/OS 或 ThreadX (本地扩展, 见 Kconfig.local) 时
+              TinyUSB 无对应适配, 自动回退 NONE。
+
+            config USB_TUSB_OS_NONE
+                bool "None (bare-metal)"
+            config USB_TUSB_OS_FREERTOS
+                bool "FreeRTOS"
+            config USB_TUSB_OS_RTTHREAD
+                bool "RT-Thread"
+        endchoice
+
+        config USB_TUSB_DEBUG
+            bool "TinyUSB debug output (CFG_TUSB_DEBUG)"
+            default n
+            depends on USB
+            help
+              使能 TinyUSB 内部调试打印 (CFG_TUSB_DEBUG=1)。
+              生产固件建议关闭。
+
+        choice
+            prompt "USB port0 role"
+            default USB_RHPORT0_DEVICE
+            depends on USB
+            help
+              USB 端口0 角色 (CFG_TUSB_RHPORT0_MODE 的模式位)。
+
+            config USB_RHPORT0_DEVICE
+                bool "Device"
+            config USB_RHPORT0_HOST
+                bool "Host"
+        endchoice
+
+        choice
+            prompt "USB port0 max speed"
+            default USB_RHPORT0_SPEED_FULL
+            depends on USB
+            help
+              USB 端口0 最大速度 (CFG_TUSB_RHPORT0_MODE 的速度位)。
+
+            config USB_RHPORT0_SPEED_DEFAULT
+                bool "Default (MCU max)"
+            config USB_RHPORT0_SPEED_FULL
+                bool "Full speed"
+            config USB_RHPORT0_SPEED_HIGH
+                bool "High speed"
+        endchoice
+
+        config USB_MSC
+            bool "USB MSC class"
+            default n
+            depends on USB
+            help
+              大容量存储 class (CFG_TUD_MSC)。
+
+        config USB_HID
+            bool "USB HID class"
+            default n
+            depends on USB
+            help
+              人机交互 class (CFG_TUD_HID)。
+
+        config USB_VENDOR
+            bool "USB Vendor class"
+            default n
+            depends on USB
+            help
+              厂商自定义 class (CFG_TUD_VENDOR)。
+
+        config USB_CDC
+            bool "USB CDC class"
+            default n
+            depends on USB
+            help
+              通信设备 class (虚拟串口, CFG_TUD_CDC)。
+
+        config USB_CDC_RX_BUFSIZE
+            int "USB CDC RX buffer size (bytes)"
+            default 256
+            range 64 2048
+            depends on USB_CDC
+            help
+              CFG_TUD_CDC_RX_BUFSIZE: 主机→设备 FIFO 大小。
+
+        config USB_CDC_TX_BUFSIZE
+            int "USB CDC TX buffer size (bytes)"
+            default 256
+            range 64 2048
+            depends on USB_CDC
+            help
+              CFG_TUD_CDC_TX_BUFSIZE: 设备→主机 FIFO 大小。
+
+        config USB_CDC_EP_BUFSIZE
+            int "USB CDC endpoint buffer size (bytes)"
+            default 64
+            range 8 512
+            depends on USB_CDC
+            help
+              CFG_TUD_CDC_EP_BUFSIZE: CDC 端点传输缓冲 (对齐端点最大包)。
+
+        config USB_NET
+            bool "USB network class (ECM/RNDIS/NCM)"
+            default y
+            depends on USB
+            help
+              网络 class (net_device): 虚拟网卡数据面
+              (usb_net_frame_push_tx/pop_rx + tud_network_* 回调)。
+              lwIP 侧由 net/port/usbethif.c 经 usb_bus_ecm_* 接入。
+
+        choice
+            prompt "USB network protocol (RNDIS / NCM)"
+            default USB_NET_RNDIS
+            depends on USB_NET
+            help
+              网络 class 协议二选一 (net_device.h 禁止同时开):
+                RNDIS: CFG_TUD_ECM_RNDIS 1, 兼容 Windows/Linux;
+                NCM  : CFG_TUD_NCM 1, 需新主机 (Win10+/Linux 新内核)。
+
+            config USB_NET_RNDIS
+                bool "RNDIS"
+            config USB_NET_NCM
+                bool "NCM"
+        endchoice
+
+        config USB_NET_DEPTH
+            int "USB net rx frame queue depth (power of 2)"
+            default 4
+            range 2 8
+            depends on USB_NET
+            help
+              收帧 SPSC 队列深度 (2/4/8), 必须为 2 的幂
+              (algorithm/buffer 的 fifo_init 要求)。
+
+        config USB_NET_MTU
+            int "USB net MTU (incl. ethernet header)"
+            default 1514
+            range 1514 1600
+            depends on USB_NET
+            help
+              以太网帧总长 = lwIP MTU(1500) + 14 字节 ethhdr。
+              默认 1514, 对齐 TinyUSB CFG_TUD_NET_MTU。
+
+        config USB_NET_MAC0
+            int "USB net MAC byte 0"
+            default 0x02
+            range 0x00 0xFF
+            depends on USB_NET
+            help
+              USB 虚拟网卡 MAC 地址第 0 字节 (net/port/usb/usbethif.c)。
+              默认 0x02 表示本地管理 (locally administered) 单播地址。
+              MAC byte 0 of the USB virtual NIC MAC address; default
+              0x02 marks a locally-administered unicast address.
+
+        config USB_NET_MAC1
+            int "USB net MAC byte 1"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC2
+            int "USB net MAC byte 2"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC3
+            int "USB net MAC byte 3"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC4
+            int "USB net MAC byte 4"
+            default 0x00
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_MAC5
+            int "USB net MAC byte 5"
+            default 0x01
+            range 0x00 0xFF
+            depends on USB_NET
+
+        config USB_NET_TX_TIMEOUT_MS
+            int "USB net TX timeout (ms)"
+            default 100
+            range 1 10000
+            depends on USB_NET
+            help
+              usbethif 发送一帧的 device_write 超时 (毫秒)。
+              Per-frame device_write timeout in usbethif link output.
+
+        config USB_NET_RX_TIMEOUT_MS
+            int "USB net RX timeout (ms)"
+            default 0
+            range 0 10000
+            depends on USB_NET
+            help
+              usbethif 收帧的 device_read 超时 (毫秒)。
+              默认 0 = 非阻塞尝试, 适合主循环轮询 (NO_SYS=1)。
+              device_read timeout for frame reception; default 0 means
+              non-blocking poll, suitable for the NO_SYS=1 main loop.
+        endmenu
 endmenu
 
 menu "Board Features"
 
 config PRODUCTION_LOG
     bool "Production log"
-    default y
+    default n
     help
-      开启生产级日志。纯软件功能, 默认开启。
+      开启生产级日志。
 
-      Enable production-level logging. Pure-software feature; on by default.
+      Enable production-level logging.
 
 config PRODUCTION_LOG_SLOT_COUNT
     int "Production log slot count"
@@ -577,15 +988,15 @@ menu "Runtime Capacity"
 
 config EVENT_BUS
     bool "EventBus (publish/subscribe event bus)"
-    default y
+    default n
     depends on SYSTEM
     help
-      EventBus 总开关，默认开启。
+      EventBus 总开关，默认关闭。
       轻量发布/订阅事件总线，ISR 安全投递、启动后封口。
       依赖 System 模块 (喂狗与 SIOF 就绪标志)。
       关闭后 core/src/event_bus.c 不编入，系统不再广播 EVENT_SYS_*。
 
-      Master switch for the EventBus, on by default.
+      Master switch for the EventBus, off by default.
       Lightweight publish/subscribe bus with ISR-safe post and
       seal-after-boot. Depends on the System module (watchdog feed
       and SIOF readiness flag). When off, core/src/event_bus.c is
@@ -609,6 +1020,77 @@ config EVENT_BUS_DISPATCH_STACK
     range 512 8192
     depends on EVENT_BUS
 
+config BUFFER_POOL
+    bool "Buffer pool (free-list + dual-pointer block allocator)"
+    default n
+    help
+      Buffer Pool 总开关，默认关闭。
+      空闲链表(双向) + 双指针块分配器：从静态池按调用方指定大小切块，
+      每个分配出来的小内存池内部用双指针(head/tail)管理内容。
+      模式由下方 choice 二选一（Kconfig 编译期决定）：
+        · 静态优先 (默认)：先由空闲链表从静态池切块，用尽后回退动态分配；
+        · 全动态：静态池直接屏蔽，分配一律走动态内存。
+      关闭后 core/src/buffer_pool.c 不编入，buffer_pool_* / buffer_block_*
+      API 不可用。
+
+      Master switch for the buffer pool, off by default.
+      Free-list (doubly-linked) + dual-pointer block allocator: cuts
+      caller-sized blocks from a static pool; each allocated block
+      manages its contents via head/tail pointers. One of two modes
+      below (fixed at Kconfig time):
+        · static-first (default): the free list cuts blocks from the
+          static pool, falling back to dynamic allocation when exhausted;
+        · dynamic-only: the static pool is disabled, allocation goes
+          straight to dynamic memory.
+      When off, core/src/buffer_pool.c is not compiled and the
+      buffer_pool_* / buffer_block_* APIs are unavailable.
+
+choice
+    prompt "Allocation mode"
+    default BUFFER_POOL_STATIC_THEN_DYNAMIC
+    depends on BUFFER_POOL
+    help
+      选择 Buffer Pool 分配模式（编译期固定）。
+
+      Select the buffer pool allocation mode (fixed at build time).
+
+config BUFFER_POOL_DYNAMIC_ONLY
+    bool "Dynamic only (static pool disabled)"
+    help
+      全动态模式：静态池屏蔽，buffer_pool_alloc 一律走动态分配
+      (osal_calloc/osal_free)。适合堆充足、无需静态规划的场合。
+      裸机/无堆平台需确保 libc 堆可用或自定义 osal_calloc。
+
+      Dynamic-only mode: the static pool is disabled and every
+      buffer_pool_alloc goes to dynamic allocation (osal_calloc/free).
+      For targets with ample heap. Bare-metal/no-heap targets must
+      provide a working heap or override osal_calloc.
+
+config BUFFER_POOL_STATIC_THEN_DYNAMIC
+    bool "Static pool first, then dynamic"
+    help
+      静态优先模式：空闲链表先从静态池切块，池用尽后回退动态分配。
+      静态池大小见 BUFFER_POOL_SIZE。
+
+      Static-first mode: the free list cuts blocks from the static
+      pool first, falling back to dynamic allocation when exhausted.
+      See BUFFER_POOL_SIZE for the static pool size.
+
+endchoice
+
+config BUFFER_POOL_SIZE
+    int "Static pool size (bytes)"
+    default 4096
+    range 256 65536
+    depends on BUFFER_POOL && BUFFER_POOL_STATIC_THEN_DYNAMIC
+    help
+      静态池默认大小（字节）。调用方未提供 static_mem 时按此大小内部
+      分配；提供 static_mem 时以 config.static_len 为准。
+
+      Default static pool size in bytes. Used for internal allocation
+      when the caller does not supply static_mem; config.static_len
+      wins when static_mem is provided.
+
 config VIRQ
     bool "Virtual IRQ + bottom-half framework (VIRQ)"
     default y
@@ -617,7 +1099,7 @@ config VIRQ
       包含 VIRQ 号分配、上/下半部框架与全局下半部轮询器。
       关闭后 interrupt/interrupt.c 不编入，系统主循环不再 poll 下半部。
       关闭前请确认以下功能不需要（关闭后不可用，板级/驱动需同步裁剪）：
-        · 裸机时间片调度器 (time_slice/xtask)：默认 SysTick 路径 (内核异常,
+        · 裸机时间片调度器 (time_slice/task/xtask)：默认 SysTick 路径 (内核异常,
           不经 VIRQ) 关闭 VIRQ 不受影响, 仍照常 tick; 仅当 DTS 显式配 chosen
           TIM (走通用 TIM + VIRQ) 时, 关闭 VIRQ 后该 TIM 中断无法路由, 调度器
           无 tick 源, x_scheduler_poll() 永不调度任务；
@@ -627,14 +1109,14 @@ config VIRQ
         · 板级/驱动侧 ISR 不得再调用 interrupt_virtual_dispatch() /
           interrupt_virtual_register()，否则链接失败——关 VIRQ 时板级
           ISR 代码须同步裁剪。
-      内存收益约 1.3 KB RAM + 1 KB Flash，详见 docs/memory_footprint.md §3.6。
+      内存收益约 1.3 KB RAM + 1 KB Flash，详见 docs/memory_footprint.md。
 
       Master switch for the Virtual IRQ + bottom-half framework, on by default.
       When off, interrupt/interrupt.c is not compiled, drivers skip VIRQ
       registration, and the system loop stops polling the bottom half.
       Confirm these become unavailable before disabling (trim board/driver
       code accordingly):
-        · bare-metal time-slice scheduler (time_slice/xtask): the default SysTick
+        · bare-metal time-slice scheduler (time_slice/task/xtask): the default SysTick
           path (core exception, not via VIRQ) keeps ticking with VIRQ off; only
           when DTS explicitly sets chosen TIM (generic TIM + VIRQ) does disabling
           VIRQ break TIM IRQ routing — no tick source, tasks never run;
@@ -645,7 +1127,7 @@ config VIRQ
         · board/driver ISRs must not call interrupt_virtual_dispatch() /
           interrupt_virtual_register() or the link fails — trim board ISR
           code accordingly.
-      Memory saving ≈ 1.3 KB RAM + 1 KB Flash, see docs/memory_footprint.md §3.6.
+      Memory saving ≈ 1.3 KB RAM + 1 KB Flash, see docs/memory_footprint.md.
 
 config BOTTOM_HALF_QUEUE_DEPTH
     int "Interrupt bottom-half queue depth (power of two)"
@@ -682,17 +1164,17 @@ config COMPILER_GNU_EXTENSIONS
       Supported by GCC and Clang.
 
 config COMPILER_WARN_UNUSED_RESULT
-    bool "Warn on ignored results of HAL/bus APIs (COMPAT_WARN_UNUSED_RESULT)"
+    bool "Warn on ignored results of HAL/bus APIs (MINI_WARN_UNUSED_RESULT)"
     default y
     depends on COMPILER_GNU_EXTENSIONS
     help
       为 HAL 与 bus 层关键 API 加注解，返回值被丢弃时编译器报警。
       默认开启：底层 (hal→bus) 保持强制检查，保证内部可靠性。
-      开启后可用 COMPAT_IGNORE_RESULT() 主动压制。
+      开启后可用 MINI_IGNORE_RESULT() 主动压制。
 
       Annotate HAL and bus APIs so the compiler warns when return values
       are discarded. On by default: internal layers (hal→bus) keep strict
-      checking. Use COMPAT_IGNORE_RESULT() to silence intentionally.
+      checking. Use MINI_IGNORE_RESULT() to silence intentionally.
 
 config DEVICE_WARN_UNUSED_RESULT
     bool "Warn on ignored results of device/VFS APIs (DEVICE_WARN_UNUSED_RESULT)"
@@ -722,6 +1204,595 @@ config BUILD_DISASM
 
       Generate .lst disassembly listing after build.
       Build-time artifact only; does not affect Flash/RAM usage.
+endmenu
+
+menu "lwIP (TCP/IP Stack)"
+    # lwIP 移植层配置。net/lwipopts.h 直接引用本菜单生成的 CONFIG_* 宏。
+    # 端口头文件位置约定 (lwIP 内部固定 include):
+    #   net/lwipopts.h       <- lwip/opt.h 引用 ("lwipopts.h")
+    #   net/arch/cc.h        <- lwip/arch.h 引用 ("arch/cc.h")
+    #   net/arch/sys_arch.h  <- lwip/sys.h  引用 ("arch/sys_arch.h")
+    # bool 选中 => config.h 生成 "#define CONFIG_XXX 1"; 未选中 => 宏不存在
+    #   (lwIP 中 #if XXX 将未定义视为 0, 即功能关闭)。
+
+    config LWIP
+        bool "Enable lwIP TCP/IP stack"
+        default n
+        help
+          lwIP 协议栈总开关。选中后 net/ 端口层 (sys_arch.c) 会被编入, 且
+          应用工程需调用 mini_tree_link_lwip() 拉取 lwIP 源码。关闭则端口层
+          与 lwIP 均不编译 (不占 Flash/RAM)。CMake 经 .config 的 CONFIG_LWIP
+          桥接决定是否 add_subdirectory(net)。
+
+    config SYS
+        bool "lwIP NO_SYS mode (bare-metal polling)"
+        default y if OSAL_NULL
+        default n
+        help
+          lwIP 的 NO_SYS 开关。选中 (=y) 时 NO_SYS=1, lwIP 以裸机轮询模式运行
+          (不依赖任何 OS 原语, 不创建 tcpip 线程; 应用在主循环轮询
+          sys_check_timeouts() 与网卡收包); 未选中时 NO_SYS=0, lwIP 创建
+          tcpip 内核线程, 依赖"可阻塞切换的真 RTOS 线程"语义。
+
+          硬约束: OSAL 后端为裸机 (OSAL_NULL + xtask 协调/抢占调度器) 时
+          必须保持 y。xtask 任务是裸机协程, osal_queue/osal_sem 在裸机后端
+          是环形缓冲 + 忙等, 没有"阻塞即切换线程"的语义——裸机下强行
+          NO_SYS=0 会导致 tcpip 线程死锁或永不推进。默认值已按后端自动
+          选择: OSAL_NULL => y, RTOS (FreeRTOS/RT-Thread/ThreadX/uC-OS) => n。
+
+          Hard constraint: keep this enabled on bare-metal (OSAL_NULL).
+          xtask tasks are bare-metal coroutines; osal_queue/osal_sem busy-wait
+          with no block-and-switch semantics, so NO_SYS=0 would deadlock the
+          tcpip thread. The default follows the OSAL backend automatically.
+
+    config SYS_LIGHTWEIGHT_PROT
+        bool "Lightweight protection (critical section via IRQ lock)"
+        default y
+        depends on SYS
+        help
+          NO_SYS=1 (裸机) 时用关中断 (SYS_ARCH_PROTECT) 保护 lwIP 内存分配等
+          临界区, 单核裸机下安全且开销最小。
+          NO_SYS=0 (RTOS) 模式下本选项不可见: 临界区由 sys_mutex 保护,
+          本移植不提供 RTOS 模式下的轻量保护实现。
+
+    config LWIP_COMPAT_MUTEX
+        bool "Compat mutex (emulate sys_mutex_t with sys_sem_t)"
+        default n
+        help
+          0 = 使用原生 sys_mutex_t (OSAL mutex); 1 = 用 sys_sem_t 模拟互斥锁。
+          本移植提供原生 mutex, 保持默认 0。
+
+    menu "TCP/IP Core Thread"
+        # 仅 RTOS 后端可见: tcpip 内核线程需要"可阻塞切换"的真线程语义
+        depends on !SYS && !OSAL_NULL
+
+        config TCPIP_THREAD_NAME
+            string "tcpip thread name"
+            default "tcpip_thread"
+
+        config TCPIP_THREAD_STACKSIZE
+            int "tcpip thread stack size (bytes)"
+            default 1024
+            range 512 16384
+
+        config TCPIP_THREAD_PRIO
+            int "tcpip thread priority"
+            default 6
+            range 0 31
+            help
+              优先级数值含义随 OSAL 后端翻转, 切后端时须重新评估:
+              FreeRTOS 数大优先高; RT-Thread 数小优先高;
+              ThreadX / uC-OS 数小优先高。裸机 (OSAL_NULL) 下本项不可见。
+
+        config TCPIP_MBOX_SIZE
+            int "tcpip core mailbox size"
+            default 8
+            range 1 64
+    endmenu
+
+    menu "Default Receive Mailbox Sizes"
+        # 仅 RTOS 后端可见: netconn/socket 接收邮箱依赖阻塞式 mbox
+        depends on !SYS && !OSAL_NULL
+
+        config DEFAULT_RAW_RECVMBOX_SIZE
+            int "RAW recv mbox size"
+            default 8
+            range 1 64
+
+        config DEFAULT_UDP_RECVMBOX_SIZE
+            int "UDP recv mbox size"
+            default 8
+            range 1 64
+
+        config DEFAULT_TCP_RECVMBOX_SIZE
+            int "TCP recv mbox size"
+            default 8
+            range 1 64
+
+        config DEFAULT_ACCEPTMBOX_SIZE
+            int "TCP accept mbox size"
+            default 8
+            range 1 64
+    endmenu
+
+    menu "Memory"
+        config MEM_ALIGNMENT
+            int "Memory alignment (bytes)"
+            default 4
+            range 1 16
+            help
+              内存对齐字节数, 通常 4 (32-bit) 或 8。
+
+        config MEM_SIZE
+            int "lwIP heap size (bytes)"
+            default 16384
+            range 1024 1048576
+            help
+              lwIP 内部内存池 (mem.c) 总大小。0 表示不内置堆
+              (配合 MEM_LIBC_MALLOC 使用系统 malloc)。
+
+        config MEM_LIBC_MALLOC
+            bool "Use system malloc instead of lwIP pool"
+            default n
+            help
+              0 = 使用 lwIP 内部内存池 (裸机推荐); 1 = 使用系统 malloc/free。
+
+        config MEMP_NUM_PBUF
+            int "Number of pbuf structs"
+            default 16
+            range 1 512
+
+        config MEMP_NUM_TCP_PCB
+            int "Number of TCP PCBs"
+            default 5
+            range 1 64
+
+        config MEMP_NUM_UDP_PCB
+            int "Number of UDP PCBs"
+            default 4
+            range 1 64
+
+        config MEMP_NUM_TCP_PCB_LISTEN
+            int "Number of listening TCP PCBs"
+            default 4
+            range 1 64
+
+        config MEMP_NUM_TCP_SEG
+            int "Number of TCP segments"
+            default 16
+            range 1 512
+
+        config MEMP_NUM_SYS_TIMEOUT
+            int "Number of active timeouts"
+            default 10
+            range 1 128
+    endmenu
+
+    menu "PBUF Pool"
+        config PBUF_POOL_SIZE
+            int "Number of pbufs in pool"
+            default 16
+            range 1 512
+
+        config PBUF_POOL_BUFSIZE
+            int "Size of each pbuf in pool (bytes)"
+            default 592
+            range 64 2048
+    endmenu
+
+    menu "Protocols"
+        config LWIP_RAW
+            bool "RAW API"
+            default n
+
+        config LWIP_TIMERS
+            bool "Protocol timers"
+            default y
+
+        config LWIP_UDP
+            bool "UDP protocol"
+            default y
+
+        config UDP_TTL
+            int "UDP default TTL"
+            default 255
+            range 1 255
+
+        config LWIP_TCP
+            bool "TCP protocol"
+            default y
+
+        config TCP_TTL
+            int "TCP default TTL"
+            default 255
+            range 1 255
+
+        config TCP_MSS
+            int "TCP maximum segment size"
+            default 536
+            range 64 1460
+
+        config TCP_WND
+            int "TCP receive window"
+            default 2048
+            range 256 65535
+
+        config TCP_SND_BUF
+            int "TCP send buffer"
+            default 2048
+            range 256 65535
+
+        config TCP_SERVER_MAX_CLIENTS
+            int "TCP server max concurrent clients"
+            default 4
+            range 1 16
+            depends on LWIP_TCP
+            help
+              TCP 服务端 (net/port/tcp/tcp_server.c) 最大并发客户端数。
+              每个连接占用一个 session 槽位与独立接收缓冲。
+
+        config TCP_RX_BUF_SIZE
+            int "TCP server per-session RX FIFO size (bytes)"
+            default 2048
+            range 256 8192
+            depends on LWIP_TCP
+            help
+              TCP 服务端每个 session 的接收环形缓冲大小 (bytes), 必须为 2 的幂。
+              静态分配, 总内存占用 = TCP_SERVER_MAX_CLIENTS x 本值。
+
+    menu "TCP Client (net/port/tcp/tcp_client.c)"
+        depends on LWIP_TCP
+
+        config TCP_CLIENT_RX_BUFFER_SIZE
+            int "TCP client RX FIFO size (bytes)"
+            default 1024
+            range 256 8192
+            help
+              TCP 客户端 (net/port/tcp/tcp_client.c) 每实例接收环形缓冲大小。
+              静态嵌入 tcp_client_context, 按实例数成倍占 RAM。
+              Per-instance RX ring buffer of the TCP client; embedded
+              in tcp_client_context, RAM scales with instance count.
+
+        config TCP_CLIENT_TX_BUFFER_SIZE
+            int "TCP client TX FIFO size (bytes)"
+            default 1024
+            range 256 8192
+            help
+              TCP 客户端每实例发送环形缓冲大小。
+              Per-instance TX ring buffer of the TCP client.
+
+        config TCP_CLIENT_RX_TX_BYTE_TYPE
+            int "TCP client FIFO element size (bytes)"
+            default 1
+            range 1 8
+            help
+              TCP 客户端收发 FIFO 的元素粒度 (字节), 默认 1 即字节流。
+              FIFO element granularity of the TCP client, default 1
+              (byte stream).
+    endmenu
+
+    menu "MQTT Client (net/port/mqtt/mqtt_client.c)"
+        depends on LWIP_TCP
+
+        config NET_MQTT_USE_COREMQTT
+            bool "Use coreMQTT as MQTT protocol engine"
+            default y
+            help
+              用 FreeRTOS coreMQTT 做报文编解码与状态机, 包装层只留连接管理。
+              关闭后 MQTT 客户端不参与链接 (当前无备选实现)。
+              Use FreeRTOS coreMQTT for packet codec & state machine.
+
+        config MQTT_NET_BUFFER_SIZE
+            int "MQTT network buffer size (bytes, coreMQTT shared TX/RX)"
+            default 2048
+            range 512 16384
+            help
+              coreMQTT 收发共用的单一静态缓冲 (MQTTFixedBuffer_t),
+              需 >= 单条最大报文 (含订阅列表/遗嘱/最大下行负载)。
+              Single shared static buffer of coreMQTT; must fit the
+              largest packet in either direction.
+
+        config MQTT_CLIENT_ID
+            string "MQTT default client id"
+            default "mini_node"
+            help
+              未显式指定时使用的默认客户端 ID。
+              Default client id when not overridden by caller.
+    endmenu
+
+        config LWIP_ETHERNET
+            bool "Ethernet support"
+            default y
+
+        config LWIP_CHECKSUM_CTRL_PER_NETIF
+            bool "Per-netif checksum control"
+            default n
+
+        config LWIP_NETIF_STATUS_CALLBACK
+            bool "Netif status callback"
+            default y
+
+        config LWIP_NETIF_LINK_CALLBACK
+            bool "Netif link callback"
+            default y
+
+        config LWIP_NETIF_API
+            bool "Netif API"
+            default n
+
+        config LWIP_ICMP
+            bool "ICMPv4"
+            default y
+
+        config LWIP_ICMP6
+            bool "ICMPv6"
+            default n
+
+        config LWIP_ARP
+            bool "ARP"
+            default y
+
+        config ARP_TABLE_SIZE
+            int "ARP table size"
+            default 10
+            range 1 128
+
+        config LWIP_IPV4
+            bool "IPv4"
+            default y
+
+        config LWIP_IPV6
+            bool "IPv6"
+            default n
+
+        config IP_REASSEMBLY
+            bool "IP reassembly"
+            default y
+
+        config IP_FRAG
+            bool "IP fragmentation"
+            default y
+
+        config IP_FRAG_USES_STATIC_BUF
+            bool "IP frag uses static buffer"
+            default n
+
+        config LWIP_DHCP
+            bool "DHCP client"
+            default y
+
+        config LWIP_AUTOIP
+            bool "AutoIP (APIPA)"
+            default n
+
+        config LWIP_DNS
+            bool "DNS resolver"
+            default y
+            depends on LWIP_UDP
+            help
+              DNS 解析器基于 UDP, 需先启用 LWIP_UDP。
+    endmenu
+
+    menu "PPP (4G/Modem over Serial)"
+        depends on LWIP
+
+        config PPP_SUPPORT
+            bool "Enable PPP (Point-to-Point Protocol)"
+            default n
+            help
+              lwIP PPP 协议总开关。4G 模组 (a7670/air780e 等) 通过串口 PPP
+              (pppos) 接入互联网时必选。PPP 依赖 TCP 与 IPv4, 拨号后由运营商
+              分配 IP。HTTP/MQTT 等应用层库在 PPP netif 之上工作, 与链路无关。
+
+        config PPPOS_SUPPORT
+            bool "Enable PPP over Serial (pppos)"
+            default y if PPP_SUPPORT
+            default n
+            depends on PPP_SUPPORT
+            help
+              PPP over Serial: 把串口裸字节流封装为 PPP 帧。pppif 适配层通过
+              pppos_create() 创建 netif, 输出回调把 PPP 帧写入模组串口, 串口
+              收包方向每收到一字节调用 pppos_input() 喂给协议栈。
+
+        config PAP_SUPPORT
+            bool "Enable PAP authentication"
+            default y if PPP_SUPPORT
+            default n
+            depends on PPP_SUPPORT
+            help
+              明文 PAP 认证。多数 4G 模组拨号 (ATD*99#) 不需要用户名密码, 但
+              部分运营商 APN 需 PAP/CHAP。按需开启。
+
+        config CHAP_SUPPORT
+            bool "Enable CHAP authentication"
+            default y if PPP_SUPPORT
+            default n
+            depends on PPP_SUPPORT
+            help
+              加密 CHAP 认证。比 PAP 更安全, 同上按需开启。
+
+        config PPP_IPV6_SUPPORT
+            bool "Enable PPP IPv6 (IPV6CP)"
+            default y if PPP_SUPPORT && LWIP_IPV6
+            default n
+            depends on PPP_SUPPORT
+            help
+              PPP 链路上的 IPv6 (IPV6CP) 协商。仅当 LWIP_IPV6=y 且运营商支持
+              双栈时开启。默认跟随 IPv6 总开关。
+
+        config PPP_INPROC_IRQ_SAFE
+            bool "PPP input from ISR-safe context"
+            default n
+            depends on PPP_SUPPORT
+            help
+              允许在中断上下文调用 pppos_input() (裸机/ISR 收包时)。开启会增加
+              少量开销换取 ISR 直收。NO_SYS=1 裸机轮询模式若由 UART ISR 直接
+              喂字节, 建议开启; RTOS 模式一般无需。
+
+        config PPP_MAXMRU
+            int "PPP MRU (max receive unit)"
+            default 1500
+            range 128 1500
+            depends on PPP_SUPPORT
+            help
+              PPP 最大接收单元。需 >= 链路 MTU, 一般 1500 对齐以太网帧。
+
+        config PPP_MAXMTU
+            int "PPP MTU (max transmit unit)"
+            default 1500
+            range 128 1500
+            depends on PPP_SUPPORT
+            help
+              PPP 最大发送单元。与运营商协商, 一般 1500。
+
+        menu "PPPIF (pppif 适配层)"
+
+            config PPPIF_RX_BUF_SIZE
+                int "PPP 数据态接收缓冲大小 (bytes)"
+                default 512
+                range 128 4096
+                depends on PPPOS_SUPPORT
+                help
+                  pppif 数据态轮询接收缓冲, device_read 单次最多读入的字节数。
+                  需 >= PPP_MRU 对齐链路最大帧, 一般 512 足够 (PPP 帧 1500 字节
+                  时按 512 分片多次喂入 pppos_input)。
+
+            config PPPIF_RX_TASK_STACK_SIZE
+                int "PPP 接收任务栈大小 (bytes)"
+                default 2048
+                range 512 16384
+                depends on PPPOS_SUPPORT
+                help
+                  若移植层用独立接收任务喂 pppos_input (RTOS 模式), 该任务栈大小;
+                  NO_SYS 裸机轮询模式 (pppif_poll 主循环) 不创建任务, 本项仅用于
+                  预留/后续移植扩展。
+
+            config PPPIF_RX_TASK_PRIO
+                int "PPP 接收任务优先级"
+                default 6
+                range 1 32
+                depends on PPPOS_SUPPORT
+                help
+                  接收任务优先级 (仅 RTOS 模式使用)。裸机轮询模式无任务, 忽略。
+        endmenu
+    endmenu
+
+    menu "Checksum"
+        config CHECKSUM_GEN_IP
+            bool "Generate IP checksum"
+            default y
+
+        config CHECKSUM_GEN_UDP
+            bool "Generate UDP checksum"
+            default y
+
+        config CHECKSUM_GEN_TCP
+            bool "Generate TCP checksum"
+            default y
+
+        config CHECKSUM_CHECK_IP
+            bool "Verify incoming IP checksum"
+            default y
+
+        config CHECKSUM_CHECK_UDP
+            bool "Verify incoming UDP checksum"
+            default y
+
+        config CHECKSUM_CHECK_TCP
+            bool "Verify incoming TCP checksum"
+            default y
+    endmenu
+
+    menu "Socket / Netconn API"
+        # 仅 RTOS 后端可见: netconn/socket API 阻塞语义依赖真线程
+        depends on !SYS && !OSAL_NULL
+
+        config LWIP_NETCONN
+            bool "Netconn API"
+            default y
+            help
+              Netconn 顺序 API, Socket API 的底层。关闭后 Socket 亦不可用。
+
+        config LWIP_SOCKET
+            bool "BSD Socket API"
+            default y
+            depends on LWIP_NETCONN
+            help
+              BSD Socket API, 建立在 Netconn 之上, 需先启用 LWIP_NETCONN。
+
+        config LWIP_NETCONN_RECVTIMEO
+            bool "Netconn recv timeout"
+            default y
+            depends on LWIP_NETCONN
+
+        config LWIP_SO_RCVTIMEO
+            bool "SO_RCVTIMEO support"
+            default y
+            depends on LWIP_SOCKET
+
+        config LWIP_SO_SNDTIMEO
+            bool "SO_SNDTIMEO support"
+            default y
+            depends on LWIP_SOCKET
+
+        config LWIP_SO_RCVBUF
+            bool "SO_RCVBUF support"
+            default n
+            depends on LWIP_SOCKET
+
+        config LWIP_TIMEVAL_PRIVATE
+            bool "Private struct timeval"
+            default y
+            depends on LWIP_SOCKET
+            help
+              1 = 使用 lwIP 内置 struct timeval (裸机无 <sys/time.h>, 必须开启);
+              0 = 使用系统 <sys/time.h> 的 timeval (仅宿主/ Linux 构建适用)。
+
+        config LWIP_POSIX_SOCKETS_IO_NAMES
+            bool "Map read/write/close to socket API"
+            default y
+            depends on LWIP_SOCKET
+    endmenu
+
+    menu "Socket/Netconn Memory Pools"
+        # 仅 RTOS 后端可见: 与 Socket/Netconn API 同生命周期
+        depends on !SYS && !OSAL_NULL
+
+        config MEMP_NUM_NETCONN
+            int "Number of netconns"
+            default 8
+            range 1 128
+
+        config MEMP_NUM_NETBUF
+            int "Number of netbufs"
+            default 8
+            range 1 128
+
+        config MEMP_NUM_SELECT_CB
+            int "Number of select callbacks"
+            default 4
+            range 1 64
+
+        config MEMP_NUM_TCPIP_MSG_API
+            int "Number of tcpip API messages"
+            default 16
+            range 1 256
+
+        config MEMP_NUM_TCPIP_MSG_INPKT
+            int "Number of tcpip input-packet messages"
+            default 16
+            range 1 256
+    endmenu
+
+    menu "Debug"
+        config LWIP_DEBUG
+            bool "lwIP debug output"
+            default n
+
+        config LWIP_STATS
+            bool "lwIP statistics"
+            default n
+    endmenu
 endmenu
 
 endmenu

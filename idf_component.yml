@@ -1,22 +1,27 @@
 name: h-000-h/mini-tree
-version: "1.3.2"
-description: 这是一个通用的vfs驱动模型和dts抽象设备树和os抽象插件
-url: https://github.com/H-000-H/mini_tree
+version: "1.4.5"
+description: "这是一个通用的vfs驱动模型和dts抽象设备树和os抽象插件 (ESP-IDF 组件线: lib 仅含 etl, RTOS 走 IDF 内置 FreeRTOS)"
+url: "https://github.com/H-000-H/mini_tree"
 dependencies:
   idf:
-    version: '>=4.4'
+    version: ">=4.4"
 files:
   exclude:
-  - .venv/**
-  - .cache/**
-  - build/**
-  - dist/**
-  - compile_commands.json
-  - .config
-  - .config.old
-  - .git/**
-  - esp-component.sh
-  - .component_hash
-  - CHECKSUMS.json
-  - "**/__pycache__/**"
-  - "**/*.pyc"
+    - "build/**"
+    - "dist/**"
+    - ".venv/**"
+    - ".cache/**"
+    - "compile_commands.json"
+    - ".config*"
+    - ".git/**"
+    - "esp-component.sh"
+    - ".component_hash"
+    - "CHECKSUMS.json"
+    # RTOS 内核一律不进 esp 组件包: 走 ESP-IDF 内置 FreeRTOS
+    - "lib/freeRTOS/**"
+    - "lib/rtthread/**"
+    - "lib/mini-os/**"
+    - "lib/threadx/**"
+    - "lib/uC-*/**"
+    - "**/__pycache__/**"
+    - "**/*.pyc"

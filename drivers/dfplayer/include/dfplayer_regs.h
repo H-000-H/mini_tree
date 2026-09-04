@@ -1,8 +1,11 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * @file dfplayer_regs.h
- * @brief DFPlayer 串口帧格式 / 操作码常量
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file dfplayer_regs.h
+ *@brief DFPlayer 串口帧格式 / 操作码常量
+ *@author H-000-H
+
  */
+
 #ifndef DFPLAYER_REGS_H
 #define DFPLAYER_REGS_H
 

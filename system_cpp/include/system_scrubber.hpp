@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include "status.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -27,8 +28,8 @@ extern "C"
      *   system_scrubber_start();    // 在系统就绪后启动
      */
 
-    bool system_scrubber_init(void);
-    bool system_scrubber_start(void);
+    int system_scrubber_init(void);
+    int system_scrubber_start(void);
     bool system_scrubber_is_running(void);
 
 #ifdef __cplusplus

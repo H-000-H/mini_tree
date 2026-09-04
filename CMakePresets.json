@@ -8,9 +8,10 @@
   "configurePresets": [
     {
       "name": "Debug",
-      "displayName": "Host Debug (auto-detect)",
+      "displayName": "ARM Debug (arm-none-eabi-gcc)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/Debug",
+      "toolchainFile": "${sourceDir}/cmake/arm-gcc-toolchain.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -18,9 +19,10 @@
     },
     {
       "name": "Release",
-      "displayName": "Host Release (auto-detect)",
+      "displayName": "ARM Release (arm-none-eabi-gcc)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/Release",
+      "toolchainFile": "${sourceDir}/cmake/arm-gcc-toolchain.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"

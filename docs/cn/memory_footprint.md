@@ -1,8 +1,6 @@
 # 内存与 flash 基准
 
-> 编译产物大小与段分布（工具链相关）。生产构建务必打开 `CONFIG_SYS_LOG_LEVEL=0`（关日志）/ `CONFIG_BUILD_SIZE=1`（编大小）/ `CONFIG_BUILD_SIZE_REPORT=1`（出报告）；`CONFIG_BUILD_NO_LTO=0`（开 LTO，强烈推荐）。
->
-> 报告脚本：`tools/build_size.py`。段布局用 `--format=html` 看分布，或 `--format=baseline` 看基线对照。详见 [getting_started.md](getting_started.md) §4.3。
+> 编译产物大小与段分布（工具链相关）。裁剪与大小开关见 §2，优化建议见 §5；段布局可用编译器 map 文件 / `--gc-sections` 报告核对。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -19,11 +17,11 @@
 | `rodata` | 只读常数 |
 | `data` | 已初始化全局变量 |
 | `bss` | 未初始化全局变量（不占 flash） |
-| `err_section` | 错误符号表（`ERR_SECTION_BASE`）；`CONFIG_ERR_SECTION=1` 时单独放置——独立 ROM 区或 RAM 镜像 |
+| `err_section` | 错误符号表（`ERR_SECTION_BASE`，见 `error_symbols.ld`）——独立 ROM 区或 RAM 镜像 |
 | `*.noinit` | WDT/RTC 等不被初始化的 RAM |
 | `.log_*` | 日志注册表（关日志后移除） |
 
-> WDT 与 `safe_state` 同属 `system`，在 `CONFIG_WDT=1` / `CONFIG_SAFE_STATE=1` 时编入；烧录后与中断、`err_section` 需保证物理不被覆盖。
+> WDT 与 `safe_state` 同属 `system`（由 `CONFIG_SYSTEM_WDT` / `CONFIG_SAFETY_SHUTDOWN` 控制）；烧录后与中断、`err_section` 需保证物理不被覆盖。
 
 ---
 
@@ -31,12 +29,12 @@
 
 | Kconfig | 作用 |
 | :--- | :--- |
-| `CONFIG_SYS_LOG_LEVEL` | 0 = 关日志（默认编译保留） |
-| `CONFIG_BUILD_SIZE` | 1 = 编大小（去掉调试信息） |
-| `CONFIG_BUILD_SIZE_REPORT` | 1 = 出报告 |
-| `CONFIG_BUILD_NO_LTO` | 0 = 开 LTO（推荐默认） |
-| `CONFIG_ERR_SECTION` | 1 = 错误符号单独段（见 §1 表） |
-| `CONFIG_WDT` / `CONFIG_SAFE_STATE` | WDT / safe_state 编入（见 §1 表） |
+| `CONFIG_SYSTEM_WDT` | 框架看门狗（默认开） |
+| `CONFIG_SAFETY_SHUTDOWN` | 安全停机回调（默认关） |
+| `CONFIG_SYS_LOG_USE_PRINTF` / `_OSAL` / `_ESP` | `SYS_LOG*` 日志后端选择（关日志最省） |
+| `CONFIG_PRODUCTION_LOG` | 黑匣子故障记录（默认关） |
+| `CONFIG_EVENT_BUS` / `CONFIG_SYSTEM_CMD` / `CONFIG_SYSTEM_SCRUBBER` | 可选功能总开关（默认关） |
+| `CONFIG_BUILD_DISASM` | 反汇编 post-build（默认开，按需关） |
 
 ---
 
@@ -50,7 +48,7 @@
 | + 设备模型 | 11.8 | 2.0 | 0.6 | 4.1 | 13.8 | `board/` 全部 |
 | + 一个 VFS 设备（uart） | 15.3 | 2.6 | 0.8 | 5.2 | 18.7 | `vfs/uart` |
 | + FreeRTOS 后端 | 19.1 | 3.3 | 1.1 | 6.9 | 23.5 | `CONFIG_OSAL_FREERTOS` |
-| + WDT + safe_state | 20.4 | 3.5 | 1.2 | 7.3 | 24.9 | `CONFIG_WDT` + `CONFIG_SAFE_STATE` |
+| + WDT + safe_state | 20.4 | 3.5 | 1.2 | 7.3 | 24.9 | `CONFIG_SYSTEM_WDT` + `CONFIG_SAFETY_SHUTDOWN` |
 
 > 上表为 GCC `-Os` + LTO 估算。开日志（`CONFIG_SYS_LOG_LEVEL>0`）各档增 ~3–8 KiB `rodata`/`text`；关日志最划算。
 >
@@ -60,44 +58,72 @@
 
 ## 4. 调度方案对比（最小固件实测）
 
-> 实测：`arm-none-eabi-gcc 14.2.1`，`-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`；最小固件 = `startup` + `main`（system 层）+ 链接 `mini_tree` 全库（含 RTOS 内核），链接脚本仿 STM32F4。单位 B，`RAM 合计 = data + bss`。
+> 实测：`arm-none-eabi-gcc 13.3.1`（Windows，旧于旧版 14.2.1/Linux——旧编译链验证可编过），`-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os -ffunction-sections -fdata-sections` + `--gc-sections`；最小固件 = `startup`（向量表 + Reset_Handler）+ `main`（system 层标准启动序列）+ 链接 `mini_tree` 全库（含 RTOS 内核，`--start-group` 解决循环引用），链接脚本仿 STM32F4（FLASH 1 MiB / RAM 128 KiB）。单位 B，`RAM 合计 = data + bss`。分两套 libc 口径：**newlib-nano**（`--specs=nano.specs`，最小体积常规选择）与**完整 newlib**（旧表口径）；`.config` 基线为仓库当前默认（事件总线/WDT/OSAL 日志开），未引用模块（lwIP/USB 等）经 `--gc-sections` 不进闭包。绝对值随工具链与基线配置漂移，**相对差**更有效。
+
+### 4.1 newlib-nano（推荐口径）
 
 | 调度方案 | system 后端 | text | data | bss | RAM 合计 |
 | :--- | :--- | ---: | ---: | ---: | ---: |
-| 全裸 `while`（`XTASK_NONE`） | 无 | 86 | 0 | 0 | 0 |
-| 协调式 `XTASK_COOP` | C | 31240 | 1744 | 944 | 2688 |
-| 协调式 `XTASK_COOP` | C++ | 31240 | 1744 | 944 | 2688 |
-| 抢占式 `XTASK_PREEMPT` | C | 31368 | 1744 | 1388 | 3132 |
-| 抢占式 `XTASK_PREEMPT` | C++ | 31368 | 1744 | 1388 | 3132 |
-| FreeRTOS | C | 34312 | 1752 | 1304 | 3056 |
-| FreeRTOS | C++ | 34696 | 1752 | 1656 | 3408 |
-| RT-Thread | C | 40228 | 1892 | 1164 | 3056 |
-| RT-Thread | C++ | 40612 | 1892 | 1516 | 3408 |
-| ThreadX | C | 34120 | 1752 | 940 | 2692 |
-| ThreadX | C++ | 34504 | 1752 | 1292 | 3044 |
-| uC/OS-II | C | 32992 | 1744 | 872 | 2616 |
-| uC/OS-II | C++ | 33376 | 1744 | 1224 | 2968 |
-| uC/OS-III | C | 33448 | 1744 | 1404 | 3148 |
-| uC/OS-III | C++ | 33832 | 1744 | 1756 | 3500 |
+| 全裸 `while`（`XTASK_NONE`） | 无 | 134 | 0 | 512 | 512 |
+| 协调式 `XTASK_COOP` | C | 11153 | 116 | 4400 | 4516 |
+| 协调式 `XTASK_COOP` | C++ | 11237 | 120 | 4432 | 4552 |
+| 抢占式 `XTASK_PREEMPT` | C | 11565 | 116 | 4848 | 4964 |
+| 抢占式 `XTASK_PREEMPT` | C++ | 11649 | 120 | 4880 | 5000 |
+| mini-os | C | 14245 | 120 | 2620 | 2740 |
+| mini-os | C++ | 14381 | 128 | 3016 | 3144 |
+| FreeRTOS | C | 17492 | 108 | 12176 | 12284 |
+| FreeRTOS | C++ | 17628 | 116 | 12528 | 12644 |
+| RT-Thread | C | 17953 | 272 | 35084 | 35356 |
+| RT-Thread | C++ | 18057 | 280 | 35480 | 35760 |
 
-> 口径：全裸（`XTASK_NONE`）下 `OSAL_NULL_TASK_CPP` 由 Kconfig 自动关闭（`depends on !XTASK_NONE`），且 osal/system 层依赖 xtask 接口（`osal_null.h` 无条件 include `xtask.h`），无实现时无法链接，固件退化为最小闭包（startup + 主循环手动轮询），不含 system/osal 层；RTOS 后端 `text` 已含各自内核；数字含全库（board 设备模型等），**相对差**更有效。裸机调度三态（`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`）由 `Kconfig.mini_tree` 的 choice 选择，CMake 据此注入 `MINI_TREE_XTASK_*` 宏决定编译 `xtask_coop.c` 或 `xtask_preempt.c`；抢占式与协调式对外 API 完全一致（`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`），调用方无感切换。
+### 4.2 完整 newlib（旧表口径）
+
+| 调度方案 | system 后端 | text | data | bss | RAM 合计 |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| 全裸 `while`（`XTASK_NONE`） | 无 | 134 | 0 | 512 | 512 |
+| 协调式 `XTASK_COOP` | C | 35732 | 1768 | 4448 | 6216 |
+| 协调式 `XTASK_COOP` | C++ | 35820 | 1772 | 4480 | 6252 |
+| 抢占式 `XTASK_PREEMPT` | C | 36148 | 1768 | 4896 | 6664 |
+| 抢占式 `XTASK_PREEMPT` | C++ | 36228 | 1772 | 4928 | 6700 |
+| mini-os | C | 38776 | 1772 | 2664 | 4436 |
+| mini-os | C++ | 38912 | 1780 | 3064 | 4844 |
+| FreeRTOS | C | 42068 | 1764 | 12224 | 13988 |
+| FreeRTOS | C++ | 42204 | 1772 | 12576 | 14348 |
+| RT-Thread | C | 48984 | 1924 | 35136 | 37060 |
+| RT-Thread | C++ | 49088 | 1932 | 35528 | 37460 |
+
+### 4.3 口径与结论
+
+**堆口径（bss 不可直接横比的原因）**：
+
+- FreeRTOS：堆为静态数组 `ucHeap[CONFIG_FREERTOS_HEAP_SIZE]`（默认 8192），**计入 bss**；
+- RT-Thread：堆为静态数组 `s_rtt_heap[CONFIG_RTT_HEAP_SIZE]`（默认 32×1024，见 `osal_rtthread.c`），**计入 bss**；
+- mini-os：堆为链接期区域（`__mini_os_heap_start`→`__mini_os_heap_end`，bss 末尾到栈顶），**不计入 bss**——剩余 RAM 全归堆；
+- 裸机 xtask：无堆。
+
+剔除可配堆后的框架 bss（nano / C++）：coop 4432 · mini-os 3016 · FreeRTOS 4336 · RT-Thread 2712。全裸行的 bss 512 为链接脚本 `._user_heap_stack` 的最小堆占位，非真实占用；其余各行同样包含。
+
+范围说明（沿旧表）：全裸（`XTASK_NONE`）下 `OSAL_NULL_TASK_CPP` 由 Kconfig 自动关闭（`depends on !XTASK_NONE`），且 osal/system 层依赖 xtask 接口（`osal_null.h` 无条件 include `xtask.h`），无实现时无法链接，固件退化为最小闭包（startup + 主循环手动轮询），不含 system/osal 层；RTOS 后端 `text` 已含各自内核；数字含全库（board 设备模型等），**相对差**更有效。裸机调度三态（`XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`）由 `Kconfig.mini_tree` 的 choice 选择，CMake 据此注入 `MINI_TREE_XTASK_*` 宏决定编译 `xtask_coop.c` 或 `xtask_preempt.c`；抢占式与协调式对外 API 完全一致（`xscheduler_task_create`/`x_scheduler_poll`/`xscheduler_start`），调用方无感切换。
 
 结论：
-1. 全裸最省（86 B text，零 RAM）；代价是调度逻辑全部自写。
-2. 裸机 xtask（coop/preempt，~31 KB text）比最小 RTOS 内核（uC/OS-II ~33 KB）还省 ~1.7 KB，且 **无独立任务栈**（run-to-completion，任务栈复用主循环栈）；preempt 的 bss 多出任务池（8×48 B + 位图/链表头 ≈ 444 B）。
-3. RTOS 内核开销：uC/OS-II < uC/OS-III < ThreadX < FreeRTOS < RT-Thread（text 33.0 → 40.2 KB）。
-4. C/C++ system 后端：裸机（coop/preempt）完全一致；RTOS 下 C++ 比 C 约多 +300~380 B text、+350~440 B bss。**选 C 后端最省**。
-5. 每任务额外成本：RTOS 需 TCB + 独立任务栈（栈按应用配置另计）；xtask 仅静态 TCB（coop 28 B / preempt 48 B 池槽），无栈。
+
+1. 全裸最省（134 B text）；代价是调度逻辑全部自写。
+2. 裸机 xtask（coop 11.2 KB）是最省的"带调度"方案，且**无独立任务栈**（run-to-completion，任务栈复用主循环栈）；preempt 的 bss 多出任务池（448 B）。
+3. RTOS 内核 text：**mini-os（14.4 KB）< FreeRTOS（17.6 KB）< RT-Thread（18.1 KB）**；mini-os 比 FreeRTOS 省 ~3.2 KB、比 RT-Thread 省 ~3.7 KB(mini-os未做smp mpu等部件做完差距不大都在17kb到18kb左右内核源码就这么大不太好压了除非主动裁剪功能)。
+4. RTOS 内核 text：**mini-os（14.4 KB）< FreeRTOS（17.6 KB）< RT-Thread（18.1 KB）**，mini-os 当前省～3.2–3.7 KB；**该差距主要来自功能集差异**——mini-os 未实现 SMP/MPU/ 内存保护等部件，补齐后预计与 FreeRTOS/RT-Thread 同级（17–18 KB 区间）。完整内核的 text 本体在此量级属正常，进一步压缩只能靠裁剪功能，调 `CONFIG_RTT_HEAP_SIZE`/`CONFIG_FREERTOS_HEAP_SIZE` 等可对齐。
+5. C/C++ system 后端：RTOS 下 C++ 比 C 约 +100~140 B text、+350~400 B bss；裸机几乎一致（+84 B text / +32 B bss）。**选 C 后端最省**。
+6. **libc 的影响（4.1 vs 4.2）**：完整 newlib 比 nano 普遍 **+24.6 KB text、+~1.65 KB data**（stdio 结构），bss 仅 +~48 B；RT-Thread 例外多 ~6.4 KB（其 kservice 配置为复用 libc 格式化 `RT_KLIBC_USING_LIBC_VSNPRINTF`，拉入完整 vfprintf）。libc 为常量开销，不影响后端间相对比较；追求最小体积用 `--specs=nano.specs`。
+7. 每任务额外成本：RTOS 需 TCB + 独立任务栈（栈按应用配置另计）；xtask 仅静态 TCB（coop 28 B / preempt 48 B 池槽），无栈。
 
 ---
 
 ## 5. 裁剪建议
 
-1. 关日志（`CONFIG_SYS_LOG_LEVEL=0`）——单条 `LOG_*` 宏即占空间，关掉省最多。
-2. 开 LTO（`CONFIG_BUILD_NO_LTO=0`）——链接期合并重复、去死代码。
+1. 关日志（不选 `CONFIG_SYS_LOG_USE_*` 后端或减少日志量）——单条 `LOG_*` 宏即占空间，关掉省最多。
+2. 用 `-Os` + `-ffunction-sections -fdata-sections -Wl,--gc-sections`（见 §6.2）去死代码。
 3. 仅选 `CONFIG_OSAL_NULL` 后端（裸机）时最省，但需自己实现调度。
 4. 不要编入不用的 VFS / HAL：依赖由 CMake 源集合决定，未引用即不进二进制。
-5. `err_section` 仅在确有独立 ROM 区 / 诊断需求时开 `CONFIG_ERR_SECTION=1`。
+5. `err_section` 仅在确有独立 ROM 区 / 诊断需求时保留 `error_symbols.ld` 链接。
 
 ---
 
@@ -123,7 +149,7 @@
 
 | Kconfig / 配置 | 取值 | 影响 |
 | :--- | :--- | :--- |
-| `CONFIG_OSAL_NULL` | `y` | 放弃 FreeRTOS/RT-Thread/ThreadX/UCOS，用裸机 OSAL——RAM 下降主因（RTOS 每任务 TCB+独立栈，xtask 复用主循环栈） |
+| `CONFIG_OSAL_NULL` | `y` | 放弃 FreeRTOS/RT-Thread，用裸机 OSAL——RAM 下降主因（RTOS 每任务 TCB+独立栈，xtask 复用主循环栈） |
 | `CONFIG_XTASK_PREEMPT` | `y` | 抢占式 xtask 协程 + `CONFIG_XTASK_COROUTINE` |
 | `# CONFIG_SYSTEM_SCRUBBER` | 未设 | 关启动内存 scrubber |
 | `# CONFIG_SYSTEM_CMD` | 未设 | 关命令行交互 |
@@ -140,7 +166,8 @@
 4. **若需进一步压 RAM**：调小队列缓冲（`CONFIG_OSAL_NULL_QUEUE_BUF_SZ`，当前 1024）、关 `CONFIG_EVENT_BUS`/`CONFIG_VIRQ`（当前为 `y`）、收缩任务池。
 
 ---
-
+### 6.4 关于cpp
+>C++ 体积可控的前提：`-fno-exceptions -fno-rtti` + 避免 iostream（用 printf / 裸输出）+ `--specs=nano.specs`。未裁剪时 C++ 可能 + 数 KB，属配置问题而非语言问题，但如果大量使用模板也会导致体积膨胀。
 ## 相关文档
 
 - [getting_started.md](getting_started.md) · [design_decisions.md](design_decisions.md)

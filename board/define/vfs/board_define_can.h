@@ -1,8 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * CAN VFS 板级配置宏 (vfs/can) — 中间件默认值 + 板级覆盖入口
- * 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file board_define_can.h
+ *@brief board define can 头文件
+ *@author H-000-H
+ *@details
+ *   CAN VFS 板级配置宏 (vfs/can) — 中间件默认值 + 板级覆盖入口
+ *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
  */
+
 #ifndef BOARD_DEFINE_CAN_H
 #define BOARD_DEFINE_CAN_H
 

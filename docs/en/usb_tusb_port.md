@@ -11,7 +11,7 @@
 
 ## 1. Prerequisites
 
-- TinyUSB comes via the **ESP-IDF component** (`esp_tinyusb` / registry, declared in `idf_component.yml`); not vendored under `lib/`.
+- TinyUSB is pulled via FetchContent (`mini_tree_link_tinyusb`, see [ecosystem.md](ecosystem.md)); not vendored under `lib/`.
 - The board `dtsi/` provides the USB controller node (see `board/dtsi/example-soc.dtsi`).
 - An `CONFIG_OSAL_*` backend is selected (USB interrupts need the OSAL interrupt wrapper).
 

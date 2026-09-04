@@ -45,6 +45,7 @@ _SCAN_DIRS = [
     "interrupt",
     "algorithm",
     "time_slice",
+    "net",
 ]
 
 _SOURCE_EXTENSIONS = {".c", ".cpp", ".cc", ".cxx"}
@@ -118,13 +119,22 @@ def _build_entries(flags: list[str], sources: list[Path], headers: list[Path]) -
     entries: list[dict] = []
     root_str = str(_ROOT)
 
-    # 源文件：直接使用 compile_flags.txt 的参数（-std=gnu17 等）
+    # 源文件：C++ 扩展名需去掉 -std 后按语言指定 gnu++17，与头文件分支一致；
+    # 否则 clangd 会用全局 -std=gnu17 把 .cpp 当 C 解析，导致 etl::optional 等全报错。
+    _cpp_no_std = [f for f in flags if not f.startswith("-std")]
     for src in sources:
-        entries.append({
-            "directory": root_str,
-            "file": str(src),
-            "arguments": ["clang"] + flags + ["-c", str(src)],
-        })
+        if src.suffix in {".cpp", ".cc", ".cxx"}:
+            entries.append({
+                "directory": root_str,
+                "file": str(src),
+                "arguments": ["clang"] + _cpp_no_std + ["-x", "c++", "-std=gnu++17", "-c", str(src)],
+            })
+        else:
+            entries.append({
+                "directory": root_str,
+                "file": str(src),
+                "arguments": ["clang"] + flags + ["-c", str(src)],
+            })
 
     # 头文件：去掉 -std 后按扩展名指定语言，避免与源文件的 -std 冲突
     no_std_flags = [f for f in flags if not f.startswith("-std")]

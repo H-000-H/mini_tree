@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * compiler_compat_poison — 禁止堆分配与 stdio 输出的 GCC poison 层
- *
- * 在标准头之后 include, 将 malloc/free/printf 等标记为毒死符号,
- * 嵌入式全栈禁止动态内存与标准 IO; 豁免宏: ALLOW_HEAP_ALLOC / ALLOW_STDIO_OUTPUT。
+/**
+ *@copyright SPDX-License-Identifier: Apache-2.0
+ *@file compiler_compat_poison.h
+ *@brief compiler compat poison 头文件
+ *@author H-000-H
+ *@details
+ *   compiler_compat_poison — 禁止堆分配与 stdio 输出的 GCC poison 层
+ *   在标准头之后 include, 将 malloc/free/printf 等标记为毒死符号,
+ *   嵌入式全栈禁止动态内存与标准 IO; 豁免宏: ALLOW_HEAP_ALLOC / ALLOW_STDIO_OUTPUT。
  */
+
 #ifndef COMPILER_COMPAT_POISON_H
 #define COMPILER_COMPAT_POISON_H
 
@@ -22,7 +26,7 @@
  *
  * 注意: 不 poison system — Xtensa/ESP-IDF 头文件宏参数名会冲突.
  *
- * 内存 API: 项目代码须用 COMPAT_MEM_SET / COMPAT_MEM_COPY / COMPAT_MEM_MOVE
+ * 内存 API: 项目代码须用 MINI_MEM_SET / MINI_MEM_COPY / MINI_MEM_MOVE
  * (compiler_compat.h), 禁止直接调用 memset/memcpy/memmove; 官方 SDK 目录除外.
  */
 #if defined(__GNUC__)
