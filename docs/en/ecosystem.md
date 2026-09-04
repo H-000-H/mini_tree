@@ -4,7 +4,7 @@
 >
 > Capability expansion follows a **link-as-a-block** model: link in the needed open-source library on demand, and supply configuration plus hardware glue through a board-level port.
 >
-> **`lib/` holds only the vendors** (FreeRTOS, RT-Thread, ETL); TinyUSB / lwIP are **config-time FetchContent** (the root CMake directly `include`s their `cmake/*.cmake`), and all other open-source blocks are **link-time FetchContent** (a local `lib/<Name>` still wins; clone manually for offline use). Closed-source middleware requiring paid commercial licenses is **not** integrated. Licenses live in each library and in [`NOTICE`](../NOTICE).
+> **`lib/` holds only the vendors** (mini-os, FreeRTOS, RT-Thread, ETL); TinyUSB / lwIP are **config-time FetchContent** (the root CMake directly `include`s their `cmake/*.cmake`), and all other open-source blocks are **link-time FetchContent** (a local `lib/<Name>` still wins; clone manually for offline use). Closed-source middleware requiring paid commercial licenses is **not** integrated. Licenses live in each library and in [`NOTICE`](../NOTICE).
 
 | Item | Content |
 | :--- | :--- |
@@ -17,7 +17,7 @@
 
 | Strategy | Behavior | Components |
 | :--- | :--- | :--- |
-| **Vendor (in git)** | Sources in `lib/`, committed with the repo | **FreeRTOS**, **RT-Thread**, **ETL** |
+| **Vendor (in git)** | Sources in `lib/`, committed with the repo | **mini-os**, **FreeRTOS**, **RT-Thread**, **ETL** |
 | **Config-time Fetch** | Root CMake directly `include`s `cmake/*.cmake`, local-or-fetch | **TinyUSB**, **lwIP** |
 | **Link-time Fetch** | Pulled only when `mini_tree_link_*` is called; clone to `lib/<Name>` for offline | littlefs, FatFs, MultiButton, MCUBoot, coreMQTT, LVGL, u8g2, FlashDB, SFUD, EasyFlash, EasyLogger… |
 | **C++ base (in by default)** | ETL in `lib/etl`; root CMake always `mini_tree_link_etl(mini_tree)` | Upper-layer C++ / `SYSTEM_CPP` base |
@@ -75,6 +75,7 @@ A `lib/...` path is the conventional location; **fetched blocks may exist only i
 
 | Library | Path | Version | Role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
+| mini-os | `lib/mini-os` | in-tree | Minimal RTOS kernel (Cortex-M only, freestanding) | `CONFIG_OSAL_MINI_OS` |
 | FreeRTOS | `lib/freeRTOS` | Kernel V11.3.0 | RTOS kernel | `CONFIG_OSAL_FREERTOS` |
 | RT-Thread | `lib/rtthread` | v5.3.0 | RTOS kernel | `CONFIG_OSAL_RTTHREAD` |
 | (Bare metal) | `time_slice/task` | — | Cooperative scheduling | `CONFIG_OSAL_NULL` |

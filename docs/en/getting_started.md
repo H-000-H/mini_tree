@@ -81,7 +81,7 @@ The root `CMakeLists.txt` runs the same logic during the configure stage (the ES
 | :--- | :--- | :--- |
 | Platform | `PLATFORM_ARM_CM4F` etc. | architecture hint (paired with the toolchain) |
 | Multi-core | `CPU_CORES` / `AMP_MODE` | 1=single core; 2=AMP |
-| OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | runtime backend: bare-metal (cooperative / preemptive) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
+| OSAL | `OSAL_NULL` / `MINI_OS` / `FREERTOS` / `RTTHREAD` | runtime backend: bare-metal (cooperative / preemptive) / mini-os (in-tree, Cortex-M only) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
 | OSAL Capacity | `OSAL_NULL_MAX_QUEUES` (base queue count, +1 auto when EventBus on) / `OSAL_NULL_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | queue & heap RAM (backend-scoped) |
 | System | `SYSTEM` / `SYSTEM_CPP` / `SYSTEM_C` | master switch (default on) + language backend |
 | Log | `SYS_LOG_USE_PRINTF` / `OSAL` | `SYS_LOG*` backend |
@@ -136,7 +136,7 @@ The `mini_tree` target will:
 
 1. Run `genconfig.py`
 2. Run dtc-lite (scan `DRIVER_REGISTER` in vfs/bus/drivers and generate the compile-time probe table)
-3. Pick OSAL / SYSTEM sources per `.config`; link the vendored kernels in `lib/` (FreeRTOS v11.3.0 / RT-Thread v5.3.0)
+3. Pick OSAL / SYSTEM sources per `.config`; link the vendored kernels in `lib/` (mini-os / FreeRTOS v11.3.0 / RT-Thread v5.3.0)
 4. Config-time bricks (TinyUSB / lwIP) are directly `include`d by the root CMake via their `cmake/*.cmake`; the rest are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
 
 Language-backend comparison: [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp); USB board-level contract: [usb_tusb_port.md](usb_tusb_port.md); brick list: [ecosystem.md](ecosystem.md).
@@ -192,6 +192,8 @@ int main(void)
 #if defined(CONFIG_OSAL_NULL)
     for (;;)
         mini_tree_system_loop();
+#elif defined(CONFIG_OSAL_MINI_OS)
+    mini_os_schedule_start();
 #elif defined(CONFIG_OSAL_FREERTOS)
     vTaskStartScheduler();
 #elif defined(CONFIG_OSAL_RTTHREAD)
@@ -213,7 +215,7 @@ mini_tree::system_start_tasks();   /* probe + framework tasks */
 /* optional: create business tasks via osal_task_create */
 
 system_init_complete();
-// then start the scheduler (vTaskStartScheduler / rt_system_scheduler_start / mini_tree_system_loop)
+// then start the scheduler (vTaskStartScheduler / rt_system_scheduler_start / mini_os_schedule_start / mini_tree_system_loop)
 ```
 
 > Under bare-metal (`CONFIG_OSAL_NULL`), the C `osal_task_create` **always returns `OSAL_ERR_NOTSUPP`**:

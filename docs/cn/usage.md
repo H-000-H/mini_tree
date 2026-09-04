@@ -77,7 +77,7 @@
 | `core` / `osal` / `interrupt` / `system_*` | 运行时基础设施 | OSAL 后端可选依赖 `lib/` 内核 |
 | `tools` | dtc-lite、genconfig、gen_compile_db、menuconfig | 否 |
 | `ide/stubs` | 无构建时的 clangd 占位头 | 否 |
-| `lib/` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP 为配置期 Fetch，其余链接期 | 开源积木，见 [ecosystem.md](ecosystem.md) |
+| `lib/` | vendor：mini-os / FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP 为配置期 Fetch，其余链接期 | 开源积木，见 [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -118,7 +118,7 @@ mini_tree_pre_os_init()
   → （业务/平台可选准备）
 mini_tree_start_tasks()      // 含 board_driver_probe_all
 system_init_complete()
-  → vTaskStartScheduler / rt_system_scheduler_start / mini_tree_system_loop（裸机）
+  → vTaskStartScheduler / rt_system_scheduler_start / mini_os_schedule_start / mini_tree_system_loop（裸机）
 ```
 
 ---

@@ -4,7 +4,7 @@
 >
 > 能力扩展走 **积木型链接**：需要什么能力，就按需链入对应开源库，用板级 port 补齐配置与硬件胶水。
 >
-> **`lib/` 只保留 vendor**（FreeRTOS、RT-Thread、ETL 三个）；TinyUSB / lwIP 为**配置期 FetchContent**（根 CMake 直接 include 对应 `cmake/*.cmake`），其余开源积木为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
+> **`lib/` 只保留 vendor**（mini-os、FreeRTOS、RT-Thread、ETL 四个）；TinyUSB / lwIP 为**配置期 FetchContent**（根 CMake 直接 include 对应 `cmake/*.cmake`），其余开源积木为**链接期 FetchContent**（本地 `lib/<Name>` 仍优先，离线可手动 clone）。**不接入**需付费商业授权的闭源中间件。许可证见各库及 [`NOTICE`](../NOTICE)。
 
 | 项 | 内容 |
 | :--- | :--- |
@@ -17,7 +17,7 @@
 
 | 策略 | 做法 | 组件 |
 | :--- | :--- | :--- |
-| **vendor（进 git）** | 源码在 `lib/`，随仓库提交 | **FreeRTOS**、**RT-Thread**、**ETL** |
+| **vendor（进 git）** | 源码在 `lib/`，随仓库提交 | **mini-os**、**FreeRTOS**、**RT-Thread**、**ETL** |
 | **配置期 Fetch** | 根 CMake 直接 `include(cmake/*.cmake)`，local-or-fetch | **TinyUSB**、**lwIP** |
 | **链接期 Fetch** | 调用 `mini_tree_link_*` 时才拉取；可手动 clone 到 `lib/<Name>` 离线 | littlefs、FatFs、MultiButton、MCUBoot、coreMQTT、LVGL、u8g2、FlashDB、SFUD、EasyFlash、EasyLogger… |
 | **C++ 基础（默认进库）** | ETL 在 `lib/etl`；根 CMake **始终** `mini_tree_link_etl(mini_tree)` | 上层 C++ / `SYSTEM_CPP` 基座 |
@@ -75,6 +75,7 @@
 
 | 库 | 路径 | 版本 | 作用 | 接入方式 |
 | :--- | :--- | :--- | :--- | :--- |
+| mini-os | `lib/mini-os` | 随仓自研 | 最小 RTOS 内核（仅 Cortex-M，freestanding） | `CONFIG_OSAL_MINI_OS` |
 | FreeRTOS | `lib/freeRTOS` | Kernel V11.3.0 | RTOS 内核 | `CONFIG_OSAL_FREERTOS` |
 | RT-Thread | `lib/rtthread` | v5.3.0 | RTOS 内核 | `CONFIG_OSAL_RTTHREAD` |
 | （裸机） | `time_slice/task` | — | 协作式调度 | `CONFIG_OSAL_NULL` |

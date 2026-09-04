@@ -81,7 +81,7 @@ python3 tools/genconfig.py Kconfig build/generated/kconfig/mini_tree --config .c
 | :--- | :--- | :--- |
 | Platform | `PLATFORM_ARM_CM4F` 等 | 架构提示（与工具链配合） |
 | Multi-core | `CPU_CORES` / `AMP_MODE` | 1=单核；2=AMP |
-| OSAL | `OSAL_NULL` / `FREERTOS` / `RTTHREAD` | 运行时后端：裸机 / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
+| OSAL | `OSAL_NULL` / `MINI_OS` / `FREERTOS` / `RTTHREAD` | 运行时后端：裸机 / mini-os（自研，仅 Cortex-M）/ FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
 | OSAL 容量 | `OSAL_NULL_MAX_QUEUES`（基础队列数，EventBus 开自动 +1）/ `OSAL_NULL_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | 队列/堆内存（仅对应后端可见） |
 | System | `SYSTEM` / `SYSTEM_CPP` / `SYSTEM_C` | 总开关（默认自开）+ 语言后端 |
 | Log | `SYS_LOG_USE_PRINTF` / `OSAL` | `SYS_LOG*` 后端 |
@@ -136,7 +136,7 @@ set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
 
 1. 跑 `genconfig.py`
 2. 跑 `dtc-lite`（扫描 vfs/bus/drivers 中的 `DRIVER_REGISTER`，生成编译期 probe 表）
-3. 按 `.config` 挑选 OSAL / SYSTEM 源；链入 `lib/` 中的 vendor 内核（FreeRTOS v11.3.0 / RT-Thread v5.3.0）
+3. 按 `.config` 挑选 OSAL / SYSTEM 源；链入 `lib/` 中的 vendor 内核（mini-os / FreeRTOS v11.3.0 / RT-Thread v5.3.0）
 4. 配置期积木（TinyUSB / lwIP）由根 CMake 直接 `include` 对应 `cmake/*.cmake`；其余可选积木由产品侧 `mini_tree_link_*` 链接期点亮（首次可能联网 Fetch）
 
 语言后端对照见 [runtime_services.md](runtime_services.md#3-system_c-vs-system_cpp)；USB 板级契约见 [usb_tusb_port.md](usb_tusb_port.md)；积木清单见 [ecosystem.md](ecosystem.md)。
@@ -192,6 +192,8 @@ int main(void)
 #if defined(CONFIG_OSAL_NULL)
     for (;;)
         mini_tree_system_loop();
+#elif defined(CONFIG_OSAL_MINI_OS)
+    mini_os_schedule_start();
 #elif defined(CONFIG_OSAL_FREERTOS)
     vTaskStartScheduler();
 #elif defined(CONFIG_OSAL_RTTHREAD)

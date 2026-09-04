@@ -1,18 +1,18 @@
 # mini_tree
 
 > 平台无关的嵌入式中间件
-> 采用 Linux 风格设备树与驱动模型，统一裸机 (Bare-Metal)、FreeRTOS、RT-Thread 的外设访问接口；零厂商 SDK 绑定 —— 芯片 HAL、引脚复用及板级 DTS 完全由您的平台工程提供。
+> 采用 Linux 风格设备树与驱动模型，统一裸机 (Bare-Metal)、mini-os、FreeRTOS、RT-Thread 的外设访问接口；零厂商 SDK 绑定 —— 芯片 HAL、引脚复用及板级 DTS 完全由您的平台工程提供。
 
 > Platform-agnostic embedded middleware
-> Using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, FreeRTOS, and RT-Thread; zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
+> Using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, mini-os, FreeRTOS, and RT-Thread; zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
 
 ---
 
 ## 概述 / Overview
 
-mini_tree 是一个平台无关的嵌入式中间件，采用 Linux 风格设备树与驱动模型，统一裸机 (Bare-Metal)、FreeRTOS、RT-Thread 的外设访问接口。零厂商 SDK 绑定 —— 芯片 HAL、引脚复用及板级 DTS 完全由您的平台工程提供。
+mini_tree 是一个平台无关的嵌入式中间件，采用 Linux 风格设备树与驱动模型，统一裸机 (Bare-Metal)、mini-os、FreeRTOS、RT-Thread 的外设访问接口。零厂商 SDK 绑定 —— 芯片 HAL、引脚复用及板级 DTS 完全由您的平台工程提供。
 
-mini_tree is a platform-agnostic embedded middleware using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, FreeRTOS, and RT-Thread. Zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
+mini_tree is a platform-agnostic embedded middleware using a Linux-style Device Tree & Driver Model to unify peripheral access across Bare-Metal, mini-os, FreeRTOS, and RT-Thread. Zero vendor SDK lock-in — chip HAL, pinmux, and board DTS are entirely supplied by your platform project.
 
 ---
 
@@ -52,11 +52,12 @@ mini_tree is a platform-agnostic embedded middleware using a Linux-style Device 
 
 ---
 
-## OSAL — 一套 API，三种后端 / One API, Three Backends
+## OSAL — 一套 API，四种后端 / One API, Four Backends
 
 | 后端 / Backend | 模型 / Model | 依赖 / Dependency |
 |:---|:---|:---|
 | `CONFIG_OSAL_NULL` | 协作式时间片 / 抢占式（裸机）/ Cooperative Time-Slice / Preemptive (bare-metal) | 无 / None |
+| `CONFIG_OSAL_MINI_OS` | 抢占式（仅 Cortex-M）/ Preemptive (Cortex-M only) | `lib/mini-os`（自研，freestanding / in-tree, freestanding） |
 | `CONFIG_OSAL_FREERTOS` | 抢占式 / Preemptive | FreeRTOS v11.3.0 |
 | `CONFIG_OSAL_RTTHREAD` | 抢占式 / Preemptive | RT-Thread v5.3.0 |
 
@@ -86,7 +87,7 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) picks one scheduler from the `Kconfi
 - **Kconfig** — `.config` → `genconfig.py` → `config.h`；通过 `menuconfig.py` 交互式配置。官方 kconfiglib（作者 Ulf Magnusson，ISC 许可证）已内置于 `tools/_vendor/` —— 无需 `pip install`；由 `tools/_vendor_loader.py` 前置到 `sys.path`。三个 `.py` 文件与上游保持同步，未做修改。/ interactive configuration via `menuconfig.py`. Official kconfiglib (by Ulf Magnusson, ISC license) is vendored under `tools/_vendor/` — no `pip install` needed; prepended to `sys.path` by `tools/_vendor_loader.py`. The three `.py` files stay in sync with upstream, unmodified.
 - **dtc-lite** — 轻量级 DTS 编译器（`pip install lark`），自动生成探测表与板级头文件。/ Lightweight DTS compiler (`pip install lark`), auto-generating probe tables & board headers.
 - **代码风格 / Coding style** — `.clang-format`（Allman、单语句无花括号、短函数单行、4 空格、200 列宽）+ 分层 `.clang-tidy`（命名）；`app/` 中推荐，其下层级强制。/ (Allman, no braces for single statements, one-line short functions, 4-space, 200 cols) + layered `.clang-tidy` (naming); recommended in `app/`, mandatory below.
-- **目标平台 / Targets** — ARM Cortex-M0 / M0+ / M3 / M4F / M7、RISC-V 32 位；支持双核异构 AMP —— 三种 OSAL 后端（裸机 / FreeRTOS / RT-Thread）均可覆盖。/ ARM Cortex-M0 / M0+ / M3 / M4F / M7, RISC-V 32-bit; dual-core heterogeneous AMP supported — covered by all three OSAL backends (Bare-Metal / FreeRTOS / RT-Thread).
+- **目标平台 / Targets** — ARM Cortex-M0 / M0+ / M3 / M4F / M7、RISC-V 32 位；支持双核异构 AMP —— 裸机 / FreeRTOS / RT-Thread 后端全平台可覆盖，mini-os 后端覆盖 Cortex-M（详见 [docs/cn/mini-os.md](docs/cn/mini-os.md)）。/ ARM Cortex-M0 / M0+ / M3 / M4F / M7, RISC-V 32-bit; dual-core heterogeneous AMP supported — Bare-Metal / FreeRTOS / RT-Thread cover every target, while the mini-os backend covers Cortex-M (see [docs/en/mini-os.md](docs/en/mini-os.md)).
 
 ---
 
@@ -98,7 +99,7 @@ The bare-metal backend (`CONFIG_OSAL_NULL`) picks one scheduler from the `Kconfi
 > TinyUSB · lwIP · cJSON · LVGL · u8g2 · littlefs · FatFs · SFUD · Mbed TLS · coreMQTT · coreHTTP · nanopb · miniz · MCUBoot · FreeModbus · libmodbus · CMSIS-DSP · MultiButton · EasyFlash · EasyLogger · FlashDB
 
 > **内置于 `lib/` / Vendored in `lib/`：**
-> FreeRTOS · RT-Thread · **ETL**（无堆 C++ 容器，始终链接 / heap-free C++ containers, always linked）
+> **mini-os**（自研最小 RTOS 内核 / in-tree minimal RTOS kernel）· FreeRTOS · RT-Thread · **ETL**（无堆 C++ 容器，始终链接 / heap-free C++ containers, always linked）
 
 ---
 

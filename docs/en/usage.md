@@ -37,7 +37,7 @@
 | **VIRQ** | virtual IRQ number + top/bottom halves | `interrupt/` |
 | **status / MINI_ERR_*** | unified error codes | `core/include/status.h` |
 | **Brick** | optional open-source capability block (GUI/network/FS…) | [ecosystem.md](ecosystem.md); `mini_tree_link_*` |
-| **vendor / Fetch** | only FreeRTOS / RT-Thread / ETL live permanently in `lib/`; TinyUSB / lwIP are config-time FetchContent, the rest link-time | [ecosystem.md](ecosystem.md) §0 |
+| **vendor / Fetch** | only mini-os / FreeRTOS / RT-Thread / ETL live permanently in `lib/`; TinyUSB / lwIP are config-time FetchContent, the rest link-time | [ecosystem.md](ecosystem.md) §0 |
 | **two-phase ignition** | pre-os → start-tasks → complete → scheduler | `system_init.h` / `system_init.hpp` |
 
 ---
@@ -77,7 +77,7 @@
 | `core` / `osal` / `interrupt` / `system_*` | runtime infrastructure | OSAL backends may pull kernels from `lib/` |
 | `tools` | dtc-lite, genconfig, gen_compile_db, menuconfig | No |
 | `ide/stubs` | clangd placeholder headers without a build | No |
-| `lib/` | vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP at config time, the rest at link time | Open-source bricks, see [ecosystem.md](ecosystem.md) |
+| `lib/` | vendored: mini-os / FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP at config time, the rest at link time | Open-source bricks, see [ecosystem.md](ecosystem.md) |
 
 ---
 
@@ -118,7 +118,7 @@ mini_tree_pre_os_init()
   → (business/platform optional prep)
 mini_tree_start_tasks()      // includes board_driver_probe_all
 system_init_complete()
-  → vTaskStartScheduler / rt_system_scheduler_start / mini_tree_system_loop (bare-metal)
+  → vTaskStartScheduler / rt_system_scheduler_start / mini_os_schedule_start / mini_tree_system_loop (bare-metal)
 ```
 
 ---

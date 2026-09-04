@@ -7,6 +7,17 @@
 
 ## [Unreleased] / 未发布
 
+### OSAL 与文档 / OSAL & Docs
+
+- **新增 mini-os 后端（OSAL 第四后端）**：`CONFIG_OSAL_MINI_OS`（仅 Cortex-M，`depends on !PLATFORM_RISCV && !PLATFORM_ESP32`）接入随仓自研内核 `lib/mini-os`——freestanding 无 libc 依赖，32 级抢占调度（就绪位图 O(1)）+ 线程/定时器双时间轮 + 互斥锁优先级继承，堆为链接脚本区不计 bss；四后端中 text/bss 最小。板级接线：`SysTick_Handler` → `mini_os_systick_handler()`、`PendSV_Handler` → `pendsv_handler()`（小写）、链接脚本含 `mini-os-heap.ld`、启动遍历 `.init_array`。专题文档 `docs/cn/mini-os.md` / `docs/en/mini-os.md`。
+  **New mini-os backend (OSAL's fourth)**: `CONFIG_OSAL_MINI_OS` (Cortex-M only) wires in the in-tree kernel `lib/mini-os` — freestanding, 32-level preemptive scheduling (O(1) ready bitmap) + thread/timer dual time wheels + mutex priority inheritance; the heap is a linker region and not counted in bss. Smallest text/bss of the four backends. Board wiring: `SysTick_Handler` → `mini_os_systick_handler()`, `PendSV_Handler` → `pendsv_handler()` (lowercase), linker script includes `mini-os-heap.ld`, startup iterates `.init_array`. Deep-dive: `docs/cn/mini-os.md` / `docs/en/mini-os.md`.
+- **修复 rtthread 后端 `context_gcc.S` 被静默丢弃**：只选 RTTHREAD 后端时无人启用 ASM，静态库阶段不报错、链接真实固件才缺 `rt_hw_context_switch*` / `rt_hw_interrupt_disable` 等 port 符号；`lib/rtthread/CMakeLists.txt` 现自启用 `enable_language(ASM)`，构建方式无关。
+  **Fixed rtthread backend silently dropping `context_gcc.S`**: with only the RTTHREAD backend nobody enabled ASM — the static library built fine but linking a real firmware missed the port symbols; `lib/rtthread/CMakeLists.txt` now enables `enable_language(ASM)` itself.
+- **`memory_footprint.md` §4 基准重写（11 配置 × newlib-nano/完整 newlib 双口径，arm-none-eabi-gcc 13.3.1/Windows）**：裸机三态 / mini-os / FreeRTOS / RT-Thread × C/C++；旧表（uC/OS-II/III、ThreadX）退役。mini-os 为最省 RTOS 后端（nano ~14.2–14.4 KB text）；完整 newlib 比 nano 约 +24.6 KB text（RT-Thread 例外 +6.4 KB，`RT_KLIBC_USING_LIBC_VSNPRINTF`）；各后端堆口径不同，bss 需剔除可配堆后再比。
+  **`memory_footprint.md` §4 rewritten (11 configs × nano/full-newlib accounting)**: bare-metal tri-state / mini-os / FreeRTOS / RT-Thread × C/C++; the old table (uC/OS-II/III, ThreadX) is retired. mini-os is the leanest RTOS backend (nano ~14.2–14.4 KB text); full newlib costs ~+24.6 KB text over nano (RT-Thread +6.4 KB extra via `RT_KLIBC_USING_LIBC_VSNPRINTF`); exclude configurable heaps before comparing bss.
+- **文档全面同步四后端**：根 `README`（概述/OSAL 表/Ecosystem vendor 清单/Targets）、`NOTICE`（vendor 清单加 mini-os）、`ecosystem` / `getting_started`（含启动示例代码补 `mini_os_schedule_start()` 分支）/ `architecture` / `usage` / `SUMMARY` / `README` 索引 / `osal_switching`（后端对照、优先级、启动、堆口径、板级接线）/ `file_index` / `references` / `api_compatibility` / `design_decisions` / `CHANGELOG`；措辞统一为四后端（mini-os 仅 Cortex-M）。
+  **Docs fully synced to four backends**: root `README` (overview / OSAL table / vendor list / targets), `NOTICE`, `ecosystem` / `getting_started` (startup example now includes the `mini_os_schedule_start()` branch) / `architecture` / `usage` / `SUMMARY` / index `README` / `osal_switching` (backend table, priorities, startup, heap accounting, board wiring) / `file_index` / `references` / `api_compatibility` / `design_decisions` / `CHANGELOG`; wording unified as four backends (mini-os is Cortex-M only).
+
 ### 配置系统 / Configuration
 
 - **`CONFIG_SYSTEM`（默认自开）/ `CONFIG_EVENT_BUS` / `CONFIG_SYSTEM_CMD`（默认关闭）总开关**：System 模块、EventBus、命令系统均可整体裁剪，CMake 按 `.config` 裁剪源文件；另有 `CONFIG_BOTTOM_HALF_QUEUE_DEPTH`、`CONFIG_PRODUCTION_LOG_SLOT_COUNT`、`CONFIG_BOARD_MAX_SAFETY_PINS`、`CONFIG_BOARD_SAFETY_MAX_CALLBACKS`、`CONFIG_FREERTOS_USE_TIMERS`、`CONFIG_FREERTOS_HEAP_SIZE`、`CONFIG_RTT_HEAP_SIZE` 入库。

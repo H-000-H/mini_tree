@@ -39,6 +39,14 @@ A catalog with acknowledgements is in docs/ecosystem.md.
 Infrastructure (vendored under lib/, always present in git)
 ------------------------------------------------------------------------
 
+  mini-os Kernel (in-tree)
+      License:   Apache-2.0
+      Version:   (tracks the repository, see lib/mini-os/)
+      Location:  lib/mini-os/
+      Copyright: Copyright The mini_tree Authors
+      Note:      Self-developed minimal RTOS kernel (Cortex-M port);
+                 freestanding, no libc dependency. See docs/mini-os.md.
+
   FreeRTOS Kernel
       License:   MIT
       Version:   Kernel V11.3.0

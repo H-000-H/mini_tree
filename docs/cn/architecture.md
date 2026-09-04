@@ -89,7 +89,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | `can_hook/` | CAN 钩子扩展 | — |
 | `net/` | 网络协议栈胶水（MQTT 客户端 / PPP 网卡 / USB 网卡），经 lwIP + coreMQTT 等积木，只经 device/VFS 模型触硬件 | `mqtt_client_*`、`pppif_*`、`usbethif_*` |
 | `ui/` | UI 库胶水层（LVGL / u8g2 显示桥接），只经 device/VFS 模型（`DISPLAY_CMD_*`）触显示硬件 | `display_lvgl_flush_callback`、`display_u8g2_flush_frame_buffer` |
-| `lib/` + `cmake/*.cmake` | vendor：FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP 为配置期 FetchContent，其余积木链接期 FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
+| `lib/` + `cmake/*.cmake` | vendor：mini-os / FreeRTOS / RT-Thread / ETL；TinyUSB / lwIP 为配置期 FetchContent，其余积木链接期 FetchContent | OSAL 内核按 Kconfig；其余 `mini_tree_link_*`（见 [ecosystem.md](ecosystem.md)） |
 
 ### 2.1 外设覆盖（当前）
 
@@ -114,7 +114,7 @@ DTSI 中 `#include <厂商头>` → `cpp` 展开 → 属性写成整数 → VFS 
 | — | （可选）业务/平台准备 | 静态配置、额外注册 |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`、TWDT、Flash Scrubber |
 | 3 | `system_init_complete()` | 释放全局中断 |
-| 4 | 调度或裸机循环 | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_tree_system_loop` |
+| 4 | 调度或裸机循环 | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_os_schedule_start` / `mini_tree_system_loop` |
 
 ### 3.2 C++ API（`system_cpp`）
 

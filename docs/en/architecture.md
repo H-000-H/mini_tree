@@ -89,7 +89,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | `can_hook/` | CAN hook extensions | — |
 | `net/` | Network protocol stack glue (MQTT client / PPP netif / USB netif), via lwIP + coreMQTT etc., hardware access only through device/VFS model | `mqtt_client_*`, `pppif_*`, `usbethif_*` |
 | `ui/` | UI library glue layer (LVGL / u8g2 display bridge), hardware access only through device/VFS model (`DISPLAY_CMD_*`) | `display_lvgl_flush_callback`, `display_u8g2_flush_frame_buffer` |
-| `lib/` + `cmake/*.cmake` | vendored: FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP are config-time FetchContent, the rest link-time | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |
+| `lib/` + `cmake/*.cmake` | vendored: mini-os / FreeRTOS / RT-Thread / ETL; TinyUSB / lwIP are config-time FetchContent, the rest link-time | OSAL kernels per Kconfig; the rest via `mini_tree_link_*` (see [ecosystem.md](ecosystem.md)) |
 
 ### 2.1 Peripheral Coverage (Current)
 
@@ -114,7 +114,7 @@ In the DTSI, `#include <vendor_header>` → expanded by `cpp` → properties bec
 | — | (optional) business/platform prep | static config, extra registrations |
 | 2 | `mini_tree_start_tasks()` | `board_driver_probe_all`, TWDT, Flash Scrubber |
 | 3 | `system_init_complete()` | re-enable global interrupts |
-| 4 | scheduler or bare-metal loop | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_tree_system_loop` |
+| 4 | scheduler or bare-metal loop | `vTaskStartScheduler` / `rt_system_scheduler_start` / `mini_os_schedule_start` / `mini_tree_system_loop` |
 
 ### 3.2 C++ API (`system_cpp`)
 
