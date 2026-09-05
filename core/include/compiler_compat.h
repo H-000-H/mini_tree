@@ -819,6 +819,108 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ACQ_REL __ATOMIC_ACQ_REL
 #define MINI_SEQ_CST __ATOMIC_SEQ_CST
 
+/*
+ * 架构判定: 目标核无法内联原子读改写时, GCC 会把 __atomic_* 降级为 libatomic
+ * 库调用, 而嵌入式工具链 (Arm GNU Toolchain 等) 通常不附带 libatomic.a → 链接
+ * undefined reference。此类目标改用关中断临界区的软件原子 (与
+ * CONFIG_OSAL_SPINLOCK_IRQ_DISABLE=y 的 "关中断即原子" 设计语义一致):
+ *   - ARMv6 及以下 (Cortex-M0/M0+ 的 v6-M): 只有 32 位 LDREX/STREX, 无
+ *     LDREXB/STREXB, 1 字节 CAS 无法内联
+ *   - RISC-V 无 A 扩展 (RV32I/E 等): 完全没有原子指令
+ * 其余目标 (ARMv7+ 含 M3/M4/M7、RISC-V 带 A 扩展、x86) 仍走 __atomic 内建。
+ */
+#if (defined(__arm__) || defined(__thumb__)) && defined(__ARM_ARCH) && (__ARM_ARCH < 7)
+#   define MINI_ATOMIC_IRQ_SOFT_ATOMIC 1
+#elif defined(__riscv) && !defined(__riscv_a)
+#   define MINI_ATOMIC_IRQ_SOFT_ATOMIC 1
+#else
+#   define MINI_ATOMIC_IRQ_SOFT_ATOMIC 0
+#endif
+
+#if MINI_ATOMIC_IRQ_SOFT_ATOMIC
+
+/*
+ * 软件原子: PRIMASK (ARM) / mstatus.MIE (RISC-V, M 模式裸机) 关中断临界区。
+ * 内联 asm 零依赖, 不引入任何厂商库/第三方符号。memory clobber 防止编译器把
+ * 临界区内访存重排到关中断之外; 单核关中断期间无并发, 内存序参数天然满足
+ * (单核无缓存无需 DMB/fence)。假设临界区内不发生异常/陷阱切换 (与框架裸机
+ * 调度假设一致)。
+ */
+#if defined(__riscv)
+/* RISC-V: 保存整个 mstatus 并清 MIE(bit3), 恢复时写回 (FreeRTOS RISC-V port 同模式) */
+#   define MINI_ATOMIC_IRQ_SAVE() __extension__({                                   \
+        unsigned long _mini_at_ms;                                                  \
+        __asm__ volatile("csrrc %0, mstatus, %1"                                    \
+                         : "=r"(_mini_at_ms) : "rK"(0x8) : "memory");               \
+        _mini_at_ms; })
+#   define MINI_ATOMIC_IRQ_RESTORE(x)                                               \
+        __asm__ volatile("csrw mstatus, %0" :: "r"(x) : "memory")
+#else
+/* ARM: 保存 PRIMASK 并关中断, 恢复时写回 (嵌套安全, 同 core/src/buffer_pool.c) */
+#   define MINI_ATOMIC_IRQ_SAVE() __extension__({                                   \
+        unsigned long _mini_at_pm;                                                  \
+        __asm__ volatile("mrs %0, primask\ncpsid i"                                 \
+                         : "=r"(_mini_at_pm) :: "memory");                          \
+        _mini_at_pm; })
+#   define MINI_ATOMIC_IRQ_RESTORE(x)                                               \
+        __asm__ volatile("msr primask, %0" :: "r"(x) : "memory")
+#endif
+
+/* 对齐单字 load/store 天然原子 (bool/uint8/uint16/uint32 均单指令), 直接读写 */
+#define MINI_ATOMIC_STORE(p, v, m) (*(p) = (v))
+#define MINI_ATOMIC_LOAD(p, m) (*(p))
+
+#define MINI_ATOMIC_ADD_FETCH(p, v, m) __extension__({                              \
+    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
+    __typeof__(*(p)) _mini_at_new = (__typeof__(*(p)))(*(p) + (v));                 \
+    *(p) = _mini_at_new;                                                            \
+    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
+    _mini_at_new; })
+
+#define MINI_ATOMIC_SUB_FETCH(p, v, m) __extension__({                              \
+    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
+    __typeof__(*(p)) _mini_at_new = (__typeof__(*(p)))(*(p) - (v));                 \
+    *(p) = _mini_at_new;                                                            \
+    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
+    _mini_at_new; })
+
+#define MINI_ATOMIC_FETCH_ADD(p, v, m) __extension__({                              \
+    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
+    __typeof__(*(p)) _mini_at_old = *(p);                                           \
+    *(p) = (__typeof__(*(p)))(_mini_at_old + (v));                                  \
+    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
+    _mini_at_old; })
+
+#define MINI_ATOMIC_FETCH_SUB(p, v, m) __extension__({                              \
+    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
+    __typeof__(*(p)) _mini_at_old = *(p);                                           \
+    *(p) = (__typeof__(*(p)))(_mini_at_old - (v));                                  \
+    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
+    _mini_at_old; })
+
+/* CAS: 成功写入 desired 返回 1; 失败把旧值回写 *expected 返回 0 (与
+ * __atomic_compare_exchange_n 语义一致) */
+#define MINI_ATOMIC_CAS(p, e, d, ms, mf) __extension__({                            \
+    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
+    __typeof__(*(p)) _mini_at_cur = *(p);                                           \
+    bool _mini_at_ok = (_mini_at_cur == *(e));                                      \
+    if (_mini_at_ok) {                                                              \
+        *(p) = (__typeof__(*(p)))(d);                                               \
+    } else {                                                                        \
+        *(e) = _mini_at_cur;                                                        \
+    }                                                                               \
+    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
+    _mini_at_ok; })
+
+#define MINI_ATOMIC_EXCHANGE(p, v, m) __extension__({                               \
+    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
+    __typeof__(*(p)) _mini_at_old = *(p);                                           \
+    *(p) = (__typeof__(*(p)))(v);                                                   \
+    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
+    _mini_at_old; })
+
+#else /* 内联原子可用: __atomic 内建 (原路径, 不变) */
+
 #define MINI_ATOMIC_STORE(p, v, m) __atomic_store_n((p), (v), (m))
 #define MINI_ATOMIC_LOAD(p, m) __atomic_load_n((p), (m))
 #define MINI_ATOMIC_ADD_FETCH(p, v, m) __atomic_add_fetch((p), (v), (m))
@@ -827,6 +929,9 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ATOMIC_FETCH_SUB(p, v, m) __atomic_fetch_sub((p), (v), (m))
 #define MINI_ATOMIC_CAS(p, e, d, ms, mf) __atomic_compare_exchange_n((p), (e), (d), 0, (ms), (mf))
 #define MINI_ATOMIC_EXCHANGE(p, v, m) __atomic_exchange_n((p), (v), (m))
+
+#endif /* MINI_ATOMIC_IRQ_SOFT_ATOMIC */
+
 #define MINI_ATOMIC_RUNTIME_INIT(p, val) MINI_ATOMIC_STORE((p), (val), MINI_RELAXED) /* 运行期初值, 等价 C11 atomic_init */
 
 /** @} */

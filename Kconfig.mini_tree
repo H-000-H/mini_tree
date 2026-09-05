@@ -1904,11 +1904,14 @@ menu "lwIP (TCP/IP Stack)"
 
         config NET_MQTT_USE_COREMQTT
             bool "Use coreMQTT as MQTT protocol engine"
-            default y
+            default n
             help
               用 FreeRTOS coreMQTT 做报文编解码与状态机, 包装层只留连接管理。
-              关闭后 MQTT 客户端不参与链接 (当前无备选实现)。
+              关闭后 MQTT 包装层源文件不编入, coreMQTT 依赖不被拉取
+              (离线环境也不会触发 FetchContent)。当前无备选实现。
               Use FreeRTOS coreMQTT for packet codec & state machine.
+              When disabled, the wrapper sources are not compiled and the
+              coreMQTT dependency is not fetched at all.
 
         config MQTT_NET_BUFFER_SIZE
             int "MQTT network buffer size (bytes, coreMQTT shared TX/RX)"
