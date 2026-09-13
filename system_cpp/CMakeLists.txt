@@ -23,11 +23,19 @@ endif()
 # 系统运行时为纯 C, 源码位于 ../system_c/src; system_cpp/ 现仅保留可选的命令模块
 add_library(system STATIC
     "../system_c/src/system_init.c"
-    "../system_c/src/system_scrubber.c"
     "../system_c/src/system_wdt.c"
     "../system_c/src/task_manager.c"
     "../system_c/src/safe_state.c"
 )
+
+# system_scrubber 的校验原语来自 mini-ota (image_verify_area, 不再自带 CRC 表),
+# 故仅在 CONFIG_SYSTEM_SCRUBBER(已依赖 CONFIG_MINI_OTA) 开启时编入。
+if(EXISTS "${_MINI_TREE_CONFIG}")
+    file(STRINGS "${_MINI_TREE_CONFIG}" _scrubber_choice REGEX "^CONFIG_SYSTEM_SCRUBBER=y$")
+    if(_scrubber_choice)
+        target_sources(system PRIVATE "../system_c/src/system_scrubber.c")
+    endif()
+endif()
 
 # SystemCmd (命令分发器) 是系统层唯一保留的 C++ 模块, 仅 CONFIG_SYSTEM_CMD=y 时编入
 if(EXISTS "${_MINI_TREE_CONFIG}")

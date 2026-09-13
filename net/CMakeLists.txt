@@ -7,10 +7,6 @@ file(GLOB MINI_TREE_NET_PORT_SRCS
     "${CMAKE_CURRENT_SOURCE_DIR}/port/transport_glue/*.c"
 )
 
-# coreMQTT 门控 (fail-closed): 只有 .config 里显式 CONFIG_NET_MQTT_USE_COREMQTT=y
-# 才编入 MQTT 包装层并链接 coreMQTT。键缺失 / .config 不存在 / 读取失败一律视为
-# 关闭 —— 离线环境不会意外触发 FetchContent 网络拉取 (SSH 地址离线无法 clone)。
-# 旧实现是 fail-open (只找 "is not set" 的关闭证据, 找不到就当开启), 已废弃。
 set(MINI_TREE_NET_DOTCONFIG "${CMAKE_CURRENT_SOURCE_DIR}/../.config")
 set(_net_mqtt_on "")
 if(EXISTS "${MINI_TREE_NET_DOTCONFIG}")
@@ -36,6 +32,28 @@ if(_net_mqtt_on)
         port/mqtt/mqtt_client.h
         port/mqtt/mqtt_client.c
         port/mqtt/core_mqtt_config.h
+    )
+endif()
+
+# USB 网卡 (CDC-ECM / RNDIS) 的 lwIP 适配层: 仅 .config 显式 CONFIG_USB_NET=y 时编入。
+# usbethif.c 直接读 CONFIG_USB_NET_MTU / CONFIG_USB_NET_MAC* / CONFIG_USB_NET_*_TIMEOUT_MS
+# 等编译期宏 (Kconfig 里 depends on USB_NET), 并依赖板级 board_define_usb.h 的
+# DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ECM。与 USB 侧软编码门控同源, 同样 fail-closed:
+# 键缺失 / .config 不存在 / 读取失败一律不编 (缺宏会直接编译失败)。
+set(_net_usb_on "")
+if(EXISTS "${MINI_TREE_NET_DOTCONFIG}")
+    file(STRINGS "${MINI_TREE_NET_DOTCONFIG}" _net_usb_y REGEX "^CONFIG_USB_NET=y$")
+    set(_net_usb_on "${_net_usb_y}")
+endif()
+
+if(_net_usb_on)
+    target_sources(mini_tree_net PRIVATE
+        port/usb/usbethif.h
+        port/usb/usbethif.c
+    )
+    # board_define_usb.h (DTC_GEN_COUNT_USB_OTG_HOST / ..._CDC_ECM 等默认值)
+    target_include_directories(mini_tree_net PRIVATE
+        "${CMAKE_SOURCE_DIR}/board/define/vfs"
     )
 endif()
 

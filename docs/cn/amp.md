@@ -2,7 +2,7 @@
 
 > **AMP 是可选积木的一部分，按需自行使用**：默认单核即可完整开发；需要双核/异构时再启用，从核镜像与共享内存布局由你自行拼接。
 >
-> `CPU_CORES` / `AMP_MODE` 与 `hal_cpu_*`（目录 `hal/amp`）如何配合。
+> `CPU_CORES` 与 `hal_cpu_*`（目录 `hal/amp`）如何配合。
 > **完整从核镜像与共享内存布局由平台工程提供**；本仓只给 HAL 契约与 后端自旋锁行为差异。
 
 | 项 | 内容 |
@@ -32,7 +32,7 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 | 项 | 说明 |
 | :--- | :--- |
 | 默认状态 | 单核（`CONFIG_CPU_CORES=1`）；设备模型 / VFS / 统一接口 / EventBus 等核心功能照常工作 |
-| 启用方式 | 需要双核/异构时改 `CONFIG_CPU_CORES=2`（+ `CONFIG_AMP_MODE`） |
+| 启用方式 | 需要双核/异构时把 `CONFIG_CPU_CORES` 改为 `2`（无独立开关：AMP 的互斥锁路径由它派生） |
 | 使用前提 | 平台侧自行提供：从核镜像、共享内存布局、核间通信（IPC）；本仓只给 HAL 契约与后端行为差异 |
 | 参考实现 | [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore)（mini_tree 配套平台示例） |
 | 不启用的影响 | **无**——单核配置是完整可用的基线 |
@@ -45,11 +45,13 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 
 | 符号 | 含义 |
 | :--- | :--- |
-| `CONFIG_CPU_CORES` | `1` 单核（默认）；`2` 双核 |
-| `CONFIG_AMP_MODE` | 依赖 `CPU_CORES > 1`；双核 AMP 时默认 `y` |
+| `CONFIG_CPU_CORES` | `1` 单核（默认）；`2` 双核 AMP |
+| 派生行为 | `CPU_CORES>1` 时裸机互斥锁自动走原子 CAS；单核退化为关中断 + 普通访问（**无独立开关**，由 `CPU_CORES` 派生） |
 
 单核：无需实现从核启动；`hal_cpu_emergency_stop_all_cores` 主要关本核中断。
 双核：平台必须实现从核入口，并保证共享资源协议明确。
+
+> **ARMv6 注意**：M0/M0+（ARMv6-M）无 LDREX/STREX，`MINI_ATOMIC_CAS` 会退化为「关中断 + 读改写」（`core/include/compiler_compat.h` 的 `MINI_ATOMIC_IRQ_SOFT_ATOMIC=1`），**只对本核原子** → 跨核互斥锁没有硬件保证。这类目标配 `CPU_CORES=2` 会被编译期守卫（`core/src/mini_backend_bare.c`）直接 `#error`；确知不存在跨核共享锁时，定义 `MINI_AMP_NO_ATOMIC_OK` 显式豁免。
 
 ---
 
@@ -91,7 +93,7 @@ AMP 属于**可选积木**（与安全类模块同类，见 [runtime_services.md
 
 ## 5. 后端 / 同步
 
-- `CONFIG_OS_BARE` 下，AMP 时互斥等原语倾向 **原子 CAS**；单核可退化为关中断。
+- `CONFIG_OS_BARE` 下，`CPU_CORES>1`（AMP）时互斥等原语走 **原子 CAS**（`MINI_ATOMIC_CAS`）；单核退化为关中断 + 普通访问。OS 后端下从核没有内核调度器（`core/src/mini_backend_freertos.c` 会把请求 Core 1 的任务回退到 Core 0 并告警），AMP 实际只对裸机后端有意义。
 - Spinlock：`MINI_OS_SPINLOCK` vs `ATOMIC` — 多核共享数据优先 atomic，见 [backend_switching.md](backend_switching.md)。
 - **不要**假设另一核上的 `device_*` 锁对你可见；跨核只走明确的共享对象。
 

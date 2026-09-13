@@ -93,19 +93,7 @@
 #define configUSE_TIMERS                        0
 #endif
 
-/*
- * 事件组 (由 Kconfig CONFIG_FREERTOS_EVENT_GROUPS 控制, 默认关闭)
- *
- * 必须显式定义 0/1: FreeRTOS.h 在 configUSE_EVENT_GROUPS 未定义时会
- * 兜底成 1, 仅靠 "不写这一行" 无法真正关掉事件组。
- * CONFIG_FREERTOS_EVENT_GROUPS 来自 kconfig 生成的 config.h — 内核源文件
- * (tasks.c / event_groups.c 等) 并不包含 config.h, 因此
- * lib/freeRTOS/CMakeLists.txt 额外用 -D 注入 MINI_TREE_FREERTOS_EVENT_GROUPS
- * 作为等效开关, 两个宏任一命中即视为开启。
- * 关闭时 event_groups.c 也不会进入内核库的编译单元列表。
- * 注意: 事件组的 "等待并自动清位" 语义依赖软件定时器守护任务,
- * 因此 Kconfig 侧开启本项会 select FREERTOS_USE_TIMERS。
- */
+
 #if defined(CONFIG_FREERTOS_EVENT_GROUPS) || defined(MINI_TREE_FREERTOS_EVENT_GROUPS)
 #define configUSE_EVENT_GROUPS                  1
 /*
@@ -113,7 +101,7 @@
  * (INCLUDE_xTimerPendFunctionCall == 1 && configUSE_TIMERS == 1) 包住:
  * 它不直接改标志, 而是把 vEventGroupSetBitsCallback  pend 给软件
  * 定时器守护任务执行 (ISR 里不能阻塞, 而唤醒等待者需要拿事件组锁)。
- * 不开本宏时 osal_event_set_from_isr() 会因符号缺失编译失败,
+ * 不开本宏时 ISR 内置位事件组 (xEventGroupSetBitsFromISR) 会因符号缺失编译失败,
  * 因此随事件组一起打开 (configUSE_TIMERS 已由 Kconfig select 保证)。
  */
 #define INCLUDE_xTimerPendFunctionCall          1
@@ -132,6 +120,5 @@
 /* CMSIS 向量名映射 — Cube 空 handler 需在 board irq handlers 中改名让位 */
 #define vPortSVCHandler     SVC_Handler
 #define xPortPendSVHandler  PendSV_Handler
-/* SysTick 仍走 Cube SysTick_Handler, 内调 xPortSysTickHandler + HAL_IncTick */
 
 #endif /* FREERTOS_CONFIG_H */

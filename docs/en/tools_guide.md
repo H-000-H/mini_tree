@@ -56,15 +56,21 @@ python3 tools/genconfig.py Kconfig <output_dir> --config .config
 ## 4. menuconfig.py / menuconfig.py
 
 ```bash
-python tools/menuconfig.py     # 终端全屏界面 (curses TUI, 同内核 make menuconfig)
-python tools/guiconfig.py      # 独立图形窗口 (Tkinter GUI, 同内核 make xconfig)
+python tools/menuconfig.py                          # terminal full-screen UI (curses TUI, like `make menuconfig`)
+python tools/_vendor/guiconfig.py Kconfig.non_esp   # standalone GUI window (Tkinter, like `make xconfig`)
 ```
 
 ### No Dependency
 
+Both UIs come from the vendored upstream **kconfiglib** under `tools/_vendor/` (ISC license, see [../../tools/_vendor/README.md](../../tools/_vendor/README.md)) — no system-level kconfig package and no ESP-IDF `esp_idf_kconfig` required. The GUI additionally needs only the stdlib `tkinter` (bundled with the official Windows installer; `python3-tk` on Linux).
 
+`tools/menuconfig.py` is the **TUI launcher**: it prepends `tools/_vendor` to `sys.path`, pins the top-level `Kconfig.non_esp` and `.config`, then calls upstream `menuconfig`. This branch ships **no GUI launcher** — run the upstream script directly. `tools/_vendor/guiconfig.py` is executable as-is (`tools/_vendor` lands on `sys.path`) and the top-level `Kconfig.non_esp` uses `rsource`, so the CWD does not matter; `.config` is written to the CWD by default (`KCONFIG_CONFIG` overrides it):
 
-#### Optional: Modern UI
+```bash
+python tools/_vendor/guiconfig.py Kconfig.non_esp   # run from the repo root; reads/writes ./.config
+```
+
+The `kconfiglib.py` / `menuconfig.py` / `guiconfig.py` under `tools/_vendor/` stay in sync with upstream and are unmodified (see the manifest in `tools/_vendor/README.md`).
 
 
 
@@ -73,6 +79,7 @@ python tools/guiconfig.py      # 独立图形窗口 (Tkinter GUI, 同内核 make
 
 ```c
 #define SYSTEM_SCRUBBER_CRC_BASELINE 0x00000000
+#define SYSTEM_SCRUBBER_IMAGE_LEN    0U
 ```
 
 ---

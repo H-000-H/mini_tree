@@ -199,7 +199,6 @@ set(HAL_SRCS
     "hal/dac/hal_dac.c"
     "hal/tim/hal_tim.c"
     "hal/amp/hal_amp.c"
-    "hal/storage/hal_flash.c"
     "hal/storage/hal_storage.c"
     "hal/system/hal_platform_safety.c"
     "hal/system/hal_sdio.c"
@@ -228,11 +227,17 @@ if(MINI_TREE_SYSTEM)
     # 系统运行时恒为纯 C (system_c/); safe_state 亦为 C, 同属 system_c/
     set(SYSTEM_SRCS
         "system_c/src/system_init.c"
-        "system_c/src/system_scrubber.c"
         "system_c/src/system_wdt.c"
         "system_c/src/task_manager.c"
         "system_c/src/safe_state.c"
     )
+    # system_scrubber 的校验原语来自 mini-ota (image_verify_area, 不再自带 CRC 表),
+    # 故仅在 CONFIG_SYSTEM_SCRUBBER(已依赖 CONFIG_MINI_OTA) 开启时编入;
+    # 否则会因缺 mini-ota 头/符号而编译失败。
+    file(STRINGS "${KCONFIG_DOT}" MINI_TREE_SCRUBBER_ON REGEX "^CONFIG_SYSTEM_SCRUBBER=y$")
+    if(MINI_TREE_SCRUBBER_ON)
+        list(APPEND SYSTEM_SRCS "system_c/src/system_scrubber.c")
+    endif()
     # SystemCmd (命令分发器) 是系统层唯一保留的 C++ 模块, 仅 CONFIG_SYSTEM_CMD=y 时编入
     if(MINI_TREE_SYSTEM_CMD)
         list(APPEND SYSTEM_SRCS "system_cpp/src/system_cmd.cpp")
@@ -447,6 +452,15 @@ if(MINI_TREE_EVENT_BUS)
     list(APPEND CORE_SRCS "core/src/event_bus.c")
 endif()
 
+# 裸机可选: mini_malloc/calloc/free 走 mini-os 内存模块 (Kconfig CONFIG_OS_BARE_MINI_OS_MEM, 默认关)。
+# 只编 lib/mini-os/src/memory.c 单文件 (无调度器/port 依赖), 不链整个 mini-os 内核;
+# 堆区由板级链接脚本提供 __mini_os_heap_start/__mini_os_heap_end
+# (可 INCLUDE lib/mini-os/mini-os-heap.ld)。
+file(STRINGS "${KCONFIG_DOT}" CONFIG_OS_BARE_MINI_OS_MEM_ON REGEX "^CONFIG_OS_BARE_MINI_OS_MEM=y$")
+if(MINI_OS_DEFINE STREQUAL "CONFIG_OS_BARE" AND CONFIG_OS_BARE_MINI_OS_MEM_ON)
+    list(APPEND CORE_SRCS "lib/mini-os/src/memory.c")
+endif()
+
 
 
 add_library(mini_tree STATIC
@@ -566,6 +580,14 @@ if(MINI_OS_DEFINE STREQUAL "CONFIG_OS_BARE" AND MINI_TREE_XTASK)
     )
 endif()
 
+# mini-os 内存模块头路径 (裸机 mini_malloc/calloc/free 的转发目标, 见 CONFIG_OS_BARE_MINI_OS_MEM);
+# 仅在开关开启时暴露, 避免与仓内其它 memory.h 同名冲突。
+if(MINI_OS_DEFINE STREQUAL "CONFIG_OS_BARE" AND CONFIG_OS_BARE_MINI_OS_MEM_ON)
+    target_include_directories(mini_tree PUBLIC
+        "${CMAKE_CURRENT_LIST_DIR}/lib/mini-os/inc"
+    )
+endif()
+
 
 
 target_compile_definitions(mini_tree PUBLIC ${MINI_OS_DEFINE})
@@ -617,8 +639,7 @@ if(MINI_TREE_LWIP_ON)
     target_link_libraries(mini_tree PUBLIC mini_tree_net)
 endif()
 
-# UI 胶水层 (ui/): LVGL / u8g2 移植, 只经 device/VFS 模型触硬件。
-# 同样从 .config 提取开关 (CONFIG_UI_LVGL / CONFIG_UI_U8G2), 两者任一开启即编入。
+# 由本地扩展提供并定义 CONFIG_UI_* 符号; 随仓只提交桥接头 ui/display/display_ui_bridge.h。
 file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_LVGL_ON REGEX "^CONFIG_UI_LVGL=y$")
 file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_U8G2_ON REGEX "^CONFIG_UI_U8G2=y$")
 if(CONFIG_UI_LVGL_ON OR CONFIG_UI_U8G2_ON)

@@ -61,32 +61,25 @@ config CPU_CORES
     range 1 2
     help
       CPU 核心数量。1 = 单核模式（默认）。
-      2 = 双核 AMP 模式，Core 0 跑 RTOS，
-      Core 1 跑裸机代码。
-      设为 2 时板级需实现
-      hal_cpu_secondary_startup()。
+      2 = 双核 AMP 模式: Core 0 跑 RTOS, Core 1 跑裸机代码,
+      板级需实现 hal_cpu_secondary_startup()。
+      AMP 下裸机的互斥锁等同步原语自动改用原子 CAS, 单核退化
+      为关中断 + 普通变量访问 (省开销) —— 无独立开关, 由本项派生。
+      注意: M0/M0+ (ARMv6-M) 无 LDREX/STREX, 跨核原子性无硬件
+      保证; 这类目标配 2 核会被编译期守卫拒绝 (确知不存在跨核
+      共享锁时, 可定义 MINI_AMP_NO_ATOMIC_OK 显式豁免)。
 
       Number of CPU cores. 1 = single-core mode (default).
-      2 = dual-core AMP mode, Core 0 runs the RTOS,
-      Core 1 runs bare-metal code.
-      When set to 2, the board must implement
-      hal_cpu_secondary_startup().
-
-config AMP_MODE
-    bool "AMP mode (multi-core)"
-    depends on CPU_CORES > 1
-    default y
-    help
-      双核 AMP 模式使能。AMP 模式下裸机的互斥锁
-      等同步原语使用原子 CAS 实现；单核模式下退化为
-      关中断 + 普通变量访问，减少开销。
-      注意: M0/M0+ (ARMv6-M) 无 LDREX/STREX 指令, 跨核
-      原子性无硬件保证; 若 M0 作异构从核, 应避免跨核共享锁。
-      Dual-core AMP mode. Under AMP, bare-metal mutexes use
-      atomic CAS; single-core falls back to IRQ-lock + plain
-      access. Note: M0/M0+ (ARMv6-M) has no LDREX/STREX, so
-      cross-core atomicity is not guaranteed; when M0 is a
-      heterogeneous slave core, avoid sharing locks across cores.
+      2 = dual-core AMP mode: Core 0 runs the RTOS, Core 1 runs
+      bare-metal code; the board must implement
+      hal_cpu_secondary_startup(). Under AMP the bare-metal mutex
+      and friends automatically switch to atomic CAS (single-core
+      falls back to IRQ-lock + plain access) — there is no separate
+      switch; it is derived from this option.
+      Note: M0/M0+ (ARMv6-M) has no LDREX/STREX, so cross-core
+      atomicity is not guaranteed; such targets are rejected by a
+      compile-time guard when CPU_CORES=2 (define
+      MINI_AMP_NO_ATOMIC_OK if you know no lock is shared).
 
 endmenu
 
@@ -174,6 +167,39 @@ config OS_BARE_QUEUE_BUF_SZ
       Element buffer embedded in each bare-metal queue.
       2048 B = 512 base units; EventBus (64×8 B) uses ~1/4.
       Lower bound 512 B keeps the default EventBus queue (128 units) creatable.
+
+config OS_BARE_MINI_OS_MEM
+    bool "裸机 mini_malloc/calloc/free 走 mini-os 内存模块 (默认关, 走 libc 堆) / Bare-metal mini_malloc/calloc/free via the mini-os memory module (default off, libc heap)"
+    default n
+    depends on OS_BARE
+    help
+      裸机下 mini_malloc/calloc/free 的内存来源开关:
+      关闭 (默认): 走 libc malloc/calloc/free (newlib 堆, 依赖 _sbrk);
+      开启: 转发到随仓自研内核 lib/mini-os 的内存模块 (memory.c 单文件,
+            first-fit + 相邻合并 + magic 双值防 double-free, 无调度器依赖),
+            堆区由链接脚本提供 __mini_os_heap_start/__mini_os_heap_end
+            (可 INCLUDE lib/mini-os/mini-os-heap.ld, 或板级脚本自行定义),
+            首次分配时惰性初始化, 无需启动遍历 .init_array。
+      并发: 分配/释放本身在可嵌套关中断临界区内 (mini_os_irq_save/restore),
+      与 libc malloc 不同, ISR 内并发调用不会破坏空闲链表; 但惰性接管
+      (mini_os_heap_ensure_init) 不是 ISR 安全的 —— 必须在启动/线程上下文
+      先完成一次分配 (或显式调用它), 不要在中断里做首次分配。
+
+      Memory source for bare-metal mini_malloc/calloc/free:
+      off (default): libc malloc/calloc/free (newlib heap, needs _sbrk);
+      on: forwards to the in-tree mini-os memory module (memory.c single
+          file, first-fit + adjacent coalescing + magic double-free guard,
+          no scheduler dependency). The heap zone is provided by the linker
+          script via __mini_os_heap_start/__mini_os_heap_end (INCLUDE
+          lib/mini-os/mini-os-heap.ld or define the symbols in the board
+          script); lazy init on the first allocation, no .init_array
+          traversal required.
+      Concurrency: alloc/free run inside a nestable interrupt-masked
+      critical section (mini_os_irq_save/restore), so an ISR allocating
+      concurrently cannot corrupt the free list (unlike libc malloc). The
+      lazy takeover (mini_os_heap_ensure_init) is not ISR-safe though —
+      complete one allocation (or call it explicitly) in startup/thread
+      context; never do the first allocation from an ISR.
 
 config OS_BARE_WFI
     bool "裸机忙等用 WFI 休眠唤醒 (默认关, 纯轮询) / Bare-metal busy-wait via WFI (default off, plain spin)"
@@ -955,7 +981,7 @@ config USB
 
         config USB_TUSB_MCU
             int "TinyUSB MCU target (OPT_MCU_* value)"
-            default 901
+            default 0
             depends on USB
             help
               TinyUSB 编译期芯片目标, 直接填 tusb_option.h 的 OPT_MCU_* 数值
@@ -964,24 +990,52 @@ config USB
                 304 STM32F4    306 STM32H7    1100 RP2040
               其他芯片查 lib/tinyusb/src/tusb_option.h 第 62-150 行的 OPT_MCU_*。
 
-        choice
-            prompt "TinyUSB OS port (auto-follow OS backend)"
-            default USB_TUSB_OS_NONE
+              默认 0 = OPT_MCU_NONE (未配置): 启用 USB 必须显式填目标芯片的值,
+              否则 board/include/tusb_config.h 会 #error 中止编译。这样是为了
+              避免 TinyUSB 按错误的芯片分支静默编译 —— 例如把 STM32F4 板配成
+              ESP32-S3 时, OS 端口的头文件前缀 (freertos/) 与 DCD 驱动选择都
+              会走错分支, 且因为该分支不编 DCD 源, 构建还能"正常通过"。
+              Default 0 = OPT_MCU_NONE: enabling USB requires an explicit
+              target, otherwise tusb_config.h fails the build with #error.
+
+        config USB_TUSB_DCD_SRC
+            string "TinyUSB device-controller driver source (relative to lib/tinyusb/src)"
+            default ""
             depends on USB
             help
-              由 OS 后端自动派生 (select 联动), 无需手填。
-              对应 tusb_option.h 的 OPT_OS_*:
-                NONE=1 / FREERTOS=2 / RTTHREAD=3
-              注意: 选 uC/OS 或 ThreadX (本地扩展, 见 Kconfig.local) 时
-              TinyUSB 无对应适配, 自动回退 NONE。
+              TinyUSB 核心源**不含** DCD/HCD —— 官方 src/CMakeLists.txt 顶部即写明
+              "DCD and HCD drivers are not included", 需集成方按目标芯片补:
+                portable/synopsys/dwc2/dcd_dwc2.c            STM32 F2/F4/F7/H7 等 DWC2
+                portable/st/stm32_fsdev/dcd_stm32_fsdev.c    STM32 F0/F1/F3/L0 等 FSDEV
+                portable/raspberrypi/rp2040/dcd_rp2040.c     RP2040
+              完整清单见 lib/tinyusb/src/portable 下的 dcd_*.c (31 个)。
 
-            config USB_TUSB_OS_NONE
-                bool "None (bare-metal)"
-            config USB_TUSB_OS_FREERTOS
-                bool "FreeRTOS"
-            config USB_TUSB_OS_RTTHREAD
-                bool "RT-Thread"
-        endchoice
+              留空 = 只编协议栈核心, 静态库能编过, 但链接 ELF 时会缺 dcd_init /
+              dcd_edpt_open 等符号。STM32 的 DWC2 驱动经 dwc2_stm32.h 包含芯片头
+              (如 stm32f4xx.h), 由板级 BSP / CMSIS 提供 —— 本仓不含芯片头文件。
+
+              TinyUSB core sources deliberately exclude the DCD/HCD drivers; set
+              the driver source for your MCU here, or the ELF link will miss
+              dcd_init and friends.
+
+        # TinyUSB OS 端口: 由 OS 后端 select 派生, 不是可手填的选项。
+        # 对应 tusb_option.h 的 OPT_OS_*: NONE=1 / FREERTOS=2 / RTTHREAD=3。
+        # 注意: 选 uC/OS 或 ThreadX (本地扩展, 见 Kconfig.local) 时 TinyUSB 无对应
+        # 适配, 自动回退 NONE。
+        #
+        # 刻意不用 choice: Kconfig 的 select 对 choice 成员无效, 而本组符号必须由
+        # OS_BARE / OS_MINI_OS / OS_FREERTOS / OS_RTTHREAD 强行派生 —— 用 choice 时
+        # 后端选 FreeRTOS / RT-Thread 仍会停在 NONE 端口 (TinyUSB 跑错 OS 适配)。
+        # 改成无 prompt 的普通 bool 后, 可见性交给 select, 且无法被手工改错。
+        config USB_TUSB_OS_NONE
+            bool
+            default y if !OS_FREERTOS && !OS_RTTHREAD
+
+        config USB_TUSB_OS_FREERTOS
+            bool
+
+        config USB_TUSB_OS_RTTHREAD
+            bool
 
         config USB_TUSB_DEBUG
             bool "TinyUSB debug output (CFG_TUSB_DEBUG)"
@@ -1114,7 +1168,7 @@ config USB
               默认 1514, 对齐 TinyUSB CFG_TUD_NET_MTU。
 
         config USB_NET_MAC0
-            int "USB net MAC byte 0"
+            hex "USB net MAC byte 0"
             default 0x02
             range 0x00 0xFF
             depends on USB_NET
@@ -1125,31 +1179,31 @@ config USB
               0x02 marks a locally-administered unicast address.
 
         config USB_NET_MAC1
-            int "USB net MAC byte 1"
+            hex "USB net MAC byte 1"
             default 0x00
             range 0x00 0xFF
             depends on USB_NET
 
         config USB_NET_MAC2
-            int "USB net MAC byte 2"
+            hex "USB net MAC byte 2"
             default 0x00
             range 0x00 0xFF
             depends on USB_NET
 
         config USB_NET_MAC3
-            int "USB net MAC byte 3"
+            hex "USB net MAC byte 3"
             default 0x00
             range 0x00 0xFF
             depends on USB_NET
 
         config USB_NET_MAC4
-            int "USB net MAC byte 4"
+            hex "USB net MAC byte 4"
             default 0x00
             range 0x00 0xFF
             depends on USB_NET
 
         config USB_NET_MAC5
-            int "USB net MAC byte 5"
+            hex "USB net MAC byte 5"
             default 0x01
             range 0x00 0xFF
             depends on USB_NET
@@ -1174,6 +1228,66 @@ config USB
               device_read timeout for frame reception; default 0 means
               non-blocking poll, suitable for the NO_SYS=1 main loop.
         endmenu
+
+    menu "UI Libraries (LVGL / u8g2)"
+        # UI 库胶水层 (ui/) 配置。CMake 经 .config 的 CONFIG_UI_LVGL /
+        # CONFIG_UI_U8G2 桥接决定是否 add_subdirectory(ui); 胶水层只经
+        # device/VFS 模型 (DISPLAY_CMD_*) 触硬件。
+        # Glue layer (ui/) gate; CMake bridges via CONFIG_UI_LVGL /
+        # CONFIG_UI_U8G2 in .config; glue only touches hardware through
+        # the device/VFS model (DISPLAY_CMD_*).
+
+        config UI_LVGL
+            bool "LVGL glue layer (ui/lvgl)"
+            default n
+            help
+              编入 ui/lvgl/lvgl_port.c 并链接 LVGL (mini_tree_link_lvgl,
+              lv_conf.h 取 ui/lvgl/lv_conf.h)。胶水链路: lv_init +
+              mini_time_ms 提供 tick + lv_display_create → DISPLAY_CMD_FLUSH
+              (display_lvgl_flush_callback)。
+
+              Build ui/lvgl port and link LVGL; tick from mini_time_ms,
+              flush via DISPLAY_CMD_FLUSH on the panel device.
+
+        config UI_LVGL_DISPLAY_COUNT
+            int "LVGL display context count"
+            default 1
+            range 1 4
+            depends on UI_LVGL
+            help
+              LVGL 显示上下文静态池容量 (可同时 attach 的屏数量)。
+              Static pool capacity for LVGL display contexts.
+
+        config UI_LVGL_FLUSH_TIMEOUT_MS
+            int "LVGL flush ioctl timeout (ms)"
+            default 100
+            range 0 10000
+            depends on UI_LVGL
+            help
+              LVGL flush 回调内 device_ioctl(DISPLAY_CMD_FLUSH) 的超时 (毫秒)。
+              Timeout for the flush ioctl issued by the LVGL flush callback.
+
+        config UI_U8G2
+            bool "u8g2 glue layer (ui/u8g2)"
+            default n
+            help
+              编入 ui/u8g2/u8g2_port.c 并链接 u8g2 (mini_tree_link_u8g2)。
+              提供 u8x8 byte/gpio_and_delay 回调与 u8g2_port_flush 整帧落屏
+              (display_u8g2_flush_frame_buffer → DISPLAY_CMD_FLUSH), 仅支持
+              单色面板 (_f 整帧缓冲初始化过程)。
+
+              Build ui/u8g2 port and link u8g2; provides u8x8 callbacks
+              and full-frame flush for monochrome panels.
+
+        config UI_U8G2_FLUSH_TIMEOUT_MS
+            int "u8g2 flush ioctl timeout (ms)"
+            default 100
+            range 0 10000
+            depends on UI_U8G2
+            help
+              u8g2_port_flush 传 0 时使用的 device_ioctl 默认超时 (毫秒)。
+              Default flush ioctl timeout used when u8g2_port_flush gets 0.
+    endmenu
 endmenu
 
 menu "Bootloader / OTA (mini-ota)"
@@ -1341,14 +1455,22 @@ config SYSTEM_WDT
 config SYSTEM_SCRUBBER
     bool "Flash bit-rot scrubber (system_scrubber)"
     default n
-    depends on SYSTEM
+    depends on SYSTEM && MINI_OTA
     help
-      Flash 位腐烂巡检: 后台任务定期扫描 Flash 并校验 CRC 基线。
-      默认关闭; 生产环境需要掉电/位翻转防护时开启。
+      Flash 位腐烂巡检: 后台任务定期对"当前运行的镜像分区"做纯数据校验
+      (mini-ota 的 image_verify_area, 不解析镜像头/meta), 与构建期基线比对,
+      失配即进安全状态。
+      校验原语与 CRC 模型统一来自 mini-ota, 故依赖 CONFIG_MINI_OTA
+      (关掉 OTA 则本项不可选 —— 没有第二份 CRC 实现)。
+      默认关闭; 生产环境需要位翻转防护时开启。
       Independent of SYSTEM_WDT.
-      Flash bit-rot scrubber: a background task periodically scans Flash
-      and verifies the CRC baseline. Off by default; enable for
-      power-loss / bit-flip protection in production.
+      Flash bit-rot scrubber: a background task periodically verifies the
+      currently running image partition with mini-ota's pure data check
+      (image_verify_area, no header/meta parsing) and compares it against
+      the build-time baseline; a mismatch enters the safe state.
+      The check primitive and CRC model come from mini-ota, hence the
+      CONFIG_MINI_OTA dependency (there is no second CRC implementation).
+      Off by default; enable for bit-flip protection in production.
       Independent of SYSTEM_WDT.
 endmenu
 

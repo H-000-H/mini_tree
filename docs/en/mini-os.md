@@ -114,7 +114,7 @@ Other points:
 ### 3.3 Event group (event.c, optional)
 
 - 32-bit flags, OR / WHOLE (all-set) wait semantics, configurable auto-clear;
-- Switch: `MINI_OS_EVENT` (off by default on its own, but `（已移除）` (default y) selects it — see §7);
+- Switch: `MINI_OS_EVENT` (off by default, and nothing selects it — enable it by hand; see §7);
 - When off, `event.h`/`event.c` compile to nothing, and `event.c` is dropped from the source list entirely (not even an empty object file).
 
 ---
@@ -149,7 +149,9 @@ Implementation in `lib/mini-os/src/memory.c` (~840 lines) + `inc/mem_heap.h`:
 
 > Unlike the other mini_tree backends: `mini_calloc/mini_free` (mini-os backend) use the mini-os own heap instead of libc, so the `s_rtt_heap`/`ucHeap`-style large bss arrays seen with RT-Thread/FreeRTOS do not exist here.
 >
-> **The memory module is reusable standalone (bare-metal)**: `memory.c` has no scheduler/port dependency and can be compiled into a bare-metal firmware as a single file — with `（已移除: 内存统一走 libc/内核堆）` (default off) the bare-metal backend's `mini_malloc/mini_calloc/mini_free` switch from the libc heap to the mini-os heap; the heap zone is taken over lazily on the first allocation (`mini_os_heap_ensure_init()`, idempotent), no `.init_array` traversal needed. The board linker script must provide `__mini_os_heap_start/__mini_os_heap_end` (`INCLUDE mini-os-heap.ld`). The free list is unlocked (same as libc malloc) — never call from an ISR.
+> **The memory module is reusable standalone (bare-metal)**: `memory.c` has no scheduler/port dependency and can be compiled into a bare-metal firmware as a single file — with `CONFIG_OS_BARE_MINI_OS_MEM` (default off) the bare-metal backend's `mini_malloc/mini_calloc/mini_free` switch from the libc heap to the mini-os heap (only `memory.c` is compiled in, the whole kernel is not linked); with it off they keep using libc `malloc/calloc/free`. The heap zone comes from `__mini_os_heap_start/__mini_os_heap_end` (`INCLUDE lib/mini-os/mini-os-heap.ld`), taken over lazily on the first allocation (`mini_os_heap_ensure_init()`, idempotent), no `.init_array` traversal needed.
+>
+> Concurrency: every alloc/free runs inside a **nestable interrupt-masked critical section** (`mini_os_irq_save/restore`) and never touches the native heap, so — unlike libc malloc — **an ISR allocating concurrently cannot corrupt the free list** (`mini_os_memory_alloc_isr/free_isr` are the same entry points). The lazy takeover `mini_os_heap_ensure_init()` itself is not ISR-safe: complete one allocation (or call it explicitly) in startup/thread context, and never do the first allocation from an ISR.
 
 ---
 
@@ -208,7 +210,7 @@ Every option resolves through the same **three-tier chain** (reference implement
 | `MINI_OS_DEFAULT_IDLE_STACK_SIZE` | int / 256 | Idle thread stack |
 | `MINI_OS_TIMER_THREAD_STACK_SIZE` | int / 512 | SOFT-timer service thread stack (≥ min stack, multiple of 8) |
 | `MINI_OS_TIME_SLICE` | bool / n | Round-robin time slicing (default: strict priority) |
-| `MINI_OS_EVENT` | bool / n | 32-bit event group (`（已移除）` selects it by default) |
+| `MINI_OS_EVENT` | bool / n | 32-bit event group (off by default, and nothing selects it — enable it by hand) |
 | `MINI_OS_THREAD_DETACH` | bool / n | detach/join (one switch, adds reclamation fields to every TCB) |
 | `MINI_OS_FIND_BY_NAME` | bool / n | By-name registries for threads/semaphores/mutexes |
 | `MINI_OS_LONG_TIME` | bool / n | 64-bit tick (via an extra wrap-around counter) |
@@ -227,7 +229,7 @@ Every option resolves through the same **three-tier chain** (reference implement
 
 - `depends on !PLATFORM_RISCV && !PLATFORM_ESP32` — Cortex-M only;
 - `select USB_TUSB_OS_NONE` — TinyUSB does not run on mini-os (no mini-os backend for the USB stack yet);
-- `（已移除）` (default y) automatically selects `MINI_OS_EVENT`.
+- Event groups are not on the select chain: `MINI_OS_EVENT` is off by default; enable it in menuconfig when you need event semantics (symmetric with `FREERTOS_EVENT_GROUPS` / `RTTHREAD_EVENT`).
 
 ### 8.2 Board wiring (mandatory)
 
@@ -251,7 +253,7 @@ Every option resolves through the same **three-tier chain** (reference implement
 
 ### 8.4 Build integration
 
-The root build `add_subdirectory(lib/mini-os)` in `lib/CMakeLists.txt` when `OS_BACKEND=MINI_OS`; mini-os' own CMakeLists declares `project(... C ASM)` (the only kernel library in-tree that does not rely on the root project enabling ASM; by contrast, rtthread used to silently drop `context_gcc.S` for lack of `enable_language(ASM)` — fixed). The event-group source file is compiled in conditionally based on `CONFIG_MINI_OS_EVENT`/`CONFIG_MINI_OS_EVENT` from `.config`; when off, not even an object file is produced.
+The root build `add_subdirectory(lib/mini-os)` in `lib/CMakeLists.txt` when `OS_BACKEND=MINI_OS`; mini-os' own CMakeLists declares `project(... C ASM)` (the only kernel library in-tree that does not rely on the root project enabling ASM; by contrast, rtthread used to silently drop `context_gcc.S` for lack of `enable_language(ASM)` — fixed). The event-group source file is compiled in conditionally based on `CONFIG_MINI_OS_EVENT` from `.config`; when off, not even an object file is produced.
 
 ---
 

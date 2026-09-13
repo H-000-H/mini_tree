@@ -130,7 +130,7 @@ ISR 禁止：`printf`、长时间锁、无界工作 — [fast_path.md](fast_path
 | 模块 | 功能 | Kconfig | 说明 |
 | :--- | :--- | :--- | :--- |
 | 看门狗 | `system_wdt`：IWDG / WWDG / TWDT | `CONFIG_SYSTEM_WDT` | 框架引导自动看门狗（IWDG/TWDT + 自动喂狗 + bootloop 防护）；应用可编程看门狗走 `vfs-iwdg`/`vfs-wwdg`（DTS） |
-| Flash CRC 巡检 | `system_scrubber`：后台扫描 + CRC 基线 | `CONFIG_SYSTEM_SCRUBBER` | 掉电/位翻转防护；链接后由 `post_build_crc.py` 覆盖 CRC 基线 |
+| Flash CRC 巡检 | `system_scrubber`：后台任务定期校验"当前运行镜像分区" | `CONFIG_SYSTEM_SCRUBBER`（依赖 `CONFIG_MINI_OTA`） | 位翻转防护；校验原语与 CRC 模型来自 mini-ota 的纯数据校验 `image_verify_area()`（不解析镜像头/meta），基线（CRC + 长度）由 `post_build_crc.py` 生成 |
 | 安全停机 | `safe_state` + `critical_data` + `hal_platform_safety` | `CONFIG_SAFETY_SHUTDOWN` | 停机回调、bootloop 防护、NMI 紧急标记、关键变量双反码存储、硬件闭锁 + 故障 LED/蜂鸣器 |
 | 跨核急停 | `hal_cpu_emergency_stop_all_cores`（`hal/amp`） | `CONFIG_CPU_CORES > 1` | 双核 AMP 时须停所有核输出 |
 

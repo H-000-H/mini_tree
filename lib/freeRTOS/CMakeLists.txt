@@ -57,23 +57,21 @@ set(FREERTOS_KERNEL_SRCS
 # configUSE_EVENT_GROUPS 显式定为 0 (FreeRTOS.h 的兜底值是 1, 不显式
 # 定义就关不掉)。宏用 PUBLIC 传播, 保证 osal 层与内核看到同一份
 # FreeRTOSConfig.h 展开结果 (事件组相关类型布局必须全工程一致)。
-# CONFIG_OSAL_EVENT 是兜底触发条件: OSAL_EVENT 会 select
-# FREERTOS_EVENT_GROUPS, 而根 CMakeLists 已在配置期跑 genconfig.py 把 Kconfig
-# 求值结果 (含 select 出来的符号) 回写 .config, 所以正常路径下
-# CONFIG_FREERTOS_EVENT_GROUPS=y 本来就在。额外认 CONFIG_OSAL_EVENT 只为覆盖
-# 绕过回写的情况 (单独构建 freertos_kernel、手改 .config 后尚未重配)。
-# 漏判的后果是 event_groups.c 不编入内核库, 而 osal_freertos.c 已经在调
+# 事件组开关只认 CONFIG_FREERTOS_EVENT_GROUPS: Kconfig 里它默认关, 且没有任何
+# 符号 select 它 (事件组不属于统一后端接口, 要用就手动开)。根 CMakeLists 已在
+# 配置期跑 genconfig.py 把 Kconfig 求值结果回写 .config, 所以这里读到的就是
+# 当前生效值。漏判的后果是 event_groups.c 不编入内核库, 而业务若已直调
 # xEventGroup* -> 静态库阶段不报错, 链接 ELF 时才缺符号。
 set(FREERTOS_EVENT_GROUPS OFF)
 if(EXISTS "${MINI_TREE_CONFIG}")
-    file(STRINGS "${MINI_TREE_CONFIG}" _freertos_event_groups REGEX "^(CONFIG_FREERTOS_EVENT_GROUPS|CONFIG_OSAL_EVENT)=y$")
+    file(STRINGS "${MINI_TREE_CONFIG}" _freertos_event_groups REGEX "^CONFIG_FREERTOS_EVENT_GROUPS=y$")
     if(_freertos_event_groups)
         set(FREERTOS_EVENT_GROUPS ON)
     endif()
 endif()
 if(FREERTOS_EVENT_GROUPS)
     list(APPEND FREERTOS_KERNEL_SRCS "event_groups.c")
-    message(STATUS "mini_tree FreeRTOS: event groups ON (CONFIG_FREERTOS_EVENT_GROUPS / CONFIG_OSAL_EVENT)")
+    message(STATUS "mini_tree FreeRTOS: event groups ON (CONFIG_FREERTOS_EVENT_GROUPS)")
 else()
     message(STATUS "mini_tree FreeRTOS: event groups OFF (event_groups.c not compiled)")
 endif()

@@ -130,7 +130,7 @@ Business code may use them directly; avoid complex allocation in ISRs (ISR-safet
 | Module | Function | Kconfig | Notes |
 | :--- | :--- | :--- | :--- |
 | Watchdog | `system_wdt`: IWDG / WWDG / TWDT | `CONFIG_SYSTEM_WDT` | framework boot-integrated watchdog (IWDG/TWDT + auto-feed + bootloop guard); app-programmable ones go through `vfs-iwdg`/`vfs-wwdg` (DTS) |
-| CRC Scrubber | `system_scrubber`: background scan + CRC baseline | `CONFIG_SYSTEM_SCRUBBER` | bit-rot scan + CRC baseline (overwritten post-link by `post_build_crc.py`) |
+| CRC Scrubber | `system_scrubber`: background task verifying the running image partition | `CONFIG_SYSTEM_SCRUBBER` (requires `CONFIG_MINI_OTA`) | bit-flip protection; the check primitive and CRC model come from mini-ota's pure data check `image_verify_area()` (no header/meta parsing), and the baseline (CRC + length) is produced by `post_build_crc.py` |
 | Safe State | `safe_state` + `critical_data` + `hal_platform_safety` | `CONFIG_SAFETY_SHUTDOWN` | shutdown callbacks, bootloop guard, NMI stamp, dual-inverted critical storage, hardware latch + fault LED/buzzer |
 | CPU Stop | `hal_cpu_emergency_stop_all_cores` (`hal/amp`) | `CONFIG_CPU_CORES > 1` | Stop all cores on AMP |
 

@@ -26,7 +26,7 @@
 
 | Macro | Implementation | Link deps | Task model |
 | :--- | :--- | :--- | :--- |
-| `CONFIG_OS_BARE` | `core/src/mini_backend_bare.c`<br>+ `（裸机任务走 xtask, C++ 封装已移除）` (when `CONFIG_XTASK_PREEMPT=y` **and** `!XTASK_NONE`) | `time_slice/task` (`xtask_coop.c` or `xtask_preempt.c`, picked by the `Kconfig.mini_tree` bare-metal scheduler choice `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; shares `xtask.h` API) | No scheduler (`XTASK_NONE`, hand-written `while(1)`) <br>**or** cooperative round-robin (default, `XTASK_COOP`)<br>**or** N+1 preemptive multi-priority (`XTASK_PREEMPT`) |
+| `CONFIG_OS_BARE` | `core/src/mini_backend_bare.c` | `time_slice/task` (`xtask_coop.c` or `xtask_preempt.c`, picked by the `Kconfig.mini_tree` bare-metal scheduler choice `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; shares `xtask.h` API) | No scheduler (`XTASK_NONE`, hand-written `while(1)`) <br>**or** cooperative round-robin (default, `XTASK_COOP`)<br>**or** N+1 preemptive multi-priority (`XTASK_PREEMPT`) |
 | `CONFIG_OS_MINI_OS` | `core/src/mini_backend_mini_os.c` | `lib/mini-os` (in-tree kernel, Cortex-M only; see [mini-os.md](mini-os.md)) | Preemptive (32-level ready bitmap, O(1)) |
 | `CONFIG_OS_FREERTOS` | `core/src/mini_backend_freertos.c` | `lib/freeRTOS` (v11.3.0) | Preemptive |
 | `CONFIG_OS_RTTHREAD` | `core/src/mini_backend_rtthread.c` | `lib/rtthread` (v5.3.0) | Preemptive |

@@ -38,21 +38,19 @@ if(NOT DEFINED MINI_TREE_CONFIG)
 endif()
 set(MINI_OS_BUILD_EVENT ON)
 if(EXISTS "${MINI_TREE_CONFIG}")
-    # CONFIG_OSAL_EVENT 是兜底触发条件: OSAL_EVENT 会 select MINI_OS_EVENT,
-    # 而根 CMakeLists 已在配置期跑 genconfig.py 把 Kconfig 求值结果 (含 select
-    # 出来的符号) 回写 .config, 所以正常路径下 CONFIG_MINI_OS_EVENT=y 本来就在。
-    # 额外认 CONFIG_OSAL_EVENT 只为覆盖两种绕过回写的情况: 单独 cmake 构建
-    # lib/mini-os (不经过根 CMakeLists, 没有配置期回写)、以及用户手改 .config
-    # 后尚未重配。漏判的后果是 src/event.c 不编入, 而 osal_mini_os.c 已经在调
-    # mini_os_event_* -> 静态库阶段不报错, 链接 ELF 时才缺符号。
-    file(STRINGS "${MINI_TREE_CONFIG}" _mini_os_event REGEX "^(CONFIG_MINI_OS_EVENT|CONFIG_OSAL_EVENT)=y$")
+    # 事件组开关只认 CONFIG_MINI_OS_EVENT: Kconfig 里它默认关, 且没有任何符号
+    # select 它 (事件组不属于统一后端接口, 要用就手动开)。根 CMakeLists 已在配置期
+    # 跑 genconfig.py 把 Kconfig 求值结果回写 .config, 所以这里读到的就是当前生效值。
+    # 漏判的后果是 src/event.c 不编入, 而业务若已直调 mini_os_event_*
+    # -> 静态库阶段不报错, 链接 ELF 时才缺符号。
+    file(STRINGS "${MINI_TREE_CONFIG}" _mini_os_event REGEX "^CONFIG_MINI_OS_EVENT=y$")
     if(NOT _mini_os_event)
         set(MINI_OS_BUILD_EVENT OFF)
     endif()
 endif()
 if(MINI_OS_BUILD_EVENT)
     list(APPEND MINI_OS_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/event.c)
-    message(STATUS "mini-os: event group ON (CONFIG_MINI_OS_EVENT / CONFIG_OSAL_EVENT)")
+    message(STATUS "mini-os: event group ON (CONFIG_MINI_OS_EVENT)")
 else()
     message(STATUS "mini-os: event group OFF (src/event.c not compiled)")
 endif()

@@ -32,7 +32,7 @@
 | `CONFIG_SYSTEM_WDT` | 框架看门狗（默认开） |
 | `CONFIG_SAFETY_SHUTDOWN` | 安全停机回调（默认关） |
 | `CONFIG_SYS_LOG_USE_MINI_LOG` / `CONFIG_SYS_LOG_USE_ESP` | `MT_LOG_*` 日志后端选择（随仓库 mini-log / ESP-IDF esp_log；关日志最省） |
-| `CONFIG_EVENT_BUS` / `CONFIG_SYSTEM_CMD` / `CONFIG_SYSTEM_SCRUBBER` | 可选功能总开关（默认关） |
+| `CONFIG_EVENT_BUS` / `CONFIG_SYSTEM_CMD` / `CONFIG_SYSTEM_SCRUBBER` | 可选功能总开关（默认关）；`SYSTEM_SCRUBBER` 另依赖 `CONFIG_MINI_OTA` |
 | `CONFIG_BUILD_DISASM` | 反汇编 post-build（默认开，按需关） |
 
 ---

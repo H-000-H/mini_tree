@@ -14,6 +14,9 @@
 - TinyUSB 经 FetchContent 拉取（`mini_tree_link_tinyusb`，见 [ecosystem.md](ecosystem.md)）；不在 `lib/` vendor 内。
 - 板级 `dtsi/` 提供 USB 控制器节点（参考 `board/dtsi/example-soc.dtsi`）。
 - `CONFIG_ESP_*` 后端已选（USB 中断在 ISR 出口经 统一接口 的 `mini_yield_from_isr()` 请求上下文切换）。
+- `CONFIG_USB_TUSB_MCU` 必须显式填目标芯片的 `OPT_MCU_*`（STM32F4 = `304` / STM32H7 = `306` / ESP32-S3 = `901` / RP2040 = `1100`）；默认 `0` 即"未配置"，`board/include/tusb_config.h` 会 `#error` 中止编译。
+- `CONFIG_USB_TUSB_DCD_SRC` 填设备控制器驱动源（相对 `lib/tinyusb/src`，如 `portable/synopsys/dwc2/dcd_dwc2.c`）—— TinyUSB 核心源**不含** DCD/HCD（官方 `src/CMakeLists.txt` 顶部注释），留空则只编协议栈核心、链接 ELF 时缺 `dcd_init`。
+- STM32 的 DWC2 驱动经 `dwc2_stm32.h` 包含芯片头（如 `stm32f4xx.h`），由板级 BSP / CMSIS 提供；本仓不含芯片头文件。
 
 ---
 

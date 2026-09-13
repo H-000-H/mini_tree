@@ -25,6 +25,13 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 /* 1. 硬件芯片平台与操作系统适配                                              */
 /* -------------------------------------------------------------------------- */
+/* USB 目标芯片必须显式配置: USB_TUSB_MCU 默认 0 (OPT_MCU_NONE)。未配置就编 USB,
+ * TinyUSB 会按错误芯片分支静默编译 (OS 端口头文件前缀、DCD 驱动选择都会错)。
+ * 需要 USB 就在 Kconfig 里填目标芯片的 OPT_MCU_*; 不需要就关闭 CONFIG_USB。 */
+#if defined(CONFIG_USB) && (CONFIG_USB_TUSB_MCU == 0) && !defined(CFG_TUSB_MCU)
+#error "CONFIG_USB_TUSB_MCU 未配置: 启用 USB 必须设为目标芯片的 OPT_MCU_* 值 (STM32F4=304 / STM32H7=306 / ESP32-S3=901 / RP2040=1100, 见 lib/tinyusb/src/tusb_option.h); 不用 USB 请关闭 CONFIG_USB。"
+#endif
+
 #ifndef CFG_TUSB_MCU
 #define CFG_TUSB_MCU CONFIG_USB_TUSB_MCU
 #endif

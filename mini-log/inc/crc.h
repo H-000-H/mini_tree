@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
  * @file: crc.h
- * @brief: CRC 分段续算接口，结果与 tools/crc/image_crc.py 的 crc_generic 一致；
+ * @brief: CRC 分段续算接口，结果与 lib/mini-ota/tools/m_crc/image_crc.py 的 crc_generic 一致；
  *         引擎通过宏 CRC_MODE 编译期选择，两种实现结果完全一致
  */
 #ifndef CRC_H

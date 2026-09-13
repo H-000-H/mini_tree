@@ -2,7 +2,7 @@
 
 > **AMP is part of the optional bricks — use it on demand**: single-core is a complete baseline for development; enable dual-core/hetero only when needed, and assemble the secondary-core image & shared-memory layout yourself.
 >
-> How `CPU_CORES`, `AMP_MODE` and `hal_cpu_*` (in `hal/amp`) fit together.
+> How `CPU_CORES` and `hal_cpu_*` (in `hal/amp`) fit together.
 > **The full secondary-core image and shared-memory layout are provided by the platform project**; this repo only defines the HAL contract and backend spinlock behavior differences.
 
 | Item | Content |
@@ -32,7 +32,7 @@ AMP is an **optional brick** (same family as the safety modules, see [runtime_se
 | Item | Notes |
 | :--- | :--- |
 | Default | single-core (`CONFIG_CPU_CORES=1`); device model / VFS / 统一接口 / EventBus all work as usual |
-| Enable | set `CONFIG_CPU_CORES=2` (+ `CONFIG_AMP_MODE`) when you actually need it |
+| Enable | set `CONFIG_CPU_CORES=2` when you actually need it |
 | Prerequisites | platform supplies: secondary-core image, shared-memory layout, inter-core IPC; this repo only defines the HAL contract & the unified interface behavior |
 | Reference | [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) (mini_tree's companion platform example) |
 | Impact of not enabling | **none** — single-core is a complete, usable baseline |
@@ -45,11 +45,13 @@ AMP is an **optional brick** (same family as the safety modules, see [runtime_se
 
 | Symbol | Meaning |
 | :--- | :--- |
-| `CONFIG_CPU_CORES` | `1` single-core (default); `2` dual-core |
-| `CONFIG_AMP_MODE` | Depends on `CPU_CORES > 1`; `y` by default in AMP |
+| `CONFIG_CPU_CORES` | `1` single-core (default); `2` dual-core AMP |
+| Derived behavior | with `CPU_CORES>1` the bare-metal mutex automatically uses atomic CAS; single-core falls back to IRQ-lock + plain access (**no separate switch** — derived from `CPU_CORES`) |
 
 Single-core: no secondary startup needed; `hal_cpu_emergency_stop_all_cores` mostly disables local interrupts.
 Dual-core: the platform must implement the secondary entry and a clear shared-resource protocol.
+
+> **ARMv6 note**: M0/M0+ (ARMv6-M) has no LDREX/STREX, so `MINI_ATOMIC_CAS` degrades to "IRQ-lock + read-modify-write" (`MINI_ATOMIC_IRQ_SOFT_ATOMIC=1` in `core/include/compiler_compat.h`) — **core-local only**, i.e. no hardware guarantee for a cross-core mutex. Building such a target with `CPU_CORES=2` is rejected by a compile-time guard in `core/src/mini_backend_bare.c`; define `MINI_AMP_NO_ATOMIC_OK` to opt out when you know no lock is shared across cores.
 
 ---
 
@@ -91,7 +93,7 @@ This repo does **not** ship an inter-core message protocol; use EventBus (local 
 
 ## 5. the unified interface & Synchronization
 
-- Under `CONFIG_OS_BARE`, AMP prefers **atomic CAS** for mutex-like primitives; single-core can fall back to IRQ disable.
+- Under `CONFIG_OS_BARE`, `CPU_CORES>1` (AMP) drives mutex-like primitives to **atomic CAS** (`MINI_ATOMIC_CAS`); single-core falls back to IRQ-lock + plain access. On OS backends the secondary core has no kernel scheduler (`core/src/mini_backend_freertos.c` logs a warning and falls tasks requesting Core 1 back to Core 0), so AMP is in practice a bare-metal-backend feature.
 - Spinlock: `MINI_OS_SPINLOCK` vs `ATOMIC` — prefer atomic for multi-core shared data, see [backend_switching.md](backend_switching.md).
 - **Never** assume `device_*` locks on the other core are visible to you; cross-core traffic goes through explicit shared objects.
 

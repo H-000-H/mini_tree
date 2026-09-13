@@ -26,7 +26,7 @@
 
 | 宏 | 实现文件 | 链接依赖 | 任务模型 |
 | :--- | :--- | :--- | :--- |
-| `CONFIG_OS_BARE` | `core/src/mini_backend_bare.c`<br>+ `（裸机任务走 xtask, C++ 封装已移除）`（`CONFIG_XTASK_PREEMPT=y` **且** `!XTASK_NONE` 时） | `time_slice/task`（`xtask_coop.c` 或 `xtask_preempt.c`, 由 `Kconfig.mini_tree` 裸机调度器 choice 三选一 `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; 共用 `xtask.h` API） | 无调度（`XTASK_NONE`, 自写 while）<br>**或** 协作式时间片（裸机, 默认 `XTASK_COOP`）<br>**或** N+1 抢占式（多优先级, `XTASK_PREEMPT`） |
+| `CONFIG_OS_BARE` | `core/src/mini_backend_bare.c` | `time_slice/task`（`xtask_coop.c` 或 `xtask_preempt.c`, 由 `Kconfig.mini_tree` 裸机调度器 choice 三选一 `XTASK_NONE`/`XTASK_COOP`/`XTASK_PREEMPT`; 共用 `xtask.h` API） | 无调度（`XTASK_NONE`, 自写 while）<br>**或** 协作式时间片（裸机, 默认 `XTASK_COOP`）<br>**或** N+1 抢占式（多优先级, `XTASK_PREEMPT`） |
 | `CONFIG_OS_MINI_OS` | `core/src/mini_backend_mini_os.c` | `lib/mini-os`（自研内核，仅 Cortex-M；详见 [mini-os.md](mini-os.md)） | 抢占（32 级就绪位图 O(1)） |
 | `CONFIG_OS_FREERTOS` | `core/src/mini_backend_freertos.c` | `lib/freeRTOS`（v11.3.0） | 抢占 |
 | `CONFIG_OS_RTTHREAD` | `core/src/mini_backend_rtthread.c` | `lib/rtthread`（v5.3.0） | 抢占 |
@@ -36,9 +36,7 @@
 - **协调式**（默认, `XTASK_COOP`）— `time_slice/task/xtask_coop.c`, round-robin 时间片轮转, 不可抢占.
 - **抢占式**（`XTASK_PREEMPT`）— `time_slice/task/xtask_preempt.c`, N+1 链表多优先级（分组优先级 + CLZ 定位, 可延迟/可休眠/可抢占, 无就绪时精确 WFI）; 已完整实现可编译.
 
-两套实现共用 `xtask.h` 对外 API (`xscheduler_task_create` / `x_scheduler_poll` / `xscheduler_start` 等), 调用方代码无需任何改动. `（裸机任务走 xtask, C++ 封装已移除）` 与 `core/include/mini_backend.h` 中的 C++ 重载按 `CONFIG_XTASK_PREEMPT` 分两个分支:
-- 协调式分支: `mini_task_create` 的 `period` 即任务周期 ms（裸机无优先级概念）.
-- 抢占式分支: 同签名重载新增 `priority` 参数（数值越大越优先）, `stack_size` 在裸机下复用为周期.
+两套实现共用 `xtask.h` 对外 API (`xscheduler_task_create` / `x_scheduler_poll` / `xscheduler_start` 等), 调用方代码无需任何改动. 裸机任务直接用这套 xtask API 创建: 统一接口的 C 式 `mini_task_create_handle` 在裸机后端是 `MINI_ERR_NOTSUPP` 桩（裸机的"任务"是周期回调, 与线程入口语义不同, 刻意不转发）。
 
 公共表面：`core/include/mini_backend.h`。业务与 VFS 应只依赖该头。
 

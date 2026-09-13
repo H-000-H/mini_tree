@@ -114,7 +114,7 @@ mini-os 的 PI 是 **per-thread 跟踪** 模型：
 ### 3.3 事件组（event.c，可选）
 
 - 32 位标志，OR / WHOLE（全部置位）等待语义，可配自动清零；
-- 开关 `MINI_OS_EVENT`（自身默认关，但 `（已移除）`（默认 y）会 select 它，见 §7）；
+- 开关 `MINI_OS_EVENT`（默认关，且没有任何符号 select 它 —— 需要事件语义时手动开启，见 §7）；
 - 关闭时 `event.h`/`event.c` 编译为空，且 `event.c` 直接从编译单元列表摘除（连空对象都不产生）。
 
 ---
@@ -149,7 +149,9 @@ mini-os 的 PI 是 **per-thread 跟踪** 模型：
 
 > 与 mini_tree 其他后端不同：`mini_calloc/mini_free`（mini-os 后端）走 mini-os 自有堆而非 libc，因此 RT-Thread/FreeRTOS 后端的 `s_rtt_heap`/`ucHeap` 式 bss 大数组在这里不存在。
 >
-> **内存模块可单独复用（裸机）**：`memory.c` 不依赖调度器/port，可单文件编入裸机固件 —— 开启 `（已移除: 内存统一走 libc/内核堆）`（默认关）后，裸机后端的 `mini_malloc/mini_calloc/mini_free` 从 libc 堆切换为 mini-os 堆；首次分配时惰性接管堆区（`mini_os_heap_ensure_init()`，幂等），无需启动遍历 `.init_array`。板级链接脚本需提供 `__mini_os_heap_start/__mini_os_heap_end`（可 `INCLUDE mini-os-heap.ld`）。空闲链表无锁（与 libc malloc 同），ISR 内禁止调用。
+> **内存模块可单独复用（裸机）**：`memory.c` 不依赖调度器/port，可单文件编入裸机固件 —— 开启 `CONFIG_OS_BARE_MINI_OS_MEM`（默认关）后，裸机后端的 `mini_malloc/mini_calloc/mini_free` 从 libc 堆切换为 mini-os 堆（只编 `memory.c` 单文件，不链整个内核）；关闭时维持 libc `malloc/calloc/free`。堆区由链接脚本提供 `__mini_os_heap_start/__mini_os_heap_end`（可 `INCLUDE lib/mini-os/mini-os-heap.ld`），首次分配时惰性接管（`mini_os_heap_ensure_init()`，幂等），无需启动遍历 `.init_array`。
+>
+> 并发语义：分配/释放全程在**可嵌套关中断临界区**内完成（`mini_os_irq_save/restore`），不触碰原生堆，因此**与 libc malloc 不同 —— ISR 内并发调用不会破坏空闲链表**，`mini_os_memory_alloc_isr/free_isr` 即同义入口。但惰性接管 `mini_os_heap_ensure_init()` 本身不是 ISR 安全的：应在启动/线程上下文先完成一次分配（或显式调用它），不要在中断里做首次分配。
 
 ---
 
@@ -208,7 +210,7 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | `MINI_OS_DEFAULT_IDLE_STACK_SIZE` | int / 256 | idle 线程栈 |
 | `MINI_OS_TIMER_THREAD_STACK_SIZE` | int / 512 | SOFT 定时器服务线程栈（≥最小栈、8 的倍数） |
 | `MINI_OS_TIME_SLICE` | bool / n | 同优先级时间片轮转（默认严格优先级） |
-| `MINI_OS_EVENT` | bool / n | 32 位事件组（`（已移除）` 默认 select 它） |
+| `MINI_OS_EVENT` | bool / n | 32 位事件组（默认关，且没有任何符号 select 它 —— 要用就手动开） |
 | `MINI_OS_THREAD_DETACH` | bool / n | detach/join（绑定同一开关，每 TCB 增回收字段） |
 | `MINI_OS_FIND_BY_NAME` | bool / n | 线程/信号量/互斥锁按名注册表 |
 | `MINI_OS_LONG_TIME` | bool / n | 64 位 tick（附加回绕计数器） |
@@ -227,7 +229,7 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 
 - `depends on !PLATFORM_RISCV && !PLATFORM_ESP32` —— 仅 Cortex-M；
 - `select USB_TUSB_OS_NONE` —— TinyUSB 不跑在 mini-os 上（USB 栈暂无 mini-os 后端）；
-- `（已移除）`（默认 y）自动 select `MINI_OS_EVENT`。
+- 事件组不在 select 链上：`MINI_OS_EVENT` 默认关，需要事件语义时在 menuconfig 里手动开启（与 `FREERTOS_EVENT_GROUPS` / `RTTHREAD_EVENT` 对称）。
 
 ### 8.2 板级接线（必须）
 
@@ -251,7 +253,7 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 
 ### 8.4 构建方式
 
-根构建经 `lib/CMakeLists.txt` 在 `OS_BACKEND=MINI_OS` 分支 `add_subdirectory(lib/mini-os)`；mini-os 自己的 CMakeLists 声明 `project(... C ASM)`（这也是仓库内唯一不依赖根工程启用 ASM 的内核库，对比：rtthread 曾因缺 `enable_language(ASM)` 丢弃 `context_gcc.S`，已修复）。事件组源文件按 `.config` 的 `CONFIG_MINI_OS_EVENT`/`CONFIG_MINI_OS_EVENT` 条件编入，关闭时连对象文件都不产生。
+根构建经 `lib/CMakeLists.txt` 在 `OS_BACKEND=MINI_OS` 分支 `add_subdirectory(lib/mini-os)`；mini-os 自己的 CMakeLists 声明 `project(... C ASM)`（这也是仓库内唯一不依赖根工程启用 ASM 的内核库，对比：rtthread 曾因缺 `enable_language(ASM)` 丢弃 `context_gcc.S`，已修复）。事件组源文件按 `.config` 的 `CONFIG_MINI_OS_EVENT` 条件编入，关闭时连对象文件都不产生。
 
 ---
 

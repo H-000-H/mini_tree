@@ -138,16 +138,15 @@ target_compile_definitions(rtthread_kernel PRIVATE
 # PUBLIC 传播: osal 层与内核必须看到同一份 rtconfig.h 展开结果
 # (rt_event 开关会改变 IPC 对象集合, 全工程必须一致)。
 # 关闭时 src/ipc.c 内的 rt_event_* 代码段整体不编译, 无额外 flash/ram 开销。
-# CONFIG_OSAL_EVENT 是兜底触发条件: OSAL_EVENT 会 select RTTHREAD_EVENT,
-# 而根 CMakeLists 已在配置期跑 genconfig.py 把 Kconfig 求值结果 (含 select
-# 出来的符号) 回写 .config, 所以正常路径下 CONFIG_RTTHREAD_EVENT=y 本来就在。
-# 额外认 CONFIG_OSAL_EVENT 只为覆盖绕过回写的情况 (单独构建 rtthread_kernel、
-# 手改 .config 后尚未重配)。漏判的后果是 ipc.c 里的 rt_event_* 整体不编译,
-# 而 osal_rtthread.c 已经在调它们 -> 静态库阶段不报错, 链接 ELF 时才缺符号
-# (而且 rtconfig.h 展开不一致会连 struct rt_thread 布局都对不上)。
+# 事件集开关只认 CONFIG_RTTHREAD_EVENT: Kconfig 里它默认关, 且没有任何符号
+# select 它 (事件集不属于统一后端接口, 要用就手动开)。根 CMakeLists 已在配置期
+# 跑 genconfig.py 把 Kconfig 求值结果回写 .config, 所以这里读到的就是当前生效值。
+# 漏判的后果是 ipc.c 里的 rt_event_* 整体不编译, 而业务若已直调它们
+# -> 静态库阶段不报错, 链接 ELF 时才缺符号 (而且 rtconfig.h 展开不一致会连
+# struct rt_thread 布局都对不上)。
 set(RTTHREAD_EVENT OFF)
 if(EXISTS "${_MINI_TREE_KCONFIG}")
-    file(STRINGS "${_MINI_TREE_KCONFIG}" _rtthread_event REGEX "^(CONFIG_RTTHREAD_EVENT|CONFIG_OSAL_EVENT)=y$")
+    file(STRINGS "${_MINI_TREE_KCONFIG}" _rtthread_event REGEX "^CONFIG_RTTHREAD_EVENT=y$")
     if(_rtthread_event)
         set(RTTHREAD_EVENT ON)
     endif()
@@ -156,7 +155,7 @@ if(RTTHREAD_EVENT)
     target_compile_definitions(rtthread_kernel PUBLIC
         MINI_TREE_RTTHREAD_EVENT=1
     )
-    message(STATUS "mini_tree RT-Thread: event set ON (CONFIG_RTTHREAD_EVENT / CONFIG_OSAL_EVENT)")
+    message(STATUS "mini_tree RT-Thread: event set ON (CONFIG_RTTHREAD_EVENT)")
 else()
     message(STATUS "mini_tree RT-Thread: event set OFF (RT_USING_EVENT undefined)")
 endif()

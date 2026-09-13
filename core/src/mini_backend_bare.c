@@ -4,9 +4,9 @@
  *@brief 裸机后端实现 (互斥锁 + 内存三函数 + ISR 出口)
  *@author H-000-H
  *@details
- *           - 互斥锁: 忙等锁, 含 CONFIG_AMP_MODE 双分支;
+ *           - 互斥锁: 忙等锁, 含 CONFIG_CPU_CORES>1 (AMP) 双分支;
  *           - 队列:  fifo_spsc 静态池, EventBus 依赖它;
- *           - 内存三函数: 转发 libc 堆;
+ *           - 内存三函数: 转发 libc 堆 (CONFIG_OS_BARE_MINI_OS_MEM 时转发 mini-os 内存模块);
  *           - 任务: 符号保留, 调用返回 MINI_ERR_NOTSUPP (裸机任务由 xtask 承担);
  *           - 调度器冻结 / ISR 出口: 关中断与空实现。
  *         刻意**不提供**信号量: 裸机下无调用点 (lwIP 的 NO_SYS=0 路径被 Kconfig
@@ -18,7 +18,7 @@
 
 #if defined(CONFIG_OS_BARE)
 
-#define ALLOW_HEAP_ALLOC /* 内存三函数默认转发 libc 堆, 需豁免 poison 层 */
+#define ALLOW_HEAP_ALLOC /* 内存三函数默认转发 libc 堆 (开关开启时转发 mini-os 堆), 需豁免 poison 层 */
 
 #include "mini_backend.h"
 
@@ -32,12 +32,23 @@
 #include <stdlib.h>
 
 #ifdef CONFIG_OS_BARE_MINI_OS_MEM
+#include "err.h"    /* MINI_OS_OK */
 #include "memory.h" /* mini-os 内存模块 (mini_malloc/calloc/free 的转发目标) */
-#include "mini_config.h"
-#include "redef.h"  /* mini_os_irq_t 与 mini_os_irq_* 原型 */
 #endif
 
 #include "compiler_compat_poison.h"
+
+/* -------------------------------------------------------------------------- */
+/* AMP (CPU_CORES > 1) 编译期守卫                                              */
+/* -------------------------------------------------------------------------- */
+/* AMP 下互斥锁依赖跨核原子 CAS。ARMv6 (M0/M0+) 与无 A 扩展的 RISC-V 上,
+ * compiler_compat.h 把 MINI_ATOMIC_CAS 降级为「关中断 + 读改写」
+ * (MINI_ATOMIC_IRQ_SOFT_ATOMIC=1), 只对本核原子 —— 跨核互斥锁没有硬件保证。
+ * 这是编译期可判定的事实, 故直接编译失败而不是留到现场; 板级确知不存在跨核
+ * 共享锁时, 定义 MINI_AMP_NO_ATOMIC_OK 显式豁免。 */
+#if (CONFIG_CPU_CORES > 1) && defined(MINI_ATOMIC_IRQ_SOFT_ATOMIC) && MINI_ATOMIC_IRQ_SOFT_ATOMIC && !defined(MINI_AMP_NO_ATOMIC_OK)
+#error "CPU_CORES>1 (AMP): target has no inline atomic RMW (MINI_ATOMIC_IRQ_SOFT_ATOMIC=1), so the bare-metal mutex would only be core-local. Define MINI_AMP_NO_ATOMIC_OK only if no lock is shared across cores."
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* 互斥锁 (忙等: 关中断保护状态 + 原子 CAS 的 AMP 变体)                        */
@@ -73,7 +84,7 @@ static mt_err_t mini_mutex_init(struct mini_mutex* mutex, mini_mutex_type_t type
 /* AMP: 原子 CAS + depth 递增, 支持跨核竞争; 普通: 关中断后判定, 单核下无竞争 */
 static mt_err_t mini_mutex_try_acquire(struct mini_mutex* mutex)
 {
-#ifdef CONFIG_AMP_MODE
+#if CONFIG_CPU_CORES > 1
     uint32_t expected = 0;
     if (MINI_ATOMIC_CAS(&mutex->lock, &expected, 1, MINI_ACQUIRE, MINI_RELAXED))
     {
@@ -184,7 +195,7 @@ mt_err_t mini_mutex_unlock(mini_mutex_t* mtx)
 
     struct mini_mutex* mutex = (struct mini_mutex*)mtx;
 
-#ifdef CONFIG_AMP_MODE
+#if CONFIG_CPU_CORES > 1
     uint32_t depth = MINI_ATOMIC_LOAD(&mutex->depth, MINI_RELAXED);
     if (depth == 0U)
         return MINI_ERR_IO;
@@ -234,23 +245,44 @@ void mini_mutex_destroy(mini_mutex_t* mtx)
 }
 
 /* -------------------------------------------------------------------------- */
-/* 内存 (转发 libc 堆; 堆区由板级 _sbrk + 链接脚本提供)                        */
+/* 内存 (默认转发 libc 堆, 堆区由板级 _sbrk + 链接脚本提供;                    */
+/*      CONFIG_OS_BARE_MINI_OS_MEM 时转发 mini-os 内存模块, 堆区来自           */
+/*      __mini_os_heap_start/__mini_os_heap_end)                               */
 /* -------------------------------------------------------------------------- */
 /* 本文件是全仓禁止动态分配 (compiler_compat_poison.h) 的少数豁免点之一。 */
+/* 开关开启时堆本身在可嵌套关中断临界区内, ISR 内并发调用安全; 但惰性接管 */
+/* (mini_os_heap_ensure_init) 不是 ISR 安全的, 首次分配须在启动/线程上下文完成。 */
 
 void* mini_malloc(size_t size)
 {
+#ifdef CONFIG_OS_BARE_MINI_OS_MEM
+    if (mini_os_heap_ensure_init() != MINI_OS_OK)
+        return NULL; /* 堆区缺失: 链接脚本未提供 __mini_os_heap_* */
+    return mini_os_malloc(size);
+#else
     return malloc(size);
+#endif
 }
 
 void* mini_calloc(size_t count, size_t size)
 {
+#ifdef CONFIG_OS_BARE_MINI_OS_MEM
+    /* 首次调用惰性接管链接脚本堆区 */
+    if (mini_os_heap_ensure_init() != MINI_OS_OK)
+        return NULL;
+    return mini_os_calloc(count, size);
+#else
     return calloc(count, size);
+#endif
 }
 
 mt_err_t mini_free(void* ptr)
 {
+#ifdef CONFIG_OS_BARE_MINI_OS_MEM
+    MINI_IGNORE_RESULT(mini_os_free(ptr)); /* magic 校验, double-free 静默拒绝 */
+#else
     free(ptr);
+#endif
     return MINI_OK;
 }
 

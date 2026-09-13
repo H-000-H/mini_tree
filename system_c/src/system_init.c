@@ -54,7 +54,7 @@ void usb_bus_task(void); /* TinyUSB 事件轮询 (声明见 bus/usb/usb_bus.h) *
 
 static const char* k_tag = "SysInit";
 
-/* SIOF 防御标志: OS + EventBus 就绪前为 false, 禁止全局构造函数偷跑 */
+/*禁止全局构造函数偷跑 */
 volatile bool g_system_os_initialized = false;
 
 /**
@@ -87,8 +87,6 @@ void mini_tree_pre_os_init(void)
     }
     MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
 #endif
-
-    /* SIOF 防御就绪: 此后 EventBus post/subscribe 可正常通行 */
     g_system_os_initialized = true;
 
     MT_LOG_INFO(k_tag, "=== mini_tree Phase 1 complete ===");
@@ -114,7 +112,6 @@ void mini_tree_start_tasks(void)
 #endif
 
 #ifdef CONFIG_SYSTEM_SCRUBBER
-    MINI_IGNORE_RESULT(system_scrubber_init());
     MINI_IGNORE_RESULT(system_scrubber_start());
 #endif
 

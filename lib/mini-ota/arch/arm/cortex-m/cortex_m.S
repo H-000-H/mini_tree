@@ -103,9 +103,9 @@ mini_boot_psp_to_msp:
     .thumb_func
 mini_boot_set_vtor:
 #if defined(MINI_BOOT_M0)
-    @ 仅 Cortex-M0 无 VTOR 寄存器（注意：M0+ 有，走下面 #else 分支），返回 ERR_NOT_SUPPORTED(-4)
-    movs  r0, #4
-    rsbs  r0, r0, #0          @ r0 = -4（不用 negs，兼容 ARMv6-M）
+    @ 仅 Cortex-M0 无 VTOR 寄存器（注意：M0+ 有，走下面 #else 分支），返回 ERR_NOT_SUPPORTED(-131)
+    movs  r0, #131
+    rsbs  r0, r0, #0          @ r0 = -131（不用 negs，兼容 ARMv6-M）
     bx    lr
 #else
     @ M0+ / M3 / M4 / M7：写 SCB->VTOR

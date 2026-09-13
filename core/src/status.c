@@ -9,6 +9,14 @@
  *   位于 core 静态库中, 未被引用时由链接器整体丢弃 —— 不用字符串表的构建零开销。
  */
 #include "status.h"
+#include "log_err.h" /* 仅用于片对齐自检 */
+
+/* mini-log 是随仓 vendor, 其错误码数值写死 (不含 status.h)。在此断言它与本头
+ * log 片基准一致 —— 任一侧改数值而忘了同步另一侧, 这里会编译失败。 */
+_Static_assert(MINI_LOG_ERR_PARAM == MINI_ERR_SUBSYS(MINI_ERR_SUBSYS_LOG_BASE, 0),
+               "MINI_LOG_ERR_PARAM drifted from the log slot base");
+_Static_assert(MINI_LOG_ERR_FLASH_READ == MINI_ERR_SUBSYS(MINI_ERR_SUBSYS_LOG_BASE, 6),
+               "MINI_LOG_ERR_FLASH_READ drifted from the log slot base");
 
 const char* MINI_ERR_TO_STR(int err)
 {

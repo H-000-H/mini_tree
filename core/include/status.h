@@ -10,11 +10,14 @@
  *   ── 编号策略 (自持编号, 不依赖 <errno.h>, 跨工具链数值稳定) ──
  *     0              成功
  *     -1  .. -63     通用/栈层段    本头全部 MINI_ERR_*; -28..-63 预留扩容
- *     -64 .. -127    子系统段       net / fs / ota / log / system 私有码
- *     -128.. -255    驱动/板级段    drivers / board / 产品私有码
- *   幅度上限 MINI_ERR_MAX(255), 以兼容 ERR_PTR 的指针编码。
- *   子系统/驱动段私有码用 MINI_ERR_BUILD(mag) 构造, 幅度落在对应段内;
- *   用 MINI_ERR_SECTOR_OF() / MINI_ERR_IS_SUBSYS() / MINI_ERR_IS_DRIVER() 判归属。
+ *     -64 .. -511    子体系段       每片固定 32 码, 共 14 片:
+ *                                  0 net / 1 fs / 2 ota / 3 log / 4 system /
+ *                                  5 driver (驱动·板级) / 6 mini-os / 7..13 预留
+ *   幅度上限 MINI_ERR_MAX(511): 0 成功 + 511 个错误码 = 512 个码位。ERR_PTR 用
+ *   ERR_SECTION_BASE + 幅度编码
+ *   子体系码用 MINI_ERR_SUBSYS(base, idx) 构造 (base 取 MINI_ERR_SUBSYS_*_BASE,
+ *   idx 0..31, 越片即侵占下一片); 用 MINI_ERR_SECTOR_OF() / MINI_ERR_IS_SUBSYS() /
+ *   MINI_ERR_IS_DRIVER() 判归属, MINI_ERR_SUBSYS_SLOT_OF() 取片号。
  *
  *   ── 命名空间边界 (互不混用, 跨边界必须显式翻译) ──
  *     MINI_ERR_* / MINI_OK   本头, 栈内唯一通用命名空间
@@ -33,7 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MINI_ERR_MAX 255 /**< 错误码幅度上限, ERR_PTR 编码上限 */
+#define MINI_ERR_MAX 511U /**< 错误码幅度上限 (0 成功 + 511 个错误码 = 512 个码位), ERR_PTR 编码上限 */
 
 /**
  * @brief 错误码类型 (0 成功, 负数失败)
@@ -83,30 +86,54 @@ typedef enum mt_err
 #define MINI_ERR_SECTOR_COMMON_FIRST 1U
 #define MINI_ERR_SECTOR_COMMON_LAST 63U
 #define MINI_ERR_SECTOR_SUBSYS_FIRST 64U
-#define MINI_ERR_SECTOR_SUBSYS_LAST 127U
-#define MINI_ERR_SECTOR_DRIVER_FIRST 128U
-#define MINI_ERR_SECTOR_DRIVER_LAST MINI_ERR_MAX
+#define MINI_ERR_SECTOR_SUBSYS_LAST MINI_ERR_MAX
+
+/* ── 子体系配额: 每片 32 码, 片号 0..13 (6..13 预留)  */
+#define MINI_ERR_SUBSYS_SLOT_SIZE 32U
+#define MINI_ERR_SUBSYS_SLOT_COUNT 14U /**< (512 - 64) / 32 */
+#define MINI_ERR_SUBSYS_SLOT_BASE(slot) (MINI_ERR_SECTOR_SUBSYS_FIRST + (unsigned)(slot) * MINI_ERR_SUBSYS_SLOT_SIZE)
+#define MINI_ERR_SUBSYS_SLOT_LAST(slot) (MINI_ERR_SUBSYS_SLOT_BASE(slot) + MINI_ERR_SUBSYS_SLOT_SIZE - 1U)
+
+#define MINI_ERR_SUBSYS_NET_SLOT 0U    /**< 64..95    net 协议/传输层 */
+#define MINI_ERR_SUBSYS_FS_SLOT 1U     /**< 96..127   fs 文件系统 (预留) */
+#define MINI_ERR_SUBSYS_OTA_SLOT 2U    /**< 128..159  ota 升级/引导 (预留) */
+#define MINI_ERR_SUBSYS_LOG_SLOT 3U    /**< 160..191  log 日志后端 */
+#define MINI_ERR_SUBSYS_SYSTEM_SLOT 4U /**< 192..223  system 系统服务 */
+#define MINI_ERR_SUBSYS_DRIVER_SLOT 5U  /**< 224..255  驱动/板级私有 */
+#define MINI_ERR_SUBSYS_MINI_OS_SLOT 6U /**< 256..287  mini-os 内核私有 */
+
+/* 片基准幅度 */
+#define MINI_ERR_SUBSYS_NET_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_NET_SLOT)
+#define MINI_ERR_SUBSYS_FS_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_FS_SLOT)
+#define MINI_ERR_SUBSYS_OTA_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_OTA_SLOT)
+#define MINI_ERR_SUBSYS_LOG_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_LOG_SLOT)
+#define MINI_ERR_SUBSYS_SYSTEM_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_SYSTEM_SLOT)
+#define MINI_ERR_SUBSYS_DRIVER_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_DRIVER_SLOT)
+#define MINI_ERR_SUBSYS_MINI_OS_BASE MINI_ERR_SUBSYS_SLOT_BASE(MINI_ERR_SUBSYS_MINI_OS_SLOT)
+
+/* 驱动片边界: 驱动/板级不再独占一段, 只占子体系段的一片 (第 5 片) */
+#define MINI_ERR_SECTOR_DRIVER_FIRST MINI_ERR_SUBSYS_DRIVER_BASE
+#define MINI_ERR_SECTOR_DRIVER_LAST MINI_ERR_SUBSYS_SLOT_LAST(MINI_ERR_SUBSYS_DRIVER_SLOT)
+
+/* 布局自检: 子体系段必须恰好容纳整数个 32 码片, 且驱动片基准按片大小对齐 */
+_Static_assert((MINI_ERR_SECTOR_SUBSYS_LAST - MINI_ERR_SECTOR_SUBSYS_FIRST + 1U) ==
+                   (MINI_ERR_SUBSYS_SLOT_COUNT * MINI_ERR_SUBSYS_SLOT_SIZE),
+               "MINI_ERR: subsystem sector must hold a whole number of 32-code slots");
+_Static_assert((MINI_ERR_SUBSYS_DRIVER_BASE - MINI_ERR_SECTOR_SUBSYS_FIRST) % MINI_ERR_SUBSYS_SLOT_SIZE == 0U,
+               "MINI_ERR: driver slot base must be slot-size aligned");
 
 /**
- * @brief 由幅度构造子系统/驱动段私有码
- * @param[in] mag 幅度, 必须落在所属段内 (子系统 64..127, 驱动 128..255)
+ * @brief 由幅度直接构造私有码
+ * @param[in] mag 幅度, 必须落在 MINI_ERR_MAX 内, 且属于调用方自己的片
  * @return 负的错误码
  */
 #define MINI_ERR_BUILD(mag) (-(int)(mag))
 
-/* ── 子系统段分片 (幅度基准; 每片 16 码) ──
- * 子系统私有码走本段, 不要另立 errno 风格的独立命名空间 —— 同一段内便于用
- * MINI_ERR_IS_SUBSYS() 判归属, 且数值跨工具链稳定。 */
-#define MINI_ERR_SUBSYS_NET_BASE 64U  /**< 64..79    net 协议/传输层 */
-#define MINI_ERR_SUBSYS_FS_BASE 80U   /**< 80..95    fs 文件系统 (预留) */
-#define MINI_ERR_SUBSYS_OTA_BASE 96U  /**< 96..111   ota 升级/引导 (预留) */
-#define MINI_ERR_SUBSYS_LOG_BASE 112U /**< 112..127  log 日志后端 */
-
 /**
- * @brief 构造子系统私有码
- * @param[in] base 子系统段基准幅度 (MINI_ERR_SUBSYS_*_BASE)
- * @param[in] idx 段内偏移 (0..15)
- * @return 负的错误码, 归属 MINI_ERR_SECTOR_SUBSYS
+ * @brief 构造子体系私有码
+ * @param[in] base 片基准幅度 (MINI_ERR_SUBSYS_*_BASE)
+ * @param[in] idx 片内偏移 (0..31; 越片会侵占下一片)
+ * @return 负的错误码; 驱动片归 MINI_ERR_SECTOR_DRIVER, 其余归 MINI_ERR_SECTOR_SUBSYS
  * @code
  *   #define NET_ERR_INVAL MINI_ERR_SUBSYS(MINI_ERR_SUBSYS_NET_BASE, 0)
  * @endcode
@@ -128,14 +155,16 @@ typedef enum mt_err_sector
 {
     MINI_ERR_SECTOR_INVALID = 0, /**< 非负, 或幅度超出 MINI_ERR_MAX */
     MINI_ERR_SECTOR_COMMON  = 1, /**< [-1..-63]    通用/栈层 */
-    MINI_ERR_SECTOR_SUBSYS  = 2, /**< [-64..-127]  子系统私有 */
-    MINI_ERR_SECTOR_DRIVER  = 3  /**< [-128..-255] 驱动/板级私有 */
+    MINI_ERR_SECTOR_SUBSYS  = 2, /**< [-64..-512]  子体系私有 (每片 32 码, 驱动片除外) */
+    MINI_ERR_SECTOR_DRIVER  = 3  /**< [-224..-255] 驱动/板级片 (子体系段第 5 片) */
 } mt_err_sector_t;
 
 /**
  * @brief 判定错误码所属段
  * @param[in] err 错误码 (MINI_OK / MINI_ERR_*)
  * @return 所属段; 成功码或越界码返回 MINI_ERR_SECTOR_INVALID
+ * @note 驱动片先判: 它位于子体系段内部, 单独归 MINI_ERR_SECTOR_DRIVER,
+ *       故 MINI_ERR_IS_SUBSYS() 与 MINI_ERR_IS_DRIVER() 仍互斥。
  */
 MINI_STATIC_INLINE mt_err_sector_t MINI_ERR_SECTOR_OF(int err)
 {
@@ -149,17 +178,37 @@ MINI_STATIC_INLINE mt_err_sector_t MINI_ERR_SECTOR_OF(int err)
         return MINI_ERR_SECTOR_INVALID;
     if (mag <= MINI_ERR_SECTOR_COMMON_LAST)
         return MINI_ERR_SECTOR_COMMON;
-    if (mag <= MINI_ERR_SECTOR_SUBSYS_LAST)
-        return MINI_ERR_SECTOR_SUBSYS;
-    return MINI_ERR_SECTOR_DRIVER;
+    if (mag >= MINI_ERR_SECTOR_DRIVER_FIRST && mag <= MINI_ERR_SECTOR_DRIVER_LAST)
+        return MINI_ERR_SECTOR_DRIVER;
+    return MINI_ERR_SECTOR_SUBSYS;
 }
 
 /** @brief 是否为通用/栈层段错误码 */
 MINI_STATIC_INLINE bool MINI_ERR_IS_COMMON(int err) { return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_COMMON; }
-/** @brief 是否为子系统段私有错误码 */
+/** @brief 是否为子体系段私有错误码 (驱动片除外, 用 MINI_ERR_IS_DRIVER 判) */
 MINI_STATIC_INLINE bool MINI_ERR_IS_SUBSYS(int err) { return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_SUBSYS; }
-/** @brief 是否为驱动/板级段私有错误码 */
+/** @brief 是否为驱动/板级片私有错误码 */
 MINI_STATIC_INLINE bool MINI_ERR_IS_DRIVER(int err) { return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_DRIVER; }
+
+/**
+ * @brief 子体系段错误码所属片号
+ * @param[in] err 错误码
+ * @return 片号 0..13 (驱动片即 MINI_ERR_SUBSYS_DRIVER_SLOT); 非子体系段返回
+ *         MINI_ERR_SUBSYS_SLOT_COUNT 作"无片"标记
+ */
+MINI_STATIC_INLINE unsigned MINI_ERR_SUBSYS_SLOT_OF(int err)
+{
+    unsigned mag;
+
+    if (err >= 0)
+        return MINI_ERR_SUBSYS_SLOT_COUNT;
+
+    mag = MINI_ERR_MAGNITUDE(err);
+    if (mag < MINI_ERR_SECTOR_SUBSYS_FIRST || mag > MINI_ERR_SECTOR_SUBSYS_LAST)
+        return MINI_ERR_SUBSYS_SLOT_COUNT;
+
+    return (mag - MINI_ERR_SECTOR_SUBSYS_FIRST) / MINI_ERR_SUBSYS_SLOT_SIZE;
+}
 
 /**
  * @brief 错误码转可读字符串 

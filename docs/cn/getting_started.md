@@ -80,12 +80,12 @@ python3 tools/genconfig.py Kconfig build/generated/kconfig/mini_tree --config .c
 | 菜单 | 符号 | 说明 |
 | :--- | :--- | :--- |
 | Platform | `PLATFORM_ARM_CM4F` 等 | 架构提示（与工具链配合） |
-| Multi-core | `CPU_CORES` / `AMP_MODE` | 1=单核；2=AMP |
+| Multi-core | `CPU_CORES` | 1=单核；2=AMP（互斥锁自动走原子 CAS，无独立开关） |
 | OS 后端 | `OS_BARE` / `OS_MINI_OS` / `OS_FREERTOS` / `OS_RTTHREAD` | 运行时后端：裸机 / mini-os（自研，仅 Cortex-M）/ FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
 | 后端容量 | `OS_BARE_MAX_QUEUES`（基础队列数，EventBus 开自动 +1）/ `OS_BARE_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | 队列/堆内存（仅对应后端可见） |
 | System | `SYSTEM` | 总开关（默认自开）；系统层为纯 C（`system_c/`） |
 | Log | `SYS_LOG_USE_MINI_LOG` / `SYS_LOG_USE_ESP` | `MT_LOG_*` 后端（随仓库 mini-log / ESP-IDF esp_log） |
-| Board Features | `SYSTEM_WDT` / `SYSTEM_SCRUBBER` 等 | 框架看门狗（默认开）/ CRC 巡检（默认关），依赖 `SYSTEM` |
+| Board Features | `SYSTEM_WDT` / `SYSTEM_SCRUBBER` 等 | 框架看门狗（默认开）/ CRC 巡检（默认关）；后者依赖 `SYSTEM` + `MINI_OTA` |
 | Runtime | `EVENT_BUS` / `EVENT_BUS_*` / `MINI_MUTEX_POOL_SIZE` / `BOTTOM_HALF_QUEUE_DEPTH` | 总开关 + 容量 |
 
 `SYSTEM` 为**默认自开启**的可选模块，`EVENT_BUS` 与 `SYSTEM_CMD` 为**默认关闭**：关闭 `SYSTEM` 后 `system_c/` 与 EventBus 一并裁剪（命令模块 `system_cmd` 随 `SYSTEM_CMD` 关闭）；仅开启 `EVENT_BUS` 则保留两阶段启动与看门狗，加上发布/订阅总线。

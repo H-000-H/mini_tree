@@ -49,14 +49,14 @@ foreach(_sys_inc IN LISTS ARM_TOOLCHAIN_SYS_INC)
     endif()
 endforeach()
 
+# 注: 上游自带的 buffer/ 已删除 —— 与本仓 algorithm/buffer/ 是同源但不兼容的两份
+# 实现 (同名符号、不同签名), 在树构建统一用 algorithm/buffer (见 CHANGELOG)。
 file(GLOB MINI_LOG_SRC CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/buffer/*.c
 )
 
 set(MINI_LOG_INC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/buffer
 )
 add_library(${CMAKE_PROJECT_NAME} STATIC
     ${MINI_LOG_SRC}

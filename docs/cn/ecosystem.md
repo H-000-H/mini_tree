@@ -137,7 +137,7 @@
 - **可以**：在应用或板级服务里调用开源库 API；经 `device_*` / EventBus 与中间件协作。
 - **不要**：在 `vfs/` / `bus/` 公共头强绑某个 GUI 实现，或把厂商 HAL typedef 泄漏进中间件公共 API。
 - **南向**：Flash/显示/网卡仍通过板级 HAL 或 port 回调接触硬件，保持「硬件直投、中间件不绑 SDK」。
-- **UI 胶水层 (`ui/`)**：LVGL / u8g2 的 flush 回调经 `ui/display/display_ui_bridge.h` 统一入口，走 `device_ioctl(DISPLAY_CMD_*)` 触显示硬件；不直调 `bus_*` / `hal_*`，换屏仅需更换 device 指针。
+- **UI 胶水层 (`ui/`)**：LVGL / u8g2 的 flush 回调经 `ui/display/display_ui_bridge.h` 统一入口，走 `device_ioctl(DISPLAY_CMD_*)` 触显示硬件；不直调 `bus_*` / `hal_*`，换屏仅需更换 device 指针（具体实现由本地扩展提供，见 `.gitignore`）。
 
 产品驱动（39 个）位于 `drivers/<chip>/{include,src}`，是生态的一部分但走本仓 `DRIVER_REGISTER` 契约，与积木库互不绑定。
 

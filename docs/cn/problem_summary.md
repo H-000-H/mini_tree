@@ -34,7 +34,6 @@
 | 编号 | 问题 | 影响 | 规避 / 状态 |
 | :--- | :--- | :--- | :--- |
 | P7 | `.clang-tidy` 分层在 app 层仅建议 | 命名规范可能被忽略 | 靠 review 兜底 |
-| P8 | `tools/build_size.py` 的 `--format=baseline` 无历史基线时报警 | 首次运行无对照 | 先跑一次生成基线 |
 | P9 | `ide/stubs/` 与 real 头不同步 | clangd 误报 | 重跑 CMake configure 再生 |
 
 ---

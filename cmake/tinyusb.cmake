@@ -60,8 +60,34 @@ function(mini_tree_link_tinyusb target)
             message(STATUS "mini_tree TinyUSB: src/tusb.c missing — core sources empty (offline)")
             set(TINYUSB_CORE_SRCS "")
         endif()
+        # 设备控制器驱动 (DCD) 不在 TinyUSB 核心源里 —— 官方 src/CMakeLists.txt
+        # 顶部注释: "DCD and HCD drivers are not included"。故按 Kconfig 的
+        # USB_TUSB_DCD_SRC (相对 lib/tinyusb/src 的路径) 追加; 留空即只编协议栈
+        # 核心 (静态库能过, 链接 ELF 时会缺 dcd_init 等符号)。
+        set(TINYUSB_DCD_SRCS "")
+        file(STRINGS "${KCONFIG_DOT}" _tusb_dcd_line REGEX "^CONFIG_USB_TUSB_DCD_SRC=")
+        if(_tusb_dcd_line)
+            string(REGEX REPLACE "^CONFIG_USB_TUSB_DCD_SRC=\"?([^\"]*)\"?$" "\\1" _tusb_dcd_src "${_tusb_dcd_line}")
+            string(STRIP "${_tusb_dcd_src}" _tusb_dcd_src)
+            if(_tusb_dcd_src)
+                if(NOT EXISTS "${TINYUSB_SRC_DIR}/${_tusb_dcd_src}")
+                    message(FATAL_ERROR
+                        "CONFIG_USB_TUSB_DCD_SRC=\"${_tusb_dcd_src}\" 不在 ${TINYUSB_SRC_DIR} 下; "
+                        "请填 lib/tinyusb/src 内的 DCD 源 (如 portable/synopsys/dwc2/dcd_dwc2.c)")
+                endif()
+                list(APPEND TINYUSB_DCD_SRCS "${TINYUSB_SRC_DIR}/${_tusb_dcd_src}")
+                message(STATUS "mini_tree TinyUSB: DCD ${_tusb_dcd_src}")
+            else()
+                message(WARNING "CONFIG_USB=y 但未指定 CONFIG_USB_TUSB_DCD_SRC: "
+                    "只编 TinyUSB 协议栈核心, 链接 ELF 时会缺 dcd_init / dcd_edpt_open 等符号")
+            endif()
+        else()
+            message(WARNING "CONFIG_USB=y 但未指定 CONFIG_USB_TUSB_DCD_SRC: "
+                "只编 TinyUSB 协议栈核心, 链接 ELF 时会缺 dcd_init / dcd_edpt_open 等符号")
+        endif()
+
         add_library(tinyusb INTERFACE)
-        target_sources(tinyusb INTERFACE ${TINYUSB_CORE_SRCS})
+        target_sources(tinyusb INTERFACE ${TINYUSB_CORE_SRCS} ${TINYUSB_DCD_SRCS})
         target_include_directories(tinyusb INTERFACE
             "${TINYUSB_SRC_DIR}"
             "${_tinyusb_source_dir}/lib/networking"

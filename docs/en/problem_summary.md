@@ -34,7 +34,6 @@
 | ID | Issue | Impact | Workaround / Status |
 | :--- | :--- | :--- | :--- |
 | P7 | layered `.clang-tidy` is advisory at app layer | naming rules may be skipped | covered by review |
-| P8 | `tools/build_size.py --format=baseline` warns without a baseline | no comparison on first run | run once to seed the baseline |
 | P9 | `ide/stubs/` drifts from real headers | clangd false positives | re-run CMake configure to regenerate |
 
 ---

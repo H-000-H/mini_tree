@@ -80,7 +80,7 @@ The root `CMakeLists.txt` runs the same logic during the configure stage (the ES
 | Menu | Symbol | Description |
 | :--- | :--- | :--- |
 | Platform | `PLATFORM_ARM_CM4F` etc. | architecture hint (paired with the toolchain) |
-| Multi-core | `CPU_CORES` / `AMP_MODE` | 1=single core; 2=AMP |
+| Multi-core | `CPU_CORES` | 1=single core; 2=AMP (mutex switches to atomic CAS; no separate switch) |
 | OS 后端 | `OS_BARE` / `OS_MINI_OS` / `OS_FREERTOS` / `OS_RTTHREAD` | runtime backend: bare-metal (cooperative / preemptive) / mini-os (in-tree, Cortex-M only) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
 | the unified interface Capacity | `OS_BARE_MAX_QUEUES` (base queue count, +1 auto when EventBus on) / `OS_BARE_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | queue & heap RAM (backend-scoped) |
 | System | `SYSTEM` | master switch (default on); the system layer is pure C (`system_c/`) |

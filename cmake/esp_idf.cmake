@@ -78,7 +78,6 @@ set(HAL_SRCS
     "${MINI_TREE_DIR}/hal/dac/hal_dac.c"
     "${MINI_TREE_DIR}/hal/tim/hal_tim.c"
     "${MINI_TREE_DIR}/hal/amp/hal_amp.c"
-    "${MINI_TREE_DIR}/hal/storage/hal_flash.c"
     "${MINI_TREE_DIR}/hal/storage/hal_storage.c"
     "${MINI_TREE_DIR}/hal/system/hal_platform_safety.c"
     "${MINI_TREE_DIR}/hal/system/hal_sdio.c"
@@ -94,11 +93,16 @@ if(MINI_TREE_SYSTEM)
     # 系统运行时恒为纯 C (system_c/); safe_state 亦为 C, 同属 system_c/
     set(SYSTEM_SRCS
         "${MINI_TREE_DIR}/system_c/src/system_init.c"
-        "${MINI_TREE_DIR}/system_c/src/system_scrubber.c"
         "${MINI_TREE_DIR}/system_c/src/system_wdt.c"
         "${MINI_TREE_DIR}/system_c/src/task_manager.c"
         "${MINI_TREE_DIR}/system_c/src/safe_state.c"
     )
+    # system_scrubber 的校验原语来自 mini-ota (image_verify_area), 而 CONFIG_MINI_OTA
+    # 只支持 Cortex-M —— ESP(Xtensa) 下恒为关, 故本项在 ESP 构建里不会被选中。
+    file(STRINGS "${KCONFIG_DOT}" MINI_TREE_SCRUBBER_ON REGEX "^CONFIG_SYSTEM_SCRUBBER=y$")
+    if(MINI_TREE_SCRUBBER_ON)
+        list(APPEND SYSTEM_SRCS "${MINI_TREE_DIR}/system_c/src/system_scrubber.c")
+    endif()
     # SystemCmd (命令分发器) 是系统层唯一保留的 C++ 模块, 仅 CONFIG_SYSTEM_CMD=y 时编入
     if(MINI_TREE_SYSTEM_CMD)
         list(APPEND SYSTEM_SRCS "${MINI_TREE_DIR}/system_cpp/src/system_cmd.cpp")

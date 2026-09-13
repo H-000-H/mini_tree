@@ -171,11 +171,11 @@ static int m_open(uint32_t id, const flash_area_t **out)
 }
 static int m_erase(const flash_area_t *a, uint32_t off, uint32_t len)
 {
-    return hal_flash_erase(a->fa_offset + off, len) ? 0 : ERR_ARG;
+    return board_flash_erase(a->fa_offset + off, len) ? 0 : ERR_ARG;
 }
 static int m_write(const flash_area_t *a, uint32_t off, const void *buf, uint32_t len)
 {
-    return hal_flash_program(a->fa_offset + off, buf, len) ? 0 : ERR_ARG;
+    return board_flash_program(a->fa_offset + off, buf, len) ? 0 : ERR_ARG;
 }
 static int m_read(const flash_area_t *a, uint32_t off, void *buf, uint32_t len)
 {

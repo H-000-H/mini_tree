@@ -13,7 +13,7 @@ const char *err_str(int err)
     case ERR_ARG:               return "invalid argument";
     case ERR_TOO_SMALL:         return "data smaller than required";
     case ERR_OVERFLOW:          return "length overflow";
-    case ERR_UNSUPPORTED:       return "feature not enabled";
+    case ERR_NOT_SUPPORTED:     return "feature not enabled";
     case ERR_BUF_TOO_SMALL:     return "output buffer too small";
     case ERR_CRC_MISMATCH:      return "crc mismatch";
     case ERR_HASH_MISMATCH:     return "sha256 mismatch";
@@ -22,6 +22,8 @@ const char *err_str(int err)
     case ERR_HASH_FAILED:       return "hash failed";
     case ERR_PADDING:           return "invalid pkcs7 padding";
     case ERR_OTA_STATE:         return "ota state missing or corrupt";
+    case ERR_OTA_OPEN:          return "ota not enabled";
+    case ERR_TRANSMIT:          return "transmit error";
     default:                    return "unknown error";
     }
 }

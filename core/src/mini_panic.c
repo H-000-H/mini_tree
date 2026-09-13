@@ -6,7 +6,7 @@
  *@details
  *   板级未覆盖时的 weak 兜底符号:
  *     MINI_WEAK void safety_hardware_shutdown(void) { MINI_TRAP(); }
- *     MINI_WEAK void osal_panic_interlock(void) {}
+ *     MINI_WEAK void mini_panic_interlock(void) {}
  *   (板级仍可用强符号覆盖这两个接口)。
  *
  *   system_safety_hardware_shutdown 是板级强符号, 实现在板级 (不在本文件)。

@@ -20,7 +20,6 @@ extern "C"
 {
 #endif
 
-    mt_err_t system_scrubber_init(void);
     mt_err_t system_scrubber_start(void);
     bool system_scrubber_is_running(void);
 

@@ -34,7 +34,6 @@
 
 | ID | Task | Link | Blocked by |
 | :--- | :--- | :--- | :--- |
-| T8 | `build_size.py --format=baseline` seed baseline on first run | P8 | needs platform env |
 | T9 | verify `hal/amp` excluded by default on single-core | P5 | needs single-core board |
 
 ---

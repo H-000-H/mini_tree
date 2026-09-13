@@ -34,10 +34,8 @@
 /* ── 事件集 (Kconfig CONFIG_RTTHREAD_EVENT 控制, 默认关闭) ──
  * 关闭时 src/ipc.c 内 #ifdef RT_USING_EVENT 包裹的 rt_event_* 代码段
  * 整体不参与编译 (对象/链表字段与 API 均不生成)。
- * CONFIG_OSAL_EVENT 会自动 select CONFIG_RTTHREAD_EVENT:
- * osal_rtthread.c 的 osal_event_* 直接映射 rt_event_*。
- * 未开 OSAL_EVENT 时本项仅供直接调用 rt_event_create /
- * rt_event_recv 的工程使用, 故默认不开。
+ * 该开关默认关且没有任何符号 select 它: 需要事件集时自行开启, 直接调用
+ * rt_event_create / rt_event_recv (事件集不属于统一后端接口)。
  * CONFIG_RTTHREAD_EVENT 来自 kconfig 生成的 config.h — RT-Thread 内核源
  * 文件并不包含 config.h, 因此 lib/rtthread/CMakeLists.txt 额外用 -D 注入
  * MINI_TREE_RTTHREAD_EVENT 作为等效开关 (PUBLIC 传播, 保证 osal 层与内核

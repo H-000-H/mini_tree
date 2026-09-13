@@ -76,8 +76,8 @@ Writes Kconfig symbols into a `config.h` of `#define CONFIG_*` lines. Needs a us
 ## 4. menuconfig.py / menuconfig.py
 
 ```bash
-python tools/menuconfig.py     # 终端全屏界面 (curses TUI, 同内核 make menuconfig)
-python tools/guiconfig.py      # 独立图形窗口 (Tkinter GUI, 同内核 make xconfig)
+python tools/menuconfig.py                          # 终端全屏界面 (curses TUI, 同内核 make menuconfig)
+python tools/_vendor/guiconfig.py Kconfig.non_esp   # 独立图形窗口 (Tkinter GUI, 同内核 make xconfig)
 ```
 
 Kconfig 配置工具：交互式浏览/修改 `.config` 并保存，供 genconfig 消费。
@@ -85,23 +85,23 @@ A Kconfig configurator: interactively browse/edit `.config` and save it for genc
 
 ### 零依赖
 
-两种界面都由仓库内置的 **官方 kconfiglib 14.1.0**（`tools/_vendor/`，ISC 许可，见 [../../tools/_vendor/README.md](../../tools/_vendor/README.md)）提供，**无需安装任何系统级 kconfig 包**，也不依赖 ESP-IDF 的 `esp_idf_kconfig`。启动器自动把 `tools/_vendor` 前置到 `sys.path`，本机若装了其他 kconfig 包也不会冲突。GUI 仅需 Python 标准库 `tkinter`（Windows 官方安装器自带；Linux 需 `python3-tk`）。
+两种界面都由仓库内置的 **官方 kconfiglib**（`tools/_vendor/`，ISC 许可，见 [../../tools/_vendor/README.md](../../tools/_vendor/README.md)）提供，**无需安装任何系统级 kconfig 包**，也不依赖 ESP-IDF 的 `esp_idf_kconfig`。GUI 仅需 Python 标准库 `tkinter`（Windows 官方安装器自带；Linux 需 `python3-tk`）。
 
 两种界面共享解析器与同一套 Kconfig 语法：
 - TUI：`from menuconfig import menuconfig` → `menuconfig(kconf)`
 - GUI：`from guiconfig import menuconfig` → `menuconfig(kconf)`
 
-> 备注 / Note：`tools/menuconfig.py` 本身不是 Kconfig 图形界面，而是启动器——它内置的官方 `menuconfig`/`guiconfig` 模块（上游 kconfiglib 的 TUI/GUI）才是界面。
+> 备注 / Note：`tools/menuconfig.py` 是 **TUI 启动器**，本身不是图形界面 —— 它把 `tools/_vendor` 前置到 `sys.path`、固定顶层 `Kconfig.non_esp` 与 `.config`，再转调上游 kconfiglib 的 `menuconfig`。
 
-#### 可选：现代 UI
+### GUI 用法 / GUI usage
 
-GUI 有三级降级链，按观感从高到低：
+本仓只提供 TUI 启动器，**没有 GUI 启动器**：GUI 直接运行随仓的上游脚本即可。`tools/_vendor/guiconfig.py` 自身可执行（`tools/_vendor` 自动进入 `sys.path`），而顶层 `Kconfig.non_esp` 用的是 `rsource`，与 CWD 无关；`.config` 默认落在 CWD（可用 `KCONFIG_CONFIG` 指定）：
 
-1. **Canvas 毛玻璃 UI**（`guiconfig_canvas.py`）：CustomTkinter + Canvas 圆角卡片 + PIL 模糊背景，观感最接近现代 dashboard。需 `pip install customtkinter pillow`。
-2. **ttkbootstrap 主题**：Bootstrap 风格圆角按钮/扁平控件/暗色模式。需 `pip install ttkbootstrap`。
-3. **内置手写深色**：`_vendor/guiconfig.py` 的 clam + 自定义配色，零依赖。
+```bash
+python tools/_vendor/guiconfig.py Kconfig.non_esp   # 从仓库根运行, 读写 ./.config
+```
 
-启动器 `tools/guiconfig.py` 自动检测并优先使用最高级 UI。TUI（curses）不受影响，已内置 ESP-IDF 风格配色。
+`tools/_vendor/` 下的 `kconfiglib.py` / `menuconfig.py` / `guiconfig.py` 与上游保持同步、不做修改（见 `tools/_vendor/README.md` 清单）。
 
 ## 5. scrubber CRC stub / Scrubber CRC Stub
 
@@ -110,10 +110,11 @@ GUI 有三级降级链，按观感从高到低：
 
 ```c
 #define SYSTEM_SCRUBBER_CRC_BASELINE 0x00000000
+#define SYSTEM_SCRUBBER_IMAGE_LEN    0U
 ```
 
-链接后可用板级脚本覆盖真实 CRC 基线。
-After linking, a board-level script can override the real CRC baseline.
+链接后跑 `tools/post_build_crc.py <firmware.bin> <头文件>` 会同时刷新 CRC 基线**与镜像长度** `SYSTEM_SCRUBBER_IMAGE_LEN`（校验必须 CRC 与长度同源）。
+After linking, `tools/post_build_crc.py <firmware.bin> <header>` refreshes both the CRC baseline **and** the image length `SYSTEM_SCRUBBER_IMAGE_LEN` (CRC and length must come from the same artifact).
 
 ## 6. 与 CMake 的关系
 

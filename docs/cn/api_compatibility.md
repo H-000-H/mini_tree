@@ -30,11 +30,11 @@
 | :--- | :--- | :--- |
 | `0` | 成功 | `MINI_OK` |
 | `-1 .. -63` | 通用 / 栈层 | `status.h` 的全部 `MINI_ERR_*`；`-28 .. -63` 预留扩容 |
-| `-64 .. -127` | 子系统 | net / fs / ota / log / system 私有码 |
-| `-128 .. -255` | 驱动 / 板级 | drivers / board / 产品私有码 |
+| `-64 .. -511` | 子体系（每片 32 码，共 14 片） | 0 net / 1 fs / 2 ota / 3 log / 4 system / 5 driver（驱动·板级）/ 6..13 预留 |
 
-- 幅度上限 `MINI_ERR_MAX`（`255`），与 `ERR_PTR` 指针编码上限一致，链接脚本无需改动。
-- 私有码用 `MINI_ERR_BUILD(mag)` 构造；`MINI_ERR_SECTOR_OF()` / `MINI_ERR_IS_SUBSYS()` / `MINI_ERR_IS_DRIVER()` 判归属。
+- 幅度上限 `MINI_ERR_MAX`（`511`）——`0` 成功 + 511 个错误码 = 512 个码位；`ERR_PTR` 用 `ERR_SECTION_BASE + 幅度` 编码，仍落在 `error_symbols.ld` 保留的那段地址内，链接脚本无需改动。
+- 私有码用 `MINI_ERR_SUBSYS(base, idx)` 构造（`base` 取 `MINI_ERR_SUBSYS_*_BASE`，`idx` 0..31，越片即侵占下一片），或 `MINI_ERR_BUILD(mag)` 直接按幅度构造；`MINI_ERR_SECTOR_OF()` / `MINI_ERR_IS_SUBSYS()` / `MINI_ERR_IS_DRIVER()` 判归属，`MINI_ERR_SUBSYS_SLOT_OF()` 取片号。
+- 驱动/板级不再独占一段：它是子体系段的第 5 片（`-224 .. -255`），`MINI_ERR_IS_DRIVER()` 判该片，与 `MINI_ERR_IS_SUBSYS()` 互斥。
 - `MINI_ERR_TO_STR()` 提供日志用字符串（`core/src/status.c`，未被引用时由链接器整体丢弃）。
 - **类型名 `mt_err_t`**：返回错误码的函数，其返回类型写 `mt_err_t`；**参数类型保持 `int`**（C++ 侧 enum → int 隐式可行，int → enum 需显式转换，故不把参数改成枚举）。`MINI_ERR_SECTOR_OF()` 返回 `mt_err_sector_t`。
 - **保持 `int` 的例外**（不是纯错误码返回，改类型会造成回调不兼容）：`file_operations.write` / `.read` 是"已传输字节数或负数错误码"的混合契约；`interrupt_top_half_t`（VIRQ 上半部）返回 `MINI_IRQ_ENTRY_BOTTOM/NOBOTTOM` 标志；`bus` host ops 的 `.role` 返回 MASTER/SLAVE；`NET_*` / `BUFF_*` / `MINI_LOG_ERR_*` 与 coreMQTT/lwIP 回调等第三方契约。
@@ -44,10 +44,11 @@
 | 命名空间 | 归属 | 备注 |
 | :--- | :--- | :--- |
 | `MINI_OK` / `MINI_ERR_*` | `core/include/status.h` | 栈内唯一通用命名空间 |
-| `MINI_OS_ERR_*` | `lib/mini-os` | 数值与 `MINI_ERR_*` 逐位一致，零转换互转 |
+| `MINI_OS_ERR_*` | `lib/mini-os` | 通用语义与 `MINI_ERR_*` 逐位一致（零转换）；内核私有码落 mini-os 片（`-256..-287`） |
 | `NET_OK` / `NET_ERR_*` | `net/port/net_error.h` | net 包装层私有，负 errno 语义；在包装层边界翻译 |
 | `BUFF_*` | `algorithm/buffer/buffer.h` | 缓冲库私有，包装 errno |
-| `MINI_LOG_ERR_*` | `mini-log/inc/log_err.h` | 仅 mini-log 内部使用 |
+| `MINI_LOG_ERR_*` | `mini-log/inc/log_err.h` | 落 log 片（`-160..-191`）；vendor 自包含，数值写死 |
+| `ERR_*` | `lib/mini-ota/bootutil/inc/err.h` | 落 ota 片（`-128..-159`）；vendor 自包含，数值写死 |
 
 ⚠ 不同命名空间的码**不可按数值直接比较**（例如 `NET_ERR_NOSPC` 与 `MINI_ERR_NOSPC` 数值不同）。
 
