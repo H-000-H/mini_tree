@@ -32,6 +32,18 @@ def main() -> int:
         print(f"[menuconfig] 错误: 未找到 Kconfig 文件: {KCONFIG_PATH}")
         return 1
 
+    # 前置诊断: kconfiglib 的 menuconfig 是文本 TUI, 需要标准库 curses。
+    # Windows 上它没有随 Python 提供 (需 pip install windows-curses, 而
+    # Kconfiglib 13+ 已不再自动安装, Python 3.14 亦无可用轮子) —— 此时
+    # kconfiglib 会打印英文提示后退出, 不如在这里直接指到 Tk 版入口。
+    try:
+        import curses  # noqa: F401
+    except ImportError:
+        print("[menuconfig] 错误: 当前 Python 缺少 curses 模块, 文本菜单无法启动。")
+        print("[menuconfig] Windows 上请改用 Tk 图形版:  py -3 tools/guiconfig.py")
+        print("[menuconfig] 或自行安装: pip install windows-curses (注意版本兼容性)")
+        return 1
+
     # kconfiglib 的 menuconfig 通过 KCONFIG_CONFIG 环境变量决定 .config 读写路径
     # (rsource 已让 source 解析脱离 CWD) → 无需 chdir, 任意目录启动都指向项目 .config
     os.environ.setdefault("KCONFIG_CONFIG", str(KCONFIG_DIR / ".config"))
