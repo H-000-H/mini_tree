@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_SINOWEALTH_SH1106
-#define DTC_GEN_COUNT_SINOWEALTH_SH1106 1
+#ifndef DTC_GEN_COUNT_MT_SH1106
+#define DTC_GEN_COUNT_MT_SH1106 1
 #endif
-#define SH1106_POOL_COUNT DTC_GEN_COUNT_SINOWEALTH_SH1106
+#define SH1106_POOL_COUNT DTC_GEN_COUNT_MT_SH1106
 
 /** @brief SH1106 驱动实例（嵌入 fops） */
 struct sh1106_device
@@ -424,4 +424,4 @@ static mt_err_t sh1106_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(sh1106, "sinowealth,sh1106", sh1106_probe, sh1106_remove)
+DRIVER_REGISTER(sh1106, "mt-sh1106", sh1106_probe, sh1106_remove)

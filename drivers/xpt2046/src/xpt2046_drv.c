@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_TI_XPT2046
-#define DTC_GEN_COUNT_TI_XPT2046 1
+#ifndef DTC_GEN_COUNT_MT_XPT2046
+#define DTC_GEN_COUNT_MT_XPT2046 1
 #endif
-#define XPT2046_POOL_COUNT DTC_GEN_COUNT_TI_XPT2046
+#define XPT2046_POOL_COUNT DTC_GEN_COUNT_MT_XPT2046
 
 /** @brief XPT2046 驱动实例（嵌入 fops 与 SPI/IRQ 句柄） */
 struct xpt2046_device
@@ -312,4 +312,4 @@ static mt_err_t xpt2046_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(xpt2046, "ti,xpt2046", xpt2046_probe, xpt2046_remove)
+DRIVER_REGISTER(xpt2046, "mt-xpt2046", xpt2046_probe, xpt2046_remove)

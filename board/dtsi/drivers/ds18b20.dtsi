@@ -6,11 +6,11 @@
  *       - 经 I2C one-wire 桥接: 放 &i2c0 { } 内 (典型地址 0x18)
  *       - 直接 GPIO: 放 &gpios_pin { } 同级 (reg 可省)
  *       status 改 "okay"。
- * 池大小自动 = DTC_GEN_COUNT_MAXIM_DS18B20 (节点数, 缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_DS18B20 (节点数, 缺省 1)。
  */
 &i2c0 {
 ds18b20: ds18b20@0 {
-	compatible = "maxim,ds18b20";
+	compatible = "mt-ds18b20";
 	reg = <0>; /* 总线地址 (I2C 桥接时典型 0x18) */
 	status = "disabled";
 };

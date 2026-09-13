@@ -21,7 +21,7 @@ function(mini_tree_link_freemodbus target)
     if(NOT TARGET mini_tree_freemodbus)
         mini_tree_dep_get(_fm_root
             NAME freemodbus
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/FreeModbus"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/FreeModbus"
             MARKER "modbus/mb.c"
             GIT_REPOSITORY https://github.com/cwalter-at/freemodbus.git
             GIT_TAG ${MINI_TREE_FREEMODBUS_VERSION}

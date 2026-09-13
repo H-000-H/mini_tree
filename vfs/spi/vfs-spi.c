@@ -872,8 +872,8 @@ static mt_err_t spi_vfs_remove(struct device* pdev)
 /* -------------------------------------------------------------------------- */
 /*Driver Registration*/
 /* -------------------------------------------------------------------------- */
-DRIVER_REGISTER(spi_host_master, "spi-master", vfs_spi_priv_probe_master, vfs_spi_priv_remove)
-DRIVER_REGISTER(spi_host_slave, "spi-slave", vfs_spi_priv_probe_slave, vfs_spi_priv_remove)
-DRIVER_REGISTER(spi_vfs_master, "heterogeneous,spi-master-client", spi_vfs_probe, spi_vfs_remove)
-DRIVER_REGISTER(spi_vfs_slave, "heterogeneous,spi-slave-client", spi_vfs_probe, spi_vfs_remove)
+DRIVER_REGISTER(spi_host_master, "mt-spi-master", vfs_spi_priv_probe_master, vfs_spi_priv_remove)
+DRIVER_REGISTER(spi_host_slave, "mt-spi-slave", vfs_spi_priv_probe_slave, vfs_spi_priv_remove)
+DRIVER_REGISTER(spi_vfs_master, "mt-spi-master-client", spi_vfs_probe, spi_vfs_remove)
+DRIVER_REGISTER(spi_vfs_slave, "mt-spi-slave-client", spi_vfs_probe, spi_vfs_remove)
 /* -------------------------------------------------------------------------- */

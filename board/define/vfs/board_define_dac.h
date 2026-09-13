@@ -12,12 +12,19 @@
 #ifndef BOARD_DEFINE_DAC_H
 #define BOARD_DEFINE_DAC_H
 
-/* 池大小 = DTS "dac" 节点数 (缺省 1) */
-#ifndef DTC_GEN_COUNT_DAC
-#define DTC_GEN_COUNT_DAC 1
+/* 池大小 = DTS "mt-dac" 节点数 (缺省 1) */
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
+#endif
+#endif
+#ifndef DTC_GEN_COUNT_MT_DAC
+#define DTC_GEN_COUNT_MT_DAC 1
 #endif
 #ifndef DAC_VFS_DEVICE_COUNT
-#define DAC_VFS_DEVICE_COUNT DTC_GEN_COUNT_DAC
+#define DAC_VFS_DEVICE_COUNT DTC_GEN_COUNT_MT_DAC
 #endif
 
 /* DMA 缓冲深度 (元素数) */

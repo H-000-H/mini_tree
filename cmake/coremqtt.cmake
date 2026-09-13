@@ -21,7 +21,7 @@ function(mini_tree_link_coremqtt target)
     if(NOT TARGET mini_tree_coremqtt)
         mini_tree_dep_get(_mqtt_root
             NAME coremqtt
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/coreMQTT"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/coreMQTT"
             MARKER "source/include/core_mqtt.h"
             GIT_REPOSITORY git@github.com:FreeRTOS/coreMQTT.git
             GIT_TAG ${MINI_TREE_COREMQTT_VERSION}

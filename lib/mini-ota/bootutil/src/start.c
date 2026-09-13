@@ -133,6 +133,11 @@ uint8_t ota_is_pending(void)
     return (uint8_t)ota_state_bit_get(s_ota_state, OTA_STATE_BIT_PENDING);
 }
 
+uint8_t ota_is_trial(void)
+{
+    return (uint8_t)ota_state_bit_get(s_ota_state, OTA_STATE_BIT_TRIAL);
+}
+
 /* 从介质把持久位刷到 RAM（不做回滚判定）。
  * 返回 ERR_OK（含"无记录"，此时清持久位走默认）或后端错误（如 ERR_NOT_SUPPORTED）。 */
 static int state_reload(void)
@@ -156,8 +161,9 @@ static int state_reload(void)
 }
 
 /* ---------------- 启动恢复 ----------------
- * boot 选区前调用一次：恢复持久位；若上次激活的新镜像 app 未确认（pending），
- * 则回滚到另一个分区并记录失败码。首次上电/无有效记录时走默认值。
+ * boot 选区前调用一次：恢复持久位；若上次激活的新镜像未被确认（pending），
+ * 第一次放行跳入新分区试运行（置 trial），第二次仍未确认才回滚到旧分区并记失败码。
+ * 首次上电/无有效记录时走默认值。
  */
 int mini_boot_state_load(void)
 {
@@ -170,13 +176,23 @@ int mini_boot_state_load(void)
 
     if (ota_is_pending() != 0u)
     {
-        /* pending：上次激活的新镜像没被 app 确认 → 回滚到另一分区
-         * （翻转 current + 清 pending + 记失败码），一次落盘 */
-        uint32_t resolved = s_ota_state;
-        if (ota_state_resolve_pending(&resolved, OTA_FAIL_VERIFY) != 0)
+        if (ota_is_trial() == 0u)
         {
-            uint32_t mask = OTA_STATE_MASK_CURRENT | OTA_STATE_MASK_PENDING | OTA_STATE_FAIL_MASK;
-            (void)state_update(mask, resolved & mask);
+            /* 刚激活后的首次复位：放行跳到 current 指向的新分区试运行，
+             * 并把 trial 置 1 —— 新固件跑起来后 confirm 会清掉 pending+trial */
+            (void)state_update_bit(OTA_STATE_MASK_TRIAL, 1u);
+        }
+        else
+        {
+            /* 已试运行过一次仍未被确认：新固件没起来（跑挂/掉电）→ 回滚到旧分区
+             * （翻转 current + 清 pending/trial + 记失败码），一次落盘 */
+            uint32_t resolved = s_ota_state;
+            if (ota_state_resolve_pending(&resolved, OTA_FAIL_VERIFY) != 0)
+            {
+                uint32_t mask = OTA_STATE_MASK_CURRENT | OTA_STATE_MASK_PENDING |
+                                OTA_STATE_MASK_TRIAL | OTA_STATE_FAIL_MASK;
+                (void)state_update(mask, resolved & mask);
+            }
         }
     }
     return ERR_OK;
@@ -326,8 +342,10 @@ int mini_boot_start_ota(void)
     }
 
     /* 校验通过：激活新分区（bit6 切到刚下载的分区）+ 按需置 pending；
-     * 同时清掉上次的失败码（它描述的是上一次 OTA 的结果） */
-    uint32_t mask = OTA_STATE_MASK_CURRENT | OTA_STATE_MASK_PENDING | OTA_STATE_FAIL_MASK;
+     * 同时清掉上次的失败码（它描述的是上一次 OTA 的结果）与 trial
+     * （新的一轮试运行，trial 必须归零，否则 boot 会直接判回滚） */
+    uint32_t mask = OTA_STATE_MASK_CURRENT | OTA_STATE_MASK_PENDING |
+                    OTA_STATE_MASK_TRIAL | OTA_STATE_FAIL_MASK;
     uint32_t value = 0u;
     if (flash_inactive_area_id() == (uint32_t)FLASH_AREA_ID_IMAGE_1)
     {
@@ -379,7 +397,7 @@ int mini_boot_backup(mini_boot_backup_param_t *param)
 
 int mini_boot_confirm_ota(void)
 {
-    /* app 运行正常：只清 pending。
+    /* app 运行正常：清 pending + trial（试运行通过，此后不再回滚）。
      * 后端未注册时返回 ERR_NOT_SUPPORTED，让"confirm 其实没落盘"当场暴露。 */
-    return state_update_bit(OTA_STATE_MASK_PENDING, 0u);
+    return state_update(OTA_STATE_MASK_PENDING | OTA_STATE_MASK_TRIAL, 0u);
 }

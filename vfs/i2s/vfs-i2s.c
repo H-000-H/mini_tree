@@ -783,7 +783,7 @@ static mt_err_t client_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(i2s_host_master, "i2s-master", host_probe_master, host_remove)
-DRIVER_REGISTER(i2s_host_slave, "i2s-slave", host_probe_slave, host_remove)
-DRIVER_REGISTER(i2s_vfs_master, "heterogeneous,i2s-master-client", client_probe, client_remove)
-DRIVER_REGISTER(i2s_vfs_slave, "heterogeneous,i2s-slave-client", client_probe, client_remove)
+DRIVER_REGISTER(i2s_host_master, "mt-i2s-master", host_probe_master, host_remove)
+DRIVER_REGISTER(i2s_host_slave, "mt-i2s-slave", host_probe_slave, host_remove)
+DRIVER_REGISTER(i2s_vfs_master, "mt-i2s-master-client", client_probe, client_remove)
+DRIVER_REGISTER(i2s_vfs_slave, "mt-i2s-slave-client", client_probe, client_remove)

@@ -30,7 +30,7 @@
 static const char* const k_tag = "usb_ethif";
 
 /* 数量由 DTS ECM 节点数决定 (dtc-lite 生成, 缺省 1)。 */
-#define USBETHIF_NETIF_MAX DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ECM
+#define USBETHIF_NETIF_MAX DTC_GEN_COUNT_MT_USB_CDC_ECM
 static struct netif s_usb_netif[USBETHIF_NETIF_MAX];
 static uint8_t      s_usb_netif_used[USBETHIF_NETIF_MAX];
 

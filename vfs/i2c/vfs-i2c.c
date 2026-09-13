@@ -735,7 +735,7 @@ static mt_err_t i2c_vfs_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(i2c_host_master, "i2c-master", vfs_i2c_priv_probe_master, vfs_i2c_priv_remove)
-DRIVER_REGISTER(i2c_host_slave, "i2c-slave", vfs_i2c_priv_probe_slave, vfs_i2c_priv_remove)
-DRIVER_REGISTER(i2c_vfs_master, "heterogeneous,i2c-master-client", i2c_vfs_probe, i2c_vfs_remove)
-DRIVER_REGISTER(i2c_vfs_slave, "heterogeneous,i2c-slave-client", i2c_vfs_probe, i2c_vfs_remove)
+DRIVER_REGISTER(i2c_host_master, "mt-i2c-master", vfs_i2c_priv_probe_master, vfs_i2c_priv_remove)
+DRIVER_REGISTER(i2c_host_slave, "mt-i2c-slave", vfs_i2c_priv_probe_slave, vfs_i2c_priv_remove)
+DRIVER_REGISTER(i2c_vfs_master, "mt-i2c-master-client", i2c_vfs_probe, i2c_vfs_remove)
+DRIVER_REGISTER(i2c_vfs_slave, "mt-i2c-slave-client", i2c_vfs_probe, i2c_vfs_remove)

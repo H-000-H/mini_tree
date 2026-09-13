@@ -27,10 +27,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_GPIO_BUZZER_PASSIVE
-#define DTC_GEN_COUNT_GPIO_BUZZER_PASSIVE 1
+#ifndef DTC_GEN_COUNT_MT_BUZZER
+#define DTC_GEN_COUNT_MT_BUZZER 1
 #endif
-#define BUZZER_POOL_COUNT DTC_GEN_COUNT_GPIO_BUZZER_PASSIVE
+#define BUZZER_POOL_COUNT DTC_GEN_COUNT_MT_BUZZER
 
 /** @brief 蜂鸣器驱动实例（嵌入 fops 与双后端句柄） */
 struct buzzer_device
@@ -316,4 +316,4 @@ static mt_err_t buzzer_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(buzzer, "gpio-buzzer-passive", buzzer_probe, buzzer_remove)
+DRIVER_REGISTER(buzzer, "mt-buzzer", buzzer_probe, buzzer_remove)

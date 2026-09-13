@@ -9,7 +9,7 @@
  *   架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
  *   职责: file_operations + dev_lifecycle + DTS timeout-ms; open 首次启动 IWDG, ioctl 喂狗/改超时。
  *   隔离: 定义 IWDG_VFS_IMPL 可调 hal_iwdg_*; 其他文件包含本头时 hal_iwdg_* 被 #pragma GCC poison。
- *   Driver 注册: vfs_iwdg / "iwdg"
+ *   Driver 注册: vfs_iwdg / "mt-iwdg"
  *   约束: IWDG 一旦启动硬件不可真正关闭; close 仅释放 lifecycle。
  *   @see hal/iwdg/hal_iwdg.h
  *   --------------------------------------------------------------------------

@@ -1065,4 +1065,4 @@ static mt_err_t vfs_tim_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_tim_priv, "tim", vfs_tim_probe, vfs_tim_remove)
+DRIVER_REGISTER(vfs_tim_priv, "mt-tim", vfs_tim_probe, vfs_tim_remove)

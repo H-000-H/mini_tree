@@ -4,11 +4,11 @@
  *
  * 用法: 复制到板级 dts 的 &spi0 { } 内; reg = 片选序号; status 改 "okay"。
  * 属性: width/height 分辨率 (必填), busy-timeout-ms BUSY 等待超时 (可选, 缺省 2000)。
- * 池大小自动 = DTC_GEN_COUNT_GOODDISPLAY_EPAPER (节点数, 缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_EPAPER (节点数, 缺省 1)。
  */
 &spi0 {
 epaper: epaper@0 {
-	compatible = "gooddisplay,epaper";
+	compatible = "mt-epaper";
 	reg = <0>; /* SPI 片选序号 */
 	width = <0>; /* 屏宽 px, 如 <200> */
 	height = <0>; /* 屏高 px, 如 <200> */

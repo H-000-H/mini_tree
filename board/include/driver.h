@@ -60,7 +60,7 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn);
 /* -------------------------------------------------------------------------- */
 /* DRIVER_REGISTER 宏 */
 /* 在驱动 .c 文件中使用: */
-/* DRIVER_REGISTER(my_drv, "compat,vendor", my_probe, my_remove); */
+/* DRIVER_REGISTER(my_drv, "mt-xxx", my_probe, my_remove); */
 /* 生成 board_driver_probe_my_drv() / board_driver_remove_my_drv() */
 /* 由编译期 dtc-lite.py 扫描收录, 运行时无 strcmp 匹配 */
 /* 带 fops 的驱动 remove 标准序列 (dev_lifecycle): */

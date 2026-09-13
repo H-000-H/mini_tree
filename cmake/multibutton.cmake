@@ -13,7 +13,7 @@ function(mini_tree_link_multibutton target)
     if(NOT TARGET mini_tree_multibutton)
         mini_tree_dep_get(_mb_dir
             NAME multibutton
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/MultiButton"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/MultiButton"
             MARKER "multi_button.h"
             GIT_REPOSITORY https://github.com/0x1abin/MultiButton.git
             GIT_TAG ${MINI_TREE_MULTIBUTTON_VERSION}

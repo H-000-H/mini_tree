@@ -13,7 +13,7 @@ function(mini_tree_link_nanopb target)
     if(NOT TARGET mini_tree_nanopb)
         mini_tree_dep_get(_np_dir
             NAME nanopb
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/nanopb"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/nanopb"
             MARKER "pb.h"
             GIT_REPOSITORY https://github.com/nanopb/nanopb.git
             GIT_TAG ${MINI_TREE_NANOPB_VERSION}

@@ -158,4 +158,4 @@ static mt_err_t vfs_wwdg_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_wwdg, "wwdg", vfs_wwdg_probe, vfs_wwdg_remove)
+DRIVER_REGISTER(vfs_wwdg, "mt-wwdg", vfs_wwdg_probe, vfs_wwdg_remove)

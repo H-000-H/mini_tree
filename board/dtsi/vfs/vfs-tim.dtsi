@@ -3,12 +3,12 @@
  * TIM VFS 节点模板 (vfs/tim) — 中间件占位示例
  *
  * 用法: 复制本节点到板级 dts; status 改 "okay"; 属性填厂商宏, 全 0 即默认。
- * 池大小自动 = DTC_GEN_COUNT_TIM (缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_TIM (缺省 1)。
  * 覆盖 PWM/编码器/定时中断; 板级可放多个 tim@n 节点 (reg 区分)。
  */
 / {
 tim0: tim@0 {
-	compatible = "tim";
+	compatible = "mt-tim";
 	reg = <0>;
 	tim-mode = <0>; /* 定时/PWM/编码器/输入捕获... */
 	prescaler = <0>; /* 预分频 */

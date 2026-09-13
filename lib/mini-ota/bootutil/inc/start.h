@@ -25,7 +25,8 @@ extern "C"
  * bit3   强制 OTA              仅 DEBUG 编译有效
  * bit4~5 失败码                0=成功 1=读bin失败 2=写flash失败 3=校验失败
  * bit 6  目前分区              0=image_0 1=image_1
- * bit 7  pending               1=新镜像已激活但 app 未确认，复位后回滚
+ * bit 7  pending               1=新镜像已激活但未确认
+ * bit 16 trial                 1=已跳入新分区试运行一次仍未被确认 → 下次复位回滚
  */
 
 /* ---- 失败码（ota_fail_set 入参 / ota_fail_get 返回值）---- */
@@ -61,6 +62,7 @@ uint8_t ota_is_force(void);             /* 读 bit3 */
 #endif
 uint8_t ota_fail_get(void);             /* 读 bit4~5 解码后的失败码（OTA_FAIL_xxx） */
 uint8_t ota_is_pending(void);           /* 读 bit7 待确认标志 */
+uint8_t ota_is_trial(void);             /* 读 bit16 试运行标志（已跳入新分区一次但未确认） */
 uint8_t ota_current_partition_get(void); /* 读 bit6 当前分区（0=image_0 1=image_1） */
 
 /* ---- OTA 主流程 ---- */

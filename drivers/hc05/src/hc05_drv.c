@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_HC05_BLE
-#define DTC_GEN_COUNT_HC05_BLE 1
+#ifndef DTC_GEN_COUNT_MT_HC05
+#define DTC_GEN_COUNT_MT_HC05 1
 #endif
-#define HC05_POOL_COUNT DTC_GEN_COUNT_HC05_BLE
+#define HC05_POOL_COUNT DTC_GEN_COUNT_MT_HC05
 
 /** @brief HC-05 驱动实例（嵌入 fops） */
 struct hc05_device
@@ -291,4 +291,4 @@ static mt_err_t hc05_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(hc05, "hc05,ble", hc05_probe, hc05_remove)
+DRIVER_REGISTER(hc05, "mt-hc05", hc05_probe, hc05_remove)

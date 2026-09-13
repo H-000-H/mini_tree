@@ -11,12 +11,19 @@
 #ifndef BOARD_DEFINE_GPIO_H
 #define BOARD_DEFINE_GPIO_H
 
-/* 池大小 = DTS "heterogeneous,gpios" 节点数 (缺省 1) */
-#ifndef DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
-#define DTC_GEN_COUNT_HETEROGENEOUS_GPIOS 1
+/* 池大小 = DTS "mt-gpios" 节点数 (缺省 1) */
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
+#endif
+#endif
+#ifndef DTC_GEN_COUNT_MT_GPIOS
+#define DTC_GEN_COUNT_MT_GPIOS 1
 #endif
 #ifndef VFS_GPIO_PIN_COUNT
-#define VFS_GPIO_PIN_COUNT DTC_GEN_COUNT_HETEROGENEOUS_GPIOS
+#define VFS_GPIO_PIN_COUNT DTC_GEN_COUNT_MT_GPIOS
 #endif
 
 #endif /* BOARD_DEFINE_GPIO_H */

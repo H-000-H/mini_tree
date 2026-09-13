@@ -27,10 +27,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_ST_VL53L0X
-#define DTC_GEN_COUNT_ST_VL53L0X 1
+#ifndef DTC_GEN_COUNT_MT_VL53L0X
+#define DTC_GEN_COUNT_MT_VL53L0X 1
 #endif
-#define VL53L0X_POOL_COUNT DTC_GEN_COUNT_ST_VL53L0X
+#define VL53L0X_POOL_COUNT DTC_GEN_COUNT_MT_VL53L0X
 
 /** @brief VL53L0X 驱动实例（嵌入 fops 与测距状态） */
 struct vl53l0x_device
@@ -441,4 +441,4 @@ static mt_err_t vl53l0x_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vl53l0x, "st,vl53l0x", vl53l0x_probe, vl53l0x_remove)
+DRIVER_REGISTER(vl53l0x, "mt-vl53l0x", vl53l0x_probe, vl53l0x_remove)

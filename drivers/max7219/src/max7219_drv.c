@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_MAXIM_MAX7219
-#define DTC_GEN_COUNT_MAXIM_MAX7219 1
+#ifndef DTC_GEN_COUNT_MT_MAX7219
+#define DTC_GEN_COUNT_MT_MAX7219 1
 #endif
-#define MAX7219_POOL_COUNT DTC_GEN_COUNT_MAXIM_MAX7219
+#define MAX7219_POOL_COUNT DTC_GEN_COUNT_MT_MAX7219
 
 /** @brief MAX7219 驱动实例（嵌入 fops） */
 struct max7219_device
@@ -363,4 +363,4 @@ static mt_err_t max7219_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(max7219, "maxim,max7219", max7219_probe, max7219_remove)
+DRIVER_REGISTER(max7219, "mt-max7219", max7219_probe, max7219_remove)

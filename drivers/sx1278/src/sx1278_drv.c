@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_SEMTECH_SX1278
-#define DTC_GEN_COUNT_SEMTECH_SX1278 1
+#ifndef DTC_GEN_COUNT_MT_SX1278
+#define DTC_GEN_COUNT_MT_SX1278 1
 #endif
-#define SX1278_POOL_COUNT DTC_GEN_COUNT_SEMTECH_SX1278
+#define SX1278_POOL_COUNT DTC_GEN_COUNT_MT_SX1278
 
 /** @brief SX1278 驱动实例（嵌入 fops 与操作模式状态） */
 struct sx1278_device
@@ -369,4 +369,4 @@ static mt_err_t sx1278_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(sx1278, "semtech,sx1278", sx1278_probe, sx1278_remove)
+DRIVER_REGISTER(sx1278, "mt-sx1278", sx1278_probe, sx1278_remove)

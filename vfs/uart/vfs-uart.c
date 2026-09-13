@@ -564,5 +564,5 @@ mt_err_t uart_vfs_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_uart_priv, "uart", vfs_uart_priv_probe, vfs_uart_priv_remove)
-DRIVER_REGISTER(uart_vfs, "uart-client", uart_vfs_probe, uart_vfs_remove)
+DRIVER_REGISTER(vfs_uart_priv, "mt-uart", vfs_uart_priv_probe, vfs_uart_priv_remove)
+DRIVER_REGISTER(uart_vfs, "mt-uart-client", uart_vfs_probe, uart_vfs_remove)

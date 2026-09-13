@@ -15,4 +15,4 @@
  */
 static int st7789_probe(struct device* pdev) { return st7789_probe_common(pdev, 0); }
 
-DRIVER_REGISTER(st7789, "sitronix,st7789", st7789_probe, st7789_remove_common)
+DRIVER_REGISTER(st7789, "mt-st7789", st7789_probe, st7789_remove_common)

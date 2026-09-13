@@ -116,7 +116,7 @@ static mt_err_t board_safety_hw_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(board_safety_hw, "board,safety-hw", board_safety_hw_probe, board_safety_hw_remove);
+DRIVER_REGISTER(board_safety_hw, "mt-board-safety-hw", board_safety_hw_probe, board_safety_hw_remove);
 
 #else /* !CONFIG_SAFETY_SHUTDOWN */
 

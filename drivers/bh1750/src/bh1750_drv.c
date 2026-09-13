@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_ROHM_BH1750
-#define DTC_GEN_COUNT_ROHM_BH1750 1
+#ifndef DTC_GEN_COUNT_MT_BH1750
+#define DTC_GEN_COUNT_MT_BH1750 1
 #endif
-#define BH1750_POOL_COUNT DTC_GEN_COUNT_ROHM_BH1750
+#define BH1750_POOL_COUNT DTC_GEN_COUNT_MT_BH1750
 
 /** @brief BH1750 驱动实例（嵌入 fops） */
 struct bh1750_device
@@ -306,4 +306,4 @@ static mt_err_t bh1750_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(bh1750, "rohm,bh1750", bh1750_probe, bh1750_remove)
+DRIVER_REGISTER(bh1750, "mt-bh1750", bh1750_probe, bh1750_remove)

@@ -22,12 +22,19 @@ extern "C"
  * bit3      强制 OTA           仅 DEBUG 有效
  * bit4~5    失败码             OTA_FAIL_xxx（见 start.h）
  * bit6      当前分区           0=image_0 1=image_1
- * bit7      待确认 pending     1=新镜像已激活、app 尚未确认；复位后据此回滚
+ * bit7      待确认 pending     1=新镜像已激活、尚未确认
  * bit8~15   魔数 0xA5          有效性判定 + 格式版本
- * bit16~31  保留               写 0
+ * bit16     试运行 trial       1=已带着 pending 跳入新分区一次，仍未被确认
+ * bit17~31  保留               写 0
  *
  * 注意：bit0~bit6 与 start.h 的 ota_status 位布局一致，便于加载后直接回填；
  *       回填时请只取 bit0~bit6（pending 是 bit7，不属于 ota_status 的 8bit 定义）。
+ *
+ * pending + trial 构成"两次判定"（标准 A/B 试运行语义）：
+ *   pending=0                 → 已确认或从未升级，正常启动
+ *   pending=1 且 trial=0      → 刚激活，放行跳入新分区并把 trial 置 1
+ *   pending=1 且 trial=1      → 已跳入过一次仍未 confirm → 新固件没起来, 回滚
+ *   confirm 清掉 pending+trial → 试运行通过，不再回滚
  */
 #define OTA_STATE_BIT_OPEN        0u
 #define OTA_STATE_BIT_ROLLBACK    2u
@@ -39,6 +46,7 @@ extern "C"
 #define OTA_STATE_MAGIC_SHIFT     8u
 #define OTA_STATE_MAGIC_MASK      (0xFFu << OTA_STATE_MAGIC_SHIFT)
 #define OTA_STATE_MAGIC_VALUE     0xA5u
+#define OTA_STATE_BIT_TRIAL       16u
 
 /* 单 bit 掩码：做"读-改-写"时写名字，避免代码里到处写 1u << bit */
 #define OTA_STATE_MASK_OPEN       (1u << OTA_STATE_BIT_OPEN)
@@ -46,6 +54,7 @@ extern "C"
 #define OTA_STATE_MASK_FORCE      (1u << OTA_STATE_BIT_FORCE)
 #define OTA_STATE_MASK_CURRENT    (1u << OTA_STATE_BIT_CURRENT)
 #define OTA_STATE_MASK_PENDING    (1u << OTA_STATE_BIT_PENDING)
+#define OTA_STATE_MASK_TRIAL      (1u << OTA_STATE_BIT_TRIAL)
 
 /* 当前分区取值（bit6 解码后的值，不是掩码） */
 #define OTA_STATE_PARTITION_IMAGE_0   0u
@@ -55,7 +64,8 @@ extern "C"
 #define OTA_STATE_MASK_STATUS_BYTE    0xFFu
 
 /** 持久化位掩码：只有这些位跨复位保留；开关位属运行期配置（app 每次启动自行设置） */
-#define OTA_STATE_DURABLE_MASK    (OTA_STATE_FAIL_MASK | OTA_STATE_MASK_CURRENT | OTA_STATE_MASK_PENDING)
+#define OTA_STATE_DURABLE_MASK    (OTA_STATE_FAIL_MASK | OTA_STATE_MASK_CURRENT | \
+                                   OTA_STATE_MASK_PENDING | OTA_STATE_MASK_TRIAL)
 
 #if !defined(__cplusplus) && !defined(_MSC_VER)
 /* 位域不自相重叠：掩码写错在编译期就报，不留到烧进去才发现 */
@@ -114,6 +124,12 @@ static inline uint32_t ota_state_pending_get(uint32_t word)
     return ota_state_bit_get(word, OTA_STATE_BIT_PENDING);
 }
 
+/** @brief 读试运行标志（1=已跳入新分区一次但未确认；boot 据此决定放行还是回滚） */
+static inline uint32_t ota_state_trial_get(uint32_t word)
+{
+    return ota_state_bit_get(word, OTA_STATE_BIT_TRIAL);
+}
+
 /* ---------------- 记录完整性（核心与各后端共用） ---------------- */
 /** @brief 状态字校验值（校验字内容） */
 uint32_t ota_state_crc32(uint32_t state_word);
@@ -122,10 +138,12 @@ uint32_t ota_state_crc32(uint32_t state_word);
 void ota_state_record_build(uint32_t record[OTA_STATE_RECORD_WORDS], uint32_t state_word);
 
 /**
- * @brief 处理"新镜像待确认"：pending 置位时切到另一个分区、清 pending、写入失败码
+ * @brief 回滚：pending 置位时切到另一个分区、清 pending/trial、写入失败码
  * @param state     输入输出状态字（就地修改）
  * @param fail_code 回滚时记录的失败码（OTA_FAIL_xxx）
  * @return 1 = 已回滚；0 = 无需回滚或入参为空
+ * @note  "是否该回滚"由调用方判定（boot 侧要求 pending=1 且 trial=1 才试运行超时），
+ *        本函数只改状态字，不做试运行次数判断
  */
 int ota_state_resolve_pending(uint32_t *state, uint32_t fail_code);
 

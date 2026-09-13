@@ -13,7 +13,7 @@ function(mini_tree_link_cmsis_dsp target)
     if(NOT TARGET CMSISDSP)
         mini_tree_dep_get(_dsp_dir
             NAME cmsis_dsp
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/CMSIS-DSP"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/CMSIS-DSP"
             MARKER "Include/arm_math.h"
             GIT_REPOSITORY https://github.com/ARM-software/CMSIS-DSP.git
             GIT_TAG ${MINI_TREE_CMSIS_DSP_VERSION}

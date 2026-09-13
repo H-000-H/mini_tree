@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_NXP_PCF8574
-#define DTC_GEN_COUNT_NXP_PCF8574 1
+#ifndef DTC_GEN_COUNT_MT_PCF8574
+#define DTC_GEN_COUNT_MT_PCF8574 1
 #endif
-#define PCF8574_POOL_COUNT DTC_GEN_COUNT_NXP_PCF8574
+#define PCF8574_POOL_COUNT DTC_GEN_COUNT_MT_PCF8574
 
 /** @brief PCF8574 驱动实例（嵌入 fops） */
 struct pcf8574_device
@@ -309,4 +309,4 @@ static mt_err_t pcf8574_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(pcf8574, "nxp,pcf8574", pcf8574_probe, pcf8574_remove)
+DRIVER_REGISTER(pcf8574, "mt-pcf8574", pcf8574_probe, pcf8574_remove)

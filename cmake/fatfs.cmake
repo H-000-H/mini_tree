@@ -22,7 +22,7 @@ function(mini_tree_link_fatfs target)
     if(NOT TARGET mini_tree_fatfs)
         mini_tree_dep_get(_ff_root
             NAME fatfs
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/FatFs"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/FatFs"
             MARKER "source/ff.h"
             GIT_REPOSITORY https://github.com/abbrev/fatfs.git
             GIT_TAG ${MINI_TREE_FATFS_VERSION}

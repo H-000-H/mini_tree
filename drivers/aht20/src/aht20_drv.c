@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_AOSONG_AHT20
-#define DTC_GEN_COUNT_AOSONG_AHT20 1
+#ifndef DTC_GEN_COUNT_MT_AHT20
+#define DTC_GEN_COUNT_MT_AHT20 1
 #endif
-#define AHT20_POOL_COUNT DTC_GEN_COUNT_AOSONG_AHT20
+#define AHT20_POOL_COUNT DTC_GEN_COUNT_MT_AHT20
 
 /** @brief AHT20 驱动实例（嵌入 fops） */
 struct aht20_device
@@ -314,4 +314,4 @@ static mt_err_t aht20_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(aht20, "aosong,aht20", aht20_probe, aht20_remove)
+DRIVER_REGISTER(aht20, "mt-aht20", aht20_probe, aht20_remove)

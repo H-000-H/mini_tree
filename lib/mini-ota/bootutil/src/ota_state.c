@@ -66,6 +66,7 @@ int ota_state_resolve_pending(uint32_t *state, uint32_t fail_code)
     *state = ota_state_bit_put(*state, OTA_STATE_BIT_CURRENT,
                                (current == OTA_STATE_PARTITION_IMAGE_1)? OTA_STATE_PARTITION_IMAGE_0: OTA_STATE_PARTITION_IMAGE_1);
     *state = ota_state_bit_put(*state, OTA_STATE_BIT_PENDING, 0u);
+    *state = ota_state_bit_put(*state, OTA_STATE_BIT_TRIAL, 0u);
     *state = ota_state_fail_put(*state, fail_code);
     return 1;
 }

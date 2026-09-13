@@ -11,7 +11,7 @@
  *   隔离: 本文件定义 TIM_VFS_IMPL 可调 tim_hal API; 其他文件包含本头时 tim_hal 符号被 #pragma GCC
  *   poison。
  *   Driver 注册:
- *   - tim_vfs: "tim"
+ *   - tim_vfs: "mt-tim"
  *   TIM和I2C SPI
  *   这些需要总线的设备不同,不需要挂载到总线,直接挂载到VFS层,通过文件操作接口进行操作。和gpio类似,TIM和GPIO都是通过文件操作接口进行操作。
  *   并且TIM不需要上层抽象,所以.c中几乎全为static函数,probe和remove函数也是static函数。但是和gpio一样的是我会提供2个路径：一个是有lifeycle的,

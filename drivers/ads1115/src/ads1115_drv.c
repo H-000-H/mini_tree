@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_TI_ADS1115
-#define DTC_GEN_COUNT_TI_ADS1115 1
+#ifndef DTC_GEN_COUNT_MT_ADS1115
+#define DTC_GEN_COUNT_MT_ADS1115 1
 #endif
-#define ADS1115_POOL_COUNT DTC_GEN_COUNT_TI_ADS1115
+#define ADS1115_POOL_COUNT DTC_GEN_COUNT_MT_ADS1115
 
 /** @brief ADS1115 驱动实例（嵌入 fops） */
 struct ads1115_device
@@ -319,4 +319,4 @@ static mt_err_t ads1115_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(ads1115, "ti,ads1115", ads1115_probe, ads1115_remove)
+DRIVER_REGISTER(ads1115, "mt-ads1115", ads1115_probe, ads1115_remove)

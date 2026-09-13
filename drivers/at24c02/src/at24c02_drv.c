@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_ATMEL_AT24C02
-#define DTC_GEN_COUNT_ATMEL_AT24C02 1
+#ifndef DTC_GEN_COUNT_MT_AT24C02
+#define DTC_GEN_COUNT_MT_AT24C02 1
 #endif
-#define AT24C02_POOL_COUNT DTC_GEN_COUNT_ATMEL_AT24C02
+#define AT24C02_POOL_COUNT DTC_GEN_COUNT_MT_AT24C02
 
 /** @brief AT24C02 驱动实例（嵌入 fops） */
 struct at24c02_device
@@ -331,4 +331,4 @@ static mt_err_t at24c02_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(at24c02, "atmel,at24c02", at24c02_probe, at24c02_remove)
+DRIVER_REGISTER(at24c02, "mt-at24c02", at24c02_probe, at24c02_remove)

@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_NXP_PN532_HSU
-#define DTC_GEN_COUNT_NXP_PN532_HSU 1
+#ifndef DTC_GEN_COUNT_MT_PN532
+#define DTC_GEN_COUNT_MT_PN532 1
 #endif
-#define PN532_POOL_COUNT DTC_GEN_COUNT_NXP_PN532_HSU
+#define PN532_POOL_COUNT DTC_GEN_COUNT_MT_PN532
 
 /** @brief PN532 驱动实例（嵌入 fops） */
 struct pn532_device
@@ -320,4 +320,4 @@ static mt_err_t pn532_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(pn532, "nxp,pn532-hsu", pn532_probe, pn532_remove)
+DRIVER_REGISTER(pn532, "mt-pn532", pn532_probe, pn532_remove)

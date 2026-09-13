@@ -655,5 +655,5 @@ static mt_err_t can_vfs_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(can_host, "can-host", vfs_can_priv_probe, vfs_can_priv_remove)
-DRIVER_REGISTER(can_vfs_client, "heterogeneous,can-client", can_vfs_probe, can_vfs_remove)
+DRIVER_REGISTER(can_host, "mt-can-host", vfs_can_priv_probe, vfs_can_priv_remove)
+DRIVER_REGISTER(can_vfs_client, "mt-can-client", can_vfs_probe, can_vfs_remove)

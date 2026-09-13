@@ -24,10 +24,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_GPIO_RELAY
-#define DTC_GEN_COUNT_GPIO_RELAY 1
+#ifndef DTC_GEN_COUNT_MT_RELAY
+#define DTC_GEN_COUNT_MT_RELAY 1
 #endif
-#define RELAY_POOL_COUNT DTC_GEN_COUNT_GPIO_RELAY
+#define RELAY_POOL_COUNT DTC_GEN_COUNT_MT_RELAY
 
 /** @brief 继电器驱动实例（嵌入 fops 与 GPIO 句柄） */
 struct relay_device
@@ -295,4 +295,4 @@ static mt_err_t relay_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(relay, "gpio-relay", relay_probe, relay_remove)
+DRIVER_REGISTER(relay, "mt-relay", relay_probe, relay_remove)

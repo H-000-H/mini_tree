@@ -27,10 +27,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_MODBUS_RTU_RS485
-#define DTC_GEN_COUNT_MODBUS_RTU_RS485 1
+#ifndef DTC_GEN_COUNT_MT_RS485_MODBUS
+#define DTC_GEN_COUNT_MT_RS485_MODBUS 1
 #endif
-#define RS485_MODBUS_POOL_COUNT DTC_GEN_COUNT_MODBUS_RTU_RS485
+#define RS485_MODBUS_POOL_COUNT DTC_GEN_COUNT_MT_RS485_MODBUS
 
 /** @brief RS485 Modbus 驱动实例（嵌入 fops 与收发控制引脚） */
 struct rs485_modbus_device
@@ -391,4 +391,4 @@ static mt_err_t rs485_modbus_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(rs485_modbus, "modbus,rtu-rs485", rs485_modbus_probe, rs485_modbus_remove)
+DRIVER_REGISTER(rs485_modbus, "mt-rs485-modbus", rs485_modbus_probe, rs485_modbus_remove)

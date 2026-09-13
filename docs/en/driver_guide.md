@@ -144,11 +144,14 @@ ESP wiring details: see [getting_started.md](getting_started.md) §4.2.
 
 ### 5.1 Naming Conventions
 
+All driver registrations use `mt-<peripheral-or-driver-name>` (no vendor prefix):
+
 | Role | Style | Example |
 | :--- | :--- | :--- |
-| Controller host | Short name or `*-master` / `*-host` | `spi-master`, `can-host`, `usb-otg-host` |
-| Bus client | `heterogeneous,<…>-client` | `heterogeneous,spi-master-client` |
-| Board special | `board,…` | `board,safety-hw` |
+| Controller host | `mt-<peripheral>` / `mt-*-master` / `mt-*-host` | `mt-spi-master`, `mt-can-host`, `mt-usb-otg-host` |
+| Bus client | `mt-<…>-client` | `mt-spi-master-client` |
+| Product driver | `mt-<chip/model>` | `mt-ads1115`, `mt-mpu6050` |
+| Board special | `mt-board-…` | `mt-board-safety-hw` |
 
 ### 5.2 Property Injection
 

@@ -26,7 +26,7 @@ function(mini_tree_link_libmodbus target)
     if(NOT TARGET mini_tree_libmodbus)
         mini_tree_dep_get(_mb_root
             NAME libmodbus
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/libmodbus"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/libmodbus"
             MARKER "src/modbus.h"
             GIT_REPOSITORY https://github.com/stephane/libmodbus.git
             GIT_TAG ${MINI_TREE_LIBMODBUS_VERSION}

@@ -10,7 +10,7 @@
  *   职责: file_operations + dev_lifecycle + DTS (window/counter/prescaler); open 首次 start, ioctl
  *   喂狗。 隔离: 定义 WWDG_VFS_IMPL 可调 hal_wwdg_*; 其他文件包含本头时 hal_wwdg_* 被 #pragma GCC
  *   poison。
- *   Driver 注册: vfs_wwdg / "wwdg"
+ *   Driver 注册: vfs_wwdg / "mt-wwdg"
  *   约束: 喂狗须在硬件窗口内; 由调用方保证时机。
  *   @see hal/wwdg/hal_wwdg.h
  *   --------------------------------------------------------------------------

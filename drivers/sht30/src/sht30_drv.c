@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_SENSIRION_SHT30
-#define DTC_GEN_COUNT_SENSIRION_SHT30 1
+#ifndef DTC_GEN_COUNT_MT_SHT30
+#define DTC_GEN_COUNT_MT_SHT30 1
 #endif
-#define SHT30_POOL_COUNT DTC_GEN_COUNT_SENSIRION_SHT30
+#define SHT30_POOL_COUNT DTC_GEN_COUNT_MT_SHT30
 
 /** @brief SHT30 驱动实例（嵌入 fops） */
 struct sht30_device
@@ -314,4 +314,4 @@ static mt_err_t sht30_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(sht30, "sensirion,sht30", sht30_probe, sht30_remove)
+DRIVER_REGISTER(sht30, "mt-sht30", sht30_probe, sht30_remove)

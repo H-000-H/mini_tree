@@ -22,7 +22,7 @@ function(mini_tree_link_corehttp target)
     if(NOT TARGET mini_tree_corehttp)
         mini_tree_dep_get(_http
             NAME corehttp
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/coreHTTP"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/coreHTTP"
             MARKER "source/include/core_http_client.h"
             GIT_REPOSITORY git@github.com:FreeRTOS/coreHTTP.git
             GIT_TAG ${MINI_TREE_COREHTTP_VERSION}

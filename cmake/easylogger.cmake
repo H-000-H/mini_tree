@@ -21,7 +21,7 @@ function(mini_tree_link_easylogger target)
     if(NOT TARGET mini_tree_easylogger)
         mini_tree_dep_get(_elog_root
             NAME easylogger
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/EasyLogger"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/EasyLogger"
             MARKER "easylogger/inc/elog.h"
             GIT_REPOSITORY https://github.com/armink/EasyLogger.git
             GIT_TAG ${MINI_TREE_EASYLOGGER_VERSION}

@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_WINBOND_W25QXX
-#define DTC_GEN_COUNT_WINBOND_W25QXX 1
+#ifndef DTC_GEN_COUNT_MT_W25QXX
+#define DTC_GEN_COUNT_MT_W25QXX 1
 #endif
-#define W25QXX_POOL_COUNT DTC_GEN_COUNT_WINBOND_W25QXX
+#define W25QXX_POOL_COUNT DTC_GEN_COUNT_MT_W25QXX
 
 /** @brief W25Qxx 驱动实例（嵌入 fops） */
 struct w25qxx_device
@@ -297,4 +297,4 @@ static mt_err_t w25qxx_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(w25qxx, "winbond,w25qxx", w25qxx_probe, w25qxx_remove)
+DRIVER_REGISTER(w25qxx, "mt-w25qxx", w25qxx_probe, w25qxx_remove)

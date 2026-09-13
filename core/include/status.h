@@ -35,6 +35,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define MINI_ERR_MAX 511U /**< 错误码幅度上限 (0 成功 + 511 个错误码 = 512 个码位), ERR_PTR 编码上限 */
 
@@ -80,7 +83,13 @@ typedef enum mt_err
     MINI_ERR_AUTH     = -27  /**< 认证/鉴权失败 */
 
     /* [-28..] 预留: 通用扩容, 不分配给子系统 */
+#ifdef __cplusplus
+};
+typedef int mt_err_t;
+#else
 } mt_err_t;
+#endif
+
 
 /* ── 分段边界 (幅度, 均为正整数) ── */
 #define MINI_ERR_SECTOR_COMMON_FIRST 1U
@@ -256,5 +265,9 @@ MINI_STATIC_INLINE bool IS_ERR(const void* ptr) { return (uintptr_t)ptr >= ERR_B
  * @return NULL 或错误指针返回 true
  */
 MINI_STATIC_INLINE bool IS_ERR_OR_NULL(const void* ptr) { return (ptr == NULL) || IS_ERR(ptr); }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STATUS_H */

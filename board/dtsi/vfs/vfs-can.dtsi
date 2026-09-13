@@ -3,11 +3,11 @@
  * CAN VFS 节点模板 (vfs/can + can_hook) — 中间件占位示例
  *
  * 用法: 复制本节点到板级 dts; status 改 "okay"; 属性填厂商宏, 全 0 即默认。
- * 池大小自动 = DTC_GEN_COUNT_CAN_HOST (缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_CAN_HOST (缺省 1)。
  */
 / {
 can0: can@0 {
-	compatible = "can-host";
+	compatible = "mt-can-host";
 	reg = <0>;
 	can-base = <0>; /* CAN 外设寄存器基址 */
 	can-clk  = <0>; /* 总线时钟 */
@@ -44,7 +44,7 @@ can0: can@0 {
 	status = "disabled";
 
 	can0_client: can-client@0 {
-		compatible = "heterogeneous,can-client"; /* client fops 节点 */
+		compatible = "mt-can-client"; /* client fops 节点 */
 		reg = <0>;
 		status = "disabled";
 	};

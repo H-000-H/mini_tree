@@ -4,11 +4,11 @@
  *
  * 用法: 复制到板级 dts 的 &i2c0 { } 内; reg 填真实 7bit 地址 (典型 0x76/0x77);
  *       status 改 "okay"。
- * 池大小自动 = DTC_GEN_COUNT_BOSCH_BME280 (节点数, 缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_BME280 (节点数, 缺省 1)。
  */
 &i2c0 {
 bme280: bme280@0 {
-	compatible = "bosch,bme280";
+	compatible = "mt-bme280";
 	reg = <0>; /* I2C 7bit 地址, 典型 0x76/0x77 */
 	status = "disabled";
 };

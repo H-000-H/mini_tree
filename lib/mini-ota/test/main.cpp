@@ -751,6 +751,7 @@ static void dump_state()
               << " fail=" << static_cast<int>(ota_fail_get())
               << " current=image_" << static_cast<int>(ota_current_partition_get())
               << " pending=" << static_cast<int>(ota_is_pending())
+              << " trial=" << static_cast<int>(ota_is_trial())
               << " [0x" << hex_byte(status) << "]\n";
 
     const uint32_t ids[2] = {
@@ -917,13 +918,22 @@ static void test_ota_flow()
     check(ota_fail_get() == OTA_FAIL_NONE, "activate: fail == NONE");
     step("校验通过并激活 image_1（pending=1）");
 
-    /* ---- 4) 复位但 app 没确认 → 回滚 ---- */
-    part = power_on_boot("boot#3 复位(未确认)");
-    check(part == 0u, "rollback: 跳回 image_0");
+    /* ---- 4) 复位进新镜像试运行（pending+trial=0 → 首跳放行） ---- */
+    part = power_on_boot("boot#3 复位(未确认, 试运行)");
+    check(part == 1u, "trial: 首跳放行进 image_1");
+    check(ota_is_pending() == 1u, "trial: pending 仍为 1");
+    check(ota_is_trial() == 1u, "trial: trial 已置 1");
+    check(ota_fail_get() == OTA_FAIL_NONE, "trial: fail == NONE");
+    step("未确认首跳 → 放行进 image_1 试运行 (trial=1)");
+
+    /* ---- 4b) 试运行后仍未确认就复位 → 回滚 ---- */
+    part = power_on_boot("boot#3b 复位(试运行后仍未确认)");
+    check(part == 0u, "rollback: 回滚到 image_0");
     check(ota_current_partition_get() == OTA_STATE_PARTITION_IMAGE_0, "rollback: current == image_0");
     check(ota_is_pending() == 0u, "rollback: pending 已清");
+    check(ota_is_trial() == 0u, "rollback: trial 已清");
     check(ota_fail_get() == OTA_FAIL_VERIFY, "rollback: fail == VERIFY");
-    step("复位未确认 → 回滚到 image_0 (fail=VERIFY)");
+    step("试运行未确认 → 回滚到 image_0 (fail=VERIFY)");
 
     /* ---- 5) 再来一轮：app 确认 → 不回滚 ---- */
     part = power_on_boot("boot#4 app 开 OTA", true);
@@ -1063,10 +1073,16 @@ static void test_power_loss()
     check(torn_state_write(OTA_STATE_MASK_CURRENT), "p1: 追加一条半写状态记录");
     step("p1: 伪造半写状态记录（校验字留 0xFF）");
     part = power_on_boot("p1 boot#2 半写状态后复位");
+    check(part == 1u, "p1: 半写记录作废, 首跳放行进 image_1");
+    check(ota_is_trial() == 1u, "p1: trial == 1");
+    step("p1: 半写记录作废，pending 生效首跳放行");
+
+    part = power_on_boot("p1 boot#3 试运行后仍未确认");
     check(part == 0u, "p1: 回滚判定仍生效, 跳 image_0");
     check(ota_is_pending() == 0u, "p1: pending 已清");
+    check(ota_is_trial() == 0u, "p1: trial 已清");
     check(ota_fail_get() == OTA_FAIL_VERIFY, "p1: fail == VERIFY");
-    step("p1: 半写记录作废，仍按 pending 回滚到 image_0");
+    step("p1: 试运行未确认 → 回滚到 image_0 (fail=VERIFY)");
 
     /* ---- 7.2 下载中途掉电：目标区半写，状态不受影响 ---- */
     reset_flash();
@@ -1121,9 +1137,15 @@ static void test_power_loss()
     check(ota_is_pending() == 1u, "p3: pending == 1");
     step("p3: 激活 image_1 后未确认");
 
-    part = power_on_boot("p3 boot#2 复位(未确认)");
+    part = power_on_boot("p3 boot#2 复位(未确认, 试运行)");
+    check(part == 1u, "p3: 首跳放行进 image_1");
+    check(ota_is_trial() == 1u, "p3: trial == 1");
+    step("p3: 未确认首跳放行进 image_1");
+
+    part = power_on_boot("p3 boot#3 试运行后仍未确认");
     check(part == 0u, "p3: 回滚到 image_0");
     check(ota_is_pending() == 0u, "p3: pending 已清");
+    check(ota_is_trial() == 0u, "p3: trial 已清");
     check(ota_fail_get() == OTA_FAIL_VERIFY, "p3: fail == VERIFY");
     step("p3: 未确认回滚到 image_0");
 

@@ -26,11 +26,18 @@
 #include "status.h"
 #include "system_log.h"
 
-/* host 池 = DTS "i2c-master" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_I2C_MASTER) */
-#ifndef DTC_GEN_COUNT_I2C_MASTER
-#define DTC_GEN_COUNT_I2C_MASTER 1
+/* host 池 = DTS "mt-i2c-master" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_MT_I2C_MASTER) */
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
 #endif
-#define I2C_BUS_HOST_MAX DTC_GEN_COUNT_I2C_MASTER
+#endif
+#ifndef DTC_GEN_COUNT_MT_I2C_MASTER
+#define DTC_GEN_COUNT_MT_I2C_MASTER 1
+#endif
+#define I2C_BUS_HOST_MAX DTC_GEN_COUNT_MT_I2C_MASTER
 
 /** @brief I2C host 运行时描述符 (静态池, 含 HAL 嵌入 + atomic ref_count) */
 struct i2c_bus_host

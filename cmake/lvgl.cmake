@@ -21,7 +21,7 @@ function(mini_tree_link_lvgl target)
     if(NOT TARGET lvgl)
         mini_tree_dep_get(_lvgl_dir
             NAME lvgl
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/lvgl"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/lvgl"
             MARKER "lvgl.h"
             GIT_REPOSITORY https://github.com/lvgl/lvgl
             GIT_TAG ${MINI_TREE_LVGL_VERSION}

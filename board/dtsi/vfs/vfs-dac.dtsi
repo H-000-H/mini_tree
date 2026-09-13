@@ -3,11 +3,11 @@
  * DAC VFS 节点模板 (vfs/dac) — 中间件占位示例
  *
  * 用法: 复制本节点到板级 dts; status 改 "okay"; 属性填厂商宏, 全 0 即默认。
- * 池大小自动 = DTC_GEN_COUNT_DAC (缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_DAC (缺省 1)。
  */
 / {
 dac0: dac@0 {
-	compatible = "dac";
+	compatible = "mt-dac";
 	reg = <0>;
 	dac-base = <0>; /* DAC 外设寄存器基址 */
 	dac-clk  = <0>;

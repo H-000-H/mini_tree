@@ -12,25 +12,32 @@
 #define BOARD_DEFINE_I2S_H
 
 /* host 池 = DTS i2s-master + i2s-slave 节点数之和 (缺省各 1) */
-#ifndef DTC_GEN_COUNT_I2S_MASTER
-#define DTC_GEN_COUNT_I2S_MASTER 1
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
 #endif
-#ifndef DTC_GEN_COUNT_I2S_SLAVE
-#define DTC_GEN_COUNT_I2S_SLAVE 1
+#endif
+#ifndef DTC_GEN_COUNT_MT_I2S_MASTER
+#define DTC_GEN_COUNT_MT_I2S_MASTER 1
+#endif
+#ifndef DTC_GEN_COUNT_MT_I2S_SLAVE
+#define DTC_GEN_COUNT_MT_I2S_SLAVE 1
 #endif
 #ifndef I2S_HOST_POOL
-#define I2S_HOST_POOL (DTC_GEN_COUNT_I2S_MASTER + DTC_GEN_COUNT_I2S_SLAVE)
+#define I2S_HOST_POOL (DTC_GEN_COUNT_MT_I2S_MASTER + DTC_GEN_COUNT_MT_I2S_SLAVE)
 #endif
 
 /* client 池 = 两个 client compatible 节点数之和 (缺省各 1) */
-#ifndef DTC_GEN_COUNT_HETEROGENEOUS_I2S_MASTER_CLIENT
-#define DTC_GEN_COUNT_HETEROGENEOUS_I2S_MASTER_CLIENT 1
+#ifndef DTC_GEN_COUNT_MT_I2S_MASTER_CLIENT
+#define DTC_GEN_COUNT_MT_I2S_MASTER_CLIENT 1
 #endif
-#ifndef DTC_GEN_COUNT_HETEROGENEOUS_I2S_SLAVE_CLIENT
-#define DTC_GEN_COUNT_HETEROGENEOUS_I2S_SLAVE_CLIENT 1
+#ifndef DTC_GEN_COUNT_MT_I2S_SLAVE_CLIENT
+#define DTC_GEN_COUNT_MT_I2S_SLAVE_CLIENT 1
 #endif
 #ifndef I2S_CLIENT_POOL
-#define I2S_CLIENT_POOL (DTC_GEN_COUNT_HETEROGENEOUS_I2S_MASTER_CLIENT + DTC_GEN_COUNT_HETEROGENEOUS_I2S_SLAVE_CLIENT)
+#define I2S_CLIENT_POOL (DTC_GEN_COUNT_MT_I2S_MASTER_CLIENT + DTC_GEN_COUNT_MT_I2S_SLAVE_CLIENT)
 #endif
 
 /* 环形 FIFO 深度 (必须是 2 的幂) */

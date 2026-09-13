@@ -11,7 +11,7 @@
  *   隔离: 本文件定义 DAC_VFS_IMPL 可调 hal_dac API; 其他文件包含本头时 hal_dac 慢路径符号被 #pragma
  *   GCC poison。
  *   Driver 注册:
- *   - vfs_dac_priv: "dac"
+ *   - vfs_dac_priv: "mt-dac"
  *   DAC 与 TIM/GPIO 类似, 直接挂载到 VFS 层, 通过文件操作接口进行操作。
  *   @see hal/dac/hal_dac.h  HAL 层接口
  *   --------------------------------------------------------------------------

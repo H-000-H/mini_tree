@@ -144,11 +144,14 @@ ESP 接线细节见 [getting_started.md](getting_started.md) §4.2。
 
 ### 5.1 命名习惯
 
+所有驱动注册的 compatible 统一为 `mt-<外设或驱动名>` (不带厂商前缀):
+
 | 角色 | 风格 | 例 |
 | :--- | :--- | :--- |
-| 控制器 host | 短名或 `*-master` / `*-host` | `spi-master`、`can-host`、`usb-otg-host` |
-| 总线客户端 | `heterogeneous,<…>-client` | `heterogeneous,spi-master-client` |
-| 板级特殊 | `board,…` | `board,safety-hw` |
+| 控制器 host | `mt-<外设名>` / `mt-*-master` / `mt-*-host` | `mt-spi-master`、`mt-can-host`、`mt-usb-otg-host` |
+| 总线客户端 | `mt-<…>-client` | `mt-spi-master-client` |
+| 产品驱动 | `mt-<芯片/型号名>` | `mt-ads1115`、`mt-mpu6050` |
+| 板级特殊 | `mt-board-…` | `mt-board-safety-hw` |
 
 ### 5.2 属性直投
 

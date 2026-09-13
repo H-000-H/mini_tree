@@ -21,7 +21,7 @@ function(mini_tree_link_sfud target)
     if(NOT TARGET mini_tree_sfud)
         mini_tree_dep_get(_sfud_root
             NAME sfud
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/SFUD"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/SFUD"
             MARKER "sfud/inc/sfud.h"
             GIT_REPOSITORY https://github.com/armink/SFUD.git
             GIT_TAG ${MINI_TREE_SFUD_VERSION}

@@ -22,6 +22,10 @@
 #define ENODATA 61 /**< 部分 libc (newlib 等) 缺少 ENODATA, 补齐 Linux 取值 */
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /*  BUFF 家族统一错误码 (自成一系, 直接包装 C 标准 errno, 不依赖 mini_tree 其他文件) */
 /* -------------------------------------------------------------------------- */
@@ -439,5 +443,9 @@ int dual_buffer_isempty(const struct dual_buffer_spsc* handle, bool* p_empty);
  * @return BUFF_OK 成功; BUFF_ERR_INVAL 入参非法 (*p_count = 0)
  */
 int dual_buffer_get_count(const struct dual_buffer_spsc* handle, uint16_t* p_count);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BUFFER_H */

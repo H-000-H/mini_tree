@@ -590,4 +590,4 @@ static mt_err_t vfs_adc_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_adc_priv, "adc", vfs_adc_probe, vfs_adc_remove)
+DRIVER_REGISTER(vfs_adc_priv, "mt-adc", vfs_adc_probe, vfs_adc_remove)

@@ -14,7 +14,7 @@ function(mini_tree_link_cjson target)
     if(NOT TARGET mini_tree_cjson)
         mini_tree_dep_get(_cjson_source_dir
             NAME cjson
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/cJSON"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/cJSON"
             MARKER "cJSON.h"
             GIT_REPOSITORY https://github.com/DaveGamble/cJSON
             GIT_TAG ${MINI_TREE_CJSON_VERSION}
@@ -37,7 +37,7 @@ function(mini_tree_link_cjson_utils target)
     if(NOT TARGET mini_tree_cjson_utils)
         mini_tree_dep_get(_cjson_utils_dir
             NAME cjson
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/cJSON"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/cJSON"
             MARKER "cJSON.h"
             GIT_REPOSITORY https://github.com/DaveGamble/cJSON
             GIT_TAG ${MINI_TREE_CJSON_VERSION}

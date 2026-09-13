@@ -86,7 +86,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
         #size-cells = <0>;
 
         gpio: gpio@0 {
-            compatible = "vendor,gpio";
+            compatible = "mt-gpios";
             reg = <0>;
             gpio-controller;
             #gpio-cells = <2>;
@@ -94,7 +94,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
         };
 
         i2c0: i2c@1 {
-            compatible = "vendor,i2c";
+            compatible = "mt-i2c-master";
             reg = <1>;
             #address-cells = <1>;
             #size-cells = <0>;
@@ -113,7 +113,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
 // board/dtsi/drivers/bmp280.dtsi（本仓现有模板，照抄即可）
 &i2c0 {
 bmp280: bmp280@0 {
-    compatible = "bosch,bmp280";
+    compatible = "mt-bmp280";
     reg = <0>;          // I2C 7bit 地址，典型 0x76/0x77
     status = "disabled";
 };
@@ -159,7 +159,7 @@ bmp280: bmp280@0 {
     i2c-clk = <400000>;
 
     bmp280@76 {
-        compatible = "bosch,bmp280";
+        compatible = "mt-bmp280";
         reg = <0x76>;
         status = "okay";
     };
@@ -191,8 +191,8 @@ typedef enum {
 节点数 → `DTC_GEN_COUNT_<COMPAT_UPPER>`；还有时钟、tick、主机数量等：
 
 ```c
-#define DTC_GEN_COUNT_BOSCH_BMP280  1     // bmp280 节点数 → 驱动静态池大小
-#define DTC_GEN_COUNT_I2C_MASTER    1
+#define DTC_GEN_COUNT_MT_BMP280  1     // bmp280 节点数 → 驱动静态池大小
+#define DTC_GEN_COUNT_MT_I2C_MASTER    1
 #define DTC_GEN_CPU_CLOCK_HZ        168000000
 #define DTC_GEN_TICK_RATE_HZ        1000
 #define DTC_GEN_I2C_HOST_MAX        3
@@ -229,7 +229,7 @@ static int bmp280_remove(struct device* pdev)
     /* dev_lifecycle 标准 remove 序列，见 driver.h 注释 */
 }
 
-DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
+DRIVER_REGISTER(bmp280, "mt-bmp280", bmp280_probe, bmp280_remove);
 ```
 
 > 运行时**无 strcmp 匹配**：dtc-lite 在编译期把 `DRIVER_REGISTER` 收进 `board_probe.c`，`board_driver_probe_all()` 直接按表调用。改了 compatible 必须重跑 dtc-lite（CMake 自动）。
@@ -278,7 +278,7 @@ if (IS_ERR_OR_NULL(bus))
 #include <stdint.h>
 
 /* 池大小由 DTS 节点数自动生成：板级每多一个 bmp280 节点，池自动增大 */
-#define BMP280_POOL_COUNT  DTC_GEN_COUNT_BOSCH_BMP280
+#define BMP280_POOL_COUNT  DTC_GEN_COUNT_MT_BMP280
 
 struct bmp280_device {
     struct device* bus;       /* I2C 总线设备 */
@@ -333,7 +333,7 @@ static int bmp280_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
+DRIVER_REGISTER(bmp280, "mt-bmp280", bmp280_probe, bmp280_remove);
 ```
 
 ### 8.2 板级 DTS：`boards/my_board/board.dts`
@@ -377,11 +377,12 @@ set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # 含 my_soc.dtsi
 ### 9.2 API 关键点
 
 - 点火：`mini_tree_pre_os_init()` → `mini_tree_start_tasks()`（**内部已调 `board_driver_probe_all` 完成外设 probe**）→ `xscheduler_start()`。
-- 任务创建：
-  - C 协调式：`xscheduler_task_create(task, name, cb, period_ms)`（TCB 由调用方静态分配）。
-  - C 抢占式（`XTASK_PREEMPT`）：`x_scheduler_task_create(name, period_ms, priority, cb, param)`（任务池自分配）。
-  - C++ 裸机：`mini_task_create(name, stack_size, period, entry, param1, ...)` 重载，返回 `etl::optional<x_task_handle_t>`。
-  - OS 后端（FreeRTOS/RT-Thread）：统一走 C API `mini_task_create`。
+- 任务创建（**上层统一走 C++ 类封装**，见 §9.4）：
+  - 业务侧只做两件事：类内实现协程回调 `void thread(x_task* self)`；实现注册接口 `bool thread_register()`。
+  - `thread_register()` 内部按调度后端二选一 —— **类内实现细节，上层不直接调用**：
+    - 协调式：`xscheduler_task_create(&tcb, name, cb, period_ms)`（TCB 作为类内静态成员）
+    - 抢占式（`XTASK_PREEMPT`）：`x_scheduler_task_create(name, period_ms, priority, cb, param)`
+  - OS 后端（FreeRTOS/RT-Thread/mini-os）：`mini_task_create_handle(...)`（线程入口模型；裸机下返回 `MINI_ERR_NOTSUPP`）
 - 主循环：裸机 `while(1) x_scheduler_poll()`（或 `mini_tree_system_loop()`）；OS 后端启动各自调度器。
 
 **裸机调度器 tick 源（`xscheduler_start()`）两级选择：**
@@ -487,7 +488,135 @@ int main(void)
 }
 ```
 
-### 9.4 应用任务模块 —— C 版（`app/led/led.c` + `led.h`）
+### 9.4 应用任务模块 —— C++ 版（**推荐**；`app/led/led.hpp` + `led.cpp`）
+
+C++ 侧把任务封装成单例类：**协程回调 `thread()`** + 注册接口 `thread_register()`；静态 TCB 与配置常量都收在类内，不暴露全局。
+
+`led.hpp`（类声明 + 静态 TCB）：
+
+```cpp
+/* SPDX-License-Identifier: Apache-2.0 */
+#pragma once
+#include "xtask.h"
+#include <cstdint>
+
+struct device;   // 前向声明
+
+namespace App_Led
+{
+    class Led
+    {
+    public:
+        static Led& get_instance();
+
+        // 禁止拷贝和移动
+        Led(const Led&) = delete;
+        Led& operator=(const Led&) = delete;
+        Led(Led&&) = delete;
+        Led& operator=(Led&&) = delete;
+
+        void thread(x_task* self);   // 协程回调：翻转 LED
+        bool thread_register(void);  // 注册任务到调度器
+
+    private:
+        Led();
+
+        ::device* m_dev = nullptr;
+
+        static constexpr unsigned int kDelay = 500;
+        static constexpr unsigned int kPriority = 5;
+        static constexpr const char* kName = "Led_Task";
+        static constexpr const char* kTag = "Led";
+
+#ifndef CONFIG_XTASK_PREEMPT
+        static x_task s_tcb;   // 协调式：静态 TCB
+#endif
+    };
+} // namespace App_Led
+```
+
+`led.cpp`（构造里按 label 找设备并打开；协程体用 `PT_BEGIN`/`PT_DELAY` 让出；注册按调度后端二选一）：
+
+```cpp
+#include "led.hpp"
+#include "device.h"
+#include "status.h"
+#include "system_log.h"
+#include "vfs-gpio.h"
+
+namespace App_Led
+{
+#ifndef CONFIG_XTASK_PREEMPT
+    x_task Led::s_tcb;   // 协调式 TCB 定义
+#endif
+
+    Led& Led::get_instance()
+    {
+        static Led s_instance;
+        return s_instance;
+    }
+
+    Led::Led()
+    {
+        ::device* pdev = device_find_by_label("led");
+        if (IS_ERR_OR_NULL(pdev))
+        {
+            MT_LOG_WARN(kTag, "led device not found");
+            return;
+        }
+        if (device_open(pdev, nullptr) != MINI_OK)
+        {
+            MT_LOG_ERROR(kTag, "device_open failed");
+            return;
+        }
+        m_dev = pdev;
+    }
+
+    /* 协程回调：PT_BEGIN / PT_DELAY 让出（宏内部是无值 return，故返回类型必须是 void） */
+    void Led::thread(x_task* self)
+    {
+        struct vfs_gpio_arg arg = {0};
+
+        PT_BEGIN(self);
+        while (true)
+        {
+            if (m_dev != nullptr)
+            {
+                int ret = device_ioctl(m_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
+                if (ret != MINI_OK)
+                    MT_LOG_ERROR(kTag, "ioctl failed: %d", ret);
+            }
+            PT_DELAY(self, kDelay);
+        }
+        PT_END(self);
+    }
+
+    /* 注册：抢占式 (name, period, priority, cb, param) / 协调式 (task, name, cb, period) */
+    bool Led::thread_register(void)
+    {
+#ifdef CONFIG_XTASK_PREEMPT
+        x_task_handle_t handle = x_scheduler_task_create(
+            kName, kDelay, kPriority,
+            [](x_task* self) { get_instance().thread(self); }, nullptr);
+#else
+        x_task_handle_t handle = xscheduler_task_create(
+            &s_tcb, kName,
+            [](x_task* self) { get_instance().thread(self); },
+            kDelay);
+#endif
+        return handle != 0;
+    }
+} // namespace App_Led
+```
+
+> 要点：
+> - **回调必须返回 `void`**：`PT_BEGIN` / `PT_DELAY` 内部是无值 `return`，返回 `etl::optional` 之类的类型会编译失败。
+> - 抢占式走 `x_scheduler_task_create(name, period_ms, priority, cb, param)`；协调式走 `xscheduler_task_create(&tcb, name, cb, period_ms)`，需要类内静态 TCB。
+> - 注册成功后由 `main` 启动调度器（`xscheduler_start()`），入口处逐个调用 `xxx::get_instance().thread_register()`。
+
+---
+
+### 9.5 应用任务模块 —— C 版（兼容用法，上层不推荐；`app/led/led.c` + `led.h`）
 
 `led.h`（声明 + 静态 TCB）：
 
@@ -551,88 +680,12 @@ void App_Led_register(void)
 }
 ```
 
-### 9.5 应用任务模块 —— C++ 版（`app/led/led.hpp` + `led.cpp`）
-
-`led.hpp`（静态 TCB + 注册接口）：
-
-```cpp
-/* SPDX-License-Identifier: Apache-2.0 */
-#pragma once
-#include "xtask.h"
-#include <cstdint>
-#include <etl/optional.h>
-#include <etl/string.h>
-
-namespace App_Led
-{
-    constexpr uint32_t kPeriodMs = 500u;                    /* 周期 ms */
-    const etl::string<16> kName = "Led_Task";               /* 任务名 */
-    x_task g_led_task{};                                    /* 静态 TCB */
-    void led_task_cb(x_task* self);                         /* 回调 */
-    etl::optional<int> register_task();                     /* 注册 */
-} // namespace App_Led
-```
-
-`led.cpp`（C++ 走裸机 `mini_task_create` 重载，返回 `etl::optional`）：
-
-```cpp
-/* SPDX-License-Identifier: Apache-2.0 */
-#include "led.hpp"
-#include "device.h"
-#include "mini_backend.h"          /* 裸机 C++ mini_task_create 重载 */
-#include "status.h"
-#include "system_log.h"
-#include "vfs-gpio.h"
-
-namespace App_Led
-{
-    static struct device* s_led_dev = nullptr;
-
-    void led_task_cb(x_task* self)
-    {
-        struct vfs_gpio_arg arg = {0};
-        int ret;
-        MINI_IGNORE_RESULT(self);
-
-        if (s_led_dev == nullptr)
-        {
-            struct device* pdev = device_find_by_label("led");
-            if (IS_ERR_OR_NULL(pdev))
-                return;
-            if (device_open(pdev, nullptr) != MINI_OK)
-            {
-                MT_LOG_ERROR(kName.c_str(), "device_open(led) failed");
-                return;
-            }
-            s_led_dev = pdev;
-        }
-
-        ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-        if (ret != MINI_OK)
-            MT_LOG_ERROR(kName.c_str(), "device_ioctl(TOGGLE) failed: %d", ret);
-    }
-
-    etl::optional<int> register_task(void)
-    {
-        /* 裸机 C++ 重载：coordinated = (name, stack_size, period, entry, param1)；
-           CONFIG_XTASK_PREEMPT=y 时第三参为 priority，stack_size 复用为周期 */
-        auto handle = mini_task_create(kName.c_str(), 0u, kPeriodMs,
-                                       led_task_cb, nullptr);
-        if (!handle)
-            return etl::nullopt;
-        return etl::make_optional(MINI_OK);
-    }
-} // namespace App_Led
-```
-
-> C++ 裸机下**建议走 `mini_task_create` 重载**（跨 OS 习惯统一），C 工程裸机直接 `xscheduler_task_create`。OS 后端（FreeRTOS/RT-Thread）统一走 C API `mini_task_create`。抢占式开启（`XTASK_PREEMPT`）时，C 用 `x_scheduler_task_create(name, period, priority, cb, param)`。
-
 ---
 
 ## 10. 验证流程
 
 1. **genconfig**：`.config` → `config.h`，确认 `CONFIG_*` 与选择一致。
-2. **dtc-lite**：编译期自动跑；检查生成 `<build>/generated/board/mini_tree/board_nodes.h` 里出现 `DEV_ID_bmp280`，`dt_config_gen.h` 里 `DTC_GEN_COUNT_BOSCH_BMP280 >= 1`。
+2. **dtc-lite**：编译期自动跑；检查生成 `<build>/generated/board/mini_tree/board_nodes.h` 里出现 `DEV_ID_bmp280`，`dt_config_gen.h` 里 `DTC_GEN_COUNT_MT_BMP280 >= 1`。
 3. **编译**：编 `mini_tree` 静态库，确认 `board_driver_probe_bmp280` 被收录、无未定义符号（`board_dev_get` 来自生成的 `board_devtable.c`）。
 4. **运行**：`board_driver_probe_all()` 在启动早期遍历，日志应打出 `bmp280 probed @0x76 on i2c0`。
 5. **链接**：接平台链接脚本，确认含 `ERR_SECTION_BASE`（见 memory_footprint.md §1）。

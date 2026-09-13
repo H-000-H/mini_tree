@@ -13,7 +13,7 @@ function(mini_tree_link_u8g2 target)
     if(NOT TARGET mini_tree_u8g2)
         mini_tree_dep_get(_u8g2_dir
             NAME u8g2
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/u8g2"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/u8g2"
             MARKER "csrc/u8g2.h"
             GIT_REPOSITORY https://github.com/olikraus/u8g2
             GIT_TAG ${MINI_TREE_U8G2_VERSION}

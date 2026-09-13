@@ -27,10 +27,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_MAXIM_DS18B20
-#define DTC_GEN_COUNT_MAXIM_DS18B20 1
+#ifndef DTC_GEN_COUNT_MT_DS18B20
+#define DTC_GEN_COUNT_MT_DS18B20 1
 #endif
-#define DS18B20_POOL_COUNT DTC_GEN_COUNT_MAXIM_DS18B20
+#define DS18B20_POOL_COUNT DTC_GEN_COUNT_MT_DS18B20
 
 /** @brief DS18B20 驱动实例（嵌入 fops 与 GPIO 操作参数） */
 struct ds18b20_device
@@ -404,4 +404,4 @@ static mt_err_t ds18b20_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(ds18b20, "maxim,ds18b20", ds18b20_probe, ds18b20_remove)
+DRIVER_REGISTER(ds18b20, "mt-ds18b20", ds18b20_probe, ds18b20_remove)

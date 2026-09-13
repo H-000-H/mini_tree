@@ -22,7 +22,7 @@ function(mini_tree_link_mcuboot target)
     if(NOT TARGET mini_tree_mcuboot)
         mini_tree_dep_get(_mc_root
             NAME mcuboot
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/mcuboot"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/mcuboot"
             MARKER "boot/bootutil/include/bootutil/bootutil.h"
             GIT_REPOSITORY https://github.com/mcu-tools/mcuboot.git
             GIT_TAG ${MINI_TREE_MCUBOOT_VERSION}

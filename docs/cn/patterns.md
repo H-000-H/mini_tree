@@ -99,7 +99,7 @@
 数据流：
 
 ```text
-驱动 .c 里写 DRIVER_REGISTER(x, "compat,vendor", probe, remove)
+驱动 .c 里写 DRIVER_REGISTER(x, "mt-xxx", probe, remove)
   → dtc-lite 编译期扫描该宏
   → 生成 probe/remove 函数表 + board_probe_order() + board_dev_find_* 系列
 board_driver_probe_all()

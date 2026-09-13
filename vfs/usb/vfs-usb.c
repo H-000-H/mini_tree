@@ -438,7 +438,7 @@ static int usb_ecm_probe(struct device* pdev) { return usb_vfs_client_probe_cls(
 /** HID 客户端 probe (DRIVER_REGISTER) */
 static int usb_hid_probe(struct device* pdev) { return usb_vfs_client_probe_cls(pdev, USB_CLIENT_HID); }
 
-DRIVER_REGISTER(usb_otg_host, "usb-otg-host", vfs_usb_priv_probe, vfs_usb_priv_remove)
-DRIVER_REGISTER(usb_cdc_acm, "heterogeneous,usb-cdc-acm", usb_cdc_probe, usb_vfs_client_remove)
-DRIVER_REGISTER(usb_cdc_ecm, "heterogeneous,usb-cdc-ecm", usb_ecm_probe, usb_vfs_client_remove)
-DRIVER_REGISTER(usb_hid, "heterogeneous,usb-hid", usb_hid_probe, usb_vfs_client_remove)
+DRIVER_REGISTER(usb_otg_host, "mt-usb-otg-host", vfs_usb_priv_probe, vfs_usb_priv_remove)
+DRIVER_REGISTER(usb_cdc_acm, "mt-usb-cdc-acm", usb_cdc_probe, usb_vfs_client_remove)
+DRIVER_REGISTER(usb_cdc_ecm, "mt-usb-cdc-ecm", usb_ecm_probe, usb_vfs_client_remove)
+DRIVER_REGISTER(usb_hid, "mt-usb-hid", usb_hid_probe, usb_vfs_client_remove)

@@ -86,7 +86,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
         #size-cells = <0>;
 
         gpio: gpio@0 {
-            compatible = "vendor,gpio";
+            compatible = "mt-gpios";
             reg = <0>;
             gpio-controller;
             #gpio-cells = <2>;
@@ -94,7 +94,7 @@ python3 tools/dtc-lite.py board/dts/board.dts <build>/generated <driver_dirs...>
         };
 
         i2c0: i2c@1 {
-            compatible = "vendor,i2c";
+            compatible = "mt-i2c-master";
             reg = <1>;
             #address-cells = <1>;
             #size-cells = <0>;
@@ -113,7 +113,7 @@ One `board/dtsi/drivers/<chip>.dtsi` per product driver, attached to a bus via `
 // board/dtsi/drivers/bmp280.dtsi (existing repo template)
 &i2c0 {
 bmp280: bmp280@0 {
-    compatible = "bosch,bmp280";
+    compatible = "mt-bmp280";
     reg = <0>;          // I2C 7-bit address, typically 0x76/0x77
     status = "disabled";
 };
@@ -159,7 +159,7 @@ The board `board.dts` is the entry: it includes the SoC dtsi and turns on/overri
     i2c-clk = <400000>;
 
     bmp280@76 {
-        compatible = "bosch,bmp280";
+        compatible = "mt-bmp280";
         reg = <0x76>;
         status = "okay";
     };
@@ -191,8 +191,8 @@ typedef enum {
 Node count → `DTC_GEN_COUNT_<COMPAT_UPPER>`; also clocks, tick, host counts:
 
 ```c
-#define DTC_GEN_COUNT_BOSCH_BMP280  1     // bmp280 node count → driver static-pool size
-#define DTC_GEN_COUNT_I2C_MASTER    1
+#define DTC_GEN_COUNT_MT_BMP280  1     // bmp280 node count → driver static-pool size
+#define DTC_GEN_COUNT_MT_I2C_MASTER    1
 #define DTC_GEN_CPU_CLOCK_HZ        168000000
 #define DTC_GEN_TICK_RATE_HZ        1000
 #define DTC_GEN_I2C_HOST_MAX        3
@@ -229,7 +229,7 @@ static int bmp280_remove(struct device* pdev)
     /* standard dev_lifecycle remove sequence, see driver.h comments */
 }
 
-DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
+DRIVER_REGISTER(bmp280, "mt-bmp280", bmp280_probe, bmp280_remove);
 ```
 
 > **No `strcmp` at runtime**: dtc-lite collects `DRIVER_REGISTER` into `board_probe.c` at compile time; `board_driver_probe_all()` calls the table directly. If you change `compatible`, rerun dtc-lite (CMake does it automatically).
@@ -278,7 +278,7 @@ A self-contained sensor driver + board dts + CMake injection forming the smalles
 #include <stdint.h>
 
 /* Pool size auto-generated from the DTS node count: more bmp280 nodes ⇒ bigger pool */
-#define BMP280_POOL_COUNT  DTC_GEN_COUNT_BOSCH_BMP280
+#define BMP280_POOL_COUNT  DTC_GEN_COUNT_MT_BMP280
 
 struct bmp280_device {
     struct device* bus;       /* I2C bus device */
@@ -333,7 +333,7 @@ static int bmp280_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(bmp280, "bosch,bmp280", bmp280_probe, bmp280_remove);
+DRIVER_REGISTER(bmp280, "mt-bmp280", bmp280_probe, bmp280_remove);
 ```
 
 ### 8.2 Board DTS: `boards/my_board/board.dts`
@@ -377,11 +377,12 @@ set(BOARD_DTSI_DIR         ${MINI_TREE_BOARD_PORT}/dtsi)   # contains my_soc.dts
 ### 9.2 API key points
 
 - Boot: `mini_tree_pre_os_init()` → `mini_tree_start_tasks()` (**internally calls `board_driver_probe_all` to probe peripherals**) → `xscheduler_start()`.
-- Task creation:
-  - C cooperative: `xscheduler_task_create(task, name, cb, period_ms)` (TCB statically allocated by the caller).
-  - C preemptive (`XTASK_PREEMPT`): `x_scheduler_task_create(name, period_ms, priority, cb, param)` (pool-allocated).
-  - C++ bare metal: `mini_task_create(name, stack_size, period, entry, param1, ...)` overload, returns `etl::optional<x_task_handle_t>`.
-  - OS backends (FreeRTOS/RT-Thread): unified C API `mini_task_create`.
+- Task creation (**applications always go through the C++ class wrapper**, see §9.4):
+  - Applications only do two things: implement the coroutine callback `void thread(x_task* self)` in the class, and the registration `bool thread_register()`.
+  - `thread_register()` picks one of two backends internally — **a class-internal detail, not called directly by applications**:
+    - Cooperative: `xscheduler_task_create(&tcb, name, cb, period_ms)` (TCB as a static class member)
+    - Preemptive (`XTASK_PREEMPT`): `x_scheduler_task_create(name, period_ms, priority, cb, param)`
+  - OS backends (FreeRTOS/RT-Thread/mini-os): `mini_task_create_handle(...)` (thread-entry model; returns `MINI_ERR_NOTSUPP` on bare metal)
 - Main loop: bare metal `while(1) x_scheduler_poll()` (or `mini_tree_system_loop()`); OS backends start their own scheduler.
 
 **Bare-metal scheduler tick source (`xscheduler_start()`) — two-level selection:**
@@ -487,7 +488,136 @@ int main(void)
 }
 ```
 
-### 9.4 App task module — C version (`app/led/led.c` + `led.h`)
+### 9.4 App task module — C++ version (**recommended**; `app/led/led.hpp` + `led.cpp`)
+
+On the C++ side a task is wrapped in a singleton class: **coroutine callback `thread()`** plus registration `thread_register()`; the static TCB and config constants stay inside the class (nothing leaks to globals).
+
+`led.hpp` (class declaration + static TCB):
+
+```cpp
+/* SPDX-License-Identifier: Apache-2.0 */
+#pragma once
+#include "xtask.h"
+#include <cstdint>
+
+struct device;   // forward declaration
+
+namespace App_Led
+{
+    class Led
+    {
+    public:
+        static Led& get_instance();
+
+        // no copy / no move
+        Led(const Led&) = delete;
+        Led& operator=(const Led&) = delete;
+        Led(Led&&) = delete;
+        Led& operator=(Led&&) = delete;
+
+        void thread(x_task* self);   // coroutine callback: toggle LED
+        bool thread_register(void);  // register the task with the scheduler
+
+    private:
+        Led();
+
+        ::device* m_dev = nullptr;
+
+        static constexpr unsigned int kDelay = 500;
+        static constexpr unsigned int kPriority = 5;
+        static constexpr const char* kName = "Led_Task";
+        static constexpr const char* kTag = "Led";
+
+#ifndef CONFIG_XTASK_PREEMPT
+        static x_task s_tcb;   // cooperative: static TCB
+#endif
+    };
+} // namespace App_Led
+```
+
+`led.cpp` (device looked up by label in the ctor; the coroutine body yields via `PT_BEGIN`/`PT_DELAY`; registration branches on the scheduler backend):
+
+```cpp
+#include "led.hpp"
+#include "device.h"
+#include "status.h"
+#include "system_log.h"
+#include "vfs-gpio.h"
+
+namespace App_Led
+{
+#ifndef CONFIG_XTASK_PREEMPT
+    x_task Led::s_tcb;   // cooperative TCB definition
+#endif
+
+    Led& Led::get_instance()
+    {
+        static Led s_instance;
+        return s_instance;
+    }
+
+    Led::Led()
+    {
+        ::device* pdev = device_find_by_label("led");
+        if (IS_ERR_OR_NULL(pdev))
+        {
+            MT_LOG_WARN(kTag, "led device not found");
+            return;
+        }
+        if (device_open(pdev, nullptr) != MINI_OK)
+        {
+            MT_LOG_ERROR(kTag, "device_open failed");
+            return;
+        }
+        m_dev = pdev;
+    }
+
+    /* coroutine callback: PT_BEGIN / PT_DELAY yield (they expand to a bare `return`,
+       so the return type must be void) */
+    void Led::thread(x_task* self)
+    {
+        struct vfs_gpio_arg arg = {0};
+
+        PT_BEGIN(self);
+        while (true)
+        {
+            if (m_dev != nullptr)
+            {
+                int ret = device_ioctl(m_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
+                if (ret != MINI_OK)
+                    MT_LOG_ERROR(kTag, "ioctl failed: %d", ret);
+            }
+            PT_DELAY(self, kDelay);
+        }
+        PT_END(self);
+    }
+
+    /* registration: preemptive (name, period, priority, cb, param) / cooperative (task, name, cb, period) */
+    bool Led::thread_register(void)
+    {
+#ifdef CONFIG_XTASK_PREEMPT
+        x_task_handle_t handle = x_scheduler_task_create(
+            kName, kDelay, kPriority,
+            [](x_task* self) { get_instance().thread(self); }, nullptr);
+#else
+        x_task_handle_t handle = xscheduler_task_create(
+            &s_tcb, kName,
+            [](x_task* self) { get_instance().thread(self); },
+            kDelay);
+#endif
+        return handle != 0;
+    }
+} // namespace App_Led
+```
+
+> Key points:
+> - **The callback must return `void`**: `PT_BEGIN` / `PT_DELAY` expand to a bare `return`, so a value-returning type (e.g. `etl::optional`) fails to compile.
+> - Preemptive backend: `x_scheduler_task_create(name, period_ms, priority, cb, param)`; cooperative backend: `xscheduler_task_create(&tcb, name, cb, period_ms)` — the latter needs a static TCB inside the class.
+> - After a successful registration, `main` starts the scheduler (`xscheduler_start()`) and calls `xxx::get_instance().thread_register()` for each task.
+
+---
+
+### 9.5 App task module — C version (compatibility usage, not recommended for applications; `app/led/led.c` + `led.h`)
 
 `led.h` (declaration + static TCB):
 
@@ -551,88 +681,12 @@ void App_Led_register(void)
 }
 ```
 
-### 9.5 App task module — C++ version (`app/led/led.hpp` + `led.cpp`)
-
-`led.hpp` (static TCB + registration interface):
-
-```cpp
-/* SPDX-License-Identifier: Apache-2.0 */
-#pragma once
-#include "xtask.h"
-#include <cstdint>
-#include <etl/optional.h>
-#include <etl/string.h>
-
-namespace App_Led
-{
-    constexpr uint32_t kPeriodMs = 500u;                    /* period ms */
-    const etl::string<16> kName = "Led_Task";               /* task name */
-    x_task g_led_task{};                                    /* static TCB */
-    void led_task_cb(x_task* self);                         /* callback */
-    etl::optional<int> register_task();                     /* registration */
-} // namespace App_Led
-```
-
-`led.cpp` (C++ uses the bare-metal `mini_task_create` overload, returns `etl::optional`):
-
-```cpp
-/* SPDX-License-Identifier: Apache-2.0 */
-#include "led.hpp"
-#include "device.h"
-#include "mini_backend.h"          /* bare-metal C++ mini_task_create overload */
-#include "status.h"
-#include "system_log.h"
-#include "vfs-gpio.h"
-
-namespace App_Led
-{
-    static struct device* s_led_dev = nullptr;
-
-    void led_task_cb(x_task* self)
-    {
-        struct vfs_gpio_arg arg = {0};
-        int ret;
-        MINI_IGNORE_RESULT(self);
-
-        if (s_led_dev == nullptr)
-        {
-            struct device* pdev = device_find_by_label("led");
-            if (IS_ERR_OR_NULL(pdev))
-                return;
-            if (device_open(pdev, nullptr) != MINI_OK)
-            {
-                MT_LOG_ERROR(kName.c_str(), "device_open(led) failed");
-                return;
-            }
-            s_led_dev = pdev;
-        }
-
-        ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
-        if (ret != MINI_OK)
-            MT_LOG_ERROR(kName.c_str(), "device_ioctl(TOGGLE) failed: %d", ret);
-    }
-
-    etl::optional<int> register_task(void)
-    {
-        /* bare-metal C++ overload: cooperative = (name, stack_size, period, entry, param1);
-           with CONFIG_XTASK_PREEMPT=y the 3rd arg is priority and stack_size is reused as period */
-        auto handle = mini_task_create(kName.c_str(), 0u, kPeriodMs,
-                                       led_task_cb, nullptr);
-        if (!handle)
-            return etl::nullopt;
-        return etl::make_optional(MINI_OK);
-    }
-} // namespace App_Led
-```
-
-> On bare-metal C++ prefer the `mini_task_create` overload (consistent the unified interface habits); C projects call `xscheduler_task_create` directly. OS backends (FreeRTOS/RT-Thread) always go through the C API `mini_task_create`. With preemptive scheduling (`XTASK_PREEMPT`), C uses `x_scheduler_task_create(name, period, priority, cb, param)`.
-
 ---
 
 ## 10. Verification flow
 
 1. **genconfig**: `.config` → `config.h`; confirm `CONFIG_*` matches your selection.
-2. **dtc-lite**: runs automatically at build; check `<build>/generated/board/mini_tree/board_nodes.h` contains `DEV_ID_bmp280`, and `dt_config_gen.h` has `DTC_GEN_COUNT_BOSCH_BMP280 >= 1`.
+2. **dtc-lite**: runs automatically at build; check `<build>/generated/board/mini_tree/board_nodes.h` contains `DEV_ID_bmp280`, and `dt_config_gen.h` has `DTC_GEN_COUNT_MT_BMP280 >= 1`.
 3. **Compile**: build the `mini_tree` static lib; confirm `board_driver_probe_bmp280` is collected and there are no undefined symbols (`board_dev_get` comes from the generated `board_devtable.c`).
 4. **Run**: `board_driver_probe_all()` runs early in boot; the log should print `bmp280 probed @0x76 on i2c0`.
 5. **Link**: use the platform linker script and confirm `ERR_SECTION_BASE` is present (see memory_footprint.md §1).

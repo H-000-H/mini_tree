@@ -24,10 +24,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_TOWERPRO_SG90
-#define DTC_GEN_COUNT_TOWERPRO_SG90 1
+#ifndef DTC_GEN_COUNT_MT_SG90
+#define DTC_GEN_COUNT_MT_SG90 1
 #endif
-#define SG90_POOL_COUNT DTC_GEN_COUNT_TOWERPRO_SG90
+#define SG90_POOL_COUNT DTC_GEN_COUNT_MT_SG90
 
 /** @brief SG90 驱动实例（嵌入 fops 与 PWM 参数） */
 struct sg90_device
@@ -292,4 +292,4 @@ static mt_err_t sg90_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(sg90, "towerpro,sg90", sg90_probe, sg90_remove)
+DRIVER_REGISTER(sg90, "mt-sg90", sg90_probe, sg90_remove)

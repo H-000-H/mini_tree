@@ -24,10 +24,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_TI_DRV8833
-#define DTC_GEN_COUNT_TI_DRV8833 1
+#ifndef DTC_GEN_COUNT_MT_DRV8833
+#define DTC_GEN_COUNT_MT_DRV8833 1
 #endif
-#define DRV8833_POOL_COUNT DTC_GEN_COUNT_TI_DRV8833
+#define DRV8833_POOL_COUNT DTC_GEN_COUNT_MT_DRV8833
 
 /** @brief DRV8833 驱动实例（嵌入 fops 与两路 H 桥输入引脚） */
 struct drv8833_device
@@ -315,4 +315,4 @@ static mt_err_t drv8833_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(drv8833, "ti,drv8833", drv8833_probe, drv8833_remove)
+DRIVER_REGISTER(drv8833, "mt-drv8833", drv8833_probe, drv8833_remove)

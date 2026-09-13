@@ -22,7 +22,7 @@
 
 ## 2. Board Port Steps
 
-1. Add the USB controller node to the board `dtsi/` (`compatible = "mini-tree,usb"`, with IRQ number / endpoint count).
+1. Add the USB controller node to the board `dtsi/` (`compatible = "mt-usb-otg-host"`, with IRQ number / endpoint count).
 2. Write the `drivers/<chip>/` product driver (`DRIVER_REGISTER` + dtc-lite probe) implementing the `hal/usb` callbacks.
 3. `vfs/usb/vfs-usb.{c,h}` exposes device/host interfaces via `vfs/usb`.
 4. Platform CMake injects `BOARD_DTSI_DIR` pointing at the board dtsi.
@@ -34,7 +34,7 @@
 
 | Field | Description |
 | :--- | :--- |
-| `compatible` | `"mini-tree,usb"` |
+| `compatible` | `"mt-usb-otg-host"` |
 | `interrupts` | USB IRQ number (via VIRQ wrapper) |
 | `num-endpoints` | endpoint count |
 | `maximum-speed` | `high` / `full` / `low` |

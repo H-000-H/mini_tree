@@ -22,7 +22,7 @@ function(mini_tree_link_easyflash target)
     if(NOT TARGET mini_tree_easyflash)
         mini_tree_dep_get(_ef_root
             NAME easyflash
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/EasyFlash"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/EasyFlash"
             MARKER "easyflash/inc/easyflash.h"
             GIT_REPOSITORY https://github.com/armink/EasyFlash.git
             GIT_TAG ${MINI_TREE_EASYFLASH_VERSION}

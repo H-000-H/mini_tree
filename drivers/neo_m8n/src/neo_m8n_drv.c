@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_UBLOX_NEO_M8N
-#define DTC_GEN_COUNT_UBLOX_NEO_M8N 1
+#ifndef DTC_GEN_COUNT_MT_NEO_M8N
+#define DTC_GEN_COUNT_MT_NEO_M8N 1
 #endif
-#define NEO_M8N_POOL_COUNT DTC_GEN_COUNT_UBLOX_NEO_M8N
+#define NEO_M8N_POOL_COUNT DTC_GEN_COUNT_MT_NEO_M8N
 
 /** @brief NEO-M8N 驱动实例（嵌入 fops 与接收缓冲） */
 struct neo_m8n_device
@@ -310,4 +310,4 @@ static mt_err_t neo_m8n_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(neo_m8n, "u-blox,neo-m8n", neo_m8n_probe, neo_m8n_remove)
+DRIVER_REGISTER(neo_m8n, "mt-neo-m8n", neo_m8n_probe, neo_m8n_remove)

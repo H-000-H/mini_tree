@@ -24,10 +24,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_TI_SN65HVD230
-#define DTC_GEN_COUNT_TI_SN65HVD230 1
+#ifndef DTC_GEN_COUNT_MT_SN65HVD230
+#define DTC_GEN_COUNT_MT_SN65HVD230 1
 #endif
-#define SN65HVD230_POOL_COUNT DTC_GEN_COUNT_TI_SN65HVD230
+#define SN65HVD230_POOL_COUNT DTC_GEN_COUNT_MT_SN65HVD230
 
 /** @brief SN65HVD230 驱动实例（嵌入 fops 与 GPIO 句柄） */
 struct sn65hvd230_device
@@ -292,4 +292,4 @@ static mt_err_t sn65hvd230_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(sn65hvd230, "ti,sn65hvd230", sn65hvd230_probe, sn65hvd230_remove)
+DRIVER_REGISTER(sn65hvd230, "mt-sn65hvd230", sn65hvd230_probe, sn65hvd230_remove)

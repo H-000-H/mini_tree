@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_INVENSENSE_MPU6050
-#define DTC_GEN_COUNT_INVENSENSE_MPU6050 1
+#ifndef DTC_GEN_COUNT_MT_MPU6050
+#define DTC_GEN_COUNT_MT_MPU6050 1
 #endif
-#define MPU6050_POOL_COUNT DTC_GEN_COUNT_INVENSENSE_MPU6050
+#define MPU6050_POOL_COUNT DTC_GEN_COUNT_MT_MPU6050
 
 /** @brief MPU6050 驱动实例（嵌入 fops） */
 struct mpu6050_device
@@ -312,4 +312,4 @@ static mt_err_t mpu6050_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(mpu6050, "invensense,mpu6050", mpu6050_probe, mpu6050_remove)
+DRIVER_REGISTER(mpu6050, "mt-mpu6050", mpu6050_probe, mpu6050_remove)

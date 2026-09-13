@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_FOCALTECH_FT5X06
-#define DTC_GEN_COUNT_FOCALTECH_FT5X06 1
+#ifndef DTC_GEN_COUNT_MT_FT5X06
+#define DTC_GEN_COUNT_MT_FT5X06 1
 #endif
-#define FT5X06_POOL_COUNT DTC_GEN_COUNT_FOCALTECH_FT5X06
+#define FT5X06_POOL_COUNT DTC_GEN_COUNT_MT_FT5X06
 
 /** @brief FT5x06 驱动实例（嵌入 fops） */
 struct ft5x06_device
@@ -306,4 +306,4 @@ static mt_err_t ft5x06_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(ft5x06, "focaltech,ft5x06", ft5x06_probe, ft5x06_remove)
+DRIVER_REGISTER(ft5x06, "mt-ft5x06", ft5x06_probe, ft5x06_remove)

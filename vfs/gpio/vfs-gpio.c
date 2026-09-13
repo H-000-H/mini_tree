@@ -393,4 +393,4 @@ static mt_err_t vfs_gpio_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(gpios, "heterogeneous,gpios", vfs_gpio_probe, vfs_gpio_remove)
+DRIVER_REGISTER(gpios, "mt-gpios", vfs_gpio_probe, vfs_gpio_remove)

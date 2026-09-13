@@ -22,7 +22,7 @@ function(mini_tree_link_mbedtls target)
     if(NOT TARGET mini_tree_mbedtls_mbedtls)
         mini_tree_dep_get(_mbedtls_dir
             NAME mbedtls
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/mbedtls"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/mbedtls"
             MARKER "include/mbedtls"
             GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls.git
             GIT_TAG ${MINI_TREE_MBEDTLS_VERSION}

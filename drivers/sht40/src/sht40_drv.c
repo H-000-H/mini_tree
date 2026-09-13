@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_SENSIRION_SHT40
-#define DTC_GEN_COUNT_SENSIRION_SHT40 1
+#ifndef DTC_GEN_COUNT_MT_SHT40
+#define DTC_GEN_COUNT_MT_SHT40 1
 #endif
-#define SHT40_POOL_COUNT DTC_GEN_COUNT_SENSIRION_SHT40
+#define SHT40_POOL_COUNT DTC_GEN_COUNT_MT_SHT40
 
 /** @brief SHT40 驱动实例（嵌入 fops） */
 struct sht40_device
@@ -316,4 +316,4 @@ static mt_err_t sht40_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(sht40, "sensirion,sht40", sht40_probe, sht40_remove)
+DRIVER_REGISTER(sht40, "mt-sht40", sht40_probe, sht40_remove)

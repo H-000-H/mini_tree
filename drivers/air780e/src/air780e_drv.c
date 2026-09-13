@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_AIR780E_4G
-#define DTC_GEN_COUNT_AIR780E_4G 1
+#ifndef DTC_GEN_COUNT_MT_AIR780E
+#define DTC_GEN_COUNT_MT_AIR780E 1
 #endif
-#define AIR780E_POOL_COUNT DTC_GEN_COUNT_AIR780E_4G
+#define AIR780E_POOL_COUNT DTC_GEN_COUNT_MT_AIR780E
 
 /** @brief Air780E 驱动实例（嵌入 fops） */
 struct air780e_device
@@ -366,4 +366,4 @@ static mt_err_t air780e_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(air780e, "air780e,4g", air780e_probe, air780e_remove)
+DRIVER_REGISTER(air780e, "mt-air780e", air780e_probe, air780e_remove)

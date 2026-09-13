@@ -5,11 +5,11 @@
  * 用法 / How to use:
  *   1. 复制本节点到板级 dts; 2. status 改 "okay"; 3. 属性填厂商宏, 全 0 即默认;
  *   4. SPI 器件挂在本节点下 (reg = 片选序号, 见 drivers/w25qxx.dtsi 等)。
- * 池大小自动 = DTC_GEN_COUNT_SPI_MASTER + _SPI_SLAVE (DTS 节点数, 缺省各 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_SPI_MASTER + _SPI_SLAVE (DTS 节点数, 缺省各 1)。
  */
 / {
 spi0: spi@0 {
-	compatible = "spi-master"; /* host; "spi-slave" 为从机模式 */
+	compatible = "mt-spi-master"; /* host; "mt-spi-slave" 为从机模式 */
 	reg = <0>;
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -49,7 +49,7 @@ spi0: spi@0 {
 	status = "disabled";
 
 	spi0_client: spi-master-client@0 {
-		compatible = "heterogeneous,spi-master-client"; /* client fops 节点 */
+		compatible = "mt-spi-master-client"; /* client fops 节点 */
 		reg = <0>;
 		cs-port = <0>; /* 片选: 端口 */
 		cs-pin  = <0>; /* 片选: 引脚号 */

@@ -371,4 +371,4 @@ static mt_err_t vfs_rtc_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_rtc, "rtc", vfs_rtc_probe, vfs_rtc_remove)
+DRIVER_REGISTER(vfs_rtc, "mt-rtc", vfs_rtc_probe, vfs_rtc_remove)

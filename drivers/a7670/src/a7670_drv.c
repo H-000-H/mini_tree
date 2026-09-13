@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_SIMCOM_A7670
-#define DTC_GEN_COUNT_SIMCOM_A7670 1
+#ifndef DTC_GEN_COUNT_MT_A7670
+#define DTC_GEN_COUNT_MT_A7670 1
 #endif
-#define A7670_POOL_COUNT DTC_GEN_COUNT_SIMCOM_A7670
+#define A7670_POOL_COUNT DTC_GEN_COUNT_MT_A7670
 
 /** @brief A7670 驱动实例（嵌入 fops） */
 struct a7670_device
@@ -372,4 +372,4 @@ static mt_err_t a7670_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(a7670, "simcom,a7670", a7670_probe, a7670_remove)
+DRIVER_REGISTER(a7670, "mt-a7670", a7670_probe, a7670_remove)

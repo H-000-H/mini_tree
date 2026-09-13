@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_SOLOMON_SSD1306
-#define DTC_GEN_COUNT_SOLOMON_SSD1306 1
+#ifndef DTC_GEN_COUNT_MT_SSD1306
+#define DTC_GEN_COUNT_MT_SSD1306 1
 #endif
-#define SSD1306_POOL_COUNT DTC_GEN_COUNT_SOLOMON_SSD1306
+#define SSD1306_POOL_COUNT DTC_GEN_COUNT_MT_SSD1306
 
 /** @brief SSD1306 驱动实例（嵌入 fops） */
 struct ssd1306_device
@@ -414,4 +414,4 @@ static mt_err_t ssd1306_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(ssd1306, "solomon,ssd1306", ssd1306_probe, ssd1306_remove)
+DRIVER_REGISTER(ssd1306, "mt-ssd1306", ssd1306_probe, ssd1306_remove)

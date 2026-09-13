@@ -32,11 +32,18 @@
 #include "status.h"
 #include "system_log.h"
 
-/* host 池 = DTS "spi-master" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_SPI_MASTER) */
-#ifndef DTC_GEN_COUNT_SPI_MASTER
-#define DTC_GEN_COUNT_SPI_MASTER 1
+/* host 池 = DTS "mt-spi-master" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_MT_SPI_MASTER) */
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
 #endif
-#define SPI_BUS_HOST_MAX DTC_GEN_COUNT_SPI_MASTER
+#endif
+#ifndef DTC_GEN_COUNT_MT_SPI_MASTER
+#define DTC_GEN_COUNT_MT_SPI_MASTER 1
+#endif
+#define SPI_BUS_HOST_MAX DTC_GEN_COUNT_MT_SPI_MASTER
 
 /** @brief SPI host 运行时描述符 (静态池, HAL 嵌入 + atomic ref_count) */
 struct spi_bus_host

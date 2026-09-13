@@ -11,12 +11,19 @@
 #ifndef BOARD_DEFINE_TIM_H
 #define BOARD_DEFINE_TIM_H
 
-/* 池大小 = DTS "tim" 节点数 (缺省 1) */
-#ifndef DTC_GEN_COUNT_TIM
-#define DTC_GEN_COUNT_TIM 1
+/* 池大小 = DTS "mt-tim" 节点数 (缺省 1) */
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
+#endif
+#endif
+#ifndef DTC_GEN_COUNT_MT_TIM
+#define DTC_GEN_COUNT_MT_TIM 1
 #endif
 #ifndef TIM_VFS_PRIV_COUNT
-#define TIM_VFS_PRIV_COUNT DTC_GEN_COUNT_TIM
+#define TIM_VFS_PRIV_COUNT DTC_GEN_COUNT_MT_TIM
 #endif
 
 /* pin 属性数组元素数 (对应 hal_tim_pin_cfg 字段数) */

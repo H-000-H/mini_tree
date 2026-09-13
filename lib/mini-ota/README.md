@@ -128,7 +128,7 @@ cd test
 ===============================================
 ```
 
-- **单步模式（8）**：开启后流程类测试（4/5/6/7）每个关键步骤会打印一次状态快照并等回车继续，便于观察 `open / rollback / fail / current / pending` 与各分区烧录情况；输入 `q` 可让本次剩余步骤连续跑完。关闭后一键跑完、输出 PASS/FAIL，适合回归。
+- **单步模式（8）**：开启后流程类测试（4/5/6/7）每个关键步骤会打印一次状态快照并等回车继续，便于观察 `open / rollback / fail / current / pending / trial` 与各分区烧录情况；输入 `q` 可让本次剩余步骤连续跑完。关闭后一键跑完、输出 PASS/FAIL，适合回归。
 - 各测试项独立、可重复，退出码在全程 PASS 时为 0。
 
 ## 板级升级示例
@@ -272,7 +272,7 @@ void app_confirm_after_self_test(void)
 ```
 
 > 说明
-> - 双分区回滚依赖 `mini_boot_confirm_ota()`：新镜像跑起来没确认就复位，boot 的 `mini_boot_state_load()` 会切回旧分区并记失败码。
+> - 双分区回滚依赖 `mini_boot_confirm_ota()` + 状态字 bit16 `trial`（两次判定）：激活后**首次**复位是"试运行"，boot 放行跳入新分区并置 `trial=1`；新镜像自检通过后 `confirm` 即转正（清 `pending`+`trial`）。若在确认前**又**复位一次（新固件跑挂/掉电），boot 见 `pending=1 且 trial=1` 才回滚到旧分区并记失败码。
 > - 需要单独校验某个分区里的镜像是否完好，可用 `mini_boot_backup()`（内部复用 `read.c` 的 `image_verify_stream()`，模式/摘要/nonce/iv/tag 都由镜像自描述）。
 > - 跳转前想顺手整包校验（挡位翻转/误擦写）：给 `mini_boot_app_area_t` 填上 `fa_id` 与 `image_len`（镜像实际长度），`boot_jump_switch_app()` 内部会调 `mini_boot_backup()`；两者留 0 就只做原来的向量表校验。
 > - app 分区地址 `IMAGE_x_ADDR/SIZE`、向量表校验依赖的 `SRAM_START_ADDR/SRAM_SIZE` 由板级链接脚本 / 配置提供（见 `boot_config.h`，需通过 `config.h` 或 `-D` 注入）。

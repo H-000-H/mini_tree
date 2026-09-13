@@ -48,7 +48,7 @@
 		};
 
 		gpios_pin: gpios-pin@0 {
-			compatible = "heterogeneous,gpios";
+			compatible = "mt-gpios";
 			reg = <0>;
 			gpio-port = <0>;
 			gpio-pin  = <0>;
@@ -71,7 +71,7 @@
 		};
 
 		uart0: uart@0 {
-			compatible = "uart";
+			compatible = "mt-uart";
 			reg = <0>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -92,7 +92,7 @@
 			status = "disabled";
 
 			uart0_client: uart-client@0 {
-				compatible = "uart-client";
+				compatible = "mt-uart-client";
 				reg = <0>;
 				status = "disabled";
 			};

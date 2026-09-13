@@ -27,10 +27,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_NXP_RC522
-#define DTC_GEN_COUNT_NXP_RC522 1
+#ifndef DTC_GEN_COUNT_MT_RC522
+#define DTC_GEN_COUNT_MT_RC522 1
 #endif
-#define RC522_POOL_COUNT DTC_GEN_COUNT_NXP_RC522
+#define RC522_POOL_COUNT DTC_GEN_COUNT_MT_RC522
 
 /** @brief RC522 驱动实例（嵌入 fops） */
 struct rc522_device
@@ -503,4 +503,4 @@ static mt_err_t rc522_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(rc522, "nxp,rc522", rc522_probe, rc522_remove)
+DRIVER_REGISTER(rc522, "mt-rc522", rc522_probe, rc522_remove)

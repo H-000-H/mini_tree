@@ -9,7 +9,7 @@
  *   - 分辨率 → DISPLAY_CMD_GET_INFO（format = DISPLAY_FMT_MONO_1BPP）
  *   - 无亮度控制 → DISPLAY_CMD_SET_BRIGHTNESS 返回 MINI_ERR_NOTSUPP
  *   几何参数（width/height）由 DTS 提供，busy-timeout-ms 可选。
- *   compatible: "gooddisplay,epaper"（DRIVER_REGISTER 见 src/epaper_drv.c）
+ *   compatible: "mt-epaper"（DRIVER_REGISTER 见 src/epaper_drv.c）
  */
 
 #ifndef EPAPER_DRV_H

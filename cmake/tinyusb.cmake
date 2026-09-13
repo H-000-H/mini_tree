@@ -13,7 +13,7 @@ function(mini_tree_link_tinyusb target)
         # 本文件位于 mini_tree/cmake/，上级即 mini_tree 仓库根（含 lib/tinyusb）。
         # CMAKE_CURRENT_LIST_DIR 在 function 内仍指向本文件目录，不受调用点作用域影响，
         # 故在此直接推导本地路径，避免依赖函数外普通变量（add_subdirectory 子作用域会丢失）。
-        set(MINI_TREE_TINYUSB_LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/tinyusb")
+        set(MINI_TREE_TINYUSB_LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/tinyusb")
         mini_tree_dep_get(_tinyusb_source_dir
             NAME tinyusb
             LOCAL_DIR "${MINI_TREE_TINYUSB_LOCAL_DIR}"

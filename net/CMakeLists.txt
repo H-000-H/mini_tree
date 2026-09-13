@@ -36,7 +36,7 @@ endif()
 # USB 网卡 (CDC-ECM / RNDIS) 的 lwIP 适配层: 仅 .config 显式 CONFIG_USB_NET=y 时编入。
 # usbethif.c 直接读 CONFIG_USB_NET_MTU / CONFIG_USB_NET_MAC* / CONFIG_USB_NET_*_TIMEOUT_MS
 # 等编译期宏 (Kconfig 里 depends on USB_NET), 并依赖板级 board_define_usb.h 的
-# DTC_GEN_COUNT_HETEROGENEOUS_USB_CDC_ECM。与 USB 侧软编码门控同源, 同样 fail-closed:
+# DTC_GEN_COUNT_MT_USB_CDC_ECM。与 USB 侧软编码门控同源, 同样 fail-closed:
 # 键缺失 / .config 不存在 / 读取失败一律不编 (缺宏会直接编译失败)。
 set(_net_usb_on "")
 if(EXISTS "${MINI_TREE_NET_DOTCONFIG}")
@@ -49,7 +49,7 @@ if(_net_usb_on)
         port/usb/usbethif.h
         port/usb/usbethif.c
     )
-    # board_define_usb.h (DTC_GEN_COUNT_USB_OTG_HOST / ..._CDC_ECM 等默认值)
+    # board_define_usb.h (DTC_GEN_COUNT_MT_USB_OTG_HOST / ..._CDC_ECM 等默认值)
     target_include_directories(mini_tree_net PRIVATE
         "${MINI_TREE_ROOT}/board/define/vfs"
     )

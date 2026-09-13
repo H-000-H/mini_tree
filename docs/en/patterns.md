@@ -99,7 +99,7 @@ These APIs are all `extern "C"` (the system layer is pure C); C++ projects call 
 Data flow:
 
 ```text
-driver .c writes DRIVER_REGISTER(x, "compat,vendor", probe, remove)
+driver .c writes DRIVER_REGISTER(x, "mt-xxx", probe, remove)
   → dtc-lite scans the macro at compile time
   → generates probe/remove function tables + board_probe_order() + board_dev_find_* family
 board_driver_probe_all()

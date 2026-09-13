@@ -25,11 +25,11 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_MAXIM_MAX98357A
-#define DTC_GEN_COUNT_MAXIM_MAX98357A 1
+#ifndef DTC_GEN_COUNT_MT_MAX98357A
+#define DTC_GEN_COUNT_MT_MAX98357A 1
 #endif
 
-#define MAX98357A_COUNT DTC_GEN_COUNT_MAXIM_MAX98357A
+#define MAX98357A_COUNT DTC_GEN_COUNT_MT_MAX98357A
 
 /** @brief MAX98357A 驱动实例（嵌入 fops 与 SDN 引脚） */
 struct max98357a_device
@@ -376,4 +376,4 @@ static mt_err_t max98357a_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(max98357a, "maxim,max98357a", max98357a_probe, max98357a_remove)
+DRIVER_REGISTER(max98357a, "mt-max98357a", max98357a_probe, max98357a_remove)

@@ -21,7 +21,7 @@ function(mini_tree_link_flashdb target)
     if(NOT TARGET mini_tree_flashdb)
         mini_tree_dep_get(_fdb
             NAME flashdb
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/FlashDB"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/FlashDB"
             MARKER "inc/flashdb.h"
             GIT_REPOSITORY https://github.com/armink/FlashDB.git
             GIT_TAG ${MINI_TREE_FLASHDB_VERSION}

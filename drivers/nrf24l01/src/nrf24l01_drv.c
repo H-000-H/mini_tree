@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_NORDIC_NRF24L01
-#define DTC_GEN_COUNT_NORDIC_NRF24L01 1
+#ifndef DTC_GEN_COUNT_MT_NRF24L01
+#define DTC_GEN_COUNT_MT_NRF24L01 1
 #endif
-#define NRF24L01_POOL_COUNT DTC_GEN_COUNT_NORDIC_NRF24L01
+#define NRF24L01_POOL_COUNT DTC_GEN_COUNT_MT_NRF24L01
 
 /** @brief NRF24L01 驱动实例（嵌入 fops） */
 struct nrf24l01_device
@@ -334,4 +334,4 @@ static mt_err_t nrf24l01_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(nrf24l01, "nordic,nrf24l01", nrf24l01_probe, nrf24l01_remove)
+DRIVER_REGISTER(nrf24l01, "mt-nrf24l01", nrf24l01_probe, nrf24l01_remove)

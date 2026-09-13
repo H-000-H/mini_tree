@@ -27,10 +27,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_BOSCH_BME280
-#define DTC_GEN_COUNT_BOSCH_BME280 1
+#ifndef DTC_GEN_COUNT_MT_BME280
+#define DTC_GEN_COUNT_MT_BME280 1
 #endif
-#define BME280_POOL_COUNT DTC_GEN_COUNT_BOSCH_BME280
+#define BME280_POOL_COUNT DTC_GEN_COUNT_MT_BME280
 
 /** @brief BME280 驱动实例（嵌入 fops 与校准系数） */
 struct bme280_device
@@ -477,4 +477,4 @@ static mt_err_t bme280_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(bme280, "bosch,bme280", bme280_probe, bme280_remove)
+DRIVER_REGISTER(bme280, "mt-bme280", bme280_probe, bme280_remove)

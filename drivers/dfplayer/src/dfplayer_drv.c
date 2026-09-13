@@ -26,10 +26,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_DFROBOT_DFPLAYER
-#define DTC_GEN_COUNT_DFROBOT_DFPLAYER 1
+#ifndef DTC_GEN_COUNT_MT_DFPLAYER
+#define DTC_GEN_COUNT_MT_DFPLAYER 1
 #endif
-#define DFPLAYER_POOL_COUNT DTC_GEN_COUNT_DFROBOT_DFPLAYER
+#define DFPLAYER_POOL_COUNT DTC_GEN_COUNT_MT_DFPLAYER
 
 /** @brief DFPlayer 驱动实例（嵌入 fops） */
 struct dfplayer_device
@@ -329,4 +329,4 @@ static mt_err_t dfplayer_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(dfplayer, "dfrobot,dfplayer", dfplayer_probe, dfplayer_remove)
+DRIVER_REGISTER(dfplayer, "mt-dfplayer", dfplayer_probe, dfplayer_remove)

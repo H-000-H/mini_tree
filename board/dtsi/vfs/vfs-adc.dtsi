@@ -3,7 +3,7 @@
  * ADC VFS 节点模板 (vfs/adc) — 中间件占位示例
  *
  * 用法: 复制本节点到板级 dts; status 改 "okay"; 属性填厂商宏, 全 0 即默认。
- * 池大小自动 = DTC_GEN_COUNT_ADC (DTS adc 节点数, 缺省 1)。
+ * 池大小自动 = DTC_GEN_COUNT_MT_ADC (DTS adc 节点数, 缺省 1)。
  *
  * 数组属性宽度由 board/define/vfs/board_define_adc.h 控制 (板级可覆盖):
  *   DTS_ADC_PIN_FIELD_COUNT=8   DTS_ADC_CHANNEL_FIELD_COUNT=5
@@ -18,7 +18,7 @@
  */
 / {
 adc0: adc@0 {
-	compatible = "adc";
+	compatible = "mt-adc";
 	reg = <0>;
 	adc-base = <0>; /* ADC 外设寄存器基址 */
 	adc-clk-bus = <0>; /* 总线时钟 */

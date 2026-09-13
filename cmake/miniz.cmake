@@ -13,7 +13,7 @@ function(mini_tree_link_miniz target)
     if(NOT TARGET mini_tree_miniz)
         mini_tree_dep_get(_mz_dir
             NAME miniz
-            LOCAL_DIR "${CMAKE_CURRENT_LIST_DIR}/../lib/miniz"
+            LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/miniz"
             MARKER "miniz.h"
             GIT_REPOSITORY https://github.com/richgel999/miniz.git
             GIT_TAG ${MINI_TREE_MINIZ_VERSION}

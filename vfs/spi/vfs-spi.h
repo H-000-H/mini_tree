@@ -11,10 +11,10 @@
  *   隔离: 本文件定义 SPI_VFS_IMPL 可调 spi_bus API; 其他文件包含本头时 spi_bus 符号被 #pragma GCC
  *   poison。
  *   Driver 注册:
- *   - spi_host_master: "spi-master" (host controller)
- *   - spi_host_slave:  "spi-slave" (slave host controller)
- *   - spi_vfs_master:  "heterogeneous,spi-master-client" (bus client)
- *   - spi_vfs_slave:   "heterogeneous,spi-slave-client" (bus client)
+ *   - spi_host_master: "mt-spi-master" (host controller)
+ *   - spi_host_slave:  "mt-spi-slave" (slave host controller)
+ *   - spi_vfs_master:  "mt-spi-master-client" (bus client)
+ *   - spi_vfs_slave:   "mt-spi-slave-client" (bus client)
  *   @see bus/spi/spi_bus.h  bus 层接口
  *   @see bus/bus.h          通用总线框架
  *   --------------------------------------------------------------------------

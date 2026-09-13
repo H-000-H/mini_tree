@@ -11,20 +11,27 @@
 #ifndef BOARD_DEFINE_CAN_H
 #define BOARD_DEFINE_CAN_H
 
-/* host 池 = DTS "can-host" 节点数 (缺省 1) */
-#ifndef DTC_GEN_COUNT_CAN_HOST
-#define DTC_GEN_COUNT_CAN_HOST 1
+/* host 池 = DTS "mt-can-host" 节点数 (缺省 1) */
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
+#endif
+#endif
+#ifndef DTC_GEN_COUNT_MT_CAN_HOST
+#define DTC_GEN_COUNT_MT_CAN_HOST 1
 #endif
 #ifndef CAN_VFS_PRIV_COUNT
-#define CAN_VFS_PRIV_COUNT DTC_GEN_COUNT_CAN_HOST
+#define CAN_VFS_PRIV_COUNT DTC_GEN_COUNT_MT_CAN_HOST
 #endif
 
-/* client 池 = DTS "heterogeneous,can-client" 节点数 (缺省 1) */
-#ifndef DTC_GEN_COUNT_HETEROGENEOUS_CAN_CLIENT
-#define DTC_GEN_COUNT_HETEROGENEOUS_CAN_CLIENT 1
+/* client 池 = DTS "mt-can-client" 节点数 (缺省 1) */
+#ifndef DTC_GEN_COUNT_MT_CAN_CLIENT
+#define DTC_GEN_COUNT_MT_CAN_CLIENT 1
 #endif
 #ifndef CAN_VFS_CLIENT_COUNT
-#define CAN_VFS_CLIENT_COUNT DTC_GEN_COUNT_HETEROGENEOUS_CAN_CLIENT
+#define CAN_VFS_CLIENT_COUNT DTC_GEN_COUNT_MT_CAN_CLIENT
 #endif
 
 #endif /* BOARD_DEFINE_CAN_H */

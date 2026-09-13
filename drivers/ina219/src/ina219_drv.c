@@ -25,10 +25,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_TI_INA219
-#define DTC_GEN_COUNT_TI_INA219 1
+#ifndef DTC_GEN_COUNT_MT_INA219
+#define DTC_GEN_COUNT_MT_INA219 1
 #endif
-#define INA219_POOL_COUNT DTC_GEN_COUNT_TI_INA219
+#define INA219_POOL_COUNT DTC_GEN_COUNT_MT_INA219
 
 /** @brief INA219 驱动实例（嵌入 fops） */
 struct ina219_device
@@ -328,4 +328,4 @@ static mt_err_t ina219_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(ina219, "ti,ina219", ina219_probe, ina219_remove)
+DRIVER_REGISTER(ina219, "mt-ina219", ina219_probe, ina219_remove)

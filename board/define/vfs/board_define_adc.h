@@ -16,13 +16,20 @@
 #define BOARD_DEFINE_ADC_H
 
 /* -------------------------------------------------------------------------- */
-/* 池大小: DTS "adc" 节点数 (缺省 1); 板级可改固定值预留更多实例 */
+/* 池大小: DTS "mt-adc" 节点数 (缺省 1); 板级可改固定值预留更多实例 */
 /* -------------------------------------------------------------------------- */
-#ifndef DTC_GEN_COUNT_ADC
-#define DTC_GEN_COUNT_ADC 1
+/* include the dtc-lite generated truth table first: otherwise the default
+   value below conflicts with the real one (macro redefinition) */
+#if defined(__has_include)
+#if __has_include("dt_config_gen.h")
+#include "dt_config_gen.h"
+#endif
+#endif
+#ifndef DTC_GEN_COUNT_MT_ADC
+#define DTC_GEN_COUNT_MT_ADC 1
 #endif
 #ifndef ADC_VFS_PRIV_COUNT
-#define ADC_VFS_PRIV_COUNT DTC_GEN_COUNT_ADC
+#define ADC_VFS_PRIV_COUNT DTC_GEN_COUNT_MT_ADC
 #endif
 
 /* -------------------------------------------------------------------------- */

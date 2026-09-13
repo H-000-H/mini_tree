@@ -9,7 +9,7 @@
  *   架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus, 对齐 TIM)
  *   职责: file_operations + dev_lifecycle + DTS; ioctl 设置/读取时间、闹钟、唤醒定时器。
  *   隔离: 定义 RTC_VFS_IMPL 可调 hal_rtc_*; 其他文件包含本头时 hal_rtc_* 被 #pragma GCC poison。
- *   Driver 注册: vfs_rtc / "rtc"
+ *   Driver 注册: vfs_rtc / "mt-rtc"
  *   约束: 闹钟寄存器路径可用; alarm callback 的 NVIC/ISR 派发尚未完整。
  *   @see hal/rtc/hal_rtc.h
  *   --------------------------------------------------------------------------

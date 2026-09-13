@@ -689,4 +689,4 @@ static mt_err_t vfs_dac_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_dac_priv, "dac", vfs_dac_probe, vfs_dac_remove)
+DRIVER_REGISTER(vfs_dac_priv, "mt-dac", vfs_dac_probe, vfs_dac_remove)

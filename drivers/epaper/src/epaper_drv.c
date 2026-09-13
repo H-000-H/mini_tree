@@ -30,10 +30,10 @@
 
 #include "compiler_compat_poison.h"
 
-#ifndef DTC_GEN_COUNT_GOODDISPLAY_EPAPER
-#define DTC_GEN_COUNT_GOODDISPLAY_EPAPER 1
+#ifndef DTC_GEN_COUNT_MT_EPAPER
+#define DTC_GEN_COUNT_MT_EPAPER 1
 #endif
-#define EPAPER_POOL_COUNT DTC_GEN_COUNT_GOODDISPLAY_EPAPER
+#define EPAPER_POOL_COUNT DTC_GEN_COUNT_MT_EPAPER
 
 /** @brief 电子纸驱动实例（嵌入 fops 与全部引脚） */
 struct epaper_device
@@ -450,4 +450,4 @@ static mt_err_t epaper_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(epaper, "gooddisplay,epaper", epaper_probe, epaper_remove)
+DRIVER_REGISTER(epaper, "mt-epaper", epaper_probe, epaper_remove)

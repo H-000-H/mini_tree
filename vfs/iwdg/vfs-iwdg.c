@@ -193,4 +193,4 @@ static mt_err_t vfs_iwdg_remove(struct device* pdev)
     return MINI_OK;
 }
 
-DRIVER_REGISTER(vfs_iwdg, "iwdg", vfs_iwdg_probe, vfs_iwdg_remove)
+DRIVER_REGISTER(vfs_iwdg, "mt-iwdg", vfs_iwdg_probe, vfs_iwdg_remove)
