@@ -74,16 +74,20 @@ mini_os_err_t mini_os_schedule_init(void)
  * @return MINI_OS_OK once the first switch has been requested
  * @details PendSV is put at the lowest priority and SysTick at the second
  *          lowest, so user interrupts always preempt them; the PSP is primed
- *          with the "no thread to restore" marker, CONTROL switches to PSP with
- *          privileged mode, and a PendSV is forced before interrupts are
- *          unmasked, so the switch happens as soon as they are
+ *          with the "no thread to restore" marker, and a PendSV is forced
+ *          before interrupts are unmasked, so the switch happens as soon as
+ *          they are
+ * @note CONTROL is deliberately left alone here: the marker leaves the PSP at
+ *       0, so switching SPSEL first would point the very first exception's
+ *       hardware stacking at 0xFFFFFFE0. The move to the PSP is declared by
+ *       the PendSV exception return instead (see pendsv_handler), and the
+ *       hardware restores SPSEL when that return is taken
  */
 mini_os_err_t mini_os_schedule_start(void)
 {
     MINI_OS_PENDSV_IRQ = 0xFF;  /* PendSV: lowest priority (never preempts user IRQs) */
     MINI_OS_SYSTICK_IRQ = 0xFE; /* SysTick: second-lowest */
     mini_os_psp_set(MINI_OS_NONE_THREAD_TO_RESTORE);
-    mini_os_set_control(MINI_OS_CONTROL_REGISTER_PSP_PRIVILEGE);
     mini_os_yield_trigger();
     mini_os_irq_enable();
     return MINI_OS_OK;
@@ -459,6 +463,13 @@ void mini_os_systick_handler(void)
 #endif
     mini_os_timer_tick(); /* advance the timer wheel, run/queue expired timers */
     mini_os_irq_restore(irq_level);
+
+    /* 时间轮到期只把线程放回就绪队列, 不放 PendSV 是跑不起来的: Cortex-M 的
+     * 异常返回不做调度, 必须显式置位 tail-chain 到 PendSV。线程时间轮
+     * (tick_decrement) 走的就是这条路, 与 mini_os_schedule_delay() 挂起时的
+     * yield 对称; timer_tick 内部虽已判断过一次, 这里是两条路径的统一出口。
+     * yield_isr 只在存在更紧急线程时才真正触发, 不会产生多余切换。 */
+    (void)mini_os_schedule_yield_isr();
 }
 
 #if MINI_OS_LONG_TIME

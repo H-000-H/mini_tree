@@ -81,6 +81,19 @@ static int s_flash_resync = 0;
 /** @brief 终端输出回调; 为 NULL 时走默认 fwrite 到 stdout */
 static mini_log_output_fn s_mini_log_output = NULL;
 
+/** @brief 时间戳回调; 为 NULL 时表示未接入 (时间字段显示 not support check time) */
+static mini_log_tick_fn s_mini_log_tick = NULL;
+
+void mini_log_register_tick(mini_log_tick_fn fn)
+{
+    s_mini_log_tick = fn;
+}
+
+int mini_log_get_tick(void)
+{
+    return (s_mini_log_tick != NULL) ? s_mini_log_tick() : -1;
+}
+
 void mini_log_set_output(mini_log_output_fn fn)
 {
     s_mini_log_output = fn;

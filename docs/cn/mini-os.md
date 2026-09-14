@@ -64,7 +64,7 @@ mini-os 是仓库内自研的最小 RTOS 内核，设计目标：
 
 - 插入：`slot = (current + ticks) & MASK`，`round = (ticks - 1) >> CTZ(WHEEL)`（跨多圈时先数 round）；
 - `mini_os_sync_wait_park()` 用 **双节点** 同时挂两处：`wait_node` 挂同步对象等待列表、`list_node` 挂时间轮；唤醒侧做双 unlink，避免二次唤醒；
-- SysTick handler 的处理顺序：关中断 → 线程时间轮到期唤醒 → 时间片轮转（若开 `MINI_OS_TIME_SLICE`）→ tick 自增 → 定时器轮。
+- SysTick handler 的处理顺序：关中断 → 线程时间轮到期唤醒 → 时间片轮转（若开 `MINI_OS_TIME_SLICE`）→ tick 自增 → 定时器轮 → 末尾调 `mini_os_schedule_yield_isr()`。**末尾这一步不能省**：时间轮到期只把线程放回就绪队列，而 Cortex-M 的异常返回不参与调度，必须显式置 PendSV（tail-chain）才能让被唤醒的线程真正拿到 CPU。
 
 ### 2.3 中断与上下文切换的优先级安排
 
@@ -74,7 +74,9 @@ mini-os 是仓库内自研的最小 RTOS 内核，设计目标：
 | SysTick | `0xFE` | tick 驱动（时间轮 / 时间片 / 定时器轮） |
 
 - ISR 内的唤醒**不主动切上下文**：`mini_os_schedule_yield_isr()` 内部自查就绪位图，仅当有更高优先级就绪才置位 PendSV；
-- `*_isr` 变体 API（`mini_os_semaphore_post_isr` 等）均遵守此约定，统一接口 的 `mini_yield_from_isr()` 即转发该调用。
+- **唤醒侧必须显式调用它**：tick 路径（`mini_os_systick_handler`）与定时器路径（`timer.c`）各自在尾部调用；新增任何"ISR 内让线程就绪"的路径时同样不能漏，否则线程只入就绪队列、永远等不到 CPU；
+- `*_isr` 变体 API（`mini_os_semaphore_post_isr` 等）均遵守此约定，统一接口 的 `mini_yield_from_isr()` 即转发该调用；
+- **切到 PSP 由异常返回声明**：`mini_os_schedule_start()` 不写 `CONTROL`（保持 MSP），首个 PendSV 因此用 MSP 压栈；`pendsv_handler` 返回前把 `EXC_RETURN` 的 bit2 置 1，声明"返回 Thread 模式 + PSP"，硬件随即恢复 `CONTROL.SPSEL`。这样启动期不存在"PSP 仍是无线程标记 `0`、SPSEL 却已切换"的窗口。
 
 ### 2.4 关键线程与构造函数优先级
 
@@ -249,6 +251,7 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | ISR 模式 | `*_isr` 不主动切换；`mini_yield_from_isr()` 转发 `mini_os_schedule_yield_isr()` |
 | 对象池 | 互斥锁/信号量静态内嵌内核对象 + `mini_slot` 槽位池，池临界区用 `mini_os_irq_save/restore` |
 | 调度启动 | `mini_scheduler_start()` 先惰性引导内核（`schedule_init` + idle 线程 + SysTick）再启动调度器 |
+| 引导期加锁 | 调度器启动前 `mini_os_thread_current()` 为 NULL，内核 `mini_os_mutex_lock` 对此一律返回 `MINI_OS_ERR_INVAL`（mutex 需要 owner，连空闲锁也不放行）；适配层在这段时间直接放行 lock/unlock，使启动早期的 `device_lock` 与 FreeRTOS / 裸机后端行为一致 |
 | 调度冻结 | mini-os 无全局挂起 API，`mini_sched_freeze()` 退化为关中断（同 `mini_backend_bare` 单向冻结语义） |
 
 ### 8.4 构建方式

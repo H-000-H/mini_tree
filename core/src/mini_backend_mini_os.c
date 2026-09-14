@@ -149,12 +149,26 @@ mt_err_t mini_mutex_create(mini_mutex_t** out)
     return MINI_OK;
 }
 
+/* 引导阶段判定: 调度器启动前没有可调度的线程, mini_os_thread_current() 恒为 NULL。
+ * mini_os_mutex_lock 对无线程上下文一律拒绝 (连空闲锁也不放行)我不会改mini-os锁判断逻辑在内核里面
+ * 是合理的如果有人想要提前使用锁可以和我一样的处理后期顶层用mini-os源语没有问题因为此时已经绑定这mutex
+  */
+static inline bool mini_mutex_in_boot_context(void)
+{
+    return mini_os_thread_current() == MINI_OS_NULL;
+}
+
 mt_err_t mini_mutex_lock(mini_mutex_t* mtx, uint32_t timeout_ms)
 {
     if (!mtx)
         return MINI_ERR_INVAL;
     if (hal_is_in_isr())
         return MINI_ERR_ISR;
+
+    /* 引导阶段只有引导上下文在跑 (单线程, probe 期间更是 IRQ_DISABLE), 无需互斥;
+     * 直接放行, 语义等价于其他后端"空闲锁即刻获取"。 */
+    if (mini_mutex_in_boot_context())
+        return MINI_OK;
 
     struct mini_mutex* mutex = (struct mini_mutex*)mtx;
     return mini_err_from_mini_os(mini_os_mutex_lock(&mutex->obj, mini_os_timeout(timeout_ms)));
@@ -166,6 +180,10 @@ mt_err_t mini_mutex_unlock(mini_mutex_t* mtx)
         return MINI_ERR_INVAL;
     if (hal_is_in_isr())
         return MINI_ERR_ISR;
+
+    /* 与 lock 对称: 引导阶段并未真正持锁, 内核里也没有 owner 可释放 */
+    if (mini_mutex_in_boot_context())
+        return MINI_OK;
 
     struct mini_mutex* mutex = (struct mini_mutex*)mtx;
     if (mini_os_mutex_unlock(&mutex->obj) != MINI_OS_OK)

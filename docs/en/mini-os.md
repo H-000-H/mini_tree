@@ -64,7 +64,7 @@ Thread delays / sync timeouts use a layered time wheel (`s_wheel[MINI_OS_TICK_WH
 
 - Insert: `slot = (current + ticks) & MASK`, `round = (ticks - 1) >> CTZ(WHEEL)` (rounds counted first when spanning multiple laps);
 - `mini_os_sync_wait_park()` uses **two nodes** to park in two places at once: `wait_node` onto the sync object's wait list, `list_node` onto the time wheel; the wake side does a double unlink to avoid double wake-up;
-- SysTick handler order: IRQs off → thread wheel expiry wake-ups → time slicing (if `MINI_OS_TIME_SLICE`) → tick increment → timer wheel.
+- SysTick handler order: IRQs off → thread wheel expiry wake-ups → time slicing (if `MINI_OS_TIME_SLICE`) → tick increment → timer wheel → `mini_os_schedule_yield_isr()` at the tail. **That last step cannot be dropped**: an expiry only puts the thread back on the ready list, and a Cortex-M exception return does not schedule on its own — PendSV must be pended explicitly (tail-chained) for the woken thread to actually get the CPU.
 
 ### 2.3 Exception priority arrangement
 
@@ -74,7 +74,9 @@ Thread delays / sync timeouts use a layered time wheel (`s_wheel[MINI_OS_TICK_WH
 | SysTick | `0xFE` | Tick driving (thread wheel / time slice / timer wheel) |
 
 - ISR-side wake-ups **never switch context by themselves**: `mini_os_schedule_yield_isr()` inspects the ready bitmap and pends PendSV only when a higher-priority thread is ready;
-- All `*_isr` API variants (`mini_os_semaphore_post_isr` etc.) follow this convention; the unified interface's `mini_yield_from_isr()` forwards to it.
+- **The waking side must call it explicitly**: both the tick path (`mini_os_systick_handler`) and the timer path (`timer.c`) invoke it at their tail. Any new "make a thread ready inside an ISR" path must do the same, otherwise the thread merely joins the ready list and never gets the CPU;
+- All `*_isr` API variants (`mini_os_semaphore_post_isr` etc.) follow this convention; the unified interface's `mini_yield_from_isr()` forwards to it;
+- **The move to PSP is declared by the exception return**: `mini_os_schedule_start()` does not write `CONTROL` (it stays on MSP), so the first PendSV stacks its frame on a valid MSP; before returning, `pendsv_handler` sets `EXC_RETURN` bit2 to declare "return to Thread mode on PSP", and the hardware restores `CONTROL.SPSEL` accordingly. This removes the window where PSP is still the "no thread to restore" marker `0` while SPSEL has already switched.
 
 ### 2.4 Key threads and constructor priorities
 
@@ -249,6 +251,7 @@ Every option resolves through the same **three-tier chain** (reference implement
 | ISR mode | `*_isr` calls never switch context; `mini_yield_from_isr()` forwards to `mini_os_schedule_yield_isr()` |
 | Object pool | Mutexes/semaphores embed kernel objects statically + an `mini_slot` slot pool; pool critical sections use `mini_os_irq_save/restore` |
 | Scheduler start | `mini_scheduler_start()` first lazily boots the kernel (`schedule_init` + idle thread + SysTick), then starts the scheduler |
+| Locking before the scheduler | Before the scheduler starts, `mini_os_thread_current()` is NULL and the kernel's `mini_os_mutex_lock` returns `MINI_OS_ERR_INVAL` unconditionally (a mutex needs an owner — not even a free lock is granted); the shim lets lock/unlock through during that window so early-boot `device_lock` behaves the same as on the FreeRTOS / bare-metal backends |
 | Scheduler freeze | mini-os has no global suspend-all API; `mini_sched_freeze()` degrades to IRQ masking (same one-way freeze semantics as `mini_backend_bare`) |
 
 ### 8.4 Build integration

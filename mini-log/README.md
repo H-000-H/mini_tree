@@ -113,11 +113,16 @@ flash 链路的返回状态统一为 `int` 错误码（见 `inc/log_err.h`）：
 
 ### 4. 接入时间戳
 
+本库不感知任何时基，由调用方注册回调：
+
 ```c
-int mini_log_get_tick(void) { return (int)bsp_get_ms(); }   /* 返回 >= 0 */
+static int my_tick(void) { return (int)bsp_get_ms(); }   /* 返回 >= 0 */
+
+mini_log_register_tick(my_tick);      /* 传 NULL 恢复 "未接入" 态 */
 ```
 
-未接入（返回负值）时，时间字段显示 `not support check time`。
+未接入（回调为 `NULL`，或回调返回负值）时，时间字段显示 `not support check time`。
+回调可能在任意日志上下文（含 ISR）被调用，实现须无阻塞、无锁。
 
 ## 日志宏
 

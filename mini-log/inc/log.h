@@ -248,13 +248,25 @@ typedef enum {
 #endif
 
 /**
- * @brief 自定义时间获取钩子: 自己接入自己的时间函数, 未接入时返回负值
- * @return 自定义 tick; 返回负值表示未接入
+ * @brief 时间戳回调: 接入调用方自己的时基
+ * @return 自系统启动的 tick; 返回负值表示本次取不到时间
+ * @note 本库不感知任何 tick 源 (调度器 / RTOS / bsp), 由调用方注册;
+ *       回调可能在任意日志上下文 (含 ISR) 被调用, 实现必须无阻塞、无锁
  */
-static inline int mini_log_get_tick(void)
-{
-    return -2;
-}
+typedef int (*mini_log_tick_fn)(void);
+
+/**
+ * @brief 注册时间戳回调
+ * @param[in] fn 时间戳回调; 传 NULL 恢复 "未接入" 态
+ * @return 无
+ */
+void mini_log_register_tick(mini_log_tick_fn fn);
+
+/**
+ * @brief 取当前时间戳
+ * @return 已注册回调时为其返回值 (可能为负); 未注册回调时返回 -1
+ */
+int mini_log_get_tick(void);
 
 /**
  * @brief 时间戳取值: 钩子返回负值 (未接入) 时统一按 0 输出

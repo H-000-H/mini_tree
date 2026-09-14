@@ -116,6 +116,26 @@ Conclusions:
 6. **libc impact (4.1 vs 4.2)**: full newlib costs **~+24.6 KB text and ~+1.65 KB data** (stdio structures) over nano, bss only ~+48 B; RT-Thread is an outlier at ~+6.4 KB more (its kservice is configured to use libc formatting via `RT_KLIBC_USING_LIBC_VSNPRINTF`, pulling in the full vfprintf). libc is a constant overhead that does not affect cross-backend comparison; use `--specs=nano.specs` for minimum size.
 7. Per-task extra cost: RTOS needs a TCB + dedicated task stack (stack sized per app, counted separately); xtask only has a static TCB (coop 28 B / preempt 48 B pool slot), no stack.
 
+### 4.4 Measured on a real project: STM32F407ZGT6, four backends
+
+> A **different scope** from the two tables above: this is a **complete application** (startup, boot, OTA, communication, LED, HAL and board drivers all included), with one and the same business code switching only the backend, built with the `Debug` preset. It answers "what does switching backends cost for the same workload" — do not compare the absolute numbers with the minimal-firmware tables in §4.1/4.2.
+
+| Scheduler | text | data | bss | flash total | RAM total |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| bare-metal cooperative `XTASK_COOP` | 74276 | 348 | 26040 | 74624 | 26388 |
+| bare-metal preemptive `XTASK_PREEMPT` | 74768 | 348 | 26448 | 75116 | 26796 |
+| mini-os | 78796 | 348 | 24608 | 79144 | 24956 |
+| FreeRTOS | 80536 | 352 | 33248 | 80888 | 33600 |
+
+Accounting: `arm-none-eabi-size`; flash total = text + data, RAM total = data + bss. All four backends compile and link.
+
+Observations:
+
+1. **Spread across four backends for one workload**: flash differs by 6.3 KB (74.6 → 80.9 KB), RAM by 8.6 KB (25.0 → 33.6 KB).
+2. **Bare metal is smallest** (no kernel), at the cost of no per-task stack and reduced scheduling capability; preemptive costs about 492 B flash / 408 B RAM more than cooperative (static task pool).
+3. **mini-os vs FreeRTOS: 1.7 KB less flash, 8.6 KB less RAM.** The RAM gap is almost entirely heap accounting — FreeRTOS' `ucHeap` is a static array counted in bss, while the mini-os heap lives in a linker region (`__mini_os_heap_start/end`) and is not counted in bss (as in §4.3).
+4. **bss ordering**: mini-os (24.6 KB) < bare-metal cooperative (26.0 KB) < preemptive (26.4 KB) < FreeRTOS (33.2 KB).
+
 ---
 
 ## 5. Trimming Advice

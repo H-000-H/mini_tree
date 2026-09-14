@@ -184,6 +184,13 @@ pendsv_handler:
     it      ne
     bicne   lr, lr, #0x10           @ flag set: declare FP context on return
 #endif
+    @ Return to Thread mode on the PSP: the hardware restores CONTROL.SPSEL on
+    @ exception return, which is what moves the port onto the PSP. The first
+    @ switch comes from the bootstrap context, which still runs on the MSP
+    @ (SPSEL is 0 until this return), so its frame was stacked on a valid stack
+    @ instead of the "no thread to restore" PSP marker (0). On every later
+    @ switch this bit is already set, so the OR is idempotent.
+    orr     lr, lr, #4
     cpsie   i
     bx      lr                      @ exception return: hardware pops r0-r3, r12, lr, pc, xpsr
 
@@ -322,6 +329,7 @@ mini_os_nvic_set_priority:
     .type mini_os_psp_set, %function
 mini_os_psp_set:
     msr     psp, r0
+    bx      lr
 
 @-----------------------------------------------------------------------------
 @ mini_os_set_control : set the control register to the given value  return void
@@ -332,6 +340,7 @@ mini_os_psp_set:
 mini_os_set_control:
     msr     control, r0
     isb
+    bx      lr
 
 @-----------------------------------------------------------------------------
 @ svc_handler : pass the exception frame, callback and arg to the C dispatcher
@@ -359,7 +368,9 @@ svc_handler:
     ldr     r1, [r1]                @ r1 = callback
     ldr     r2, =g_svc_arg
     ldr     r2, [r2]                @ r2 = arg
+    push    {r1, lr}                @ keep EXC_RETURN across the C call (bl clobbers LR)
     bl      mini_os_svc_dispatch
+    pop     {r1, lr}
     bx      lr                      @ exception return
 
 @-----------------------------------------------------------------------------

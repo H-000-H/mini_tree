@@ -116,6 +116,26 @@
 6. **libc 的影响（4.1 vs 4.2）**：完整 newlib 比 nano 普遍 **+24.6 KB text、+~1.65 KB data**（stdio 结构），bss 仅 +~48 B；RT-Thread 例外多 ~6.4 KB（其 kservice 配置为复用 libc 格式化 `RT_KLIBC_USING_LIBC_VSNPRINTF`，拉入完整 vfprintf）。libc 为常量开销，不影响后端间相对比较；追求最小体积用 `--specs=nano.specs`。
 7. 每任务额外成本：RTOS 需 TCB + 独立任务栈（栈按应用配置另计）；xtask 仅静态 TCB（coop 28 B / preempt 48 B 池槽），无栈。
 
+### 4.4 工程实测：STM32F407ZGT6 四后端对比
+
+> 与前两节口径**不同**：这里是**完整应用**（启动、boot、OTA、通信、LED、HAL、板级驱动全含），同一份业务代码只切换后端，`Debug` 预设构建。用途是"同一业务换后端的开销差"，绝对值不要与 §4.1/4.2 的最小固件表比较。
+
+| 调度方案 | text | data | bss | flash 合计 | RAM 合计 |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| 裸机协调式 `XTASK_COOP` | 74276 | 348 | 26040 | 74624 | 26388 |
+| 裸机抢占式 `XTASK_PREEMPT` | 74768 | 348 | 26448 | 75116 | 26796 |
+| mini-os | 78796 | 348 | 24608 | 79144 | 24956 |
+| FreeRTOS | 80536 | 352 | 33248 | 80888 | 33600 |
+
+口径：`arm-none-eabi-size`；flash 合计 = text + data，RAM 合计 = data + bss。四个后端均编译链接通过。
+
+要点：
+
+1. **同业务四后端跨度**：flash 差 6.3 KB（74.6 → 80.9 KB），RAM 差 8.6 KB（25.0 → 33.6 KB）；
+2. **裸机最省**（无内核），代价是任务无独立栈、调度能力受限；抢占式相对协调式多约 492 B flash / 408 B RAM（静态任务池）；
+3. **mini-os 比 FreeRTOS：flash 省 1.7 KB、RAM 省 8.6 KB**。RAM 差距几乎全部来自堆口径 —— FreeRTOS 的 `ucHeap` 是静态数组计入 bss，而 mini-os 的堆取自链接区（`__mini_os_heap_start/end`）不计 bss（同 §4.3）；
+4. **bss 排序**：mini-os(24.6 KB) < 裸机协调式(26.0 KB) < 抢占式(26.4 KB) < FreeRTOS(33.2 KB)。
+
 ---
 
 ## 5. 裁剪建议

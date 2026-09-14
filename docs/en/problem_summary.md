@@ -43,6 +43,11 @@
 | ID | Issue | Root Cause | Impact | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | P12 | Preemptive scheduler (xtask_preempt) TIM path non-functional | See detailed analysis below | TIM7 IRQ never fires → falls through to SysTick fallback → tick_count stays at 0 → tasks never expire → LED does not blink | Add `interrupt_hw_enable()` in `xtask_preempt.c`; bridge `hal_systick_irq_handler()` in `interrupt_stm32.c` SysTick_Handler |
+| P13 | mini-os hangs in `svc_handler` right at boot | `mini_os_psp_set` / `mini_os_set_control` lack `bx lr`, so control falls through into the immediately following `svc_handler`; that function calls the C dispatcher with `bl` without preserving `EXC_RETURN`, so `bx lr` jumps back to itself | Permanent loop before the scheduler starts; no serial output at all | Add `bx lr` to both functions in `port.S`; add `push {r1, lr}` / `pop {r1, lr}` in `svc_handler` |
+| P14 | All serial logging lost under the mini-os backend | `mini_os_mutex_lock` **rejects unconditionally** when there is no thread context (not even a free lock is granted), yet early-boot logging must go through `device_lock` | `_write` silently drops every log line; console stays empty | In `mini_backend_mini_os.c`, let lock/unlock through during the boot phase (`mini_os_thread_current() == NULL`), matching the FreeRTOS / bare-metal backends |
+| P15 | A delayed task never wakes up | The time-wheel expiry path in `mini_os_systick_handler` only puts the thread back on the ready list and never triggers PendSV; Cortex-M exception return does not schedule | 819 ticks produced only 5 context switches; the task sat in `delay` forever (LED blinked once) | Append `mini_os_schedule_yield_isr()` at the end of `mini_os_systick_handler`, symmetric with the yield in `mini_os_schedule_delay` |
+| P16 | First PendSV stacks its exception frame out of range | `mini_os_schedule_start` switched `CONTROL.SPSEL` to PSP first, then set PSP to the "no thread" marker `0`; the moment interrupts unmasked, the hardware stacked the frame on PSP | Frame landed at `0xFFFFFFE0~0xFFFFFFFC` (Vendor_SYS); silently dropped on STM32F4, possible BusFault elsewhere | Stop touching CONTROL at startup (stay on MSP); `pendsv_handler` now declares "return to Thread mode on PSP" via `EXC_RETURN` bit2, and the hardware restores SPSEL |
+| P17 | Infinite loop in `mini_os_mutex_propagate` when tasks contend for a lock | An application task stack overflowed and corrupted the `hold_list` of an adjacent TCB in the same heap; the PI propagation walks that list, back-derives a bogus mutex whose `wait_list.next` is 0, and the inner loop condition never becomes false | ~111k invalid address accesses, then the system stalls | Raise the application task stack 512 → 2048 B (TCB and stack being heap-adjacent is by design; sizing the stack is the correct fix) |
 
 ### P12 Detailed Analysis
 
@@ -71,6 +76,25 @@
        hal_systick_irq_handler();  /* chain to scheduler */
    }
    ```
+
+### Notes: Bringing Up the mini-os Backend (P13–P17)
+
+The five issues surfaced **one after another**: each fix revealed the next. All were located with Renode function-entry hooks (`AddHook` hit counting) plus disassembly cross-checks, and all are deterministic — none of them intermittent.
+
+| Phase | Symptom | Breakpoint | Evidence |
+| :--- | :--- | :--- | :--- |
+| Boot | PC stuck at `0x80202a2`, no output | the `bx lr` inside `svc_handler` | the instruction before it is `bl`, so LR was already clobbered |
+| Boot | same (after P13) | `hal_uart_write` hit 0 times | `console_dev_get()` returns NULL inside `_write` |
+| Runtime | LED toggles only once | `device_ioctl` hit 1 time | 819 ticks vs only 5 `schedule_switch` calls |
+| Runtime | ~111k invalid accesses | inner loop of `mini_os_mutex_propagate` | `[0+0x2C]` / `[0+0x0]` read repeatedly, node always 0 |
+
+**Takeaways**:
+
+- **Verify the return instruction of every port routine**: functions that merely write one register (`mini_os_psp_set` / `mini_os_set_control`) are easy to leave without `bx lr`, and control then falls through into whatever function comes next in the file;
+- **Every exception entry must preserve `EXC_RETURN` itself**: any handler that does `bl` into C code has to stash LR first;
+- **An ISR that wakes a thread must explicitly raise PendSV**: Cortex-M exception return does not schedule on its own. `mini_os_schedule_yield_isr()` is the single exit for this contract, and new wake paths must not omit it;
+- **The backend shim is where semantics get reconciled**: the same `device_lock` is grantable from FreeRTOS (free lock succeeds) and bare-metal (spin until acquired), but mini-os demands a thread context — such gaps belong in `mini_backend_*.c`, not leaked to callers;
+- **Size thread stacks against the deepest call chain**: TCB and stack are heap-adjacent, so an overflow corrupts a neighbour's list nodes and shows up as an unrelated kernel crash.
 
 ---
 
