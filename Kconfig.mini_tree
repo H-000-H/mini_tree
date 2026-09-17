@@ -1229,65 +1229,6 @@ config USB
               non-blocking poll, suitable for the NO_SYS=1 main loop.
         endmenu
 
-    menu "UI Libraries (LVGL / u8g2)"
-        # UI 库胶水层 (ui/) 配置。CMake 经 .config 的 CONFIG_UI_LVGL /
-        # CONFIG_UI_U8G2 桥接决定是否 add_subdirectory(ui); 胶水层只经
-        # device/VFS 模型 (DISPLAY_CMD_*) 触硬件。
-        # Glue layer (ui/) gate; CMake bridges via CONFIG_UI_LVGL /
-        # CONFIG_UI_U8G2 in .config; glue only touches hardware through
-        # the device/VFS model (DISPLAY_CMD_*).
-
-        config UI_LVGL
-            bool "LVGL glue layer (ui/lvgl)"
-            default n
-            help
-              编入 ui/lvgl/lvgl_port.c 并链接 LVGL (mini_tree_link_lvgl,
-              lv_conf.h 取 ui/lvgl/lv_conf.h)。胶水链路: lv_init +
-              mini_time_ms 提供 tick + lv_display_create → DISPLAY_CMD_FLUSH
-              (display_lvgl_flush_callback)。
-
-              Build ui/lvgl port and link LVGL; tick from mini_time_ms,
-              flush via DISPLAY_CMD_FLUSH on the panel device.
-
-        config UI_LVGL_DISPLAY_COUNT
-            int "LVGL display context count"
-            default 1
-            range 1 4
-            depends on UI_LVGL
-            help
-              LVGL 显示上下文静态池容量 (可同时 attach 的屏数量)。
-              Static pool capacity for LVGL display contexts.
-
-        config UI_LVGL_FLUSH_TIMEOUT_MS
-            int "LVGL flush ioctl timeout (ms)"
-            default 100
-            range 0 10000
-            depends on UI_LVGL
-            help
-              LVGL flush 回调内 device_ioctl(DISPLAY_CMD_FLUSH) 的超时 (毫秒)。
-              Timeout for the flush ioctl issued by the LVGL flush callback.
-
-        config UI_U8G2
-            bool "u8g2 glue layer (ui/u8g2)"
-            default n
-            help
-              编入 ui/u8g2/u8g2_port.c 并链接 u8g2 (mini_tree_link_u8g2)。
-              提供 u8x8 byte/gpio_and_delay 回调与 u8g2_port_flush 整帧落屏
-              (display_u8g2_flush_frame_buffer → DISPLAY_CMD_FLUSH), 仅支持
-              单色面板 (_f 整帧缓冲初始化过程)。
-
-              Build ui/u8g2 port and link u8g2; provides u8x8 callbacks
-              and full-frame flush for monochrome panels.
-
-        config UI_U8G2_FLUSH_TIMEOUT_MS
-            int "u8g2 flush ioctl timeout (ms)"
-            default 100
-            range 0 10000
-            depends on UI_U8G2
-            help
-              u8g2_port_flush 传 0 时使用的 device_ioctl 默认超时 (毫秒)。
-              Default flush ioctl timeout used when u8g2_port_flush gets 0.
-    endmenu
 endmenu
 
 menu "Bootloader / OTA (mini-ota)"

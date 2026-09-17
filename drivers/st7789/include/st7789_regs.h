@@ -43,7 +43,9 @@ extern "C"
 #define ST7789_DEFAULT_CHUNK 512U    /**< 默认单次 SPI 传输上限 */
 #define ST7789_TIMEOUT_CMD_MS 100U   /**< 命令超时 */
 #define ST7789_MAX_WIDTH 320         /**< 面板最大宽度 */
-#define ST7789_BL_ARR_FALLBACK 1023U /**< 背光 ARR 回退值 */
+#define ST7789_BL_ARR_FALLBACK 1023U  /**< 背光 ARR 回退值 */
+#define ST7789_BL_CHANNEL_FALLBACK 1U /**< 背光 PWM 通道回退值 (DTS 未配 bl-channel 时) */
+#define ST7789_BL_CHANNEL_MAX 4U      /**< 背光 PWM 通道上限 (hal_tim_pwm_update 只认 1..4) */
 
 /**
  * @brief ST7789 公共 probe

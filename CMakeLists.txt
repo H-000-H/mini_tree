@@ -10,10 +10,6 @@ if(POLICY CMP0003)
 endif()
 
 if(ESP_PLATFORM)
-    # 纯架构：不硬编码某一 MCU。板级通过下列之一注入 BOARD_DTS / dtc -I/-D / 树外扫描：
-    #   1) MINI_TREE_BOARD_PORT（绝对路径）
-    #   2) 同级 ../board_port.cmake（本 ESP 板工程默认）
-    # 注意: component_get_requirements 为 script 模式，不可 CONFIGURE_DEPENDS
     if(DEFINED MINI_TREE_BOARD_PORT AND EXISTS "${MINI_TREE_BOARD_PORT}")
         include("${MINI_TREE_BOARD_PORT}")
     elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../board_port.cmake")
@@ -371,6 +367,13 @@ if(MINI_TREE_USB)
         "${CMAKE_CURRENT_LIST_DIR}/vfs/usb")
 endif()
 
+# 板级 dtsi 也必须进 DEPENDS: 只改 .dtsi 是最常见的改法 (加外设属性/换引脚/开 DMA),
+set(_BOARD_DTSI_DEPENDS "")
+if(DEFINED BOARD_DTSI_DIR AND IS_DIRECTORY "${BOARD_DTSI_DIR}")
+    file(GLOB _BOARD_DTSI_FILES CONFIGURE_DEPENDS "${BOARD_DTSI_DIR}/*.dtsi")
+    set(_BOARD_DTSI_DEPENDS ${_BOARD_DTSI_FILES})
+endif()
+
 add_custom_command(
     OUTPUT  ${GEN_SRCS} ${GEN_HDRS} "${_PRODUCT_DRV_USED_TXT}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${GENERATED_BOARD_DIR}"
@@ -404,6 +407,7 @@ add_custom_command(
         "${CMAKE_CURRENT_LIST_DIR}/tools/dtc_lite/generator.py"
         "${CMAKE_CURRENT_LIST_DIR}/tools/dtc_lite/main.py"
         "${BOARD_DTS}"
+        ${_BOARD_DTSI_DEPENDS}
         "${BOARD_DT_BINDINGS_DIR}/spi/spi-parameter.h"
         "${BOARD_DT_BINDINGS_DIR}/uart/uart-parameter.h"
         "${BOARD_DT_BINDINGS_DIR}/tim/tim-parameter.h"
@@ -637,15 +641,6 @@ if(MINI_TREE_LWIP_ON)
 
     target_link_libraries(mini_tree_net PUBLIC lib)
     target_link_libraries(mini_tree PUBLIC mini_tree_net)
-endif()
-
-# 由本地扩展提供并定义 CONFIG_UI_* 符号; 随仓只提交桥接头 ui/display/display_ui_bridge.h。
-file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_LVGL_ON REGEX "^CONFIG_UI_LVGL=y$")
-file(STRINGS "${KCONFIG_DOT}" CONFIG_UI_U8G2_ON REGEX "^CONFIG_UI_U8G2=y$")
-if(CONFIG_UI_LVGL_ON OR CONFIG_UI_U8G2_ON)
-    add_subdirectory(ui)
-    add_dependencies(mini_tree_ui mini_tree_gen)
-    target_link_libraries(mini_tree PUBLIC mini_tree_ui)
 endif()
 
 if(MINI_TREE_USB)

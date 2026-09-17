@@ -27,7 +27,8 @@ function(mini_tree_link_lwip target)
     endif()
 
     # 本文件位于 mini_tree/cmake/，其上级即为 mini_tree 仓库根（含 .config 与 lib/lwip）。
-    # CMAKE_CURRENT_LIST_DIR 在 function 内仍指向本文件目录，不受调用点作用域影响。
+    # 注意: function 内 CMAKE_CURRENT_LIST_DIR 指向的是**调用者**目录（实测），
+    # 推导仓库根必须用 CMAKE_CURRENT_FUNCTION_LIST_DIR(定义该函数的文件目录)。
     set(_lwip_repo_root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/..")
     set(MINI_TREE_LWIP_DOTCONFIG "${_lwip_repo_root}/.config")
     set(MINI_TREE_LWIP_LOCAL_DIR "${_lwip_repo_root}/lib/lwip")

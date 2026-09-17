@@ -12,7 +12,7 @@ meta(4B, 恒在末尾): magic(0xA5) | mode|0x80(is_front) | version_len | tag_le
 payload: 原始bin 或 加密后的密文(加密时crc对密文计算)
 aux: GCM=nonce(12B)+tag(16B)  CBC=iv(16B)  CBC_SHA=iv(16B)+hmac(32B)  SHA=sha256(32B)  CRC=空
 CBC_SHA 的 hmac 覆盖 iv||ciphertext(设备端 read.c 的 CBC_SHA 分支用同样覆盖范围验 MAC);
-  可用 --mac_key 指定独立 MAC 密钥(不给则复用 --key, 生产环境应保证两者独立)
+  可用 --mac_key 指定独立 MAC 密钥(不给则复用 --key)
 version/tag 为变长字符串, 长度记录在 meta 中(各不超过 255 字节)
 CRC模型参数可用命令行调整(--crc_init/--crc_refin/--crc_refout/--crc_xor_out/--crc_poly),
 默认值: init=0xffffffff refin=refout=true xor_out=0xffffffff poly=0x04c11db7 (即标准CRC-32)

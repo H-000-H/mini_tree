@@ -31,7 +31,7 @@ extern "C" {
 #define ERR_OTA_OPEN (-139)       /**< OTA 未开启 */
 #define ERR_TRANSMIT (-140)       /**< 传输错误 */
 #define ERR_OTA_STATE (-141)      /**< OTA 持久化状态缺失或损坏 */
-
+#define ERR_OTA_HW  (-142)         /**<OTA硬件错误 */
 /**
  * @brief 错误码转可读字符串
  * @param err [in] 本文件定义的错误码

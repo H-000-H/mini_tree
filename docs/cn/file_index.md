@@ -115,13 +115,12 @@
 
 ---
 
-## ui/（UI 库胶水层）
+## UI 库胶水层（已移出本仓）
 
-> 大部分子目录已 gitignore，仅提交 `display/` 统一桥接头。
-
-| 路径 | 说明 |
-| :--- | :--- |
-| `display/display_ui_bridge.h` | 面向 UI 库回调的入口（LVGL flush / u8g2 SendBuffer），走 `DISPLAY_CMD_*`，零第三方库依赖 |
+> `ui/` 不在 mini_tree 里，按分层原则落在**工程顶层**（`<project>/ui/`）：
+> `ui/display/display_ui_bridge.h` 统一桥接头 + `ui/lvgl/` 等具体 port，
+> 只经 `device_ioctl(DISPLAY_CMD_*)` 触显示硬件，零第三方库依赖。
+> 中间件只保留 `mini_tree_link_lvgl` 这类通用链接工具函数，不感知 UI 层的存在。
 
 > `lib/` 现状：vendor 仅 **mini-os、FreeRTOS、RT-Thread、ETL**，另有随仓 **mini-ota** OTA/引导（`CONFIG_MINI_OTA`）；**TinyUSB / lwIP** 为配置期 FetchContent，其余积木为链接期 FetchContent。
 

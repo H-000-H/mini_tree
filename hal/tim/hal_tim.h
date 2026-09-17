@@ -311,8 +311,8 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_tim_close(hal_tim_device* pdev);
  * @brief 定时器占空比/重装载同步更新接口（热路径核心）
  * @param[in] pdev 定时器设备句柄
  * @param[in] channel 目标通道号 (1..4)
- * @param[in] frequency 目标频率 (Hz)
- * @param[in] duty 占空比值 (或者是直接对应的 Compare 寄存器数值，依底层设计而定)
+ * @param[in] frequency 自动重装载值 ARR (> 0 时更新; 0 = 不改动)
+ * @param[in] duty 比较寄存器值 CCR (无条件写入; 0 = 0% 占空比)
  */
 mt_err_t MINI_WARN_UNUSED_RESULT hal_tim_pwm_update(hal_tim_device* pdev, uint32_t channel, uint32_t frequency, uint32_t duty);
 

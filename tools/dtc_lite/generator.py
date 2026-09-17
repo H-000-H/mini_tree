@@ -572,10 +572,19 @@ class CGenerator:
 
         # 输出本板 active 节点实际用到的 driver 源文件 (绝对路径, 每行一个),
         # 供 CMake 过滤 DRIVER_SRCS: 未用到的不编译, 保证不开 gc-sections 也体积合理。
+        # 注意: driver_map 每个 compatible 只记下 DRIVER_REGISTER 所在的**那一个**文件,
+        # 而一个驱动可以拆成多个源文件 (如 st7789: cs / nocs 两个入口 + core 放公共实现)。
+        # 只编入口文件会缺符号 (st7789_cs.c 的 probe 调 st7789_probe_common → undefined),
+        # 这里把命中文件展开为**同目录下全部 .c** (未引用的由 --gc-sections 丢弃)。
+        expanded_driver_srcs: Set[str] = set()
+        for s in used_driver_srcs:
+            src: Path = Path(s)
+            expanded_driver_srcs.add(src.as_posix())
+            for sibling in sorted(src.parent.glob('*.c')):
+                expanded_driver_srcs.add(sibling.as_posix())
+
         used_path: Path = self.output_dir / 'dt_used_drivers.txt'
-        used_lines: List[str] = []
-        for s in sorted(used_driver_srcs):
-            used_lines.append(Path(s).as_posix())
+        used_lines: List[str] = sorted(expanded_driver_srcs)
         self._write_if_changed(used_path, '\n'.join(used_lines) + ('\n' if used_lines else ''))
 
     def _gen_board_handles_h(self) -> None:

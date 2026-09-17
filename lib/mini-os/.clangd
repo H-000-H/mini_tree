@@ -1,5 +1,7 @@
 CompileFlags:
-  CompilationDatabase: build/debug
+  # 相对本文件所在目录解析: 写 build/debug 会解析成 mini_tree/lib/mini-os/build/debug(不存在)
+  # → 参数全丢、假错满屏 (如 inc/schedule.h 报 'list.h' not found)。同 mini-ota/.clangd。
+  CompilationDatabase: ../../../build/Debug
   Compiler: arm-none-eabi-gcc
   Remove:
     - "-mcpu=*"

@@ -1,4 +1,4 @@
-# littlefs — local lib/littlefs or FetchContent (v2.11.3). Link on demand.
+ # littlefs — local lib/littlefs or FetchContent (v2.11.3). Link on demand.
 include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
 
 if(DEFINED MINI_TREE_LITTLEFS_CMAKE_LOADED)

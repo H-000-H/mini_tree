@@ -161,11 +161,4 @@ lib/uC-LIB/
 /net/port/mqtts/
 /net/port/tls/
 /net/port/udp/
-# ---------------------------------------------
-# ui/ 只保留 display/
-# ---------------------------------------------
-/ui/CMakeLists.txt
-/ui/lvgl/
-/ui/touch/
-/ui/u8g2/
 

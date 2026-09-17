@@ -1,4 +1,4 @@
-# LVGL — local lib/lvgl or FetchContent (v9.5.0). Built on mini_tree_link_lvgl().
+# LVGL — local lib/lvgl first, else FetchContent. Built on mini_tree_link_lvgl().
 include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
 
 if(DEFINED MINI_TREE_LVGL_CMAKE_LOADED)
@@ -6,8 +6,8 @@ if(DEFINED MINI_TREE_LVGL_CMAKE_LOADED)
 endif()
 set(MINI_TREE_LVGL_CMAKE_LOADED ON)
 
-set(MINI_TREE_LVGL_VERSION "v9.5.0" CACHE STRING "LVGL git tag")
-message(STATUS "mini_tree LVGL: ${MINI_TREE_LVGL_VERSION} (local-or-fetch on link)")
+set(MINI_TREE_LVGL_VERSION "master" CACHE STRING "LVGL git tag/branch (仅本地 lib/lvgl 缺失时用)")
+message(STATUS "mini_tree LVGL: local lib/lvgl first, else fetch ${MINI_TREE_LVGL_VERSION}")
 
 function(mini_tree_link_lvgl target)
     if(${ARGC} LESS 2)

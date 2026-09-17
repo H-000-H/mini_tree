@@ -1,10 +1,11 @@
 # clangd 配置
-# 1. 固件源码使用 CMake 导出的编译数据库（clangd 默认只从源码目录向上查找，
-#    CMake 生成在 build/Debug/ 下，必须显式指路）
+# 1. 固件源码使用 CMake 导出的编译数据库。CompilationDatabase 是相对本文件所在目录解析的:
+#    本工程作为 mini_tree 子目录编入时, 数据库在工程根 build/Debug (即本目录的 ../../../build/Debug);
+#    早期写的 build/Debug 会被解析成 mini_tree/lib/mini-ota/build/Debug(不存在) → 参数全丢、假错满屏。
 # 2. ARM 编译 flags 只对固件源码生效，绝不能放进默认块：否则会泄漏给 test/ 下
 #    的主机端文件（报 -mfloat-abi unsupported、系统头解析错位等假错）
 CompileFlags:
-  CompilationDatabase: build/Debug
+  CompilationDatabase: ../../../build/Debug
 
 ---
 # 固件源码（ARM 交叉）：clangd 不会从 arm-none-eabi-gcc 路径推断交叉目标

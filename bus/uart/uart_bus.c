@@ -29,6 +29,10 @@
 #include "status.h"
 #include "system_log.h"
 
+#ifdef CONFIG_VIRQ
+#include "interrupt.h" /* VIRQ(uart, N) + interrupt_virtual_register */
+#endif
+
 /* host 池 = DTS "mt-uart" 节点数 (缺省 1, dtc-lite 生成 DTC_GEN_COUNT_MT_UART) */
 /* include the dtc-lite generated truth table first: otherwise the default
    value below conflicts with the real one (macro redefinition) */
@@ -283,6 +287,23 @@ static mt_err_t uart_client_register_impl(struct device* pdev, const void* cfg, 
         MINI_IGNORE_RESULT(mini_slot_release(&s_uart_client_pool_ctrl, idx));
         return ret;
     }
+
+#ifdef CONFIG_VIRQ
+    /* 接收必须走中断: 本芯片 UART 无硬件 FIFO, 纯轮询读会在两次轮询之间被硬件
+     * 覆盖而丢字节。VIRQ 索引用外设编号 (hal_uart_virq_index), 与板级
+     * USARTx_IRQHandler 里的 dispatch 编号一一对应, 两侧任一漏改就收不到数据。 */
+    if (host->hal_host.cfg.it_enable)
+    {
+        const int uart_id = hal_uart_virq_index(host->hal_host.cfg.uart);
+
+        if (uart_id >= 0)
+        {
+            interrupt_virtual_register((uint16_t)VIRQ(uart, uart_id), hal_virtual_uart_irq_callback,
+                                       NULL, &host->hal_host);
+            interrupt_hw_enable((int)host->hal_host.cfg.irqn, host->hal_host.cfg.irq_priority);
+        }
+    }
+#endif
 
     (void)MINI_ATOMIC_FETCH_ADD(&host->ref_count, 1, MINI_SEQ_CST); /* 对齐 spi: client_register +1 */
 

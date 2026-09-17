@@ -48,7 +48,7 @@ struct st7789_device
     struct vfs_gpio_arg    rst_gpio;       /**< RST 引脚操作参数 */
     struct vfs_tim_arg     bl_tim;         /**< 背光 PWM 参数（快路径） */
     uint32_t               bl_arr;         /**< 背光 PWM ARR（自动装载值） */
-    uint32_t               bl_channel;     /**< 背光 PWM 通道 */
+    uint32_t               bl_channel;     /**< 背光 PWM 通道 1..4 (DTS: bl-channel, 缺省 1) */
     int                    bl_active_high; /**< 背光高电平有效（否则反转） */
     int                    width;          /**< 面板宽（像素） */
     int                    height;         /**< 面板高（像素） */
@@ -718,6 +718,7 @@ mt_err_t st7789_probe_common(struct device* pdev, int require_nocs)
     int                   width = 0;
     int                   height = 0;
     int                   bl_active = 1;
+    int                   bl_channel = (int)ST7789_BL_CHANNEL_FALLBACK;
     int                   madctl = 0;
     int                   invert = 0;
     int                   parent_cs = 0;
@@ -745,6 +746,14 @@ mt_err_t st7789_probe_common(struct device* pdev, int require_nocs)
         bl_tim_dev = NULL;
 
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "bl-active-high", &bl_active));
+
+    /* 背光 PWM 通道号: 必须与 DTS 里 TIM 的 active-chn-mask 对应。
+     * 越界(或 DTS 未配)会让 hal_tim_pwm_update 直接返回 INVAL, 表现为亮度命令全失败,
+     * 所以这里夹紧到 hal 认可的 1..4 (对应 CCR1..CCR4)。 */
+    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "bl-channel", &bl_channel));
+    if (bl_channel < 1 || bl_channel > (int)ST7789_BL_CHANNEL_MAX)
+        bl_channel = (int)ST7789_BL_CHANNEL_FALLBACK;
+
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "madctl", &madctl));
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "invert", &invert));
 
@@ -786,7 +795,7 @@ mt_err_t st7789_probe_common(struct device* pdev, int require_nocs)
     lcd->rst_dev = rst_dev;
     lcd->bl_tim_dev = bl_tim_dev;
     lcd->bl_arr = ST7789_BL_ARR_FALLBACK;
-    lcd->bl_channel = 1U;
+    lcd->bl_channel = (uint32_t)bl_channel;
     lcd->bl_active_high = bl_active;
     lcd->width = width;
     lcd->height = height;

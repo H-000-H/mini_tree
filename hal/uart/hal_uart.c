@@ -67,4 +67,10 @@ MINI_WEAK mt_err_t hal_uart_dma_abort(struct hal_uart_dev* pdev)
     (void)pdev;
     return MINI_ERR_NOTSUPP;
 }
+
+MINI_WEAK int hal_uart_virq_index(uintptr_t uart_base)
+{
+    (void)uart_base;
+    return -1; /* 平台未实现 → 不注册 UART 虚拟中断 */
+}
 #endif /* ESP_PLATFORM */

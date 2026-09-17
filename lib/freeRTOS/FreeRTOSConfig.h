@@ -10,7 +10,10 @@
  * 否则 pdMS_TO_TICKS / portTICK_PERIOD_MS 等所有时间换算将完全错误.
  * 可通过 board_config.h 或在 CMake 层面用 -D 覆盖此值.
  */
-#define configCPU_CLOCK_HZ                      168000000
+/* 本板实际主频: HSI 16M / M16 * N192 / P2 = 96MHz
+ * (见 main/main_common.cpp 的 SystemClock_Config)
+ * 模板默认 168MHz 会让 pdMS_TO_TICKS / portTICK_PERIOD_MS 全部换算错误 */
+#define configCPU_CLOCK_HZ                      96000000
 #define configTICK_RATE_HZ                      1000
 #define configMAX_PRIORITIES                    32
 #define configMINIMAL_STACK_SIZE                128

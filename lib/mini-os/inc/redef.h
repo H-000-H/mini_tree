@@ -55,9 +55,15 @@ typedef signed long     mini_os_user_data_t;                /**<mini-os user_dat
 #define MINI_OS_FALSE (0)                                   /**<false*/
 
 /* MINI_OS_NULL_TO_STANDARD is always defined (0 or 1) by mini_config.h:
- * #ifdef would be true for the disabled case too, so test the value. */
+ * #ifdef would be true for the disabled case too, so test the value.
+ * C++ 下 (void*)0 不能隐式转成其他指针类型 (如 mini_os_thread_t*), 用 nullptr;
+ * C 下保持 (void*)0 的传统写法。 */
 #if MINI_OS_NULL_TO_STANDARD
+#ifdef __cplusplus
+#define MINI_OS_NULL nullptr                                /**<null*/
+#else
 #define MINI_OS_NULL ((void*)0)                             /**<null*/
+#endif
 #else
 #define MINI_OS_NULL (0)                                    /**<null*/
 #endif

@@ -1,31 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * System Command Dispatcher — 实现 (OS / Bare-metal 双后端)
+ * SystemCmd 实现 — 单份实现, 命令表访问统一走 mini_critical 临界区
  */
-
 #include "system_cmd.hpp"
 
-#include "compiler_compat.h"
-#include <etl/char_traits.h>
-#include <etl/string.h>
+#include <string.h>
 
 /* -------------------------------------------------------------------------- */
-/* 构造函数 */
+/* 构造函数                                                                    */
 /* -------------------------------------------------------------------------- */
-SystemCmd::SystemCmd()
-#ifndef CONFIG_OS_BARE
-{
-    /* 并发保护已改用 mini_critical_enter / mini_critical_exit 临界区,
-     * 没有需要初始化的锁对象 (原先的自旋锁只创建/初始化, 换来换去等价于关中断) */
-}
-#else
-    : m_count(0)
+SystemCmd::SystemCmd() : m_count(0)
 {
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
-/* Singleton */
+/* Singleton                                                                   */
 /* -------------------------------------------------------------------------- */
 SystemCmd& SystemCmd::get_instance()
 {
@@ -34,158 +23,130 @@ SystemCmd& SystemCmd::get_instance()
 }
 
 /* -------------------------------------------------------------------------- */
-/* register_cmd — 无参数版 */
+/* 唯一的注册实现 — register_cmd 模板收敛到这里                                 */
 /* -------------------------------------------------------------------------- */
-int SystemCmd::register_cmd(const char* name, bool (*handler)())
+int SystemCmd::register_raw(const char* name, const RawHandler& wrapper, TypeIdToken args_id,
+                            TypeIdToken ctx_id)
 {
-    if (!name || !handler)
+    if (name == nullptr)
         return MINI_ERR_INVAL;
     const size_t name_len = etl::strlen(name);
     if (name_len >= k_max_cmd_name_len)
         return MINI_ERR_INVAL;
 
-    HandlerNode node;
-    node.args_id = get_type_id<void>();
-    node.ctx_id = get_type_id<void>();
-    node.wrapper = [handler](const void*, size_t, void*) -> bool { return handler(); };
-
-#ifndef CONFIG_OS_BARE
-    CmdString cmd(name);
     mini_irq_state_t irq = mini_critical_enter();
-    if (m_commands.full())
-    {
-        mini_critical_exit(irq);
-        return MINI_ERR_NOSPC;
-    }
-    if (m_commands.contains(cmd))
-    {
-        mini_critical_exit(irq);
-        return MINI_ERR_BUSY;
-    }
-    bool success = m_commands.insert(etl::make_pair(cmd, node)).second;
-    mini_critical_exit(irq);
-    return success ? MINI_OK : MINI_ERR_NOMEM;
-#else
-    for (size_t index = 0; index < m_count; index++)
-        if (strcmp(m_entries[index].name, name) == 0)
-            return MINI_ERR_BUSY;
+
     if (m_count >= k_max_commands)
+    {
+        mini_critical_exit(irq);
         return MINI_ERR_NOSPC;
-    m_entries[m_count].name = name;
-    m_entries[m_count].node = node;
+    }
+    for (size_t i = 0; i < m_count; i++)
+    {
+        if (strcmp(m_entries[i].name, name) == 0)
+        {
+            mini_critical_exit(irq);
+            return MINI_ERR_BUSY;
+        }
+    }
+
+    MINI_MEM_COPY(m_entries[m_count].name, name, name_len + 1);
+    m_entries[m_count].node.wrapper = wrapper;
+    m_entries[m_count].node.args_id = args_id;
+    m_entries[m_count].node.ctx_id  = ctx_id;
     m_count++;
+
+    mini_critical_exit(irq);
     return MINI_OK;
-#endif
 }
 
 /* -------------------------------------------------------------------------- */
-/* 注销命令 */
+/* 注销命令                                                                    */
 /* -------------------------------------------------------------------------- */
 int SystemCmd::unregister_cmd(const char* name)
 {
-    if (!name)
+    if (name == nullptr)
         return MINI_ERR_INVAL;
 
-#ifndef CONFIG_OS_BARE
     mini_irq_state_t irq = mini_critical_enter();
-    CmdString key(name);
-    auto it = m_commands.find(key);
-    if (it == m_commands.end())
+
+    for (size_t i = 0; i < m_count; i++)
     {
-        mini_critical_exit(irq);
-        return MINI_ERR_NODEV;
-    }
-    m_commands.erase(it);
-    mini_critical_exit(irq);
-    return MINI_OK;
-#else
-    for (size_t index = 0; index < m_count; index++)
-    {
-        if (strcmp(m_entries[index].name, name) == 0)
+        if (strcmp(m_entries[i].name, name) == 0)
         {
-            m_entries[index] = m_entries[m_count - 1];
+            m_entries[i] = m_entries[m_count - 1]; /* 末项填补, 命令顺序无语义 */
             m_count--;
+            mini_critical_exit(irq);
             return MINI_OK;
         }
     }
+
+    mini_critical_exit(irq);
     return MINI_ERR_NODEV;
-#endif
 }
 
 /* -------------------------------------------------------------------------- */
-/* 命令分发 */
+/* 命令分发                                                                    */
 /* -------------------------------------------------------------------------- */
 int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void* ctx,
                         TypeIdToken expected_args_id, TypeIdToken expected_ctx_id) const
 {
-    if (!name)
+    if (name == nullptr)
         return MINI_ERR_INVAL;
 
-#ifndef CONFIG_OS_BARE
-    mini_irq_state_t irq = mini_critical_enter();
-    CmdString key(name);
-    auto it = m_commands.find(key);
-    if (it == m_commands.end())
-    {
-        mini_critical_exit(irq);
-        return MINI_ERR_NODEV;
-    }
-    /* 拷贝 HandlerNode 后再解锁, 避免 erase 导致悬垂引用 */
-    HandlerNode node = it->second;
-    mini_critical_exit(irq);
+    bool        found = false;
+    HandlerNode node;
 
-    if (expected_args_id && node.args_id != expected_args_id)
-        return MINI_ERR_NOTSUPP;
-    if (expected_ctx_id && node.ctx_id != expected_ctx_id)
-        return MINI_ERR_NOTSUPP;
-    return node.wrapper(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
-#else
-    for (size_t index = 0; index < m_count; index++)
+    mini_irq_state_t irq = mini_critical_enter();
+    for (size_t i = 0; i < m_count; i++)
     {
-        if (strcmp(m_entries[index].name, name) == 0)
+        if (strcmp(m_entries[i].name, name) == 0)
         {
-            const HandlerNode& node = m_entries[index].node;
-            if (expected_args_id && node.args_id != expected_args_id)
-                return MINI_ERR_NOTSUPP;
-            if (expected_ctx_id && node.ctx_id != expected_ctx_id)
-                return MINI_ERR_NOTSUPP;
-            return node.wrapper(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
+            node  = m_entries[i].node; /* 拷贝后再退临界区: 回调里可能改表 */
+            found = true;
+            break;
         }
     }
-    return MINI_ERR_NODEV;
-#endif
+    mini_critical_exit(irq);
+
+    if (!found)
+        return MINI_ERR_NODEV;
+    if ((expected_args_id != nullptr) && (node.args_id != expected_args_id))
+        return MINI_ERR_NOTSUPP;
+    if ((expected_ctx_id != nullptr) && (node.ctx_id != expected_ctx_id))
+        return MINI_ERR_NOTSUPP;
+
+    return node.wrapper(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
 }
 
 /* -------------------------------------------------------------------------- */
-/* 查询 / 计数 */
+/* 查询 / 计数                                                                 */
 /* -------------------------------------------------------------------------- */
 bool SystemCmd::has_cmd(const char* name) const
 {
-    if (!name)
+    if (name == nullptr)
         return false;
 
-#ifndef CONFIG_OS_BARE
+    bool found = false;
+
     mini_irq_state_t irq = mini_critical_enter();
-    CmdString key(name);
-    bool found = m_commands.find(key) != m_commands.end();
+    for (size_t i = 0; i < m_count; i++)
+    {
+        if (strcmp(m_entries[i].name, name) == 0)
+        {
+            found = true;
+            break;
+        }
+    }
     mini_critical_exit(irq);
+
     return found;
-#else
-    for (size_t index = 0; index < m_count; index++)
-        if (strcmp(m_entries[index].name, name) == 0)
-            return true;
-    return false;
-#endif
 }
 
 size_t SystemCmd::count() const
 {
-#ifndef CONFIG_OS_BARE
     mini_irq_state_t irq = mini_critical_enter();
-    size_t sz = m_commands.size();
+    const size_t      sz = m_count;
     mini_critical_exit(irq);
     return sz;
-#else
-    return m_count;
-#endif
 }

@@ -92,7 +92,7 @@ A `lib/...` path is the conventional location; **fetched blocks may exist only i
 
 | Library | Path | Version | Role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| LVGL | Fetch / `lib/lvgl` | v9.5.0 | Color GUI | `mini_tree_link_lvgl` + `lv_conf.h` |
+| LVGL | Fetch / `lib/lvgl` | master (local first) | Color GUI | `mini_tree_link_lvgl` + `lv_conf.h` |
 | u8g2 | Fetch / `lib/u8g2` | 2.37.1 | Monochrome/OLED | `mini_tree_link_u8g2` |
 | MultiButton | Fetch / `lib/MultiButton` | master | Multi-button state machine | `mini_tree_link_multibutton` |
 
@@ -137,7 +137,7 @@ Policy: **open source only; prefer Fetch for everything except infrastructure; n
 - **Allowed**: Call open-source library APIs from applications or board services; cooperate with the middleware via `device_*` / EventBus.
 - **Avoid**: Hard-binding a GUI implementation in `vfs/` / `bus/` public headers, or leaking vendor HAL typedefs into the middleware public API.
 - **Southbound**: Flash/display/NIC still touch hardware through board-level HAL or port callbacks, keeping "hardware direct-inject, middleware never binds an SDK".
-- **UI glue layer (`ui/`)**: LVGL / u8g2 flush callbacks go through the unified entry point `ui/display/display_ui_bridge.h`, which calls `device_ioctl(DISPLAY_CMD_*)` to reach display hardware; no direct `bus_*` / `hal_*` calls — swapping displays only requires changing the device pointer (the implementation itself comes from the local extension, see `.gitignore`).
+- **UI glue layer (not inside mini_tree)**: LVGL / u8g2 flush callbacks go through the unified entry point `<project>/ui/display/display_ui_bridge.h`, which calls `device_ioctl(DISPLAY_CMD_*)` to reach display hardware; no direct `bus_*` / `hal_*` calls — swapping displays only requires changing the device pointer. The middleware only ships generic link helpers such as `mini_tree_link_lvgl`.
 
 The 39 product drivers live in `drivers/<chip>/{include,src}`; they are part of the ecosystem but follow this repo's `DRIVER_REGISTER` contract and stay independent of the block libraries.
 

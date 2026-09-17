@@ -5,8 +5,8 @@
  * 两个变体二选一:
  *   - sitronix,st7789      有硬件 CS (挂 &spi0 下)
  *   - sitronix,st7789-nocs 无片选 (直连, 常挂 I2S/GPIO 模拟 SPI 或独立)
- * 属性: width/height 分辨率, bl-active-high 背光极性, madctl 内存访问控制,
- *       invert 颜色反转 (1=反色)。
+ * 属性: width/height 分辨率, bl-active-high 背光极性, bl-channel 背光 PWM 通道
+ *       (1..4, 缺省 1), madctl 内存访问控制, invert 颜色反转 (1=反色)。
  * 池大小自动 = 两个 compatible 节点数之和 (缺省各 1)。
  */
 &spi0 {
@@ -16,6 +16,7 @@ st7789: st7789@0 {
 	width = <0>; /* 屏宽 px, 如 <240> */
 	height = <0>; /* 屏高 px, 如 <320> */
 	bl-active-high = <0>; /* 背光高电平有效: 1=是 */
+	bl-channel = <1>; /* 背光 PWM 通道 1..4 (对应 TIM 的 CH1..CH4), 缺省 1 */
 	madctl = <0>; /* MADCTL 寄存器值 (旋转/镜像) */
 	invert = <0>; /* 颜色反转: 1=反色 */
 	status = "disabled";
@@ -27,6 +28,7 @@ st7789_nocs: st7789-nocs@0 {
 	width = <0>;
 	height = <0>;
 	bl-active-high = <0>;
+	bl-channel = <1>;
 	madctl = <0>;
 	invert = <0>;
 	status = "disabled";

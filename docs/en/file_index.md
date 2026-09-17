@@ -115,13 +115,12 @@ Also: `hal/amp`, `hal/storage`, `hal/system`, `hal/hal_if_dummy.c` (HAL weak emp
 
 ---
 
-## ui/ (UI Library Glue Layer)
+## UI Library Glue Layer (moved out of this repo)
 
-> Most subdirectories are gitignored; only `display/` unified bridge header is committed.
-
-| Path | Description |
-| :--- | :--- |
-| `display/display_ui_bridge.h` | Entry point for UI library callbacks (LVGL flush / u8g2 SendBuffer), goes through `DISPLAY_CMD_*`, zero third-party library dependencies |
+> `ui/` no longer lives in mini_tree; it sits at the **project top level** (`<project>/ui/`):
+> the unified bridge header `ui/display/display_ui_bridge.h` plus concrete ports such as
+> `ui/lvgl/`, touching display hardware only through `device_ioctl(DISPLAY_CMD_*)`.
+> The middleware keeps only generic link helpers (e.g. `mini_tree_link_lvgl`).
 
 > `lib/` status: only **mini-os, FreeRTOS, RT-Thread, ETL** are vendored, plus the in-tree **mini-ota** OTA/bootloader (`CONFIG_MINI_OTA`); **TinyUSB / lwIP** are fetched at config time, all other bricks at link time.
 
