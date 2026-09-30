@@ -1,0 +1,171 @@
+# 本地 Kconfig 扩展 (不入库)
+# 本文件承载本地新增模块 (tls/https/mqtts/http/broker) 的配置项,
+# 主树 Kconfig.mini_tree 不包含这些内容。
+#
+# 启用方式 (按项目约定, 手动在本机加一行, 不提交):
+#   Kconfig.non_esp 末尾:  source "Kconfig.local"
+# 不 source 时 .config 中已有的配置值仍然生效, 构建不受影响。
+
+menu "Local: TLS Client (net/port/tls/tls_client.c)"
+    depends on LWIP_TCP
+
+    config LWIP_ALTCP
+        bool "Application layered TCP (altcp)"
+        default y
+        depends on LWIP_TCP
+        help
+          lwIP 应用层 TCP 抽象: 上层 (TLS 等) 与底层 TCP 之间的可插拔层。
+          https/mqtts 经 altcp_tls 走加密通道, 依赖本项。
+          Application-layer TCP abstraction required by altcp_tls.
+
+    config LWIP_ALTCP_TLS
+        bool "altcp TLS layer"
+        default y
+        depends on LWIP_ALTCP
+        help
+          altcp 之上的 TLS 层 (lwip/altcp_tls.h), https/mqtts 的加密通道。
+          TLS layer on top of altcp; encrypted channel for https/mqtts.
+
+    config LWIP_ALTCP_TLS_MBEDTLS
+        bool "altcp TLS mbedTLS backend"
+        default y
+        depends on LWIP_ALTCP_TLS
+        help
+          altcp TLS 的 mbedTLS 2.28 后端 (lwIP 官方仅适配 2.x)。启用后链接
+          lib/mbedtls, 并需要板级提供强随机源 (替换 tls_client.c 的占位实现)。
+          mbedTLS 2.28 backend for altcp TLS.
+
+    config TLS_CONTENT_LEN
+        int "TLS single-direction record buffer (bytes)"
+        default 2048
+        range 1024 16384
+        depends on LWIP_ALTCP_TLS
+        help
+          mbedtls SSL_MAX_CONTENT_LEN (收发两方向各自一份)。须能容纳握手期最大
+          TLS 记录 (证书链通常 2~6KB): 连公网服务器握手失败时调大本项, 且需保持
+          TCP_WND >= 本值 (altcp_tls 要求), 否则握手可能停滞。
+          mbedTLS per-direction content length; keep TCP_WND >= this value.
+
+    config TLS_CLIENT_RX_BUFFER_SIZE
+        int "TLS client RX FIFO size (bytes, power of 2)"
+        default 2048
+        range 256 16384
+        depends on LWIP_ALTCP_TLS
+        help
+          TLS 客户端解密后应用数据的接收环形缓冲, 静态嵌入上下文, 须为 2 的幂。
+          RX ring buffer for decrypted application data; must be power of 2.
+
+    config TLS_CLIENT_TX_BUFFER_SIZE
+        int "TLS client TX FIFO size (bytes, power of 2)"
+        default 2048
+        range 256 16384
+        depends on LWIP_ALTCP_TLS
+        help
+          TLS 客户端发送环形缓冲 (altcp 内部尚有加密发送缓冲)。
+          TX ring buffer of the TLS client.
+
+    config TLS_HANDSHAKE_TIMEOUT_MS
+        int "TLS handshake timeout (ms)"
+        default 20000
+        range 1000 120000
+        depends on LWIP_ALTCP_TLS
+        help
+          TLS 客户端发起建连后等待握手完成 (connected 回调) 的超时上限。
+          Upper bound waiting for the TLS handshake to complete.
+endmenu
+
+menu "Local: HTTP Client (net/port/http/http_client.c)"
+    depends on LWIP_TCP
+
+    config NET_HTTP_USE_COREHTTP
+        bool "Use coreHTTP as HTTP protocol engine"
+        default y
+        help
+          用 FreeRTOS coreHTTP 做请求组装/响应解析, 包装层只留连接管理与缓冲。
+          Use FreeRTOS coreHTTP for request building & response parsing.
+
+    config HTTP_REQUEST_BUFFER_SIZE
+        int "HTTP request headers buffer (bytes)"
+        default 512
+        range 128 8192
+        help
+          coreHTTP 请求头组装缓冲 (请求行 + 全部头域), 静态嵌入上下文。
+          Static buffer for assembling request headers via coreHTTP.
+
+    config HTTP_RESPONSE_BUFFER_SIZE
+        int "HTTP response buffer (bytes)"
+        default 2048
+        range 512 16384
+        help
+          coreHTTP 响应接收缓冲 (头 + 体), 静态嵌入上下文, 须容纳单次完整响应。
+          Static buffer receiving the whole response (headers + body).
+endmenu
+
+menu "Local: HTTPS Client (net/port/https/https_client.c)"
+    depends on LWIP_ALTCP_TLS && LWIP_TCP
+
+    config HTTPS_REQUEST_BUFFER_SIZE
+        int "HTTPS request headers buffer (bytes)"
+        default 512
+        range 128 8192
+        help
+          同 HTTP_CLIENT, 但传输走 altcp_tls 加密通道。
+          Like the plain HTTP client, transport goes over altcp_tls.
+
+    config HTTPS_RESPONSE_BUFFER_SIZE
+        int "HTTPS response buffer (bytes)"
+        default 2048
+        range 512 16384
+        help
+          HTTPS 响应接收缓冲 (头 + 体), 静态嵌入上下文。
+          Static buffer receiving the whole HTTPS response.
+endmenu
+
+menu "Local: MQTT-S Client (net/port/mqtts/mqtts_client.c)"
+    depends on LWIP_ALTCP_TLS && LWIP_TCP && NET_MQTT_USE_COREMQTT
+
+    config NET_MQTTS_USE_COREMQTT
+        bool "Use coreMQTT engine over altcp_tls"
+        default y
+        help
+          MQTT-S = MQTT over TLS: 协议引擎复用 coreMQTT (与 MQTT 客户端共享其开关与缓冲配置),
+          传输不走 transport_glue, 直接基于 lwIP altcp_tls 封装。
+          MQTT over TLS: reuses the coreMQTT engine; transport goes straight
+          over lwIP altcp_tls (not through transport_glue).
+endmenu
+
+menu "Local: MQTT Broker (net/port/mqtt_broker/mqtt_broker.c)"
+    depends on LWIP_TCP
+
+    config MQTT_BROKER_MAX_SUBSCRIPTIONS
+        int "Max broker subscriptions (global table)"
+        default 16
+        range 1 64
+        help
+          broker 全局订阅表容量 (主题过滤器定长存储), 所有客户端共享。
+          Capacity of the broker-wide subscription table.
+
+    config MQTT_BROKER_MAX_TOPIC_LEN
+        int "Max topic filter length (bytes)"
+        default 64
+        range 16 256
+        help
+          订阅表与转发时单个主题/过滤器的最大长度。
+          Max length of one topic filter in the subscription table.
+
+    config MQTT_BROKER_PACKET_BUFFER_SIZE
+        int "Per-session packet accumulate buffer (bytes, power of 2)"
+        default 1024
+        range 256 16384
+        help
+          每会话入站报文累积缓冲, 须为 2 的幂且 >= 单条最大报文。
+          Per-session accumulate buffer; power of 2, fits the largest packet.
+
+    config MQTT_BROKER_KEEPALIVE_FACTOR
+        int "Keep-alive timeout factor"
+        default 2
+        range 1 10
+        help
+          会话空闲超时 = 客户端 Keep-Alive x 本因子; <=1 关闭超时检查。
+          Session idle timeout = client Keep-Alive times this factor.
+endmenu
