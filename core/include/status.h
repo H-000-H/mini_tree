@@ -1,31 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file status.h
- *@brief status 头文件
- *@author H-000-H
- *@details
- *   status.h — 栈公共状态码与指针错误编码 (层无关)
- *   HAL / bus / VFS / 统一接口共用。HAL 不得依赖 VFS.h；需要错误码时包含本头。
- *
- *   ── 编号策略 (自持编号, 不依赖 <errno.h>, 跨工具链数值稳定) ──
- *     0              成功
- *     -1  .. -63     通用/栈层段    本头全部 MINI_ERR_*; -28..-63 预留扩容
- *     -64 .. -511    子体系段       每片固定 32 码, 共 14 片:
- *                                  0 net / 1 fs / 2 ota / 3 log / 4 system /
- *                                  5 driver (驱动·板级) / 6 mini-os / 7..13 预留
- *   幅度上限 MINI_ERR_MAX(511): 0 成功 + 511 个错误码 = 512 个码位。ERR_PTR 用
- *   ERR_SECTION_BASE + 幅度编码
- *   子体系码用 MINI_ERR_SUBSYS(base, idx) 构造 (base 取 MINI_ERR_SUBSYS_*_BASE,
- *   idx 0..31, 越片即侵占下一片); 用 MINI_ERR_SECTOR_OF() / MINI_ERR_IS_SUBSYS() /
- *   MINI_ERR_IS_DRIVER() 判归属, MINI_ERR_SUBSYS_SLOT_OF() 取片号。
- *
- *   ── 命名空间边界 (互不混用, 跨边界必须显式翻译) ──
- *     MINI_ERR_* / MINI_OK   本头, 栈内唯一通用命名空间
- *     MINI_OS_ERR_*          lib/mini-os 内核 API; 数值与本头逐位对齐, 零转换互转
- *     NET_ERR_* / NET_OK     net 上层协议包装层私有 (负 errno 语义), 自成一套
- *     BUFF_*                 algorithm/buffer 私有 (包装 errno)
- *     MINI_LOG_ERR_*         mini-log 私有, 仅 mini-log 内部使用
- *   ⚠ 不同命名空间的码不可直接按数值比较, 在层边界处翻译 (见 net/port/net_error.h)。
+ * @file status.h
+ * @author H-000-H
+ * @brief 公共错误码与指针错误编码 (层无关, HAL/bus/VFS/OSAL 共用)
+ * @note  编号: 0=成功, -1..-63=通用段, -64..-511=子体系段(每片固定32码)
+ * @note  命名空间: MINI_ERR_* 栈内通用; NET_ERR_* net私有; BUFF_* buffer私有; MINI_LOG_ERR_* mini-log私有
+ * @note  不同命名空间码不可按数值比较, 层边界处翻译
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef STATUS_H

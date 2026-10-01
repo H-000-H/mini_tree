@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file compiler_compat.h
- *@brief compiler compat 头文件
- *@author H-000-H
- *@details
- *   compiler_compat — 编译器兼容性抽象层
- *   统一 GCC/Clang 的 __attribute__ 与内置函数差异, 功能受 Kconfig 开关控制
- *   提供 warn_unused_result、format、container_of、likely/unlikely、MINI_RAM_EXEC 等通用宏
+ * @file compiler_compat.h
+ * @author H-000-H
+ * @brief compiler compat 头文件
+ * @note compiler_compat — 编译器兼容性抽象层
+ * @note 统一 GCC/Clang 的 __attribute__ 与内置函数差异, 功能受 Kconfig 开关控制
+ * @note 提供 warn_unused_result、format、container_of、likely/unlikely、MINI_RAM_EXEC 等通用宏
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef COMPILER_COMPAT_H

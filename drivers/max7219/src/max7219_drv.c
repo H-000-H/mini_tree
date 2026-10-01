@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file max7219_drv.c
- *@brief MAX7219 LED 点阵驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_max7219_pool[MAX7219_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 max7219_drv.h，寄存器定义见 max7219_regs.h。
- *   数据流: VFS ioctl → max7219_cmd_* → SPI transfer（vfs-spi）→ HAL
+ * @file max7219_drv.c
+ * @author H-000-H
+ * @brief MAX7219 LED 点阵驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_max7219_pool[MAX7219_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 max7219_drv.h，寄存器定义见 max7219_regs.h。
+ * @note 数据流: VFS ioctl → max7219_cmd_* → SPI transfer（vfs-spi）→ HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "max7219_drv.h"

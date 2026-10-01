@@ -1,12 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_storage.h
- *@brief hal storage 头文件
- *@author H-000-H
- *@details
- *   Storage HAL — 双槽 A/B 持久化存储抽象
- *   slot 0/1 配合单字节 flag 标记当前有效槽位
- *   提供 blob 读写、全擦除及扇区级 ioctl (geometry/erase/wp)
+ * @file hal_storage.h
+ * @author H-000-H
+ * @brief Storage HAL — 双槽 A/B 持久化存储 (blob 读写 + 扇区级 ioctl)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_STORAGE_H

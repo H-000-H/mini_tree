@@ -1,11 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file circle_fifo_buffer.c
- *@brief 环形FIFO SPSC无锁缓冲区实现
- *@author H-000-H
- *@details
- *   @note        acquire/release 内存序保证单生产者单消费者安全; 见 buffer.h
- *   @note        全部接口返回 BUFF_* 错误码; 长度类结果经指针参数回传
+ * @file circle_fifo_buffer.c
+ * @author H-000-H
+ * @brief 环形FIFO SPSC无锁缓冲区实现
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "buffer.h"

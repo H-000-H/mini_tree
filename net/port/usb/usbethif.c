@@ -1,18 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file usbethif.c
- *@brief USB CDC-ECM / RNDIS 网络接口 (lwIP netif 驱动)
- *@author H-000-H
- *@details
- *   net/port/usbethif.c
- *   lwIP 以太网接口对接 USB CDC-ECM 网卡。遵循分层:
- *   net → VFS(device_*) → bus/usb → TinyUSB, 不直接触碰 bus 层内部符号。
- *   - init:  usb_ethif_init_dev(dev_name) 用 device_find_by_label 拿网卡 device
- *            + device_open, 把 device 存进 netif->state, 再 netif_add 注册。
- *   - output: link_output 从 netif->state 取 device → device_write
- *   - input:  usb_ethif_input(netif, frame, len) 封装 pbuf 上交协议栈
- *   无全局 device 句柄: device 随 netif 走, 每个网卡独立 netif/device。
- *   裸机 (NO_SYS=1) 下 usb_ethif_poll(netif) 需在主循环周期调用。
+ * @file usbethif.c
+ * @author H-000-H
+ * @brief USB CDC-ECM / RNDIS 网络接口 (lwIP netif 驱动)
+ * @note net/port/usbethif.c
+ * @note lwIP 以太网接口对接 USB CDC-ECM 网卡。遵循分层:
+ * @note net → VFS(device_*) → bus/usb → TinyUSB, 不直接触碰 bus 层内部符号。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "arch/sys_arch.h"

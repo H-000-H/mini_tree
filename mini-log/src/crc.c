@@ -1,12 +1,8 @@
 /**
- * @copyright: SPDX-License-Identifier: Apache-2.0
- * @author:  H-000-H
- * @file: crc.c
- * @brief: CRC 校验实现，结果与 lib/mini-ota/tools/m_crc/image_crc.py 的 crc_generic 一致；
- *         引擎由宏 CRC_MODE 编译期选择：
- *         1（默认）查表法——约 1KB 静态表，大数据量快 5~8 倍；
- *         0 逐位法——零额外 RAM，小数据量/资源紧张场景。
- *         可在编译命令行 -DCRC_MODE=0 覆盖
+ * @file : crc.c
+ * @author H-000-H
+ * @brief : CRC 校验实现，结果与 lib/mini-ota/tools/m_crc/image_crc.py 的 crc_generic 一致；
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include <stddef.h>
 #include <stdint.h>

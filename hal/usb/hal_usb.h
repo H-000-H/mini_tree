@@ -1,12 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_usb.h
- *@brief hal usb 头文件
- *@author H-000-H
- *@details
- *   @note 本层只做 RCC / GPIO AF / NVIC; 协议与端点由 TinyUSB DWC2 DCD 负责。
- *   @note 不含 Cube PCD/USBD。OTG 使用控制器内建 DMA (DWC2), 无 DMA1/DMA2 stream。
- *   @note DTSI 属性直投; dma-enable + xfer_mode 运行时决定 AUTO/POLL/DMA。
+ * @file hal_usb.h
+ * @author H-000-H
+ * @brief USB HAL — 只做 RCC/GPIO AF/NVIC (协议与端点由 TinyUSB 负责)
+ * @note  DTSI 属性直投; dma-enable + xfer_mode 决定 AUTO/POLL/DMA
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_USB_H

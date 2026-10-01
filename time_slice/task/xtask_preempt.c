@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file xtask_preempt.c
- *@brief 抢占式分组优先级调度器 (CONFIG_XTASK_PREEMPT)
- *@author H-000-H
- *@details
- *   @note 与 xtask_coop.c 二选一互斥 (Kconfig choice + CMake 双重门控)
- *   设计:
- *   - 总级数 = GROUP × PER_GROUP (默认 4×8=32), 越大越优先
- *   - 组间用 group_bitmap + CLZ 定位最高优先级 (O(1)), 组内链表按优先级降序
- *   - 就绪链表每组一条; 休眠链表单条按到期升序, 只查表头
- *   - 无就绪任务时精确 WFI: 定时器单次触发到最早到期时刻
- *   - 全部状态收于 s_priv, 对外 API 走 g_scheduler (xtask.h 契约)
+ * @file xtask_preempt.c
+ * @author H-000-H
+ * @brief 抢占式分组优先级调度器 (CONFIG_XTASK_PREEMPT)
+ * @note 设计:
+ * @note - 总级数 = GROUP × PER_GROUP (默认 4×8=32), 越大越优先
+ * @note - 组间用 group_bitmap + CLZ 定位最高优先级 (O(1)), 组内链表按优先级降序
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifdef CONFIG_OS_BARE

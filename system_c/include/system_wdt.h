@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file system_wdt.h
- *@brief system wdt 头文件
- *@author H-000-H
- *@details
- *   system_wdt (C 接口) — 看门狗喂狗与栈水位监控
- *   IWDG 独立看门狗 (LSI) + TWDT 任务级软看门狗 + 栈水位巡检;
- *   实现见 system_c/src/system_wdt.c。
+ * @file system_wdt.h
+ * @author H-000-H
+ * @brief system wdt 头文件
+ * @note system_wdt (C 接口) — 看门狗喂狗与栈水位监控
+ * @note IWDG 独立看门狗 (LSI) + TWDT 任务级软看门狗 + 栈水位巡检;
+ * @note 实现见 system_c/src/system_wdt.c。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once

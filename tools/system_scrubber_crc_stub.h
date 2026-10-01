@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file system_scrubber_crc_stub.h
- *@brief system scrubber crc stub 头文件
- *@author H-000-H
-
+ * @file system_scrubber_crc_stub.h
+ * @author H-000-H
+ * @brief system scrubber crc stub 头文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SYSTEM_SCRUBBER_CRC_GEN_H

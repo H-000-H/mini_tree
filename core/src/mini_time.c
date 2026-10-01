@@ -1,10 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_time.c
- *@brief 毫秒时钟与延时实现 (按后端分发)
- *@author H-000-H
- *@details
- *   时间三函数按后端分发, 语义与各内核原生延时对齐。
+ * @file mini_time.c
+ * @author H-000-H
+ * @brief 毫秒时钟与延时实现 (按后端分发)
+ * @note 时间三函数按后端分发, 语义与各内核原生延时对齐。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "mini_time.h"

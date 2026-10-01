@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs_adc.c
- *@brief ADC VFS 实现 — ADC 总线子系统 VFS 层实现文件
- *@author H-000-H
-
+ * @file vfs_adc.c
+ * @author H-000-H
+ * @brief ADC VFS 实现 — ADC 总线子系统 VFS 层实现文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define VFS_ADC_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */

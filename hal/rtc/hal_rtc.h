@@ -1,12 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_rtc.h
- *@brief hal rtc 头文件
- *@author H-000-H
- *@details
- *   @note  set_alarm 会配置 ALRA 并 EnableIT_ALRA; 当前无完整 NVIC/ISR→callback 派发路径。
- *   @note  close 仅清软件状态, 不关闭 RTC 时钟 (日历持续运行)。
- *   @note  文件约定: 返回值用 int + status.h 错误码; 禁止 enum。
+ * @file hal_rtc.h
+ * @author H-000-H
+ * @brief RTC HAL — 实时时钟与闹钟
+ * @note  close 仅清软件状态, 不关 RTC 时钟 (日历持续运行)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_RTC_H

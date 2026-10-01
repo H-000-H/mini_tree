@@ -1,15 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mqtts_client.h
- * @brief MQTT over TLS Client Header File (coreMQTT + lwIP altcp_tls)
  * @author H-000-H
+ * @brief MQTT over TLS Client Header File (coreMQTT + lwIP altcp_tls)
  * @note 本文件与 mqtt_client 功能一致, 差别仅在传输通道: 加密通道按项目设计
  *       不走 transport_glue, 由本包装层直接基于 tls_client (lwIP altcp_tls
  *       直连封装) 提供 coreMQTT 需要的 send/recv 适配。
  *       协议引擎复用 coreMQTT (与 MQTT 客户端共享其开关与缓冲配置);
  *       本层不维护订阅表: 下行 PUBLISH 原样 (主题指针 + 长度) 交给唯一消息回调。
  *       驱动模型: 应用周期调用 mqtts_client_process() (内部即 MQTT_ProcessLoop)。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MQTTS_CLIENT_H
 #define MQTTS_CLIENT_H

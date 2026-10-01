@@ -1,32 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_backend.h
- *@brief 统一后端接口 (唯一允许出现后端差异的地方)
- *@author H-000-H
- *@details
- *   mini_backend — 抽象层拆除后保留的**极薄**后端接口。范围收敛为:
- *     IPC (互斥锁 / 二值信号量 / 定长消息队列) + 任务族
- *     + 两处必要设施 (可嵌套临界区、内存分配三函数)
- *   OS 独有的其他能力 (事件组 / 内核自旋锁 / tick 类型 / 调度器冻结) 一律不提供。
- *
- *   分发方式: 编译期分发 (头文件声明 + 每后端一个 .c), 不用运行时函数指针表。
- *   理由: 设备锁在启动期 (device_tree_init) 创建, 函数指针表会引入"表必须先于
- *   首次 device_open 装好"的隐式顺序契约; 编译期分发彻底消除该风险。
- *
- *   谁用哪一层:
- *     - 仓库内代码 (board / vfs / bus / core / system / net) 统一走本接口,
- *       不出现后端条件编译分叉;
- *     - 真正的上层是 app 层业务逻辑, **建议直接走原生接口**
- *       (mini_os_* / 裸机原语 / xSemaphore* / rt_*), 本接口对它只是可选便利。
- *
- *   后端实现文件:
- *     core/src/mini_backend_bare.c     裸机: 互斥锁 + 内存 (无信号量/队列/任务)
- *     core/src/mini_backend_mini_os.c  mini-os: 全量
- *     core/src/mini_backend_freertos.c FreeRTOS: 全量
- *     core/src/mini_backend_rtthread.c RT-Thread: 全量
- *
- *   裸机侧不提供信号量 / 队列 / 任务 (裸机下无调用点), 误用即链接报错 ——
- *   这是刻意设计: 编译期失败优于运行期。
+ * @file mini_backend.h
+ * @author H-000-H
+ * @brief 统一 OSAL 后端接口: IPC + 任务 + 临界区 + 内存
+ * @note  仓库内代码统一走本接口; app 层可直接走原生接口(可选)
+ * @note  裸机不提供信号量/队列/任务, 误用即链接报错
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef MINI_BACKEND_H

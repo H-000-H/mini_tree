@@ -1,15 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_amp.h
- *@brief hal amp 头文件
- *@author H-000-H
- *@details
- *   CPU HAL 层 — 硬件抽象接口 (STM32/CH32)
- *   职责: CPU 紧急停止、AMP 启动、ISR 检测、NVIC/全局中断控制。
- *   所有中断控制 API 为 inline, 直接操作 NVIC/PRIMASK 寄存器, 零开销。
- *   平台差异:
- *   - ARM Cortex-M: 通过 MRS/MSR 访问 IPSR/PRIMASK
- *   - RISC-V:       通过 CSR 访问 MCAUSE
+ * @file hal_amp.h
+ * @author H-000-H
+ * @brief CPU HAL: 紧急停止、AMP 启动、NVIC/全局中断控制 (inline 零开销)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_CPU_H

@@ -1,15 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file tusb_config.h
- *@brief TinyUSB 适配层 — USB 端口配置与板级数据面
- *@author H-000-H
- *@details
- *   @note 先决 TinyUSB 端口配置与 class 配置，再由 Kconfig 生成的 config.h 提供数值直配。
- *   @details
- *   1. TinyUSB 端口配置: CFG_TUSB_RHPORT0_MODE / CFG_TUSB_RHPORT0_SPEED / CFG_TUSB_OS
- *   2. TinyUSB 网络 class 配置: CFG_TUD_ECM_RNDIS / CFG_TUD_NCM / CFG_TUD_NET_MTU
- *   3. TinyUSB 其他 class 配置: CFG_TUD_MSC / CFG_TUD_HID / CFG_TUD_VENDOR / CFG_TUD_CDC
- *   4. TinyUSB 端口配置与 class 配置由 Kconfig 生成的 config.h 提供，tusb_config.h 仅做数值直配。
+ * @file tusb_config.h
+ * @author H-000-H
+ * @brief TinyUSB 适配层 — USB 端口配置与板级数据面
+ * @note 1. TinyUSB 端口配置: CFG_TUSB_RHPORT0_MODE / CFG_TUSB_RHPORT0_SPEED / CFG_TUSB_OS
+ * @note 2. TinyUSB 网络 class 配置: CFG_TUD_ECM_RNDIS / CFG_TUD_NCM / CFG_TUD_NET_MTU
+ * @note 3. TinyUSB 其他 class 配置: CFG_TUD_MSC / CFG_TUD_HID / CFG_TUD_VENDOR / CFG_TUD_CDC
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef TUSB_CONFIG_H_

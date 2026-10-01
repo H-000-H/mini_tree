@@ -1,13 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file epaper_drv.c
- *@brief 电子纸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 epaper_drv.h。
- *   引脚: DC/RST/BUSY 均为 GPIO（phandle: dc-gpio / reset-gpio / busy-gpio）；
- *   数据流: VFS ioctl → epaper_cmd_* → SPI transfer（vfs-spi）→ HAL
+ * @file epaper_drv.c
+ * @author H-000-H
+ * @brief 电子纸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 epaper_drv.h。
+ * @note 引脚: DC/RST/BUSY 均为 GPIO（phandle: dc-gpio / reset-gpio / busy-gpio）；
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "epaper_drv.h"

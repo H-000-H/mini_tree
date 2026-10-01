@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file pppif.c
- *@brief PPP over Serial (PPPoS) 适配层 — 4G 模组拨号与 lwIP 适配
- *@author H-000-H
- *@details
- *   功能描述：
- *   1. 控制态 (AT Command):
- *   通过 VFS ioctl 执行 MODEM_CMD_AT_SEND/RECV 完成驻网、APN 配置及 ATD*99# 拨号。
- *   2. 数据态 (PPPoS):
- *   - 发送链路: lwIP -> pppos_output_cb -> device_write
- *   - 接收链路: 独立后台任务 -> device_read -> pppos_input -> tcpip_thread
- *   - 协议栈定时器由 NO_SYS=0 架构下的 tcpip 核心线程统一调度。
+ * @file pppif.c
+ * @author H-000-H
+ * @brief PPP over Serial (PPPoS) 适配层 — 4G 模组拨号与 lwIP 适配
+ * @note 功能描述：
+ * @note 1. 控制态 (AT Command):
+ * @note 通过 VFS ioctl 执行 MODEM_CMD_AT_SEND/RECV 完成驻网、APN 配置及 ATD*99# 拨号。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "compiler_compat.h"

@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_platform_safety.c
- *@brief hal platform safety 实现
- *@author H-000-H
-
+ * @file hal_platform_safety.c
+ * @author H-000-H
+ * @brief hal platform safety 实现
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "hal_platform_safety.h"

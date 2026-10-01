@@ -1,9 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file tls_client.h
- * @brief TLS 客户端通道 (lwIP altcp_tls 直连封装)
  * @author H-000-H
+ * @brief TLS 客户端通道 (lwIP altcp_tls 直连封装)
  * @note https/mqtts 共用的加密通道: 加密本身全部交给 lwIP 自带的 altcp_tls,
  *       本文件只负责建连和收发数据。
  *       建连是异步的: TCP 握手和 TLS 握手都在回调里完成, connected 回调
@@ -11,6 +9,7 @@
  *       TX 缓冲再分块加密发出。
  *       随机数: mbedtls 靠 mbedtls_hardware_poll() 取随机数, 这里提供的是占位实现;
  *       板上如有硬件随机数发生器, 请用同名函数替换掉它。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef TLS_CLIENT_H
 #define TLS_CLIENT_H

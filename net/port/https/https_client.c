@@ -1,15 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file https_client.c
- * @brief HTTPS Client Implementation (coreHTTP + lwIP altcp_tls)
  * @author H-000-H
- * @details 请求组装/响应解析/分块解码由 coreHTTP 负责, 加密/握手/记录分帧由
- *          lwIP altcp_tls 负责 (经 tls_client 直连封装); 本文件只做:
- *          1. 上下文与 coreHTTP 传输接口/静态缓冲的绑定;
- *          2. 建连两段式驱动: do_connect 发起 -> process 等待握手完成;
- *          3. request 同步流程: 组装请求头 -> HTTPClient_Send -> 出参映射。
- *          注: 加密通道不经 transport_glue, send/recv 直接适配到 tls_client。
+ * @brief HTTPS Client Implementation (coreHTTP + lwIP altcp_tls)
+ * @note  报文处理由 coreHTTP / 加密由 altcp_tls 负责; 本文件只做上下文绑定 + TLS 建连两段式驱动 + request 同步流程
+ * @note  加密通道不经 transport_glue, send/recv 直接适配到 tls_client
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "https_client.h"
 

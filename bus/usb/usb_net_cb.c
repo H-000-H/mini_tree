@@ -1,20 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file usb_net_cb.c
- *@brief usb net cb 实现
- *@author H-000-H
- *@details
- *   usb_net_cb.c — TinyUSB 网络 class (ECM/RNDIS) 板级数据面
- *   实现 bus/usb 契约头 usb_tusb_port.h 的帧符号:
- *   1. SPSC 帧队列：
- *      - 复用 buffer.h 统一 FIFO (fifo_uni, item_size=帧, 零拷贝 acquire/commit + peek/release)。
- *      - 中断上下文中入队时间确定（Deterministic O(1)）。
- *   2. DMA 内存安全：
- *      - 接收缓冲静态分配且 4 字节对齐, 帧宽 sizeof(帧) 为 4 的倍数, 逐槽对齐成立。
- *   3. 回调传参：
- *      - 利用 tud_network_xmit 传递上下文参数，消除全局状态耦合。
- *   注意: 本文件不 include system_log.h (保持与 TinyUSB 头的编译单元隔离,
- *   TinyUSB 自带 osal.h, 曾与本仓同名头冲突)。
+ * @file usb_net_cb.c
+ * @author H-000-H
+ * @brief usb net cb 实现
+ * @note usb_net_cb.c — TinyUSB 网络 class (ECM/RNDIS) 板级数据面
+ * @note 实现 bus/usb 契约头 usb_tusb_port.h 的帧符号:
+ * @note 1. SPSC 帧队列：
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "buffer.h"
 #include "class/net/net_device.h"

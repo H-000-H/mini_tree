@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sht40_drv.c
- *@brief SHT40 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_sht40_pool[SHT40_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 sht40_drv.h。
- *   数据流: VFS ioctl → sht40_cmd_read → device_read/write(I2C) → HAL
+ * @file sht40_drv.c
+ * @author H-000-H
+ * @brief SHT40 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_sht40_pool[SHT40_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 sht40_drv.h。
+ * @note 数据流: VFS ioctl → sht40_cmd_read → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "sht40_drv.h"

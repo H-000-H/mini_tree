@@ -1,10 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file xtask.h
- *@brief 裸机时间片调度器 (仅 CONFIG_OS_BARE)
- *@author H-000-H
- *@details
- *   @note 与 FreeRTOS/RT-Thread 等 OS 后端互斥; OS 后端勿包含本头
+ * @file xtask.h
+ * @author H-000-H
+ * @brief 裸机时间片调度器 (仅 CONFIG_OS_BARE)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef XTASK_H

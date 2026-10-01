@@ -1,19 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_backend_bare.c
- *@brief 裸机后端实现 (互斥锁 + 内存三函数 + ISR 出口)
- *@author H-000-H
- *@details
- *           - 互斥锁: 忙等锁, 含 CONFIG_CPU_CORES>1 (AMP) 双分支;
- *           - 队列:  fifo_spsc 静态池, EventBus 依赖它;
- *           - 内存三函数: 转发 libc 堆 (CONFIG_OS_BARE_MINI_OS_MEM 时转发 mini-os 内存模块);
- *           - 任务: 符号保留, 调用返回 MINI_ERR_NOTSUPP (裸机任务由 xtask 承担);
- *           - 调度器冻结 / ISR 出口: 关中断与空实现。
- *         刻意**不提供**信号量: 裸机下无调用点 (lwIP 的 NO_SYS=0 路径被 Kconfig
- *         关闭), 误用应在链接期报错。
- *         互斥锁用忙等而不是阻塞: 裸机没有可阻塞切换的线程语义。适用边界是
- *         "锁内不存在让出点" —— xtask 无论 COOP 还是 PREEMPT 都是回调
- *         run-to-completion, 持锁方必定跑完; OS 后端必须改用内核互斥锁。
+ * @file mini_backend_bare.c
+ * @author H-000-H
+ * @brief 裸机后端实现 (互斥锁 + 内存三函数 + ISR 出口)
+ * @note - 互斥锁: 忙等锁, 含 CONFIG_CPU_CORES>1 (AMP) 双分支;
+ * @note - 队列:  fifo_spsc 静态池, EventBus 依赖它;
+ * @note - 内存三函数: 转发 libc 堆 (CONFIG_OS_BARE_MINI_OS_MEM 时转发 mini-os 内存模块);
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #if defined(CONFIG_OS_BARE)

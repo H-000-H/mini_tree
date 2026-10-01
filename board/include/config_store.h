@@ -1,13 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file config_store.h
- *@brief config store 头文件
- *@author H-000-H
- *@details
- *   config_store.h — 键值配置存储头文件
- *   声明 bool/int/float/string 四类配置的 get/set API 与 commit 持久化接口.
- *   提供 config_store_bind_source 绑定 JSON 工厂默认值缓冲区 (init 前调用).
- *   支持 factory_reset 恢复出厂与 register_write_hook 注入持久化后端.
+ * @file config_store.h
+ * @author H-000-H
+ * @brief 键值配置存储: bool/int/float/string get/set + commit 持久化
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef CONFIG_STORE_H
@@ -24,12 +19,10 @@ extern "C"
 #endif
 
 /**
- * @brief 绑定工厂默认 JSON 配置源缓冲区 (init 前调用)
+ * @brief 绑定工厂默认 JSON 配置源缓冲区
  * @param[in] json_buffer JSON 缓冲区指针
  * @param[in] size 缓冲区字节数
- *
- * 必须在 config_store_init() 之前调用.
- * 移植到新平台时, 传入 embedded 的 system_config.json 地址及其大小.
+ * @note 必须在 config_store_init() 之前调用
  */
 void config_store_bind_source(const char* json_buffer, size_t size);
 
@@ -116,16 +109,7 @@ mt_err_t config_store_factory_reset(void);
 int config_store_health(void);
 
 /* -------------------------------------------------------------------------- */
-/* 持久化后端回调桥接器 */
-/* 用户工程通过此函数注入底层存储的读写能力。 */
-/* 若不注册，config_store_commit() 将使用默认的 hal_storage 路径。 */
-/* 用法: */
-/*   static int my_write(const uint8_t* data, size_t len) */
-/*   { */
-/*       return my_flash_write(0x1000, data, len) ? MINI_ERR_IO : MINI_OK; */
-/*   } */
-/*   config_store_register_write_hook(my_write); */
-/* -------------------------------------------------------------------------- */
+/* 持久化后端回调: 不注册则 commit() 走默认 hal_storage 路径 */
 typedef int (*config_store_write_hook_t)(const uint8_t* data, size_t len);
 /**
  * @brief 注册持久化写入回调 (替代默认 hal_storage 路径)

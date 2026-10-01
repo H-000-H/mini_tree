@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file pcf8574_drv.c
- *@brief PCF8574 GPIO 扩展芯片驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_pcf8574_pool[PCF8574_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令见 pcf8574_drv.h。
- *   数据流: VFS ioctl → pcf8574_cmd_* → device_read/write(I2C) → HAL
+ * @file pcf8574_drv.c
+ * @author H-000-H
+ * @brief PCF8574 GPIO 扩展芯片驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_pcf8574_pool[PCF8574_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令见 pcf8574_drv.h。
+ * @note 数据流: VFS ioctl → pcf8574_cmd_* → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "pcf8574_drv.h"

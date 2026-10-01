@@ -1,14 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file tim-parameter.h
- *@brief tim-parameter 头文件
- *@author H-000-H
- *@details
- *   TIM 模式常量 (dt-bindings, 仅供 dtsi / hal_tim.h / vfs-tim.c 共享)
- *   只放 #define 常量, 不写设备节点.
- *   HAL_TIM_MODE_* 是 DTS → VFS → HAL 三层共享的定时器模式索引,
- *   放在 dt-bindings 里作为唯一真相源, 避免 dtsi 反向 #include hal_tim.h.
- *   注意: 仅供 dtc-lite 预处理与 C 编译, 勿加 #ifndef guard 之外的逻辑.
+ * @file tim-parameter.h
+ * @author H-000-H
+ * @brief tim-parameter 头文件
+ * @note TIM 模式常量 (dt-bindings, 仅供 dtsi / hal_tim.h / vfs-tim.c 共享)
+ * @note 只放 #define 常量, 不写设备节点.
+ * @note HAL_TIM_MODE_* 是 DTS → VFS → HAL 三层共享的定时器模式索引,
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef __TIM_PARAMETER_H__

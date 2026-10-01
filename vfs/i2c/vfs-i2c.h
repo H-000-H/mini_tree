@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-i2c.h
- *@brief vfs-i2c 头文件
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   I2C VFS — I2C 总线子系统 VFS 层
- *   Driver 注册:
- *   - i2c_host_master / i2c_host_slave
- *   - heterogeneous,i2c-master-client / heterogeneous,i2c-slave-client
- *   write/read 默认 I2C_XFER_AUTO; ioctl SET_XFER_MODE 可选 POLL/DMA。
- *   --------------------------------------------------------------------------
+ * @file vfs-i2c.h
+ * @author H-000-H
+ * @brief vfs-i2c 头文件
+ * @note I2C VFS — I2C 总线子系统 VFS 层
+ * @note Driver 注册:
+ * @note - i2c_host_master / i2c_host_slave
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef I2C_VFS_H

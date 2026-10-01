@@ -1,14 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mqtt_client.c
- * @brief MQTT Client Implementation (coreMQTT 薄包装)
  * @author H-000-H
- * @details 报文编解码/状态机/心跳/重发/订阅确认由 coreMQTT 负责, 传输走
- *          transport_glue (tcp_client FIFO 通道); 本文件只做:
- *          1. 上下文与 coreMQTT 的初始化绑定;
- *          2. TCP 建连 -> MQTT 握手的两段式连接驱动;
- *          3. 下行 PUBLISH 原样转发给唯一消息回调。
+ * @brief MQTT Client Implementation (coreMQTT 薄包装)
+ * @note  报文编解码/状态机/心跳/重发/订阅确认由 coreMQTT 负责, 传输走 transport_glue (tcp_client FIFO 通道)
+ * @note  本文件只做: 上下文与 coreMQTT 初始化绑定 / TCP 建连 -> MQTT 握手两段式驱动 / 下行 PUBLISH 原样转发给唯一消息回调
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "mqtt_client.h"
 

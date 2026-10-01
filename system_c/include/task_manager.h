@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file task_manager.h
- *@brief task manager 头文件
- *@author H-000-H
- *@details
- *   task_manager (C 接口) — 任务创建便捷封装
- *   包装 mini_task_create_handle, 自动订阅 TWDT (若已初始化)。
- *   实现见 system_c/src/task_manager.c。
+ * @file task_manager.h
+ * @author H-000-H
+ * @brief task manager 头文件
+ * @note task_manager (C 接口) — 任务创建便捷封装
+ * @note 包装 mini_task_create_handle, 自动订阅 TWDT (若已初始化)。
+ * @note 实现见 system_c/src/task_manager.c。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once

@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file ft5x06_drv.c
- *@brief FT5x06 电容触摸驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_ft5x06_pool[FT5X06_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 ft5x06_drv.h。
- *   数据流: VFS ioctl → ft5x06_cmd_touch → device_read/write(I2C) → HAL
+ * @file ft5x06_drv.c
+ * @author H-000-H
+ * @brief FT5x06 电容触摸驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_ft5x06_pool[FT5X06_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 ft5x06_drv.h。
+ * @note 数据流: VFS ioctl → ft5x06_cmd_touch → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "ft5x06_drv.h"

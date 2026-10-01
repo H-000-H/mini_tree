@@ -1,10 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file board_devtable.h
- *@brief board devtable 头文件
- *@author H-000-H
- *@details
- *   IDE-only stub — real header from dtc-lite at build time
+ * @file board_devtable.h
+ * @author H-000-H
+ * @brief board devtable 头文件
+ * @note IDE-only stub — real header from dtc-lite at build time
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BOARD_DEVTABLE_H

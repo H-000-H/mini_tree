@@ -1,17 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file system_cmd.h
+ * @file system_cmd.hpp
+ * @author H-000-H
  * @brief 系统命令注册与分发器 (System Command Dispatcher)
- *
- * @details
- * 核心架构特性与设计权衡：
- *   . 零堆分配类型擦除 (Heap-Free Type Erasure)：
- *     - 基于 etl::inplace_function (Small Buffer Optimization)，在栈与固定内联缓冲区
- *       内原地构造闭包，严格杜绝 malloc/new 动态内存碎片。
- *     - 支持原生函数指针、无捕获 Lambda、有状态捕获 Lambda 以及各类仿函数。
- *   . 轻量类型安全校验 (Zero-Overhead RTTI)：
- *     - 利用模板静态局部变量的唯一地址生成 TypeIdToken 令牌，在兼容 -fno-rtti
- *       的同时实现入参与上下文的强类型校验，阻断非法的非法类型强转。
+ * @note  零堆类型擦除: etl::inplace_function (SBO) 原地构造闭包, 杜绝 malloc/new; 支持函数指针 / 无捕获与有状态 Lambda / 仿函数
+ * @note  零开销类型校验: 模板静态局部变量唯一地址生成 TypeIdToken, 兼容 -fno-rtti 下强校验入参与上下文, 阻断非法类型强转
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once

@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file usbethif.h
- *@brief USB ECM/RNDIS 网卡 lwIP 接口适配 (usb_ethif)
- *@author H-000-H
- *@details
- *   将 USB 网卡 (ECM/RNDIS) 桥接到 lwIP netif: 收帧/发帧/轮询均由本层适配。
- *   通过 VFS 获取 USB 以太网 device, 存于 netif->state 供回调用。
+ * @file usbethif.h
+ * @author H-000-H
+ * @brief USB ECM/RNDIS 网卡 lwIP 接口适配 (usb_ethif)
+ * @note 将 USB 网卡 (ECM/RNDIS) 桥接到 lwIP netif: 收帧/发帧/轮询均由本层适配。
+ * @note 通过 VFS 获取 USB 以太网 device, 存于 netif->state 供回调用。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef USBETHIF_H
 #define USBETHIF_H

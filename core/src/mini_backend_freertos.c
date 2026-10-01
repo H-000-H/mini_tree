@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_backend_freertos.c
- *@brief FreeRTOS 后端实现 (互斥锁 / 信号量 / 队列 / 任务 / 内存 / 调度器启动)
- *@author H-000-H
- *@details 后端差异约定:
- *           - 优先级数字越大越优先 (与 mini-os / RT-Thread 相反), 故只钳位不翻转;
- *           - *_from_isr 系列通过 px_yield_required 上报, 绝不内部 yield;
- *           - 互斥锁只有静态存储一种形态 (原池化版本随抽象层删除)。
- *         本文件还承载 3 个非 mini_backend 符号: FreeRTOS 在静态分配 / 栈溢出检查
- *         打开时强制要求应用提供的回调 (idle/timer 任务静态内存、栈溢出钩子),
- *         必须与本后端放在一起, 否则链接期缺符号。
- *         TODO(backend-rename): 条件编译符号随后端符号统一改名阶段收口。
+ * @file mini_backend_freertos.c
+ * @author H-000-H
+ * @brief FreeRTOS 后端实现 (互斥锁 / 信号量 / 队列 / 任务 / 内存 / 调度器启动)
+ * @note  优先级数字越大越优先 (与 mini-os/RT-Thread 相反), 故只钳位不翻转
+ * @note  *_from_isr 系列通过 px_yield_required 上报, 绝不内部 yield; 互斥锁只有静态存储一种形态
+ * @note  本文件另承载 FreeRTOS 静态分配/栈溢出检查所需的 3 个应用回调, 必须与后端放一起否则链接缺符号
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #if defined(CONFIG_OS_FREERTOS)

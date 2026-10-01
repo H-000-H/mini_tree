@@ -1,10 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file system_scrubber_crc_gen.h
- *@brief system scrubber crc gen 头文件
- *@author H-000-H
- *@details
- *   IDE-only stub — real header from post_build_crc.py at build time
+ * @file system_scrubber_crc_gen.h
+ * @author H-000-H
+ * @brief system scrubber crc gen 头文件
+ * @note IDE-only stub — real header from post_build_crc.py at build time
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SYSTEM_SCRUBBER_CRC_GEN_H

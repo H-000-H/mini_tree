@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file pn532_drv.c
- *@brief PN532 NFC 模块驱动实现 — 挂在 UART（HSU）总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 pn532_drv.h。
- *   数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
+ * @file pn532_drv.c
+ * @author H-000-H
+ * @brief PN532 NFC 模块驱动实现 — 挂在 UART（HSU）总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 pn532_drv.h。
+ * @note 数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "pn532_drv.h"

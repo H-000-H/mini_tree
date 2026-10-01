@@ -1,14 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sys_arch.h
- *@brief sys arch 头文件
- *@author H-000-H
- *@details
- *   net/arch/sys_arch.h
- *   lwIP 操作系统抽象移植层头文件 (mini_tree 适配)
- *   位置约定: lwIP 的 lwip/sys.h 通过 #include "arch/sys_arch.h" 引用本文件,
- *   故必须置于 port_include_dir/arch/ 下 (与 arch/cc.h 同级, 即 net/arch/)。
- *   将 lwIP 的 sys_* 原语桥接到统一接口 (mini_mutex / mini_sem / mini_queue / mini_task)。
+ * @file sys_arch.h
+ * @author H-000-H
+ * @brief sys arch 头文件
+ * @note net/arch/sys_arch.h
+ * @note lwIP 操作系统抽象移植层头文件 (mini_tree 适配)
+ * @note 位置约定: lwIP 的 lwip/sys.h 通过 #include "arch/sys_arch.h" 引用本文件,
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SYS_ARCH_H

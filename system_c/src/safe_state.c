@@ -1,13 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file safe_state.c
- *@brief safe state 实现
- *@author H-000-H
- *@details
- *   safe_state.c — 安全状态与启动循环退避实现
- *   s_panic_counter 累计异常启动次数, ≥5 (BOOTLOOP_THRESHOLD) 触发永久锁死
- *   enter_safe_state 顺序: hal_platform_critical_hardware_lock → 挂起调度器 → 关中断 → 死循环
- *   NMI 紧急标记委托 hal_platform_nmi_emergency_stamp (平台须置于 IRAM)
+ * @file safe_state.c
+ * @author H-000-H
+ * @brief safe state 实现
+ * @note safe_state.c — 安全状态与启动循环退避实现
+ * @note s_panic_counter 累计异常启动次数, ≥5 (BOOTLOOP_THRESHOLD) 触发永久锁死
+ * @note enter_safe_state 顺序: hal_platform_critical_hardware_lock → 挂起调度器 → 关中断 → 死循环
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "safe_state.h"

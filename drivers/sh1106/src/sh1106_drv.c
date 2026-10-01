@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sh1106_drv.c
- *@brief SH1106 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 sh1106_drv.h，寄存器定义见 sh1106_regs.h。
- *   数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
+ * @file sh1106_drv.c
+ * @author H-000-H
+ * @brief SH1106 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 sh1106_drv.h，寄存器定义见 sh1106_regs.h。
+ * @note 数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "compiler_compat.h"

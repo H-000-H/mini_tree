@@ -1,15 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file usb_tusb_port.h
- *@brief usb tusb port 头文件
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   USB TinyUSB 板级契约头 — 中间件 bus/usb 依赖，实现属平台
- *   中间件 bus/usb 只经本头调用 TinyUSB 粘合层（docs/usb_tusb_port.md）；
- *   板级负责实现全部符号，TinyUSB API 不泄漏进中间件公共头。
- *   本头在中间件（bus/usb/），平台树无需复制。
- *   --------------------------------------------------------------------------
+ * @file usb_tusb_port.h
+ * @author H-000-H
+ * @brief usb tusb port 头文件
+ * @note USB TinyUSB 板级契约头 — 中间件 bus/usb 依赖，实现属平台
+ * @note 中间件 bus/usb 只经本头调用 TinyUSB 粘合层（docs/usb_tusb_port.md）；
+ * @note 板级负责实现全部符号，TinyUSB API 不泄漏进中间件公共头。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef USB_TUSB_PORT_H

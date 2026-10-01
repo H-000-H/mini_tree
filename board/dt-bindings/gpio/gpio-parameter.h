@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file gpio-parameter.h
- *@brief gpio-parameter 头文件
- *@author H-000-H
- *@details
- *   GPIO 默认参数 (dt-bindings, 仅供 dtsi #include <dt-bindings/...> 引用)
- *   只放 #define 常量, 不写设备节点.
- *   板级引脚在 board *.dts &gpios_pin { } 中覆盖.
+ * @file gpio-parameter.h
+ * @author H-000-H
+ * @brief gpio-parameter 头文件
+ * @note GPIO 默认参数 (dt-bindings, 仅供 dtsi #include <dt-bindings/...> 引用)
+ * @note 只放 #define 常量, 不写设备节点.
+ * @note 板级引脚在 board *.dts &gpios_pin { } 中覆盖.
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef __GPIO_PARAMETER_H__

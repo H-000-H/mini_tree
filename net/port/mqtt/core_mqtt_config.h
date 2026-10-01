@@ -1,10 +1,8 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file core_mqtt_config.h
- * @brief coreMQTT 库配置头 (mini_tree_link_coremqtt 强制要求)
  * @author H-000-H
- * @details 库日志宏对接系统日志后端 (MT_LOG_*)。core 库日志宏调用形式为。
- *          LogDebug 映射为空 (避免热路径刷屏); 其余按库默认值运行。
+ * @brief coreMQTT 库配置头 (mini_tree_link_coremqtt 强制要求)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef CORE_MQTT_CONFIG_H
 #define CORE_MQTT_CONFIG_H

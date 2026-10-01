@@ -1,13 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mbedtls_config.h
- * @brief lwIP altcp_tls 专用 mbedTLS 2.28 配置 (mini_tree_link_mbedtls 强制要求)
  * @author H-000-H
- * @details 只打开 TLS 1.2 客户端需要用到的功能:
- *          内存走 lwIP 的内存池 (不用系统 malloc);
- *          随机数用自定义的硬件接口产生;
- *          时间用系统运行时长代替 (板上没有时钟芯片)。
+ * @brief lwIP altcp_tls 专用 mbedTLS 2.28 配置 (mini_tree_link_mbedtls 强制要求)
+ * @note  只打开 TLS 1.2 客户端功能: 内存走 lwIP 内存池 (不用系统 malloc); 随机数走自定义硬件接口; 时间用系统运行时长代替 (板上无时钟芯片)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MBEDTLS_MINI_TREE_ALTCP_TLS_CONFIG_H
 #define MBEDTLS_MINI_TREE_ALTCP_TLS_CONFIG_H

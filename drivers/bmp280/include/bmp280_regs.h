@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file bmp280_regs.h
- *@brief BMP280 芯片寄存器 / 控制值定义
- *@author H-000-H
-
+ * @file bmp280_regs.h
+ * @author H-000-H
+ * @brief BMP280 芯片寄存器 / 控制值定义
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BMP280_REGS_H

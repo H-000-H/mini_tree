@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sn65hvd230_drv.c
- *@brief SN65HVD230 CAN 收发器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令见 sn65hvd230_drv.h。
+ * @file sn65hvd230_drv.c
+ * @author H-000-H
+ * @brief SN65HVD230 CAN 收发器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
+ * @note 静态池: s_sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令见 sn65hvd230_drv.h。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "sn65hvd230_drv.h"

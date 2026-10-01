@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_sdio.c
- *@brief hal sdio 实现
- *@author H-000-H
-
+ * @file hal_sdio.c
+ * @author H-000-H
+ * @brief hal sdio 实现
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "hal_sdio.h"

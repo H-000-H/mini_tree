@@ -1,10 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file st7789_cs.c
- *@brief ST7789 有 CS 驱动入口 — CS 由父 SPI master client 硬件片选完成
- *@author H-000-H
- *@details
- *   @note compatible: sitronix,st7789
+ * @file st7789_cs.c
+ * @author H-000-H
+ * @brief ST7789 有 CS 驱动入口 — CS 由父 SPI master client 硬件片选完成
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "driver.h"

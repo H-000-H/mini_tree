@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file pn532_drv.h
- *@brief PN532 NFC 模块驱动 ioctl 命令与固件信息结构
- *@author H-000-H
- *@details
- *   挂在 I2C 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file pn532_drv.h
+ * @author H-000-H
+ * @brief PN532 NFC 模块驱动 ioctl 命令与固件信息结构
+ * @note 挂在 I2C 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef PN532_DRV_H

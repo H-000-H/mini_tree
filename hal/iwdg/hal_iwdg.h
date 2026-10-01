@@ -1,12 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_iwdg.h
- *@brief IWDG HAL — 独立看门狗 (LSI 时钟), 两层模型无 bus
- *@author H-000-H
- *@details
- *   @note        一旦 start 后硬件不可真正关闭; close 仅释放上层引用。
- *   @note        超时按 LSI≈32kHz 估算: timeout ≈ (RLR+1) * (4<<PR) / 32 ms。
- *   @note        文件约定: 返回值用 int + status.h 错误码; 禁止 enum。
+ * @file hal_iwdg.h
+ * @author H-000-H
+ * @brief IWDG HAL — 独立看门狗 (LSI 时钟), 两层模型无 bus
+ * @note  start 后硬件不可关闭; close 仅释放上层引用
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_IWDG_H

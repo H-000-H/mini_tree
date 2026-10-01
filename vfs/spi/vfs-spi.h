@@ -1,23 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-spi.h
- *@brief vfs-spi 头文件
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   SPI VFS — SPI 总线子系统 VFS 层
- *   架构位置: [VFS Layer (本文件)] → Bus Layer → HAL Layer
- *   职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 bus 层。
- *   隔离: 本文件定义 SPI_VFS_IMPL 可调 spi_bus API; 其他文件包含本头时 spi_bus 符号被 #pragma GCC
- *   poison。
- *   Driver 注册:
- *   - spi_host_master: "mt-spi-master" (host controller)
- *   - spi_host_slave:  "mt-spi-slave" (slave host controller)
- *   - spi_vfs_master:  "mt-spi-master-client" (bus client)
- *   - spi_vfs_slave:   "mt-spi-slave-client" (bus client)
- *   @see bus/spi/spi_bus.h  bus 层接口
- *   @see bus/bus.h          通用总线框架
- *   --------------------------------------------------------------------------
+ * @file vfs-spi.h
+ * @author H-000-H
+ * @brief vfs-spi 头文件
+ * @note SPI VFS — SPI 总线子系统 VFS 层
+ * @note 架构位置: [VFS Layer (本文件)] → Bus Layer → HAL Layer
+ * @note 职责: file_operations 挂载 + dev_lifecycle (互斥/引用计数) + DTS 解析; I/O 全走 bus 层。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SPI_VFS_H

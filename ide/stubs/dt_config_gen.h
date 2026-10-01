@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file dt_config_gen.h
- *@brief dt config gen 头文件
- *@author H-000-H
- *@details
- *   IDE-only stub — real header from dtc-lite at build time.
- *   Provide DTC_GEN_* macros referenced by board_config / vfs / drivers.
+ * @file dt_config_gen.h
+ * @author H-000-H
+ * @brief dt config gen 头文件
+ * @note IDE-only stub — real header from dtc-lite at build time.
+ * @note Provide DTC_GEN_* macros referenced by board_config / vfs / drivers.
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef DT_CONFIG_GEN_H

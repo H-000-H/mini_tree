@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file ina219_drv.c
- *@brief INA219 电流/功率监测驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_ina219_pool[INA219_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 ina219_drv.h。
- *   数据流: VFS ioctl → ina219_cmd_read → device_read/write(I2C) → HAL
+ * @file ina219_drv.c
+ * @author H-000-H
+ * @brief INA219 电流/功率监测驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_ina219_pool[INA219_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 ina219_drv.h。
+ * @note 数据流: VFS ioctl → ina219_cmd_read → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "ina219_drv.h"

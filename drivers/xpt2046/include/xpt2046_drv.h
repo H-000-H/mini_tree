@@ -1,12 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file xpt2046_drv.h
- *@brief XPT2046 电阻触摸驱动 ioctl 命令与采样结构
- *@author H-000-H
- *@details
- *   挂在 SPI 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
- *   @note LVGL indev：见 xpt2046_bridge.h → xpt2046_lvgl_read()
+ * @file xpt2046_drv.h
+ * @author H-000-H
+ * @brief XPT2046 电阻触摸驱动 ioctl 命令与采样结构
+ * @note 挂在 SPI 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef XPT2046_DRV_H

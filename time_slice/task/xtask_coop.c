@@ -1,10 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file xtask_coop.c
- *@brief 协调式时间片调度器 (cooperative / round-robin)
- *@author H-000-H
- *@details
- *   @note 与 xtask_preempt.c 二选一互斥 (Kconfig choice + CMake 双重门控)
+ * @file xtask_coop.c
+ * @author H-000-H
+ * @brief 协调式时间片调度器 (cooperative / round-robin)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifdef CONFIG_OS_BARE

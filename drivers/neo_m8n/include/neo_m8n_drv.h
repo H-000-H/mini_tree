@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file neo_m8n_drv.h
- *@brief NEO-M8N GPS 模块驱动 ioctl 命令与 NMEA 缓冲结构
- *@author H-000-H
- *@details
- *   挂在 UART 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file neo_m8n_drv.h
+ * @author H-000-H
+ * @brief NEO-M8N GPS 模块驱动 ioctl 命令与 NMEA 缓冲结构
+ * @note 挂在 UART 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef NEO_M8N_DRV_H

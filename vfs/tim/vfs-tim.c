@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-tim.c
- *@brief TIM VFS 实现 — TIM 总线子系统 VFS 层实现文件
- *@author H-000-H
-
+ * @file vfs-tim.c
+ * @author H-000-H
+ * @brief TIM VFS 实现 — TIM 总线子系统 VFS 层实现文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define VFS_TIM_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */

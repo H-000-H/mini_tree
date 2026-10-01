@@ -1,15 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file http_client.h
- * @brief HTTP Client Header File
  * @author H-000-H
+ * @brief HTTP Client Header File
  * @note 本文件为 coreHTTP 的薄包装层: 请求组装/响应解析/分块解码全部由
  *       coreHTTP 负责, 传输走 transport_glue (tcp_client FIFO 通道)。
  *       连接采用 keep-alive: do_connect 建连后可连续多次 request,
  *       响应体指针指向上下文内部静态缓冲, 有效至下一次 request 或断连。
  *       驱动模型: 应用先调用 http_client_process() 等待底层建连完成,
  *       再发起 request (请求/响应为同步流程)。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef HTTP_CLIENT_H
 #define HTTP_CLIENT_H

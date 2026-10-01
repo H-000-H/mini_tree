@@ -1,19 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mqtt_broker.c
- * @brief MQTT Broker Implementation (明文, 无 TLS)
  * @author H-000-H
- * @details 基于 tcp_server 会话表的轻量 Broker:
- *          1. 每会话静态累积缓冲累积入站字节, MQTT_ProcessIncomingPacketTypeAndLength
- *             增量解析固定头, 报文完整后按类型分发;
- *          2. CONNECT/SUBSCRIBE/UNSUBSCRIBE 按协议手工解析 (coreMQTT v5 公开 API
- *             无服务端反序列化); PUBLISH 用 MQTT_DeserializePublish 解析;
- *          3. 下行转发统一降为 QoS0 (无重发状态机), 经全局订阅表 +
- *             MQTT_MatchTopic 匹配; CONNACK/SUBACK/UNSUBACK/PUBACK/PINGRESP
- *             按 3.1.1 最小格式组装 (MQTT5 允许省略 0 原因码与空属性, 兼容双版本);
- *          4. keep-alive 超时 (配置倍数) 主动踢线并回收订阅。
- *          约束: QoS2 入站仅按 PUBREC/PUBCOMP 机械应答 (每条只投递一次)。
+ * @brief MQTT Broker Implementation (明文, 无 TLS)
+ * @note  基于 tcp_server 会话表的轻量 Broker: 每会话静态缓冲增量累积入站字节, 报文完整后按类型分发
+ * @note  CONNECT/SUBSCRIBE/UNSUBSCRIBE 手工解析 (coreMQTT v5 无服务端反序列化), PUBLISH 用 MQTT_DeserializePublish
+ * @note  下行转发统一降为 QoS0 (无重发状态机), 经全局订阅表 + MQTT_MatchTopic 匹配; ACK 按 3.1.1 最小格式组装 (兼容 MQTT3.1.1/5)
+ * @note  keep-alive 超时 (配置倍数) 主动踢线并回收订阅; QoS2 入站仅按 PUBREC/PUBCOMP 机械应答 (每条只投递一次)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "mqtt_broker.h"
 

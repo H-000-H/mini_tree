@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file bme280_regs.h
- *@brief BME280 芯片寄存器 / 控制值定义
- *@author H-000-H
-
+ * @file bme280_regs.h
+ * @author H-000-H
+ * @brief BME280 芯片寄存器 / 控制值定义
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BME280_REGS_H

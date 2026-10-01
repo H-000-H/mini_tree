@@ -1,14 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file http_client.c
- * @brief HTTP Client Implementation (coreHTTP 薄包装)
  * @author H-000-H
- * @details 请求组装/响应解析/分块解码由 coreHTTP 负责, 传输走
- *          transport_glue (tcp_client FIFO 通道); 本文件只做:
- *          1. 上下文与 coreHTTP 传输接口/静态缓冲的绑定;
- *          2. TCP 建连两段式驱动 (与 mqtt_client 一致);
- *          3. request 同步流程: 组装请求头 -> HTTPClient_Send -> 出参映射。
+ * @brief HTTP Client Implementation (coreHTTP 薄包装)
+ * @note  coreHTTP 负责请求组装/响应解析/分块解码, 传输走 transport_glue (tcp_client FIFO); 本文件只做: 上下文与静态缓冲绑定 / TCP 建连两段式驱动 (与 mqtt_client 一致) / request 同步流程 (组装请求头 -> HTTPClient_Send -> 出参映射)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "http_client.h"
 

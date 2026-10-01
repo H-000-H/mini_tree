@@ -1,19 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file bus.h
- *@brief bus 头文件
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   BUS CORE — 总线子系统通用框架层
- *   三层架构: VFS (file_operations + dev_lifecycle + DTS) → Bus (host/client 池,
- *   atomic ref_count, controller_ops) → HAL (寄存器/DMA/中断, opaque handle)
- *   隔离 (#pragma GCC poison 强制): bus 外禁止调 hal 符号, vfs 外禁止调 bus 符号
- *   引用计数: host->ref_count atomic, register +1/unregister -1, deinit >0 返回 BUSY;
- *   state 变更由上层 (board_device.c) 序列化
- *   controller_ops (host 级): init/deinit/role/client_register/client_unregister;
- *   client 级 I/O 由 bus_xxx_open/close/read/write 直接处理, 不经 ops 表
- *   --------------------------------------------------------------------------
+ * @file bus.h
+ * @author H-000-H
+ * @brief 总线框架层: controller 描述符 + client 生命周期 + async 回调桥接
+ * @note  分层: VFS → Bus (本文件) → HAL; bus 外禁止调 hal 符号
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BUS_H
@@ -48,9 +38,7 @@ typedef uint16_t bus_type_t;
 
 /**
  * @brief Host 级控制器操作表 — 管理控制器生命周期与 client 挂载
- *
- *
- * @return 成功返回 0, BUSY 返回 MINI_ERR_BUSY, 失败返回 MINI_ERR_*
+ * @return 各回调成功返回 MINI_OK, 失败返回 MINI_ERR_*
  */
 struct bus_controller_ops
 {
@@ -64,12 +52,9 @@ struct bus_controller_ops
 
 /* Controller */
 /* -------------------------------------------------------------------------- */
-
 /**
  * @brief 总线控制器 (host) 描述符
- *
- * 每个 controller device 对应一个 bus_controller, 由 bus_controller_bind_full 注册.
- * 存储在 s_controllers[device_id] 静态表中, O(1) 查找.
+ * @note  每个 controller device 对应一个, 由 bus_controller_bind_full 注册
  */
 struct bus_controller
 {
@@ -79,21 +64,12 @@ struct bus_controller
 };
 
 /* -------------------------------------------------------------------------- */
-
-/* Controller API */
-/* -------------------------------------------------------------------------- */
-
 /**
- * @brief 绑定 controller (full, 带 ctlr_ops)
- *
- * 将 host device 注册为总线控制器, 存入 s_controllers[device_id].
- * 后续 bus_controller_of 通过 device parent 查找 controller.
- *
- * @param[in] pdev       controller device (host)
- * @param[in] type      总线类型 (BUS_TYPE_SPI 等)
+ * @brief 绑定 controller (host device 注册为总线控制器)
+ * @param[in] pdev      controller device (host)
+ * @param[in] type      总线类型 (BUS_TYPE_xxx)
  * @param[in] ctlr_ops  host 级 ops
- * @param[in] hw_ctx    host 私有上下文 (struct xxx_bus_host*)
- *
+ * @param[in] hw_ctx    host 私有上下文
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_*
  */
 mt_err_t bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx) MINI_WARN_UNUSED_RESULT;
@@ -107,23 +83,15 @@ mt_err_t bus_controller_bind_full(struct device* pdev, bus_type_t type, const st
 mt_err_t bus_controller_get(const struct device* pdev, struct bus_controller** out) MINI_WARN_UNUSED_RESULT;
 
 /**
- * @brief 查找 client 所属的 controller
- *
- * 通过 device_get_parent(pdev) 找到 host, 再从 s_controllers 取出 bus_controller.
- * 用于 client device 探测其所属 host.
- *
+ * @brief 查找 client 所属的 controller (通过 device parent 查找 host)
  * @param[in] pdev  client device
  * @param[out] out  输出 bus_controller 指针
- *
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
  */
 mt_err_t bus_controller_of(const struct device* pdev, struct bus_controller** out) MINI_WARN_UNUSED_RESULT;
 
 /**
- * @brief 解绑 controller
- *
- * 清空 s_controllers[device_id], 不检查 ref_count.
- * 调用者 (bus_xxx_host_deinit) 应先检查 ref_count > 0 拒绝解绑.
+ * @brief 解绑 controller (清空绑定, 不检查 ref_count, 调用者应先行检查)
  * @param[in] pdev controller device (host)
  */
 void bus_controller_unbind(struct device* pdev);
@@ -138,9 +106,7 @@ typedef void (*bus_async_user_cb_t)(struct device* pdev, const void* trans, void
 
 /**
  * @brief HAL→VFS 回调桥接描述符
- *
- * 静态池分配: async 提交时 claim → ISR 中 complete 调用用户 cb 并释放。
- * 必须静态: 回调在 ISR 异步触发, 栈帧已销毁。
+ * @note  必须静态分配: ISR 异步触发时栈帧已销毁
  */
 struct bus_async_bridge
 {

@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file bh1750_drv.c
- *@brief BH1750 光照传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_bh1750_pool[BH1750_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令见 bh1750_drv.h。
- *   数据流: VFS ioctl → bh1750_cmd_lux → device_read/write(I2C) → HAL
+ * @file bh1750_drv.c
+ * @author H-000-H
+ * @brief BH1750 光照传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_bh1750_pool[BH1750_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令见 bh1750_drv.h。
+ * @note 数据流: VFS ioctl → bh1750_cmd_lux → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "bh1750_drv.h"

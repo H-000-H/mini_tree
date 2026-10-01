@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file buzzer_drv.c
- *@brief 蜂鸣器驱动实现 — 挂在 TIM（PWM）或 GPIO 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_buzzer_pool[BUZZER_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令见 buzzer_drv.h。
- *   两种后端：phandle pwm（TIM 快路径）或 beep-gpio（GPIO 电平）
+ * @file buzzer_drv.c
+ * @author H-000-H
+ * @brief 蜂鸣器驱动实现 — 挂在 TIM（PWM）或 GPIO 下的 VFS 设备驱动
+ * @note 静态池: s_buzzer_pool[BUZZER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令见 buzzer_drv.h。
+ * @note 两种后端：phandle pwm（TIM 快路径）或 beep-gpio（GPIO 电平）
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "buzzer_drv.h"

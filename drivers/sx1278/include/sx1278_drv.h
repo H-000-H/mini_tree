@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sx1278_drv.h
- *@brief SX1278 LoRa 模块驱动 ioctl 命令与载荷结构
- *@author H-000-H
- *@details
- *   挂在 SPI 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file sx1278_drv.h
+ * @author H-000-H
+ * @brief SX1278 LoRa 模块驱动 ioctl 命令与载荷结构
+ * @note 挂在 SPI 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SX1278_DRV_H

@@ -1,6 +1,6 @@
-name: h-000-h/mini_tree
-version: "1.2.0"
-description: "这是一个通用的vfs模型抽象设备树和os抽象插件"
+name: h-000-h/mini-tree
+version: "1.4.7"
+description: "这是一个通用的vfs驱动模型和dts抽象设备树和os抽象插件 (ESP-IDF 组件线: lib 仅含 etl, RTOS 走 IDF 内置 FreeRTOS)"
 url: "https://github.com/H-000-H/mini_tree"
 dependencies:
   idf:
@@ -8,13 +8,43 @@ dependencies:
 files:
   exclude:
     - "build/**"
+    - "dist/**"
+    - ".venv/**"
     - ".cache/**"
     - "compile_commands.json"
     - ".config*"
     - ".git/**"
+    - "esp-component.sh"
+    - ".component_hash"
+    - "CHECKSUMS.json"
+    # RTOS 内核一律不进 esp 组件包: 走 ESP-IDF 内置 FreeRTOS
     - "lib/freeRTOS/**"
     - "lib/rtthread/**"
+    - "lib/mini-os/**"
     - "lib/threadx/**"
     - "lib/uC-*/**"
+    # FetchContent 拉取产物不进组件包 (lib/ 只保留 etl / mini-ota;
+    # ESP 侧 mbedtls / lwip 由 IDF 提供, 其余积木由消费工程自行拉取)
+    - "lib/cjson/**"
+    - "lib/cmsis_dsp/**"
+    - "lib/corehttp/**"
+    - "lib/coremqtt/**"
+    - "lib/easyflash/**"
+    - "lib/easylogger/**"
+    - "lib/fatfs/**"
+    - "lib/flashdb/**"
+    - "lib/freemodbus/**"
+    - "lib/libmodbus/**"
+    - "lib/littlefs/**"
+    - "lib/lvgl/**"
+    - "lib/lwip/**"
+    - "lib/mbedtls/**"
+    - "lib/mcuboot/**"
+    - "lib/miniz/**"
+    - "lib/multibutton/**"
+    - "lib/nanopb/**"
+    - "lib/sfud/**"
+    - "lib/tinyusb/**"
+    - "lib/u8g2/**"
     - "**/__pycache__/**"
     - "**/*.pyc"

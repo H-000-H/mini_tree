@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-adc.h
- *@brief ADC VFS 实现 — ADC 总线子系统 VFS 层头文件
- *@author H-000-H
-
+ * @file vfs-adc.h
+ * @author H-000-H
+ * @brief ADC VFS 实现 — ADC 总线子系统 VFS 层头文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef __VFS_ADC_H__

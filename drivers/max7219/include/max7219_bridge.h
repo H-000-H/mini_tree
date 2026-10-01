@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file max7219_bridge.h
- *@brief MAX7219 ↔ 应用层整帧刷新薄封装
- *@author H-000-H
-
+ * @file max7219_bridge.h
+ * @author H-000-H
+ * @brief MAX7219 ↔ 应用层整帧刷新薄封装
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef MAX7219_BRIDGE_H

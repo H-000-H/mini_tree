@@ -1,10 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_usb.c
- *@brief hal usb 实现
- *@author H-000-H
- *@details
- *   Weak empty HAL stub — board overrides.
+ * @file hal_usb.c
+ * @author H-000-H
+ * @brief hal usb 实现
+ * @note Weak empty HAL stub — board overrides.
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define HAL_USB_IMPL

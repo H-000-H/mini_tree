@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file task_manager.c
- *@brief task manager 实现
- *@author H-000-H
- *@details
- *   task_manager (C 实现) — 任务创建与 TWDT 自动订阅
- *   task_manager_create: 按 board_task_config 创建任务并自动订阅 TWDT。
- *   task_manager_create_task: 便捷包装, 内部构造 config 后委托 create。
+ * @file task_manager.c
+ * @author H-000-H
+ * @brief task manager 实现
+ * @note task_manager (C 实现) — 任务创建与 TWDT 自动订阅
+ * @note task_manager_create: 按 board_task_config 创建任务并自动订阅 TWDT。
+ * @note task_manager_create_task: 便捷包装, 内部构造 config 后委托 create。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "task_manager.h"

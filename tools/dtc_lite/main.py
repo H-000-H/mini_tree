@@ -31,7 +31,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         '-D', '--define', action='append', default=[], metavar='NAME[=VAL]',
         help='预定义宏 (可多个): 传给 cpp, 如 -DSTM32F407xx -DUSE_FULL_LL_DRIVER',
     )
-    args = parser.parse_args(argv)
+    args = parser.parse_intermixed_args(argv)
 
     dts_path: str = args.dts_path
     output_dir: str = args.output_dir

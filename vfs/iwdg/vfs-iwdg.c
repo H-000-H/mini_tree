@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-iwdg.c
- *@brief IWDG VFS 实现 — open 启动看门狗, ioctl 喂狗/超时; close 不关硬件
- *@author H-000-H
-
+ * @file vfs-iwdg.c
+ * @author H-000-H
+ * @brief IWDG VFS 实现 — open 启动看门狗, ioctl 喂狗/超时; close 不关硬件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define IWDG_VFS_IMPL

@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file xpt2046_drv.c
- *@brief XPT2046 电阻触摸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_xpt2046_pool[XPT2046_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 xpt2046_drv.h。
- *   数据流: VFS ioctl → xpt2046_cmd_xy → SPI transfer（vfs-spi）→ HAL
+ * @file xpt2046_drv.c
+ * @author H-000-H
+ * @brief XPT2046 电阻触摸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_xpt2046_pool[XPT2046_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 xpt2046_drv.h。
+ * @note 数据流: VFS ioctl → xpt2046_cmd_xy → SPI transfer（vfs-spi）→ HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "xpt2046_drv.h"

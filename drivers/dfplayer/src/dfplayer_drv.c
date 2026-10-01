@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file dfplayer_drv.c
- *@brief DFPlayer MP3 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_dfplayer_pool[DFPLAYER_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 dfplayer_drv.h，帧格式见 dfplayer_regs.h。
- *   数据流: VFS ioctl → dfplayer_cmd_* → dfplayer_frame → device_write(UART) → HAL
+ * @file dfplayer_drv.c
+ * @author H-000-H
+ * @brief DFPlayer MP3 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_dfplayer_pool[DFPLAYER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 dfplayer_drv.h，帧格式见 dfplayer_regs.h。
+ * @note 数据流: VFS ioctl → dfplayer_cmd_* → dfplayer_frame → device_write(UART) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "dfplayer_drv.h"

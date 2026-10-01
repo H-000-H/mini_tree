@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file st7789_regs.h
- *@brief ST7789 面板命令 / 时序常量 / 公共接口（避免 .c 内散落魔术字）
- *@author H-000-H
- *@details
- *   有 CS / 无 CS 两个 compatible 入口（st7789_cs.c / st7789_nocs.c）
- *   共用本头声明的公共 probe/remove 实现（st7789_core.c）。
+ * @file st7789_regs.h
+ * @author H-000-H
+ * @brief ST7789 面板命令 / 时序常量 / 公共接口（避免 .c 内散落魔术字）
+ * @note 有 CS / 无 CS 两个 compatible 入口（st7789_cs.c / st7789_nocs.c）
+ * @note 共用本头声明的公共 probe/remove 实现（st7789_core.c）。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef ST7789_REGS_H

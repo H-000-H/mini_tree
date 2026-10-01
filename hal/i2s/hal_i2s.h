@@ -1,13 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_i2s.h
- *@brief I2S HAL — 音频总线硬件抽象 (挂在 SPI 外设上)
- *@author H-000-H
- *@details
- *   @note        sync: poll / DMA NORMAL(TC 轮询) / AUTO
- *   @note        circular + fifo_spsc; HT/TC / async 控制面走 ioctl
- *   @note        虚拟中断对齐 ADC: ISR 清标志+dispatch; 上半部返回 BOTTOM; 下半部占位
- *   @note        文件约定: 返回值用 int + status.h 错误码; 禁止 enum
+ * @file hal_i2s.h
+ * @author H-000-H
+ * @brief I2S HAL — 音频总线硬件抽象 (挂在 SPI 外设上)
+ * @note  sync: poll / DMA NORMAL(TC 轮询) / AUTO; circular + fifo_spsc; async 走 ioctl
+ * @note  文件约定: 返回 mt_err_t; 禁止 enum
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_I2S_H

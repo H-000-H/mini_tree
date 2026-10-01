@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file i2c_bus.c
- *@brief i2c bus 实现
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   I2C BUS 实现 — I2C 总线子系统 bus 层 (平台中立共享代码)
- *   静态池: s_i2c_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2c_clients[DEV_ID_COUNT]
- *   数据流:
- *   同步: VFS → i2c_bus_open/close/transfer|write|read(xfer_mode) → hal_i2c_*
- *   controller_ops 表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
- *   --------------------------------------------------------------------------
+ * @file i2c_bus.c
+ * @author H-000-H
+ * @brief i2c bus 实现
+ * @note I2C BUS 实现 — I2C 总线子系统 bus 层 (平台中立共享代码)
+ * @note 静态池: s_i2c_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2c_clients[DEV_ID_COUNT]
+ * @note 数据流:
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define I2C_BUS_IMPL

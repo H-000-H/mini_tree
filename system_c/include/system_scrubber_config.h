@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file system_scrubber_config.h
- *@brief system scrubber config 头文件
- *@author H-000-H
- *@details
- *   system_scrubber_config — Flash bit-rot 巡检策略 (非 DTS 派生)
- *   校验原语与 CRC 模型统一由 mini-ota 提供 (image_verify_area → crc_stream),
- *   本模块不再自带 CRC 表。
- *   基线由构建期 system_scrubber_crc_gen.h 提供 (post_build_crc.py 生成)。
- *   ⚠ 基线的 CRC 与长度必须同源: 都由同一次构建的同一个固件二进制算出。
- *     若长度口径与扫描范围不一致, 基线永远对不上 (旧实现即用"整个分区"去比
- *     "二进制长度"的 CRC, 属口径错配)。
+ * @file system_scrubber_config.h
+ * @author H-000-H
+ * @brief system scrubber config 头文件
+ * @note system_scrubber_config — Flash bit-rot 巡检策略 (非 DTS 派生)
+ * @note 校验原语与 CRC 模型统一由 mini-ota 提供 (image_verify_area → crc_stream),
+ * @note 本模块不再自带 CRC 表。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SYSTEM_SCRUBBER_CONFIG_H

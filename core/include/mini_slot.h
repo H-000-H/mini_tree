@@ -1,20 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_slot.h
- *@brief 槽位池 (线程/中断安全的定长索引分配器)
- *@author H-000-H
- *@details
- *   mini_slot — 定长索引分配器 (槽位位图)。注意它**不是内存分配器**:
- *   只负责在调用方提供的 used_slots[] 位图里 claim / release 一个下标,
- *   不分配任何字节。要分配字节请用统一接口的堆接口 (mini_malloc)。
- *
- *   命名说明: 三者易混, 明确区分
- *     - mini_slot   : 槽位位图 (本文件), 返回下标
- *     - mini-os 堆  : lib/mini-os 内部 first-fit 堆 (mini_os_malloc)
- *     - algorithm/buffer : fifo_spsc / double_buffer 等结构复用
- *
- *   used_slots[] 由调用方提供; mini_slot_init() 须在首次 claim 前调用一次。
- *   ESP32 平台每池内嵌 portMUX, 任务与 ISR 均可安全 claim/release。
+ * @file mini_slot.h
+ * @author H-000-H
+ * @brief 槽位池 (线程/中断安全的定长索引分配器)
+ * @note mini_slot — 定长索引分配器 (槽位位图)。注意它**不是内存分配器**:
+ * @note 只负责在调用方提供的 used_slots[] 位图里 claim / release 一个下标,
+ * @note 不分配任何字节。要分配字节请用统一接口的堆接口 (mini_malloc)。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef MINI_SLOT_H

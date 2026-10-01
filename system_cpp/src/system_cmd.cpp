@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/*
- * SystemCmd 实现 — 单份实现, 命令表访问统一走 mini_critical 临界区
+/**
+ * @file system_cmd.cpp
+ * @author H-000-H
+ * @brief SystemCmd 实现
+ * @note  单份实现; 命令表访问统一走 mini_critical 临界区
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "system_cmd.hpp"
 

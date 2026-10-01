@@ -1,14 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file usb_bus.c
- *@brief usb bus 实现
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   USB BUS 实现 — host/client 池 + TinyUSB 粘合 (usb_tusb_port)
- *   静态池: s_usb_hosts[HOST_MAX] + s_usb_clients[DEV_ID_COUNT]
- *   数据流: VFS → usb_bus_* → hal_usb_* / usb_tusb_* / usb_net_frame_*
- *   --------------------------------------------------------------------------
+ * @file usb_bus.c
+ * @author H-000-H
+ * @brief usb bus 实现
+ * @note USB BUS 实现 — host/client 池 + TinyUSB 粘合 (usb_tusb_port)
+ * @note 静态池: s_usb_hosts[HOST_MAX] + s_usb_clients[DEV_ID_COUNT]
+ * @note 数据流: VFS → usb_bus_* → hal_usb_* / usb_tusb_* / usb_net_frame_*
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define USB_BUS_IMPL

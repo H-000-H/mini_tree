@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file a7670_drv.c
- *@brief A7670 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_a7670_pool[A7670_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 a7670_drv.h。
- *   数据流: VFS ioctl → a7670_cmd_send/recv → device_read/write(UART) → HAL
+ * @file a7670_drv.c
+ * @author H-000-H
+ * @brief A7670 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_a7670_pool[A7670_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 a7670_drv.h。
+ * @note 数据流: VFS ioctl → a7670_cmd_send/recv → device_read/write(UART) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "a7670_drv.h"

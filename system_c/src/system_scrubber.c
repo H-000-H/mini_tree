@@ -1,14 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file system_scrubber.c
- *@brief system scrubber 实现
- *@author H-000-H
- *@details
- *   system_scrubber (C 实现) — Flash bit-rot 巡检任务
- *   定期对"当前运行的镜像分区"做纯数据校验 (mini-ota 的 image_verify_area,
- *   不解析镜像头 / 尾部 meta), 与构建期基线比对; 失配即 enter_safe_state,
- *   防止固件位翻转静默运行。
- *   校验原语与 CRC 模型统一来自 mini-ota, 本模块不再自带 CRC 表。
+ * @file system_scrubber.c
+ * @author H-000-H
+ * @brief system scrubber 实现
+ * @note system_scrubber (C 实现) — Flash bit-rot 巡检任务
+ * @note 定期对"当前运行的镜像分区"做纯数据校验 (mini-ota 的 image_verify_area,
+ * @note 不解析镜像头 / 尾部 meta), 与构建期基线比对; 失配即 enter_safe_state,
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "system_scrubber.h"

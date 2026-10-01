@@ -1,13 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file device.h
- *@brief device 头文件
- *@author H-000-H
- *@details
- *   device.h — 板级设备模型核心头文件
- *   定义编译期 device_node (dtc-lite 生成的只读 DTS 节点) 与运行时 device 实例,
- *   含 file_operations VFS 操作表、device_status/criticality 状态机枚举.
- *   声明设备查找、属性读取 (reg/irq/prop)、VFS 便捷包装 (持锁 open/read/write 等).
+ * @file device.h
+ * @author H-000-H
+ * @brief 设备模型: device_node (编译期只读) + device (运行时) + VFS 便捷包装
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BOARD_DEVICE_H
@@ -26,37 +21,22 @@ extern "C"
 {
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* 对外 API 返回值检查开关 */
-/* device/VFS 层是暴露给应用层的入口。默认关闭返回值强制检查 */
-/* (应用层调用 device_open/read/write/ioctl 等可忽略返回值); */
-/* 需要严格检查时在 Kconfig 开启 DEVICE_WARN_UNUSED_RESULT。 */
-/* 底层 HAL/bus 的 MINI_WARN_UNUSED_RESULT 不受此影响, 始终由 */
-/* CONFIG_COMPILER_WARN_UNUSED_RESULT 控制 (默认开启)。 */
-/* -------------------------------------------------------------------------- */
+/* 应用层返回值检查开关 (底层 HAL/bus 不受此影响, 始终由 CONFIG_COMPILER_WARN_UNUSED_RESULT 控制) */
 #if defined(CONFIG_DEVICE_WARN_UNUSED_RESULT)
 #define DEVICE_WARN_UNUSED_RESULT MINI_WARN_UNUSED_RESULT
 #else
 #define DEVICE_WARN_UNUSED_RESULT
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* 设备树常量 */
-/* -------------------------------------------------------------------------- */
 #define MINI_MAX_DEVICES DEV_ID_COUNT
 
-/* -------------------------------------------------------------------------- */
-/* 编译期属性: dtc-lite 在构建期展开, runtime 只读静态表 */
-/* -------------------------------------------------------------------------- */
+/* 编译期属性 (dtc-lite 展开, runtime 只读) */
 struct device_property
 {
     const char* key;   /**< 属性键名 */
     const char* value; /**< 属性值字符串 */
 };
 
-/* -------------------------------------------------------------------------- */
-/* 设备关键性等级 */
-/* -------------------------------------------------------------------------- */
 enum device_criticality
 {
     DEVICE_CRIT_IGNORE = 0, /**< 可无声忽略 */
@@ -64,9 +44,6 @@ enum device_criticality
     DEVICE_CRIT_FATAL,      /**< 失败时触发 MINI_PANIC 安全停机 */
 };
 
-/* -------------------------------------------------------------------------- */
-/* 设备状态 */
-/* -------------------------------------------------------------------------- */
 enum device_status
 {
     DEVICE_STATUS_DISABLED = 0, /**< 已禁用 */
@@ -79,9 +56,7 @@ enum device_status
     DEVICE_STATUS_REMOVED,      /**< 已移除 */
 };
 
-/* -------------------------------------------------------------------------- */
-/* reg 条目（由 dtc-lite 按 #address-cells / #size-cells 分组） */
-/* -------------------------------------------------------------------------- */
+/* reg 条目 (dtc-lite 按 #address-cells / #size-cells 分组) */
 struct device_reg
 {
     const uint32_t* addr;       /**< 地址值数组 [#address-cells 个] */
@@ -90,9 +65,7 @@ struct device_reg
     uint8_t         size_cells; /**< 长度单元数 */
 };
 
-/* -------------------------------------------------------------------------- */
-/* interrupt 条目（由 dtc-lite 按 #interrupt-cells 分组） */
-/* -------------------------------------------------------------------------- */
+/* interrupt 条目 (dtc-lite 按 #interrupt-cells 分组) */
 struct device_irq
 {
     int irq;   /**< 中断号（供 hal_irq_enable 使用） */
@@ -100,15 +73,9 @@ struct device_irq
     int flags; /**< 中断标志（IRQ_TYPE_LEVEL_HIGH 等） */
 };
 
-/* -------------------------------------------------------------------------- */
-/* 前向声明 */
-/* -------------------------------------------------------------------------- */
 struct device;
-/* 子系统操作表由驱动通过 priv_data 魔术头注入, 不在 struct device 中硬编码 */
 
-/* -------------------------------------------------------------------------- */
-/* 编译期只读设备树节点 */
-/* -------------------------------------------------------------------------- */
+/* 编译期只读设备树节点 (dtc-lite 生成) */
 struct device_node
 {
     const char*                   name;        /**< 节点名称 */
@@ -133,15 +100,9 @@ struct device_node
 /* 编译期节点标志 */
 #define DEVICE_FLAG_DIRECT 0x01 /* 直接访问 (direct), 无需运行时 struct device 实例 */
 
-/* -------------------------------------------------------------------------- */
-/* VFS 操作表 */
-/* -------------------------------------------------------------------------- */
-/**
- * @brief 设备操作函数表
- * @note init/open/close/ioctl/suspend/resume 返回错误码, 类型为 mt_err_t (0 = MINI_OK);
- *       write/read 是"已传输字节数或负数错误码"的混合契约, 保持 int —— 实现方不得改成
- *       mt_err_t, 否则回调类型不兼容 (见 status.h 的类型约定)。
- */
+/* VFS 操作表
+ * init/open/close/ioctl/suspend/resume 返回 mt_err_t;
+ * write/read 返回 int (已传输字节数或负 MINI_ERR_*, 混合契约) */
 struct file_operations
 {
     mt_err_t (*init)(struct device* pdev);                                                           /**< 设备初始化 */
@@ -154,9 +115,7 @@ struct file_operations
     mt_err_t (*resume)(struct device* pdev);                                                         /**< 恢复设备 */
 };
 
-/* -------------------------------------------------------------------------- */
 /* 运行时设备实例 */
-/* -------------------------------------------------------------------------- */
 struct device
 {
     const struct device_node*     node;          /**< 指向编译期节点 */

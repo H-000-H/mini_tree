@@ -1,10 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file interrupt.c
- *@brief 中断上下部系统实现 — VIRQ 虚拟中断号 + 下半部工作队列一体化
- *@author H-000-H
- *@details
- *   @note  interrupt_hw_* 为 weak 空实现，板级覆盖；厂商 ISR 不进中间件
+ * @file interrupt.c
+ * @author H-000-H
+ * @brief 中断上下部系统实现 — VIRQ 虚拟中断号 + 下半部工作队列一体化
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "interrupt.h"

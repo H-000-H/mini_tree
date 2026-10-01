@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file drv8833_drv.c
- *@brief DRV8833 双路电机驱动实现 — 挂在 GPIO（AIN1/2、BIN1/2）下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 drv8833_drv.h。
+ * @file drv8833_drv.c
+ * @author H-000-H
+ * @brief DRV8833 双路电机驱动实现 — 挂在 GPIO（AIN1/2、BIN1/2）下的 VFS 设备驱动
+ * @note 静态池: s_drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 drv8833_drv.h。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "drv8833_drv.h"

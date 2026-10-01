@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file ads1115_drv.h
- *@brief ADS1115 16bit ADC 驱动 ioctl 命令与采样结构
- *@author H-000-H
- *@details
- *   挂在 I2C 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问，不直接操作 I2C 总线。
+ * @file ads1115_drv.h
+ * @author H-000-H
+ * @brief ADS1115 16bit ADC 驱动 ioctl 命令与采样结构
+ * @note 挂在 I2C 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问，不直接操作 I2C 总线。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef ADS1115_DRV_H

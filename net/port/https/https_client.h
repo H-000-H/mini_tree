@@ -1,15 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file https_client.h
- * @brief HTTPS Client Header File (coreHTTP + lwIP altcp_tls)
  * @author H-000-H
+ * @brief HTTPS Client Header File (coreHTTP + lwIP altcp_tls)
  * @note 本文件与 http_client 功能一致, 差别仅在传输通道: 加密通道按项目设计
  *       不走 transport_glue, 由本包装层直接基于 tls_client (lwIP altcp_tls
  *       直连封装) 提供 coreHTTP 需要的 send/recv 适配。
  *       连接采用 keep-alive: do_connect (TCP + TLS 握手) 完成后可连续多次
  *       request; 响应体指针指向上下文内部静态缓冲, 有效至下一次 request 或断连。
  *       驱动模型: 应用先调用 https_client_process() 等待握手完成, 再发起 request。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef HTTPS_CLIENT_H
 #define HTTPS_CLIENT_H

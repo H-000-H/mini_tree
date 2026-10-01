@@ -1,8 +1,8 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file tcp_server.h
+ * @author H-000-H
  * @brief TCP 服务器头文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef TCP_SERVER_H_
 #define TCP_SERVER_H_

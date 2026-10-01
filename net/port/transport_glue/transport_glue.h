@@ -1,16 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file transport_glue.h
- * @brief coreMQTT / coreHTTP 共享传输胶水层
  * @author H-000-H
- * @details FreeRTOS core 库 (coreMQTT / coreHTTP) 使用同一套传输抽象:
- *          TransportInterface_t = send/recv 函数指针 + NetworkContext_t。
- *          本模块把该接口实现在 tcp_client 的 FIFO 之上, MQTT 与 HTTP
- *          包装层共用; 加密通道 (mqtts/https) 不走本层, 由各自的包装层
- *          直接基于 lwIP altcp_tls 封装。
- *          主 API 走 NET_* 错误码 + 出参; send/recv 仅为满足 core 库
- *          函数指针签名的薄适配, 返回值语义由库契约规定。
+ * @brief coreMQTT / coreHTTP 共享传输胶水层
+ * @note  实现 core 库传输抽象 TransportInterface_t (send/recv 函数指针 + NetworkContext_t) 于 tcp_client FIFO 之上, MQTT/HTTP 明文包装层共用
+ * @note  加密通道 (mqtts/https) 不走本层, 由各自包装层直接基于 lwIP altcp_tls 封装
+ * @note  主 API 走 NET_* 错误码 + 出参; send/recv 仅为满足 core 库函数指针签名的薄适配, 返回值语义由库契约规定
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef NET_TRANSPORT_GLUE_H
 #define NET_TRANSPORT_GLUE_H

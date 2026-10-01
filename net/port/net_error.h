@@ -1,11 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file net_error.h
- * @brief 网络上层协议模块 (transport / mqtt / http) 统一错误码
  * @author H-000-H
- * @details 上层协议包装层对外一律返回 NET_OK / NET_ERR_* (负 errno 语义),
- *          与底层 lwip err_t 及内核错误码数值解耦; 底层错误在包装层边界翻译。
+ * @brief 网络上层协议模块 (transport / mqtt / http) 统一错误码
+ * @note  对外一律返回 NET_OK / NET_ERR_* (负 errno 语义), 与底层 lwip err_t 及内核错误码数值解耦; 底层错误在包装层边界翻译
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef NET_ERROR_H
 #define NET_ERROR_H

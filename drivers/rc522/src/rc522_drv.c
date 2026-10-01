@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file rc522_drv.c
- *@brief RC522 RFID 读卡驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_rc522_pool[RC522_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 rc522_drv.h，寄存器定义见 rc522_regs.h。
- *   数据流: VFS ioctl → rc522_cmd_* → rc522_to_card → SPI transfer（vfs-spi）→ HAL
+ * @file rc522_drv.c
+ * @author H-000-H
+ * @brief RC522 RFID 读卡驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_rc522_pool[RC522_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 rc522_drv.h，寄存器定义见 rc522_regs.h。
+ * @note 数据流: VFS ioctl → rc522_cmd_* → rc522_to_card → SPI transfer（vfs-spi）→ HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "rc522_drv.h"

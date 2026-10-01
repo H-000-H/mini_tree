@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file net/lwipopts.h
- *@brief lwIP 配置选项 (mini_tree 依赖, 由具体数值从 kconfig 导入)
- *@author H-000-H
-
+ * @file net/lwipopts.h
+ * @author H-000-H
+ * @brief lwIP 配置选项 (mini_tree 依赖, 由具体数值从 kconfig 导入)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef LWIPOPTS_H

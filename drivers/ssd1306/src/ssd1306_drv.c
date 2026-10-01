@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file ssd1306_drv.c
- *@brief SSD1306 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_ssd1306_pool[SSD1306_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 ssd1306_drv.h，寄存器定义见 ssd1306_regs.h。
- *   数据流: VFS ioctl → ssd1306_cmd_* → device_write(I2C) → HAL
+ * @file ssd1306_drv.c
+ * @author H-000-H
+ * @brief SSD1306 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_ssd1306_pool[SSD1306_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 ssd1306_drv.h，寄存器定义见 ssd1306_regs.h。
+ * @note 数据流: VFS ioctl → ssd1306_cmd_* → device_write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "compiler_compat.h"

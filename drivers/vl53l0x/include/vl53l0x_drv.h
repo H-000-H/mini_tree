@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vl53l0x_drv.h
- *@brief VL53L0X 激光测距传感器驱动 ioctl 命令与采样结构
- *@author H-000-H
- *@details
- *   挂在 I2C 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问，不直接操作 I2C 总线。
+ * @file vl53l0x_drv.h
+ * @author H-000-H
+ * @brief VL53L0X 激光测距传感器驱动 ioctl 命令与采样结构
+ * @note 挂在 I2C 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问，不直接操作 I2C 总线。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef VL53L0X_DRV_H

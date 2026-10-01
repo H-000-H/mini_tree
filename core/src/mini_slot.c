@@ -1,18 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_slot.c
- *@brief 槽位池实现 (线程/中断安全的定长索引分配器)
- *@author H-000-H
- *@details
- *   临界区策略按后端分发:
- *     - ESP_PLATFORM        : 池内嵌 portMUX_TYPE (mini_slot_t.mux_storage)
- *     - CONFIG_OS_FREERTOS: taskENTER_CRITICAL / taskEXIT_CRITICAL (非 ESP)
- *     - 其余 (裸机 / mini-os / RT-Thread): 可嵌套关中断 mini_critical_*
- *       三者语义一致: mini_critical、mini_os_irq_save/restore、
- *       rt_hw_interrupt_disable/enable 都是"保存现场 -> 关中断 -> 写回现场"。
- *
- *   LOCK_ORDER 说明: 本模块是叶子模块, 只做位图的读-改-写, 临界区内不调用
- *   任何可能阻塞的接口 (互斥锁/信号量/队列/延时), 也不调用任何 libc。
+ * @file mini_slot.c
+ * @author H-000-H
+ * @brief 槽位池实现 (线程/中断安全的定长索引分配器)
+ * @note 临界区策略按后端分发:
+ * @note - ESP_PLATFORM        : 池内嵌 portMUX_TYPE (mini_slot_t.mux_storage)
+ * @note - CONFIG_OS_FREERTOS: taskENTER_CRITICAL / taskEXIT_CRITICAL (非 ESP)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "mini_slot.h"

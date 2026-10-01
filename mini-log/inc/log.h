@@ -1,13 +1,9 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file log.h
+ * @author H-000-H
  * @brief Logging utilities for the project.
- * @details 两条互不干扰的链路:
- *  - 控制台: MINI_LOG_x       -> mini_log_default_output -> s_ring       -> mini_log_flush       (回调/stdout)
- *  - flash : MINI_LOG_FLASH_x -> mini_log_flash_output   -> s_flash_ring -> mini_log_flash_flush (落盘)
  * @note The flash memory must support sector-based erase operations.
- *  - some flash like stm32f407zgt6 sector not same if using this chip use same sector to make record
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef LOG_H
 #define LOG_H

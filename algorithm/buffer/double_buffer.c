@@ -1,14 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file double_buffer.c
- *@brief 双缓冲实现 — 读写分离, swap 切换
- *@author H-000-H
- *@details
- *   @note        适用于 DMA 采集 + CPU 处理并行场景; 见 buffer.h
- *   @note        acquire/release 内存序保证单生产者单消费者安全;
- *                buf1 为写侧、buf2 为读侧, 仅生产者在「写缓冲满 且 读缓冲读空」
- *                时驱动 swap (buf1/buf2 字段只有生产者写), 消费者每拍重新加载指针
- *   @note        全部接口返回 BUFF_* 错误码; 长度类结果经指针参数回传
+ * @file double_buffer.c
+ * @author H-000-H
+ * @brief 双缓冲实现 — 读写分离, swap 切换
+ * @note buf1 为写侧、buf2 为读侧, 仅生产者在「写缓冲满 且 读缓冲读空」
+ * @note 时驱动 swap (buf1/buf2 字段只有生产者写), 消费者每拍重新加载指针
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "buffer.h"

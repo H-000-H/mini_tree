@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file neo_m8n_drv.c
- *@brief NEO-M8N GPS 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_neo_m8n_pool[NEO_M8N_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 neo_m8n_drv.h。
- *   数据流: VFS ioctl → neo_m8n_cmd_nmea → device_read(UART) → HAL
+ * @file neo_m8n_drv.c
+ * @author H-000-H
+ * @brief NEO-M8N GPS 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_neo_m8n_pool[NEO_M8N_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 neo_m8n_drv.h。
+ * @note 数据流: VFS ioctl → neo_m8n_cmd_nmea → device_read(UART) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "neo_m8n_drv.h"

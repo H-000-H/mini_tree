@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file board_define_i2c.h
- *@brief board define i2c 头文件
- *@author H-000-H
- *@details
- *   I2C VFS 板级配置宏 (vfs/i2c) — 中间件默认值 + 板级覆盖入口
- *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+ * @file board_define_i2c.h
+ * @author H-000-H
+ * @brief board define i2c 头文件
+ * @note I2C VFS 板级配置宏 (vfs/i2c) — 中间件默认值 + 板级覆盖入口
+ * @note 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BOARD_DEFINE_I2C_H

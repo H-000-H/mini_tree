@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sg90_drv.c
- *@brief SG90 舵机驱动实现 — 挂在 TIM（PWM）下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_sg90_pool[SG90_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令见 sg90_drv.h。
+ * @file sg90_drv.c
+ * @author H-000-H
+ * @brief SG90 舵机驱动实现 — 挂在 TIM（PWM）下的 VFS 设备驱动
+ * @note 静态池: s_sg90_pool[SG90_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令见 sg90_drv.h。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "sg90_drv.h"

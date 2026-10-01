@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mpu6050_drv.c
- *@brief MPU6050 六轴 IMU 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 mpu6050_drv.h。
- *   数据流: VFS ioctl → mpu6050_cmd_read → device_read/write(I2C) → HAL
+ * @file mpu6050_drv.c
+ * @author H-000-H
+ * @brief MPU6050 六轴 IMU 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 mpu6050_drv.h。
+ * @note 数据流: VFS ioctl → mpu6050_cmd_read → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "mpu6050_drv.h"

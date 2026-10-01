@@ -1,19 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-usb.h
- *@brief vfs-usb 头文件
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   USB VFS — USB 子系统 VFS 层
- *   Driver:
- *   usb-otg-host                         — host (DTSI → hal / tusb_init)
- *   heterogeneous,usb-cdc-acm            — CDC ACM 虚拟串口
- *   heterogeneous,usb-cdc-ecm            — CDC-ECM 虚拟网卡
- *   heterogeneous,usb-hid                — HID
- *   write/read 默认 USB_XFER_AUTO; ioctl SET_XFER_MODE / GET_XFER_MODE 切换 POLL/DMA。
- *   生命周期: open/close 引用与 remove drain 走 dev_lifecycle。
- *   --------------------------------------------------------------------------
+ * @file vfs-usb.h
+ * @author H-000-H
+ * @brief vfs-usb 头文件
+ * @note USB VFS — USB 子系统 VFS 层
+ * @note Driver:
+ * @note usb-otg-host                         — host (DTSI → hal / tusb_init)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef USB_VFS_H

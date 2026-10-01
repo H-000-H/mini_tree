@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file air780e_drv.c
- *@brief Air780E 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 air780e_drv.h。
- *   数据流: VFS ioctl → air780e_cmd_send/recv → device_read/write(UART) → HAL
+ * @file air780e_drv.c
+ * @author H-000-H
+ * @brief Air780E 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 air780e_drv.h。
+ * @note 数据流: VFS ioctl → air780e_cmd_send/recv → device_read/write(UART) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "air780e_drv.h"

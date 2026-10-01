@@ -1,13 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file rs485_modbus_drv.c
- *@brief RS485 Modbus RTU 驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_rs485_modbus_pool[RS485_MODBUS_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 rs485_modbus_drv.h。
- *   数据流: VFS ioctl → rs485_modbus_cmd_* → rs485_modbus_uart_xchg（DE 切换 + device_write/read）→
- *   HAL
+ * @file rs485_modbus_drv.c
+ * @author H-000-H
+ * @brief RS485 Modbus RTU 驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_rs485_modbus_pool[RS485_MODBUS_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 rs485_modbus_drv.h。
+ * @note 数据流: VFS ioctl → rs485_modbus_cmd_* → rs485_modbus_uart_xchg（DE 切换 + device_write/read）→
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "rs485_modbus_drv.h"

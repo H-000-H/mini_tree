@@ -1,22 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_systick.c
- *@brief hal systick 实现
- *@author H-000-H
- *@details
- *   hal_systick — SysTick 系统滴答默认实现
- *   与 hal_tim 的 "weak stub + 板级强实现" 不同: SysTick 是 ARM Cortex-M 内核
- *   私有标准件, 寄存器布局 (CTRL/LOAD/VAL) 与基址 (0xE000E010) 由架构固定,
- *   故本文件提供默认真实现, 开箱即用; 仅当某芯片 SysTick 行为异常时,
- *   板级才以强符号覆盖 init/deinit。
- *   频率全部来自 DTS 生成的宏 (dt_config_gen.h):
- *   - tick 频率:   DTC_GEN_TICK_RATE_HZ (chosen tick-rate)
- *   - CPU 主频:    DTC_GEN_CPU_CLOCK_HZ (/cpus/cpu@0 clock-frequency)
- *   本层不写死频率; 仅写死基址 HAL_SYSTICK_BASE (默认 0xE000E010, 可覆盖)。
- *   中断向量 SysTick_Handler 在本文件 weak 定义, 内部调用 hal_systick_irq_handler;
- *   hal_systick_irq_handler 亦为 weak 空钩子, 由使用方 (如调度器) 强符号覆盖以累加滴答。
- *   非 Cortex-M 平台 (RISC-V 等) 无 SysTick, hal_systick_init 返回 MINI_ERR_NOTSUPP,
- *   调度器据此回退 DTS chosen TIM。
+ * @file hal_systick.c
+ * @author H-000-H
+ * @brief hal systick 实现
+ * @note hal_systick — SysTick 系统滴答默认实现
+ * @note 与 hal_tim 的 "weak stub + 板级强实现" 不同: SysTick 是 ARM Cortex-M 内核
+ * @note 私有标准件, 寄存器布局 (CTRL/LOAD/VAL) 与基址 (0xE000E010) 由架构固定,
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "hal_systick.h"

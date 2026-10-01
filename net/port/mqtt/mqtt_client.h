@@ -1,14 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mqtt_client.h
- * @brief MQTT Client Header File
  * @author H-000-H
+ * @brief MQTT Client Header File
  * @note 本文件为 coreMQTT 的薄包装层: 报文编解码/状态机/心跳/重发/订阅确认
  *       全部由 coreMQTT 负责, 传输走 transport_glue (tcp_client FIFO 通道)。
  *       本层不维护订阅表: 下行 PUBLISH 原样 (主题指针 + 长度) 交给唯一消息回调,
  *       业务侧自行按主题分流。
  *       驱动模型: 应用周期调用 mqtt_client_process() (内部即 MQTT_ProcessLoop)。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MQTT_CLIENT_H
 #define MQTT_CLIENT_H

@@ -1,11 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_i2c.h
- *@brief hal i2c 头文件
- *@author H-000-H
- *@details
- *   用法与实现: I2C 接口平台无关, 由具体芯片 hal.c 硬实现; 约定: 返回值用 int + VFS 错误码,
- *   接收参数须为合法非空指针, 禁止 enum (dts 已解决映射)。
+ * @file hal_i2c.h
+ * @author H-000-H
+ * @brief I2C HAL 硬件直投层 (平台无关接口)
+ * @note  约定: 返回 mt_err_t; 参数必须非空指针; 禁止 enum
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_I2C_H

@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-wwdg.c
- *@brief WWDG VFS 实现 — open 启动窗口看门狗, ioctl 窗口内喂狗
- *@author H-000-H
-
+ * @file vfs-wwdg.c
+ * @author H-000-H
+ * @brief WWDG VFS 实现 — open 启动窗口看门狗, ioctl 窗口内喂狗
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define WWDG_VFS_IMPL

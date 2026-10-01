@@ -1,10 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file epaper_regs.h
- *@brief 电子纸驱动内部常量（时序/缓冲，避免 .c 内散落魔术字）
- *@author H-000-H
- *@details
- *   注意：面板几何（width/height）由 DTS 提供，不再在此定义默认值。
+ * @file epaper_regs.h
+ * @author H-000-H
+ * @brief 电子纸驱动内部常量（时序/缓冲，避免 .c 内散落魔术字）
+ * @note 注意：面板几何（width/height）由 DTS 提供，不再在此定义默认值。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef EPAPER_REGS_H

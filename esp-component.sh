@@ -2,8 +2,8 @@
 set -e
 
 NAMESPACE="h-000-h"
-NAME="mini_tree"
-VERSION="1.2.0"
+NAME="mini-tree"
+VERSION="1.4.7"
 
 if [ -z "${IDF_COMPONENT_API_TOKEN}" ]; then
     echo "ERROR: IDF_COMPONENT_API_TOKEN environment variable is not set. Please set it to your API token."

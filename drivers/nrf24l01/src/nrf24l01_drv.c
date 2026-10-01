@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file nrf24l01_drv.c
- *@brief NRF24L01 2.4G 无线驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_nrf24l01_pool[NRF24L01_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 nrf24l01_drv.h，操作码定义见 nrf24l01_regs.h。
- *   数据流: VFS ioctl → nrf24l01_cmd_* → SPI transfer（vfs-spi）→ HAL
+ * @file nrf24l01_drv.c
+ * @author H-000-H
+ * @brief NRF24L01 2.4G 无线驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_nrf24l01_pool[NRF24L01_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 nrf24l01_drv.h，操作码定义见 nrf24l01_regs.h。
+ * @note 数据流: VFS ioctl → nrf24l01_cmd_* → SPI transfer（vfs-spi）→ HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "nrf24l01_drv.h"

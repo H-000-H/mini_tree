@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file sh1106_regs.h
- *@brief SH1106 面板寄存器 / 几何 / I2C 控制字节
- *@author H-000-H
-
+ * @file sh1106_regs.h
+ * @author H-000-H
+ * @brief SH1106 面板寄存器 / 几何 / I2C 控制字节
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SH1106_REGS_H

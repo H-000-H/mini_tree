@@ -1,10 +1,8 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file core_http_config.h
- * @brief coreHTTP 库配置头 (mini_tree_link_corehttp 强制要求)
  * @author H-000-H
- * @details 把库内部的日志宏接到系统日志 (SYS_LOG*) 上。
- *          调试级日志默认不输出, 需要时改 LogDebug 这一行。
+ * @brief coreHTTP 库配置头 (mini_tree_link_corehttp 强制要求)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef CORE_HTTP_CONFIG_H
 #define CORE_HTTP_CONFIG_H

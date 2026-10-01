@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file rc522_drv.h
- *@brief RC522 RFID 读卡驱动 ioctl 命令与 UID 结构
- *@author H-000-H
- *@details
- *   挂在 SPI 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file rc522_drv.h
+ * @author H-000-H
+ * @brief RC522 RFID 读卡驱动 ioctl 命令与 UID 结构
+ * @note 挂在 SPI 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef RC522_DRV_H

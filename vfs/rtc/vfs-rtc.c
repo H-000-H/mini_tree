@@ -1,10 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-rtc.c
- *@brief RTC VFS 实现 — open/close 引用计数 + ioctl 时间/闹钟/唤醒派发
- *@author H-000-H
- *@details
- *   @note        DTS 解析 hw-instance/async-prediv/sync-prediv/format-24h; 两层模型无 bus
+ * @file vfs-rtc.c
+ * @author H-000-H
+ * @brief RTC VFS 实现 — open/close 引用计数 + ioctl 时间/闹钟/唤醒派发
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define RTC_VFS_IMPL

@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file board_nodes.h
- *@brief board nodes 头文件
- *@author H-000-H
- *@details
- *   IDE-only stub — real header from dtc-lite at build time.
- *   Minimal device_id_t / DEV_ID_COUNT so board/device/bus/vfs headers parse.
+ * @file board_nodes.h
+ * @author H-000-H
+ * @brief board nodes 头文件
+ * @note IDE-only stub — real header from dtc-lite at build time.
+ * @note Minimal device_id_t / DEV_ID_COUNT so board/device/bus/vfs headers parse.
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BOARD_NODES_H

@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_sdio.h
- *@brief hal sdio 头文件
- *@author H-000-H
- *@details
- *   SDIO HAL — SD/MMC/SDIO 总线抽象
- *   支持 1/4/8 位总线宽度与默认/高速模式, CLK/CMD/D0-D3 引脚可配置
- *   按扇区读写并查询扇区大小、总扇区数与卡类型 (SD/MMC/SDIO)
+ * @file hal_sdio.h
+ * @author H-000-H
+ * @brief hal sdio 头文件
+ * @note SDIO HAL — SD/MMC/SDIO 总线抽象
+ * @note 支持 1/4/8 位总线宽度与默认/高速模式, CLK/CMD/D0-D3 引脚可配置
+ * @note 按扇区读写并查询扇区大小、总扇区数与卡类型 (SD/MMC/SDIO)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_SDIO_H

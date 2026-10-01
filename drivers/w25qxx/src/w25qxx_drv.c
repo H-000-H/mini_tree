@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file w25qxx_drv.c
- *@brief W25Qxx SPI NOR Flash 驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_w25qxx_pool[W25QXX_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与参数结构见 w25qxx_drv.h。
- *   数据流: VFS ioctl → w25qxx_cmd_jedec → SPI transfer（vfs-spi）→ HAL
+ * @file w25qxx_drv.c
+ * @author H-000-H
+ * @brief W25Qxx SPI NOR Flash 驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_w25qxx_pool[W25QXX_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与参数结构见 w25qxx_drv.h。
+ * @note 数据流: VFS ioctl → w25qxx_cmd_jedec → SPI transfer（vfs-spi）→ HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "w25qxx_drv.h"

@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file board_define_spi.h
- *@brief board define spi 头文件
- *@author H-000-H
- *@details
- *   SPI VFS 板级配置宏 (vfs/spi) — 中间件默认值 + 板级覆盖入口
- *   覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+ * @file board_define_spi.h
+ * @author H-000-H
+ * @brief board define spi 头文件
+ * @note SPI VFS 板级配置宏 (vfs/spi) — 中间件默认值 + 板级覆盖入口
+ * @note 覆盖方式: 改本文件 或 编译 -D<NAME>=<N>; 未覆盖走默认。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BOARD_DEFINE_SPI_H

@@ -1,8 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file pppif.h
- *@brief pppif 头文件
- *@author H-000-H
+ * @file pppif.h
+ * @author H-000-H
+ * @brief pppif 头文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef PPPIF_H

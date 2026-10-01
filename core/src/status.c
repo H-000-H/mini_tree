@@ -1,12 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file status.c
- * @brief MINI_ERR_TO_STR 错误码字符串表
  * @author H-000-H
- * @details
- *   独立编译单元: 只提供诊断用字符串表, 无任何副作用与动态分配。
- *   位于 core 静态库中, 未被引用时由链接器整体丢弃 —— 不用字符串表的构建零开销。
+ * @brief MINI_ERR_TO_STR 错误码字符串表
+ * @note  纯诊断字符串表, 无副作用/无动态分配; 未被引用时由链接器整体丢弃
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "status.h"
 #include "log_err.h" /* 仅用于片对齐自检 */

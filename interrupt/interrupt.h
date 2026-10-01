@@ -1,14 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file interrupt.h
- *@brief 中断上下部系统 — VIRQ 虚拟中断号 + 下半部工作队列一体化
- *@author H-000-H
- *@details
- *   @note 上半部 (ISR): top_half 回调 + interrupt_virtual_dispatch 内自动 submit
- *   @note 下半部 (主循环): interrupt_bottom_half_poll() → bottom_half_run_pending() 执行回调
- *   @note 裸机路径 (CONFIG_OS_BARE): 主循环主动 poll
- *   @note RTOS 路径: bottom_half_task 任务 sem 唤醒 (条件编译保留)
- *   @warning ISR 内禁止: printf / 上锁 / 长时间阻塞; 重活必须放下半部
+ * @file interrupt.h
+ * @author H-000-H
+ * @brief 中断上下部系统 — VIRQ 虚拟中断号 + 下半部工作队列一体化
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef __INTERRUPT_H__

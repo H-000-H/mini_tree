@@ -1,13 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vl53l0x_drv.c
- *@brief VL53L0X 激光测距传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_vl53l0x_pool[VL53L0X_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 vl53l0x_drv.h。
- *   数据流: VFS ioctl → vl53l0x_cmd_read → device_read/write(I2C) → HAL
- *   注: 采用 Pololu/ST 精简 dataInit 片段（非完整 ST API 校准）
+ * @file vl53l0x_drv.c
+ * @author H-000-H
+ * @brief VL53L0X 激光测距传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_vl53l0x_pool[VL53L0X_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 vl53l0x_drv.h。
+ * @note 数据流: VFS ioctl → vl53l0x_cmd_read → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "vl53l0x_drv.h"

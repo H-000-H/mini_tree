@@ -1,13 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file task_utils.h
- *@brief task utils 头文件
- *@author H-000-H
- *@details
- *   task_utils.h — 板级任务创建工具头文件
- *   声明 board_task_entry_t 任务入口函数指针类型.
- *   声明 board_task_create: 封装统一接口任务创建的薄包装,
- *   透传名称/栈/优先级/入口/参数/核心, 失败返回 NULL.
+ * @file task_utils.h
+ * @author H-000-H
+ * @brief 板级任务创建工具 (封装 OSAL 的薄包装)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once

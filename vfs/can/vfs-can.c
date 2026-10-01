@@ -1,17 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-can.c
- *@brief vfs-can 实现
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   CAN VFS 实现 : Host + Client
- *   DTS:
- *   can@n (can-host)                    ← host
- *   └── can-client (heterogeneous,can-client) ← client (fops)
- *   write/read: struct can_frame; 一律经 can_hook 弱钩子 (无强符号=普通 Classic CAN)
- *   ioctl: TRANSFER / SET_FILTER / GET_STATE
- *   --------------------------------------------------------------------------
+ * @file vfs-can.c
+ * @author H-000-H
+ * @brief vfs-can 实现
+ * @note CAN VFS 实现 : Host + Client
+ * @note DTS:
+ * @note can@n (can-host)                    ← host
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define CAN_VFS_IMPL

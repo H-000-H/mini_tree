@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file dfplayer_drv.h
- *@brief DFPlayer MP3 模块驱动 ioctl 命令与曲目参数
- *@author H-000-H
- *@details
- *   挂在 UART 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file dfplayer_drv.h
+ * @author H-000-H
+ * @brief DFPlayer MP3 模块驱动 ioctl 命令与曲目参数
+ * @note 挂在 UART 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef DFPLAYER_DRV_H

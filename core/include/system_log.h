@@ -1,17 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file system_log.h
- *@brief system log 头文件
- *@author H-000-H
- *@details
- *   system_log — 系统日志宏统一入口 (mini-log / ESP-IDF 两后端)
- *   根据 Kconfig CONFIG_SYS_LOG_USE_* 选择后端, 提供 MT_LOG_ERROR/WARN/INFO 三级宏
- *   与 MT_DRV_LOG_* 驱动日志宏。
- *
- *   非 ESP 后端走随仓库 mini-log (mini-log/inc/log.h): SPSC 环形缓冲 + 可选
- *   flash 落盘, 由 MINI_LOG_* 宏输出; ESP 后端走 esp_log.h。
- *   本文件是全仓日志宏的唯一汇聚点, 各模块请用 MT_LOG_* / MT_DRV_LOG_*,
- *   不要直接调用 mini_log_default_output()。
+ * @file system_log.h
+ * @author H-000-H
+ * @brief 系统日志宏统一入口 (MT_LOG_* / MT_DRV_LOG_*)
+ * @note  后端由 Kconfig CONFIG_SYS_LOG_USE_* 选择; 各模块不要直接调用底层后端
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef SYSTEM_LOG_H

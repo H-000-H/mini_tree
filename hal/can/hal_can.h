@@ -1,16 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_can.h
- *@brief hal can 头文件
- *@author H-000-H
- *@details
- *   @note 所有接口设计为平台无关，由具体芯片平台(如 STM32, ESP32, CH307)进行底层硬实现。
- *   @note SocketCAN 风格 can_frame；DTSI 提供厂商宏值, HAL 零翻译透传给底层驱动
- *   @note F4 bxCAN 无 DMA；厂商句柄不透明嵌入 hcan_storage, 仅在平台 .c 内解释
- *   @note 文件约定：返回值不允许void；错误码返回类型统一用 mt_err_t (定义见 status.h)，
- *         仅"字节数/计数"这类非错误码返回值才用 int
- *   @note 接收的参数必须为指针，并且必须为合法的指针，不能为空指针
- *   @note 禁止使用enum,enum的问题dts已经解决没必要在hal层重复定义去映射enum不直观而且麻烦还容易出错
+ * @file hal_can.h
+ * @author H-000-H
+ * @brief CAN HAL 硬件直投层 (SocketCAN 风格 can_frame, DTSI 提供厂商宏值)
+ * @note  约定: 返回 mt_err_t; 参数必须非空指针; 禁止 enum
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HAL_CAN_H

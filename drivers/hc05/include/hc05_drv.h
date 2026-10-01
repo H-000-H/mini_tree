@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hc05_drv.h
- *@brief HC-05 蓝牙串口模块驱动 ioctl 命令与 AT 发送结构
- *@author H-000-H
- *@details
- *   挂在 UART 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file hc05_drv.h
+ * @author H-000-H
+ * @brief HC-05 蓝牙串口模块驱动 ioctl 命令与 AT 发送结构
+ * @note 挂在 UART 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef HC05_DRV_H

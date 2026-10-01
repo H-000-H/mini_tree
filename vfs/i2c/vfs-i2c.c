@@ -1,16 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-i2c.c
- *@brief vfs-i2c 实现
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   I2C VFS 实现 : Host + Client, master/slave 分 compatible
- *   DTS:
- *   i2c@n (i2c-master / i2c-slave)              ← host
- *   └── i2c-*-client (heterogeneous,i2c-*-client) ← client (fops)
- *   └── sensor@addr                           ← leaf driver
- *   --------------------------------------------------------------------------
+ * @file vfs-i2c.c
+ * @author H-000-H
+ * @brief vfs-i2c 实现
+ * @note I2C VFS 实现 : Host + Client, master/slave 分 compatible
+ * @note DTS:
+ * @note i2c@n (i2c-master / i2c-slave)              ← host
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define I2C_VFS_IMPL

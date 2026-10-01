@@ -1,10 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file board_handles.h
- *@brief board handles 头文件
- *@author H-000-H
- *@details
- *   IDE-only stub — real header from dtc-lite at build time
+ * @file board_handles.h
+ * @author H-000-H
+ * @brief board handles 头文件
+ * @note IDE-only stub — real header from dtc-lite at build time
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef BOARD_HANDLES_H

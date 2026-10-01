@@ -1,28 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_critical.h
- *@brief 可嵌套临界区 (保存/恢复中断现场)
- *@author H-000-H
- *@details
- *   mini_critical — 全仓唯一的"可嵌套关中断"原语。
- *
- *   语义: 进入时保存当前中断使能现场并关中断, 退出时写回现场。
- *   "保存现场"意味着嵌套安全: 内层 exit 只会恢复到内层 enter 前的状态,
- *   不会提前打开外层仍在保护中的临界区。
- *
- *   语义对齐:
- *     - lib/mini-os 的 MINI_OS_ENTER_CRITICAL_STRICT() / EXIT_CRITICAL_STRICT()
- *       (见 lib/mini-os/inc/critical.h, mini_os_irq_save / mini_os_irq_restore)
- *
- *   使用方: mini_slot 槽位池、裸机互斥锁的自旋临界区、设备锁的裸机路径。
- *
- *   不要与 hal/amp/hal_amp.h 的 hal_irq_disable_all / hal_irq_restore 混用:
- *   那一对是"直接写 PRIMASK"的**非嵌套**版本, 只服务 fail-fast / 安全停机
- *   这类"进入后不再返回"的路径; 多层嵌套临界区用它会在内层退出时提前开中断。
- *
- *   不要使用 compiler_compat.h 的 MINI_ATOMIC_IRQ_SAVE / RESTORE:
- *   那一对只在 MINI_ATOMIC_IRQ_SOFT_ATOMIC (ARMv<7 或 RISC-V 无 A 扩展)
- *   成立时才定义, Cortex-M3/M4/M7 等目标上并不存在。
+ * @file mini_critical.h
+ * @author H-000-H
+ * @brief 可嵌套临界区 (保存/恢复中断现场)
+ * @note  嵌套安全: 内层 exit 只恢复到内层 enter 前状态
+ * @note  不要与 hal_irq_disable_all (非嵌套版) 混用; 不要用 MINI_ATOMIC_IRQ_SAVE (平台不一定存在)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef MINI_CRITICAL_H

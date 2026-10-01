@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file vfs-dac.c
- *@brief DAC VFS 实现 — DAC 子系统 VFS 层实现文件
- *@author H-000-H
-
+ * @file vfs-dac.c
+ * @author H-000-H
+ * @brief DAC VFS 实现 — DAC 子系统 VFS 层实现文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define DAC_VFS_IMPL /* 激活豁免权限，允许本文件调用被毒死的 HAL 慢路径 API */

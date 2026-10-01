@@ -1,14 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_backend_mini_os.c
- *@brief mini-os 后端实现 (互斥锁 / 信号量 / 队列 / 任务 / 内存 / 调度器启动)
- *@author H-000-H
- *@details 三条后端差异约定:
- *           - 优先级数字越小越优先 (同 RT-Thread, 与 FreeRTOS 相反), 故只钳位不翻转;
- *           - *_isr 系列只置 *px_yield_required, 绝不内部 yield;
- *           - 信号量原生二值, 多次 post 合并为 1。
- *         内核数据结构由启动钩子建立, tick 只在 mini_scheduler_start() 打开。
- *         TODO(backend-rename): 条件编译符号随后端符号统一改名阶段收口。
+ * @file mini_backend_mini_os.c
+ * @author H-000-H
+ * @brief mini-os 后端实现 (互斥锁 / 信号量 / 队列 / 任务 / 内存 / 调度器启动)
+ * @note  优先级数字越小越优先 (同 RT-Thread, 与 FreeRTOS 相反), 故只钳位不翻转
+ * @note  *_isr 系列只置 *px_yield_required, 绝不内部 yield; 信号量原生二值, 多次 post 合并为 1
+ * @note  内核数据结构由启动钩子建立, tick 只在 mini_scheduler_start() 打开
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #if defined(CONFIG_OS_MINI_OS)

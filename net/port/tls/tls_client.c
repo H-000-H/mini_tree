@@ -1,16 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file tls_client.c
- * @brief TLS 客户端通道实现 (lwIP altcp_tls 直连封装)
  * @author H-000-H
- * @details 加密、握手、数据包拆分全部由 lwIP 自带的 altcp_tls 完成,
- *          本文件只做三件事:
- *          1. 创建 TLS 配置 (可选带 CA 证书) 并发起连接;
- *          2. 收到数据时把解密后的内容搬进 RX 缓冲;
- *          3. 把 TX 缓冲里待发的数据分块交给 altcp 加密发出。
- *          与明文 TCP 的区别: connected 回调会在 TLS 握手完成后才触发;
- *          断连时还要释放 TLS 配置和随机数相关的共享资源。
+ * @brief TLS 客户端通道实现 (lwIP altcp_tls 直连封装)
+ * @note  加密/握手/记录分帧全部由 lwIP altcp_tls 完成; 本文件只做: 创建 TLS 配置(可选 CA)并发起连接 / RX 搬进缓冲 / TX 分块加密发出
+ * @note  与明文 TCP 区别: connected 回调在 TLS 握手完成后才触发; 断连时需释放 TLS 配置与随机数共享资源
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "tls_client.h"
 

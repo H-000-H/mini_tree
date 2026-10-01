@@ -1,14 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file transport_glue.c
- * @brief coreMQTT / coreHTTP 共享传输胶水层实现
  * @author H-000-H
- * @details write 把数据写入底层通道的 TX FIFO (写满则让出调度等待);
- *          read 从 RX FIFO 取数据, 无数据时按 recv_timeout_ms 轮询等待。
- *          裸机协作式调度下, 等待均通过 mini_delay_ms(1) 让出,
- *          让网卡收包泵任务有机会把数据推进协议栈。
- *          末尾 send/recv 是把 NET_* 错误码翻译为 core 库字节数契约的薄适配。
+ * @brief coreMQTT / coreHTTP 共享传输胶水层实现
+ * @note  write 写入底层通道 TX FIFO (满则让出调度等待), read 从 RX FIFO 取 (无数据按 recv_timeout_ms 轮询)
+ * @note  裸机协作式调度: 等待均用 mini_delay_ms(1) 让出, 给网卡收包泵任务推进协议栈的机会
+ * @note  末尾 send/recv 是把 NET_* 错误码翻译为 core 库字节数契约的薄适配
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "transport_glue.h"
 

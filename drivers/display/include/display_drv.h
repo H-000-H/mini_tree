@@ -1,18 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file display_drv.h
- *@brief 屏幕统一抽象层 — ioctl 命令与参数结构（跨彩色/单色屏）
- *@author H-000-H
- *@details
- *   本头定义**唯一一套**屏幕命令，供 ST7789 / SSD1306 / SH1106 / EPAPER 等驱动
- *   统一实现。上层（LVGL / u8g2 / 应用）只调用这套命令，换屏仅需更换 device 节点。
- *   像素格式用 color_format 表达（见 enum display_color_format），驱动按格式
- *   各自解析像素，上层无需关心屏是 RGB 还是单色。
- *   第三方库接入：
- *   - LVGL flush_cb → DISPLAY_CMD_FLUSH / DISPLAY_CMD_DRAW_AREA
- *   - 全屏/局部位图 → DISPLAY_CMD_DRAW_AREA
- *   - 分辨率/格式 → DISPLAY_CMD_GET_INFO
- *   - 背光/对比度 → DISPLAY_CMD_SET_BRIGHTNESS
+ * @file display_drv.h
+ * @author H-000-H
+ * @brief 屏幕统一抽象层 — ioctl 命令与参数结构（跨彩色/单色屏）
+ * @note 本头定义**唯一一套**屏幕命令，供 ST7789 / SSD1306 / SH1106 / EPAPER 等驱动
+ * @note 统一实现。上层（LVGL / u8g2 / 应用）只调用这套命令，换屏仅需更换 device 节点。
+ * @note 像素格式用 color_format 表达（见 enum display_color_format），驱动按格式
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef DISPLAY_DRV_H

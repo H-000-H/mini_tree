@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file ds18b20_drv.c
- *@brief DS18B20 单总线温度传感器驱动实现 — 挂在 GPIO 单总线（OW）下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_ds18b20_pool[DS18B20_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令见 ds18b20_drv.h，单总线命令定义见 ds18b20_regs.h。
- *   数据流: VFS ioctl → ds18b20_cmd_temp → GPIO 位时序（vfs_gpio_*）→ HAL
+ * @file ds18b20_drv.c
+ * @author H-000-H
+ * @brief DS18B20 单总线温度传感器驱动实现 — 挂在 GPIO 单总线（OW）下的 VFS 设备驱动
+ * @note 静态池: s_ds18b20_pool[DS18B20_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令见 ds18b20_drv.h，单总线命令定义见 ds18b20_regs.h。
+ * @note 数据流: VFS ioctl → ds18b20_cmd_temp → GPIO 位时序（vfs_gpio_*）→ HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "ds18b20_drv.h"

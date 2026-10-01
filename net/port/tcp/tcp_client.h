@@ -1,7 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file tcp_client.h
- *@brief tcp Client (lwIP netconn 驱动)
+ * @file tcp_client.h
+ * @author H-000-H
+ * @brief tcp Client (lwIP netconn 驱动)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef TCP_CLIENT_H
 #define TCP_CLIENT_H

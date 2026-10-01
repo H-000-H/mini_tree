@@ -1,17 +1,12 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file mini_backend_rtthread.c
- *@brief RT-Thread 后端实现 (互斥锁 / 信号量 / 队列 / 任务 / 内存 / 调度器启动)
- *@author H-000-H
- *@details 后端差异约定:
- *           - 优先级数字越小越优先 (同 mini-os, 与 FreeRTOS 相反), 故只钳位不翻转;
- *           - *_from_isr 系列无需上报 yield: RT-Thread 在异常返回时自行调度,
- *             故 px_yield_required 一律忽略;
- *           - 递归锁用 rt_mutex (带优先级继承), 普通锁用 count=1 的 rt_sem
- *             (无优先级继承) —— 这是原实现的既有语义, 不要"顺手统一";
- *           - 互斥锁/信号量只有静态存储一种形态 (原池化版本随抽象层删除)。
- *         内存走独立系统堆 s_rtt_heap (RTT_HEAP_SIZE, 板级可覆盖), 首次分配时惰性初始化。
- *         TODO(backend-rename): 条件编译符号随后端符号统一改名阶段收口。
+ * @file mini_backend_rtthread.c
+ * @author H-000-H
+ * @brief RT-Thread 后端实现 (互斥锁 / 信号量 / 队列 / 任务 / 内存 / 调度器启动)
+ * @note  优先级数字越小越优先 (同 mini-os, 与 FreeRTOS 相反), 故只钳位不翻转
+ * @note  *_from_isr 无需上报 yield (RT-Thread 异常返回时自行调度), px_yield_required 一律忽略
+ * @note  递归锁用 rt_mutex (带优先级继承), 普通锁用 count=1 的 rt_sem (无继承)——既有语义勿“顺手统一”
+ * @note  内存走独立系统堆 s_rtt_heap (RTT_HEAP_SIZE, 板级可覆盖), 首次分配时惰性初始化
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #if defined(CONFIG_OS_RTTHREAD)

@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file at24c02_drv.h
- *@brief AT24C02 EEPROM 驱动 ioctl 命令与读写参数结构
- *@author H-000-H
- *@details
- *   挂在 I2C 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file at24c02_drv.h
+ * @author H-000-H
+ * @brief AT24C02 EEPROM 驱动 ioctl 命令与读写参数结构
+ * @note 挂在 I2C 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef AT24C02_DRV_H

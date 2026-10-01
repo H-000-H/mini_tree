@@ -1,12 +1,9 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file event_bus.h
- *@brief event bus 头文件
- *@author H-000-H
- *@details
- *   EventBus C 接口 — 轻量发布/订阅事件总线
- *   框架只搬运事件 ID, 不解释业务语义; 用户事件基于 EVENT_USER_BASE 自定义
- *   支持 ID 区间订阅, task 与 ISR 上下文均可 post
+ * @file event_bus.h
+ * @author H-000-H
+ * @brief 轻量发布/订阅事件总线: ID 区间订阅, task + ISR 均可 post
+ * @note  用户事件基于 EVENT_USER_BASE 自定义; 框架只搬运 ID, 不解释业务语义
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef EVENT_BUS_H
@@ -23,21 +20,13 @@ extern "C"
 {
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* 框架级事件 ID (框架内部使用, 不涉及任何业务语义) */
-/* -------------------------------------------------------------------------- */
+/* 框架级事件 ID */
 #define EVENT_SYS_BOOT 0x0000           /* 系统冷启动完成 */
 #define EVENT_SYS_READY 0x0001          /* 所有框架任务已就绪 */
 #define EVENT_SYS_FAULT 0x0002          /* 系统级故障, 进入安全状态 */
 #define EVENT_SYS_DEVICE_REMOVED 0x0003 /* 设备从设备树中移除 */
 
-/* -------------------------------------------------------------------------- */
-/* 用户事件基线 */
-/* 用户工程在业务代码中基于此值定义自有事件: */
-/* #define EVENT_MY_FEATURE  (EVENT_USER_BASE + 0) */
-/* #define EVENT_MY_TIMER    (EVENT_USER_BASE + 1) */
-/* 框架只搬运事件 ID, 不解释其含义. */
-/* -------------------------------------------------------------------------- */
+/* 用户事件基线: #define EVENT_MY_FEATURE (EVENT_USER_BASE + 0) */
 #define EVENT_USER_BASE 0x1000u
 
 struct event

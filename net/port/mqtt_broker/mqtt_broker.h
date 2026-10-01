@@ -1,13 +1,9 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mqtt_broker.h
- * @brief MQTT Broker Header File (明文, 无 TLS)
  * @author H-000-H
+ * @brief MQTT Broker Header File (明文, 无 TLS)
  * @note 本文件为基于 tcp_server 会话表的轻量 MQTT Broker (服务端):
- *       支持 MQTT 3.1.1 与 5.0 客户端接入, QoS 0/1 (下行转发统一降为 QoS0),
- *       全局订阅表按 MQTT_MatchTopic 匹配转发; 固定头解析复用 coreMQTT
- *       serializer, CONNECT/SUBSCRIBE/UNSUBSCRIBE 按协议手工解析
- *       (coreMQTT v5 公开 API 无服务端反序列化)。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MQTT_BROKER_H
 #define MQTT_BROKER_H

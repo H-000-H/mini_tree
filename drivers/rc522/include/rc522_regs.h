@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file rc522_regs.h
- *@brief RC522 寄存器 / 操作码 / 命令常量
- *@author H-000-H
-
+ * @file rc522_regs.h
+ * @author H-000-H
+ * @brief RC522 寄存器 / 操作码 / 命令常量
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef RC522_REGS_H

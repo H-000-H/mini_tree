@@ -1,11 +1,10 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file nrf24l01_drv.h
- *@brief NRF24L01 2.4G 无线驱动 ioctl 命令与参数结构
- *@author H-000-H
- *@details
- *   挂在 SPI 总线 client 下的 VFS 设备驱动；
- *   业务经 device_open/ioctl/close 访问。
+ * @file nrf24l01_drv.h
+ * @author H-000-H
+ * @brief NRF24L01 2.4G 无线驱动 ioctl 命令与参数结构
+ * @note 挂在 SPI 总线 client 下的 VFS 设备驱动；
+ * @note 业务经 device_open/ioctl/close 访问。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef NRF24L01_DRV_H

@@ -1,12 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file bmp280_drv.c
- *@brief BMP280 气压/温度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- *@author H-000-H
- *@details
- *   静态池: s_bmp280_pool[BMP280_POOL_COUNT]，probe 时 claim、remove 时 release；
- *   ioctl 命令与采样结构见 bmp280_drv.h，寄存器定义见 bmp280_regs.h。
- *   数据流: VFS ioctl → bmp280_cmd_read → device_read/write(I2C) → HAL
+ * @file bmp280_drv.c
+ * @author H-000-H
+ * @brief BMP280 气压/温度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
+ * @note 静态池: s_bmp280_pool[BMP280_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note ioctl 命令与采样结构见 bmp280_drv.h，寄存器定义见 bmp280_regs.h。
+ * @note 数据流: VFS ioctl → bmp280_cmd_read → device_read/write(I2C) → HAL
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "bmp280_drv.h"

@@ -1,8 +1,8 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file tcp_client.c
+ * @author H-000-H
  * @brief TCP 客户端实现文件
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "tcp_client.h"
 

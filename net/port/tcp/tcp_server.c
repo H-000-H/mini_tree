@@ -1,11 +1,10 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file tcp_server.c
+ * @author H-000-H
  * @brief TCP Server 多客户端支持 (lwIP Raw API 驱动)
  * @note 每个连接独立分配一个 SPSC 无锁统一 FIFO，保证多客户端并发时数据完全隔离、不串流。
  * @note SPSC 约束: 每个 session 的 FIFO 生产者是 lwIP tcpip 线程, 消费侧必须保证同一
- *       session_id 只由一个线程读取 (多线程读化为多消费者, 产生数据竞争)。
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "tcp_server.h"
 

@@ -1,15 +1,11 @@
-/* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mqtts_client.c
- * @brief MQTT over TLS Client Implementation (coreMQTT + lwIP altcp_tls)
  * @author H-000-H
- * @details 报文编解码/状态机/心跳/重发/订阅确认由 coreMQTT 负责, 加密/握手/
- *          记录分帧由 lwIP altcp_tls 负责 (经 tls_client 直连封装); 本文件只做:
- *          1. 上下文与 coreMQTT 的初始化绑定;
- *          2. TLS 建连 -> MQTT 握手的两段式连接驱动;
- *          3. 下行 PUBLISH 原样转发给唯一消息回调。
- *          注: 加密通道不经 transport_glue, send/recv 直接适配到 tls_client。
+ * @brief MQTT over TLS Client Implementation (coreMQTT + lwIP altcp_tls)
+ * @note  报文编解码/状态机/心跳/重发/订阅确认由 coreMQTT 负责, 加密/握手/记录分帧由 lwIP altcp_tls 负责 (经 tls_client 直连封装)
+ * @note  本文件只做: 上下文与 coreMQTT 初始化绑定 / TLS 建连 -> MQTT 握手两段式驱动 / 下行 PUBLISH 原样转发给唯一消息回调
+ * @note  加密通道不经 transport_glue, send/recv 直接适配到 tls_client
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "mqtts_client.h"
 

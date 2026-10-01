@@ -1,9 +1,8 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file hal_storage.c
- *@brief hal storage 实现
- *@author H-000-H
-
+ * @file hal_storage.c
+ * @author H-000-H
+ * @brief hal storage 实现
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "hal_storage.h"

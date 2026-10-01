@@ -1,15 +1,11 @@
 /**
- *@copyright SPDX-License-Identifier: Apache-2.0
- *@file i2s_bus.c
- *@brief i2s bus 实现
- *@author H-000-H
- *@details
- *   --------------------------------------------------------------------------
- *   I2S BUS 实现 — I2S 总线子系统 bus 层
- *   静态池: s_i2s_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2s_clients[DEV_ID_COUNT]
- *   职责: host init/open/close + client register + transfer (poll/DMA) + circular + HT/TC irq_mode
- *   @see bus/i2s/i2s_bus.h
- *   --------------------------------------------------------------------------
+ * @file i2s_bus.c
+ * @author H-000-H
+ * @brief i2s bus 实现
+ * @note I2S BUS 实现 — I2S 总线子系统 bus 层
+ * @note 静态池: s_i2s_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2s_clients[DEV_ID_COUNT]
+ * @note 职责: host init/open/close + client register + transfer (poll/DMA) + circular + HT/TC irq_mode
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #define I2S_BUS_IMPL
