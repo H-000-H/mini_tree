@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mini_config.h
  * @brief mini-os configuration heaper - only include definitions
@@ -113,7 +113,7 @@
 #define MINI_OS_STACK_OVERFLOW_CHECK 0
 #endif
 
-#define MINI_OS_STACK_MAGIC 0x060815U /**< stack/ overflow sentinel word */
+#define MINI_OS_STACK_MAGIC 0x060815u /**< stack/ overflow sentinel word */
 
 #ifdef CONFIG_MINI_EXECUTION_SLAB_CHECK_SIZE
 #define MINI_OS_SLAB_CHECK_SIZE CONFIG_MINI_EXECUTION_SLAB_CHECK_SIZE /**< slab check size for execution (0 = disabled) */
@@ -210,7 +210,7 @@
 /* L1 cache maintenance flags for mini_os_dcache_ops (bitmask) */
 #define MINI_OS_CACHE_FLUSH (1 << 0)      /**< clean: write dirty lines back to memory */
 #define MINI_OS_CACHE_INVALIDATE (1 << 1) /**< invalidate: drop the cached copies */
-#define MINI_OS_CACHE_LINESIZE 32U        /**< Cortex-M7 L1 cache line size in bytes */
+#define MINI_OS_CACHE_LINESIZE 32u        /**< Cortex-M7 L1 cache line size in bytes */
 #else
 #error "unsupported MINI_OS_ARCH value"
 #endif
@@ -244,7 +244,7 @@
 /* BASEPRI stores the threshold in the upper MINI_OS_NVIC_PRIO_BITS bits of its
  * byte-wide register field, shift the priority number into register position.
  * Used by both redef.h callers and the port.S implementation. */
-#define MINI_OS_IRQ_BASEPRI_THRESHOLD ((MINI_OS_IRQ_MAX_SYSCALL_PRIORITY) << (8U - MINI_OS_NVIC_PRIO_BITS)) /**< BASEPRI register value for the threshold */
+#define MINI_OS_IRQ_BASEPRI_THRESHOLD ((MINI_OS_IRQ_MAX_SYSCALL_PRIORITY) << (8u - MINI_OS_NVIC_PRIO_BITS)) /**< BASEPRI register value for the threshold */
 #else
 #define MINI_OS_IRQ_USE_BASEPRI 0 /**< critical sections mask everything via PRIMASK */
 #endif
@@ -276,18 +276,18 @@
 #define MINI_OS_DEFAULT_IDLE_STACK_SIZE 256 /**< default idle stack size in bytes */
 #endif
 
-#define MINI_OS_CONTROL_REGISTER_MSP_PRIVILEGE 0U /**< CONTROL: MSP, privileged thread mode */
-#define MINI_OS_CONTROL_REGISTER_MSP_USER 1U      /**< CONTROL: MSP, unprivileged thread mode */
-#define MINI_OS_CONTROL_REGISTER_PSP_PRIVILEGE 2U /**< CONTROL: PSP, privileged thread mode */
-#define MINI_OS_CONTROL_REGISTER_PSP_USER 3U      /**< CONTROL: PSP, unprivileged thread mode */
-#define MINI_OS_NONE_THREAD_TO_RESTORE 0U         /**< marker: no thread to restore on first switch */
+#define MINI_OS_CONTROL_REGISTER_MSP_PRIVILEGE 0u /**< CONTROL: MSP, privileged thread mode */
+#define MINI_OS_CONTROL_REGISTER_MSP_USER 1u      /**< CONTROL: MSP, unprivileged thread mode */
+#define MINI_OS_CONTROL_REGISTER_PSP_PRIVILEGE 2u /**< CONTROL: PSP, privileged thread mode */
+#define MINI_OS_CONTROL_REGISTER_PSP_USER 3u      /**< CONTROL: PSP, unprivileged thread mode */
+#define MINI_OS_NONE_THREAD_TO_RESTORE 0u         /**< marker: no thread to restore on first switch */
 
 #ifdef CONFIG_MINI_OS_TICK_WHEEL
 #define MINI_OS_TICK_WHEEL CONFIG_MINI_OS_TICK_WHEEL /**< tick wheel size (power of 2, number of slots) */
 #elif defined(MINI_OS_TICK_WHEEL)
 /* MINI_OS_TICK_WHEEL pre-defined externally , keep it */
 #else
-#define MINI_OS_TICK_WHEEL 32U /**< tick wheel size (power of 2, number of slots) */
+#define MINI_OS_TICK_WHEEL 32u /**< tick wheel size (power of 2, number of slots) */
 #endif
 
 #define MINI_OS_TICK_WHEEL_MASK (MINI_OS_TICK_WHEEL - 1) /**< tick wheel slot mask */
@@ -315,7 +315,7 @@
 #elif defined(MINI_OS_DEFAULT_SYSTICK)
 /* MINI_OS_DEFAULT_SYSTICK pre-defined externally , keep it */
 #else
-#define MINI_OS_DEFAULT_SYSTICK 1000U /**< OS tick rate in Hz */
+#define MINI_OS_DEFAULT_SYSTICK 1000u /**< OS tick rate in Hz */
 #endif
 
 /**
@@ -327,7 +327,7 @@
 #elif defined(MINI_OS_CPU_CLOCK_HZ)
 /* MINI_OS_CPU_CLOCK_HZ pre-defined externally , keep it */
 #else
-#define MINI_OS_CPU_CLOCK_HZ 72000000U /**< CPU clock in Hz */
+#define MINI_OS_CPU_CLOCK_HZ 72000000u /**< CPU clock in Hz */
 #endif
 
 /**
@@ -420,4 +420,17 @@
 #define MINI_OS_SPINLOCK_YIELD 0
 #endif
 
+#if CONFIG_MINI_OS_THREAD_EDF
+#define MINI_OS_THREAD_EDF CONFIG_MINI_OS_THREAD_EDF
+#elif defined(MINI_OS_THREAD_EDF)
+#else
+#define MINI_OS_THREAD_EDF 0
+#endif
+
+#if CONFIG_MINI_OS_THREAD_DEADLINE
+#define MINI_OS_THREAD_DEADLINE CONFIG_MINI_OS_THREAD_DEADLINE
+#elif defined(MINI_OS_THREAD_DEADLINE)
+#else
+#define MINI_OS_THREAD_DEADLINE 0
+#endif
 #endif /* MINI_CONFIG_H */

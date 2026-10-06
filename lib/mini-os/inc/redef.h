@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @file redef.h
  * @author H-000-H
@@ -39,9 +39,9 @@ typedef size_t             mini_os_size_t;                  /**<mini-os size_t*/
 typedef volatile signed char    mini_os_volatile_int8_t;    /**<mini-os volatile int8_t*/
 typedef volatile signed short   mini_os_volatile_int16_t;   /**<mini-os volatile int16_t*/
 typedef volatile signed int     mini_os_volatile_int32_t;   /**<mini-os volatile int32_t*/
-typedef volatile unsigned char  mini_os_volatile_uint8_t;   /**<mini-os volatile uint8_t*/
+typedef volatile unsigned char  mini_os_volatile_uint8_t;   /**<mini-os volatile mini_os_uint8_t*/
 typedef volatile unsigned short mini_os_volatile_uint16_t;  /**<mini-os volatile uint16_t*/
-typedef volatile unsigned int   mini_os_volatile_uint32_t;  /**<mini-os volatile uint32_t*/
+typedef volatile unsigned int   mini_os_volatile_uint32_t;  /**<mini-os volatile mini_os_uint32_t*/
 
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                          mini-os-self-type */
@@ -68,9 +68,9 @@ typedef signed long     mini_os_user_data_t;                /**<mini-os user_dat
 #define MINI_OS_NULL (0)                                    /**<null*/
 #endif
 
-#define MINI_OS_UINT8_MAX (0XFF)                            /**<uint8_t max*/
-#define MINI_OS_UINT16_MAX (0XFFFF)                         /**<uint16_t max*/
-#define MINI_OS_UINT32_MAX (0xFFFFFFFF)                     /**<uint32_t max*/
+#define MINI_OS_UINT8_MAX (0xffu)                            /**<uint8_t max*/
+#define MINI_OS_UINT16_MAX (0xffffu)                         /**<uint16_t max*/
+#define MINI_OS_UINT32_MAX (0xffffffffu)                     /**<uint32_t max*/
 #define MINI_OS_DELAY_FOREVER ((mini_os_tick_t) - 1)        /**<delay forever */
 #define MINI_OS_WAIT_FOREVER ((mini_os_tick_t) - 1)         /**<wait forever */
 /*---------------------------------------------------------------------------------------------------------*/
@@ -536,14 +536,14 @@ MINI_OS_STATIC_INLINE void mini_os_set_name(char* dst, const char* name, mini_os
  * @param[in] a alignment (must be a power of 2)
  * @return smallest multiple of a that is >= x
  */
-#define MINI_OS_MEMORY_ALIGN_UP(x, a) ((((size_t)(x)) + ((size_t)(a) - 1U)) & (~((size_t)(a) - 1U)))
+#define MINI_OS_MEMORY_ALIGN_UP(x, a) ((((size_t)(x)) + ((size_t)(a) - 1u)) & (~((size_t)(a) - 1u)))
 /**
  * @brief Align a value down to a power-of-2 boundary
  * @param[in] x value to align
  * @param[in] a alignment (must be a power of 2)
  * @return largest multiple of a that is <= x
  */
-#define MINI_OS_MEMORY_ALIGN_DOWN(x, a) (((size_t)(x)) & ~((size_t)(a) - 1U))
+#define MINI_OS_MEMORY_ALIGN_DOWN(x, a) (((size_t)(x)) & ~((size_t)(a) - 1u))
 
 #define MINI_OS_ASSERT(condition, fmt) _Static_assert(condition, fmt) /**<mini-os assert*/
 /*---------------------------------------------------------------------------------------------------------*/
@@ -574,11 +574,11 @@ MINI_OS_STATIC_INLINE void mini_os_set_name(char* dst, const char* name, mini_os
 /*---------------------------------------------------------------------------------------------------------*/
 /*                              register */
 /*---------------------------------------------------------------------------------------------------------*/
-#define MINI_OS_PENDSV_IRQ *(volatile uint8_t*)0xE000ED22      /**< PendSV exception priority register (SHPR2) */
-#define MINI_OS_SYSTICK_IRQ *(volatile uint8_t*)0xE000ED23     /**< SysTick exception priority register (SHPR3) */
-#define MINI_OS_SYSTICK_CTRL *(volatile uint32_t*)0xE000E010   /**< SysTick control and status register */
-#define MINI_OS_SYSTICK_RELOAD *(volatile uint32_t*)0xE000E014 /**< SysTick reload value register */
-#define MINI_OS_SYSTICK_VAL *(volatile uint32_t*)0xE000E018    /**< SysTick current value register */
+#define MINI_OS_PENDSV_IRQ *(volatile mini_os_uint8_t*)0xE000ED22      /**< PendSV exception priority register (SHPR2) */
+#define MINI_OS_SYSTICK_IRQ *(volatile mini_os_uint8_t*)0xE000ED23     /**< SysTick exception priority register (SHPR3) */
+#define MINI_OS_SYSTICK_CTRL *(volatile mini_os_uint32_t*)0xE000E010   /**< SysTick control and status register */
+#define MINI_OS_SYSTICK_RELOAD *(volatile mini_os_uint32_t*)0xE000E014 /**< SysTick reload value register */
+#define MINI_OS_SYSTICK_VAL *(volatile mini_os_uint32_t*)0xE000E018    /**< SysTick current value register */
 #define MINI_OS_SYSTICK_CTRL_ENABLE (1u << 0)                  /**< SysTick enable */
 #define MINI_OS_SYSTICK_CTRL_TICKINT (1u << 1)                 /**< SysTick exception enable */
 #define MINI_OS_SYSTICK_CTRL_CLKSOURCE (1u << 2)               /**< 1 = processor clock */

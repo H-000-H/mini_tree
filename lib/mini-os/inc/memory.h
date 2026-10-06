@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @file memory.h
  * @brief Memory heap definitions and API (malloc/free model)
@@ -24,8 +24,6 @@
  */
 #ifndef MEMORY_H
 #define MEMORY_H
-
-#include <stdint.h>
 #if defined(__cplusplus)
 extern "C"
 {

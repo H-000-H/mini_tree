@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @file schedule.h
  * @brief Scheduling functions
@@ -167,13 +167,54 @@ mini_os_err_t mini_os_get_tick(mini_os_tick_t* tick);
  */
 mini_os_uint32_t mini_os_tick_until(mini_os_uint32_t deadline);
 
+#if MINI_OS_THREAD_DEADLINE
+/**
+ * @brief DL admission control: reserve runtime/period for a new DL task
+ * @param[in] runtime DL budget per period (ticks, > 0)
+ * @param[in] period DL period (ticks, > 0)
+ * @return MINI_OS_OK when admitted; MINI_OS_ERR_BUSY when the sum of the admitted
+ *         bandwidths would exceed the DL cap (the "tax" of the DL class)
+ * @note the reservation is released by mini_os_dl_bandwidth_release() on teardown;
+ *       blocking a DL task does NOT release it
+ */
+mini_os_err_t mini_os_dl_bandwidth_reserve(mini_os_tick_t runtime, mini_os_tick_t period);
+
+/**
+ * @brief Release the DL bandwidth reserved by a task that is going away
+ * @param[in] runtime DL budget per period used when it was admitted (ticks)
+ * @param[in] period DL period used when it was admitted (ticks)
+ */
+void mini_os_dl_bandwidth_release(mini_os_tick_t runtime, mini_os_tick_t period);
+
+/**
+ * @brief DL deadline-overrun callback
+ * @param[in] thread DL thread whose job did not finish before its deadline
+ * @param[in] missed_deadline the absolute deadline that was not met
+ * @param[in] param opaque value given to mini_os_dl_miss_hook_set()
+ * @note invoked from the SysTick handler with interrupts masked: keep it short
+ *       and never call a blocking kernel API from it
+ */
+typedef void (*mini_os_dl_miss_hook_t)(mini_os_thread_t* thread, mini_os_tick_t missed_deadline, void* param);
+
+/**
+ * @brief Register or clear the DL deadline-overrun callback
+ * @param[in] hook callback, or MINI_OS_NULL to clear it
+ * @param[in] param opaque value forwarded to the callback
+ * @return MINI_OS_OK always
+ * @note a DL thread is reported when its absolute deadline is reached while it is
+ *       still runnable or throttled, i.e. it did not block to signal that the job
+ *       finished. Each thread also counts its own misses in dl_miss_count.
+ */
+mini_os_err_t mini_os_dl_miss_hook_set(mini_os_dl_miss_hook_t hook, void* param);
+#endif /* MINI_OS_THREAD_DEADLINE */
+
 /**
  * @brief Initialize the SysTick timer
  * @param[in] ticks_per_ms Number of ticks per millisecond
  * @note
- *  - void mini_os_systick_init(uint32_t ticks_per_ms)
+ *  - void mini_os_systick_init(mini_os_uint32_t ticks_per_ms)
  */
-void mini_os_systick_init(uint32_t ticks_per_ms);
+void mini_os_systick_init(mini_os_uint32_t ticks_per_ms);
 
 /**
  * @brief SysTick interrupt handler (installed in the vector table)

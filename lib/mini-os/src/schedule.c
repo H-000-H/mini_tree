@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @file schedule.c
  * @brief Scheduler implementation
@@ -22,8 +22,7 @@
 #include "thread.h"
 #include "timer.h"
 
-/** @brief Ready bitmap: bit i set = priority i has a ready or running thread (declared extern in
- * schedule.h / thread.h) */
+/** @brief Ready bitmap: bit i set = priority i has a ready or running thread*/
 mini_os_uint32_t g_priority = 0u;
 
 /** @brief Ready/running list head per priority (declared extern in schedule.h) */
@@ -46,8 +45,112 @@ MINI_OS_ASSERT((MINI_OS_TICK_WHEEL & MINI_OS_TICK_WHEEL_MASK) == 0, "MINI_OS_TIC
 
 static mini_os_list_t s_wheel[MINI_OS_TICK_WHEEL];
 
+#if MINI_OS_THREAD_DEADLINE
+/** @brief Global ready list of MINI_OS_SCHED_DEADLINE threads, earliest deadline first
+ * @note the DL class sits above every priority level, so it has its own list and is
+ *       deliberately NOT reflected in the g_priority bitmap; see mini_os_schedule_switch() */
+static mini_os_list_t s_dl_ready_list;
+#endif /* MINI_OS_THREAD_DEADLINE */
+
 /** @brief Slot of the thread time wheel serviced on the next tick */
 static mini_os_uint32_t s_current_slot = 0;
+
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Wrap-safe "absolute deadline a falls before absolute deadline b"
+ * @param[in] first first absolute deadline
+ * @param[in] second second absolute deadline
+ * @return MINI_OS_TRUE when a is strictly earlier than b
+ * @note uses the signed tick difference, so the ordering survives a 32-bit tick
+ *       wrap exactly like mini_os_tick_until()
+ */
+static mini_os_bool_t mini_os_deadline_before(mini_os_tick_t first, mini_os_tick_t second)
+{
+    return (mini_os_bool_t)((mini_os_int32_t)(first - second) < 0);
+}
+#endif /* MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE */
+
+#if MINI_OS_THREAD_DEADLINE
+/** @brief DL bandwidth scale: runtime/period is accounted in 1/2^20 CPU units */
+#define MINI_OS_DL_BW_SCALE (1u << 20)
+/** @brief Maximum total DL bandwidth (95%) */
+#define MINI_OS_DL_BW_MAX ((mini_os_uint64_t)(95u) * MINI_OS_DL_BW_SCALE / 100u)
+
+/** @brief this_bw: bandwidth reserved by every admitted DL task (the admission sum) */
+static mini_os_uint64_t s_dl_this_bw = 0u;
+/** @brief running_bw: bandwidth of the DL tasks currently contending (linked in
+ *  s_dl_ready_list); extra_bw = this_bw - running_bw is the reclaimable pool */
+static mini_os_uint64_t s_dl_running_bw = 0u;
+
+/**
+ * @brief Bandwidth of one DL task, in MINI_OS_DL_BW_SCALE units
+ */
+static mini_os_uint64_t mini_os_dl_bw_of(mini_os_tick_t runtime, mini_os_tick_t period)
+{
+    return ((mini_os_uint64_t)runtime * (mini_os_uint64_t)MINI_OS_DL_BW_SCALE) / (mini_os_uint64_t)period;
+}
+
+/**
+ * @brief Admission control: reserve runtime/period for a new DL task
+ * @return MINI_OS_OK when the total stays within MINI_OS_DL_BW_MAX;
+ *         MINI_OS_ERR_BUSY when admitting it would oversubscribe the CPU
+ * @note this is the DL "tax": this_bw only grows here and shrinks in
+ *       mini_os_dl_bandwidth_release(); blocking never changes it
+ */
+mini_os_err_t mini_os_dl_bandwidth_reserve(mini_os_tick_t runtime, mini_os_tick_t period)
+{
+    mini_os_uint64_t add = mini_os_dl_bw_of(runtime, period);
+
+    if (s_dl_this_bw + add > (mini_os_uint64_t)MINI_OS_DL_BW_MAX)
+        return MINI_OS_ERR_BUSY;
+    s_dl_this_bw += add;
+    return MINI_OS_OK;
+}
+
+/**
+ * @brief Release the reservation of a DL task that is going away
+ */
+void mini_os_dl_bandwidth_release(mini_os_tick_t runtime, mini_os_tick_t period)
+{
+    mini_os_uint64_t sub = mini_os_dl_bw_of(runtime, period);
+
+    s_dl_this_bw = (s_dl_this_bw >= sub) ? (s_dl_this_bw - sub) : 0u;
+}
+
+/** @brief Registered DL deadline-overrun callback (MINI_OS_NULL = none) */
+static mini_os_dl_miss_hook_t s_dl_miss_hook = MINI_OS_NULL;
+/** @brief Opaque value forwarded to s_dl_miss_hook */
+static void* s_dl_miss_param = MINI_OS_NULL;
+
+/**
+ * @brief Register or clear the DL deadline-overrun callback
+ */
+mini_os_err_t mini_os_dl_miss_hook_set(mini_os_dl_miss_hook_t hook, void* param)
+{
+    s_dl_miss_hook  = hook;
+    s_dl_miss_param = param;
+    return MINI_OS_OK;
+}
+
+/**
+ * @brief Record a missed deadline and notify the registered callback
+ * @param[in] thread DL thread whose absolute deadline was reached while it was
+ *            still runnable or throttled (it never blocked to signal completion)
+ * @note runs with interrupts masked inside the SysTick handler; the deadline is
+ *       reported here before it is advanced to the next period
+ */
+static void mini_os_dl_report_miss(mini_os_thread_t* thread)
+{
+    thread->dl_miss_count++;
+    if (s_dl_miss_hook != MINI_OS_NULL)
+        s_dl_miss_hook(thread, thread->dl_deadline_time, s_dl_miss_param);
+}
+
+/** @brief Start a new job (refill budget, advance deadline); defined with the CBS helpers */
+static void mini_os_dl_new_job(mini_os_thread_t* thread, mini_os_uint32_t now);
+/** @brief Insert a DL thread into the global ready list in EDF order; defined with the CBS helpers */
+static void mini_os_dl_list_insert(mini_os_thread_t* thread);
+#endif /* MINI_OS_THREAD_DEADLINE */
 
 /**
  * @brief Initialize the scheduler (ready lists, time wheel, slot cursor)
@@ -65,6 +168,11 @@ mini_os_err_t mini_os_schedule_init(void)
         mini_os_list_init(&g_ready_running_list[i]);
     for (i = 0; i < (mini_os_uint32_t)MINI_OS_TICK_WHEEL; i++)
         mini_os_list_init(&s_wheel[i]);
+#if MINI_OS_THREAD_DEADLINE
+    mini_os_list_init(&s_dl_ready_list);
+    s_dl_this_bw    = 0u;
+    s_dl_running_bw = 0u;
+#endif
     s_current_slot = 0;
     return MINI_OS_OK;
 }
@@ -107,33 +215,50 @@ mini_os_err_t mini_os_schedule_start(void)
  */
 mini_os_err_t mini_os_schedule_switch(void)
 {
-    mini_os_uint8_t   old_priority;
-    mini_os_uint8_t   next_priority;
     mini_os_list_t*   next_node;
     mini_os_thread_t* next_thread;
 
-    old_priority = s_current_priority;
     if (mini_os_current_thread != MINI_OS_NULL)
     {
         if (mini_os_current_thread->state == MINI_OS_THREAD_STATE_RUNNING)
             mini_os_current_thread->state = MINI_OS_THREAD_STATE_READY;
     }
-    next_priority = mini_os_get_highest_priority();
-    if (next_priority >= (mini_os_uint8_t)MINI_OS_PRIORITY)
-        return MINI_OS_ERR_NODEV;
-    s_current_priority = next_priority;
 
-    if (mini_os_current_thread != MINI_OS_NULL && next_priority == old_priority && mini_os_current_thread->state == MINI_OS_THREAD_STATE_READY && mini_os_current_thread->list_node.next != &mini_os_current_thread->list_node)
+#if MINI_OS_THREAD_DEADLINE
+    /* DL class first: it outranks every priority level, so the earliest absolute
+     * deadline among all ready DL threads wins regardless of priority */
+    if (mini_os_list_is_empty(&s_dl_ready_list) == MINI_OS_FALSE)
     {
-        /* round-robin: successor, wrap past the sentinel at the tail */
-        next_node = mini_os_current_thread->list_node.next;
-        if (next_node == &g_ready_running_list[s_current_priority])
-            next_node = next_node->next;
+        next_node = s_dl_ready_list.next;
     }
     else
+#endif
     {
-        /* preemption, or the current thread is no longer runnable: take the head */
-        next_node = g_ready_running_list[s_current_priority].next;
+        mini_os_uint8_t old_priority  = s_current_priority;
+        mini_os_uint8_t next_priority = mini_os_get_highest_priority();
+
+        if (next_priority >= (mini_os_uint8_t)MINI_OS_PRIORITY)
+            return MINI_OS_ERR_NODEV;
+        s_current_priority = next_priority;
+
+        /* head of the level: preemption, or the current thread is no longer runnable */
+        next_node = g_ready_running_list[next_priority].next;
+
+#if MINI_OS_THREAD_EDF
+        /* same-level EDF: an EDF head always keeps running, so the round-robin
+         * rotation is skipped for it (ordinary threads still rotate among peers) */
+        if (mini_os_container_of(next_node, mini_os_thread_t, list_node)->sched_policy == MINI_OS_SCHED_NORMAL)
+#endif
+        {
+            if (mini_os_current_thread != MINI_OS_NULL && next_priority == old_priority && mini_os_current_thread->state == MINI_OS_THREAD_STATE_READY &&
+                mini_os_current_thread->list_node.next != &mini_os_current_thread->list_node)
+            {
+                /* round-robin: successor, wrap past the sentinel at the tail */
+                next_node = mini_os_current_thread->list_node.next;
+                if (next_node == &g_ready_running_list[next_priority])
+                    next_node = next_node->next;
+            }
+        }
     }
 
     next_thread = mini_os_container_of(next_node, mini_os_thread_t, list_node);
@@ -171,10 +296,41 @@ mini_os_err_t mini_os_schedule_yield_isr(void)
 {
     mini_os_irq_t irq_level = mini_os_irq_save();
 
-    /* only a more urgent thread is worth a PendSV */
+    /* only a thread that outranks the interrupted one is worth a PendSV */
     if (mini_os_current_thread != MINI_OS_NULL)
     {
-        if (mini_os_get_highest_priority() < mini_os_current_thread->priority)
+        mini_os_bool_t preempt = MINI_OS_FALSE;
+
+#if MINI_OS_THREAD_DEADLINE
+        if (mini_os_list_is_empty(&s_dl_ready_list) == MINI_OS_FALSE)
+        {
+            /* a DL thread is ready: it outranks everything, unless the current
+             * thread already *is* the earliest-deadline DL thread */
+            if (s_dl_ready_list.next != &mini_os_current_thread->list_node)
+                preempt = MINI_OS_TRUE;
+        }
+        else
+#endif
+        {
+            mini_os_uint8_t highest = mini_os_get_highest_priority();
+
+            if (highest < mini_os_current_thread->priority)
+                preempt = MINI_OS_TRUE;
+#if MINI_OS_THREAD_EDF
+            else if (highest == mini_os_current_thread->priority && highest < (mini_os_uint8_t)MINI_OS_PRIORITY)
+            {
+                /* same level, EDF: a woken EDF thread that now heads the list has
+                 * an earlier deadline, so it outranks the running thread even
+                 * though the priority number is equal */
+                mini_os_list_t* head = g_ready_running_list[highest].next;
+
+                if (head != &g_ready_running_list[highest] && head != &mini_os_current_thread->list_node &&
+                    mini_os_container_of(head, mini_os_thread_t, list_node)->sched_policy == MINI_OS_SCHED_EDF)
+                    preempt = MINI_OS_TRUE;
+            }
+#endif
+        }
+        if (preempt == MINI_OS_TRUE)
             mini_os_yield_trigger();
     }
     mini_os_irq_restore(irq_level);
@@ -194,8 +350,51 @@ mini_os_err_t mini_os_add_thread_to_ready_running_list(mini_os_thread_t* thread)
         return MINI_OS_ERR_INVAL;
     mini_os_irq_t irq_level = mini_os_irq_save();
     thread->state = MINI_OS_THREAD_STATE_READY;
-    mini_os_list_tail(&thread->list_node, &g_ready_running_list[thread->priority]);
-    g_priority |= (1u << thread->priority);
+#if MINI_OS_THREAD_DEADLINE
+    if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+    {
+        /* DL class: own global list, earliest absolute deadline first; the
+         * g_priority bitmap is left alone because DL is not a priority level */
+
+        /* non-deferrable CBS: the blocking time counts against the deadline, so a
+         * thread that wakes after its absolute deadline starts a new job (deadline
+         * advanced by whole periods, budget refilled) instead of resuming with an
+         * expired deadline */
+        if ((mini_os_int32_t)((mini_os_tick_t)g_global_tick - thread->dl_deadline_time) >= 0)
+            mini_os_dl_new_job(thread, g_global_tick);
+
+        mini_os_dl_list_insert(thread);
+        /* contending again: its bandwidth leaves the reclaimable pool */
+        s_dl_running_bw += mini_os_dl_bw_of(thread->dl_run_time, (mini_os_tick_t)thread->dl_period);
+    }
+    else
+#endif /* MINI_OS_THREAD_DEADLINE */
+#if MINI_OS_THREAD_EDF
+    if (thread->sched_policy == MINI_OS_SCHED_EDF)
+    {
+        /* same priority, EDF: ahead of every ordinary thread, and ahead of the
+         * first EDF thread with a later deadline (equal deadlines stay FIFO) */
+        mini_os_list_t* head = &g_ready_running_list[thread->priority];
+        mini_os_list_t* node;
+
+        for (node = head->next; node != head; node = node->next)
+        {
+            mini_os_thread_t* ready = mini_os_container_of(node, mini_os_thread_t, list_node);
+
+            if (ready->sched_policy == MINI_OS_SCHED_NORMAL)
+                break; /* ordinary threads queue behind all EDF threads */
+            if (mini_os_deadline_before(thread->dl_deadline_time, ready->dl_deadline_time) == MINI_OS_TRUE)
+                break; /* first later deadline: insert before it */
+        }
+        (void)mini_os_list_add(node, node->prev, &thread->list_node);
+        g_priority |= (1u << thread->priority);
+    }
+    else
+#endif /* MINI_OS_THREAD_EDF */
+    {
+        (void)mini_os_list_tail(&thread->list_node, &g_ready_running_list[thread->priority]);
+        g_priority |= (1u << thread->priority);
+    }
     mini_os_irq_restore(irq_level);
     return MINI_OS_OK;
 }
@@ -217,6 +416,17 @@ mini_os_err_t mini_os_remove_thread_from_ready_running_list(mini_os_thread_t* th
 
     mini_os_list_remove(&thread->list_node);
 
+#if MINI_OS_THREAD_DEADLINE
+    if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+    {
+        mini_os_uint64_t bw = mini_os_dl_bw_of(thread->dl_run_time, (mini_os_tick_t)thread->dl_period);
+
+        /* leaving the contending set hands its bandwidth back to the reclaimable pool */
+        s_dl_running_bw = (s_dl_running_bw >= bw) ? (s_dl_running_bw - bw) : 0u;
+        mini_os_irq_restore(irq_level); /* DL is not tracked in the priority bitmap */
+        return MINI_OS_OK;
+    }
+#endif
     if (mini_os_list_is_empty(&g_ready_running_list[thread->priority]))
         g_priority &= ~(1u << thread->priority);
 
@@ -247,6 +457,131 @@ mini_os_err_t mini_os_remove_thread_from_blocked_list(mini_os_thread_t* thread)
     return MINI_OS_OK;
 }
 
+#if MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Insert a DL thread into the global ready list in earliest-deadline order
+ * @note caller must hold interrupts disabled; the node must not be linked
+ */
+static void mini_os_dl_list_insert(mini_os_thread_t* thread)
+{
+    mini_os_list_t* node;
+
+    for (node = s_dl_ready_list.next; node != &s_dl_ready_list; node = node->next)
+    {
+        mini_os_thread_t* ready = mini_os_container_of(node, mini_os_thread_t, list_node);
+        if (mini_os_deadline_before(thread->dl_deadline_time, ready->dl_deadline_time) == MINI_OS_TRUE)
+            break; /* first later deadline: insert before it (equal deadlines stay FIFO) */
+    }
+    (void)mini_os_list_add(node, node->prev, &thread->list_node);
+}
+
+/**
+ * @brief Start a new job: refill the budget and move the deadline one period on
+ * @param[in] thread DL thread whose period boundary was reached
+ * @param[in] now current global tick
+ * @note advances dl_deadline_time by whole periods until it is in the future (a
+ *       late boundary never leaves the deadline in the past), then restores the
+ *       full budget. Called from the time wheel (throttle expiry), from the
+ *       period-boundary walk and from the wake path.
+ */
+static void mini_os_dl_new_job(mini_os_thread_t* thread, mini_os_uint32_t now)
+{
+    thread->dl_budget      = thread->dl_run_time; /* the new job starts with a full budget */
+    thread->dl_budget_frac = 0u;
+    do
+    {
+        thread->dl_deadline_time += (mini_os_tick_t)thread->dl_period;
+    } while ((mini_os_int32_t)(thread->dl_deadline_time - (mini_os_tick_t)now) <= 0);
+    thread->dl_throttled = MINI_OS_FALSE;
+}
+
+/**
+ * @brief Start a new job for every contending DL thread whose deadline was reached
+ * @details the ready list is deadline-ordered, so only its head can be due: refill
+ *          the head, move it to its new position and repeat. Reclaiming means a
+ *          task need not have spent its budget when the deadline arrives, so this
+ *          walk is what still guarantees a fresh budget every period.
+ * @note running_bw is untouched: the thread stays contending, only its deadline
+ *       and budget change
+ */
+static void mini_os_dl_replenish_due(void)
+{
+    mini_os_uint32_t now = g_global_tick;
+
+    while (mini_os_list_is_empty(&s_dl_ready_list) == MINI_OS_FALSE)
+    {
+        mini_os_thread_t* head = mini_os_container_of(s_dl_ready_list.next, mini_os_thread_t, list_node);
+
+        if ((mini_os_int32_t)((mini_os_tick_t)now - head->dl_deadline_time) < 0)
+            break; /* the head deadline is still ahead: nobody is due */
+        mini_os_list_remove(&head->list_node);
+        mini_os_dl_report_miss(head); /* still runnable at its deadline: the job overran */
+        mini_os_dl_new_job(head, now);
+        mini_os_dl_list_insert(head);
+    }
+}
+
+/**
+ * @brief Throttle a DL thread that spent its budget until its next period
+ * @param[in] thread DL thread currently READY/RUNNING with dl_budget == 0
+ * @details unlinks the thread (handing its bandwidth back to the reclaimable pool)
+ *          and parks it in the thread time wheel for the ticks left until its
+ *          absolute deadline; mini_os_tick_decrement() refills the budget and
+ *          re-readies it there. This is the CBS "run at most dl_run_time per
+ *          dl_period" guarantee.
+ * @note runs from the SysTick handler with interrupts masked; the PendSV is
+ *       requested here because the throttled thread must leave the CPU now
+ */
+static void mini_os_dl_throttle(mini_os_thread_t* thread)
+{
+    mini_os_uint32_t remain;
+
+    (void)mini_os_remove_thread_from_ready_running_list(thread);
+    thread->dl_throttled = MINI_OS_TRUE;
+    remain = mini_os_tick_until((mini_os_tick_t)thread->dl_deadline_time);
+    if (remain == 0u)
+        remain = 1u; /* deadline already reached: replenish on the next tick */
+    (void)mini_os_wheel_insert(thread, remain);
+    mini_os_yield_trigger(); /* the thread is no longer runnable: switch away now */
+}
+
+/**
+ * @brief Charge one tick to the running DL thread and throttle it when spent
+ * @param[in] current running thread (may be MINI_OS_NULL)
+ * @details GRUB-style reclaiming: the budget is spent at rate running_bw/this_bw,
+ *          so while other DL tasks are blocked (non-contending) the running task
+ *          spends its budget more slowly and uses their share, up to the admitted
+ *          this_bw. The fraction is accumulated in dl_budget_frac so a rate below
+ *          1 does not lose ticks to rounding.
+ * @note called once per tick from mini_os_systick_handler() after the global tick
+ *       advanced, so the throttle arithmetic sees the new "now"
+ */
+static void mini_os_dl_tick_decrement(mini_os_thread_t* current)
+{
+    mini_os_uint64_t delta;
+
+    if (s_dl_this_bw == 0u)
+        return;
+    if (current == MINI_OS_NULL || current->sched_policy != MINI_OS_SCHED_DEADLINE || current->dl_throttled == MINI_OS_TRUE)
+        return;
+
+    /* budget spent by this tick, in 1/MINI_OS_DL_BW_SCALE of a tick */
+    delta = (s_dl_running_bw * (mini_os_uint64_t)MINI_OS_DL_BW_SCALE) / s_dl_this_bw;
+    if (delta == 0u)
+        delta = 1u; /* never let a tiny bandwidth stall the accounting */
+
+    current->dl_budget_frac = (mini_os_uint32_t)(current->dl_budget_frac + (mini_os_uint32_t)delta);
+    while (current->dl_budget_frac >= (mini_os_uint32_t)MINI_OS_DL_BW_SCALE)
+    {
+        current->dl_budget_frac = (mini_os_uint32_t)(current->dl_budget_frac - (mini_os_uint32_t)MINI_OS_DL_BW_SCALE);
+        if (current->dl_budget > 0)
+            current->dl_budget--;
+    }
+    if (current->dl_budget == 0)
+        mini_os_dl_throttle(current);
+}
+#endif /* MINI_OS_THREAD_DEADLINE */
+
 /**
  * @brief Advance the thread time wheel by one slot and release expired threads
  * @details walks the slot that just came up: a thread with rounds left is
@@ -275,6 +610,13 @@ static void mini_os_tick_decrement(void)
 
         mini_os_list_remove(&thread->list_node);
         thread->wheel_slot = (mini_os_uint8_t)MINI_OS_TICK_WHEEL;
+#if MINI_OS_THREAD_DEADLINE
+        if (thread->sched_policy == MINI_OS_SCHED_DEADLINE && thread->dl_throttled == MINI_OS_TRUE)
+        {
+            mini_os_dl_report_miss(thread);            /* throttled when the deadline arrived: overrun */
+            mini_os_dl_new_job(thread, g_global_tick); /* CBS: the period boundary refills the budget */
+        }
+#endif
         if (thread->wait_list != MINI_OS_NULL)
         {
             /* timed-out sync wait: cancel it, the waiter reports the timeout */
@@ -431,6 +773,10 @@ static void mini_os_tick_slice_decrement(void)
 
     if (current_thread == MINI_OS_NULL || current_thread->init_tick_num == 0)
         return;
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+    if (current_thread->sched_policy != MINI_OS_SCHED_NORMAL)
+        return; /* EDF / DL threads are deadline-ordered: no round-robin expiry */
+#endif
     if (current_thread->remain_tick > 0)
         current_thread->remain_tick--;
     if (current_thread->remain_tick == 0)
@@ -461,14 +807,13 @@ void mini_os_systick_handler(void)
     if (g_global_tick == 0u) /* wrapped around: count the overflow */
         g_global_tick_overflow++;
 #endif
+#if MINI_OS_THREAD_DEADLINE
+    mini_os_dl_replenish_due();                        /* period boundaries: start the new jobs */
+    mini_os_dl_tick_decrement(mini_os_current_thread); /* GRUB: spend running_bw/this_bw of the budget */
+#endif
     mini_os_timer_tick(); /* advance the timer wheel, run/queue expired timers */
     mini_os_irq_restore(irq_level);
 
-    /* 时间轮到期只把线程放回就绪队列, 不放 PendSV 是跑不起来的: Cortex-M 的
-     * 异常返回不做调度, 必须显式置位 tail-chain 到 PendSV。线程时间轮
-     * (tick_decrement) 走的就是这条路, 与 mini_os_schedule_delay() 挂起时的
-     * yield 对称; timer_tick 内部虽已判断过一次, 这里是两条路径的统一出口。
-     * yield_isr 只在存在更紧急线程时才真正触发, 不会产生多余切换。 */
     (void)mini_os_schedule_yield_isr();
 }
 
@@ -520,9 +865,9 @@ mini_os_uint32_t mini_os_tick_until(mini_os_uint32_t deadline)
  *            (MINI_OS_DEFAULT_SYSTICK)
  * @note weak default: override it when the board needs another clock source
  */
-MINI_OS_WEAK void mini_os_systick_init(uint32_t ticks_per_ms)
+MINI_OS_WEAK void mini_os_systick_init(mini_os_uint32_t ticks_per_ms)
 {
-    uint32_t reload;
+    mini_os_uint32_t reload;
 
     if (ticks_per_ms == 0u)
         ticks_per_ms = 1000u / MINI_OS_DEFAULT_SYSTICK; /* 0 -> default tick rate */

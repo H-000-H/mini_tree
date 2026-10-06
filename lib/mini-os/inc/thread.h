@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @brief mini-os thread
  * @file thread.h
@@ -8,6 +8,7 @@
  */
 #ifndef MINI_OS_THREAD_H
 #define MINI_OS_THREAD_H
+#include "redef.h"
 #if defined(__cplusplus)
 extern "C"
 {
@@ -16,7 +17,6 @@ extern "C"
 #include <list.h>
 #include <mini_config.h>
 #include <redef.h>
-
 struct mini_os_semaphore;
 struct mini_os_mutex;
 // clang-format off
@@ -34,6 +34,25 @@ typedef enum
     MINI_OS_THREAD_STATE_INVALID,                               /**< Thread is invalid */
     MINI_OS_THREAD_STATE_TERMINATED,                            /**< Thread is terminated */
 } mini_os_thread_state_t;
+
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Scheduling policy of a thread
+ * @note NORMAL is priority + FIFO / round-robin; EDF orders a thread inside its
+ *       own priority level by earliest deadline; DEADLINE is a class above every
+ *       priority level with global EDF and CBS budget enforcement
+ */
+typedef enum
+{
+    MINI_OS_SCHED_NORMAL = 0, /**< priority + FIFO / round-robin */
+#if MINI_OS_THREAD_EDF
+    MINI_OS_SCHED_EDF,        /**< priority + earliest-deadline-first inside the level */
+#endif
+#if MINI_OS_THREAD_DEADLINE
+    MINI_OS_SCHED_DEADLINE,   /**< own class above priority, global EDF + CBS */
+#endif
+} mini_os_sched_policy_t;
+#endif
 
 /**
  * @brief Structure representing a mini-os thread
@@ -65,11 +84,21 @@ struct mini_os_thread
 #if MINI_OS_EVENT
     mini_os_uint32_t wait_mask;                                 /**< Expected event mask while parked on an event-group wait list */
 #endif
-
 #if MINI_OS_FIND_BY_NAME
     mini_os_list_t g_list_node;                                 /**< List node for the global thread-by-name registry */    
 #endif
-
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+    mini_os_sched_policy_t sched_policy;                        /**< Scheduling policy: NORMAL / EDF / DEADLINE */
+    mini_os_tick_t         dl_deadline_time;                    /**< Absolute deadline in ticks (0 = none) */
+#endif
+#if MINI_OS_THREAD_DEADLINE
+    mini_os_tick_t         dl_run_time;                         /**< DEADLINE: CPU budget per period (ticks) */
+    mini_os_tick_t         dl_budget;                           /**< DEADLINE: budget left in the current period */
+    mini_os_uint32_t       dl_budget_frac;                      /**< DEADLINE: fraction of a tick already spent (1/2^20 units) */
+    mini_os_tick_t         dl_period;                           /**< DEADLINE: replenishment period (ticks) */
+    mini_os_bool_t         dl_throttled;                        /**< DEADLINE: parked until the next period boundary */
+    mini_os_uint32_t       dl_miss_count;                       /**< DEADLINE: deadlines missed so far */
+#endif
 #if MINI_OS_TIME_SLICE
     mini_os_tick_t init_tick_num;                               /**< Initial tick for time‑slice */
     mini_os_tick_t remain_tick;                                 /**< Remaining tick for time‑slice */
@@ -104,7 +133,7 @@ MINI_OS_STATIC_INLINE mini_os_uint32_t* mini_os_stack_create(mini_os_size_t size
 {
     mini_os_size_t aligned;
 
-    if (out_aligned == MINI_OS_NULL || size == 0U)
+    if (out_aligned == MINI_OS_NULL || size == 0u)
         return MINI_OS_NULL;
 
     aligned = MINI_OS_STACK_ALIGN_UP(size);
@@ -114,7 +143,7 @@ MINI_OS_STATIC_INLINE mini_os_uint32_t* mini_os_stack_create(mini_os_size_t size
         return (mini_os_uint32_t*)mini_os_calloc(1u, aligned);
     if (((mini_os_size_t)stack & (MINI_OS_STACK_ALIGN_SIZE - 1u)) != 0u)
     {
-        *out_aligned = 0U;
+        *out_aligned = 0u;
         return MINI_OS_NULL; /* caller-provided stack must be 8-byte aligned */
     }
     return stack;
@@ -402,6 +431,80 @@ mini_os_err_t mini_os_thread_idle_hook(idle_hook_t hook, void* param);
  * @param[in] param argument passed to the idle hook
  */
 void mini_os_thread_idle(void* param);
+
+#if MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Create a deadline thread
+ * @param[in] name Thread name
+ * @param[in] stack_size Thread stack size
+ * @param[in] deadline Thread deadline
+ * @param[in] period Thread period
+ * @param[in] priority Thread priority
+ * @param[in] runtime Thread runtime
+ * @param[in] entry Thread entry function
+ * @param[in] parameter Thread entry parameter
+ * @return mini_os_thread_t* on success, other on failure
+ */
+mini_os_thread_t *mini_os_deadline_thread_create(           const char *name, 
+                                                            mini_os_uint32_t stack_size,
+                                                            mini_os_tick_t deadline,
+                                                            mini_os_tick_t period,
+                                                            mini_os_uint8_t priority,
+                                                            mini_os_tick_t runtime,
+                                                            void( *entry)(void*),
+                                                            void * const parameter);
+                                                
+/**
+ * @brief Create a deadline thread with static stack
+ * @param[in] name Thread name
+ * @param[in] stack_size Thread stack size
+ * @param[in] deadline Thread deadline
+ * @param[in] period Thread period
+ * @param[in] priority Thread priority
+ * @param[in] runtime Thread runtime
+ * @param[in] entry Thread entry function
+ * @param[in] parameter Thread entry parameter
+ * @param[in] stack_buffer Thread stack buffer
+ * @param[in] task_buffer Thread task buffer
+ * @return mini_os_thread_t* on success, other on failure
+ */
+mini_os_thread_t *mini_os_deadline_thread_create_static(    const char *name, 
+                                                            mini_os_uint32_t stack_size,
+                                                            mini_os_tick_t deadline,
+                                                            mini_os_tick_t period,
+                                                            mini_os_uint8_t priority,
+                                                            mini_os_tick_t runtime,
+                                                            void( *entry)(void*),
+                                                            void * const parameter,
+                                                            mini_os_uint32_t* stack_buffer,
+                                                            mini_os_thread_t* task_buffer);
+
+#endif /* MINI_OS_THREAD_DEADLINE */
+
+#if MINI_OS_THREAD_EDF
+/**
+ * @brief Attach or clear a deadline on an ordinary thread (same-priority EDF)
+ * @param[in] thread thread to configure; must not be a MINI_OS_SCHED_DEADLINE thread
+ * @param[in] deadline relative deadline in ticks from now; 0 clears the deadline
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument or a
+ *         MINI_OS_SCHED_DEADLINE thread
+ * @note the thread keeps its priority: inside that level it is ordered by
+ *       earliest absolute deadline instead of FIFO, and it is queued ahead of
+ *       the ordinary threads of the level. A READY/RUNNING thread is re-linked.
+ */
+mini_os_err_t mini_os_thread_set_deadline(mini_os_thread_t* thread, mini_os_tick_t deadline);
+
+#endif /* MINI_OS_THREAD_EDF */
+
+#if MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Read how many deadlines a DL thread has missed
+ * @param[in] thread thread to query
+ * @param[out] count receives the number of missed deadlines
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument
+ */
+mini_os_err_t mini_os_thread_get_dl_miss_count(mini_os_thread_t* thread, mini_os_uint32_t* count);
+#endif /* MINI_OS_THREAD_DEADLINE */
 
 /**
  * @brief Create the idle thread (weak default; override to customize)

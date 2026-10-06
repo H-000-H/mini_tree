@@ -11,6 +11,7 @@
 #include "event_bus.h"
 
 #include "compiler_compat.h"
+#include "hal_amp.h"
 #include "config.h"
 #include "mini_backend.h"
 #include "mini_time.h"
@@ -108,7 +109,7 @@ static void event_bus_dispatch_task(void* param)
         for (size_t index = 0; index < snapshot_count; index++)
             snapshot[index] = s_bus.subscribers[index];
         if (s_bus.sub_lock)
-            mini_mutex_unlock(s_bus.sub_lock);
+            MINI_IGNORE_RESULT(mini_mutex_unlock(s_bus.sub_lock));
 
         for (size_t index = 0; index < snapshot_count; index++)
         {
@@ -194,7 +195,7 @@ mt_err_t event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t 
         ret = MINI_OK;
     }
 
-    mini_mutex_unlock(s_bus.sub_lock);
+    MINI_IGNORE_RESULT(mini_mutex_unlock(s_bus.sub_lock));
     return ret;
 }
 

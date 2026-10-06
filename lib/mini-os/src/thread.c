@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright SPDX-License-Identifier: Apache-2.0
  * @author H-000-H
  * @file thread.c
@@ -44,25 +44,25 @@ static void mini_os_thread_entry_wrapper(void* param);
 static void* mini_os_thread_stack_init(mini_os_uint8_t* stack_buf, mini_os_uint32_t stack_size, void* param)
 {
     volatile mini_os_uint32_t* sp = (volatile mini_os_uint32_t*)(stack_buf + stack_size);
-    *(--sp) = 0x01000000U;                                                         /**< xPSR */
+    *(--sp) = 0x01000000u;                                                         /**< xPSR */
     *(--sp) = (mini_os_uint32_t)(mini_os_size_t)mini_os_thread_entry_wrapper | 1u; /**< PC: wrapper (runs entry, then cleanup + exit) */
-    *(--sp) = 0xFFFFFFFFU;                                                         /**< LR */
-    *(--sp) = 0U;                                                                  /**< R12 */
-    *(--sp) = 0U;                                                                  /**< R3 */
-    *(--sp) = 0U;                                                                  /**< R2 */
-    *(--sp) = 0U;                                                                  /**< R1 */
+    *(--sp) = 0xFFFFFFFFu;                                                         /**< LR */
+    *(--sp) = 0u;                                                                  /**< R12 */
+    *(--sp) = 0u;                                                                  /**< R3 */
+    *(--sp) = 0u;                                                                  /**< R2 */
+    *(--sp) = 0u;                                                                  /**< R1 */
     *(--sp) = (mini_os_uint32_t)(mini_os_size_t)param;                             /**< R0: param entry */
 
-    *(--sp) = 0U; /**< r11 */
-    *(--sp) = 0U; /**< r10 */
-    *(--sp) = 0U; /**< r9 */
-    *(--sp) = 0U; /**< r8 */
-    *(--sp) = 0U; /**< r7 */
-    *(--sp) = 0U; /**< r6 */
-    *(--sp) = 0U; /**< r5 */
-    *(--sp) = 0U; /**< r4 */
+    *(--sp) = 0u; /**< r11 */
+    *(--sp) = 0u; /**< r10 */
+    *(--sp) = 0u; /**< r9 */
+    *(--sp) = 0u; /**< r8 */
+    *(--sp) = 0u; /**< r7 */
+    *(--sp) = 0u; /**< r6 */
+    *(--sp) = 0u; /**< r5 */
+    *(--sp) = 0u; /**< r4 */
 #if MINI_OS_ARCH_HAS_FPU && MINI_OS_USE_FPU
-    *(--sp) = 0U; /**< FPU flag: 0 = no s16-s31 saved yet */
+    *(--sp) = 0u; /**< FPU flag: 0 = no s16-s31 saved yet */
 #endif
     return (void*)sp;
 }
@@ -88,7 +88,7 @@ static void* mini_os_thread_stack_init(mini_os_uint8_t* stack_buf, mini_os_uint3
 static mini_os_err_t mini_os_thread_init(mini_os_thread_t* thread, const char* name, mini_os_size_t stack_size, mini_os_uint8_t priority, void (*entry)(void*), void* param, mini_os_uint32_t* stack_buffer)
 {
 
-    if (entry == MINI_OS_NULL || priority >= MINI_OS_PRIORITY || stack_size < MINI_OS_THREAD_MIN_STACK_SIZE || (stack_size & 7U) != 0U || stack_buffer == MINI_OS_NULL || ((mini_os_size_t)stack_buffer & 7U) != 0U || thread == MINI_OS_NULL)
+    if (entry == MINI_OS_NULL || priority >= MINI_OS_PRIORITY || stack_size < MINI_OS_THREAD_MIN_STACK_SIZE || (stack_size & 7u) != 0u || stack_buffer == MINI_OS_NULL || ((mini_os_size_t)stack_buffer & 7u) != 0u || thread == MINI_OS_NULL)
         return MINI_OS_ERR_INVAL;
 
     /* thread name (bounded copy, always NUL-terminated) */
@@ -104,6 +104,7 @@ static mini_os_err_t mini_os_thread_init(mini_os_thread_t* thread, const char* n
     mini_os_list_init(&thread->g_list_node);
     mini_os_list_tail(&thread->g_list_node, &g_threads_list);
 #endif
+
     thread->state = MINI_OS_THREAD_STATE_INIT;
     thread->err = MINI_OS_OK;
 
@@ -138,8 +139,69 @@ static mini_os_err_t mini_os_thread_init(mini_os_thread_t* thread, const char* n
     thread->join_wait_sem = MINI_OS_NULL;
 #endif
 
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+    /* ordinary threads start as NORMAL with no deadline; the scheduler branches
+     * read sched_policy on every switch, so it must never be garbage from the
+     * heap. mini_os_deadline_thread_init() overrides this for DL threads. */
+    thread->sched_policy     = MINI_OS_SCHED_NORMAL;
+    thread->dl_deadline_time = 0;
+#endif
+#if MINI_OS_THREAD_DEADLINE
+    thread->dl_run_time      = 0;
+    thread->dl_budget        = 0;
+    thread->dl_budget_frac   = 0u;
+    thread->dl_period        = 0;
+    thread->dl_throttled     = MINI_OS_FALSE;
+    thread->dl_miss_count    = 0u;
+#endif
+
     return MINI_OS_OK;
 }
+
+#if MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Release a DL thread's reservation on teardown (no-op for other policies)
+ * @note the admission and running bandwidth live in the scheduler; this is the
+ *       teardown side of mini_os_dl_bandwidth_reserve()
+ */
+static void mini_os_dl_thread_release(mini_os_thread_t* thread)
+{
+    if (thread != MINI_OS_NULL && thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+        mini_os_dl_bandwidth_release(thread->dl_run_time, (mini_os_tick_t)thread->dl_period);
+}
+
+/**
+ * @brief Validate (runtime, deadline, period) against the Linux DL constraint
+ * @return MINI_OS_TRUE when 0 < runtime <= deadline <= period <= 0xFFFF
+ */
+static mini_os_bool_t mini_os_dl_params_valid(mini_os_tick_t runtime, mini_os_tick_t deadline, mini_os_tick_t period)
+{
+    return (mini_os_bool_t)(runtime > 0 && deadline > 0 && period > 0 && runtime <= deadline && deadline <= period);
+}
+
+/**
+ * @brief Initialize the DL scheduling fields of a freshly created thread
+ * @note the relative deadline argument becomes an absolute tick value, and the
+ *       first period starts with a full budget (CBS)
+ */
+static mini_os_err_t mini_os_deadline_thread_init(mini_os_thread_t* thread, mini_os_tick_t dl_run_time, mini_os_tick_t dl_deadline, mini_os_tick_t dl_period)
+{
+    mini_os_tick_t now = 0;
+
+    if (thread == MINI_OS_NULL)
+        return MINI_OS_ERR_INVAL;
+    (void)mini_os_get_tick(&now);
+    thread->sched_policy     = MINI_OS_SCHED_DEADLINE;
+    thread->dl_run_time      = dl_run_time;
+    thread->dl_budget        = dl_run_time;
+    thread->dl_budget_frac   = 0u;
+    thread->dl_deadline_time = now + dl_deadline; /* relative deadline -> absolute */
+    thread->dl_period        = dl_period;
+    thread->dl_throttled     = MINI_OS_FALSE;
+    thread->dl_miss_count    = 0u;
+    return MINI_OS_OK;
+}
+#endif /* MINI_OS_THREAD_DEADLINE */
 
 /** @brief Current thread TCB pointer, shared with the port assembly (port.c) */
 mini_os_thread_t* mini_os_current_thread = MINI_OS_NULL;
@@ -272,6 +334,9 @@ MINI_OS_NO_RETURN void mini_os_thread_exit(void* retval)
 
     /* a running thread is still linked in the ready/running list */
     mini_os_remove_thread_from_ready_running_list(thread);
+#if MINI_OS_THREAD_DEADLINE
+    mini_os_dl_thread_release(thread); /* a DL corpse no longer reserves bandwidth */
+#endif
 
     thread->state = MINI_OS_THREAD_STATE_TERMINATED;
 #if MINI_OS_THREAD_DETACH
@@ -526,6 +591,9 @@ mini_os_err_t mini_os_thread_delete(mini_os_thread_t* thread)
     woken = mini_os_mutex_kill_held(thread);
     mini_os_irq_restore(irq);
 
+#if MINI_OS_THREAD_DEADLINE
+    mini_os_dl_thread_release(thread); /* give the DL reservation back before the TCB dies */
+#endif
     mini_os_free(thread->stack_addr);
     mini_os_free(thread);
     if (woken != MINI_OS_FALSE)
@@ -614,6 +682,9 @@ mini_os_err_t mini_os_thread_delete_static(mini_os_thread_t* thread, mini_os_uin
 #endif
     /* force-release the mutexes the target still owns, see mini_os_thread_delete() */
     woken = mini_os_mutex_kill_held(thread);
+#if MINI_OS_THREAD_DEADLINE
+    mini_os_dl_thread_release(thread); /* give the DL reservation back before the TCB is wiped */
+#endif
 
     MINI_OS_MEMSET(task_buffer, 0, sizeof(mini_os_thread_t));
     MINI_OS_MEMSET(stack_addr, 0, stack_size);
@@ -835,8 +906,8 @@ mini_os_err_t mini_os_thread_get_name(mini_os_thread_t* thread, char* name, mini
 {
     if (!thread || !name || !name_len)
         return MINI_OS_ERR_INVAL;
-    uint8_t len = 0;
-    for (uint8_t i = 0; i < (mini_os_size_t)(MINI_OS_THREADS_NAME_LEN - 1) && thread->thread_name[i] != '\0'; i++)
+    mini_os_uint8_t len = 0;
+    for (mini_os_uint8_t i = 0; i < (mini_os_size_t)(MINI_OS_THREADS_NAME_LEN - 1) && thread->thread_name[i] != '\0'; i++)
     {
         name[i] = thread->thread_name[i];
         len++;
@@ -1002,6 +1073,176 @@ mini_os_err_t mini_os_thread_set_cleanup(mini_os_thread_t* thread, void (*cleanu
     return MINI_OS_OK;
 }
 
+#if MINI_OS_THREAD_DEADLINE
+mini_os_thread_t *mini_os_deadline_thread_create(           const char *name, 
+                                                            mini_os_uint32_t stack_size,
+                                                            mini_os_tick_t deadline,
+                                                            mini_os_tick_t period,
+                                                            mini_os_uint8_t priority,
+                                                            mini_os_tick_t runtime,
+                                                            void( *entry)(void*),
+                                                            void * const parameter)
+{
+    mini_os_thread_t* thread;
+    mini_os_uint32_t* stack;
+
+    if (!name || stack_size == 0 || priority >= MINI_OS_PRIORITY || !entry)
+        return MINI_OS_NULL;
+    if (mini_os_dl_params_valid(runtime, deadline, period) == MINI_OS_FALSE)
+        return MINI_OS_NULL; /* Linux constraint: 0 < runtime <= deadline <= period */
+
+    thread = (mini_os_thread_t*)mini_os_malloc(sizeof(mini_os_thread_t));
+    if (thread == MINI_OS_NULL)
+        return MINI_OS_NULL;
+
+    stack = (mini_os_uint32_t*)mini_os_malloc(stack_size);
+    if (stack == MINI_OS_NULL)
+    {
+        mini_os_free(thread);
+        return MINI_OS_NULL;
+    }
+
+    if (mini_os_thread_init(thread, name, stack_size, priority, entry, parameter, stack) != MINI_OS_OK)
+    {
+        mini_os_free(stack);
+        mini_os_free(thread);
+        return MINI_OS_NULL;
+    }
+    if (mini_os_deadline_thread_init(thread, runtime, deadline, period) != MINI_OS_OK)
+    {
+        mini_os_free(stack);
+        mini_os_free(thread);
+        return MINI_OS_NULL;
+    }
+    /* admission control: only admit the task while the CPU stays schedulable */
+    if (mini_os_dl_bandwidth_reserve(runtime, period) != MINI_OS_OK)
+    {
+        mini_os_free(stack);
+        mini_os_free(thread);
+        return MINI_OS_NULL;
+    }
+    /* auto-start: the thread becomes ready immediately */
+    if (mini_os_add_thread_to_ready_running_list(thread) != MINI_OS_OK)
+    {
+        mini_os_dl_bandwidth_release(runtime, period);
+        mini_os_free(stack);
+        mini_os_free(thread);
+        return MINI_OS_NULL;
+    }
+    return thread;
+}
+
+mini_os_thread_t *mini_os_deadline_thread_create_static(    const char *name, 
+                                                            mini_os_uint32_t stack_size,
+                                                            mini_os_tick_t deadline,
+                                                            mini_os_tick_t period,
+                                                            mini_os_uint8_t priority,
+                                                            mini_os_tick_t runtime,
+                                                            void( *entry)(void*),
+                                                            void * const parameter,
+                                                            mini_os_uint32_t* stack_buffer,
+                                                            mini_os_thread_t* task_buffer)
+{
+    if(!name||stack_size == 0 || priority >=MINI_OS_PRIORITY||!entry||!stack_buffer||!task_buffer)
+        return MINI_OS_NULL;
+    if (mini_os_dl_params_valid(runtime, deadline, period) == MINI_OS_FALSE)
+        return MINI_OS_NULL; /* Linux constraint: 0 < runtime <= deadline <= period */
+    if (mini_os_thread_init(task_buffer, name, stack_size, priority, entry, parameter, stack_buffer) != MINI_OS_OK)
+        return MINI_OS_NULL;
+    if (mini_os_deadline_thread_init(task_buffer, runtime, deadline, period) != MINI_OS_OK)
+        return MINI_OS_NULL;
+    if (mini_os_dl_bandwidth_reserve(runtime, period) != MINI_OS_OK)
+        return MINI_OS_NULL;
+    /* auto-start: the thread becomes ready immediately */
+    if (mini_os_add_thread_to_ready_running_list(task_buffer) != MINI_OS_OK)
+    {
+        mini_os_dl_bandwidth_release(runtime, period);
+        return MINI_OS_NULL;
+    }
+    return task_buffer;
+}
+#endif /* MINI_OS_THREAD_DEADLINE */
+
+#if MINI_OS_THREAD_EDF
+/**
+ * @brief Attach or clear a deadline on an ordinary thread (same-priority EDF)
+ * @param[in] thread thread to configure; must not be a MINI_OS_SCHED_DEADLINE thread
+ * @param[in] deadline relative deadline in ticks from now; 0 clears the deadline
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument or a
+ *         MINI_OS_SCHED_DEADLINE thread
+ * @details same-priority EDF: the thread keeps its priority and stays in the
+ *          priority ready list, but inside that level it is ordered by earliest
+ *          absolute deadline instead of FIFO and queued ahead of the ordinary
+ *          threads. Clearing it (deadline == 0) restores FIFO/round-robin.
+ * @note a READY/RUNNING thread is re-linked so the new order takes effect at
+ *       once; a BLOCKED thread only changes its fields and is inserted in the
+ *       right place when it wakes. No CBS: this is ordering, not a reservation.
+ */
+mini_os_err_t mini_os_thread_set_deadline(mini_os_thread_t* thread, mini_os_tick_t deadline)
+{
+    mini_os_thread_state_t state;
+    mini_os_irq_t          irq;
+    mini_os_bool_t         relink;
+    mini_os_tick_t         now = 0;
+
+    if (thread == MINI_OS_NULL
+#if MINI_OS_THREAD_DEADLINE
+        || thread->sched_policy == MINI_OS_SCHED_DEADLINE
+#endif
+    )
+        return MINI_OS_ERR_INVAL; /* NULL, or a DL thread configured at creation */
+
+    irq = mini_os_irq_save();
+    state = thread->state;
+    relink = (state == MINI_OS_THREAD_STATE_READY || state == MINI_OS_THREAD_STATE_RUNNING) ? MINI_OS_TRUE : MINI_OS_FALSE;
+
+    if (relink == MINI_OS_TRUE)
+        (void)mini_os_remove_thread_from_ready_running_list(thread);
+
+    if (deadline == 0)
+    {
+        /* clear: back to ordinary FIFO / round-robin inside the level */
+        thread->sched_policy     = MINI_OS_SCHED_NORMAL;
+        thread->dl_deadline_time = 0;
+    }
+    else
+    {
+        (void)mini_os_get_tick(&now);
+        thread->sched_policy     = MINI_OS_SCHED_EDF;
+        thread->dl_deadline_time = now + deadline; /* relative deadline -> absolute */
+    }
+
+    if (relink == MINI_OS_TRUE)
+    {
+        /* remove() leaves the state alone and add() refuses READY/RUNNING, so
+         * mark it off-list for the re-link; interrupts are masked here */
+        thread->state = MINI_OS_THREAD_STATE_SUSPENDED;
+        (void)mini_os_add_thread_to_ready_running_list(thread);
+        if (state == MINI_OS_THREAD_STATE_RUNNING)
+            thread->state = MINI_OS_THREAD_STATE_RUNNING; /* add() demoted it to READY */
+    }
+    mini_os_irq_restore(irq);
+    return MINI_OS_OK;
+}
+#endif /* MINI_OS_THREAD_EDF */
+
+#if MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Read how many deadlines a DL thread has missed
+ * @param[in] thread thread to query
+ * @param[out] count receives the number of missed deadlines
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument
+ * @note only MINI_OS_SCHED_DEADLINE threads can miss a deadline; every other
+ *       policy keeps the counter at 0
+ */
+mini_os_err_t mini_os_thread_get_dl_miss_count(mini_os_thread_t* thread, mini_os_uint32_t* count)
+{
+    if (thread == MINI_OS_NULL || count == MINI_OS_NULL)
+        return MINI_OS_ERR_INVAL;
+    *count = thread->dl_miss_count;
+    return MINI_OS_OK;
+}
+#endif /* MINI_OS_THREAD_DEADLINE */
 #if MINI_OS_FIND_BY_NAME
 /**
  * @brief Find a thread by name

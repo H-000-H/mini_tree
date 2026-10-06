@@ -541,7 +541,7 @@ mt_err_t device_set_status(struct device* pdev, enum device_status status)
         pdev->status = status;
 
     if (pdev->lock)
-        (void)mini_mutex_unlock(pdev->lock);
+        MINI_IGNORE_RESULT(mini_mutex_unlock(pdev->lock));
     return ret;
 }
 
