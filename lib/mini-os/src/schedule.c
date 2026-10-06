@@ -887,7 +887,9 @@ void mini_os_systick_handler(void)
     mini_os_dl_replenish_due();                        /* period boundaries: start the new jobs */
     mini_os_dl_tick_decrement(mini_os_current_thread); /* GRUB: spend running_bw/this_bw of the budget */
 #endif
+#if MINI_OS_TIMER
     mini_os_timer_tick(); /* advance the timer wheel, run/queue expired timers */
+#endif
     mini_os_irq_restore(irq_level);
 
     (void)mini_os_schedule_yield_isr();

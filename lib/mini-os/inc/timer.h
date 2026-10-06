@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file timer.h
  * @author H-000-H
  * @brief Timer interface
@@ -8,11 +8,15 @@
 #ifndef TIMER_H
 #define TIMER_H
 #include "list.h"
+#include "mini_config.h"
 #include <redef.h>
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
+
+#if MINI_OS_TIMER
+
 typedef void (*mini_os_timer_callback)(void* param);
 typedef struct mini_os_timer mini_os_timer_t;
 #define MINI_OS_TIMER_FLAG_ONE_SHOT 0x00
@@ -130,6 +134,8 @@ mini_os_err_t mini_os_timer_set_callback(mini_os_timer_t* timer, mini_os_timer_c
  *         service thread (woken through a binary semaphore).
  */
 void mini_os_timer_tick(void);
+
+#endif /* MINI_OS_TIMER */
 
 #if defined(__cplusplus)
 }

@@ -97,6 +97,22 @@
 #else
 #define MINI_OS_TIMER_THREAD_STACK_SIZE 512 /**< service thread stack bytes */
 #endif
+
+/**
+ * @brief Software timer module on/off
+ * @note Off by default. When off, inc/timer.h and src/timer.c compile to
+ *       nothing and src/timer.c is dropped from the source list (see
+ *       CMakeLists.txt); the SysTick handler no longer calls
+ *       mini_os_timer_tick(). Set CONFIG_MINI_OS_TIMER=1 to use the
+ *       mini_os_timer_* API and the SOFT timer service thread.
+ */
+#ifdef CONFIG_MINI_OS_TIMER
+#define MINI_OS_TIMER CONFIG_MINI_OS_TIMER
+#elif defined(MINI_OS_TIMER)
+/* MINI_OS_TIMER pre-defined externally , keep it */
+#else
+#define MINI_OS_TIMER 0
+#endif
 /**
  * @brief Enable stack overflow detection on the system (MSP) stack
  * @note Off by default; set CONFIG_MINI_OS_STACK_OVERFLOW_CHECK=1 to enable.

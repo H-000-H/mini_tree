@@ -27,7 +27,6 @@ set(MINI_OS_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/thread.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/mutex.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/semaphore.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/timer.c
   ${MINI_OS_PORT_DIR}/port.c
   ${MINI_OS_PORT_DIR}/port.S
 )
@@ -53,6 +52,22 @@ if(MINI_OS_BUILD_EVENT)
     message(STATUS "mini-os: event group ON (CONFIG_MINI_OS_EVENT)")
 else()
     message(STATUS "mini-os: event group OFF (src/event.c not compiled)")
+endif()
+
+set(MINI_OS_BUILD_TIMER ON)
+if(EXISTS "${MINI_TREE_CONFIG}")
+    # 软件定时器开关默认关, 要用就手动开 (CONFIG_MINI_OS_TIMER=y); 关闭时
+    # src/timer.c 不编入, 而 SysTick 也不会调 mini_os_timer_tick()。
+    file(STRINGS "${MINI_TREE_CONFIG}" _mini_os_timer REGEX "^CONFIG_MINI_OS_TIMER=y$")
+    if(NOT _mini_os_timer)
+        set(MINI_OS_BUILD_TIMER OFF)
+    endif()
+endif()
+if(MINI_OS_BUILD_TIMER)
+    list(APPEND MINI_OS_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/timer.c)
+    message(STATUS "mini-os: software timer ON (CONFIG_MINI_OS_TIMER)")
+else()
+    message(STATUS "mini-os: software timer OFF (src/timer.c not compiled)")
 endif()
 
 add_library(${CMAKE_PROJECT_NAME}

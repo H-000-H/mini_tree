@@ -447,12 +447,14 @@ void mini_os_thread_idle(void* param);
  * @param[in] entry Thread entry function
  * @param[in] parameter Thread entry parameter
  * @return mini_os_thread_t* on success, other on failure
- * @note The task body must end every period with mini_os_deadline_job_finish().
- *       Using mini_os_thread_delay_tick()/delay_ms()/delay_tick_until() as the
- *       period wait of a DL task is neither recommended nor allowed: only the
- *       kernel-provided finish hands out the next job (budget refill,
- *       dl_deadline_time += dl_period) and keeps the CBS accounting and the
- *       activation semaphore consistent.
+ * @note MANDATORY: the task body must itself call mini_os_deadline_job_finish()
+ *       at the end of every job. There is no automatic finish -- the kernel never
+ *       infers "job done" from the task blocking -- and only this call marks the
+ *       job done (so the boundary reports no spurious miss), hands out the next
+ *       job (budget refill, dl_deadline_time += dl_period) and releases the
+ *       activation semaphore. Using mini_os_thread_delay_tick()/delay_ms()/
+ *       delay_tick_until() as the period wait of a DL task is therefore neither
+ *       recommended nor allowed.
  * @note This is not a dynamic-deadline scheduler: the kernel never changes a
  *       job's deadline except advancing it by exactly dl_period at each period
  *       boundary (creation fixes it at now + deadline). There is no deadline
@@ -478,12 +480,14 @@ mini_os_thread_t *mini_os_deadline_thread_create(           const char *name,
  * @param[in] stack_buffer Thread stack buffer
  * @param[in] task_buffer Thread task buffer
  * @return mini_os_thread_t* on success, other on failure
- * @note The task body must end every period with mini_os_deadline_job_finish().
- *       Using mini_os_thread_delay_tick()/delay_ms()/delay_tick_until() as the
- *       period wait of a DL task is neither recommended nor allowed: only the
- *       kernel-provided finish hands out the next job (budget refill,
- *       dl_deadline_time += dl_period) and keeps the CBS accounting and the
- *       activation semaphore consistent.
+ * @note MANDATORY: the task body must itself call mini_os_deadline_job_finish()
+ *       at the end of every job. There is no automatic finish -- the kernel never
+ *       infers "job done" from the task blocking -- and only this call marks the
+ *       job done (so the boundary reports no spurious miss), hands out the next
+ *       job (budget refill, dl_deadline_time += dl_period) and releases the
+ *       activation semaphore. Using mini_os_thread_delay_tick()/delay_ms()/
+ *       delay_tick_until() as the period wait of a DL task is therefore neither
+ *       recommended nor allowed.
  * @note This is not a dynamic-deadline scheduler: the kernel never changes a
  *       job's deadline except advancing it by exactly dl_period at each period
  *       boundary (creation fixes it at now + deadline). There is no deadline

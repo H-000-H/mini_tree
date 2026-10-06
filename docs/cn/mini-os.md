@@ -119,7 +119,7 @@ mini-os 有两套互相独立的截止期调度，各自一个开关，**均默�
 - **超时上报**：每线程 `dl_miss_count`，可用 `mini_os_dl_miss_hook_set(hook, param)` 注册回调、`mini_os_thread_get_dl_miss_count()` 读取计数。当 DL 线程的绝对截止期到达时它**仍在就绪/运行或被限流**（说明到点都没阻塞交还 CPU）即上报一次，回调携带被错过的截止期；回调在 SysTick 上下文执行，必须短、不可调用阻塞 API。
 - **任务收尾（finish）**：DL 任务干完调用 `mini_os_deadline_job_finish()` —— 记录完成（`dl_finish_count` + `mini_os_dl_finish_hook_set()` 回调），然后**在每任务一个的二值激活信号量上 `take` 阻塞**；线程时间轮在绝对截止期释放这次等待（即周期边界那次激活），唤醒路径随即自动开新 job（补满预算、`deadline += period`）后返回，因此调用方**不必自己算延时或跟踪周期**，也能被提前 `give` 立即激活。调用时若已过截止期则改报一次 miss。完成回调在**线程上下文**触发（与 ISR 上下文的 miss 回调不同）。
 
-> **禁止用 `mini_os_thread_delay_tick()` / `delay_ms()` / `delay_tick_until()` 作为 DL 任务的周期收尾**（既不推荐也不允许）：只有内核自带的 `mini_os_deadline_job_finish()` 才会派发下一个 job，并维持 CBS 记账与激活信号量一致。DL 任务体里不应出现 `delay` API。
+> **必须主动调用**：DL 任务务必在每个 job 结束**自己调用** `mini_os_deadline_job_finish()`——内核**没有自动 finish**（不会把“任务阻塞”当成收工）。**禁止用 `mini_os_thread_delay_tick()` / `delay_ms()` / `delay_tick_until()` 作为 DL 任务的周期收尾**（既不推荐也不允许）：只有内核自带的 `mini_os_deadline_job_finish()` 才会派发下一个 job，并维持 CBS 记账与激活信号量一致。DL 任务体里不应出现 `delay` API。
 - **每线程计数**：`dl_miss_count`（错过截止期）、`dl_finish_count`（显式 finish 次数）、`dl_throttle_count`（预算耗尽被限流次数），分别用 `mini_os_thread_get_dl_miss_count()` / `_get_dl_finish_count()` / `_get_dl_throttle_count()` 读取。
 - **不是动态 deadline 调度器**：内核不会内部改 deadline —— 创建时固定为 `now + deadline`，之后只在每个周期边界精确 `+= dl_period`；没有 deadline 后推/推迟，也没有基于带宽回收的动态调整。
 - **throttle 必然 miss**：预算一旦耗尽被限流，这个 job 就无法在截止期前完成，周期边界必然上报一次 miss（`dl_miss_count` 同时 +1，`dl_throttle_count` 记录限流次数）。
@@ -247,7 +247,8 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | `MINI_OS_TICK_WHEEL` | int / 32 | 线程时间轮槽数（2 的幂） |
 | `MINI_OS_THREAD_MIN_STACK_SIZE` | int / 256 | 线程最小栈（字节） |
 | `MINI_OS_DEFAULT_IDLE_STACK_SIZE` | int / 256 | idle 线程栈 |
-| `MINI_OS_TIMER_THREAD_STACK_SIZE` | int / 512 | SOFT 定时器服务线程栈（≥最小栈、8 的倍数） |
+| `MINI_OS_TIMER` | bool / n | 软件定时器模块（HARD 回调在 ISR、SOFT 回调在服务线程）；默认关，关闭时 `timer.c` 不编入、SysTick 不调 tick |
+| `MINI_OS_TIMER_THREAD_STACK_SIZE` | int / 512 | SOFT 定时器服务线程栈（≥最小栈、8 的倍数；依赖 `MINI_OS_TIMER`） |
 | `MINI_OS_TIME_SLICE` | bool / n | 同优先级时间片轮转（默认严格优先级） |
 | `MINI_OS_EVENT` | bool / n | 32 位事件组（默认关，且没有任何符号 select 它 —— 要用就手动开） |
 | `MINI_OS_THREAD_DETACH` | bool / n | detach/join（绑定同一开关，每 TCB 增回收字段） |

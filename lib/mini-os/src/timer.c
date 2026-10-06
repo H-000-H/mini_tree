@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file timer.c
  * @author H-000-H
  * @brief Software/hardware timers built on a dedicated tick wheel
@@ -26,6 +26,8 @@
 #include "schedule.h"
 #include "semaphore.h"
 #include "thread.h"
+
+#if MINI_OS_TIMER
 
 /** @brief Dedicated timer tick wheel (MINI_OS_TICK_WHEEL must be a power of 2) */
 static mini_os_list_t s_timer_wheel[MINI_OS_TICK_WHEEL];
@@ -487,3 +489,5 @@ void mini_os_timer_tick(void)
         (void)mini_os_schedule_yield_isr();
     }
 }
+
+#endif /* MINI_OS_TIMER */

@@ -338,10 +338,27 @@ config MINI_OS_DEFAULT_IDLE_STACK_SIZE
 
       Default idle thread stack size (must be >= thread min stack).
 
+config MINI_OS_TIMER
+    bool "mini-os 软件定时器 (HARD/SOFT)"
+    default n
+    depends on OS_MINI_OS
+    help
+      软件定时器模块: 自带 tick 时间轮, HARD 回调在 ISR 上下文执行,
+      SOFT 回调在定时器服务线程上下文执行。
+      默认关闭。关闭时 inc/timer.h 与 src/timer.c 编译为空,
+      src/timer.c 不再进入编译单元列表, SysTick 也不再调用
+      mini_os_timer_tick()。
+
+      Software timer module: its own tick wheel, HARD callbacks in ISR
+      context and SOFT callbacks on the timer service thread.
+      Off by default. When off, inc/timer.h and src/timer.c compile to
+      nothing, src/timer.c is dropped from the source list and the SysTick
+      handler no longer calls mini_os_timer_tick().
+
 config MINI_OS_TIMER_THREAD_STACK_SIZE
     int "mini-os 软定时器服务线程栈 (字节)"
     default 512
-    depends on OS_MINI_OS
+    depends on OS_MINI_OS && MINI_OS_TIMER
     help
       软定时器服务线程 (SOFT timer callback 运行处) 栈大小,
       必须 >= 线程最小栈且为 8 的倍数。
