@@ -251,6 +251,8 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | `MINI_OS_TIME_SLICE` | bool / n | 同优先级时间片轮转（默认严格优先级） |
 | `MINI_OS_EVENT` | bool / n | 32 位事件组（默认关，且没有任何符号 select 它 —— 要用就手动开） |
 | `MINI_OS_THREAD_DETACH` | bool / n | detach/join（绑定同一开关，每 TCB 增回收字段） |
+| `MINI_OS_THREAD_EDF` | bool / n | 同优先级 EDF（`mini_os_thread_set_deadline`）；关闭时同优先级纯 FIFO、不做截止期比较 |
+| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE 类（全局 EDF + CBS + GRUB 带宽回收 + miss/throttle/finish 计数）；与 EDF 开关独立 |
 | `MINI_OS_FIND_BY_NAME` | bool / n | 线程/信号量/互斥锁按名注册表 |
 | `MINI_OS_LONG_TIME` | bool / n | 64 位 tick（附加回绕计数器） |
 | `MINI_OS_STACK_OVERFLOW_CHECK` | bool / n | MSP 栈哨兵（需 mini-os-heap.ld） |
@@ -258,16 +260,11 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | `MINI_OS_SPINLOCK`(+`_ATOMIC`/`_YIELD`/`_NUM`) | bool / y | header-only 自旋锁（关闭则退化为关中断兜底）；原子模式仅 SMP |
 | `ARCH` | (无 prompt) | mini-os 架构 ID（0=M0/M0+ 1=M3 2=M4 3=M7），由 `PLATFORM_ARM_*` 自动派生，**不应手工设置** |
 
-### 7.2 截止期调度开关（内置默认，默认关）
+### 7.2 截止期调度开关（已暴露到 Kconfig，默认关）
 
-这两个开关走同一条三层配置链，但**尚未暴露到 `Kconfig.mini_tree`**，所以 `.config` 里没有对应项；启用方式是在命令行/父工程预定义 `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE`（或在 `config.h` 里定义对应的 `CONFIG_*`）：
+`MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` 走和上面诸项同一条三层配置链（`Kconfig.mini_tree` → 生成的 `CONFIG_*` → `mini_config.h` → `MINI_OS_*`），均默认关且相互独立。也可以用命令行/父工程直接预定义 `MINI_OS_*`，或用 `config.h` 里的 `CONFIG_*` 覆盖。
 
-| 选项 | 类型 / 默认 | 说明 |
-| :--- | :--- | :--- |
-| `MINI_OS_THREAD_EDF` | bool / n | 同优先级 EDF（`mini_os_thread_set_deadline`）；关闭时同优先级纯 FIFO，不做任何截止期比较 |
-| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE 类（全局 EDF + CBS + 带宽回收 + 超时上报）；与 EDF 开关相互独立 |
-
-> 详见 §2.5。
+> 语义与 API 详见 §2.5。
 
 ---
 

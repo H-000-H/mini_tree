@@ -392,6 +392,46 @@ config MINI_OS_THREAD_DETACH
       Thread detach AND join support (bound to one switch; adds
       corpse-lifetime fields to every TCB).
 
+config MINI_OS_THREAD_EDF
+    bool "mini-os 同优先级 EDF (非 FIFO)"
+    default n
+    depends on OS_MINI_OS
+    help
+      允许把一个普通线程变成同优先级内的 EDF 排序:
+      调 mini_os_thread_set_deadline() 附加/清除截止期, 线程保留自己的
+      优先级, 只在本级内按最早截止期排序并排在普通线程之前。
+      默认关闭: 关闭时同优先级保持纯 FIFO + 轮转, 不做任何截止期比较,
+      TCB 也不增加 sched_policy / dl_deadline_time 字段。
+      与 MINI_OS_THREAD_DEADLINE 相互独立。
+
+      Same-priority EDF ordering for an ordinary thread: attach/clear a
+      deadline with mini_os_thread_set_deadline(); the thread keeps its
+      priority and is ordered by earliest deadline inside that level only,
+      ahead of the ordinary threads.
+      Off by default: with it off the level stays FIFO + round-robin, no
+      deadline comparison runs, and the TCB gains no sched_policy /
+      dl_deadline_time fields. Independent of MINI_OS_THREAD_DEADLINE.
+
+config MINI_OS_THREAD_DEADLINE
+    bool "mini-os SCHED_DEADLINE 类 (全局 EDF + CBS)"
+    default n
+    depends on OS_MINI_OS
+    help
+      截止期调度类, 压在所有优先级之上: 独立全局就绪链表 + 类内全局 EDF,
+      带 CBS 预算强制 (runtime/period)、GRUB 带宽回收、95% 准入控制,
+      以及 miss / throttle / finish 计数与上报回调。
+      创建参数约束 0 < runtime <= deadline <= period;
+      dl_period 为完整 tick 值, 不再受 16 位限制。
+      默认关闭, 与 MINI_OS_THREAD_EDF 相互独立 (可单独或同时开启)。
+
+      SCHED_DEADLINE-like class above every priority level: its own global
+      ready list + global EDF inside the class, with CBS budget enforcement
+      (runtime/period), GRUB bandwidth reclaiming, a 95% admission cap, and
+      miss / throttle / finish counters and reporting hooks.
+      Constraint: 0 < runtime <= deadline <= period; dl_period is a full
+      tick value (no longer 16-bit). Off by default and independent of
+      MINI_OS_THREAD_EDF (either or both may be enabled).
+
 config MINI_OS_FIND_BY_NAME
     bool "mini-os 按名查找 (线程/信号量/互斥锁)"
     default n

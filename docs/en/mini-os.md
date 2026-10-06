@@ -251,6 +251,8 @@ Every option resolves through the same **three-tier chain** (reference implement
 | `MINI_OS_TIME_SLICE` | bool / n | Round-robin time slicing (default: strict priority) |
 | `MINI_OS_EVENT` | bool / n | 32-bit event group (off by default, and nothing selects it — enable it by hand) |
 | `MINI_OS_THREAD_DETACH` | bool / n | detach/join (one switch, adds reclamation fields to every TCB) |
+| `MINI_OS_THREAD_EDF` | bool / n | Same-priority EDF (`mini_os_thread_set_deadline`); off = plain FIFO, no deadline comparison |
+| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE class (global EDF + CBS + GRUB reclaiming + miss/throttle/finish counters); independent of EDF |
 | `MINI_OS_FIND_BY_NAME` | bool / n | By-name registries for threads/semaphores/mutexes |
 | `MINI_OS_LONG_TIME` | bool / n | 64-bit tick (via an extra wrap-around counter) |
 | `MINI_OS_STACK_OVERFLOW_CHECK` | bool / n | MSP stack sentinel (requires mini-os-heap.ld) |
@@ -258,16 +260,11 @@ Every option resolves through the same **three-tier chain** (reference implement
 | `MINI_OS_SPINLOCK`(+`_ATOMIC`/`_YIELD`/`_NUM`) | bool / y | Header-only spinlock (off → the unified interface falls back to IRQ masking); atomic mode is SMP-only |
 | `ARCH` | (no prompt) | mini-os architecture id (0=M0/M0+ 1=M3 2=M4 3=M7), derived automatically from `PLATFORM_ARM_*`, **must not be set by hand** |
 
-### 7.2 Deadline-scheduling switches (built-in defaults, off)
+### 7.2 Deadline-scheduling switches (now in Kconfig, off by default)
 
-These two switches use the same three-tier chain but are **not yet exposed in `Kconfig.mini_tree`**, so `.config` has no entry for them; enable them by predefining `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` (command line / parent project), or by defining the matching `CONFIG_*` in `config.h`:
+`MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` follow the same three-tier chain as the options above (`Kconfig.mini_tree` → generated `CONFIG_*` → `mini_config.h` → `MINI_OS_*`); both default to off and are independent. They can also be pre-defined as `MINI_OS_*` on the command line / in a parent project, or overridden through the `CONFIG_*` in `config.h`.
 
-| Option | Type / default | Notes |
-| :--- | :--- | :--- |
-| `MINI_OS_THREAD_EDF` | bool / n | Same-priority EDF (`mini_os_thread_set_deadline`); when off the level stays pure FIFO and no deadline comparison runs |
-| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE class (global EDF + CBS + bandwidth reclaiming + overrun reporting); independent of the EDF switch |
-
-> See §2.5.
+> See §2.5 for the semantics and APIs.
 
 ---
 
