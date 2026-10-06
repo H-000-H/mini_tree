@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file port.h
- * @brief export symbols for port layer
  * @author H-000-H
+ * @brief export symbols for port layer
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef PORT_H
 #define PORT_H

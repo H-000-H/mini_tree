@@ -1,12 +1,12 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @brief queue implementation
  * @file queue.c
  * @author H-000-H
+ * @brief queue implementation
  * @note send/receive park on a wait list and, for a finite timeout, also in the
  *       time wheel; both are parked inside the caller's critical section, so no
  *       space/message event can be missed, and a retry re-parks with the
  *       remaining time only, which keeps the total timeout strict
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "queue.h"
 

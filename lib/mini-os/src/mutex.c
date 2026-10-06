@@ -1,9 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @brief mutex implementation (recursive variant, priority inheritance over the
- *        embedded binary semaphore)
  * @file mutex.c
  * @author H-000-H
+ * @brief mutex implementation (recursive variant, priority inheritance over the
+ *        embedded binary semaphore)
  * @note
  *  - inheritance is tracked per thread, not per mutex: the owner keeps its
  *    caller-requested priority in TCB base_priority and every mutex it holds is
@@ -13,6 +12,7 @@
  *    blocked on another mutex, that mutex's owner inherits the same requirement
  *    (capped at MINI_OS_MUTEX_PI_CHAIN_MAX links, which also breaks wait cycles)
  *  - every inheritance step runs with interrupts disabled
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "mutex.h"
 

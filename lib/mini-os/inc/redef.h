@@ -1,5 +1,4 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file redef.h
  * @author H-000-H
  * @brief mini-os redefinition macros file (all symbols prefixed mini_os_/MINI_OS_)
@@ -8,6 +7,7 @@
  *   - this project defaults to not including standard c library headers and versions v0.1.0
  * defaults to 32-bit mode
  *   - temporary not included 64-bit equipment
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef REDEF_H
 #define REDEF_H
@@ -56,8 +56,8 @@ typedef signed long     mini_os_user_data_t;                /**<mini-os user_dat
 
 /* MINI_OS_NULL_TO_STANDARD is always defined (0 or 1) by mini_config.h:
  * #ifdef would be true for the disabled case too, so test the value.
- * C++ 下 (void*)0 不能隐式转成其他指针类型 (如 mini_os_thread_t*), 用 nullptr;
- * C 下保持 (void*)0 的传统写法。 */
+ * Under C++, (void*)0 cannot implicitly convert to other pointer types (e.g.
+ * mini_os_thread_t*), so use nullptr; under C keep the traditional (void*)0. */
 #if MINI_OS_NULL_TO_STANDARD
 #ifdef __cplusplus
 #define MINI_OS_NULL nullptr                                /**<null*/

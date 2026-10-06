@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file event.h
+ * @author H-000-H
  * @brief Event group definition
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef EVENT_H
 #define EVENT_H

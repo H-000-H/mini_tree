@@ -1,10 +1,10 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file memory.c
+ * @author H-000-H
  * @brief malloc/free model memory manager (free list by default; with
  *        CONFIG_OPEN_SLAB small allocations go to slab; the global heap is
  *        provided by the linker script and taken over dynamically)
- * @author H-000-H
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
 #include "memory.h"

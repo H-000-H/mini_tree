@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file queue.h
- * @brief queue implementation (fixed-size messages, FIFO, blocking send/receive)
  * @author H-000-H
+ * @brief queue implementation (fixed-size messages, FIFO, blocking send/receive)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef QUEUE_H
 #define QUEUE_H

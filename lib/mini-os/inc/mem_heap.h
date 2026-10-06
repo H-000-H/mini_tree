@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mem_heap.h
- * @brief Memory heap definition and link lds script only control heap size
  * @author H-000-H
+ * @brief Memory heap definition and link lds script only control heap size
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MEM_HEAP_H
 #define MEM_HEAP_H

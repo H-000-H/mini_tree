@@ -1,8 +1,7 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file schedule.c
- * @brief Scheduler implementation
  * @author H-000-H
+ * @brief Scheduler implementation
  * @details Round-robin selection inside one priority level, with threads A, B
  *          and C sharing a priority:
  *  - current is B (middle): sentinel -> A -> B(current) -> C -> sentinel,
@@ -11,6 +10,7 @@
  *    current->next is the sentinel, so the list head (A) is chosen (wraps)
  *  - single thread: sentinel -> A(current) -> sentinel, the successor is the
  *    sentinel, so the head is A again and the thread keeps running
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "schedule.h"
 

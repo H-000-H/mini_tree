@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file semaphore.h
- * @brief semaphore implementation
  * @author H-000-H
+ * @brief semaphore implementation
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef SEM_H
 #define SEM_H

@@ -1,8 +1,7 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file memory.h
- * @brief Memory heap definitions and API (malloc/free model)
  * @author H-000-H
+ * @brief Memory heap definitions and API (malloc/free model)
  * @details
  *  - malloc/free model: alloc returns a raw pointer, free takes only the
  *    pointer; the block contents are managed by the caller
@@ -21,6 +20,7 @@
  *    pointer area is reused for user data and rewritten on free
  *  - the global heap memory comes from the linker script
  *    (mem_heap.h / mini-os-heap.ld)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MEMORY_H
 #define MEMORY_H

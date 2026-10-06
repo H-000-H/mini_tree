@@ -37,7 +37,7 @@ mini-os 是仓库内自研的最小 RTOS 内核，设计目标：
 
 | 子系统 | 能力 |
 | :--- | :--- |
-| 调度 | 32 级抢占 + 就绪位图 O(1) + 同优先级链表轮转（时间片可选，默认关） |
+| 调度 | 32 级抢占 + 就绪位图 O(1) + 同优先级链表轮转（时间片可选，默认关）；截止期调度可选：同优先级 EDF + SCHED_DEADLINE 类（全局 EDF + CBS + 带宽回收 + 超时上报，均默认关） |
 | 线程 | 动/静态创建、删除、挂起/恢复、动态改优先级（带 PI 回滚）、退出回调、idle 钩子；detach/join 可选 |
 | 同步 | 计数/二值信号量（可互转）、递归互斥锁 + 优先级继承（链式传播）、32 位事件组（可选） |
 | 通信 | 定长消息队列（阻塞收发 + ISR 变体） |
@@ -50,7 +50,7 @@ mini-os 是仓库内自研的最小 RTOS 内核，设计目标：
 
 ## 2. 调度器
 
-核心实现在 `lib/mini-os/src/schedule.c`（约 470 行）。
+核心实现在 `lib/mini-os/src/schedule.c`（约 790 行）。
 
 ### 2.1 就绪位图 + O(1) 选级
 
@@ -90,6 +90,35 @@ mini-os 是仓库内自研的最小 RTOS 内核，设计目标：
 | idle 线程自初始化 | 105 | |
 | 按名注册表（线程/信号量/互斥锁） | 110-112 | 仅 `MINI_OS_FIND_BY_NAME` 开启时 |
 | 定时器模块自初始化 | 113 | |
+
+### 2.5 截止期调度（可选，默认关）
+
+mini-os 有两套互相独立的截止期调度，各自一个开关，**均默认关闭**；关闭时相关字段、链表、运算全部不参与编译，同优先级仍是纯 FIFO + 轮转：
+
+| 开关 | 能力 | 默认 |
+| :--- | :--- | :--- |
+| `MINI_OS_THREAD_EDF` | 同优先级非 FIFO：把一个普通线程按截止期排序 | `0`（关） |
+| `MINI_OS_THREAD_DEADLINE` | SCHED_DEADLINE 类：全局 EDF + CBS + 带宽回收 + 超时上报 | `0`（关） |
+
+**A. 同优先级 EDF（`MINI_OS_THREAD_EDF`）**
+
+- `mini_os_thread_set_deadline(thread, deadline)` 给**已存在的普通线程**附加/清除截止期（`deadline = 0` 清除；入参为相对 tick，内部转绝对）；
+- 线程保留自己的优先级、仍留在该优先级的就绪链表里，只是级内按最早截止期排序并排在普通线程之前；
+- 级首是 EDF 线程时跳过同优先级轮转；时间片轮转对 EDF/DL 线程一并跳过（`mini_os_tick_slice_decrement`）；
+- 只做**排序**，不做预算/准入（没有 CBS）。
+
+**B. SCHED_DEADLINE 类（`MINI_OS_THREAD_DEADLINE`，仿 Linux）**
+
+- `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, priority, runtime, entry, param)`；
+- **类高于全部 32 个优先级**：DL 线程进独立全局就绪链表 `s_dl_ready_list`、**不进入 `g_priority` 位图**，类内按绝对截止期全局 EDF 取最早者；`priority` 只保存、不参与排序（同 Linux 忽略 `rt_priority`）；
+- **CBS（预算强制）**：`runtime` 是每周期预算，跑完即限流（摘出就绪链表、按剩余时间挂进线程时间轮），到绝对截止期开新 job（`deadline += period`、预算补满）；
+- **非 deferrable**：阻塞时间照算进截止期；截止期前醒来保留剩余预算，截止期后才醒来直接按新 job 处理（唤醒刷新）；
+- **GRUB 带宽回收**：其他 DL 线程阻塞（non-contending）时，正在跑的 DL 线程按 `running_bw / this_bw` 的速率扣预算，从而借用空闲份额（上限为已准入的 `this_bw`）。`this_bw` 是准入总量（仅创建/删除时变），`running_bw` 随“进出就绪链表”实时变化；预算用 `dl_budget_frac` 做 1/2^20 定点累加，避免速率 <1 时丢 tick；
+- **周期边界补充**：回收后任务可能到截止期都没耗尽预算，因此每个截止期到达时**无条件**开新 job（`mini_os_dl_replenish_due`），不能只靠“限流到点”触发；
+- **准入控制**：`Σ runtime/period ≤ 95%`，超限创建失败（`MINI_OS_ERR_BUSY`，对外表现为返回 NULL）；线程退出/删除时释放；参数约束 `0 < runtime ≤ deadline ≤ period`，`dl_period` 为完整 `mini_os_tick_t`（不再受 16 位限制）；
+- **超时上报**：每线程 `dl_miss_count`，可用 `mini_os_dl_miss_hook_set(hook, param)` 注册回调、`mini_os_thread_get_dl_miss_count()` 读取计数。当 DL 线程的绝对截止期到达时它**仍在就绪/运行或被限流**（说明到点都没阻塞交还 CPU）即上报一次，回调携带被错过的截止期；回调在 SysTick 上下文执行，必须短、不可调用阻塞 API。
+
+> 两个开关都关时没有任何运行时开销：`sched_policy` / `dl_*` 字段、DL 链表、CBS 运算与截止期比较函数都不编入。
 
 ---
 
@@ -220,6 +249,17 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | `MINI_OS_USE_FPU` | bool / y | FPU 上下文保存（仅 CM4F/CM7 可见，硬浮点下不应关） |
 | `MINI_OS_SPINLOCK`(+`_ATOMIC`/`_YIELD`/`_NUM`) | bool / y | header-only 自旋锁（关闭则退化为关中断兜底）；原子模式仅 SMP |
 | `ARCH` | (无 prompt) | mini-os 架构 ID（0=M0/M0+ 1=M3 2=M4 3=M7），由 `PLATFORM_ARM_*` 自动派生，**不应手工设置** |
+
+### 7.2 截止期调度开关（内置默认，默认关）
+
+这两个开关走同一条三层配置链，但**尚未暴露到 `Kconfig.mini_tree`**，所以 `.config` 里没有对应项；启用方式是在命令行/父工程预定义 `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE`（或在 `config.h` 里定义对应的 `CONFIG_*`）：
+
+| 选项 | 类型 / 默认 | 说明 |
+| :--- | :--- | :--- |
+| `MINI_OS_THREAD_EDF` | bool / n | 同优先级 EDF（`mini_os_thread_set_deadline`）；关闭时同优先级纯 FIFO，不做任何截止期比较 |
+| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE 类（全局 EDF + CBS + 带宽回收 + 超时上报）；与 EDF 开关相互独立 |
+
+> 详见 §2.5。
 
 ---
 

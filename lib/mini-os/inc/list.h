@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file list.h
+ * @author H-000-H
  * @brief mini-os list implementation
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef LIST_H
 #define LIST_H

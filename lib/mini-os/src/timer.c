@@ -1,7 +1,6 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file timer.c
+ * @author H-000-H
  * @brief Software/hardware timers built on a dedicated tick wheel
  * @details
  *  - every timer sits on its own time wheel (s_timer_wheel), advanced one slot
@@ -15,6 +14,7 @@
  *    SOFT timer start because it needs the scheduler up (mini_os_schedule_init
  *    runs in main, after every constructor), so it cannot be created from the
  *    constructor itself
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "timer.h"
 

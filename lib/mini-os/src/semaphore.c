@@ -1,11 +1,11 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @brief semaphore implementation
  * @file semaphore.c
  * @author H-000-H
+ * @brief semaphore implementation
  * @note a give hands the unit straight to the oldest parked taker instead of
  *       incrementing the count, so a woken take needs no retry loop and a
  *       binary semaphore can satisfy several parked takers in a row
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "semaphore.h"
 

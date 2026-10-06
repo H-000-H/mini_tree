@@ -1,10 +1,10 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @brief mini-os thread
  * @file thread.h
  * @author H-000-H
+ * @brief mini-os thread
  * @note
  *  - not support multi-core
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MINI_OS_THREAD_H
 #define MINI_OS_THREAD_H
@@ -100,8 +100,8 @@ struct mini_os_thread
     mini_os_uint32_t       dl_miss_count;                       /**< DEADLINE: deadlines missed so far */
 #endif
 #if MINI_OS_TIME_SLICE
-    mini_os_tick_t init_tick_num;                               /**< Initial tick for time‑slice */
-    mini_os_tick_t remain_tick;                                 /**< Remaining tick for time‑slice */
+    mini_os_tick_t init_tick_num;                               /**< Initial tick for time-slice */
+    mini_os_tick_t remain_tick;                                 /**< Remaining tick for time-slice */
 #endif
 #if MINI_OS_THREAD_DETACH
     mini_os_bool_t            is_detach;                        /**< enabled detached */

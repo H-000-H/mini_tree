@@ -1,8 +1,8 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @author H-000-H
  * @file thread.c
+ * @author H-000-H
  * @brief Thread management functions
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "thread.h"
 

@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file err.h
- * @brief Error codes
  * @author H-000-H
+ * @brief Error codes
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef ERR_H
 #define ERR_H
@@ -29,7 +29,7 @@
 #define MINI_OS_ERR_NOTSUPP MINI_ERR_NOTSUPP   /**<operation not supported/implemented */
 #define MINI_OS_ERR_STATE MINI_ERR_STATE       /**<invalid state transition */
 
-/* ── 内核私有码 (mini-os 片: -256..-287) ── */
+/* kernel-private codes (mini-os slice: -256..-287) */
 #define MINI_OS_ERR_DEAD (-256)        /**<thread terminated / deleted (killed) */
 #define MINI_OS_ERR_NOTREADY (-257)    /**<scheduler not started or no ready thread */
 #define MINI_OS_ERR_RANGE (-258)       /**<priority or parameter out of range */
@@ -54,7 +54,7 @@
 #define MINI_OS_ERR_NOTSUPP -12                 /**<operation not supported/implemented */
 #define MINI_OS_ERR_STATE -13                   /**<invalid state transition */
 
-/* ── 内核私有码 (mini-os 片: -256..-287) ── */
+/* kernel-private codes (mini-os slice: -256..-287) */
 #define MINI_OS_ERR_DEAD (-256)        /**<thread terminated / deleted (killed) */
 #define MINI_OS_ERR_NOTREADY (-257)    /**<scheduler not started or no ready thread */
 #define MINI_OS_ERR_RANGE (-258)       /**<priority or parameter out of range */

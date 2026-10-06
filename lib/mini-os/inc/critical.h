@@ -1,11 +1,11 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file critical.h
  * @author H-000-H
  * @brief mini-os critical section macros
  * @details
  *   - included by redef.h after the mini_os_irq_* prototypes; do not include
  *     it standalone before redef.h (the macros expand to those functions)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef CRITICAL_H
 #define CRITICAL_H

@@ -1,9 +1,9 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file timer.h
- * @brief Timer interface
  * @author H-000-H
+ * @brief Timer interface
  * @note only sample things to use soft timer.
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef TIMER_H
 #define TIMER_H

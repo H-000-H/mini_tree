@@ -1,8 +1,8 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file schedule.h
- * @brief Scheduling functions
  * @author H-000-H
+ * @brief Scheduling functions
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef SCHEDULE_H
 #define SCHEDULE_H

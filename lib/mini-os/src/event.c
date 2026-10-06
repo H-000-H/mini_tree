@@ -1,11 +1,11 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
- * @brief Event group implementation (32 event flags, OR/WHOLE wait semantics,
- *        blocking wait with wait-list wake-up and time-wheel timeout)
  * @file event.c
  * @author H-000-H
+ * @brief Event group implementation (32 event flags, OR/WHOLE wait semantics,
+ *        blocking wait with wait-list wake-up and time-wheel timeout)
  * @note every waiter stores its expected mask on its own TCB (wait_mask), so
  *       several threads can wait for different masks on the same group at once
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #include "event.h"
 

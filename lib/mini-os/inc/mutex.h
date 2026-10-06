@@ -1,8 +1,8 @@
 ﻿/**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mutex.h
- * @brief mutex implementation (recursive variant, priority inheritance over a binary semaphore)
  * @author H-000-H
+ * @brief mutex implementation (recursive variant, priority inheritance over a binary semaphore)
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MUTEX_H
 #define MUTEX_H

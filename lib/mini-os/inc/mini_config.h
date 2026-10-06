@@ -1,8 +1,7 @@
 /**
- * @copyright SPDX-License-Identifier: Apache-2.0
  * @file mini_config.h
- * @brief mini-os configuration heaper - only include definitions
  * @author H-000-H
+ * @brief mini-os configuration heaper - only include definitions
  * @details every option in this file resolves through the same three-tier chain,
  *          so it can come from the kconfig system, from an outside build system,
  *          or fall back to the in-tree default:
@@ -12,6 +11,7 @@
  *  - 3. built-in default   : the value mini-os ships with
  * @note a feature switch is always DEFINED, either 1 or 0, so it must be tested
  *       with #if, never with #ifdef: #ifdef is true for a disabled option too
+ * @copyright SPDX-License-Identifier: Apache-2.0
  */
 #ifndef MINI_CONFIG_H
 #define MINI_CONFIG_H

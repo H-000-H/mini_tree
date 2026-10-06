@@ -37,7 +37,7 @@ mini-os is the in-tree minimal RTOS kernel. Design goals:
 
 | Subsystem | Capabilities |
 | :--- | :--- |
-| Scheduling | 32-level preemption + O(1) ready bitmap + same-priority list rotation (time slicing optional, off by default) |
+| Scheduling | 32-level preemption + O(1) ready bitmap + same-priority list rotation (time slicing optional, off by default); optional deadline scheduling: same-priority EDF + a SCHED_DEADLINE class (global EDF + CBS + bandwidth reclaiming + overrun reporting, all off by default) |
 | Thread | Dynamic/static creation, deletion, suspend/resume, dynamic priority change (with PI roll-back), exit callback, idle hook; detach/join optional |
 | Sync | Counting/binary semaphores (mutually convertible), recursive mutex + priority inheritance (chained propagation), 32-bit event group (optional) |
 | Communication | Fixed-size message queue (blocking send/receive + ISR variants) |
@@ -50,7 +50,7 @@ mini-os is the in-tree minimal RTOS kernel. Design goals:
 
 ## 2. Scheduler
 
-Core implementation in `lib/mini-os/src/schedule.c` (~470 lines).
+Core implementation in `lib/mini-os/src/schedule.c` (~790 lines).
 
 ### 2.1 Ready bitmap + O(1) level selection
 
@@ -90,6 +90,35 @@ Thread delays / sync timeouts use a layered time wheel (`s_wheel[MINI_OS_TICK_WH
 | Idle thread self-init | 105 | |
 | By-name registries (thread/semaphore/mutex) | 110-112 | Only with `MINI_OS_FIND_BY_NAME` |
 | Timer module self-init | 113 | |
+
+### 2.5 Deadline scheduling (optional, off by default)
+
+mini-os has two independent deadline-scheduling facilities, each behind its own switch, **both off by default**; when off, the related fields, lists and arithmetic are not compiled at all, and equal priorities stay pure FIFO + rotation:
+
+| Switch | Capability | Default |
+| :--- | :--- | :--- |
+| `MINI_OS_THREAD_EDF` | Same-priority non-FIFO: order one ordinary thread by deadline | `0` (off) |
+| `MINI_OS_THREAD_DEADLINE` | SCHED_DEADLINE class: global EDF + CBS + bandwidth reclaiming + overrun reporting | `0` (off) |
+
+**A. Same-priority EDF (`MINI_OS_THREAD_EDF`)**
+
+- `mini_os_thread_set_deadline(thread, deadline)` attaches/clears a deadline on an **existing ordinary thread** (`deadline = 0` clears; the argument is relative ticks, converted to absolute internally);
+- the thread keeps its priority and stays on that level's ready list; inside the level it is ordered by earliest absolute deadline and queued ahead of the ordinary threads;
+- when an EDF thread heads the level, same-priority rotation is skipped; time slicing is skipped for EDF/DL threads too (`mini_os_tick_slice_decrement`);
+- ordering only — no budget/admission (no CBS).
+
+**B. SCHED_DEADLINE class (`MINI_OS_THREAD_DEADLINE`, Linux-like)**
+
+- `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, priority, runtime, entry, param)`;
+- **the class sits above all 32 priorities**: DL threads live on a separate global ready list `s_dl_ready_list` and are **not reflected in the `g_priority` bitmap**; within the class they are selected by global EDF (earliest absolute deadline); `priority` is stored but does not affect ordering (Linux ignores `rt_priority` too);
+- **CBS (budget enforcement)**: `runtime` is the per-period budget; when it is spent the thread is throttled (unlinked and parked in the thread time wheel for the time left), and at its absolute deadline a new job starts (`deadline += period`, budget refilled);
+- **non-deferrable**: blocking time counts against the deadline; waking before the deadline keeps the residual budget, while waking after it starts a new job (wake refresh);
+- **GRUB bandwidth reclaiming**: while other DL threads are blocked (non-contending), a running DL thread spends its budget at rate `running_bw / this_bw` and so uses their idle share, up to the admitted `this_bw`. `this_bw` is the admission sum (changed only on create/delete); `running_bw` tracks the contending set. The budget uses a 1/2^20 fixed-point accumulator (`dl_budget_frac`) so a rate below 1 does not lose ticks;
+- **period-boundary replenishment**: with reclaiming a task may reach its deadline without exhausting its budget, so every deadline arrival unconditionally starts a new job (`mini_os_dl_replenish_due`) — throttling alone is not enough;
+- **admission control**: `Σ runtime/period ≤ 95%`; over it the create fails (`MINI_OS_ERR_BUSY`, surfaced as a NULL return) and the reservation is released on exit/delete; the constraint is `0 < runtime ≤ deadline ≤ period`, and `dl_period` is a full `mini_os_tick_t` (no longer 16-bit);
+- **overrun reporting**: per-thread `dl_miss_count`, plus `mini_os_dl_miss_hook_set(hook, param)` to register a callback and `mini_os_thread_get_dl_miss_count()` to read the count. A miss is reported when a DL thread's absolute deadline is reached while it is still ready/running or throttled (i.e. it never blocked to hand the CPU back); the callback receives the missed deadline and runs in SysTick context, so it must be short and must not call blocking APIs.
+
+> With both switches off there is zero runtime cost: the `sched_policy` / `dl_*` fields, the DL list, the CBS arithmetic and the deadline-comparison helpers are all left out.
 
 ---
 
@@ -220,6 +249,17 @@ Every option resolves through the same **three-tier chain** (reference implement
 | `MINI_OS_USE_FPU` | bool / y | FPU context save (only visible on CM4F/CM7; do not turn off with hard-float) |
 | `MINI_OS_SPINLOCK`(+`_ATOMIC`/`_YIELD`/`_NUM`) | bool / y | Header-only spinlock (off → the unified interface falls back to IRQ masking); atomic mode is SMP-only |
 | `ARCH` | (no prompt) | mini-os architecture id (0=M0/M0+ 1=M3 2=M4 3=M7), derived automatically from `PLATFORM_ARM_*`, **must not be set by hand** |
+
+### 7.2 Deadline-scheduling switches (built-in defaults, off)
+
+These two switches use the same three-tier chain but are **not yet exposed in `Kconfig.mini_tree`**, so `.config` has no entry for them; enable them by predefining `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` (command line / parent project), or by defining the matching `CONFIG_*` in `config.h`:
+
+| Option | Type / default | Notes |
+| :--- | :--- | :--- |
+| `MINI_OS_THREAD_EDF` | bool / n | Same-priority EDF (`mini_os_thread_set_deadline`); when off the level stays pure FIFO and no deadline comparison runs |
+| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE class (global EDF + CBS + bandwidth reclaiming + overrun reporting); independent of the EDF switch |
+
+> See §2.5.
 
 ---
 
