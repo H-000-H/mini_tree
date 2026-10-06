@@ -206,6 +206,25 @@ typedef void (*mini_os_dl_miss_hook_t)(mini_os_thread_t* thread, mini_os_tick_t 
  *       finished. Each thread also counts its own misses in dl_miss_count.
  */
 mini_os_err_t mini_os_dl_miss_hook_set(mini_os_dl_miss_hook_t hook, void* param);
+
+/**
+ * @brief DL job-completion callback
+ * @param[in] thread DL thread that finished its job
+ * @param[in] deadline absolute deadline of the job that just finished
+ * @param[in] param opaque value given to mini_os_dl_finish_hook_set()
+ * @note invoked from mini_os_deadline_job_finish() in thread context (not ISR), so
+ *       a short non-blocking action or a log line is fine; keep it short
+ */
+typedef void (*mini_os_dl_finish_hook_t)(mini_os_thread_t* thread, mini_os_tick_t deadline, void* param);
+
+/**
+ * @brief Register or clear the DL job-completion callback
+ * @param[in] hook callback, or MINI_OS_NULL to clear it
+ * @param[in] param opaque value forwarded to the callback
+ * @return MINI_OS_OK always
+ * @note each thread also counts its finished jobs in dl_finish_count
+ */
+mini_os_err_t mini_os_dl_finish_hook_set(mini_os_dl_finish_hook_t hook, void* param);
 #endif /* MINI_OS_THREAD_DEADLINE */
 
 /**

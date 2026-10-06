@@ -19,6 +19,7 @@
 #include "mini_config.h"
 #include "port.h"
 #include "redef.h"
+#include "semaphore.h"
 #include "thread.h"
 #include "timer.h"
 
@@ -144,6 +145,34 @@ static void mini_os_dl_report_miss(mini_os_thread_t* thread)
     thread->dl_miss_count++;
     if (s_dl_miss_hook != MINI_OS_NULL)
         s_dl_miss_hook(thread, thread->dl_deadline_time, s_dl_miss_param);
+}
+
+/** @brief Registered DL job-completion callback (MINI_OS_NULL = none) */
+static mini_os_dl_finish_hook_t s_dl_finish_hook = MINI_OS_NULL;
+/** @brief Opaque value forwarded to s_dl_finish_hook */
+static void* s_dl_finish_param = MINI_OS_NULL;
+
+/**
+ * @brief Register or clear the DL job-completion callback
+ */
+mini_os_err_t mini_os_dl_finish_hook_set(mini_os_dl_finish_hook_t hook, void* param)
+{
+    s_dl_finish_hook  = hook;
+    s_dl_finish_param = param;
+    return MINI_OS_OK;
+}
+
+/**
+ * @brief Record a finished job and notify the registered callback
+ * @param[in] thread DL thread that finished its job
+ * @note runs in thread context from mini_os_deadline_job_finish(), unlike the miss
+ *       hook which runs in the SysTick handler
+ */
+static void mini_os_dl_report_finish(mini_os_thread_t* thread)
+{
+    thread->dl_finish_count++;
+    if (s_dl_finish_hook != MINI_OS_NULL)
+        s_dl_finish_hook(thread, thread->dl_deadline_time, s_dl_finish_param);
 }
 
 /** @brief Start a new job (refill budget, advance deadline); defined with the CBS helpers */
@@ -493,6 +522,7 @@ static void mini_os_dl_new_job(mini_os_thread_t* thread, mini_os_uint32_t now)
         thread->dl_deadline_time += (mini_os_tick_t)thread->dl_period;
     } while ((mini_os_int32_t)(thread->dl_deadline_time - (mini_os_tick_t)now) <= 0);
     thread->dl_throttled = MINI_OS_FALSE;
+    thread->dl_job_done  = MINI_OS_FALSE;
 }
 
 /**
@@ -515,7 +545,8 @@ static void mini_os_dl_replenish_due(void)
         if ((mini_os_int32_t)((mini_os_tick_t)now - head->dl_deadline_time) < 0)
             break; /* the head deadline is still ahead: nobody is due */
         mini_os_list_remove(&head->list_node);
-        mini_os_dl_report_miss(head); /* still runnable at its deadline: the job overran */
+        if (head->dl_job_done == MINI_OS_FALSE)
+            mini_os_dl_report_miss(head); /* still runnable at its deadline: the job overran */
         mini_os_dl_new_job(head, now);
         mini_os_dl_list_insert(head);
     }
@@ -538,6 +569,7 @@ static void mini_os_dl_throttle(mini_os_thread_t* thread)
 
     (void)mini_os_remove_thread_from_ready_running_list(thread);
     thread->dl_throttled = MINI_OS_TRUE;
+    thread->dl_throttle_count++; /* statistics: one more budget exhaustion */
     remain = mini_os_tick_until((mini_os_tick_t)thread->dl_deadline_time);
     if (remain == 0u)
         remain = 1u; /* deadline already reached: replenish on the next tick */
@@ -580,6 +612,49 @@ static void mini_os_dl_tick_decrement(mini_os_thread_t* current)
     if (current->dl_budget == 0)
         mini_os_dl_throttle(current);
 }
+
+/**
+ * @brief Finish the current DL job and wait for the next period
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when the caller is not a DL thread
+ * @details Called by a DL thread when its job is done. The completion is recorded
+ *          (dl_finish_count plus the finish hook) and the job is marked done, so the
+ *          period boundary will not report it as an overrun; a call that is already
+ *          past the absolute deadline reports a miss instead. The thread then parks
+ *          until its absolute deadline, where the wake path starts a new job (budget
+ *          refilled, dl_deadline_time += dl_period), so this call returns inside the
+ *          next period and the caller never computes delays or tracks the period.
+ * @note thread context only; the finish and (late) miss hooks run here, whereas the
+ *       boundary-driven miss hook runs in the SysTick handler
+ */
+mini_os_err_t mini_os_deadline_job_finish(void)
+{
+    mini_os_thread_t* current = mini_os_current_thread;
+    mini_os_uint32_t  remain;
+    mini_os_bool_t    late;
+
+    if (current == MINI_OS_NULL || current->sched_policy != MINI_OS_SCHED_DEADLINE)
+        return MINI_OS_ERR_INVAL;
+
+    late = (mini_os_tick_until((mini_os_tick_t)current->dl_deadline_time) == 0u) ? MINI_OS_TRUE : MINI_OS_FALSE;
+
+    mini_os_dl_report_finish(current); /* the job is done: hook + dl_finish_count */
+    if (late == MINI_OS_TRUE)
+        mini_os_dl_report_miss(current); /* ... but only after its deadline */
+    current->dl_job_done = MINI_OS_TRUE; /* the boundary must not report it a second time */
+
+    /* block on the per-task activation semaphore: the thread time wheel releases
+     * this wait at the absolute deadline (the periodic activation), and an early
+     * mini_os_semaphore_give() starts the next job immediately. Either way the
+     * wake path has started the new job before take() returns. */
+    remain = mini_os_tick_until((mini_os_tick_t)current->dl_deadline_time);
+    if (remain == 0u)
+        remain = 1u; /* deadline already reached: let the next tick start the new job */
+    if (current->dl_activation != MINI_OS_NULL)
+        (void)mini_os_semaphore_take(current->dl_activation, (mini_os_tick_t)remain);
+    else
+        mini_os_schedule_delay(remain); /* defensive: no semaphore created */
+    return MINI_OS_OK;
+}
 #endif /* MINI_OS_THREAD_DEADLINE */
 
 /**
@@ -613,7 +688,8 @@ static void mini_os_tick_decrement(void)
 #if MINI_OS_THREAD_DEADLINE
         if (thread->sched_policy == MINI_OS_SCHED_DEADLINE && thread->dl_throttled == MINI_OS_TRUE)
         {
-            mini_os_dl_report_miss(thread);            /* throttled when the deadline arrived: overrun */
+            if (thread->dl_job_done == MINI_OS_FALSE)
+                mini_os_dl_report_miss(thread);        /* throttled when the deadline arrived: overrun */
             mini_os_dl_new_job(thread, g_global_tick); /* CBS: the period boundary refills the budget */
         }
 #endif

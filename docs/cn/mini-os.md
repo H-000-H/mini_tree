@@ -109,7 +109,7 @@ mini-os 有两套互相独立的截止期调度，各自一个开关，**均默�
 
 **B. SCHED_DEADLINE 类（`MINI_OS_THREAD_DEADLINE`，仿 Linux）**
 
-- `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, priority, runtime, entry, param)`；
+- `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, runtime, entry, param)`；
 - **类高于全部 32 个优先级**：DL 线程进独立全局就绪链表 `s_dl_ready_list`、**不进入 `g_priority` 位图**，类内按绝对截止期全局 EDF 取最早者；`priority` 只保存、不参与排序（同 Linux 忽略 `rt_priority`）；
 - **CBS（预算强制）**：`runtime` 是每周期预算，跑完即限流（摘出就绪链表、按剩余时间挂进线程时间轮），到绝对截止期开新 job（`deadline += period`、预算补满）；
 - **非 deferrable**：阻塞时间照算进截止期；截止期前醒来保留剩余预算，截止期后才醒来直接按新 job 处理（唤醒刷新）；
@@ -117,6 +117,14 @@ mini-os 有两套互相独立的截止期调度，各自一个开关，**均默�
 - **周期边界补充**：回收后任务可能到截止期都没耗尽预算，因此每个截止期到达时**无条件**开新 job（`mini_os_dl_replenish_due`），不能只靠“限流到点”触发；
 - **准入控制**：`Σ runtime/period ≤ 95%`，超限创建失败（`MINI_OS_ERR_BUSY`，对外表现为返回 NULL）；线程退出/删除时释放；参数约束 `0 < runtime ≤ deadline ≤ period`，`dl_period` 为完整 `mini_os_tick_t`（不再受 16 位限制）；
 - **超时上报**：每线程 `dl_miss_count`，可用 `mini_os_dl_miss_hook_set(hook, param)` 注册回调、`mini_os_thread_get_dl_miss_count()` 读取计数。当 DL 线程的绝对截止期到达时它**仍在就绪/运行或被限流**（说明到点都没阻塞交还 CPU）即上报一次，回调携带被错过的截止期；回调在 SysTick 上下文执行，必须短、不可调用阻塞 API。
+- **任务收尾（finish）**：DL 任务干完调用 `mini_os_deadline_job_finish()` —— 记录完成（`dl_finish_count` + `mini_os_dl_finish_hook_set()` 回调），然后**在每任务一个的二值激活信号量上 `take` 阻塞**；线程时间轮在绝对截止期释放这次等待（即周期边界那次激活），唤醒路径随即自动开新 job（补满预算、`deadline += period`）后返回，因此调用方**不必自己算延时或跟踪周期**，也能被提前 `give` 立即激活。调用时若已过截止期则改报一次 miss。完成回调在**线程上下文**触发（与 ISR 上下文的 miss 回调不同）。
+
+> **禁止用 `mini_os_thread_delay_tick()` / `delay_ms()` / `delay_tick_until()` 作为 DL 任务的周期收尾**（既不推荐也不允许）：只有内核自带的 `mini_os_deadline_job_finish()` 才会派发下一个 job，并维持 CBS 记账与激活信号量一致。DL 任务体里不应出现 `delay` API。
+- **每线程计数**：`dl_miss_count`（错过截止期）、`dl_finish_count`（显式 finish 次数）、`dl_throttle_count`（预算耗尽被限流次数），分别用 `mini_os_thread_get_dl_miss_count()` / `_get_dl_finish_count()` / `_get_dl_throttle_count()` 读取。
+- **不是动态 deadline 调度器**：内核不会内部改 deadline —— 创建时固定为 `now + deadline`，之后只在每个周期边界精确 `+= dl_period`；没有 deadline 后推/推迟，也没有基于带宽回收的动态调整。
+- **throttle 必然 miss**：预算一旦耗尽被限流，这个 job 就无法在截止期前完成，周期边界必然上报一次 miss（`dl_miss_count` 同时 +1，`dl_throttle_count` 记录限流次数）。
+- **运行时改带宽（A）**：`mini_os_deadline_thread_set_bandwidth(thread, runtime, period)` —— 只允许在**非 contending**（`BLOCKED`/`SUSPENDED`）时调用；只改 `runtime`/`period`，**新值在下一个 job 生效**（补新预算、之后按新 period 推进 deadline）；**当前绝对 deadline 不变**（不是动态 deadline 调度器）；准入会重新校验（退旧票、收新票，超 95% 则拒绝并回滚）。任一参数传 `0` 表示**保持原值**：`(t, 4, 0)` 只改 runtime，`(t, 0, 20)` 只改 period。
+- **删除 / 挂起 / 恢复**：DL 线程直接用通用的 `mini_os_thread_delete` / `_delete_static` / `mini_os_thread_suspend` / `mini_os_thread_resume` —— 删除会释放激活信号量与带宽预留；挂起把“到截止期的剩余时间”冻结进 `resume_time`，恢复后继续。
 
 > 两个开关都关时没有任何运行时开销：`sched_policy` / `dl_*` 字段、DL 链表、CBS 运算与截止期比较函数都不编入。
 

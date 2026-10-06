@@ -97,7 +97,11 @@ struct mini_os_thread
     mini_os_uint32_t       dl_budget_frac;                      /**< DEADLINE: fraction of a tick already spent (1/2^20 units) */
     mini_os_tick_t         dl_period;                           /**< DEADLINE: replenishment period (ticks) */
     mini_os_bool_t         dl_throttled;                        /**< DEADLINE: parked until the next period boundary */
+    mini_os_bool_t         dl_job_done;                         /**< DEADLINE: current job finished via mini_os_deadline_job_finish() */
+    struct mini_os_semaphore* dl_activation;                    /**< DEADLINE: per-task activation semaphore used by job_finish() */
     mini_os_uint32_t       dl_miss_count;                       /**< DEADLINE: deadlines missed so far */
+    mini_os_uint32_t       dl_finish_count;                     /**< DEADLINE: jobs finished via mini_os_deadline_job_finish() */
+    mini_os_uint32_t       dl_throttle_count;                   /**< DEADLINE: times the budget ran out (throttled) */
 #endif
 #if MINI_OS_TIME_SLICE
     mini_os_tick_t init_tick_num;                               /**< Initial tick for time-slice */
@@ -439,17 +443,25 @@ void mini_os_thread_idle(void* param);
  * @param[in] stack_size Thread stack size
  * @param[in] deadline Thread deadline
  * @param[in] period Thread period
- * @param[in] priority Thread priority
  * @param[in] runtime Thread runtime
  * @param[in] entry Thread entry function
  * @param[in] parameter Thread entry parameter
  * @return mini_os_thread_t* on success, other on failure
+ * @note The task body must end every period with mini_os_deadline_job_finish().
+ *       Using mini_os_thread_delay_tick()/delay_ms()/delay_tick_until() as the
+ *       period wait of a DL task is neither recommended nor allowed: only the
+ *       kernel-provided finish hands out the next job (budget refill,
+ *       dl_deadline_time += dl_period) and keeps the CBS accounting and the
+ *       activation semaphore consistent.
+ * @note This is not a dynamic-deadline scheduler: the kernel never changes a
+ *       job's deadline except advancing it by exactly dl_period at each period
+ *       boundary (creation fixes it at now + deadline). There is no deadline
+ *       push-back, postponement or reclaiming-driven deadline adjustment.
  */
 mini_os_thread_t *mini_os_deadline_thread_create(           const char *name, 
                                                             mini_os_uint32_t stack_size,
                                                             mini_os_tick_t deadline,
                                                             mini_os_tick_t period,
-                                                            mini_os_uint8_t priority,
                                                             mini_os_tick_t runtime,
                                                             void( *entry)(void*),
                                                             void * const parameter);
@@ -460,24 +472,56 @@ mini_os_thread_t *mini_os_deadline_thread_create(           const char *name,
  * @param[in] stack_size Thread stack size
  * @param[in] deadline Thread deadline
  * @param[in] period Thread period
- * @param[in] priority Thread priority
  * @param[in] runtime Thread runtime
  * @param[in] entry Thread entry function
  * @param[in] parameter Thread entry parameter
  * @param[in] stack_buffer Thread stack buffer
  * @param[in] task_buffer Thread task buffer
  * @return mini_os_thread_t* on success, other on failure
+ * @note The task body must end every period with mini_os_deadline_job_finish().
+ *       Using mini_os_thread_delay_tick()/delay_ms()/delay_tick_until() as the
+ *       period wait of a DL task is neither recommended nor allowed: only the
+ *       kernel-provided finish hands out the next job (budget refill,
+ *       dl_deadline_time += dl_period) and keeps the CBS accounting and the
+ *       activation semaphore consistent.
+ * @note This is not a dynamic-deadline scheduler: the kernel never changes a
+ *       job's deadline except advancing it by exactly dl_period at each period
+ *       boundary (creation fixes it at now + deadline). There is no deadline
+ *       push-back, postponement or reclaiming-driven deadline adjustment.
  */
 mini_os_thread_t *mini_os_deadline_thread_create_static(    const char *name, 
                                                             mini_os_uint32_t stack_size,
                                                             mini_os_tick_t deadline,
                                                             mini_os_tick_t period,
-                                                            mini_os_uint8_t priority,
                                                             mini_os_tick_t runtime,
                                                             void( *entry)(void*),
                                                             void * const parameter,
                                                             mini_os_uint32_t* stack_buffer,
                                                             mini_os_thread_t* task_buffer);
+
+/**
+ * @brief Renegotiate the budget and period of a DL thread (bandwidth change)
+ * @param[in] thread DL thread to reconfigure
+ * @param[in] runtime new budget per period in ticks (0 < runtime <= period), or
+ *            0 to keep the current runtime
+ * @param[in] period new period in ticks (> 0), or 0 to keep the current period
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL for a NULL argument, a
+ *         non-DL thread or invalid parameters; MINI_OS_ERR_BUSY while the thread
+ *         is READY/RUNNING (contending) or when the new bandwidth does not fit
+ *         the DL admission cap (the old reservation is kept)
+ * @details The new runtime/period take effect when the next job starts: its
+ *          budget is refilled with the new runtime and the deadline then advances
+ *          by the new period. Pass 0 for either field to keep its current value,
+ *          so a single value can be changed on its own (e.g. set_bandwidth(t, 4, 0)
+ *          changes only the runtime). The relative deadline and the current
+ *          absolute dl_deadline_time are NOT changed -- this is not a
+ *          dynamic-deadline scheduler.
+ * @note only allowed while the thread is not contending (BLOCKED or SUSPENDED),
+ *       so no ready-list re-link and no wheel re-park is needed; the reservation
+ *       is re-checked (old ticket released, new one reserved, rolled back on
+ *       failure)
+ */
+mini_os_err_t mini_os_deadline_thread_set_bandwidth(mini_os_thread_t* thread, mini_os_tick_t runtime, mini_os_tick_t period);
 
 #endif /* MINI_OS_THREAD_DEADLINE */
 
@@ -504,6 +548,40 @@ mini_os_err_t mini_os_thread_set_deadline(mini_os_thread_t* thread, mini_os_tick
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument
  */
 mini_os_err_t mini_os_thread_get_dl_miss_count(mini_os_thread_t* thread, mini_os_uint32_t* count);
+
+/**
+ * @brief Finish the current DL job and wait for the next period
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when the caller is not a DL thread
+ * @details A DL thread calls this when its job is done. The completion is recorded
+ *          (dl_finish_count and the finish hook) and the thread blocks until its
+ *          current absolute deadline; at that boundary the scheduler starts a new
+ *          job (budget refilled, dl_deadline_time += dl_period) and the call
+ *          returns, so the caller never computes delays or tracks the period.
+ * @note thread context only. The finish hook runs here in thread context, unlike
+ *       the miss hook which runs in the SysTick handler.
+ */
+mini_os_err_t mini_os_deadline_job_finish(void);
+
+/**
+ * @brief Read how many jobs a DL thread has finished
+ * @param[in] thread thread to query
+ * @param[out] count receives the number of finished jobs
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument
+ */
+mini_os_err_t mini_os_thread_get_dl_finish_count(mini_os_thread_t* thread, mini_os_uint32_t* count);
+
+/**
+ * @brief Read how many times a DL thread exhausted its budget (was throttled)
+ * @param[in] thread thread to query
+ * @param[out] count receives the throttle count
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on a NULL argument
+ * @note incremented every time the CBS budget of a DL thread runs out and the
+ *       thread is parked until its next period; every other policy keeps it at 0
+ * @note a throttle always implies a deadline miss for that job: once the budget
+ *       is exhausted the task cannot complete before its deadline, so the period
+ *       boundary reports the miss and dl_miss_count is incremented as well
+ */
+mini_os_err_t mini_os_thread_get_dl_throttle_count(mini_os_thread_t* thread, mini_os_uint32_t* count);
 #endif /* MINI_OS_THREAD_DEADLINE */
 
 /**
