@@ -39,7 +39,7 @@ mini-os is the in-tree minimal RTOS kernel. Design goals:
 | :--- | :--- |
 | Scheduling | 32-level preemption + O(1) ready bitmap + same-priority list rotation (time slicing optional, off by default); optional deadline scheduling: same-priority EDF + a SCHED_DEADLINE class (global EDF + CBS + bandwidth reclaiming + overrun reporting, all off by default) |
 | Thread | Dynamic/static creation, deletion, suspend/resume, dynamic priority change (with PI roll-back), exit callback, idle hook; detach/join optional |
-| Sync | Counting/binary semaphores (mutually convertible), recursive mutex + priority inheritance (chained propagation), 32-bit event group (optional) |
+| Sync | Counting/binary semaphores (mutually convertible), recursive mutex + priority inheritance (chained propagation, plus deadline inheritance under EDF/SCHED_DEADLINE), 32-bit event group (optional) |
 | Communication | Fixed-size message queue (blocking send/receive + ISR variants) |
 | Timer | HARD (runs in tick/ISR context) + SOFT (runs in a dedicated service thread); independent timer time wheel |
 | Memory | first-fit heap (split + adjacent coalescing + magic double-free detection) + optional slab; heap comes from the linker script |
@@ -110,7 +110,7 @@ mini-os has two independent deadline-scheduling facilities, each behind its own 
 **B. SCHED_DEADLINE class (`MINI_OS_THREAD_DEADLINE`, Linux-like)**
 
 - `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, runtime, entry, param)`;
-- **the class sits above all 32 priorities**: DL threads live on a separate global ready list `s_dl_ready_list` and are **not reflected in the `g_priority` bitmap**; within the class they are selected by global EDF (earliest absolute deadline); `priority` is stored but does not affect ordering (Linux ignores `rt_priority` too);
+- **the class sits above all 32 priorities**: DL threads live on a separate global ready list `s_dl_ready_list` and are **not reflected in the `g_priority` bitmap**; within the class they are selected by global EDF (earliest absolute deadline); `priority` does not affect DL ordering itself (Linux ignores `rt_priority` too), but it **is used by mutex priority inheritance** — so the DL placeholder priority is the **highest** (`0`, like Linux's `MAX_DL_PRIO-1`), not the lowest: with the lowest value a DL waiter could not boost its blocker at all;
 - **CBS (budget enforcement)**: `runtime` is the per-period budget; when it is spent the thread is throttled (unlinked and parked in the thread time wheel for the time left), and at its absolute deadline a new job starts (`deadline += period`, budget refilled);
 - **non-deferrable**: blocking time counts against the deadline; waking before the deadline keeps the residual budget, while waking after it starts a new job (wake refresh);
 - **GRUB bandwidth reclaiming**: while other DL threads are blocked (non-contending), a running DL thread spends its budget at rate `running_bw / this_bw` and so uses their idle share, up to the admitted `this_bw`. `this_bw` is the admission sum (changed only on create/delete); `running_bw` tracks the contending set. The budget uses a 1/2^20 fixed-point accumulator (`dl_budget_frac`) so a rate below 1 does not lose ticks;
@@ -136,14 +136,16 @@ mini-os has two independent deadline-scheduling facilities, each behind its own 
 
 - Counting / binary semaphores, mutually convertible; `mini_os_semaphore_post_isr()` is the ISR-safe variant.
 
-### 3.2 Mutex (mutex.c) — priority inheritance (PI)
+### 3.2 Mutex (mutex.c) — priority / deadline inheritance (PI)
 
 mini-os PI is a **per-thread tracking** model:
 
 - The owner saves the priority it had at lock time in `base_priority`, and every mutex it holds is chained into the thread's `hold_list` (via `mutex->hold_node`);
 - Effective priority = `min(base_priority, highest waiter priority among all held mutexes)`;
-- **Chained propagation**: when A waits on B's lock and B on C's, the boost propagates up the `wait_mutex` back-pointers, with the depth bounded by `MINI_OS_MUTEX_PI_CHAIN_MAX` (cycle protection);
-- Dynamic priority change (`mini_os_thread_set_priority`) performs PI roll-back so it never conflicts with inherited state.
+- **Deadline inheritance (only when `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` is compiled in)**: the owner also inherits the earliest absolute deadline among its waiters, kept in TCB `dl_deadline_inherit` (the own `dl_deadline_time` is left untouched, so CBS budget/period advance and throttling stay correct). The effective deadline = `min(dl_deadline_time, dl_deadline_inherit)` and orders both the EDF level list and the DL global list, so the owner is scheduled earlier;
+- **DL class promotion (`MINI_OS_THREAD_DEADLINE`)**: a priority boost alone cannot save a plain holder blocked by a DL waiter — the DL class outranks all 32 priority levels, so any ready DL task still preempts it. Therefore, as soon as `dl_deadline_inherit != 0`, the thread is **temporarily placed on the DL ready list** and takes part in global EDF at the inherited deadline (`mini_os_dl_scheduled()`). A promoted thread has no CBS reservation: it is never throttled, and its `dl_period` never reaches the bandwidth arithmetic or the period replenishment (that would divide by zero / loop forever);
+- **Chained propagation**: when A waits on B's lock and B on C's, both the priority and the deadline boost propagate up the `wait_mutex` back-pointers, with the depth bounded by `MINI_OS_MUTEX_PI_CHAIN_MAX` (cycle protection);
+- Dynamic priority change (`mini_os_thread_set_priority`) or own-deadline change (`mini_os_thread_set_deadline`) performs PI roll-back so it never conflicts with inherited state.
 
 Other points:
 

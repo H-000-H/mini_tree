@@ -39,7 +39,7 @@ mini-os 是仓库内自研的最小 RTOS 内核，设计目标：
 | :--- | :--- |
 | 调度 | 32 级抢占 + 就绪位图 O(1) + 同优先级链表轮转（时间片可选，默认关）；截止期调度可选：同优先级 EDF + SCHED_DEADLINE 类（全局 EDF + CBS + 带宽回收 + 超时上报，均默认关） |
 | 线程 | 动/静态创建、删除、挂起/恢复、动态改优先级（带 PI 回滚）、退出回调、idle 钩子；detach/join 可选 |
-| 同步 | 计数/二值信号量（可互转）、递归互斥锁 + 优先级继承（链式传播）、32 位事件组（可选） |
+| 同步 | 计数/二值信号量（可互转）、递归互斥锁 + 优先级继承（链式传播，EDF/DL 下含截止期继承）、32 位事件组（可选） |
 | 通信 | 定长消息队列（阻塞收发 + ISR 变体） |
 | 定时器 | HARD（tick/ISR 上下文直接跑）+ SOFT（专用服务线程跑）；独立定时器时间轮 |
 | 内存 | first-fit 堆（split + 相邻合并 + magic 防双重释放）+ 可选 slab；堆来自链接脚本 |
@@ -110,7 +110,7 @@ mini-os 有两套互相独立的截止期调度，各自一个开关，**均默�
 **B. SCHED_DEADLINE 类（`MINI_OS_THREAD_DEADLINE`，仿 Linux）**
 
 - `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, runtime, entry, param)`；
-- **类高于全部 32 个优先级**：DL 线程进独立全局就绪链表 `s_dl_ready_list`、**不进入 `g_priority` 位图**，类内按绝对截止期全局 EDF 取最早者；`priority` 只保存、不参与排序（同 Linux 忽略 `rt_priority`）；
+- **类高于全部 32 个优先级**：DL 线程进独立全局就绪链表 `s_dl_ready_list`、**不进入 `g_priority` 位图**，类内按绝对截止期全局 EDF 取最早者；`priority` 不参与 DL 自身排序（同 Linux 忽略 `rt_priority`），但它**参与互斥锁优先级继承**——所以 DL 线程的占位优先级取**最高**（`0`，同 Linux 的 `MAX_DL_PRIO-1`）而不是最低，否则 DL 等待者抬不动持锁者；
 - **CBS（预算强制）**：`runtime` 是每周期预算，跑完即限流（摘出就绪链表、按剩余时间挂进线程时间轮），到绝对截止期开新 job（`deadline += period`、预算补满）；
 - **非 deferrable**：阻塞时间照算进截止期；截止期前醒来保留剩余预算，截止期后才醒来直接按新 job 处理（唤醒刷新）；
 - **GRUB 带宽回收**：其他 DL 线程阻塞（non-contending）时，正在跑的 DL 线程按 `running_bw / this_bw` 的速率扣预算，从而借用空闲份额（上限为已准入的 `this_bw`）。`this_bw` 是准入总量（仅创建/删除时变），`running_bw` 随“进出就绪链表”实时变化；预算用 `dl_budget_frac` 做 1/2^20 定点累加，避免速率 <1 时丢 tick；
@@ -136,14 +136,16 @@ mini-os 有两套互相独立的截止期调度，各自一个开关，**均默�
 
 - 计数 / 二值信号量，二者可互相转换；`mini_os_semaphore_post_isr()` 为 ISR 安全变体。
 
-### 3.2 互斥锁（mutex.c）—— 优先级继承（PI）
+### 3.2 互斥锁（mutex.c）—— 优先级 / 截止期继承（PI）
 
 mini-os 的 PI 是 **per-thread 跟踪** 模型：
 
 - 持锁者把调用时的优先级存进 `base_priority`，所持每把 mutex 链入线程的 `hold_list`（经 `mutex->hold_node`）；
 - 有效优先级 = `min(base_priority, 各持锁 mutex 上最高等待者的优先级)`；
-- **链式传播**：A 等 B 的锁、B 又等 C 的锁时，提升沿 `wait_mutex` 回指针向上传播，深度由 `MINI_OS_MUTEX_PI_CHAIN_MAX` 限制（防环）；
-- 线程动态改优先级（`mini_os_thread_set_priority`）会做 PI 回滚，避免与继承状态冲突。
+- **截止期继承（仅 `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` 编译进时）**：持锁者同时继承等待者中最早的绝对截止期，存进 TCB `dl_deadline_inherit`（**不改** `dl_deadline_time`，因此 CBS 的预算/周期推进与限流不受影响）；有效截止期 = `min(dl_deadline_time, dl_deadline_inherit)`，EDF 级内链表与 DL 全局链表都按它排序，持锁者因此被提前调度；
+- **DL 类提升（`MINI_OS_THREAD_DEADLINE`）**：优先级提升救不了被 DL 等待者阻塞的普通持锁者——DL 类整体高于 32 个优先级，它照样被其它就绪 DL 任务抢占。因此只要 `dl_deadline_inherit != 0`，该线程就被**临时放进 DL 就绪链表**、按继承截止期参与全局 EDF（`mini_os_dl_scheduled()`）。被提升的线程没有 CBS 预留：不会被限流，其 `dl_period` 也绝不进带宽运算与周期补充（否则除零/死循环）；
+- **链式传播**：A 等 B 的锁、B 又等 C 的锁时，优先级与截止期两项提升都沿 `wait_mutex` 回指针向上传播，深度由 `MINI_OS_MUTEX_PI_CHAIN_MAX` 限制（防环）；
+- 线程动态改优先级（`mini_os_thread_set_priority`）或改自身截止期（`mini_os_thread_set_deadline`）都会做 PI 回滚，避免与继承状态冲突。
 
 其他要点：
 

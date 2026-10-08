@@ -18,11 +18,14 @@ typedef struct mini_os_mutex mini_os_mutex_t;
 /**
  * @brief Mutex structure
  * @note inheritance through the embedded binary semaphore (count/max = 1).
- *       No priority is stored per mutex: while held, the mutex is linked into
- *       owner->hold_list through hold_node and the owner's effective priority
- *       is recomputed as min(base_priority, highest waiter of every held
- *       mutex), so a thread holding several mutexes keeps the highest
- *       requirement of all of them
+ *       No priority or deadline is stored per mutex: while held, the mutex is
+ *       linked into owner->hold_list through hold_node and the owner's effective
+ *       priority is recomputed as min(base_priority, highest waiter of every held
+ *       mutex), so a thread holding several mutexes keeps the highest requirement
+ *       of all of them. When EDF or SCHED_DEADLINE is compiled in, the owner also
+ *       inherits the earliest waiter deadline into TCB dl_deadline_inherit (the
+ *       own dl_deadline_time stays untouched), so the deadline lists order the
+ *       owner earlier without disturbing its CBS accounting
  */
 struct mini_os_mutex
 {
@@ -109,6 +112,11 @@ mini_os_mutex_t* mini_os_mutex_recuring_create_static(const char* name, mini_os_
  *       requirement. If the owner is itself blocked on another mutex the
  *       requirement is pushed on to that mutex's owner too, up to
  *       MINI_OS_MUTEX_PI_CHAIN_MAX links
+ * @note deadline inheritance (EDF / SCHED_DEADLINE builds): the owner's
+ *       inherited deadline becomes the earliest absolute deadline among its
+ *       waiters (a waiter's own or already-inherited one), so it is ordered
+ *       before them by the deadline scheduler. The owner's own deadline is not
+ *       modified, so its period boundary and budget stay correct
  * @note the boost is dropped when the caller times out, when the owner releases
  *       the mutex, or when the mutex is kill-deleted: the owner is recomputed
  *       from its base priority and the mutexes it still holds

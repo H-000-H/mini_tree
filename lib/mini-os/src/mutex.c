@@ -8,9 +8,15 @@
  *    caller-requested priority in TCB base_priority and every mutex it holds is
  *    linked into owner->hold_list through mutex->hold_node, so its effective
  *    priority is min(base_priority, highest waiter of every mutex it holds)
+ *  - deadline inheritance runs next to priority inheritance when EDF or
+ *    SCHED_DEADLINE is compiled in: the owner also inherits the earliest absolute
+ *    deadline among its waiters. It is kept in TCB dl_deadline_inherit (the own
+ *    deadline in dl_deadline_time is left alone), so the scheduler orders the
+ *    owner earlier without disturbing CBS budget/period accounting
  *  - the requirement travels along the wait chain: when a holder is itself
- *    blocked on another mutex, that mutex's owner inherits the same requirement
- *    (capped at MINI_OS_MUTEX_PI_CHAIN_MAX links, which also breaks wait cycles)
+ *    blocked on another mutex, that mutex's owner inherits the same priority and
+ *    deadline requirement (capped at MINI_OS_MUTEX_PI_CHAIN_MAX links, which also
+ *    breaks wait cycles)
  *  - every inheritance step runs with interrupts disabled
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -24,6 +30,17 @@
 #include "schedule.h"
 #include "semaphore.h"
 #include "thread.h"
+
+/**
+ * @brief Deadline a taker folds into the inheritance walk before it is parked
+ * @details its own effective (possibly already inherited) deadline; 0 when no
+ *          deadline scheduling is compiled in or the thread has no deadline
+ */
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+#define MINI_OS_MUTEX_DEADLINE_OF(thread) mini_os_thread_effective_deadline(thread)
+#else
+#define MINI_OS_MUTEX_DEADLINE_OF(thread) ((mini_os_tick_t)0)
+#endif
 
 #if MINI_OS_FIND_BY_NAME
 /** @brief Global registry of every mutex, used by mini_os_mutex_find_by_name() */
@@ -80,20 +97,83 @@ static mini_os_uint8_t mini_os_mutex_required_priority(mini_os_thread_t* thread)
     return required;
 }
 
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
 /**
- * @brief Apply the required priority of a thread and push the requirement up the wait chain
+ * @brief Earliest effective deadline among the parked waiters of a mutex
+ * @param[in] mutex mutex whose wait list is scanned
+ * @return smallest absolute deadline required by a waiter that is scheduled by
+ *         deadline (wrap-safe comparison); 0 when no waiter has one
+ * @note a waiter's own deadline is used unless it already carries an inherited
+ *       one, so a chain of blocked owners keeps pushing the earliest deadline on
+ * @note caller must hold interrupts disabled
+ */
+static mini_os_tick_t mini_os_mutex_earliest_waiter_deadline(mini_os_mutex_t* mutex)
+{
+    mini_os_list_t* node;
+    mini_os_tick_t  earliest = 0;
+
+    for (node = mutex->semaphore.wait_list.next; node != &mutex->semaphore.wait_list; node = node->next)
+    {
+        mini_os_thread_t* waiter = mini_os_container_of(node, mini_os_thread_t, wait_node);
+        mini_os_tick_t    deadline = mini_os_thread_effective_deadline(waiter);
+
+        if (deadline != 0 && (earliest == 0 || mini_os_deadline_before(deadline, earliest) != MINI_OS_FALSE))
+            earliest = deadline;
+    }
+    return earliest;
+}
+
+/**
+ * @brief Deadline a thread has to run at, derived from every mutex it holds
+ * @param[in] thread thread to evaluate
+ * @return earliest waiter deadline over all mutexes in thread->hold_list; 0 when
+ *         no waiter of any held mutex is scheduled by deadline
+ * @note the deadline counterpart of mini_os_mutex_required_priority(): the
+ *       thread's own deadline is NOT folded in here, the scheduler takes the
+ *       earlier of the two (see mini_os_thread_effective_deadline)
+ * @note caller must hold interrupts disabled
+ */
+static mini_os_tick_t mini_os_mutex_required_deadline(mini_os_thread_t* thread)
+{
+    mini_os_list_t* node;
+    mini_os_tick_t  required = 0;
+
+    for (node = thread->hold_list.next; node != &thread->hold_list; node = node->next)
+    {
+        mini_os_mutex_t* held = mini_os_container_of(node, mini_os_mutex_t, hold_node);
+        mini_os_tick_t   waiter = mini_os_mutex_earliest_waiter_deadline(held);
+
+        if (waiter != 0 && (required == 0 || mini_os_deadline_before(waiter, required) != MINI_OS_FALSE))
+            required = waiter;
+    }
+    return required;
+}
+#endif /* MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE */
+
+/**
+ * @brief Apply the required priority/deadline of a thread and push the requirement up the wait chain
  * @param[in] thread thread to recompute
- * @param[in] extra additional requirement to fold in (MINI_OS_PRIORITY = none);
- *            used by a taker that is about to park and is therefore not on the
- *            wait list yet
+ * @param[in] extra additional priority requirement to fold in (MINI_OS_PRIORITY =
+ *            none); used by a taker that is about to park and is therefore not on
+ *            the wait list yet
+ * @param[in] extra_deadline additional deadline requirement to fold in
+ *            (0 = none); the taker's own effective deadline, passed for the same
+ *            reason as extra
  * @param[in] depth chain links already walked (loop guard)
- * @details the walk follows thread->wait_mutex as long as the thread is really
- *          parked on that mutex's wait list, so a stale back pointer ends it;
+ * @details both requirements travel together: the thread's effective priority is
+ *          min(base_priority, extra, highest waiter of every held mutex) and its
+ *          inherited deadline is the earliest of extra_deadline and the earliest
+ *          waiter deadline of every held mutex. The walk follows
+ *          thread->wait_mutex as long as the thread is really parked on that
+ *          mutex's wait list, so a stale back pointer ends it;
  *          MINI_OS_MUTEX_PI_CHAIN_MAX caps the length and breaks wait cycles
  * @note caller must hold interrupts disabled
  */
-static void mini_os_mutex_propagate(mini_os_thread_t* thread, mini_os_uint8_t extra, mini_os_uint32_t depth)
+static void mini_os_mutex_propagate(mini_os_thread_t* thread, mini_os_uint8_t extra, mini_os_tick_t extra_deadline, mini_os_uint32_t depth)
 {
+#if !(MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE)
+    (void)extra_deadline; /* deadline inheritance not compiled in */
+#endif
     while (thread != MINI_OS_NULL && depth < MINI_OS_MUTEX_PI_CHAIN_MAX)
     {
         mini_os_uint8_t  required = mini_os_mutex_required_priority(thread);
@@ -103,6 +183,18 @@ static void mini_os_mutex_propagate(mini_os_thread_t* thread, mini_os_uint8_t ex
             required = extra;
         if (required != thread->priority)
             (void)mini_os_thread_priority_apply(thread, required);
+
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+        {
+            mini_os_tick_t required_deadline = mini_os_mutex_required_deadline(thread);
+
+            if (extra_deadline != 0 && (required_deadline == 0 || mini_os_deadline_before(extra_deadline, required_deadline) != MINI_OS_FALSE))
+                required_deadline = extra_deadline;
+            if (required_deadline != thread->dl_deadline_inherit)
+                (void)mini_os_thread_deadline_apply(thread, required_deadline);
+            extra_deadline = required_deadline; /* the requirement travels on */
+        }
+#endif
 
         /* the requirement does not stop at a blocked holder: whoever owns the
          * mutex it is parked on has to run at least as fast */
@@ -329,11 +421,12 @@ mini_os_err_t mini_os_mutex_lock(mini_os_mutex_t* mutex, mini_os_tick_t timeout_
     }
     if (mutex->owner != MINI_OS_NULL)
     {
-        /* about to park: the owner has to run at least as fast as we do, and
-         * the requirement travels on when the owner is itself blocked. Our own
-         * priority is passed as extra because we are not on the wait list yet */
+        /* about to park: the owner has to run at least as fast as we do (and as
+         * early as our deadline), and the requirement travels on when the owner
+         * is itself blocked. Our own priority and deadline are passed as extra
+         * because we are not on the wait list yet */
         current->wait_mutex = mutex;
-        mini_os_mutex_propagate(mutex->owner, current->priority, 0u);
+        mini_os_mutex_propagate(mutex->owner, current->priority, MINI_OS_MUTEX_DEADLINE_OF(current), 0u);
     }
     mini_os_irq_restore(irq);
 
@@ -350,7 +443,7 @@ mini_os_err_t mini_os_mutex_lock(mini_os_mutex_t* mutex, mini_os_tick_t timeout_
         mini_os_list_tail(&mutex->hold_node, &current->hold_list);
         /* waiters that parked behind us boosted the previous owner, not us:
          * fold their requirement (and that of our other held mutexes) in now */
-        mini_os_mutex_propagate(current, MINI_OS_PRIORITY, 0u);
+        mini_os_mutex_propagate(current, MINI_OS_PRIORITY, 0, 0u);
         mini_os_irq_restore(irq);
         return MINI_OS_OK;
     }
@@ -359,7 +452,7 @@ mini_os_err_t mini_os_mutex_lock(mini_os_mutex_t* mutex, mini_os_tick_t timeout_
         /* we left the wait set, so drop the boost only we justified. parked_on
          * is MINI_OS_NULL when the mutex was kill-deleted under us: comparing
          * pointers keeps us from dereferencing a freed descriptor */
-        mini_os_mutex_propagate(mutex->owner, MINI_OS_PRIORITY, 0u);
+        mini_os_mutex_propagate(mutex->owner, MINI_OS_PRIORITY, 0, 0u);
     }
     mini_os_irq_restore(irq);
     return ret;
@@ -400,7 +493,7 @@ mini_os_err_t mini_os_mutex_unlock(mini_os_mutex_t* mutex)
      * mutexes it keeps holding still require (base when this was the last one) */
     mini_os_list_remove(&mutex->hold_node);
     mutex->owner = MINI_OS_NULL;
-    mini_os_mutex_propagate(current, MINI_OS_PRIORITY, 0u);
+    mini_os_mutex_propagate(current, MINI_OS_PRIORITY, 0, 0u);
     mini_os_irq_restore(irq);
 
     /* hands the unit to the oldest waiter (and yields) or republishes it */
@@ -485,7 +578,7 @@ mini_os_err_t mini_os_mutex_unlock_isr(mini_os_mutex_t* mutex)
     }
     mini_os_list_remove(&mutex->hold_node);
     mutex->owner = MINI_OS_NULL;
-    mini_os_mutex_propagate(current, MINI_OS_PRIORITY, 0u);
+    mini_os_mutex_propagate(current, MINI_OS_PRIORITY, 0, 0u);
     mini_os_irq_restore(irq);
 
     /* no yield here: the ISR caller decides via the is_heigher_priority pattern */
@@ -510,13 +603,13 @@ mini_os_err_t mini_os_mutex_enable_kill(mini_os_mutex_t* mutex)
 }
 
 /**
- * @brief Recompute a thread's effective priority from its base, its held mutexes
- *        and the mutex it waits on
+ * @brief Recompute a thread's effective priority and inherited deadline from its
+ *        base priority/deadline, its held mutexes and the mutex it waits on
  * @param[in] thread thread to recompute
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when thread is MINI_OS_NULL
- * @note kernel API, called after base_priority changed: a holder keeps the boost
- *       its waiters still require and a thread blocked on a mutex pushes the
- *       change on to that mutex's owner
+ * @note kernel API, called after base_priority or the own deadline changed: a
+ *       holder keeps the boost its waiters still require and a thread blocked on
+ *       a mutex pushes the change on to that mutex's owner
  */
 mini_os_err_t mini_os_mutex_priority_recompute(mini_os_thread_t* thread)
 {
@@ -525,7 +618,7 @@ mini_os_err_t mini_os_mutex_priority_recompute(mini_os_thread_t* thread)
     if (thread == MINI_OS_NULL)
         return MINI_OS_ERR_INVAL;
     irq = mini_os_irq_save();
-    mini_os_mutex_propagate(thread, MINI_OS_PRIORITY, 0u);
+    mini_os_mutex_propagate(thread, MINI_OS_PRIORITY, 0, 0u);
     mini_os_irq_restore(irq);
     return MINI_OS_OK;
 }
@@ -620,7 +713,7 @@ static mini_os_err_t mini_os_mutex_delete_common(mini_os_mutex_t* mutex, mini_os
         if (owner != MINI_OS_NULL)
         {
             /* the force-released owner loses this mutex's requirement */
-            mini_os_mutex_propagate(owner, MINI_OS_PRIORITY, 0u);
+            mini_os_mutex_propagate(owner, MINI_OS_PRIORITY, 0, 0u);
         }
     }
 #if MINI_OS_FIND_BY_NAME

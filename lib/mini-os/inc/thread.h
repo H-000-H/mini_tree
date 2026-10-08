@@ -90,6 +90,7 @@ struct mini_os_thread
 #if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
     mini_os_sched_policy_t sched_policy;                        /**< Scheduling policy: NORMAL / EDF / DEADLINE */
     mini_os_tick_t         dl_deadline_time;                    /**< Absolute deadline in ticks (0 = none) */
+    mini_os_tick_t         dl_deadline_inherit;                 /**< Earliest deadline inherited through held mutexes (0 = none). With SCHED_DEADLINE a non-zero value also promotes the thread into the DL ready list */
 #endif
 #if MINI_OS_THREAD_DEADLINE
     mini_os_tick_t         dl_run_time;                         /**< DEADLINE: CPU budget per period (ticks) */
@@ -115,6 +116,40 @@ struct mini_os_thread
 #endif
 // clang-format on
 };
+
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Wrap-safe "absolute deadline a falls before absolute deadline b"
+ * @param[in] first first absolute deadline
+ * @param[in] second second absolute deadline
+ * @return MINI_OS_TRUE when a is strictly earlier than b
+ * @note uses the signed tick difference, so the ordering survives a 32-bit tick
+ *       wrap exactly like mini_os_tick_until()
+ */
+MINI_OS_STATIC_INLINE mini_os_bool_t mini_os_deadline_before(mini_os_tick_t first, mini_os_tick_t second)
+{
+    return (mini_os_bool_t)((mini_os_int32_t)(first - second) < 0);
+}
+
+/**
+ * @brief Scheduling deadline of a thread: its own deadline, or an earlier one
+ *        inherited through the mutexes it holds
+ * @param[in] thread thread to evaluate
+ * @return the earlier of dl_deadline_time and dl_deadline_inherit; 0 means the
+ *         thread is not scheduled by deadline (plain priority / FIFO)
+ * @note kernel API for mutex deadline inheritance (see
+ *       mini_os_thread_deadline_apply); reading it needs interrupts disabled
+ */
+MINI_OS_STATIC_INLINE mini_os_tick_t mini_os_thread_effective_deadline(const mini_os_thread_t* thread)
+{
+    if (thread->dl_deadline_inherit == 0)
+        return thread->dl_deadline_time;
+    if (thread->dl_deadline_time == 0)
+        return thread->dl_deadline_inherit;
+    return (mini_os_deadline_before(thread->dl_deadline_inherit, thread->dl_deadline_time) != MINI_OS_FALSE) ? thread->dl_deadline_inherit
+                                                                                                           : thread->dl_deadline_time;
+}
+#endif /* MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE */
 
 /* Stack alignment: keep the stack base and size 8-byte aligned  */
 #define MINI_OS_STACK_ALIGN_SIZE 8u                                                                            /**< stack alignment in bytes (Cortex-M: 8) */
@@ -325,6 +360,26 @@ mini_os_err_t mini_os_thread_set_priority(mini_os_thread_t* thread, mini_os_uint
  *       so the next recompute can still derive the boost from it
  */
 mini_os_err_t mini_os_thread_priority_apply(mini_os_thread_t* thread, mini_os_uint8_t priority);
+
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Apply an effective (inherited) deadline without touching the thread's
+ *        own deadline
+ * @param[in] thread Thread to re-link
+ * @param[in] deadline Earliest deadline inherited through the mutexes the thread
+ *            holds, or 0 to drop the inheritance
+ * @return mini_os_err_t on success, 0 on failure
+ * @note kernel API for mutex deadline inheritance: dl_deadline_time is left
+ *       alone, so the CBS period boundary keeps working on the thread's own
+ *       deadline. The value is a scheduling key only: it may move the thread
+ *       earlier in the deadline ordering (see
+ *       mini_os_thread_effective_deadline), it never delays its own deadline
+ * @note with MINI_OS_THREAD_DEADLINE a non-zero value also moves the thread in
+ *       and out of the DL class, so a blocked DL waiter's holder runs before DL
+ *       tasks with a later deadline instead of being preempted by them
+ */
+mini_os_err_t mini_os_thread_deadline_apply(mini_os_thread_t* thread, mini_os_tick_t deadline);
+#endif /* MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE */
 
 /**
  * @brief Get the priority of a thread

@@ -143,8 +143,9 @@ static mini_os_err_t mini_os_thread_init(mini_os_thread_t* thread, const char* n
     /* ordinary threads start as NORMAL with no deadline; the scheduler branches
      * read sched_policy on every switch, so it must never be garbage from the
      * heap. mini_os_deadline_thread_init() overrides this for DL threads. */
-    thread->sched_policy     = MINI_OS_SCHED_NORMAL;
-    thread->dl_deadline_time = 0;
+    thread->sched_policy        = MINI_OS_SCHED_NORMAL;
+    thread->dl_deadline_time    = 0;
+    thread->dl_deadline_inherit = 0;
 #endif
 #if MINI_OS_THREAD_DEADLINE
     thread->dl_run_time      = 0;
@@ -201,10 +202,14 @@ static mini_os_bool_t mini_os_dl_params_valid(mini_os_tick_t runtime, mini_os_ti
  * @brief Placeholder priority of a DL thread
  * @note the DL class is ordered by absolute deadline only (global EDF, like
  *       Linux SCHED_DEADLINE which ignores rt_priority), so a DL thread's TCB
- *       priority is never used for selection; it still needs a valid value for
- *       mini_os_thread_init() and the non-DL fallback paths.
+ *       priority is never used for *selection*. It IS used by mutex priority
+ *       inheritance though: a waiter's priority decides how far its blocker is
+ *       boosted. The DL class sits above every priority level, so its equivalent
+ *       priority is the highest one (0) -- with the lowest value a DL waiter
+ *       could not boost its blocker at all. This mirrors Linux, where a DL task
+ *       carries MAX_DL_PRIO-1, i.e. the most urgent priority.
  */
-#define MINI_OS_DL_THREAD_PRIORITY ((mini_os_uint8_t)(MINI_OS_PRIORITY - 1))
+#define MINI_OS_DL_THREAD_PRIORITY ((mini_os_uint8_t)0)
 
 /**
  * @brief Initialize the DL scheduling fields of a freshly created thread
@@ -218,14 +223,15 @@ static mini_os_err_t mini_os_deadline_thread_init(mini_os_thread_t* thread, mini
     if (thread == MINI_OS_NULL)
         return MINI_OS_ERR_INVAL;
     (void)mini_os_get_tick(&now);
-    thread->sched_policy     = MINI_OS_SCHED_DEADLINE;
-    thread->dl_run_time      = dl_run_time;
-    thread->dl_budget        = dl_run_time;
-    thread->dl_budget_frac   = 0u;
-    thread->dl_deadline_time = now + dl_deadline; /* relative deadline -> absolute */
-    thread->dl_period        = dl_period;
-    thread->dl_throttled     = MINI_OS_FALSE;
-    thread->dl_job_done      = MINI_OS_FALSE;
+    thread->sched_policy        = MINI_OS_SCHED_DEADLINE;
+    thread->dl_run_time         = dl_run_time;
+    thread->dl_budget           = dl_run_time;
+    thread->dl_budget_frac      = 0u;
+    thread->dl_deadline_time    = now + dl_deadline; /* relative deadline -> absolute */
+    thread->dl_deadline_inherit = 0;
+    thread->dl_period           = dl_period;
+    thread->dl_throttled        = MINI_OS_FALSE;
+    thread->dl_job_done         = MINI_OS_FALSE;
     thread->dl_miss_count    = 0u;
     thread->dl_finish_count  = 0u;
     thread->dl_throttle_count = 0u;
@@ -1007,6 +1013,77 @@ mini_os_err_t mini_os_thread_priority_apply(mini_os_thread_t* thread, mini_os_ui
     return MINI_OS_OK;
 }
 
+#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
+/**
+ * @brief Apply an effective (inherited) deadline without touching the thread's
+ *        own deadline
+ * @param[in] thread thread to re-link
+ * @param[in] deadline earliest deadline inherited through the mutexes the thread
+ *            holds, or 0 to drop the inheritance
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when thread is MINI_OS_NULL
+ * @details a READY/RUNNING thread whose list position depends on the deadline is
+ *          re-linked so the change takes effect at once: the node is unlinked
+ *          with the old value (it decides which list the node sits on, the DL
+ *          global list or a priority level), the field is changed, the state is
+ *          temporarily SUSPENDED (remove leaves it alone and add refuses
+ *          READY/RUNNING), the thread is added back and RUNNING is restored when
+ *          add() demoted it to READY. A BLOCKED/SUSPENDED thread only changes the
+ *          field and is inserted in the right place when it wakes
+ * @note in a MINI_OS_THREAD_DEADLINE build the change also moves the thread in
+ *       and out of the DL class: a non-DL holder with an inherited deadline is
+ *       scheduled like a DL task at that deadline (see
+ *       mini_os_dl_scheduled()), which is what actually bounds the blocking of a
+ *       DL waiter -- a plain priority boost cannot, because the DL class outranks
+ *       every priority level
+ * @note kernel API for mutex deadline inheritance: dl_deadline_time is left
+ *       alone, so the CBS period boundary, throttling and job finish keep
+ *       working on the thread's own deadline; the inherited value only moves the
+ *       thread earlier in the deadline ordering (it can never delay its own
+ *       deadline). Interrupts are masked across the whole re-link, so nobody
+ *       observes the transient state
+ */
+mini_os_err_t mini_os_thread_deadline_apply(mini_os_thread_t* thread, mini_os_tick_t deadline)
+{
+    mini_os_thread_state_t state;
+    mini_os_irq_t          irq;
+    mini_os_bool_t         relink;
+
+    if (thread == MINI_OS_NULL)
+        return MINI_OS_ERR_INVAL;
+    if (thread->dl_deadline_inherit == deadline)
+        return MINI_OS_OK;
+
+    state = thread->state;
+#if MINI_OS_THREAD_DEADLINE
+    /* ordered by deadline while it is a DL task, already promoted into the DL
+     * class, or being promoted now; a plain NORMAL thread with no deadline is
+     * not, so it is left in place (re-linking would rotate its FIFO slot) */
+    relink = (mini_os_bool_t)(thread->sched_policy != MINI_OS_SCHED_NORMAL || thread->dl_deadline_inherit != 0 || deadline != 0);
+#else  /* EDF only: only an EDF thread is ordered by deadline within its level */
+    relink = (mini_os_bool_t)(thread->sched_policy == MINI_OS_SCHED_EDF);
+#endif
+
+    irq = mini_os_irq_save();
+    if (relink != MINI_OS_FALSE && (state == MINI_OS_THREAD_STATE_READY || state == MINI_OS_THREAD_STATE_RUNNING))
+    {
+        (void)mini_os_remove_thread_from_ready_running_list(thread);
+        thread->dl_deadline_inherit = deadline;
+        thread->state = MINI_OS_THREAD_STATE_SUSPENDED;
+        (void)mini_os_add_thread_to_ready_running_list(thread);
+        if (state == MINI_OS_THREAD_STATE_RUNNING)
+            thread->state = MINI_OS_THREAD_STATE_RUNNING; /* add() demoted to READY */
+    }
+    else
+    {
+        /* BLOCKED/SUSPENDED: only the field changes, the wake path inserts it in
+         * the right list; NORMAL without a deadline: no position to fix */
+        thread->dl_deadline_inherit = deadline;
+    }
+    mini_os_irq_restore(irq);
+    return MINI_OS_OK;
+}
+#endif /* MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE */
+
 /**
  * @brief Set the base priority of a thread
  * @param[in] thread thread to configure
@@ -1279,6 +1356,11 @@ mini_os_err_t mini_os_thread_set_deadline(mini_os_thread_t* thread, mini_os_tick
             thread->state = MINI_OS_THREAD_STATE_RUNNING; /* add() demoted it to READY */
     }
     mini_os_irq_restore(irq);
+
+    /* the own deadline changed: a thread parked on a mutex pushes the new
+     * requirement on to that mutex's owner, and a holder re-derives the earliest
+     * deadline its waiters require (mirrors mini_os_thread_set_priority) */
+    (void)mini_os_mutex_priority_recompute(thread);
     return MINI_OS_OK;
 }
 #endif /* MINI_OS_THREAD_EDF */

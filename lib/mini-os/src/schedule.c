@@ -51,25 +51,30 @@ static mini_os_list_t s_wheel[MINI_OS_TICK_WHEEL];
  * @note the DL class sits above every priority level, so it has its own list and is
  *       deliberately NOT reflected in the g_priority bitmap; see mini_os_schedule_switch() */
 static mini_os_list_t s_dl_ready_list;
+
+/**
+ * @brief Does a thread belong to the DL ready list?
+ * @param[in] thread thread to test
+ * @return MINI_OS_TRUE for a real DL task, and for any thread that deadline
+ *         inheritance promoted into the DL class (dl_deadline_inherit != 0)
+ * @details the mutex inheritance problem this solves: PI can only raise a
+ *          blocker's *priority*, but the DL class outranks every priority level,
+ *          so a boosted plain thread would still be preempted by any ready DL
+ *          task and the DL waiter's deadline could be missed. A holder that
+ *          inherits a deadline is therefore scheduled inside the DL class at
+ *          that deadline, ahead of DL tasks with a later one. A promoted thread
+ *          has no CBS reservation: it must never be throttled, and its zero
+ *          period must stay out of the bandwidth arithmetic and the job refill
+ * @note caller must hold interrupts disabled
+ */
+MINI_OS_STATIC_INLINE mini_os_bool_t mini_os_dl_scheduled(const mini_os_thread_t* thread)
+{
+    return (mini_os_bool_t)(thread->sched_policy == MINI_OS_SCHED_DEADLINE || thread->dl_deadline_inherit != 0);
+}
 #endif /* MINI_OS_THREAD_DEADLINE */
 
 /** @brief Slot of the thread time wheel serviced on the next tick */
 static mini_os_uint32_t s_current_slot = 0;
-
-#if MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE
-/**
- * @brief Wrap-safe "absolute deadline a falls before absolute deadline b"
- * @param[in] first first absolute deadline
- * @param[in] second second absolute deadline
- * @return MINI_OS_TRUE when a is strictly earlier than b
- * @note uses the signed tick difference, so the ordering survives a 32-bit tick
- *       wrap exactly like mini_os_tick_until()
- */
-static mini_os_bool_t mini_os_deadline_before(mini_os_tick_t first, mini_os_tick_t second)
-{
-    return (mini_os_bool_t)((mini_os_int32_t)(first - second) < 0);
-}
-#endif /* MINI_OS_THREAD_EDF || MINI_OS_THREAD_DEADLINE */
 
 #if MINI_OS_THREAD_DEADLINE
 /** @brief DL bandwidth scale: runtime/period is accounted in 1/2^20 CPU units */
@@ -367,11 +372,15 @@ mini_os_err_t mini_os_schedule_yield_isr(void)
 }
 
 /**
- * @brief Add a thread to the tail of its priority ready/running list
+ * @brief Add a thread to the ready/running structure it belongs to
  * @param[in] thread thread to add
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when thread is MINI_OS_NULL,
  *         already READY/RUNNING, or has an out-of-range priority
- * @note sets the state to READY and the matching bit in the ready bitmap
+ * @note a DL task, and any thread promoted into the DL class by deadline
+ *       inheritance (mini_os_dl_scheduled()), joins the DL global list; every
+ *       other thread joins the tail of its priority level (EDF threads are
+ *       ordered inside the level by deadline). Sets the state to READY and, for
+ *       the priority lists, the matching bit in the ready bitmap
  */
 mini_os_err_t mini_os_add_thread_to_ready_running_list(mini_os_thread_t* thread)
 {
@@ -380,21 +389,25 @@ mini_os_err_t mini_os_add_thread_to_ready_running_list(mini_os_thread_t* thread)
     mini_os_irq_t irq_level = mini_os_irq_save();
     thread->state = MINI_OS_THREAD_STATE_READY;
 #if MINI_OS_THREAD_DEADLINE
-    if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+    if (mini_os_dl_scheduled(thread) != MINI_OS_FALSE)
     {
-        /* DL class: own global list, earliest absolute deadline first; the
-         * g_priority bitmap is left alone because DL is not a priority level */
-
-        /* non-deferrable CBS: the blocking time counts against the deadline, so a
-         * thread that wakes after its absolute deadline starts a new job (deadline
-         * advanced by whole periods, budget refilled) instead of resuming with an
-         * expired deadline */
-        if ((mini_os_int32_t)((mini_os_tick_t)g_global_tick - thread->dl_deadline_time) >= 0)
-            mini_os_dl_new_job(thread, g_global_tick);
-
+        /* DL class: own global list, earliest effective deadline first. A thread
+         * promoted by deadline inheritance is ordered by its inherited deadline;
+         * the g_priority bitmap is left alone because this is not a priority
+         * level. Only a real DL task runs CBS: a promoted holder must not be
+         * throttled and has no bandwidth to account (its period is 0) */
+        if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+        {
+            /* non-deferrable CBS: the blocking time counts against the deadline,
+             * so a thread that wakes after its absolute deadline starts a new job
+             * (deadline advanced by whole periods, budget refilled) instead of
+             * resuming with an expired deadline */
+            if ((mini_os_int32_t)((mini_os_tick_t)g_global_tick - thread->dl_deadline_time) >= 0)
+                mini_os_dl_new_job(thread, g_global_tick);
+        }
         mini_os_dl_list_insert(thread);
-        /* contending again: its bandwidth leaves the reclaimable pool */
-        s_dl_running_bw += mini_os_dl_bw_of(thread->dl_run_time, (mini_os_tick_t)thread->dl_period);
+        if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+            s_dl_running_bw += mini_os_dl_bw_of(thread->dl_run_time, (mini_os_tick_t)thread->dl_period); /* contending again: bandwidth leaves the reclaimable pool */
     }
     else
 #endif /* MINI_OS_THREAD_DEADLINE */
@@ -412,7 +425,7 @@ mini_os_err_t mini_os_add_thread_to_ready_running_list(mini_os_thread_t* thread)
 
             if (ready->sched_policy == MINI_OS_SCHED_NORMAL)
                 break; /* ordinary threads queue behind all EDF threads */
-            if (mini_os_deadline_before(thread->dl_deadline_time, ready->dl_deadline_time) == MINI_OS_TRUE)
+            if (mini_os_deadline_before(mini_os_thread_effective_deadline(thread), mini_os_thread_effective_deadline(ready)) == MINI_OS_TRUE)
                 break; /* first later deadline: insert before it */
         }
         (void)mini_os_list_add(node, node->prev, &thread->list_node);
@@ -429,12 +442,14 @@ mini_os_err_t mini_os_add_thread_to_ready_running_list(mini_os_thread_t* thread)
 }
 
 /**
- * @brief Remove a thread from its priority ready/running list
+ * @brief Remove a thread from the ready/running structure it belongs to
  * @param[in] thread thread to remove
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when thread is MINI_OS_NULL,
  *         not READY/RUNNING, or has an out-of-range priority
- * @note clears the ready bitmap bit when the list becomes empty; the state is
- *       left untouched, so the caller decides what the thread becomes next
+ * @note unlinks from the DL global list when the thread is DL-scheduled
+ *       (mini_os_dl_scheduled()), otherwise from its priority level (clearing
+ *       the ready bitmap bit when the level becomes empty); the state is left
+ *       untouched, so the caller decides what the thread becomes next
  */
 mini_os_err_t mini_os_remove_thread_from_ready_running_list(mini_os_thread_t* thread)
 {
@@ -446,13 +461,16 @@ mini_os_err_t mini_os_remove_thread_from_ready_running_list(mini_os_thread_t* th
     mini_os_list_remove(&thread->list_node);
 
 #if MINI_OS_THREAD_DEADLINE
-    if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+    if (mini_os_dl_scheduled(thread) != MINI_OS_FALSE)
     {
-        mini_os_uint64_t bw = mini_os_dl_bw_of(thread->dl_run_time, (mini_os_tick_t)thread->dl_period);
+        if (thread->sched_policy == MINI_OS_SCHED_DEADLINE)
+        {
+            mini_os_uint64_t bw = mini_os_dl_bw_of(thread->dl_run_time, (mini_os_tick_t)thread->dl_period);
 
-        /* leaving the contending set hands its bandwidth back to the reclaimable pool */
-        s_dl_running_bw = (s_dl_running_bw >= bw) ? (s_dl_running_bw - bw) : 0u;
-        mini_os_irq_restore(irq_level); /* DL is not tracked in the priority bitmap */
+            /* leaving the contending set hands its bandwidth back to the reclaimable pool */
+            s_dl_running_bw = (s_dl_running_bw >= bw) ? (s_dl_running_bw - bw) : 0u;
+        }
+        mini_os_irq_restore(irq_level); /* DL list is not tracked in the priority bitmap */
         return MINI_OS_OK;
     }
 #endif
@@ -488,7 +506,13 @@ mini_os_err_t mini_os_remove_thread_from_blocked_list(mini_os_thread_t* thread)
 
 #if MINI_OS_THREAD_DEADLINE
 /**
- * @brief Insert a DL thread into the global ready list in earliest-deadline order
+ * @brief Insert a thread into the DL global ready list in earliest-deadline order
+ * @note the list holds real DL tasks and every thread promoted into the DL class
+ *       by deadline inheritance (mini_os_dl_scheduled()); ordering uses the
+ *       effective deadline, i.e. a deadline inherited through a held mutex
+ *       outranks the thread's own one (see mini_os_thread_effective_deadline).
+ *       mini_os_dl_replenish_due() must scan the whole list and filter on the
+ *       policy because the order no longer follows the own deadline
  * @note caller must hold interrupts disabled; the node must not be linked
  */
 static void mini_os_dl_list_insert(mini_os_thread_t* thread)
@@ -498,7 +522,7 @@ static void mini_os_dl_list_insert(mini_os_thread_t* thread)
     for (node = s_dl_ready_list.next; node != &s_dl_ready_list; node = node->next)
     {
         mini_os_thread_t* ready = mini_os_container_of(node, mini_os_thread_t, list_node);
-        if (mini_os_deadline_before(thread->dl_deadline_time, ready->dl_deadline_time) == MINI_OS_TRUE)
+        if (mini_os_deadline_before(mini_os_thread_effective_deadline(thread), mini_os_thread_effective_deadline(ready)) == MINI_OS_TRUE)
             break; /* first later deadline: insert before it (equal deadlines stay FIFO) */
     }
     (void)mini_os_list_add(node, node->prev, &thread->list_node);
@@ -527,28 +551,36 @@ static void mini_os_dl_new_job(mini_os_thread_t* thread, mini_os_uint32_t now)
 
 /**
  * @brief Start a new job for every contending DL thread whose deadline was reached
- * @details the ready list is deadline-ordered, so only its head can be due: refill
- *          the head, move it to its new position and repeat. Reclaiming means a
- *          task need not have spent its budget when the deadline arrives, so this
- *          walk is what still guarantees a fresh budget every period.
- * @note running_bw is untouched: the thread stays contending, only its deadline
- *       and budget change
+ * @details the whole ready list is scanned: it is ordered by the effective
+ *          deadline, so a thread boosted by an inherited deadline may sit ahead
+ *          of a thread whose own deadline is due, and the due test cannot stop at
+ *          the head. Each due thread is refilled (its own deadline advances by
+ *          whole periods, the budget is restored) and re-inserted. Reclaiming
+ *          means a task need not have spent its budget when the deadline arrives,
+ *          so this walk is what still guarantees a fresh budget every period.
+ * @note running_bw is untouched: the thread stays contending, only its own
+ *       deadline and budget change
  */
 static void mini_os_dl_replenish_due(void)
 {
     mini_os_uint32_t now = g_global_tick;
+    mini_os_list_t*  node;
+    mini_os_list_t*  next;
 
-    while (mini_os_list_is_empty(&s_dl_ready_list) == MINI_OS_FALSE)
+    for (node = s_dl_ready_list.next; node != &s_dl_ready_list; node = next)
     {
-        mini_os_thread_t* head = mini_os_container_of(s_dl_ready_list.next, mini_os_thread_t, list_node);
+        mini_os_thread_t* thread = mini_os_container_of(node, mini_os_thread_t, list_node);
 
-        if ((mini_os_int32_t)((mini_os_tick_t)now - head->dl_deadline_time) < 0)
-            break; /* the head deadline is still ahead: nobody is due */
-        mini_os_list_remove(&head->list_node);
-        if (head->dl_job_done == MINI_OS_FALSE)
-            mini_os_dl_report_miss(head); /* still runnable at its deadline: the job overran */
-        mini_os_dl_new_job(head, now);
-        mini_os_dl_list_insert(head);
+        next = node->next; /* captured first: the re-insert below re-links nodes */
+        if (thread->sched_policy != MINI_OS_SCHED_DEADLINE)
+            continue; /* promoted holder: no CBS job, its own deadline is not a boundary */
+        if ((mini_os_int32_t)((mini_os_tick_t)now - thread->dl_deadline_time) < 0)
+            continue; /* own deadline still ahead: the job is not due yet */
+        mini_os_list_remove(&thread->list_node);
+        if (thread->dl_job_done == MINI_OS_FALSE)
+            mini_os_dl_report_miss(thread); /* still runnable at its deadline: the job overran */
+        mini_os_dl_new_job(thread, now);
+        mini_os_dl_list_insert(thread);
     }
 }
 
