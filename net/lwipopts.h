@@ -62,7 +62,7 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 #define LWIP_TCP CONFIG_LWIP_TCP       /* 是否启用 TCP 协议 */
 #define TCP_TTL CONFIG_TCP_TTL         /* TCP 数据包默认生存时间 */
-#define TCP_MSS CONFIG_TCP_MSS         /* TCP 最大报文段大小 */
+#define TCP_MSS CONFIG_MINI_TREE_TCP_MSS /* TCP 最大报文段大小 */
 #define TCP_WND CONFIG_TCP_WND         /* TCP 接收窗口大小 */
 #define TCP_SND_BUF CONFIG_TCP_SND_BUF /* TCP 发送缓冲区大小 */
 
@@ -155,7 +155,7 @@ extern "C"
 #define LWIP_DEBUG CONFIG_LWIP_DEBUG /* 是否开启 lwIP 调试日志 */
 #define LWIP_STATS CONFIG_LWIP_STATS /* 是否启用协议栈统计信息 */
 
-#define PPP_SUPPORT CONFIG_PPP_SUPPORT                 /* 启用 PPP 功能 */
+#define PPP_SUPPORT CONFIG_MINI_TREE_PPP_SUPPORT /* 启用 PPP 功能 */
 #define PPPOS_SUPPORT CONFIG_PPPOS_SUPPORT             /* 启用 PPP over Serial (串口 PPP) */
 #define PAP_SUPPORT CONFIG_PAP_SUPPORT                 /* 启用 PAP 认证  */
 #define CHAP_SUPPORT CONFIG_CHAP_SUPPORT               /* 启用 CHAP 认证  */

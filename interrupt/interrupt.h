@@ -344,7 +344,9 @@ MINI_STATIC_INLINE mt_err_t bottom_half_task_submit_from_isr(struct bottom_half_
     if (ret != MINI_OK)
         return ret;
 
-    (void)mini_sem_post_from_isr(task->sem, px_yield_required);
+    /* mini_sem_post_from_isr 带 MINI_WARN_UNUSED_RESULT: GCC 14+ 起 (void) 转换
+     * 已不能抑制 -Wunused-result (GCC 15 下直接 -Werror), 须用 MINI_IGNORE_RESULT */
+    MINI_IGNORE_RESULT(mini_sem_post_from_isr(task->sem, px_yield_required));
     return MINI_OK;
 }
 
@@ -366,7 +368,9 @@ MINI_STATIC_INLINE mt_err_t bottom_half_task_submit(struct bottom_half_task* tas
     if (ret != MINI_OK)
         return ret;
 
-    (void)mini_sem_post(task->sem);
+    /* mini_sem_post 带 MINI_WARN_UNUSED_RESULT: GCC 14+ 起 (void) 转换已不能抑制
+     * -Wunused-result (GCC 15 下直接 -Werror), 须用 MINI_IGNORE_RESULT */
+    MINI_IGNORE_RESULT(mini_sem_post(task->sem));
     return MINI_OK;
 }
 

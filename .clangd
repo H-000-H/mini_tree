@@ -22,11 +22,11 @@ Index:
 
 # CompileFlags 放在 If 块外, 对全部文件生效 (含 pppif.c)。
 # 注入 PPP/Kconfig 宏: lwIP net/lwipopts.h 头部把 PPP_SUPPORT 重映射为
-# CONFIG_PPP_SUPPORT (genconfig.py 写出)。config.h 未在 -I 时需显式注入,
+# CONFIG_MINI_TREE_PPP_SUPPORT (genconfig.py 写出)。config.h 未在 -I 时需显式注入,
 # 否则 PPP_SUPPORT=0 → ppp.h/pppos.h 整段被 #if 跳过 → unknown_typename。
 CompileFlags:
   Add:
-    - -DCONFIG_PPP_SUPPORT=1
+    - -DCONFIG_MINI_TREE_PPP_SUPPORT=1
     - -DCONFIG_PPPOS_SUPPORT=1
     - -DCONFIG_PPP_AUTH_SUPPORT=1
     - -DCONFIG_PAP_SUPPORT=1

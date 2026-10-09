@@ -44,7 +44,7 @@ function(mini_tree_link_lwip target)
 
         set(LWIP_DIR "${_lwip_source_dir}")
 
-        # PPP (pppos, 4G 模组拨号): 由 .config 的 CONFIG_PPP_SUPPORT 桥接条件编入。
+        # PPP (pppos, 4G 模组拨号): 由 .config 的 CONFIG_MINI_TREE_PPP_SUPPORT 桥接条件编入。
         # ppp/*.c 顶部均有 #if PPP_SUPPORT (及子选项) 保护, 未开子功能时为空 TU,
         # Flash 由 -ffunction-sections/-fdata-sections + gc-sections 回收。
         # pppoe/pppol2tp 一并编入: 独立链路承载 (PPPOE/PPPOL2TP_SUPPORT 默认 0,
@@ -55,7 +55,7 @@ function(mini_tree_link_lwip target)
         endif()
         set(_mini_tree_lwip_PPP_SRCS "")
         if(EXISTS "${_lwip_dotconfig}")
-            file(STRINGS "${_lwip_dotconfig}" _mini_tree_lwip_PPP_ON REGEX "^CONFIG_PPP_SUPPORT=y$")
+            file(STRINGS "${_lwip_dotconfig}" _mini_tree_lwip_PPP_ON REGEX "^CONFIG_MINI_TREE_PPP_SUPPORT=y$")
             if(_mini_tree_lwip_PPP_ON)
                 file(GLOB _mini_tree_lwip_PPP_SRCS
                     "${LWIP_DIR}/src/netif/ppp/*.c"

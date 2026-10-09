@@ -1,5 +1,16 @@
   # mini_tree (generic CMake build for non-ESP-IDF projects)
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+#
+# CMAKE_SCRIPT_MODE_FILE 判定: ESP-IDF 在依赖展开阶段会以脚本模式
+#   cmake -DESP_PLATFORM=1 -P scripts/component_get_requirements.cmake
+# 由该脚本 include 本文件 (tools/cmake/scripts/component_get_requirements.cmake
+# 第 107 行 include(${__component_dir}/CMakeLists.txt))，以提前取出组件的
+# REQUIRES/INCLUDE_DIRS。脚本模式下 CMAKE_SOURCE_DIR 与 CMAKE_CURRENT_SOURCE_DIR
+# 均为空串，原判定 "" STREQUAL "" 成立，会把脚本模式误当成独立构建而执行
+# project()；project 是 CMake 的 NOT_SCRIPTABLE 命令，直接报
+#   "project command is not scriptable"
+# 使整个 configure 阶段失败。用内建的 CMAKE_SCRIPT_MODE_FILE 显式排除脚本模式
+# (CMake >= 3.12 提供, IDF 要求 >= 3.16)。
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR AND NOT CMAKE_SCRIPT_MODE_FILE)
     cmake_minimum_required(VERSION 3.16)
     project(mini_tree LANGUAGES C CXX ASM)
 endif()

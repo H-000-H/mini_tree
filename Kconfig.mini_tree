@@ -1826,7 +1826,7 @@ menu "lwIP (TCP/IP Stack)"
             default 255
             range 1 255
 
-        config TCP_MSS
+        config MINI_TREE_TCP_MSS
             int "TCP maximum segment size"
             default 536
             range 64 1460
@@ -1998,7 +1998,7 @@ menu "lwIP (TCP/IP Stack)"
     menu "PPP (4G/Modem over Serial)"
         depends on LWIP
 
-        config PPP_SUPPORT
+        config MINI_TREE_PPP_SUPPORT
             bool "Enable PPP (Point-to-Point Protocol)"
             default n
             help
@@ -2008,9 +2008,9 @@ menu "lwIP (TCP/IP Stack)"
 
         config PPPOS_SUPPORT
             bool "Enable PPP over Serial (pppos)"
-            default y if PPP_SUPPORT
+            default y if MINI_TREE_PPP_SUPPORT
             default n
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               PPP over Serial: 把串口裸字节流封装为 PPP 帧。pppif 适配层通过
               pppos_create() 创建 netif, 输出回调把 PPP 帧写入模组串口, 串口
@@ -2018,26 +2018,26 @@ menu "lwIP (TCP/IP Stack)"
 
         config PAP_SUPPORT
             bool "Enable PAP authentication"
-            default y if PPP_SUPPORT
+            default y if MINI_TREE_PPP_SUPPORT
             default n
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               明文 PAP 认证。多数 4G 模组拨号 (ATD*99#) 不需要用户名密码, 但
               部分运营商 APN 需 PAP/CHAP。按需开启。
 
         config CHAP_SUPPORT
             bool "Enable CHAP authentication"
-            default y if PPP_SUPPORT
+            default y if MINI_TREE_PPP_SUPPORT
             default n
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               加密 CHAP 认证。比 PAP 更安全, 同上按需开启。
 
         config PPP_IPV6_SUPPORT
             bool "Enable PPP IPv6 (IPV6CP)"
-            default y if PPP_SUPPORT && LWIP_IPV6
+            default y if MINI_TREE_PPP_SUPPORT && LWIP_IPV6
             default n
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               PPP 链路上的 IPv6 (IPV6CP) 协商。仅当 LWIP_IPV6=y 且运营商支持
               双栈时开启。默认跟随 IPv6 总开关。
@@ -2045,7 +2045,7 @@ menu "lwIP (TCP/IP Stack)"
         config PPP_INPROC_IRQ_SAFE
             bool "PPP input from ISR-safe context"
             default n
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               允许在中断上下文调用 pppos_input() (裸机/ISR 收包时)。开启会增加
               少量开销换取 ISR 直收。NO_SYS=1 裸机轮询模式若由 UART ISR 直接
@@ -2055,7 +2055,7 @@ menu "lwIP (TCP/IP Stack)"
             int "PPP MRU (max receive unit)"
             default 1500
             range 128 1500
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               PPP 最大接收单元。需 >= 链路 MTU, 一般 1500 对齐以太网帧。
 
@@ -2063,7 +2063,7 @@ menu "lwIP (TCP/IP Stack)"
             int "PPP MTU (max transmit unit)"
             default 1500
             range 128 1500
-            depends on PPP_SUPPORT
+            depends on MINI_TREE_PPP_SUPPORT
             help
               PPP 最大发送单元。与运营商协商, 一般 1500。
 
