@@ -1,0 +1,22 @@
+{
+  "cmake.environment": {
+    "PATH": "${env.PATH}"
+  },
+  "cmake.useCMakePresets": "always",
+  "cmake.preferredGenerators": ["Ninja"],
+  "cmake.configureOnOpen": true,
+  "cmake.defaultConfigurePreset": "Debug",
+  "cmake.defaultBuildPreset": "Debug",
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "files.associations": {
+    "*.dts": "c",
+    "*.dtsi": "c"
+  },
+  "clangd.path": "/usr/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy=false",
+    "--header-insertion=never"
+  ],
+  "idf.currentSetup": "/home/ning/.espressif/v6.0.1/esp-idf"
+}

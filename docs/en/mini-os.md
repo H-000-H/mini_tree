@@ -1,0 +1,346 @@
+# mini-os Kernel (lib/mini-os)
+
+> The in-tree minimal real-time kernel of mini_tree (Cortex-M only, freestanding, no libc dependency), and the smallest RTOS backend among the four OS backends. This document covers its scheduler, time wheels, synchronization primitives, memory management and port layer, plus its integration wiring with mini_tree.
+
+| Item | Content |
+| :--- | :--- |
+| **Readers** | Developers who need to understand/debug kernel behavior, do board wiring, or trim the kernel |
+| **Prerequisites** | [architecture.md](architecture.md) (layering), [backend_switching.md](backend_switching.md) (backend switching), [getting_started.md](getting_started.md) (dual-track Kconfig) |
+| **Source** | `lib/mini-os/` (`src/` kernel · `inc/` headers · `arch/arm/cortex-m/port/` port layer) |
+| **License** | Apache-2.0 (design informed by FreeRTOS / RT-Thread / Zephyr / Linux) |
+
+---
+
+## Table of Contents
+
+1. [Positioning and Feature Overview](#1-positioning-and-feature-overview)
+2. [Scheduler](#2-scheduler)
+3. [Threads and Synchronization Primitives](#3-threads-and-synchronization-primitives)
+4. [Timers](#4-timers)
+5. [Memory Management](#5-memory-management)
+6. [Port Layer](#6-port-layer)
+7. [Configuration System](#7-configuration-system)
+8. [Integration with mini_tree](#8-integration-with-mini_tree)
+9. [Measured Memory Footprint](#9-measured-memory-footprint)
+10. [Standalone Build](#10-standalone-build)
+
+---
+
+## 1. Positioning and Feature Overview
+
+mini-os is the in-tree minimal RTOS kernel. Design goals:
+
+- **Smallest footprint**: lowest text/bss among the four OS backends (see [memory_footprint.md](memory_footprint.md) §4);
+- **Freestanding**: no libc dependency (only self-contained headers like `stddef.h`), heap implemented in-tree;
+- **Cortex-M only**: the port covers M0/M0+/M3/M4/M7 (the RISC-V port is an empty stub; ESP32 is Xtensa and unsupported);
+- **GCC/Clang toolchains**: the kernel uses GNU extensions (`__attribute__((constructor))` etc.); Keil ARMCC cannot build it directly.
+
+| Subsystem | Capabilities |
+| :--- | :--- |
+| Scheduling | 32-level preemption + O(1) ready bitmap + same-priority list rotation (time slicing optional, off by default); optional deadline scheduling: same-priority EDF + a SCHED_DEADLINE class (global EDF + CBS + bandwidth reclaiming + overrun reporting, all off by default) |
+| Thread | Dynamic/static creation, deletion, suspend/resume, dynamic priority change (with PI roll-back), exit callback, idle hook; detach/join optional |
+| Sync | Counting/binary semaphores (mutually convertible), recursive mutex + priority inheritance (chained propagation, plus deadline inheritance under EDF/SCHED_DEADLINE), 32-bit event group (optional) |
+| Communication | Fixed-size message queue (blocking send/receive + ISR variants) |
+| Timer | HARD (runs in tick/ISR context) + SOFT (runs in a dedicated service thread); independent timer time wheel |
+| Memory | first-fit heap (split + adjacent coalescing + magic double-free detection) + optional slab; heap comes from the linker script |
+| Critical sections | PRIMASK full mask, or BASEPRI threshold (`MINI_OS_IRQ_MAX_SYSCALL_PRIORITY`) |
+| Engineering | No libc, C11 `_Generic` atomic fallback (both GCC and Clang builtin paths) |
+
+---
+
+## 2. Scheduler
+
+Core implementation in `lib/mini-os/src/schedule.c` (~790 lines).
+
+### 2.1 Ready bitmap + O(1) level selection
+
+- 32 priority levels, **smaller number = higher priority** (same semantics as RT-Thread, opposite of FreeRTOS);
+- The ready bitmap `g_priority` is a single 32-bit word; `mini_os_get_highest_priority()` uses CTZ (count trailing zeros) to pick the highest level in one instruction, O(1);
+- One doubly-linked list per level, `g_ready_running_list[MINI_OS_PRIORITY]`; equal-priority threads rotate within the list (sentinel self-pointing convention: wrap-around successors skip the sentinel).
+
+### 2.2 Thread time wheel
+
+Thread delays / sync timeouts use a layered time wheel (`s_wheel[MINI_OS_TICK_WHEEL]`, slot count a power of two, default 32):
+
+- Insert: `slot = (current + ticks) & MASK`, `round = (ticks - 1) >> CTZ(WHEEL)` (rounds counted first when spanning multiple laps);
+- `mini_os_sync_wait_park()` uses **two nodes** to park in two places at once: `wait_node` onto the sync object's wait list, `list_node` onto the time wheel; the wake side does a double unlink to avoid double wake-up;
+- SysTick handler order: IRQs off → thread wheel expiry wake-ups → time slicing (if `MINI_OS_TIME_SLICE`) → tick increment → timer wheel → `mini_os_schedule_yield_isr()` at the tail. **That last step cannot be dropped**: an expiry only puts the thread back on the ready list, and a Cortex-M exception return does not schedule on its own — PendSV must be pended explicitly (tail-chained) for the woken thread to actually get the CPU.
+
+### 2.3 Exception priority arrangement
+
+| Exception | Priority | Role |
+| :--- | :--- | :--- |
+| PendSV | `0xFF` (lowest) | Context switch (`port.S`, PSP + privileged mode) |
+| SysTick | `0xFE` | Tick driving (thread wheel / time slice / timer wheel) |
+
+- ISR-side wake-ups **never switch context by themselves**: `mini_os_schedule_yield_isr()` inspects the ready bitmap and pends PendSV only when a higher-priority thread is ready;
+- **The waking side must call it explicitly**: both the tick path (`mini_os_systick_handler`) and the timer path (`timer.c`) invoke it at their tail. Any new "make a thread ready inside an ISR" path must do the same, otherwise the thread merely joins the ready list and never gets the CPU;
+- All `*_isr` API variants (`mini_os_semaphore_post_isr` etc.) follow this convention; the unified interface's `mini_yield_from_isr()` forwards to it;
+- **The move to PSP is declared by the exception return**: `mini_os_schedule_start()` does not write `CONTROL` (it stays on MSP), so the first PendSV stacks its frame on a valid MSP; before returning, `pendsv_handler` sets `EXC_RETURN` bit2 to declare "return to Thread mode on PSP", and the hardware restores `CONTROL.SPSEL` accordingly. This removes the window where PSP is still the "no thread to restore" marker `0` while SPSEL has already switched.
+
+### 2.4 Key threads and constructor priorities
+
+| Entity | Priority | Notes |
+| :--- | :--- | :--- |
+| idle thread | `MINI_OS_PRIORITY - 1` | Fixed lowest level; also patrols the MSP stack sentinel |
+| SOFT timer service thread | `MINI_OS_PRIORITY - 2` | One step above idle (never shares the lowest level), spawned lazily |
+| FPU-enable constructor | 100 | `0-100` reserved for system constructors, runs first |
+| CPUID probe constructor | 101 | See §6 |
+| Stack sentinel constructor | 102 | See §6 |
+| Idle thread self-init | 105 | |
+| By-name registries (thread/semaphore/mutex) | 110-112 | Only with `MINI_OS_FIND_BY_NAME` |
+| Timer module self-init | 113 | |
+
+### 2.5 Deadline scheduling (optional, off by default)
+
+mini-os has two independent deadline-scheduling facilities, each behind its own switch, **both off by default**; when off, the related fields, lists and arithmetic are not compiled at all, and equal priorities stay pure FIFO + rotation:
+
+| Switch | Capability | Default |
+| :--- | :--- | :--- |
+| `MINI_OS_THREAD_EDF` | Same-priority non-FIFO: order one ordinary thread by deadline | `0` (off) |
+| `MINI_OS_THREAD_DEADLINE` | SCHED_DEADLINE class: global EDF + CBS + bandwidth reclaiming + overrun reporting | `0` (off) |
+
+**A. Same-priority EDF (`MINI_OS_THREAD_EDF`)**
+
+- `mini_os_thread_set_deadline(thread, deadline)` attaches/clears a deadline on an **existing ordinary thread** (`deadline = 0` clears; the argument is relative ticks, converted to absolute internally);
+- the thread keeps its priority and stays on that level's ready list; inside the level it is ordered by earliest absolute deadline and queued ahead of the ordinary threads;
+- when an EDF thread heads the level, same-priority rotation is skipped; time slicing is skipped for EDF/DL threads too (`mini_os_tick_slice_decrement`);
+- ordering only — no budget/admission (no CBS).
+
+**B. SCHED_DEADLINE class (`MINI_OS_THREAD_DEADLINE`, Linux-like)**
+
+- `mini_os_deadline_thread_create(_static)(name, stack_size, deadline, period, runtime, entry, param)`;
+- **the class sits above all 32 priorities**: DL threads live on a separate global ready list `s_dl_ready_list` and are **not reflected in the `g_priority` bitmap**; within the class they are selected by global EDF (earliest absolute deadline); `priority` does not affect DL ordering itself (Linux ignores `rt_priority` too), but it **is used by mutex priority inheritance** — so the DL placeholder priority is the **highest** (`0`, like Linux's `MAX_DL_PRIO-1`), not the lowest: with the lowest value a DL waiter could not boost its blocker at all;
+- **CBS (budget enforcement)**: `runtime` is the per-period budget; when it is spent the thread is throttled (unlinked and parked in the thread time wheel for the time left), and at its absolute deadline a new job starts (`deadline += period`, budget refilled);
+- **non-deferrable**: blocking time counts against the deadline; waking before the deadline keeps the residual budget, while waking after it starts a new job (wake refresh);
+- **GRUB bandwidth reclaiming**: while other DL threads are blocked (non-contending), a running DL thread spends its budget at rate `running_bw / this_bw` and so uses their idle share, up to the admitted `this_bw`. `this_bw` is the admission sum (changed only on create/delete); `running_bw` tracks the contending set. The budget uses a 1/2^20 fixed-point accumulator (`dl_budget_frac`) so a rate below 1 does not lose ticks;
+- **period-boundary replenishment**: with reclaiming a task may reach its deadline without exhausting its budget, so every deadline arrival unconditionally starts a new job (`mini_os_dl_replenish_due`) — throttling alone is not enough;
+- **admission control**: `Σ runtime/period ≤ 95%`; over it the create fails (`MINI_OS_ERR_BUSY`, surfaced as a NULL return) and the reservation is released on exit/delete; the constraint is `0 < runtime ≤ deadline ≤ period`, and `dl_period` is a full `mini_os_tick_t` (no longer 16-bit);
+- **overrun reporting**: per-thread `dl_miss_count`, plus `mini_os_dl_miss_hook_set(hook, param)` to register a callback and `mini_os_thread_get_dl_miss_count()` to read the count. A miss is reported when a DL thread's absolute deadline is reached while it is still ready/running or throttled (i.e. it never blocked to hand the CPU back); the callback receives the missed deadline and runs in SysTick context, so it must be short and must not call blocking APIs.
+- **job finish**: a DL task calls `mini_os_deadline_job_finish()` when its job is done — the completion is recorded (`dl_finish_count` + the `mini_os_dl_finish_hook_set()` callback) and the thread then blocks on a **per-task binary activation semaphore** (`take`). The thread time wheel releases that wait at the absolute deadline (the period-boundary activation), the wake path starts a new job (budget refilled, `deadline += period`) and the call returns. The caller therefore never computes delays or tracks the period itself, and an early `give` on the semaphore activates the next job immediately. A call already past the deadline reports a miss instead. The finish callback runs in **thread context** (unlike the ISR-context miss callback).
+
+> **Must be called explicitly**: a DL task has to call `mini_os_deadline_job_finish()` itself at the end of every job — there is **no automatic finish** (the kernel never treats "the task blocked" as "the job is done"). **A DL task must not use `mini_os_thread_delay_tick()` / `delay_ms()` / `delay_tick_until()` as its period wait** (neither recommended nor allowed): only the kernel-provided `mini_os_deadline_job_finish()` hands out the next job and keeps the CBS accounting and the activation semaphore consistent. The `delay` APIs should not appear in a DL task body.
+- **Per-thread counters**: `dl_miss_count` (missed deadlines), `dl_finish_count` (explicit finishes) and `dl_throttle_count` (budget exhaustions / throttles), read through `mini_os_thread_get_dl_miss_count()` / `_get_dl_finish_count()` / `_get_dl_throttle_count()`.
+- **Not a dynamic-deadline scheduler**: the kernel never changes a job's deadline internally — creation fixes it at `now + deadline` and it is only advanced by exactly `dl_period` at each period boundary. There is no deadline push-back/postponement and no reclaiming-driven deadline adjustment.
+- **A throttle always implies a miss**: once the budget is exhausted the job cannot complete before its deadline, so the period boundary necessarily reports a miss (`dl_miss_count` increments too, while `dl_throttle_count` records the throttle).
+- **Runtime bandwidth change (A)**: `mini_os_deadline_thread_set_bandwidth(thread, runtime, period)` — allowed only while the thread is **not contending** (`BLOCKED`/`SUSPENDED`); it changes only `runtime`/`period` and takes effect at the **next job** (budget refilled with the new runtime, the deadline then advances by the new period). The current absolute deadline is **not** changed (not a dynamic-deadline scheduler). Admission is re-checked (old ticket released, new one reserved, rolled back if it exceeds 95%). Pass `0` for a field to **keep its current value**: `(t, 4, 0)` changes only the runtime, `(t, 0, 20)` only the period.
+- **Delete / suspend / resume**: DL threads use the generic `mini_os_thread_delete` / `_delete_static` / `mini_os_thread_suspend` / `mini_os_thread_resume` — delete frees the activation semaphore and the bandwidth reservation; suspend freezes the remaining time to the deadline in `resume_time` and resume continues it.
+
+> With both switches off there is zero runtime cost: the `sched_policy` / `dl_*` fields, the DL list, the CBS arithmetic and the deadline-comparison helpers are all left out.
+
+---
+
+## 3. Threads and Synchronization Primitives
+
+### 3.1 Semaphore (semaphore.c)
+
+- Counting / binary semaphores, mutually convertible; `mini_os_semaphore_post_isr()` is the ISR-safe variant.
+
+### 3.2 Mutex (mutex.c) — priority / deadline inheritance (PI)
+
+mini-os PI is a **per-thread tracking** model:
+
+- The owner saves the priority it had at lock time in `base_priority`, and every mutex it holds is chained into the thread's `hold_list` (via `mutex->hold_node`);
+- Effective priority = `min(base_priority, highest waiter priority among all held mutexes)`;
+- **Deadline inheritance (only when `MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` is compiled in)**: the owner also inherits the earliest absolute deadline among its waiters, kept in TCB `dl_deadline_inherit` (the own `dl_deadline_time` is left untouched, so CBS budget/period advance and throttling stay correct). The effective deadline = `min(dl_deadline_time, dl_deadline_inherit)` and orders both the EDF level list and the DL global list, so the owner is scheduled earlier;
+- **DL class promotion (`MINI_OS_THREAD_DEADLINE`)**: a priority boost alone cannot save a plain holder blocked by a DL waiter — the DL class outranks all 32 priority levels, so any ready DL task still preempts it. Therefore, as soon as `dl_deadline_inherit != 0`, the thread is **temporarily placed on the DL ready list** and takes part in global EDF at the inherited deadline (`mini_os_dl_scheduled()`). A promoted thread has no CBS reservation: it is never throttled, and its `dl_period` never reaches the bandwidth arithmetic or the period replenishment (that would divide by zero / loop forever);
+- **Chained propagation**: when A waits on B's lock and B on C's, both the priority and the deadline boost propagate up the `wait_mutex` back-pointers, with the depth bounded by `MINI_OS_MUTEX_PI_CHAIN_MAX` (cycle protection);
+- Dynamic priority change (`mini_os_thread_set_priority`) or own-deadline change (`mini_os_thread_set_deadline`) performs PI roll-back so it never conflicts with inherited state.
+
+Other points:
+
+- The mutex embeds a binary semaphore (`count = max = 1`) and supports recursive locking (`is_recuring` + depth, optional);
+- `mini_os_mutex_delete()` goes through `kill_waiters`: waiters get `wait_done = FALSE` (the upper layer sees a TIMEOUT-like result) and their `wait_mutex` back-pointers are cleared, preventing use-after-free.
+
+### 3.3 Event group (event.c, optional)
+
+- 32-bit flags, OR / WHOLE (all-set) wait semantics, configurable auto-clear;
+- Switch: `MINI_OS_EVENT` (off by default, and nothing selects it — enable it by hand; see §7);
+- When off, `event.h`/`event.c` compile to nothing, and `event.c` is dropped from the source list entirely (not even an empty object file).
+
+---
+
+## 4. Timers
+
+Implementation in `lib/mini-os/src/timer.c` (~450 lines). The core design is an **independent timer time wheel** (`s_timer_wheel`, never touches a TCB), decoupled from the thread wheel of §2.2:
+
+| Type | Callback context | Notes |
+| :--- | :--- | :--- |
+| HARD timer | Runs directly in tick/ISR context | Callbacks must be very short (respect the [fast_path.md](fast_path.md) red lines) |
+| SOFT timer | Runs in the dedicated service thread | Callbacks are queued on `s_soft_pending` |
+
+Service-thread details:
+
+- Static TCB + static stack (`MINI_OS_TIMER_THREAD_STACK_SIZE`, default 512 B), **spawned lazily** — created on the first SOFT timer start (the scheduler is not up during constructors, so a thread cannot be created there);
+- Priority `MINI_OS_PRIORITY - 2`: never preempts application work and never shares the lowest level with idle.
+
+Special wheel-insertion rule: when the target slot equals the currently serviced slot, insert at the **head** with an adjusted round, preventing a double trigger within the same tick; the callback is re-armed (periodic) or dis-armed (one-shot) **before** it runs, because the callback may stop/delete itself and the timer structure must not be touched after return.
+
+---
+
+## 5. Memory Management
+
+Implementation in `lib/mini-os/src/memory.c` (~840 lines) + `inc/mem_heap.h`:
+
+- **Allocation model**: `malloc/free` style — first-fit search + split (only when the remainder ≥ header + 16 bytes) + **adjacent free-block coalescing** (free scans the whole list, O(n), but yields lower fragmentation);
+- **Double-free detection**: dual-value header magic — `0xA5A5A5A5` (ALLOC state) / `0x5A5A5A5A` (FREE state); double free / overrun corruption is immediately detectable;
+- **O(1) free-size query**: `free_size` is maintained incrementally;
+- **Heap source**: the linker script `lib/mini-os/mini-os-heap.ld` provides `__mini_os_heap_start` / `__mini_os_heap_end`; the heap sits between bss and the MSP stack and **does not count into bss** (important for the bss accounting in [memory_footprint.md](memory_footprint.md) §4);
+- **Optional slab**: fixed-size classes 16/32/64/128/256 (plus 512 with `MINI_OS_SLAB_LONG`), page size 2 KiB (power of two ≤ 64 KiB); pages are carved from the heap by `1/MINI_OS_SLAB_PROPORTION` (default 1/4), or served from an independent static region via `MINI_OS_SLAB_STATIC`; requests above the largest class fall through to the free list.
+
+> Unlike the other mini_tree backends: `mini_calloc/mini_free` (mini-os backend) use the mini-os own heap instead of libc, so the `s_rtt_heap`/`ucHeap`-style large bss arrays seen with RT-Thread/FreeRTOS do not exist here.
+>
+> **The memory module is reusable standalone (bare-metal)**: `memory.c` has no scheduler/port dependency and can be compiled into a bare-metal firmware as a single file — with `CONFIG_OS_BARE_MINI_OS_MEM` (default off) the bare-metal backend's `mini_malloc/mini_calloc/mini_free` switch from the libc heap to the mini-os heap (only `memory.c` is compiled in, the whole kernel is not linked); with it off they keep using libc `malloc/calloc/free`. The heap zone comes from `__mini_os_heap_start/__mini_os_heap_end` (`INCLUDE lib/mini-os/mini-os-heap.ld`), taken over lazily on the first allocation (`mini_os_heap_ensure_init()`, idempotent), no `.init_array` traversal needed.
+>
+> Concurrency: every alloc/free runs inside a **nestable interrupt-masked critical section** (`mini_os_irq_save/restore`) and never touches the native heap, so — unlike libc malloc — **an ISR allocating concurrently cannot corrupt the free list** (`mini_os_memory_alloc_isr/free_isr` are the same entry points). The lazy takeover `mini_os_heap_ensure_init()` itself is not ISR-safe: complete one allocation (or call it explicitly) in startup/thread context, and never do the first allocation from an ISR.
+
+---
+
+## 6. Port Layer
+
+`lib/mini-os/arch/arm/cortex-m/port/` (`port.c` ~160 lines C + `port.S` ~510 lines assembly; `arch/risc-v/port` is an empty stub).
+
+### 6.1 SVC callback mechanism
+
+- The two globals `g_svc_cb` / `g_svc_arg` are read **directly by port.S** (hence not static); `mini_os_svc_set_callback()` installs them;
+- `mini_os_svc_get_num()` recovers the SVC immediate from the stacked frame: a Thumb SVC is 2 bytes wide, the stacked PC points after it, `[pc-2] = 0xDF` opcode, `[pc-1] = imm8`.
+
+### 6.2 CPUID probe (fail-fast)
+
+The port assembly is core-specific; a wrong core corrupts contexts directly. A startup constructor (priority 101) reads `SCB->CPUID` (0xE000ED00) bits[15:4] (part number) and compares it against `MINI_OS_ARCH`:
+
+| part number | Core |
+| :--- | :--- |
+| `0xC20` / `0xC60` | M0 / M0+ (ARMv6-M twins, accepted as a group) |
+| `0xC23` | M3 |
+| `0xC24` | M4 |
+| `0xC27` | M7 |
+
+On mismatch → halt in a loop (better to fail fast than to debug a corrupted PendSV).
+
+### 6.3 FPU and stack sentinel
+
+- **FPU enable** (M4F/M7 with `MINI_OS_USE_FPU`, on by default): constructor (priority 100) grants CPACR CP10/CP11 full access + `dsb/isb`, and must run before any thread; PendSV does a lazy s16-s31 save;
+- **MSP stack-overflow sentinel** (`MINI_OS_STACK_OVERFLOW_CHECK`, off by default): a constructor (priority 102) plants the magic `0x060815` at `__mini_os_heap_end` (the heap/MSP boundary, the first casualty of an overflow); the idle thread re-checks it every loop and halts on mismatch.
+
+### 6.4 Critical sections
+
+Two compile-time alternatives: PRIMASK full mask, or a BASEPRI threshold that only masks IRQs not higher than `MINI_OS_IRQ_MAX_SYSCALL_PRIORITY`. The the slot-pool critical sections use the nestable `mini_os_irq_save/restore`.
+
+---
+
+## 7. Configuration System
+
+Every option resolves through the same **three-tier chain** (reference implementation in `inc/mini_config.h`):
+
+1. `CONFIG_<NAME>` — generated by mini_tree's Kconfig system (`config.h`);
+2. `MINI_OS_<NAME>` — predefined by an external build system (command-line `-D` or a parent project);
+3. Built-in default.
+
+> **Note**: feature switches are always defined as `1`/`0`, so test with `#if`, never `#ifdef` (`#ifdef` is true for a disabled option too).
+
+### 7.1 Kconfig surface (`Kconfig.mini_tree`, all `depends on OS_MINI_OS`)
+
+| Option | Type / default | Notes |
+| :--- | :--- | :--- |
+| `MINI_OS_PRIORITY` | int / 32 | Number of priorities (smaller = higher), must be a multiple of 8; upper bound 32 (the bitmap is a single 32-bit word; ≥32 is UB) |
+| `MINI_OS_DEFAULT_SYSTICK` | int / 1000 | Tick rate in Hz (default 1 tick = 1 ms) |
+| `MINI_OS_CPU_CLOCK_HZ` | int / 72000000 | CPU clock, used to derive the SysTick reload |
+| `MINI_OS_TICK_WHEEL` | int / 32 | Thread time-wheel slot count (power of two) |
+| `MINI_OS_THREAD_MIN_STACK_SIZE` | int / 256 | Minimum thread stack (bytes) |
+| `MINI_OS_DEFAULT_IDLE_STACK_SIZE` | int / 256 | Idle thread stack |
+| `MINI_OS_TIMER` | bool / n | Software timer module (HARD callbacks in ISR, SOFT on the service thread); off by default — when off `timer.c` is not compiled and SysTick skips the tick |
+| `MINI_OS_TIMER_THREAD_STACK_SIZE` | int / 512 | SOFT-timer service thread stack (≥ min stack, multiple of 8; depends on `MINI_OS_TIMER`) |
+| `MINI_OS_TIME_SLICE` | bool / n | Round-robin time slicing (default: strict priority) |
+| `MINI_OS_EVENT` | bool / n | 32-bit event group (off by default, and nothing selects it — enable it by hand) |
+| `MINI_OS_THREAD_DETACH` | bool / n | detach/join (one switch, adds reclamation fields to every TCB) |
+| `MINI_OS_THREAD_EDF` | bool / n | Same-priority EDF (`mini_os_thread_set_deadline`); off = plain FIFO, no deadline comparison |
+| `MINI_OS_THREAD_DEADLINE` | bool / n | SCHED_DEADLINE class (global EDF + CBS + GRUB reclaiming + miss/throttle/finish counters); independent of EDF |
+| `MINI_OS_FIND_BY_NAME` | bool / n | By-name registries for threads/semaphores/mutexes |
+| `MINI_OS_LONG_TIME` | bool / n | 64-bit tick (via an extra wrap-around counter) |
+| `MINI_OS_STACK_OVERFLOW_CHECK` | bool / n | MSP stack sentinel (requires mini-os-heap.ld) |
+| `MINI_OS_USE_FPU` | bool / y | FPU context save (only visible on CM4F/CM7; do not turn off with hard-float) |
+| `MINI_OS_SPINLOCK`(+`_ATOMIC`/`_YIELD`/`_NUM`) | bool / y | Header-only spinlock (off → the unified interface falls back to IRQ masking); atomic mode is SMP-only |
+| `ARCH` | (no prompt) | mini-os architecture id (0=M0/M0+ 1=M3 2=M4 3=M7), derived automatically from `PLATFORM_ARM_*`, **must not be set by hand** |
+
+### 7.2 Deadline-scheduling switches (now in Kconfig, off by default)
+
+`MINI_OS_THREAD_EDF` / `MINI_OS_THREAD_DEADLINE` follow the same three-tier chain as the options above (`Kconfig.mini_tree` → generated `CONFIG_*` → `mini_config.h` → `MINI_OS_*`); both default to off and are independent. They can also be pre-defined as `MINI_OS_*` on the command line / in a parent project, or overridden through the `CONFIG_*` in `config.h`.
+
+> See §2.5 for the semantics and APIs.
+
+---
+
+## 8. Integration with mini_tree
+
+### 8.1 Selecting the backend
+
+`CONFIG_OS_MINI_OS=y` (`make menuconfig`, or edit `.config` by hand and re-configure). Constraints:
+
+- `depends on !PLATFORM_RISCV && !PLATFORM_ESP32` — Cortex-M only;
+- `select USB_TUSB_OS_NONE` — TinyUSB does not run on mini-os (no mini-os backend for the USB stack yet);
+- Event groups are not on the select chain: `MINI_OS_EVENT` is off by default; enable it in menuconfig when you need event semantics (symmetric with `FREERTOS_EVENT_GROUPS` / `RTTHREAD_EVENT`).
+
+### 8.2 Board wiring (mandatory)
+
+| Wiring point | Requirement |
+| :--- | :--- |
+| `SysTick_Handler` | Forward to `mini_os_systick_handler()` |
+| `PendSV_Handler` | Forward to `pendsv_handler()` (**lowercase**, symbol lives in port.S) |
+| Linker script | `#include` `lib/mini-os/mini-os-heap.ld` providing `__mini_os_heap_start` / `__mini_os_heap_end` |
+| Startup flow | Must iterate `.init_array` (satisfied by default on GCC/Clang) — the kernel self-initializes via constructors (heap/registries/idle/sentinel) |
+
+### 8.3 backend mapping notes (`core/src/mini_backend_mini_os.c`)
+
+| Topic | Semantics |
+| :--- | :--- |
+| Priorities | mini-os: smaller number = higher priority (same as RT-Thread, **opposite of FreeRTOS**); by convention each OS backend keeps its native kernel semantics |
+| Error codes | `MINI_OS_ERR_*` is **bit-for-bit identical** to `MINI_ERR_*` (the alias and fallback branches are now equivalent), so it passes through at zero cost; only `MINI_OS_ERR_AGAIN` (non-blocking contention / full-empty queue) is semantically mapped to `MINI_ERR_TIMEOUT` |
+| ISR mode | `*_isr` calls never switch context; `mini_yield_from_isr()` forwards to `mini_os_schedule_yield_isr()` |
+| Object pool | Mutexes/semaphores embed kernel objects statically + an `mini_slot` slot pool; pool critical sections use `mini_os_irq_save/restore` |
+| Scheduler start | `mini_scheduler_start()` first lazily boots the kernel (`schedule_init` + idle thread + SysTick), then starts the scheduler |
+| Locking before the scheduler | Before the scheduler starts, `mini_os_thread_current()` is NULL and the kernel's `mini_os_mutex_lock` returns `MINI_OS_ERR_INVAL` unconditionally (a mutex needs an owner — not even a free lock is granted); the shim lets lock/unlock through during that window so early-boot `device_lock` behaves the same as on the FreeRTOS / bare-metal backends |
+| Scheduler freeze | mini-os has no global suspend-all API; `mini_sched_freeze()` degrades to IRQ masking (same one-way freeze semantics as `mini_backend_bare`) |
+
+### 8.4 Build integration
+
+The root build `add_subdirectory(lib/mini-os)` in `lib/CMakeLists.txt` when `OS_BACKEND=MINI_OS`; mini-os' own CMakeLists declares `project(... C ASM)` (the only kernel library in-tree that does not rely on the root project enabling ASM; by contrast, rtthread used to silently drop `context_gcc.S` for lack of `enable_language(ASM)` — fixed). The event-group source file is compiled in conditionally based on `CONFIG_MINI_OS_EVENT` from `.config`; when off, not even an object file is produced.
+
+---
+
+## 9. Measured Memory Footprint
+
+Full methodology and the four-backend comparison: [memory_footprint.md](memory_footprint.md) §4 (arm-none-eabi-gcc 13.3.1, minimal firmware + `--gc-sections`). mini-os rows (text/data/bss, bytes):
+
+| Configuration | newlib-nano | full newlib |
+| :--- | :--- | :--- |
+| mini-os C | 14245 / 120 / 2620 | 38776 / 1772 / 2664 |
+| mini-os C++ (historical, backend removed) | 14381 / 128 / 3016 | 38912 / 1780 / 3064 |
+
+- **Smallest text** of the four backends (~3 KB less than FreeRTOS, ~3.6 KB less than RT-Thread, nano figures);
+- **Smallest bss, and it does not grow with heap config**: the heap lives in a linker region and does not count into bss (FreeRTOS `ucHeap` 8 KiB / RT-Thread `s_rtt_heap` 32 KiB both land in bss); even excluding configurable heaps, the framework bss is 2620 B (C) — clearly below the others;
+- The C++ system backend (formerly `SYSTEM_CPP`) has been removed; the system layer is now pure C. The C++ row above is historical (it once cost +136 text / +396 bss over C, nano figures).
+
+---
+
+## 10. Standalone Build
+
+mini-os can be built standalone (own `project()`, default `-mcpu=cortex-m3`, overridable via `MINI_OS_MCU`):
+
+```sh
+cd lib/mini-os
+cmake --preset Debug
+cmake --build --preset Debug
+```
+
+The output is the static library `libmini-os.a`. Standalone builds have no `.config`; the event group falls back to the built-in defaults in `mini_config.h`. Note the kernel uses GNU extensions — GCC/Clang toolchains only.
+
+---
+
+## Related Documents
+
+- [memory_footprint.md](memory_footprint.md) — four-backend memory benchmark (§4)
+- [backend_switching.md](backend_switching.md) — OS backend switching and semantic differences
+- [fast_path.md](fast_path.md) — HARD-timer / ISR callback red lines
+- [patterns.md](patterns.md) — mini_tree key mechanisms (xtask/time-slice bare-metal counterparts)
+- `lib/mini-os/README.md` — official kernel feature list and three-tier configuration notes

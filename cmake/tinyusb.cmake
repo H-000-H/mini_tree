@@ -1,0 +1,98 @@
+include("${CMAKE_CURRENT_LIST_DIR}/dep_fetch.cmake")
+
+if(DEFINED MINI_TREE_TINYUSB_CMAKE_LOADED)
+    return()
+endif()
+set(MINI_TREE_TINYUSB_CMAKE_LOADED ON)
+
+set(MINI_TREE_TINYUSB_VERSION "0.21.0" CACHE STRING "TinyUSB git tag")
+message(STATUS "mini_tree TinyUSB: ${MINI_TREE_TINYUSB_VERSION} (local-or-fetch on link)")
+
+function(mini_tree_link_tinyusb target)
+    if(NOT TARGET tinyusb)
+        # 本文件位于 mini_tree/cmake/，上级即 mini_tree 仓库根（含 lib/tinyusb）。
+        # 注意: function 内 CMAKE_CURRENT_LIST_DIR 指向的是**调用者**目录（实测），
+        # 必须用 CMAKE_CURRENT_FUNCTION_LIST_DIR(定义该函数的文件目录) 才能算对路径。
+        set(MINI_TREE_TINYUSB_LOCAL_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../lib/tinyusb")
+        mini_tree_dep_get(_tinyusb_source_dir
+            NAME tinyusb
+            LOCAL_DIR "${MINI_TREE_TINYUSB_LOCAL_DIR}"
+            MARKER "src/tusb.c"
+            GIT_REPOSITORY https://github.com/hathach/tinyusb
+            GIT_TAG ${MINI_TREE_TINYUSB_VERSION}
+        )
+
+        set(TINYUSB_SRC_DIR "${_tinyusb_source_dir}/src")
+        # 不 include TinyUSB 的 src/CMakeLists.txt —— 其首行 cmake_minimum_required()
+        # 在父工程 project() 之后执行会触发 CMP0000 硬错误 (根 CMakeLists 无 cmake_minimum_required,
+        # 设计为被父工程 include)。此处内联其 tinyusb_sources_get 的源列表 
+        if(EXISTS "${TINYUSB_SRC_DIR}/tusb.c")
+            set(TINYUSB_CORE_SRCS
+                "${TINYUSB_SRC_DIR}/tusb.c"
+                "${TINYUSB_SRC_DIR}/common/tusb_fifo.c"
+                "${TINYUSB_SRC_DIR}/device/usbd.c"
+                "${TINYUSB_SRC_DIR}/class/audio/audio_device.c"
+                "${TINYUSB_SRC_DIR}/class/cdc/cdc_device.c"
+                "${TINYUSB_SRC_DIR}/class/dfu/dfu_device.c"
+                "${TINYUSB_SRC_DIR}/class/dfu/dfu_rt_device.c"
+                "${TINYUSB_SRC_DIR}/class/hid/hid_device.c"
+                "${TINYUSB_SRC_DIR}/class/midi/midi_device.c"
+                "${TINYUSB_SRC_DIR}/class/midi/midi2_device.c"
+                "${TINYUSB_SRC_DIR}/class/msc/msc_device.c"
+                "${TINYUSB_SRC_DIR}/class/mtp/mtp_device.c"
+                "${TINYUSB_SRC_DIR}/class/net/ecm_rndis_device.c"
+                "${TINYUSB_SRC_DIR}/class/net/ncm_device.c"
+                "${TINYUSB_SRC_DIR}/class/printer/printer_device.c"
+                "${TINYUSB_SRC_DIR}/class/usbtmc/usbtmc_device.c"
+                "${TINYUSB_SRC_DIR}/class/vendor/vendor_device.c"
+                "${TINYUSB_SRC_DIR}/class/video/video_device.c"
+                "${TINYUSB_SRC_DIR}/host/usbh.c"
+                "${TINYUSB_SRC_DIR}/host/hub.c"
+                "${TINYUSB_SRC_DIR}/class/cdc/cdc_host.c"
+                "${TINYUSB_SRC_DIR}/class/hid/hid_host.c"
+                "${TINYUSB_SRC_DIR}/class/midi/midi_host.c"
+                "${TINYUSB_SRC_DIR}/class/midi/midi2_host.c"
+                "${TINYUSB_SRC_DIR}/class/msc/msc_host.c"
+                "${TINYUSB_SRC_DIR}/typec/usbc.c"
+            )
+        else()
+            # 离线/未提供场景: TinyUSB 未本地拉取时置空核心源（mini_tree 静态库默认不链接 tinyusb）
+            message(STATUS "mini_tree TinyUSB: src/tusb.c missing — core sources empty (offline)")
+            set(TINYUSB_CORE_SRCS "")
+        endif()
+        # 设备控制器驱动 (DCD) 不在 TinyUSB 核心源里 —— 官方 src/CMakeLists.txt
+        # 顶部注释: "DCD and HCD drivers are not included"。故按 Kconfig 的
+        # USB_TUSB_DCD_SRC (相对 lib/tinyusb/src 的路径) 追加; 留空即只编协议栈
+        # 核心 (静态库能过, 链接 ELF 时会缺 dcd_init 等符号)。
+        set(TINYUSB_DCD_SRCS "")
+        file(STRINGS "${KCONFIG_DOT}" _tusb_dcd_line REGEX "^CONFIG_USB_TUSB_DCD_SRC=")
+        if(_tusb_dcd_line)
+            string(REGEX REPLACE "^CONFIG_USB_TUSB_DCD_SRC=\"?([^\"]*)\"?$" "\\1" _tusb_dcd_src "${_tusb_dcd_line}")
+            string(STRIP "${_tusb_dcd_src}" _tusb_dcd_src)
+            if(_tusb_dcd_src)
+                if(NOT EXISTS "${TINYUSB_SRC_DIR}/${_tusb_dcd_src}")
+                    message(FATAL_ERROR
+                        "CONFIG_USB_TUSB_DCD_SRC=\"${_tusb_dcd_src}\" 不在 ${TINYUSB_SRC_DIR} 下; "
+                        "请填 lib/tinyusb/src 内的 DCD 源 (如 portable/synopsys/dwc2/dcd_dwc2.c)")
+                endif()
+                list(APPEND TINYUSB_DCD_SRCS "${TINYUSB_SRC_DIR}/${_tusb_dcd_src}")
+                message(STATUS "mini_tree TinyUSB: DCD ${_tusb_dcd_src}")
+            else()
+                message(WARNING "CONFIG_USB=y 但未指定 CONFIG_USB_TUSB_DCD_SRC: "
+                    "只编 TinyUSB 协议栈核心, 链接 ELF 时会缺 dcd_init / dcd_edpt_open 等符号")
+            endif()
+        else()
+            message(WARNING "CONFIG_USB=y 但未指定 CONFIG_USB_TUSB_DCD_SRC: "
+                "只编 TinyUSB 协议栈核心, 链接 ELF 时会缺 dcd_init / dcd_edpt_open 等符号")
+        endif()
+
+        add_library(tinyusb INTERFACE)
+        target_sources(tinyusb INTERFACE ${TINYUSB_CORE_SRCS} ${TINYUSB_DCD_SRCS})
+        target_include_directories(tinyusb INTERFACE
+            "${TINYUSB_SRC_DIR}"
+            "${_tinyusb_source_dir}/lib/networking"
+        )
+        message(STATUS "mini_tree TinyUSB: ${MINI_TREE_TINYUSB_VERSION} @ ${_tinyusb_source_dir}")
+    endif()
+    target_link_libraries(${target} PUBLIC tinyusb)
+endfunction()

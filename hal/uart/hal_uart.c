@@ -1,0 +1,75 @@
+/**
+ * @file hal_uart.c
+ * @author H-000-H
+ * @brief hal uart 实现
+ * @note Weak empty HAL stub — board overrides.
+ * @copyright SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "hal_uart.h"
+
+#include "compiler_compat.h"
+#include "status.h"
+
+#if defined(ESP_PLATFORM)
+/* ESP-IDF 构建: 本文件编译为空 — hal_* 由板级组件 (如 hal_esp32s3) 提供 strong
+ * 实现, 缺失直接链接报错, 杜绝静默 MINI_ERR_NOTSUPP。非 ESP 构建保留 weak stub 兜底。 */
+#else
+MINI_WEAK mt_err_t hal_uart_dev_init(struct hal_uart_bus_host* host, const struct hal_uart_config* cfg)
+{
+    (void)host;
+    (void)cfg;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK mt_err_t hal_uart_dev_hw_open(struct hal_uart_bus_host* host)
+{
+    (void)host;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK mt_err_t hal_uart_dev_hw_close(struct hal_uart_bus_host* host)
+{
+    (void)host;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK mt_err_t hal_uart_write(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
+{
+    (void)pdev;
+    (void)data;
+    (void)len;
+    (void)timeout_ms;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK mt_err_t hal_uart_read(struct hal_uart_dev* pdev, uint8_t* data, size_t len, uint32_t timeout_ms)
+{
+    (void)pdev;
+    (void)data;
+    (void)len;
+    (void)timeout_ms;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK mt_err_t hal_uart_write_dma(struct hal_uart_dev* pdev, const uint8_t* data, size_t len, uint32_t timeout_ms)
+{
+    (void)pdev;
+    (void)data;
+    (void)len;
+    (void)timeout_ms;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK mt_err_t hal_uart_dma_abort(struct hal_uart_dev* pdev)
+{
+    (void)pdev;
+    return MINI_ERR_NOTSUPP;
+}
+
+MINI_WEAK int hal_uart_virq_index(uintptr_t uart_base)
+{
+    (void)uart_base;
+    return -1; /* 平台未实现 → 不注册 UART 虚拟中断 */
+}
+#endif /* ESP_PLATFORM */

@@ -1,0 +1,111 @@
+# 服务编写规范
+
+> 业务代码允许依赖什么、禁止依赖什么；如何挂到两段式启动上。
+
+| 项 | 内容 |
+| :--- | :--- |
+| **读者** | 应用 / 服务作者 |
+| **前置** | [getting_started.md](getting_started.md) § 点火 |
+| **相关** | [fast_path.md](fast_path.md) · [peripherals.md](peripherals.md) · [api_compatibility.md](api_compatibility.md) |
+
+---
+
+## 目录
+
+1. [允许的依赖](#1-允许的依赖)
+2. [禁止的依赖](#2-禁止的依赖)
+3. [I/O 与错误处理](#3-io-与错误处理)
+4. [任务与同步](#4-任务与同步)
+5. [与启动顺序的关系](#5-与启动顺序的关系)
+6. [检查清单](#6-检查清单)
+
+---
+
+## 1. 允许的依赖
+
+| 头 / 模块 | 用途 |
+| :--- | :--- |
+| `device.h` | 查找设备、open/read/write/ioctl |
+| `status.h` | `MINI_OK` / `MINI_ERR_*` |
+| `mini_backend.h` | 任务、锁、队列、延时、日志级别配合 |
+| `event_bus.h` | 发布订阅 |
+| `algorithm/buffer` | 缓冲 |
+| `system_log.h` | `MT_LOG_ERROR/WARN/INFO` |
+| 业务自身头 | — |
+
+---
+
+## 2. 禁止的依赖
+
+| 禁止 | 原因 |
+| :--- | :--- |
+| `hal_*.h`（业务里） | 破坏分层；应走 device/vfs |
+| `FreeRTOS.h` / `rtthread.h`（业务里） | **推荐**直接使用内核原生 API（非强制）；`mini_backend.h` 仅作为仓内代码的便利封装，业务层可不依赖 |
+| 厂商寄存器头 | 不可移植 |
+| 随意 `malloc` / `printf` / `memset` | 可能被 `compiler_compat_poison` 毒杀；用 `COMPAT_MEM_*` / 池 |
+
+---
+
+## 3. I/O 与错误处理
+
+```c
+struct device *dev = device_find("uart0"); /* 名以 DTS 为准 */
+/* device_find 失败返回错误指针（ERR_PTR），非 NULL，须用 IS_ERR 判错 */
+if (IS_ERR(dev))
+    return PTR_ERR(dev);
+
+int ret = device_open(dev, NULL);
+if (ret != MINI_OK)
+    return ret;
+
+ret = device_write(dev, buf, len, 100 /* ms */);
+(void)device_close(dev);
+return ret;
+```
+
+约定：
+
+- HAL/bus 层 API（`hal_*`/`*_bus_*`）：`int` 返回值，**默认禁止忽略**（`CONFIG_COMPILER_WARN_UNUSED_RESULT=y`），以提升内部层可靠性；确需忽略用 `MINI_IGNORE_RESULT()`。例外：语义上无失败路径的 fire-and-forget 动作（如 ISR 内的状态标记、noreturn 入口）可保持 `void`。
+- device/VFS 层 API（`device_open/read/write/ioctl` 等）：`int` 返回值，**默认可忽略**（`DEVICE_WARN_UNUSED_RESULT` 默认关闭）；需要严格检查时开启 Kconfig `DEVICE_WARN_UNUSED_RESULT`，开启后**禁止**忽略。
+- 超时用毫秒；`MINI_WAIT_FOREVER` 仅在明确可接受阻塞处使用。
+- ioctl 的 `cmd` 与参数布局由各 `vfs-*.h` 定义；汇总见 [peripherals.md](peripherals.md)。
+
+---
+
+## 4. 任务与同步
+
+- 创建任务：业务层**推荐**直接使用内核原生 API（如 `xTaskCreate` / `rt_thread_create`），也可用 `mini_backend.h` 的 `mini_task_create` 封装（可选）；仓内代码统一走 `mini_backend.h`。
+  裸机例外：C API 恒返回 `MINI_ERR_NOTSUPP`，任务创建走 `mini_backend.h` 的 C++ 重载
+  `mini_task_create`（`CONFIG_XTASK_PREEMPT`，默认开启）或直接 `xscheduler_task_create`。
+  **抢占式 (`CONFIG_XTASK_PREEMPT=y`) 时**: C++ 重载仍提供, 但签名切换为带 `priority` 的分支（`stack_size` 复用为周期）; 也可直接走 `xscheduler_task_create` 原生 API (`xtask.h` 共用).
+- 注意 **优先级数值语义随 OS 后端变化**（见 [backend_switching.md](backend_switching.md)）。
+- 设备锁由 `device_*` 包装持有；业务勿对同一设备再叠一层易死锁的锁顺序。
+- ISR 里只做短工作；其余投递 EventBus / 下半部 / 任务。
+
+---
+
+## 5. 与启动顺序的关系
+
+| 时机 | 适合做的事 |
+| :--- | :--- |
+| `pre_os_init` 之前 | 仅平台极早期（时钟） |
+| `pre_os` 后、`start_tasks` 前 | 静态服务构造、无依赖 probe 的准备 |
+| `start_tasks` 后 | 依赖已 probe 设备的业务、`device_find` |
+| `system_init_complete` 后 | 允许中断；再启动调度器 |
+
+---
+
+## 6. 检查清单
+
+- [ ] 业务 `.c` 无 `hal_` / 厂商头（原生 RTOS 头在业务层允许，推荐直接使用）
+- [ ] 所有 `device_*` 返回值有处理
+- [ ] 无在 ISR 打日志或拿 mutex
+- [ ] 切换后端（CONFIG_OS_*）后重测优先级与栈
+
+---
+
+## 相关文档
+
+- [fast_path.md](fast_path.md) · [backend_switching.md](backend_switching.md)
+- [architecture.md](architecture.md)
+- [app_cpp_guide.md](app_cpp_guide.md)（上层 C++ 限制与推荐）

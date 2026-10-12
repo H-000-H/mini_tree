@@ -1,0 +1,11 @@
+\.venv
+\uv.lock
+\.idea
+build/
+.cache/
+test/build/
+.arm-gcc/
+# Python 字节码缓存
+__pycache__/
+*.pyc
+

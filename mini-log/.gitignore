@@ -1,0 +1,52 @@
+# ============================================================
+# mini-log
+# ============================================================
+
+# ---- 构建目录 ----
+build/
+build-*/
+cmake-build-*/
+out/
+
+# ---- 编译产物 ----
+*.o
+*.obj
+*.a
+*.lib
+*.d
+*.map
+*.elf
+*.bin
+*.hex
+*.srec
+*.exe
+*.out
+*.gcda
+*.gcno
+
+# ---- CMake ----
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# ---- clangd / 编辑器 / IDE 缓存 ----
+.cache/
+.clangd/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- 本地工具链软链 (CMakeLists 里的 MINI_LOG_GCC_JUNCTION 长路径跳转) ----
+.arm-gcc/
+
+# ---- 本地备份 (buffer 由独立仓库并入本仓库时, 其 .git 的备份) ----
+.buffer-git-backup/
+
+# ---- 系统垃圾 ----
+Thumbs.db
+Desktop.ini
+.DS_Store
+test

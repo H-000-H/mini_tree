@@ -1,0 +1,256 @@
+# Quick Start
+
+> Integrate `mini_tree` into your platform project from scratch: dependencies → configuration → CMake → ignition.
+>
+> **Reference template**: [Heterogeneous-Multicore](https://github.com/H-000-H/Heterogeneous-Multicore) — mini_tree's companion platform example with a full port (DTS, HAL, `board_port.cmake`, AMP).
+
+| Item | Content |
+| :--- | :--- |
+| **Audience** | Platform and application engineers |
+| **Prerequisites** | CMake, basic C; have a target board or at least be able to link a firmware |
+| **Related** | [device_tree_porting.md](device_tree_porting.md) · [usage.md](usage.md) · [ecosystem.md](ecosystem.md) · [tools_guide.md](../tools_guide.md) |
+
+---
+
+## Table of Contents
+
+1. [Dependencies](#1-dependencies)
+2. [Acquisition & Layout](#2-acquisition-layout)
+3. [Configuration System (Kconfig)](#3-configuration-system-kconfig)
+4. [CMake Integration](#4-cmake-integration)
+5. [Board DTS Override](#5-board-dts-override)
+6. [Ignition Sequence](#6-ignition-sequence)
+7. [IDE (clangd)](#7-ide-clangd)
+8. [Acceptance Checklist](#8-acceptance-checklist)
+
+---
+
+## 1. Dependencies
+
+| Dependency | Purpose | Notes |
+| :--- | :--- | :--- |
+| CMake ≥ 3.16 | Build the static library | Ninja / Make either works |
+| Python 3 | genconfig, dtc-lite, gen_compile_db | — |
+| `lark` | dtc-lite parsing | `pip install lark` |
+| Built-in kconfiglib (`tools/_vendor/`) | menuconfig / guiconfig | Bundled in the repo, **no install needed**; both UIs in [tools_guide.md](../tools_guide.md) |
+| clang-format ≥ 15 / clang-tidy (optional) | Code style and naming checks | see [coding_style.md](coding_style.md) |
+| Platform toolchain + SDK | Real hardware | **Only** linked into the platform project, never into middleware public headers |
+
+---
+
+## 2. Acquisition & Layout
+
+Vendor this repository as a subdirectory or submodule, e.g. `third_party/mini_tree`. Paths you will touch often:
+
+| Path | Purpose |
+| :--- | :--- |
+| `CMakeLists.txt` | `add_subdirectory` entry point |
+| `.config` / `Kconfig` | feature trimming |
+| `board/dts/board.dts` | default placeholder (must be overridden by the platform) |
+| `board/dtsi/` | node templates: `example-soc.dtsi` + `vfs/` (11) + `drivers/` (39), all-0 placeholders to copy & fill (see [driver_guide.md](driver_guide.md) §1) |
+| `ide/stubs/` | IDE headers when there are no build artifacts |
+
+---
+
+## 3. Configuration System (Kconfig)
+
+### 3.0 File Layout
+
+Kconfig entry points come in two sets by build backend, both sourcing the same shared config tree `Kconfig.mini_tree` to avoid divergence:
+
+| File | Path | Role | Used by |
+| :--- | :--- | :--- | :--- |
+| `Kconfig.mini_tree` | repo root | shared config tree (`menu "mini_tree Configuration" ... endmenu`), no `mainmenu` | sourced by both entry points |
+| `Kconfig.non_esp` | repo root | non-ESP entry: `mainmenu` + `source "Kconfig.mini_tree"` (renamed to avoid IDF component-scan auto-discovery, which would double-source it alongside `Kconfig.projbuild`) | `tools/genconfig.py` / `menuconfig.py` / non-ESP `CMakeLists.txt` |
+| `Kconfig.projbuild` | repo root | ESP-IDF entry: `orsource "Kconfig.mini_tree"` (relative to this file), injected into the top-level Kconfig tree by IDF confgen | ESP-IDF (`idf.py menuconfig` / `idf.py reconfigure`) |
+
+Under the ESP path, `idf.py menuconfig` shows a "mini_tree Configuration" submenu at the top level; all `OS_*` / `SYSTEM_*` / `EVENT_BUS` switches are evaluated by IDF's `depends on` / `default` / `range` and written into `sdkconfig.h` — no manual `.config` editing needed.
+
+### 3.1 Generate `config.h`
+
+```bash
+cd path/to/mini_tree
+python3 tools/genconfig.py Kconfig build/generated/kconfig/mini_tree --config .config
+```
+
+The root `CMakeLists.txt` runs the same logic during the configure stage (the ESP path skips genconfig and lets IDF's `sdkconfig.h` inject `CONFIG_*` instead).
+
+### 3.2 Common Options
+
+| Menu | Symbol | Description |
+| :--- | :--- | :--- |
+| Platform | `PLATFORM_ARM_CM4F` etc. | architecture hint (paired with the toolchain) |
+| Multi-core | `CPU_CORES` | 1=single core; 2=AMP (mutex switches to atomic CAS; no separate switch) |
+| OS 后端 | `OS_BARE` / `OS_MINI_OS` / `OS_FREERTOS` / `OS_RTTHREAD` | runtime backend: bare-metal (cooperative / preemptive) / mini-os (in-tree, Cortex-M only) / FreeRTOS v11.3.0 / RT-Thread v5.3.0 |
+| the unified interface Capacity | `OS_BARE_MAX_QUEUES` (base queue count, +1 auto when EventBus on) / `OS_BARE_QUEUE_BUF_SZ` / `FREERTOS_HEAP_SIZE` / `RTT_HEAP_SIZE` | queue & heap RAM (backend-scoped) |
+| System | `SYSTEM` | master switch (default on); the system layer is pure C (`system_c/`) |
+| Log | `SYS_LOG_USE_MINI_LOG` / `SYS_LOG_USE_ESP` | `MT_LOG_*` backend (bundled mini-log / ESP-IDF esp_log) |
+| Board Features | `SYSTEM_WDT` / `SYSTEM_SCRUBBER` etc. | framework watchdog (on) / CRC scrubber (off), depends on `SYSTEM` |
+| Runtime | `EVENT_BUS` / `EVENT_BUS_*` / `MINI_MUTEX_POOL_SIZE` / `BOTTOM_HALF_QUEUE_DEPTH` | master switch + capacity |
+
+`SYSTEM` is an optional module **enabled by default**; `EVENT_BUS` and `SYSTEM_CMD` are **off by default**: turning off `SYSTEM` trims `system_c/` and EventBus together (the command module `system_cmd` follows `SYSTEM_CMD`); turning on `EVENT_BUS` adds the pub/sub bus while keeping the two-phase boot and watchdogs.
+
+The repository's bundled `.config` uses common defaults: `OS_BARE` + `SYSTEM` + `SYSTEM_WDT` + `SYS_LOG_USE_MINI_LOG` (`EVENT_BUS` / `SYSTEM_CMD` / `SYSTEM_SCRUBBER` off).
+
+---
+
+## 4. CMake Integration
+
+```cmake
+# example platform project CMakeLists.txt
+add_subdirectory(third_party/mini_tree)
+
+add_executable(my_fw
+    Core/Src/main.c
+    platform/hal_gpio_stm32.c          # e.g. strong-symbol override
+    platform/hal_uart_stm32.c
+    # …
+)
+
+target_link_libraries(my_fw PRIVATE mini_tree)
+
+# override device tree (required)
+set(BOARD_DTS      "${CMAKE_SOURCE_DIR}/board/dts/my_board.dts" CACHE FILEPATH "" FORCE)
+set(BOARD_DTSI_DIR "${CMAKE_SOURCE_DIR}/board/dtsi" CACHE PATH "" FORCE)
+
+# vendor-header -I for dtsi #include macro expansion (as needed)
+set(VENDOR_INC_DIRS "${CUBE_INC};${HAL_INC}" CACHE STRING "" FORCE)
+```
+
+### 4.1 Platform CACHE Variables / Options
+
+| Variable | Type | Purpose |
+| :--- | :--- | :--- |
+| `BOARD_DTS` | `FILEPATH` | board-level entry `.dts` (**must** override the default placeholder) |
+| `BOARD_DTSI_DIR` | `PATH` | dtsi search directory |
+| `VENDOR_INC_DIRS` | `STRING` | vendor-header `-I` for dtc/cpp macro expansion |
+| `VENDOR_DEFINES` | `STRING` | extra `-D` (rarely used) |
+| ETL (`cmake/etl.cmake`) | — | **vendored in `lib/etl`** (include + cmake only); always linked by the root CMake (Fetch fallback if missing) |
+| Other open-source bricks | — | TinyUSB / lwIP are **config-time** FetchContent (root CMake directly `include`s their `cmake/*.cmake`); the rest (LVGL, u8g2, littlefs, FatFs, SFUD, coreMQTT, MCUBoot, MultiButton, EasyFlash, EasyLogger, FlashDB) use link-time FetchContent, enabled via `mini_tree_link_*`, fetching over the network on first use, see [ecosystem.md](ecosystem.md) |
+| `mini_tree_add_rust_crate` | — | optional; see `cmake/rust.cmake` |
+| `CONFIG_BUILD_DISASM` | Kconfig | adds a disassembly post-build step when enabled (`cmake/disasm.cmake`) |
+
+Set `... CACHE ... FORCE` **before** `add_subdirectory(mini_tree)` to avoid locking in the default placeholder DTS on the first configure.
+
+The `mini_tree` target will:
+
+1. Run `genconfig.py`
+2. Run dtc-lite (scan `DRIVER_REGISTER` in vfs/bus/drivers and generate the compile-time probe table)
+3. Pick the unified interface / SYSTEM sources per `.config`; link the vendored kernels in `lib/` (mini-os / FreeRTOS v11.3.0 / RT-Thread v5.3.0)
+4. Config-time bricks (TinyUSB / lwIP) are directly `include`d by the root CMake via their `cmake/*.cmake`; the rest are enabled at link time by the product side via `mini_tree_link_*` (may fetch over the network on first use)
+
+System runtime backend: [runtime_services.md](runtime_services.md#3-system-runtime-backend); USB board-level contract: [usb_tusb_port.md](usb_tusb_port.md); brick list: [ecosystem.md](ecosystem.md).
+
+### 4.2 What about ESP-IDF?
+
+The `main` branch keeps the full ESP-IDF build path (`cmake/esp_idf.cmake`, `Kconfig.projbuild`, `idf_component.yml`), but it **cannot** be used via a plain `add_subdirectory` into IDF — it needs the IDF component path (triggered by `ESP_PLATFORM` → `cmake/esp_idf.cmake`).
+
+The full reference board project and porting guide are maintained on the **`esp` branch** (`espidf-branch`):
+
+```bash
+git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
+```
+
+Alternatively, pull via the Espressif Component Registry: add `h-000-h/mini_tree: ">=1.2.0"` to `idf_component.yml`.
+
+---
+
+## 5. Board DTS Override
+
+The middleware's default `board/dts/board.dts` has **only an empty root node** and cannot drive real peripherals.
+
+The platform must at least provide:
+
+- an entry `.dts` (model/compatible, chosen, status)
+- SoC / peripheral `.dtsi`
+- vendor macros in nodes when needed (cpp-expanded via `VENDOR_INC_DIRS`)
+
+Details and the compatible list are in [driver_guide.md](driver_guide.md).
+
+---
+
+## 6. Ignition Sequence
+
+### 6.1 C (`system_init.h`)
+
+```c
+#include "system_init.h"
+#include "config.h"
+
+int main(void)
+{
+    /* platform: clocks, heap, console … */
+
+    mini_tree_pre_os_init();
+    /* optional: static init of business services */
+
+    mini_tree_start_tasks();   /* probe + framework tasks */
+    /* optional: create business tasks via mini_task_create */
+
+    system_init_complete();
+
+#if defined(CONFIG_OS_BARE)
+    for (;;)
+        mini_tree_system_loop();
+#elif defined(CONFIG_OS_MINI_OS)
+    mini_os_schedule_start();
+#elif defined(CONFIG_OS_FREERTOS)
+    vTaskStartScheduler();
+#elif defined(CONFIG_OS_RTTHREAD)
+    rt_system_scheduler_start();
+#endif
+    return 0;
+}
+```
+
+> The system layer is pure C; the ignition functions above are all `extern "C"`, so C++ projects call the same C API directly (except the command infra `SystemCmd`, which stays C++).
+
+> Under bare-metal (`CONFIG_OS_BARE`), the C `mini_task_create` **always returns `MINI_ERR_NOTSUPP`**:
+> C++ projects should use the C++ overload in `mini_backend.h` (`CONFIG_XTASK_PREEMPT`, on by default;
+> `period` is the task period in ms, `param1` is a caller-provided static `x_task*` TCB);
+> C projects call `xscheduler_task_create` directly (see `time_slice/task/xtask.h`). No such limit on OS backends.
+>
+> **Preemptive note (`XTASK_PREEMPT=y`)**: the C++ overload is still provided but switches to the `priority` branch (`stack_size` is reused as the period on bare metal); you may also call the native `xscheduler_task_create` API (shared `xtask.h`). The scheduler implementation switches to `xtask_preempt.c` (N+1 multi-priority, finished & compilable).
+
+Phase meanings are in [architecture.md §3](architecture.md#3-startup-sequence-two-phase-ignition).
+
+---
+
+## 7. IDE (clangd)
+
+1. Open the **mini_tree repository root** in your editor (not just a subfolder).
+2. Make sure the root `compile_flags.txt` exists, and **delete** any `compile_flags.txt` inside subdirectories.
+3. ETL headers: already under `lib/etl`; clangd can use the root `compile_flags.txt` (which contains `-Ilib/etl/include`).
+4. If you need `compile_commands.json`, generate it by running `python3 tools/gen_compile_db.py` at the mini_tree root (covers `.c/.cpp` sources and `.h/.hpp` header entries; a parent-project configure will not clobber it).
+5. Command palette: `Clangd: Restart language server`.
+
+Without a real build, placeholder headers in `ide/stubs/` (e.g. `config.h`, `board_nodes.h`) remove the red squiggles. Brick strategy: [ecosystem.md](ecosystem.md).
+
+### 7.1 OS Choice (Linux / Windows)
+
+This repo is a **CMake + clangd** based, cross-platform architecture. **At the compiler level Windows and Linux are identical** (same ARM GCC / Clang, same CMake flow), so development works on both:
+
+| Aspect | Notes |
+| :--- | :--- |
+| **Linux (recommended)** | If you are already comfortable with this toolchain, **writing MCU code directly on Linux is faster and easier to manage** — the CMake / Python / header-generation flow runs quicker and cleaner on Linux, with tidier permissions and paths, and less friction in daily builds and dependency management. It also **prepares you for moving into Linux development** (servers, CI, and cross-compilation mostly live on Linux). |
+| **Windows (equally supported)** | Windows works fully too — the compiler is no different and the project layout is identical; clangd / Keil Studio (Keil 6) also run this repo's CMake flow on Windows. Only the scripting and permission details are a bit less smooth than on Linux. |
+
+> Bottom line: **prefer Linux, but Windows is fine**. Artifacts are identical on both; just pick whichever is convenient. Team members who want to practice Linux can switch over directly without affecting deliverables.
+
+---
+
+## 8. Acceptance Checklist
+
+- [ ] `config.h` is generated and the unified interface/SYSTEM macros match expectations
+- [ ] dtc-lite produces `board_nodes.h` with `DEV_ID_COUNT` ≥ 1 (a real board should be far larger than the placeholder)
+- [ ] after linking, HALs like GPIO/UART are platform implementations (not always `MINI_ERR_NOTSUPP`)
+- [ ] `board_driver_probe_all` finishes without unexpected FATAL
+- [ ] business tasks or the bare-metal loop run stably once interrupts are enabled
+
+---
+
+## Related Documents
+
+- [device_tree_porting.md](device_tree_porting.md) · [driver_guide.md](driver_guide.md)
+- [backend_switching.md](backend_switching.md) · [faq.md](faq.md) · [ecosystem.md](ecosystem.md)
+- [tools_guide.md](../tools_guide.md)

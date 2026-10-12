@@ -1,0 +1,17 @@
+
+If:
+  PathMatch: [.*\.cpp]
+CompileFlags:
+  Add:
+    - -xc++
+    - --driver-mode=g++
+    - --target=x86_64-w64-mingw32
+    - -isystemC:/msys64/ucrt64/include/c++/16.1.0
+    - -isystemC:/msys64/ucrt64/include/c++/16.1.0/x86_64-w64-mingw32
+    - -isystemC:/msys64/ucrt64/include
+    - -isystemC:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/16.1.0/include
+    - -isystemC:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/16.1.0/include-fixed
+    - -isystemC:/msys64/ucrt64/include/c++/16.1.0/backward
+    - -I../algorithm/inc
+    - -Ialgorithm/inc
+  Remove: [-mcpu=*, -mthumb]

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * mini_tree 默认占位 DTS — 无真实外设。
+ * 板级工程请用 BOARD_DTS 指向平台 dts（ESP: components/board_esp32s3/dts/）。
+ */
+/dts-v1/;
+
+/ {
+	compatible = "mini-tree,placeholder";
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
