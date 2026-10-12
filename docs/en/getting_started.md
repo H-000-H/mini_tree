@@ -153,6 +153,8 @@ git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
 
 Alternatively, pull via the Espressif Component Registry: add `h-000-h/mini_tree: ">=1.2.0"` to `idf_component.yml`.
 
+**Both channels ship identical content and work right after download**: the `h-000-h/mini-tree` component on the registry is packaged from the very same source tree as the `esp` branch — files map one-to-one with what `git clone -b espidf-branch` gives you, the only difference being that packaging drops the RTOS kernels (FreeRTOS / RT-Thread / mini-os) and FetchContent deps that ESP-IDF already provides, per `files.exclude` in `idf_component.yml`. So whichever path you take, no extra porting and no missing board-level files are required.
+
 ---
 
 ## 5. Board DTS Override

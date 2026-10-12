@@ -1,5 +1,5 @@
 name: h-000-h/mini-tree
-version: "1.4.7"
+version: "1.5.1"
 description: "这是一个通用的vfs驱动模型和dts抽象设备树和os抽象插件 (ESP-IDF 组件线: lib 仅含 etl, RTOS 走 IDF 内置 FreeRTOS)"
 url: "https://github.com/H-000-H/mini_tree"
 dependencies:

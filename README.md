@@ -135,18 +135,20 @@ Also required at board level: board DTS, strong-symbol `hal_*`, and per-brick po
 
 The `main` branch keeps the full ESP-IDF build path (`cmake/esp_idf.cmake`, `Kconfig.projbuild`, `idf_component.yml`), but it cannot be used with a plain `add_subdirectory` like other platforms — it requires the IDF component path (triggered by `ESP_PLATFORM`).
 
-获取 ESP 版本二选一 / Two ways to get the ESP version:
+获取 ESP 版本二选一 —— **两条路径的内容完全一致，都是下载即可用(推荐1.5.0+)** / Two ways to get the ESP version — **both ship identical content and work right after download(1.5.0+)**:
 
-- **`esp` 分支 / branch**（完整移植工程 + 全部板级代码 / full port project + all board-level code）：
+- **`esp` 分支（`espidf-branch`）/ branch**（完整工程 + 全部板级代码 / full project + all board-level code）：
   ```bash
   git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
   ```
-- **乐鑫组件注册表 / ESP-IDF Component Registry**：在 `idf_component.yml` 中声明 / declare in `idf_component.yml`
+- **乐鑫组件注册表 / ESP-IDF Component Registry**：与上述分支同源同内容 / same source tree and content as the branch —— 在 `idf_component.yml` 中声明 / declare in `idf_component.yml`
   ```yaml
   dependencies:
-    h-000-h/mini_tree: ">=1.2.0"
+    h-000-h/mini_tree: ">=1.5.0"
   ```
   或在工程目录执行 / or run `idf.py add-dependency "h-000-h/mini_tree"` in the project directory to let `idf-component-manager` 自动拉取 / fetch it automatically.
+
+注册表上的 `h-000-h/mini-tree` 组件就是从 `esp` 分支同一份源码树打包发布的：组件包与分支逐文件对应，唯一的差别是打包时按 `idf_component.yml` 的 `files.exclude` 省掉了 ESP-IDF 已内置的 RTOS 内核（FreeRTOS / RT-Thread / mini-os）与 FetchContent 依赖。两边都是下载即可用 —— 无需额外移植或补齐板级文件。/ The `h-000-h/mini-tree` component on the registry is packaged from the very same source tree as the `esp` branch: files map one-to-one, the only difference being that packaging drops the RTOS kernels (FreeRTOS / RT-Thread / mini-os) and FetchContent deps that ESP-IDF already provides, per `files.exclude` in `idf_component.yml`. Either way it works right after download — no extra porting and no missing board-level files.
 
 ESP 完整移植指南见 `esp` 分支的 `docs/` 或 / See the `esp` branch `docs/` or [getting_started.md](docs/en/getting_started.md) §4.2 for the full ESP porting guide.
 

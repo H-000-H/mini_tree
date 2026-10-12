@@ -153,6 +153,8 @@ git clone -b espidf-branch https://github.com/H-000-H/mini_tree.git
 
 也可通过乐鑫组件注册表拉取：在 `idf_component.yml` 里添加 `h-000-h/mini_tree: ">=1.2.0"`。
 
+**这两种方式的内容完全一致，都是下载即可用**：注册表上的 `h-000-h/mini-tree` 组件就是从 `esp` 分支同一份源码树打包发布的，组件包与 `git clone -b espidf-branch` 拿到的工程逐文件对应，唯一差别是打包时按 `idf_component.yml` 的 `files.exclude` 省掉了 ESP-IDF 已内置的 RTOS 内核（FreeRTOS / RT-Thread / mini-os）与 FetchContent 依赖。因此无论走哪条路径，都不需要额外移植或补齐板级文件。
+
 ---
 
 ## 5. 板级 DTS 覆盖

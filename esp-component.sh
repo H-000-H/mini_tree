@@ -1,9 +1,17 @@
 #!/bin/bash
 set -e
 
+cd "$(dirname "$0")"
+
 NAMESPACE="h-000-h"
 NAME="mini-tree"
-VERSION="1.4.7"
+MANIFEST="idf_component.yml"
+
+VERSION="$(awk '/^version:/ { gsub(/["\047]/, "", $2); print $2; exit }' "${MANIFEST}")"
+if [ -z "${VERSION}" ]; then
+    echo "ERROR: cannot parse version from ${MANIFEST}"
+    exit 1
+fi
 
 if [ -z "${IDF_COMPONENT_API_TOKEN}" ]; then
     echo "ERROR: IDF_COMPONENT_API_TOKEN environment variable is not set. Please set it to your API token."
