@@ -15,6 +15,8 @@
 #include "mini_backend.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -27,7 +29,6 @@ extern "C"
 #else
 #define DEVICE_WARN_UNUSED_RESULT
 #endif
-
 #define MINI_MAX_DEVICES DEV_ID_COUNT
 
 /* 编译期属性 (dtc-lite 展开, runtime 只读) */
@@ -125,7 +126,57 @@ struct device
     mini_mutex_t*                 lock;          /**< per-device 递归锁 (mini_mutex_create_static_recursive) */
     struct dev_lifecycle          lc;            /**< 驱动 I/O 生命周期 (probe 时 device_lc_bind) */
     void*                         platform_data; /**< board 层注入的静态数据, probe 前设置 */
+    const char*                   magic;         /**< 设备魔数 ("<模块名>-mini-tree-device", 用于验证设备类型)find_by_label不强制检验提供给上层自检验设备类型*/
 };
+
+/* -------------------------------------------------------------------------- */
+/* 设备魔数 (字符串 — 各 vfs/驱动自定义名字, 与基础魔数拼接) */
+/* -------------------------------------------------------------------------- */
+
+/** 设备魔数基名: 与模块自定义名字拼接, 如 "uart-mini-tree-device" */
+#define MINI_TREE_DEVICE_MAGIC "mini-tree-device"
+
+/** 模块名与基名之间的分隔符 */
+#define MINI_TREE_DEVICE_MAGIC_SEP "-"
+
+#define MINI_TREE_DEVICE_MAGIC_OF(name) MINI_TREE_DEVICE_MAGIC_OF_(name)
+#define MINI_TREE_DEVICE_MAGIC_OF_(name) #name MINI_TREE_DEVICE_MAGIC_SEP MINI_TREE_DEVICE_MAGIC
+
+/**
+ * @brief 创建设备魔数: 写入 "<name>-mini-tree-device" (vfs/驱动 probe 时各自传自己的名字)
+ * @param[in] name 模块自定义名字 (全小写标识符, 如 uart / nrf24l01)
+ * @param[in] pdev 设备对象指针
+ * @return 成功返回 MINI_OK; pdev 为 NULL 返回 MINI_ERR_INVAL
+ */
+#define MINI_TREE_DEVICE_MAGIC_CREATE(name, pdev)                            \
+    __extension__({                                                          \
+        struct device* _dev_ = (pdev);                                       \
+        ((_dev_ != NULL) ? (_dev_->magic = MINI_TREE_DEVICE_MAGIC_OF(name),  \
+                            MINI_OK)                                        \
+                         : MINI_ERR_INVAL);                                 \
+    })
+
+/**
+ * @brief 校验设备魔数是否匹配 (识别本模块设备实例)
+ * @param[in] pdev  设备对象指针
+ * @param[in] magic 期望魔数 (MINI_TREE_DEVICE_MAGIC_OF(name) 的展开结果)
+ * @return 匹配返回 MINI_OK; pdev 为 NULL 返回 MINI_ERR_INVAL;
+ *         magic 未设置返回 MINI_ERR_NOTINIT; 魔数不匹配返回 MINI_ERR_INVAL
+ */
+static inline mt_err_t device_magic_check(const struct device* pdev, const char* magic)
+{
+    if (pdev == NULL) {
+        return MINI_ERR_INVAL;
+    }
+    if (pdev->magic == NULL) {
+        return MINI_ERR_NOTINIT;
+    }
+    return (strcmp(pdev->magic, magic) == 0) ? MINI_OK : MINI_ERR_INVAL;
+}
+
+/** 按模块自定义名字校验魔数 (name 须与 MINI_TREE_DEVICE_MAGIC_CREATE 一致) */
+#define MINI_TREE_DEVICE_MAGIC_CHECK(name, pdev) \
+    device_magic_check((pdev), MINI_TREE_DEVICE_MAGIC_OF(name))
 
 /* -------------------------------------------------------------------------- */
 /* 查找设备 */

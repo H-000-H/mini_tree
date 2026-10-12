@@ -153,6 +153,9 @@ static mt_err_t vfs_iwdg_probe(struct device* pdev)
     int                    value, idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(iwdg, pdev));
+
     idx = mini_slot_claim(&s_pool);
     if (idx < 0)
         return MINI_ERR_NOMEM;

@@ -156,6 +156,8 @@ static mt_err_t vfs_can_priv_probe(struct device* pdev)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(can, pdev));
+
     pool_idx = mini_slot_claim(&s_can_priv_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
@@ -580,6 +582,8 @@ static mt_err_t can_vfs_probe(struct device* pdev)
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(can, pdev));
 
     pool_idx = mini_slot_claim(&s_client_pool_ctrl);
     if (pool_idx < 0)

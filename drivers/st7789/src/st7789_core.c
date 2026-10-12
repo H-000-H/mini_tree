@@ -728,6 +728,8 @@ mt_err_t st7789_probe_common(struct device* pdev, int require_nocs)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(st7789, pdev));
+
     dc_dev = device_get_phandle_dev(pdev, "dc-gpio");
     if (IS_ERR(dc_dev))
         return PTR_ERR(dc_dev);

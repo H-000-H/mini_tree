@@ -302,6 +302,8 @@ static mt_err_t max98357a_probe(struct device* pdev)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(max98357a, pdev));
+
     sdn_dev = device_get_phandle_dev(pdev, "sdn-gpio");
     if (IS_ERR(sdn_dev))
         return PTR_ERR(sdn_dev);

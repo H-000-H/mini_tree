@@ -303,6 +303,9 @@ static mt_err_t max7219_probe(struct device* pdev)
     int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(max7219, pdev));
+
     pool_idx = mini_slot_claim(&s_max7219_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;

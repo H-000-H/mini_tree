@@ -585,6 +585,8 @@ static mt_err_t vfs_dac_probe(struct device* pdev)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(dac, pdev));
+
     pool_idx = mini_slot_claim(&s_dac_priv_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;

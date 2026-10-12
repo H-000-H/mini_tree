@@ -217,6 +217,8 @@ static mt_err_t host_probe(struct device* pdev, uint32_t role)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2s, pdev));
+
     idx = mini_slot_claim(&s_host_pool_ctrl);
     if (idx < 0)
         return MINI_ERR_NOMEM;
@@ -711,6 +713,8 @@ static mt_err_t client_probe(struct device* pdev)
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2s, pdev));
 
     idx = mini_slot_claim(&s_client_pool_ctrl);
     if (idx < 0)

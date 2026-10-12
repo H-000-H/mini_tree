@@ -306,6 +306,9 @@ static mt_err_t vfs_rtc_probe(struct device* pdev)
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(rtc, pdev));
+
     idx = mini_slot_claim(&s_pool_ctrl);
     if (idx < 0)
         return MINI_ERR_NOMEM;

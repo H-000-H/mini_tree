@@ -163,6 +163,8 @@ static mt_err_t vfs_i2c_priv_probe_impl(struct device* pdev, int bus_role)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2c, pdev));
+
     pool_idx = mini_slot_claim(&s_i2c_priv_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
@@ -647,6 +649,8 @@ static mt_err_t i2c_vfs_probe(struct device* pdev)
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2c, pdev));
 
     role = i2c_bus_host_role(pdev);
     if (role != I2C_BUS_ROLE_MASTER && role != I2C_BUS_ROLE_SLAVE)

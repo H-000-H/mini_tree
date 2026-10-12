@@ -173,6 +173,8 @@ static mt_err_t vfs_uart_priv_probe(struct device* pdev)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(uart, pdev));
+
     pool_idx = mini_slot_claim(&s_uart_priv_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
@@ -489,6 +491,8 @@ mt_err_t uart_vfs_probe(struct device* pdev)
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(uart, pdev));
 
     pool_idx = mini_slot_claim(&s_uart_vfs_pool_ctrl);
     if (pool_idx < 0)

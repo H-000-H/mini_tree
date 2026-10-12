@@ -211,6 +211,8 @@ static mt_err_t vfs_spi_priv_probe_impl(struct device* pdev, int bus_role)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(spi, pdev));
+
     pool_idx = mini_slot_claim(&s_spi_priv_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
@@ -771,6 +773,8 @@ static mt_err_t spi_vfs_probe(struct device* pdev)
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(spi, pdev));
 
     role = spi_bus_host_role(pdev);
     if (role != SPI_BUS_ROLE_MASTER && role != SPI_BUS_ROLE_SLAVE)

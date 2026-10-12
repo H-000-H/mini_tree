@@ -96,6 +96,8 @@ static mt_err_t vfs_usb_priv_probe(struct device* pdev)
     if (!pdev)
         return MINI_ERR_INVAL;
 
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(usb, pdev));
+
     pool_idx = mini_slot_claim(&s_usb_priv_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
@@ -359,6 +361,8 @@ static mt_err_t usb_vfs_client_probe_cls(struct device* pdev, enum usb_client_cl
 
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(usb, pdev));
 
     pool_idx = mini_slot_claim(&s_client_pool_ctrl);
     if (pool_idx < 0)

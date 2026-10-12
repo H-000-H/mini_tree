@@ -125,6 +125,9 @@ static mt_err_t vfs_wwdg_probe(struct device* pdev)
     int                    value, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(wwdg, pdev));
+
     MINI_IGNORE_RESULT(device_get_prop_int(pdev, "window", &value));
     if (value)
         cfg.window = (uint32_t)value;

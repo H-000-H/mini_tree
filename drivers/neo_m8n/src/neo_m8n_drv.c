@@ -250,6 +250,9 @@ static mt_err_t neo_m8n_probe(struct device* pdev)
     int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(neo_m8n, pdev));
+
     pool_idx = mini_slot_claim(&s_neo_m8n_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;

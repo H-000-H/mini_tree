@@ -306,6 +306,9 @@ static mt_err_t air780e_probe(struct device* pdev)
     int                    pool_idx, ret;
     if (!pdev)
         return MINI_ERR_INVAL;
+
+    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(air780e, pdev));
+
     pool_idx = mini_slot_claim(&s_air780e_pool_ctrl);
     if (pool_idx < 0)
         return MINI_ERR_NOMEM;
