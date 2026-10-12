@@ -811,8 +811,9 @@ static mt_err_t spi_vfs_probe(struct device* pdev)
         goto err_pool;
     }
 
-    MT_LOG_INFO(k_client_tag, "probe OK: %s role=%s mode=%d freq=%d", device_get_name(pdev), role == SPI_BUS_ROLE_MASTER ? "master" : "slave",
-             priv->cfg.mode, priv->cfg.clock_speed_hz);
+    /* clock_speed_hz 为 uint32_t: Xtensa 上 uint32_t == unsigned long, %d 会触发 -Wformat */
+    MT_LOG_INFO(k_client_tag, "probe OK: %s role=%s mode=%d freq=%u", device_get_name(pdev), role == SPI_BUS_ROLE_MASTER ? "master" : "slave",
+             priv->cfg.mode, (unsigned)priv->cfg.clock_speed_hz);
     return MINI_OK;
 
 err_pool:

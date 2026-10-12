@@ -343,7 +343,8 @@ static mt_err_t vfs_gpio_probe(struct device* pdev)
         goto err_unbind;
     }
 
-    MT_LOG_INFO(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%d", (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, priv->obj.cfg.mode);
+    /* mode 为 uint32_t: Xtensa 上 uint32_t == unsigned long, %d 会触发 -Wformat */
+    MT_LOG_INFO(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%u", (unsigned)port_val, (unsigned)pin_val, (unsigned)clk_val, (unsigned)priv->obj.cfg.mode);
     return MINI_OK;
 
 /* 回滚 device_lc_bind + pdev->ops (原 err_mutex 因 io_mutex 存在而得名, 现按其实际职责改名) */

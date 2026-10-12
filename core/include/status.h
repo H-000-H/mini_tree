@@ -27,7 +27,7 @@ extern "C" {
  * @note 返回错误码的函数应把返回类型写成 mt_err_t; 参数类型保持 int,
  *       以兼容 C++ 侧 (enum -> int 隐式可行, int -> enum 需显式转换)
  */
-typedef enum mt_err
+enum mt_err
 {
     MINI_OK = 0, /**< 成功 */
 
@@ -63,11 +63,12 @@ typedef enum mt_err
     MINI_ERR_AUTH     = -27  /**< 认证/鉴权失败 */
 
     /* [-28..] 预留: 通用扩容, 不分配给子系统 */
-#ifdef __cplusplus
 };
+
+#ifdef __cplusplus
 typedef int mt_err_t;
 #else
-} mt_err_t;
+typedef enum mt_err mt_err_t;
 #endif
 
 
@@ -104,12 +105,22 @@ typedef int mt_err_t;
 #define MINI_ERR_SECTOR_DRIVER_FIRST MINI_ERR_SUBSYS_DRIVER_BASE
 #define MINI_ERR_SECTOR_DRIVER_LAST MINI_ERR_SUBSYS_SLOT_LAST(MINI_ERR_SUBSYS_DRIVER_SLOT)
 
-/* 布局自检: 子体系段必须恰好容纳整数个 32 码片, 且驱动片基准按片大小对齐 */
-_Static_assert((MINI_ERR_SECTOR_SUBSYS_LAST - MINI_ERR_SECTOR_SUBSYS_FIRST + 1U) ==
-                   (MINI_ERR_SUBSYS_SLOT_COUNT * MINI_ERR_SUBSYS_SLOT_SIZE),
-               "MINI_ERR: subsystem sector must hold a whole number of 32-code slots");
-_Static_assert((MINI_ERR_SUBSYS_DRIVER_BASE - MINI_ERR_SECTOR_SUBSYS_FIRST) % MINI_ERR_SUBSYS_SLOT_SIZE == 0U,
-               "MINI_ERR: driver slot base must be slot-size aligned");
+/* 布局自检: 子体系段必须恰好容纳整数个 32 码片, 且驱动片基准按片大小对齐
+ * 注: 不能直接用 _Static_assert —— 它是 C 关键字, C++ 侧必须用 static_assert;
+ *     本文件是更底层, 不 include compiler_compat.h (它反过来 include 本文件), 故本地定义。 */
+#ifdef __cplusplus
+#define MINI_ERR_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define MINI_ERR_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#else
+#define MINI_ERR_STATIC_ASSERT(cond, msg) typedef char mini_err_sa_##__LINE__[(cond) ? 1 : -1]
+#endif
+
+MINI_ERR_STATIC_ASSERT((MINI_ERR_SECTOR_SUBSYS_LAST - MINI_ERR_SECTOR_SUBSYS_FIRST + 1U) ==
+                           (MINI_ERR_SUBSYS_SLOT_COUNT * MINI_ERR_SUBSYS_SLOT_SIZE),
+                       "MINI_ERR: subsystem sector must hold a whole number of 32-code slots");
+MINI_ERR_STATIC_ASSERT((MINI_ERR_SUBSYS_DRIVER_BASE - MINI_ERR_SECTOR_SUBSYS_FIRST) % MINI_ERR_SUBSYS_SLOT_SIZE == 0U,
+                       "MINI_ERR: driver slot base must be slot-size aligned");
 
 /**
  * @brief 由幅度直接构造私有码
