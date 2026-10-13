@@ -7,8 +7,9 @@
  */
 #ifndef TIMER_H
 #define TIMER_H
-#include "list.h"
-#include "mini_config.h"
+#include <list.h>
+#include <mini_config.h>
+#include <obj.h>
 #include <redef.h>
 #if defined(__cplusplus)
 extern "C"
@@ -40,6 +41,7 @@ typedef struct mini_os_timer
     mini_os_tick_t         trigger_tick;                         /**< next timer trigger tick */
     mini_os_uint32_t       round;                                /**< timer round */
     mini_os_uint8_t        flag;                                 /**< bit 0: one-shot/periodic; bit 1: hard/soft /bit 2: is active */
+    mini_os_obj_t          obj;                                  /**< storage ownership; a timer never parks, so its count stays 1 */
 #if MINI_OS_FIND_BY_NAME
     mini_os_list_t list_name_node; /**< list node for timer name */
 #endif
@@ -78,14 +80,16 @@ mini_os_timer_t* mini_os_timer_create_static(const char* name, mini_os_timer_cal
 /**
  * @brief Stop a heap timer and free its descriptor
  * @param[in] timer timer to delete
- * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when timer is MINI_OS_NULL
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when timer is MINI_OS_NULL;
+ *         MINI_OS_ERR_NOTSUPP for caller-provided storage
  */
 mini_os_err_t mini_os_timer_delete(mini_os_timer_t* timer);
 
 /**
  * @brief Stop a static timer (never frees the caller storage)
  * @param[in] timer timer to delete
- * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when timer is MINI_OS_NULL
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when timer is MINI_OS_NULL;
+ *         MINI_OS_ERR_NOTSUPP for heap storage
  */
 mini_os_err_t mini_os_timer_delete_static(mini_os_timer_t* timer);
 

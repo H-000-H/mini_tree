@@ -18,72 +18,66 @@
 extern "C"
 {
 #endif
-#include "mini_config.h"
+#include <mini_config.h>
 
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                          base type */
 /*---------------------------------------------------------------------------------------------------------*/
-typedef signed char        mini_os_int8_t;                  /**<mini-os int8_t*/
-typedef signed short       mini_os_int16_t;                 /**<mini-os int16_t*/
-typedef signed int         mini_os_int32_t;                 /**<mini-os int32_t*/
-typedef signed long long   mini_os_int64_t;                 /**<mini-os int64_t*/
-typedef unsigned char      mini_os_uint8_t;                 /**<mini-os uint8_t*/
-typedef unsigned short     mini_os_uint16_t;                /**<mini-os uint16_t*/
-typedef unsigned int       mini_os_uint32_t;                /**<mini-os uint32_t*/
-typedef unsigned long long mini_os_uint64_t;                /**<mini-os uint64_t*/
-typedef mini_os_int8_t     mini_os_bool_t;                  /**<mini-os bool_t*/
-typedef size_t             mini_os_size_t;                  /**<mini-os size_t*/
+typedef signed char        mini_os_int8_t;   /**<mini-os int8_t*/
+typedef signed short       mini_os_int16_t;  /**<mini-os int16_t*/
+typedef signed int         mini_os_int32_t;  /**<mini-os int32_t*/
+typedef signed long long   mini_os_int64_t;  /**<mini-os int64_t*/
+typedef unsigned char      mini_os_uint8_t;  /**<mini-os uint8_t*/
+typedef unsigned short     mini_os_uint16_t; /**<mini-os uint16_t*/
+typedef unsigned int       mini_os_uint32_t; /**<mini-os uint32_t*/
+typedef unsigned long long mini_os_uint64_t; /**<mini-os uint64_t*/
+typedef mini_os_int8_t     mini_os_bool_t;   /**<mini-os bool_t*/
+typedef size_t             mini_os_size_t;   /**<mini-os size_t*/
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                    volatile Modification base type */
 /*---------------------------------------------------------------------------------------------------------*/
-typedef volatile signed char    mini_os_volatile_int8_t;    /**<mini-os volatile int8_t*/
-typedef volatile signed short   mini_os_volatile_int16_t;   /**<mini-os volatile int16_t*/
-typedef volatile signed int     mini_os_volatile_int32_t;   /**<mini-os volatile int32_t*/
-typedef volatile unsigned char  mini_os_volatile_uint8_t;   /**<mini-os volatile mini_os_uint8_t*/
-typedef volatile unsigned short mini_os_volatile_uint16_t;  /**<mini-os volatile uint16_t*/
-typedef volatile unsigned int   mini_os_volatile_uint32_t;  /**<mini-os volatile mini_os_uint32_t*/
+typedef volatile signed char    mini_os_volatile_int8_t;   /**<mini-os volatile int8_t*/
+typedef volatile signed short   mini_os_volatile_int16_t;  /**<mini-os volatile int16_t*/
+typedef volatile signed int     mini_os_volatile_int32_t;  /**<mini-os volatile int32_t*/
+typedef volatile unsigned char  mini_os_volatile_uint8_t;  /**<mini-os volatile mini_os_uint8_t*/
+typedef volatile unsigned short mini_os_volatile_uint16_t; /**<mini-os volatile uint16_t*/
+typedef volatile unsigned int   mini_os_volatile_uint32_t; /**<mini-os volatile mini_os_uint32_t*/
 
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                          mini-os-self-type */
 /*---------------------------------------------------------------------------------------------------------*/
-typedef mini_os_int32_t mini_os_err_t;                      /**<mini-os err_t*/
-typedef signed long     mini_os_irq_t;                      /**<mini-os irq_t*/
-typedef signed long     mini_os_tick_t;                     /**<mini-os tick_t*/
-typedef signed long     mini_os_user_data_t;                /**<mini-os user_data_t*/
+typedef mini_os_int32_t mini_os_err_t;       /**<mini-os err_t*/
+typedef signed long     mini_os_irq_t;       /**<mini-os irq_t*/
+typedef signed long     mini_os_tick_t;      /**<mini-os tick_t*/
+typedef signed long     mini_os_user_data_t; /**<mini-os user_data_t*/
 
-#define MINI_OS_TRUE (1)                                    /**<true*/
-#define MINI_OS_FALSE (0)                                   /**<false*/
+#define MINI_OS_TRUE (1)  /**<true*/
+#define MINI_OS_FALSE (0) /**<false*/
 
 /* MINI_OS_NULL_TO_STANDARD is always defined (0 or 1) by mini_config.h:
- * #ifdef would be true for the disabled case too, so test the value.
- * Under C++, (void*)0 cannot implicitly convert to other pointer types (e.g.
- * mini_os_thread_t*), so use nullptr; under C keep the traditional (void*)0. */
+ * #ifdef would be true for the disabled case too, so test the value. */
 #if MINI_OS_NULL_TO_STANDARD
-#ifdef __cplusplus
-#define MINI_OS_NULL nullptr                                /**<null*/
+#define MINI_OS_NULL ((void*)0) /**<null*/
 #else
-#define MINI_OS_NULL ((void*)0)                             /**<null*/
-#endif
-#else
-#define MINI_OS_NULL (0)                                    /**<null*/
+#define MINI_OS_NULL (0) /**<null*/
 #endif
 
-#define MINI_OS_UINT8_MAX (0xffu)                            /**<uint8_t max*/
-#define MINI_OS_UINT16_MAX (0xffffu)                         /**<uint16_t max*/
-#define MINI_OS_UINT32_MAX (0xffffffffu)                     /**<uint32_t max*/
-#define MINI_OS_DELAY_FOREVER ((mini_os_tick_t) - 1)        /**<delay forever */
-#define MINI_OS_WAIT_FOREVER ((mini_os_tick_t) - 1)         /**<wait forever */
+#define MINI_OS_UINT8_MAX (0xffu)                    /**<uint8_t max*/
+#define MINI_OS_UINT16_MAX (0xffffu)                 /**<uint16_t max*/
+#define MINI_OS_UINT32_MAX (0xffffffffu)             /**<uint32_t max*/
+#define MINI_OS_DELAY_FOREVER ((mini_os_tick_t) - 1) /**<delay forever */
+#define MINI_OS_WAIT_FOREVER ((mini_os_tick_t) - 1)  /**<wait forever */
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                  mini-os-gcc-features-macro */
 /*---------------------------------------------------------------------------------------------------------*/
 #if defined(__clang__) || defined(__GNUC__)
-#define MINI_OS_VA_START(x, l) __builtin_va_start(x, l)     /**<va_start*/
-#define MINI_OS_VA_END(x) __builtin_va_end(x)               /**<va_end*/
-#define MINI_OS_VA_ARG(x, l) __builtin_va_arg(x, l)         /**<va_arg*/
-#define MINI_OS_SECTION(x) __attribute__((section(x)))      /**<section*/
-#define MINI_OS_CLZ(x) (__builtin_clz(x))                   /**<count leading zeros*/
-#define MINI_OS_CTZ(x) (__builtin_ctz(x))                   /**<count trailing zeros*/
-#define MINI_OS_POPCOUNT(x) (__builtin_popcount(x))         /**<count set bits*/
+#define MINI_OS_VA_START(x, l) __builtin_va_start(x, l) /**<va_start*/
+#define MINI_OS_VA_END(x) __builtin_va_end(x)           /**<va_end*/
+#define MINI_OS_VA_ARG(x, l) __builtin_va_arg(x, l)     /**<va_arg*/
+#define MINI_OS_SECTION(x) __attribute__((section(x)))  /**<section*/
+#define MINI_OS_CLZ(x) (__builtin_clz(x))               /**<count leading zeros*/
+#define MINI_OS_CTZ(x) (__builtin_ctz(x))               /**<count trailing zeros*/
+#define MINI_OS_POPCOUNT(x) (__builtin_popcount(x))     /**<count set bits*/
 #define MINI_OS_BSWAP(x)                                                                                                                                                                                                                                 \
     (__builtin_bswap(x))                                                  /**<byte swap reversal big endian and little                                                                                                                                   \
                                                                              endian*/
@@ -183,7 +177,7 @@ void          mini_os_irq_enable(void);                     /**< unmask interrup
 mini_os_irq_t mini_os_irq_save(void);                       /**< enter nestable critical section, returns saved state */
 void          mini_os_irq_restore(mini_os_irq_t irq_level); /**< exit nestable critical section, restores saved state */
 
-#include "critical.h"
+#include <critical.h>
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                  mini-os-atomic */
 /*---------------------------------------------------------------------------------------------------------*/
@@ -579,9 +573,9 @@ MINI_OS_STATIC_INLINE void mini_os_set_name(char* dst, const char* name, mini_os
 #define MINI_OS_SYSTICK_CTRL *(volatile mini_os_uint32_t*)0xE000E010   /**< SysTick control and status register */
 #define MINI_OS_SYSTICK_RELOAD *(volatile mini_os_uint32_t*)0xE000E014 /**< SysTick reload value register */
 #define MINI_OS_SYSTICK_VAL *(volatile mini_os_uint32_t*)0xE000E018    /**< SysTick current value register */
-#define MINI_OS_SYSTICK_CTRL_ENABLE (1u << 0)                  /**< SysTick enable */
-#define MINI_OS_SYSTICK_CTRL_TICKINT (1u << 1)                 /**< SysTick exception enable */
-#define MINI_OS_SYSTICK_CTRL_CLKSOURCE (1u << 2)               /**< 1 = processor clock */
+#define MINI_OS_SYSTICK_CTRL_ENABLE (1u << 0)                          /**< SysTick enable */
+#define MINI_OS_SYSTICK_CTRL_TICKINT (1u << 1)                         /**< SysTick exception enable */
+#define MINI_OS_SYSTICK_CTRL_CLKSOURCE (1u << 2)                       /**< 1 = processor clock */
 
 #if defined(__cplusplus)
 }

@@ -7,9 +7,9 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include "err.h"
-#include "mini_config.h"
-#include "redef.h"
+#include <err.h>
+#include <mini_config.h>
+#include <redef.h>
 #if defined(__cplusplus)
 extern "C"
 {

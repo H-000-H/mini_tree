@@ -149,8 +149,8 @@ mini-os 的 PI 是 **per-thread 跟踪** 模型：
 
 其他要点：
 
-- mutex 内嵌 binary semaphore（`count = max = 1`），支持递归锁（`is_recuring` + depth，可选）；
-- `mini_os_mutex_delete()` 走 `kill_waiters`：把等待者 `wait_done = FALSE`（上层收到 TIMEOUT 语义）并清其 `wait_mutex` 回指针，防止 use-after-free。
+- mutex 内嵌 binary semaphore（`count = max = 1`），支持递归锁（`is_recursive` + depth，可选）；
+- `mini_os_mutex_delete()` 走 `kill_waiters`：把等待者 `wait_status = FALSE`（上层收到 TIMEOUT 语义）并清其 `wait_mutex` 回指针，防止 use-after-free。
 
 ### 3.3 事件组（event.c，可选）
 
@@ -299,7 +299,7 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | ISR 模式 | `*_isr` 不主动切换；`mini_yield_from_isr()` 转发 `mini_os_schedule_yield_isr()` |
 | 对象池 | 互斥锁/信号量静态内嵌内核对象 + `mini_slot` 槽位池，池临界区用 `mini_os_irq_save/restore` |
 | 调度启动 | `mini_scheduler_start()` 先惰性引导内核（`schedule_init` + idle 线程 + SysTick）再启动调度器 |
-| 引导期加锁 | 调度器启动前 `mini_os_thread_current()` 为 NULL，内核 `mini_os_mutex_lock` 对此一律返回 `MINI_OS_ERR_INVAL`（mutex 需要 owner，连空闲锁也不放行）；适配层在这段时间直接放行 lock/unlock，使启动早期的 `device_lock` 与 FreeRTOS / 裸机后端行为一致 |
+| 引导期加锁 | 调度器启动前 `mini_os_thread_get_current()` 为 NULL，内核 `mini_os_mutex_lock` 对此一律返回 `MINI_OS_ERR_INVAL`（mutex 需要 owner，连空闲锁也不放行）；适配层在这段时间直接放行 lock/unlock，使启动早期的 `device_lock` 与 FreeRTOS / 裸机后端行为一致 |
 | 调度冻结 | mini-os 无全局挂起 API，`mini_sched_freeze()` 退化为关中断（同 `mini_backend_bare` 单向冻结语义） |
 
 ### 8.4 构建方式

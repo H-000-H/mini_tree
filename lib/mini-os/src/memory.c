@@ -7,11 +7,11 @@
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
-#include "memory.h"
+#include <memory.h>
 
-#include "err.h"
-#include "mem_heap.h"
-#include "redef.h"
+#include <err.h>
+#include <mem_heap.h>
+#include <redef.h>
 
 /* -------------------------------------------------------------------------- */
 /* Alignment granularity and minimum block                                    */
@@ -812,46 +812,25 @@ MINI_OS_CONSTRUCTOR(101) static void mini_os_slab_validate_ctor(void)
 #define MINI_OS_MEMORY_PRESTRUCTOR 102
 
 /**
- * @brief Lazily take over the linker-script heap zone (idempotent, public)
- * @return MINI_OS_OK when the heap is ready; MINI_OS_ERR_NOMEM when the heap
- *         zone is absent (linker symbols collapsed to 0) or init failed
- * @details Merges the linker-script heap zone into the free list, i.e. the
- *          global-heap variant of mini_os_memory_init; also cuts the static
- *          slab zone once when CONFIG_MINI_OS_SLAB_STATIC is enabled
- *          (independent of the heap).
- * @note The startup constructor (below) calls this before main. Environments
- *       that do not iterate .init_array (bare-metal startup) can call it
- *       lazily before the first allocation — the ready flag makes repeated
- *       calls no-ops. Not ISR-safe: the free list is unprotected, same as
- *       libc malloc; call from thread/main context only.
- */
-mini_os_err_t mini_os_heap_ensure_init(void)
-{
-    mini_os_memory_config_t cfg;
-
-    if (s_mini_os_heap_ready)
-        return MINI_OS_OK;
-#ifdef CONFIG_MINI_OS_SLAB_STATIC
-    if (!s_mini_os_slab_static_ready)
-        mini_os_slab_static_zone_setup(); /* static zone ready before the heap, no heap dependency */
-#endif
-    if ((__mini_os_heap_end - __mini_os_heap_start) <= 0)
-        return MINI_OS_ERR_NOMEM; /* linker script anomaly / host environment: heap stays not ready */
-    cfg.name = "heap";
-    cfg.static_mem = (void*)__mini_os_heap_start;
-    cfg.static_len = MINI_OS_HEAP_SIZE;
-    if (mini_os_memory_init(&s_mini_os_heap_pool, &cfg) != MINI_OS_OK)
-        return MINI_OS_ERR_NOMEM;
-    s_mini_os_heap_ready = MINI_OS_TRUE;
-    return MINI_OS_OK;
-}
-
-/**
- * @brief Heap initialization (auto-run constructor before main)
+ * @brief Heap initialization (auto-run constructor before main): merges the
+ *        linker-script heap zone into the free list, i.e. the global-heap
+ *        variant of mini_os_memory_init; also cuts the static slab zone when
+ *        CONFIG_MINI_OS_SLAB_STATIC is enabled (independent of the heap)
  */
 MINI_OS_CONSTRUCTOR(MINI_OS_MEMORY_PRESTRUCTOR) static void mini_os_heap_init_ctor(void)
 {
-    (void)mini_os_heap_ensure_init();
+    mini_os_memory_config_t cfg;
+
+#ifdef CONFIG_MINI_OS_SLAB_STATIC
+    mini_os_slab_static_zone_setup(); /* static zone ready before the heap, no heap dependency */
+#endif
+    if ((__mini_os_heap_end - __mini_os_heap_start) <= 0)
+        return; /* linker script anomaly / host environment: heap stays not ready */
+    cfg.name = "heap";
+    cfg.static_mem = (void*)__mini_os_heap_start;
+    cfg.static_len = MINI_OS_HEAP_SIZE;
+    if (mini_os_memory_init(&s_mini_os_heap_pool, &cfg) == MINI_OS_OK)
+        s_mini_os_heap_ready = MINI_OS_TRUE;
 }
 
 /**

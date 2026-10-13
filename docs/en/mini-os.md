@@ -149,8 +149,8 @@ mini-os PI is a **per-thread tracking** model:
 
 Other points:
 
-- The mutex embeds a binary semaphore (`count = max = 1`) and supports recursive locking (`is_recuring` + depth, optional);
-- `mini_os_mutex_delete()` goes through `kill_waiters`: waiters get `wait_done = FALSE` (the upper layer sees a TIMEOUT-like result) and their `wait_mutex` back-pointers are cleared, preventing use-after-free.
+- The mutex embeds a binary semaphore (`count = max = 1`) and supports recursive locking (`is_recursive` + depth, optional);
+- `mini_os_mutex_delete()` goes through `kill_waiters`: waiters get `wait_status = FALSE` (the upper layer sees a TIMEOUT-like result) and their `wait_mutex` back-pointers are cleared, preventing use-after-free.
 
 ### 3.3 Event group (event.c, optional)
 
@@ -299,7 +299,7 @@ Every option resolves through the same **three-tier chain** (reference implement
 | ISR mode | `*_isr` calls never switch context; `mini_yield_from_isr()` forwards to `mini_os_schedule_yield_isr()` |
 | Object pool | Mutexes/semaphores embed kernel objects statically + an `mini_slot` slot pool; pool critical sections use `mini_os_irq_save/restore` |
 | Scheduler start | `mini_scheduler_start()` first lazily boots the kernel (`schedule_init` + idle thread + SysTick), then starts the scheduler |
-| Locking before the scheduler | Before the scheduler starts, `mini_os_thread_current()` is NULL and the kernel's `mini_os_mutex_lock` returns `MINI_OS_ERR_INVAL` unconditionally (a mutex needs an owner — not even a free lock is granted); the shim lets lock/unlock through during that window so early-boot `device_lock` behaves the same as on the FreeRTOS / bare-metal backends |
+| Locking before the scheduler | Before the scheduler starts, `mini_os_thread_get_current()` is NULL and the kernel's `mini_os_mutex_lock` returns `MINI_OS_ERR_INVAL` unconditionally (a mutex needs an owner — not even a free lock is granted); the shim lets lock/unlock through during that window so early-boot `device_lock` behaves the same as on the FreeRTOS / bare-metal backends |
 | Scheduler freeze | mini-os has no global suspend-all API; `mini_sched_freeze()` degrades to IRQ masking (same one-way freeze semantics as `mini_backend_bare`) |
 
 ### 8.4 Build integration

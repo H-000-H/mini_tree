@@ -10,8 +10,8 @@
 extern "C"
 {
 #endif
-#include "mini_config.h"
-#include "redef.h"
+#include <mini_config.h>
+#include <redef.h>
 extern char __mini_os_heap_start[];
 extern char __mini_os_heap_end[];
 #define MINI_OS_HEAP_SIZE ((mini_os_size_t)(__mini_os_heap_end - __mini_os_heap_start))

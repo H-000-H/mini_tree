@@ -9,8 +9,17 @@
 /**
  * @brief Error codes if config.h and compiler_compat.h are available using status.h otherwise using
  * self defined error codes
+ * @note numbers are negative to distinguish from success codes.
+ *       Both branches are numerically identical: status.h owns the numbering
+ *       (MINI_ERR_INVAL=-1 .. MINI_ERR_STATE=-13) and the fallback list below repeats the
+ *       exact same values, so MINI_OS_ERR_* <-> MINI_ERR_* needs no conversion at all.
+ * @note Besides the shared aliases, the kernel-private codes
+ *       (MINI_OS_ERR_DEAD .. MINI_OS_ERR_REJECT) live on the mini-os slot of the
+ *       mini_tree error-code map (subsystem sector slot 6, magnitudes 256..287).
+ *       Their values are hard-coded in both branches and reference no status.h macro,
+ *       so changing them must be mirrored in the slot base inside status.h.
  */
-#include "redef.h"
+#include <redef.h>
 // clang-format off
 #if __has_include(<config.h>) && __has_include(<compiler_compat.h>)
 #include <status.h>
@@ -29,7 +38,7 @@
 #define MINI_OS_ERR_NOTSUPP MINI_ERR_NOTSUPP   /**<operation not supported/implemented */
 #define MINI_OS_ERR_STATE MINI_ERR_STATE       /**<invalid state transition */
 
-/* kernel-private codes (mini-os slice: -256..-287) */
+/* Kernel-private codes (mini-os slot: -256..-287) */
 #define MINI_OS_ERR_DEAD (-256)        /**<thread terminated / deleted (killed) */
 #define MINI_OS_ERR_NOTREADY (-257)    /**<scheduler not started or no ready thread */
 #define MINI_OS_ERR_RANGE (-258)       /**<priority or parameter out of range */
@@ -38,6 +47,7 @@
 #define MINI_OS_ERR_CORRUPT (-261)     /**<heap block corrupt / double free / bad pointer */
 #define MINI_OS_ERR_PERM (-262)        /**<not the owner (e.g. unlocking someone else's mutex) */
 #define MINI_OS_ERR_NOT_STARTED (-263) /**<timer not started (or already stopped) */
+#define MINI_OS_ERR_REJECT (-264)      /**<object still referenced: destroy rejected */
 #else
 #define MINI_OS_OK 0
 #define MINI_OS_ERR_INVAL -1                    /**<invalid parameter */
@@ -54,7 +64,7 @@
 #define MINI_OS_ERR_NOTSUPP -12                 /**<operation not supported/implemented */
 #define MINI_OS_ERR_STATE -13                   /**<invalid state transition */
 
-/* kernel-private codes (mini-os slice: -256..-287) */
+/* Kernel-private codes (mini-os slot: -256..-287) */
 #define MINI_OS_ERR_DEAD (-256)        /**<thread terminated / deleted (killed) */
 #define MINI_OS_ERR_NOTREADY (-257)    /**<scheduler not started or no ready thread */
 #define MINI_OS_ERR_RANGE (-258)       /**<priority or parameter out of range */
@@ -63,6 +73,7 @@
 #define MINI_OS_ERR_CORRUPT (-261)     /**<heap block corrupt / double free / bad pointer */
 #define MINI_OS_ERR_PERM (-262)        /**<not the owner (e.g. unlocking someone else's mutex) */
 #define MINI_OS_ERR_NOT_STARTED (-263) /**<timer not started (or already stopped) */
+#define MINI_OS_ERR_REJECT (-264)      /**<object still referenced: destroy rejected */
 #endif
 // clang-format on
 #endif

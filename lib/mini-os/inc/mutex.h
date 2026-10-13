@@ -6,9 +6,10 @@
  */
 #ifndef MUTEX_H
 #define MUTEX_H
-#include "redef.h"
-#include "semaphore.h"
-#include "thread.h"
+#include <obj.h>
+#include <redef.h>
+#include <semaphore.h>
+#include <thread.h>
 #if defined(__cplusplus)
 extern "C"
 {
@@ -31,11 +32,11 @@ struct mini_os_mutex
 {
     mini_os_semaphore_t semaphore;      /**< mutex inheritance through Semaphore */
     mini_os_uint8_t     depth;          /**< recursion depth (same-owner lock count, 0 = free) */
-    mini_os_bool_t      is_recuring;    /**< MINI_OS_TRUE: the owner may re-lock (depth++) */
+    mini_os_bool_t      is_recursive;    /**< MINI_OS_TRUE: the owner may re-lock (depth++) */
     mini_os_thread_t*   owner;          /**< current owner, MINI_OS_NULL when free */
     mini_os_list_t      hold_node;      /**< links the mutex into owner->hold_list while held */
-    mini_os_bool_t      kill_enable;    /**< MINI_OS_TRUE after mini_os_mutex_enable_kill: delete may
-                                   force-release */
+    mini_os_obj_t       obj;            /**< storage ownership + in-flight user count; the KILL flag
+                                             arms the force-release delete path */
 #if MINI_OS_FIND_BY_NAME
     mini_os_list_t g_list_node;         /**< node of the global by-name registry */
 #endif
@@ -53,7 +54,7 @@ mini_os_mutex_t* mini_os_mutex_create(const char* name);
  * @param[in] mutex A pointer to the mutex to delete
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
  *         MINI_OS_ERR_NOTSUPP for a static mutex (use mini_os_mutex_delete_static);
- *         MINI_OS_ERR_BUSY while owned or parked waiters exist (or a unit is in
+ *         MINI_OS_ERR_REJECT while owned or parked waiters exist (or a unit is in
  *         flight), unless mini_os_mutex_enable_kill() was called
  * @note with kill enabled a busy mutex is force-released: parked waiters are
  *       unlinked and their mini_os_mutex_lock returns MINI_OS_ERR_TIMEOUT, the
@@ -75,7 +76,7 @@ mini_os_mutex_t* mini_os_mutex_create_static(mini_os_mutex_t* mutex, const char*
  * @param[in] mutex A pointer to the mutex to delete
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
  *         MINI_OS_ERR_NOTSUPP for a heap mutex (use mini_os_mutex_delete);
- *         MINI_OS_ERR_BUSY like mini_os_mutex_delete, kill_enable honored
+ *         MINI_OS_ERR_REJECT like mini_os_mutex_delete, mini_os_mutex_enable_kill() honored
  */
 mini_os_err_t mini_os_mutex_delete_static(mini_os_mutex_t* mutex);
 
@@ -86,7 +87,7 @@ mini_os_err_t mini_os_mutex_delete_static(mini_os_mutex_t* mutex);
  * @note the owner may re-lock: each lock deepens depth, each unlock releases
  *       one level, only the final unlock hands the mutex over
  */
-mini_os_mutex_t* mini_os_mutex_recuring_create(const char* name);
+mini_os_mutex_t* mini_os_mutex_recursive_create(const char* name);
 
 /**
  * @brief Create a recursive mutex over caller-provided storage (created unlocked)
@@ -94,7 +95,7 @@ mini_os_mutex_t* mini_os_mutex_recuring_create(const char* name);
  * @param[in] mutex storage for the mutex descriptor
  * @return A pointer to the created mutex, or MINI_OS_NULL on invalid arguments
  */
-mini_os_mutex_t* mini_os_mutex_recuring_create_static(const char* name, mini_os_mutex_t* mutex);
+mini_os_mutex_t* mini_os_mutex_recursive_create_static(const char* name, mini_os_mutex_t* mutex);
 
 /**
  * @brief Lock a mutex (priority inheritance on contention)
@@ -105,7 +106,8 @@ mini_os_mutex_t* mini_os_mutex_recuring_create_static(const char* name, mini_os_
  *         thread context; MINI_OS_ERR_AGAIN when non-blocking and contested;
  *         MINI_OS_ERR_BUSY when the owner re-locks a non-recursive mutex or the
  *         recursion depth overflows; MINI_OS_ERR_TIMEOUT when the wait expired
- *         (or the mutex was kill-deleted while parked)
+ *         (or the mutex was kill-deleted while parked); MINI_OS_ERR_REJECT when
+ *         the mutex is already destroyed on entry
  * @note when the caller must block, the owner's effective priority is recomputed
  *       as the highest (smallest number) of its base priority and every waiter
  *       of every mutex it holds, so holding several mutexes keeps the highest

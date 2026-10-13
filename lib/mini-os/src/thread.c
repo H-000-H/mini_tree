@@ -4,19 +4,19 @@
  * @brief Thread management functions
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
-#include "thread.h"
+#include <thread.h>
 
-#include "err.h"
-#include "list.h"
-#include "memory.h"
-#include "mini_config.h"
-#include "mutex.h"
-#include "port.h"
-#include "redef.h"
-#include "schedule.h"
-#include "semaphore.h"
+#include <err.h>
+#include <list.h>
+#include <memory.h>
+#include <mini_config.h>
+#include <mutex.h>
+#include <port.h>
+#include <redef.h>
+#include <schedule.h>
+#include <semaphore.h>
 #if MINI_OS_FIND_BY_NAME
-/** @brief Global registry of every thread, used by mini_os_find_by_name() */
+/** @brief Global registry of every thread, used by mini_os_thread_find_by_name() */
 static mini_os_list_t g_threads_list;
 
 /**
@@ -122,8 +122,9 @@ static mini_os_err_t mini_os_thread_init(mini_os_thread_t* thread, const char* n
     mini_os_list_init(&thread->wait_node);
     mini_os_list_init(&thread->hold_list);
     thread->wait_list = MINI_OS_NULL;
-    thread->wait_done = MINI_OS_TRUE;
+    thread->wait_status = MINI_OS_TRUE;
     thread->wait_mutex = MINI_OS_NULL;
+    thread->wait_ref_depth = 0u;
 #if MINI_OS_EVENT
     thread->wait_mask = 0u;
 #endif
@@ -143,20 +144,20 @@ static mini_os_err_t mini_os_thread_init(mini_os_thread_t* thread, const char* n
     /* ordinary threads start as NORMAL with no deadline; the scheduler branches
      * read sched_policy on every switch, so it must never be garbage from the
      * heap. mini_os_deadline_thread_init() overrides this for DL threads. */
-    thread->sched_policy        = MINI_OS_SCHED_NORMAL;
-    thread->dl_deadline_time    = 0;
+    thread->sched_policy = MINI_OS_SCHED_NORMAL;
+    thread->dl_deadline_time = 0;
     thread->dl_deadline_inherit = 0;
 #endif
 #if MINI_OS_THREAD_DEADLINE
-    thread->dl_run_time      = 0;
-    thread->dl_budget        = 0;
-    thread->dl_budget_frac   = 0u;
-    thread->dl_period        = 0;
-    thread->dl_throttled     = MINI_OS_FALSE;
-    thread->dl_job_done      = MINI_OS_FALSE;
-    thread->dl_activation    = MINI_OS_NULL;
-    thread->dl_miss_count    = 0u;
-    thread->dl_finish_count  = 0u;
+    thread->dl_run_time = 0;
+    thread->dl_budget = 0;
+    thread->dl_budget_frac = 0u;
+    thread->dl_period = 0;
+    thread->dl_throttled = MINI_OS_FALSE;
+    thread->dl_job_done = MINI_OS_FALSE;
+    thread->dl_activation = MINI_OS_NULL;
+    thread->dl_miss_count = 0u;
+    thread->dl_finish_count = 0u;
     thread->dl_throttle_count = 0u;
 #endif
 
@@ -193,10 +194,7 @@ static void mini_os_dl_activation_free(mini_os_thread_t* thread)
  * @brief Validate (runtime, deadline, period) against the Linux DL constraint
  * @return MINI_OS_TRUE when 0 < runtime <= deadline <= period <= 0xFFFF
  */
-static mini_os_bool_t mini_os_dl_params_valid(mini_os_tick_t runtime, mini_os_tick_t deadline, mini_os_tick_t period)
-{
-    return (mini_os_bool_t)(runtime > 0 && deadline > 0 && period > 0 && runtime <= deadline && deadline <= period);
-}
+static mini_os_bool_t mini_os_dl_params_valid(mini_os_tick_t runtime, mini_os_tick_t deadline, mini_os_tick_t period) { return (mini_os_bool_t)(runtime > 0 && deadline > 0 && period > 0 && runtime <= deadline && deadline <= period); }
 
 /**
  * @brief Placeholder priority of a DL thread
@@ -223,17 +221,17 @@ static mini_os_err_t mini_os_deadline_thread_init(mini_os_thread_t* thread, mini
     if (thread == MINI_OS_NULL)
         return MINI_OS_ERR_INVAL;
     (void)mini_os_get_tick(&now);
-    thread->sched_policy        = MINI_OS_SCHED_DEADLINE;
-    thread->dl_run_time         = dl_run_time;
-    thread->dl_budget           = dl_run_time;
-    thread->dl_budget_frac      = 0u;
-    thread->dl_deadline_time    = now + dl_deadline; /* relative deadline -> absolute */
+    thread->sched_policy = MINI_OS_SCHED_DEADLINE;
+    thread->dl_run_time = dl_run_time;
+    thread->dl_budget = dl_run_time;
+    thread->dl_budget_frac = 0u;
+    thread->dl_deadline_time = now + dl_deadline; /* relative deadline -> absolute */
     thread->dl_deadline_inherit = 0;
-    thread->dl_period           = dl_period;
-    thread->dl_throttled        = MINI_OS_FALSE;
-    thread->dl_job_done         = MINI_OS_FALSE;
-    thread->dl_miss_count    = 0u;
-    thread->dl_finish_count  = 0u;
+    thread->dl_period = dl_period;
+    thread->dl_throttled = MINI_OS_FALSE;
+    thread->dl_job_done = MINI_OS_FALSE;
+    thread->dl_miss_count = 0u;
+    thread->dl_finish_count = 0u;
     thread->dl_throttle_count = 0u;
     return MINI_OS_OK;
 }
@@ -246,7 +244,7 @@ mini_os_thread_t* mini_os_current_thread = MINI_OS_NULL;
  * @brief Get the TCB of the running thread
  * @return current thread handle; MINI_OS_NULL before the scheduler started
  */
-mini_os_thread_t* mini_os_thread_current(void) { return mini_os_current_thread; }
+mini_os_thread_t* mini_os_thread_get_current(void) { return mini_os_current_thread; }
 
 /** @brief Idle thread TCB, published by mini_os_thread_idle_create() */
 static mini_os_thread_t* s_idle_thread = MINI_OS_NULL;
@@ -412,7 +410,7 @@ MINI_OS_NO_RETURN void mini_os_thread_exit(void* retval)
  *  - a READY/RUNNING thread is unlinked from the ready/running list
  *  - a BLOCKED thread is unlinked from its wait list; a wheel-parked one keeps
  *    the remaining delay in resume_time (frozen), a sync-object wait is
- *    canceled (wait_done = MINI_OS_FALSE), and the owner of the mutex it waited
+ *    canceled (wait_status = MINI_OS_FALSE), and the owner of the mutex it waited
  *    on drops the boost this waiter justified
  *  - suspending the current thread triggers a context switch
  */
@@ -444,7 +442,7 @@ mini_os_err_t mini_os_thread_suspend(mini_os_thread_t* thread)
             mini_os_list_remove(&thread->wait_node);
             thread->wait_list = MINI_OS_NULL;
             thread->wait_mutex = MINI_OS_NULL; /* no longer parked on a mutex */
-            thread->wait_done = MINI_OS_FALSE; /* the sync wait is canceled */
+            thread->wait_status = MINI_OS_FALSE; /* the sync wait is canceled */
             if (waited != MINI_OS_NULL && waited->owner != MINI_OS_NULL)
             {
                 /* same unwind as unlink_blocked: the owner must not keep the
@@ -579,7 +577,7 @@ static void mini_os_thread_unlink_blocked(mini_os_thread_t* thread)
         }
     }
     if (thread->wheel_slot < MINI_OS_TICK_WHEEL)
-        (void)mini_os_remove_thread_from_blocked_list(thread);
+        (void)mini_os_wheel_remove(thread);
 }
 
 /**
@@ -622,6 +620,9 @@ mini_os_err_t mini_os_thread_delete(mini_os_thread_t* thread)
         mini_os_remove_thread_from_ready_running_list(thread);
     else if (thread->state == MINI_OS_THREAD_STATE_BLOCKED)
         mini_os_thread_unlink_blocked(thread);
+    /* the target's parked calls can never return: drop their in-flight object
+     * references, or the objects it waited on could never be deleted again */
+    mini_os_sync_wait_ref_drop_all(thread);
 #if MINI_OS_FIND_BY_NAME
     mini_os_list_remove(&thread->g_list_node);
 #endif
@@ -718,6 +719,9 @@ mini_os_err_t mini_os_thread_delete_static(mini_os_thread_t* thread, mini_os_uin
         mini_os_remove_thread_from_ready_running_list(thread);
     else if (thread->state == MINI_OS_THREAD_STATE_BLOCKED)
         mini_os_thread_unlink_blocked(thread);
+    /* the target's parked calls can never return: drop their in-flight object
+     * references, or the objects it waited on could never be deleted again */
+    mini_os_sync_wait_ref_drop_all(thread);
 #if MINI_OS_FIND_BY_NAME
     mini_os_list_remove(&thread->g_list_node);
 #endif
@@ -913,7 +917,7 @@ mini_os_err_t mini_os_thread_delay_tick_until(mini_os_uint32_t ticks)
 
     if (ticks == 0)
         return MINI_OS_OK;
-    if (mini_os_thread_current() == MINI_OS_NULL)
+    if (mini_os_thread_get_current() == MINI_OS_NULL)
         return MINI_OS_ERR_INVAL; /* thread context only */
 
     remain = mini_os_tick_until(ticks);
@@ -927,7 +931,7 @@ mini_os_err_t mini_os_thread_delay_tick_until(mini_os_uint32_t ticks)
  * @brief Set the name of a thread
  * @param[in] thread thread to rename
  * @param[in] name new name (bounded copy, always NUL-terminated)
- * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when thread is MINI_OS_NULL
+ * @return MINI_OS_OK_ on success; MINI_OS_ERR_INVAL when thread is MINI_OS_NULL
  */
 mini_os_err_t mini_os_thread_set_name(mini_os_thread_t* thread, const char* name)
 {
@@ -1059,7 +1063,7 @@ mini_os_err_t mini_os_thread_deadline_apply(mini_os_thread_t* thread, mini_os_ti
      * class, or being promoted now; a plain NORMAL thread with no deadline is
      * not, so it is left in place (re-linking would rotate its FIFO slot) */
     relink = (mini_os_bool_t)(thread->sched_policy != MINI_OS_SCHED_NORMAL || thread->dl_deadline_inherit != 0 || deadline != 0);
-#else  /* EDF only: only an EDF thread is ordered by deadline within its level */
+#else /* EDF only: only an EDF thread is ordered by deadline within its level */
     relink = (mini_os_bool_t)(thread->sched_policy == MINI_OS_SCHED_EDF);
 #endif
 
@@ -1187,13 +1191,7 @@ mini_os_err_t mini_os_thread_set_cleanup(mini_os_thread_t* thread, void (*cleanu
 }
 
 #if MINI_OS_THREAD_DEADLINE
-mini_os_thread_t *mini_os_deadline_thread_create(           const char *name, 
-                                                            mini_os_uint32_t stack_size,
-                                                            mini_os_tick_t deadline,
-                                                            mini_os_tick_t period,
-                                                            mini_os_tick_t runtime,
-                                                            void( *entry)(void*),
-                                                            void * const parameter)
+mini_os_thread_t* mini_os_deadline_thread_create(const char* name, mini_os_uint32_t stack_size, mini_os_tick_t deadline, mini_os_tick_t period, mini_os_tick_t runtime, void (*entry)(void*), void* const parameter)
 {
     mini_os_thread_t* thread;
     mini_os_uint32_t* stack;
@@ -1256,17 +1254,10 @@ mini_os_thread_t *mini_os_deadline_thread_create(           const char *name,
     return thread;
 }
 
-mini_os_thread_t *mini_os_deadline_thread_create_static(    const char *name, 
-                                                            mini_os_uint32_t stack_size,
-                                                            mini_os_tick_t deadline,
-                                                            mini_os_tick_t period,
-                                                            mini_os_tick_t runtime,
-                                                            void( *entry)(void*),
-                                                            void * const parameter,
-                                                            mini_os_uint32_t* stack_buffer,
-                                                            mini_os_thread_t* task_buffer)
+mini_os_thread_t* mini_os_deadline_thread_create_static(const char* name, mini_os_uint32_t stack_size, mini_os_tick_t deadline, mini_os_tick_t period, mini_os_tick_t runtime, void (*entry)(void*), void* const parameter,
+                                                        mini_os_uint32_t* stack_buffer, mini_os_thread_t* task_buffer)
 {
-    if(!name||stack_size == 0 ||!entry||!stack_buffer||!task_buffer)
+    if (!name || stack_size == 0 || !entry || !stack_buffer || !task_buffer)
         return MINI_OS_NULL;
     if (mini_os_dl_params_valid(runtime, deadline, period) == MINI_OS_FALSE)
         return MINI_OS_NULL; /* Linux constraint: 0 < runtime <= deadline <= period */
@@ -1336,13 +1327,13 @@ mini_os_err_t mini_os_thread_set_deadline(mini_os_thread_t* thread, mini_os_tick
     if (deadline == 0)
     {
         /* clear: back to ordinary FIFO / round-robin inside the level */
-        thread->sched_policy     = MINI_OS_SCHED_NORMAL;
+        thread->sched_policy = MINI_OS_SCHED_NORMAL;
         thread->dl_deadline_time = 0;
     }
     else
     {
         (void)mini_os_get_tick(&now);
-        thread->sched_policy     = MINI_OS_SCHED_EDF;
+        thread->sched_policy = MINI_OS_SCHED_EDF;
         thread->dl_deadline_time = now + deadline; /* relative deadline -> absolute */
     }
 
@@ -1454,7 +1445,7 @@ mini_os_err_t mini_os_deadline_thread_set_bandwidth(mini_os_thread_t* thread, mi
     }
 
     thread->dl_run_time = runtime;
-    thread->dl_period   = period;
+    thread->dl_period = period;
     /* dl_deadline_time is deliberately left alone: the upcoming deadline does not
      * move, the new period applies from the following job boundary on */
     mini_os_irq_restore(irq);
@@ -1468,7 +1459,7 @@ mini_os_err_t mini_os_deadline_thread_set_bandwidth(mini_os_thread_t* thread, mi
  * @return thread handle on success; MINI_OS_NULL when name is MINI_OS_NULL or
  *         no thread carries that name
  */
-mini_os_thread_t* mini_os_find_by_name(const char* name)
+mini_os_thread_t* mini_os_thread_find_by_name(const char* name)
 {
     if (!name)
         return MINI_OS_NULL;
@@ -1539,11 +1530,11 @@ MINI_OS_WEAK mini_os_err_t mini_os_thread_idle_hook(idle_hook_t hook, void* para
  * @brief Default idle thread body (runs the idle hook loop)
  * @param[in] param argument forwarded to the idle hook
  */
-MINI_OS_WEAK void mini_os_thread_idle(void* param) { mini_os_thread_idle_hook(MINI_OS_NULL, param); }
+MINI_OS_WEAK void mini_os_thread_idle_entry(void* param) { mini_os_thread_idle_hook(MINI_OS_NULL, param); }
 
 /**
  * @brief Create the idle thread at the lowest priority
  * @note weak default: override it to customize the idle thread. The idle thread
  *       must never block, so it is created at MINI_OS_PRIORITY - 1
  */
-MINI_OS_WEAK void mini_os_thread_idle_create(void) { s_idle_thread = mini_os_thread_create(MINI_OS_IDLE_THREAD_NAME, MINI_OS_DEFAULT_IDLE_STACK_SIZE, MINI_OS_PRIORITY - 1, mini_os_thread_idle, MINI_OS_NULL); }
+MINI_OS_WEAK void mini_os_thread_idle_create(void) { s_idle_thread = mini_os_thread_create(MINI_OS_IDLE_THREAD_NAME, MINI_OS_DEFAULT_IDLE_STACK_SIZE, MINI_OS_PRIORITY - 1, mini_os_thread_idle_entry, MINI_OS_NULL); }

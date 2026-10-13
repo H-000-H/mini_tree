@@ -517,14 +517,14 @@ config MINI_OS_SPINLOCK
     help
       编译 inc/spinlock.h 的内核自旋锁实现 (header-only; 关闭时该头
       不定义任何实体)。裸机与内核的等锁原语共用该实现, 因此选了
-      mini-os 后端就应该保持开启。关闭后失去 islocked 查询与原子
+      mini-os 后端就应该保持开启。关闭后失去 is_locked 查询与原子
       模式 (SMP) 能力。
 
       Compile the in-kernel spinlock (inc/spinlock.h, header-only;
       the header defines nothing when off). Bare-metal and kernel
       locking primitives share this implementation, so keep this on
       whenever the mini-os backend is selected. Turning it off loses
-      islocked and the atomic (SMP) mode.
+      is_locked and the atomic (SMP) mode.
 
 config MINI_OS_SPINLOCK_ATOMIC
     bool "mini-os 自旋锁原子模式 (SMP)"

@@ -6,15 +6,15 @@
  */
 #ifndef SCHEDULE_H
 #define SCHEDULE_H
-#include "err.h"
+#include <err.h>
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-#include "list.h"
-#include "mini_config.h"
-#include "redef.h"
-#include "thread.h"
+#include <list.h>
+#include <mini_config.h>
+#include <redef.h>
+#include <thread.h>
 /**
  * @brief Convert ticks to milliseconds
  * @param[in] ticks tick count
@@ -69,7 +69,7 @@ mini_os_err_t mini_os_schedule_yield(void);
  *        the interrupted one
  * @return MINI_OS_OK always
  * @note call once at the end of an ISR that woke threads through an *_isr API
- *       (mini_os_queue_send_isr()/mini_os_event_set_group_isr()/...). It checks
+ *       (mini_os_queue_send_isr()/mini_os_event_group_set_isr()/...). It checks
  *       the ready bitmap itself and sets PendSV pending only when a numerically
  *       lower (more urgent) priority became ready, so the switch happens on ISR
  *       exit and an equal-or-lower priority wake costs nothing -- the generic
@@ -106,7 +106,7 @@ mini_os_err_t mini_os_remove_thread_from_ready_running_list(mini_os_thread_t* th
  * @note only unlinks the wheel node; the caller decides the next state
  *       (e.g. resume -> add to the ready/running list, delete -> free the TCB)
  */
-mini_os_err_t mini_os_remove_thread_from_blocked_list(mini_os_thread_t* thread);
+mini_os_err_t mini_os_wheel_remove(mini_os_thread_t* thread);
 
 /**
  * @brief Park a thread in the time wheel for 'ticks' ticks (state -> BLOCKED)
@@ -133,15 +133,75 @@ mini_os_uint32_t mini_os_wheel_remain(mini_os_thread_t* thread);
  *            in the time wheel for this many ticks
  * @param[in] irq_level IRQ level saved by the caller with mini_os_irq_save();
  *            the caller must have checked the wait condition while holding it
+ * @param[in] wait_obj object the calling API acquired with mini_os_obj_acquire()
+ * @param[in] wait_storage descriptor storage the caller's release needs
+ * @param[in] wait_size descriptor size for the release above
  * @return MINI_OS_OK when woken by an event; MINI_OS_ERR_TIMEOUT when the
  *         wheel timeout expired first; MINI_OS_ERR_INVAL on invalid arguments
  * @note the thread is parked via wait_node on the wait list and (timed case)
  *       via list_node in the time wheel; the wake side unlinks both, so the
  *       caller resumes immediately on the event with no polling
+ * @note the in-flight reference is recorded on the TCB while parked and
+ *       forgotten on the way back, so deleting the thread drops it instead of
+ *       leaking it (the waited-on object stays deletable); the reference itself
+ *       is still released by the call on its way out, as before
  * @note consumes the caller's critical section (restores irq_level itself)
  *       so the condition check and the park stay atomic; thread context only
  */
-mini_os_err_t mini_os_sync_wait_park(mini_os_list_t* wait_list, mini_os_uint32_t wait_mask, mini_os_tick_t timeout_tick, mini_os_irq_t irq_level);
+mini_os_err_t mini_os_sync_wait_park(mini_os_list_t* wait_list, mini_os_uint32_t wait_mask, mini_os_tick_t timeout_tick, mini_os_irq_t irq_level, mini_os_obj_t* wait_obj, void* wait_storage, mini_os_size_t wait_size);
+
+/**
+ * @brief Record an in-flight object reference of a call that is about to park
+ * @param[in,out] thread thread that is about to park
+ * @param[in] obj object the call acquired with mini_os_obj_acquire()
+ * @param[in] storage descriptor storage the call's release may reclaim
+ * @param[in] size descriptor size for the reclaim above
+ * @note silently skipped when the tracking stack is full: the reference then
+ *       simply stays held by the call, as before. mutex_lock() nests one level
+ *       (it parks through its embedded semaphore), hence the depth of 2
+ * @note caller must hold interrupts disabled
+ */
+void mini_os_sync_wait_ref_push(mini_os_thread_t* thread, mini_os_obj_t* obj, void* storage, mini_os_size_t size);
+
+/**
+ * @brief Forget the newest in-flight object reference recorded above
+ * @param[in,out] thread thread whose call came back from the park
+ * @note the reference itself is still released by the call on its way out
+ */
+void mini_os_sync_wait_ref_pop(mini_os_thread_t* thread);
+
+/**
+ * @brief Drop every recorded in-flight reference of a thread being deleted
+ * @param[in,out] thread thread whose parked calls can never return
+ * @note the last drop may reclaim the descriptor (heap: freed, caller storage:
+ *       cleared), which is exactly what the leaked reference used to prevent
+ */
+void mini_os_sync_wait_ref_drop_all(mini_os_thread_t* thread);
+
+/**
+ * @brief Put one parked thread back on the ready/running list (wake side of
+ *        mini_os_sync_wait_park())
+ * @param[in,out] thread parked thread, still linked on its sync-object wait list
+ * @param[in] succeeded result stored for the thread: MINI_OS_TRUE makes its
+ *            mini_os_sync_wait_park() return MINI_OS_OK, MINI_OS_FALSE makes it
+ *            return MINI_OS_ERR_TIMEOUT
+ * @details unlinks the thread from the sync-object wait list and, when it was
+ *          parked with a timeout, from the time wheel, then makes it ready again.
+ *          An object that does not distinguish a kill from a timeout (see
+ *          mini_os_obj_kill_error()) passes MINI_OS_FALSE here; one that wants the
+ *          re-check to report MINI_OS_ERR_DEAD passes MINI_OS_TRUE
+ * @note caller must hold interrupts disabled
+ */
+void mini_os_sync_wake_thread(mini_os_thread_t* thread, mini_os_bool_t succeeded);
+
+/**
+ * @brief Put every thread parked on a wait list back on the ready/running list
+ * @param[in] wait_list sync-object wait list to drain
+ * @param[in] succeeded result stored for each woken thread
+ * @return MINI_OS_TRUE when at least one thread was moved back to the ready list
+ * @note caller must hold interrupts disabled
+ */
+mini_os_bool_t mini_os_sync_wake_all(mini_os_list_t* wait_list, mini_os_bool_t succeeded);
 
 MINI_OS_STATIC_INLINE mini_os_uint8_t mini_os_get_highest_priority(void)
 {

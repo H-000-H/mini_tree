@@ -10,7 +10,7 @@
 extern "C"
 {
 #endif
-#include "redef.h"
+#include <redef.h>
 typedef void (*svc_call_back)(mini_os_uint32_t* frame, void* arg);
 
 /* SVC helpers */

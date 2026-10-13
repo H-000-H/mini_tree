@@ -10,9 +10,10 @@
 extern "C"
 {
 #endif
-#include "list.h"
-#include "mini_config.h"
-#include "redef.h"
+#include <list.h>
+#include <mini_config.h>
+#include <obj.h>
+#include <redef.h>
 // clang-format off
 typedef struct mini_os_queue mini_os_queue_t;
 
@@ -30,7 +31,7 @@ struct mini_os_queue
     mini_os_uint8_t  depth;                        /**< queue depth (the number of messages in the queue) */
     mini_os_uint8_t  write_idx;                    /**< next slot index to write (wraps at max_depth) */
     mini_os_uint8_t  read_idx;                     /**< next slot index to read (wraps at max_depth) */
-    mini_os_bool_t   heap_owned;                   /**< MINI_OS_TRUE when the descriptor and pool came from the heap */
+    mini_os_obj_t    obj;                          /**< storage ownership + in-flight user count */
     void*            msg_base;                     /**< message pool base (max_depth * msg_size bytes) */
     mini_os_list_t   send_list;                    /**< threads blocked while the queue is full (waiting to send) */
     mini_os_list_t   receive_list;                 /**< threads blocked while the queue is empty (waiting to receive) */
@@ -62,10 +63,35 @@ mini_os_queue_t* mini_os_queue_create_static(const char* name, mini_os_uint16_t 
  * @brief Delete a heap-created queue and free its memory
  * @param[in] queue queue handle
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
- *         MINI_OS_ERR_BUSY while threads are still blocked on the queue;
- *         MINI_OS_ERR_NOTSUPP for statically created queues
+ *         MINI_OS_ERR_REJECT while API calls are still in flight, unless
+ *         mini_os_queue_enable_kill() was called;
+ *         MINI_OS_ERR_NOTSUPP for a statically created queue
+ * @note the descriptor and the message pool are reclaimed by the last user that
+ *       leaves, so they outlive every in-flight call; later calls fail with
+ *       MINI_OS_ERR_REJECT
  */
 mini_os_err_t mini_os_queue_delete(mini_os_queue_t* queue);
+
+/**
+ * @brief Delete a static queue (clears the caller-provided storage, never frees)
+ * @param[in] queue queue handle
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
+ *         MINI_OS_ERR_REJECT while API calls are still in flight, unless
+ *         mini_os_queue_enable_kill() was called;
+ *         MINI_OS_ERR_NOTSUPP for a heap queue (use mini_os_queue_delete)
+ * @note the caller-provided message pool is left untouched
+ */
+mini_os_err_t mini_os_queue_delete_static(mini_os_queue_t* queue);
+
+/**
+ * @brief Allow the delete path to force blocked senders/receivers out
+ * @param[in,out] queue queue to arm
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments
+ * @note once armed, the delete variants no longer refuse a queue with blocked
+ *       threads: they are unlinked and their send/receive returns
+ *       MINI_OS_ERR_DEAD
+ */
+mini_os_err_t mini_os_queue_enable_kill(mini_os_queue_t* queue);
 
 /**
  * @brief Send (copy) a message into the queue
@@ -75,7 +101,9 @@ mini_os_err_t mini_os_queue_delete(mini_os_queue_t* queue);
  *            until space is available, otherwise block up to timeout_tick ticks
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
  *         MINI_OS_ERR_AGAIN when non-blocking and the queue is full;
- *         MINI_OS_ERR_TIMEOUT when the finite timeout expires
+ *         MINI_OS_ERR_TIMEOUT when the finite timeout expires;
+ *         MINI_OS_ERR_DEAD when the queue was destroyed while blocked;
+ *         MINI_OS_ERR_REJECT when the queue is already destroyed on entry
  * @note a finite timeout wakes instantly once space is available (wait-list
  *       park); the time wheel enforces the timeout
  */
@@ -89,7 +117,9 @@ mini_os_err_t mini_os_queue_send(mini_os_queue_t* queue, const void* msg, mini_o
  *            until a message is available, otherwise block up to timeout_tick ticks
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
  *         MINI_OS_ERR_AGAIN when non-blocking and the queue is empty;
- *         MINI_OS_ERR_TIMEOUT when the finite timeout expires
+ *         MINI_OS_ERR_TIMEOUT when the finite timeout expires;
+ *         MINI_OS_ERR_DEAD when the queue was destroyed while blocked;
+ *         MINI_OS_ERR_REJECT when the queue is already destroyed on entry
  * @note a finite timeout wakes instantly once a message arrives (wait-list
  *       park); the time wheel enforces the timeout
  */

@@ -10,11 +10,12 @@
 extern "C"
 {
 #endif
-#include "list.h"
-#include "memory.h"
-#include "mini_config.h"
-#include "redef.h"
-#include "thread.h"
+#include <list.h>
+#include <memory.h>
+#include <mini_config.h>
+#include <obj.h>
+#include <redef.h>
+#include <thread.h>
 
 #if MINI_OS_EVENT
 
@@ -36,7 +37,7 @@ struct mini_os_event_group
     mini_os_list_t       wait_list;     /**< Wait list */
     mini_os_event_type_t event_type;    /**< the whole bit be used by event group or use only the 32 bit */
     mini_os_bool_t       is_auto_clear; /**< is clear by self */
-    mini_os_bool_t       heap_owned;    /**< MINI_OS_TRUE when the descriptor came from the heap */
+    mini_os_obj_t        obj;           /**< storage ownership + in-flight user count */
 };
 
 /**
@@ -60,11 +61,24 @@ mini_os_event_group_t* mini_os_event_group_create_static(mini_os_event_group_t* 
  * @brief Delete a heap-created event group and free its memory
  * @param[in] event_group Event group
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments;
- *         MINI_OS_ERR_BUSY while threads are still blocked on the group;
+ *         MINI_OS_ERR_REJECT while API calls are still in flight, unless
+ *         mini_os_event_group_enable_kill() was called;
  *         MINI_OS_ERR_NOTSUPP for statically created groups
- * @note thread context only
+ * @note thread context only; once destroy is requested the descriptor is
+ *       reclaimed when the last in-flight user leaves, and later calls fail
+ *       with MINI_OS_ERR_REJECT
  */
 mini_os_err_t mini_os_event_group_delete(mini_os_event_group_t* event_group);
+
+/**
+ * @brief Allow the delete path to force parked waiters out
+ * @param[in,out] event_group Event group
+ * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL on invalid arguments
+ * @note once armed, mini_os_event_group_delete() no longer refuses a group with
+ *       waiters: they are unlinked and their mini_os_event_group_wait() returns
+ *       MINI_OS_ERR_DEAD
+ */
+mini_os_err_t mini_os_event_group_enable_kill(mini_os_event_group_t* event_group);
 
 /**
  * @brief Set event group
@@ -75,7 +89,7 @@ mini_os_err_t mini_os_event_group_delete(mini_os_event_group_t* event_group);
  *       waiter whose mask becomes satisfied is woken; thread context only
  *       (triggers a yield on wake; use the _isr variant from ISR context)
  */
-mini_os_err_t mini_os_event_set_group(mini_os_event_group_t* event_group, mini_os_uint32_t event);
+mini_os_err_t mini_os_event_group_set(mini_os_event_group_t* event_group, mini_os_uint32_t event);
 
 /**
  * @brief Set event group from ISR context (never blocks, never yields)
@@ -87,7 +101,7 @@ mini_os_err_t mini_os_event_set_group(mini_os_event_group_t* event_group, mini_o
  *       call mini_os_schedule_yield_isr() once at the end of the ISR (same
  *       pattern as the queue ISR API)
  */
-mini_os_err_t mini_os_event_set_group_isr(mini_os_event_group_t* event_group, mini_os_uint32_t event);
+mini_os_err_t mini_os_event_group_set_isr(mini_os_event_group_t* event_group, mini_os_uint32_t event);
 
 /**
  * @brief Get event group
@@ -95,7 +109,7 @@ mini_os_err_t mini_os_event_set_group_isr(mini_os_event_group_t* event_group, mi
  * @param[out] event Event flags
  * @return mini_os_err_t Error code
  */
-mini_os_err_t mini_os_event_get_group(mini_os_event_group_t* event_group, mini_os_uint32_t* event);
+mini_os_err_t mini_os_event_group_get(mini_os_event_group_t* event_group, mini_os_uint32_t* event);
 
 /**
  * @brief Clear event group
@@ -103,14 +117,14 @@ mini_os_err_t mini_os_event_get_group(mini_os_event_group_t* event_group, mini_o
  * @param[in] event Event flags to clear
  * @return mini_os_err_t Error code
  */
-mini_os_err_t mini_os_event_clear_group(mini_os_event_group_t* event_group, mini_os_uint32_t event);
+mini_os_err_t mini_os_event_group_clear(mini_os_event_group_t* event_group, mini_os_uint32_t event);
 
 /**
  * @brief Configure whether satisfied bits are auto-cleared
  * @param[in,out] event_group Event group
  * @param[in] is_auto_clear MINI_OS_TRUE = consume the satisfied bits on a
  *            successful wait (auto-clear); MINI_OS_FALSE = keep the bits and
- *            clear them manually with mini_os_event_clear_group()
+ *            clear them manually with mini_os_event_group_clear()
  * @return mini_os_err_t Error code
  * @note both create functions default to auto-clear (MINI_OS_TRUE)
  */
@@ -126,12 +140,14 @@ mini_os_err_t mini_os_event_group_set_auto_clear(mini_os_event_group_t* event_gr
  *            (MINI_OS_NULL when the caller does not need them)
  * @return MINI_OS_OK when the mask is satisfied; MINI_OS_ERR_INVAL on invalid
  *         arguments; MINI_OS_ERR_AGAIN when non-blocking and not satisfied;
- *         MINI_OS_ERR_TIMEOUT when the finite timeout expires
+ *         MINI_OS_ERR_TIMEOUT when the finite timeout expires; MINI_OS_ERR_DEAD
+ *         when the group was destroyed while waiting; MINI_OS_ERR_REJECT when
+ *         the group is already destroyed on entry
  * @note OR type: any bit of mask set satisfies the wait; WHOLE type: all bits
  *       of mask must be set; with auto-clear enabled the satisfied bits are
  *       consumed by the waiter
  */
-mini_os_err_t mini_os_event_wait(mini_os_event_group_t* event_group, mini_os_uint32_t mask, mini_os_tick_t timeout_tick, mini_os_uint32_t* out_event);
+mini_os_err_t mini_os_event_group_wait(mini_os_event_group_t* event_group, mini_os_uint32_t mask, mini_os_tick_t timeout_tick, mini_os_uint32_t* out_event);
 
 #endif /* MINI_OS_EVENT */
 

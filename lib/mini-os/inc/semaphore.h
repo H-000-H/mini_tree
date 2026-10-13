@@ -6,13 +6,14 @@
  */
 #ifndef SEM_H
 #define SEM_H
-#include "err.h"
+#include <err.h>
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
-#include "list.h"
-#include "redef.h"
+#include <list.h>
+#include <obj.h>
+#include <redef.h>
 typedef struct mini_os_semaphore mini_os_semaphore_t;
 
 /**
@@ -23,7 +24,7 @@ struct mini_os_semaphore
     char             name[MINI_OS_SEMAPHORE_NAME_LEN]; /**< Semaphore name */
     mini_os_uint16_t count;                            /**< Semaphore count */
     mini_os_uint16_t max_count;                        /**< Semaphore max count (capacity, >= 1; 1 = binary) */
-    mini_os_bool_t   is_static;                        /**< Static semaphore flag */
+    mini_os_obj_t    obj;                              /**< storage ownership + in-flight user count */
     mini_os_list_t   wait_list;                        /**< List of threads waiting on the semaphore */
 #if MINI_OS_FIND_BY_NAME
     mini_os_list_t g_list_node; /**< Node of the global by-name registry */
@@ -96,8 +97,13 @@ mini_os_semaphore_t* mini_os_binary_semaphore_create_static(const char* name, mi
  * @param[in] semaphore Pointer to the semaphore structure
  * @return MINI_OS_OK on success, MINI_OS_ERR_INVAL if semaphore is NULL,
  *         MINI_OS_ERR_NOTSUPP for a static semaphore (use
- *         mini_os_semaphore_delete_static), MINI_OS_ERR_BUSY while threads
- *         are still parked on it
+ *         mini_os_semaphore_delete_static), MINI_OS_ERR_REJECT while threads
+ *         are still parked on it (unless mini_os_semaphore_enable_kill() was
+ *         called)
+ * @note the descriptor is reclaimed by the last in-flight user that leaves, so
+ *       it outlives every in-flight call; later calls fail with
+ *       MINI_OS_ERR_REJECT. With kill enabled the parked takers are unlinked and
+ *       their mini_os_semaphore_take() returns MINI_OS_ERR_TIMEOUT
  */
 mini_os_err_t mini_os_semaphore_delete(mini_os_semaphore_t* semaphore);
 
@@ -106,9 +112,20 @@ mini_os_err_t mini_os_semaphore_delete(mini_os_semaphore_t* semaphore);
  * @param[in] semaphore Pointer to the semaphore structure
  * @return MINI_OS_OK on success, MINI_OS_ERR_INVAL if semaphore is NULL,
  *         MINI_OS_ERR_NOTSUPP for a heap semaphore (use mini_os_semaphore_delete),
- *         MINI_OS_ERR_BUSY while threads are still parked on it
+ *         MINI_OS_ERR_REJECT while threads are still parked on it (unless
+ *         mini_os_semaphore_enable_kill() was called)
  */
 mini_os_err_t mini_os_semaphore_delete_static(mini_os_semaphore_t* semaphore);
+
+/**
+ * @brief Allow the delete path to force parked takers out
+ * @param[in,out] semaphore Pointer to the semaphore structure
+ * @return MINI_OS_OK on success, MINI_OS_ERR_INVAL if semaphore is NULL
+ * @note once armed, the delete variants no longer refuse a semaphore with parked
+ *       takers: they are unlinked and their mini_os_semaphore_take() returns
+ *       MINI_OS_ERR_TIMEOUT
+ */
+mini_os_err_t mini_os_semaphore_enable_kill(mini_os_semaphore_t* semaphore);
 
 /**
  * @brief Take a semaphore (consumes a published unit, parks the caller when empty)
@@ -118,7 +135,8 @@ mini_os_err_t mini_os_semaphore_delete_static(mini_os_semaphore_t* semaphore);
  * @return MINI_OS_OK on success, MINI_OS_ERR_INVAL if semaphore is NULL or there
  *         is no thread context for a blocking wait, MINI_OS_ERR_AGAIN when the
  *         count is 0 and timeout_tick is 0, MINI_OS_ERR_TIMEOUT when the wait
- *         expired or the thread was unlinked by suspend/resume/delete
+ *         expired or the thread was unlinked by suspend/resume/delete,
+ *         MINI_OS_ERR_REJECT when the semaphore is already destroyed on entry
  * @note a woken take returns OK without touching the count: the giver handed
  *       the unit to this thread directly (RT-Thread style, no retry loop)
  */
@@ -161,7 +179,7 @@ mini_os_err_t mini_os_semaphore_try_take(mini_os_semaphore_t* semaphore);
  * @param[in] name Semaphore name
  * @return A pointer to the semaphore, or MINI_OS_NULL if not found
  */
-mini_os_semaphore_t* mini_os_get_semaphore_by_name(const char* name);
+mini_os_semaphore_t* mini_os_semaphore_find_by_name(const char* name);
 #endif
 
 /**

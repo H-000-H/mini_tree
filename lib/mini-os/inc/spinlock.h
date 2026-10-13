@@ -16,17 +16,17 @@
  */
 #ifndef SPINLOCK_H
 #define SPINLOCK_H
-#include "mini_config.h"
+#include <mini_config.h>
 
 #if MINI_OS_SPINLOCK /* default 0: compiled only with CONFIG_MINI_OS_SPINLOCK=1 (or an external predefinition) */
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-#include "err.h"
-#include "port.h"
-#include "redef.h"
-#include "schedule.h"
+#include <err.h>
+#include <port.h>
+#include <redef.h>
+#include <schedule.h>
 
 typedef struct mini_os_spinlock mini_os_spinlock_t;
 
@@ -128,7 +128,7 @@ MINI_OS_STATIC_INLINE mini_os_err_t mini_os_spinlock_unlock(mini_os_spinlock_t* 
  * @param[out] locked receives the result: MINI_OS_TRUE = held
  * @return MINI_OS_OK on success; MINI_OS_ERR_INVAL when an argument is NULL
  */
-MINI_OS_STATIC_INLINE mini_os_err_t mini_os_spinlock_islocked(mini_os_spinlock_t* spinlock, mini_os_bool_t* locked)
+MINI_OS_STATIC_INLINE mini_os_err_t mini_os_spinlock_is_locked(mini_os_spinlock_t* spinlock, mini_os_bool_t* locked)
 {
     if (spinlock == MINI_OS_NULL || locked == MINI_OS_NULL)
         return MINI_OS_ERR_INVAL;

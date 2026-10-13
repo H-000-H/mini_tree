@@ -12,16 +12,16 @@
  *    sentinel, so the head is A again and the thread keeps running
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
-#include "schedule.h"
+#include <schedule.h>
 
-#include "err.h"
-#include "list.h"
-#include "mini_config.h"
-#include "port.h"
-#include "redef.h"
-#include "semaphore.h"
-#include "thread.h"
-#include "timer.h"
+#include <err.h>
+#include <list.h>
+#include <mini_config.h>
+#include <port.h>
+#include <redef.h>
+#include <semaphore.h>
+#include <thread.h>
+#include <timer.h>
 
 /** @brief Ready bitmap: bit i set = priority i has a ready or running thread*/
 mini_os_uint32_t g_priority = 0u;
@@ -67,10 +67,7 @@ static mini_os_list_t s_dl_ready_list;
  *          period must stay out of the bandwidth arithmetic and the job refill
  * @note caller must hold interrupts disabled
  */
-MINI_OS_STATIC_INLINE mini_os_bool_t mini_os_dl_scheduled(const mini_os_thread_t* thread)
-{
-    return (mini_os_bool_t)(thread->sched_policy == MINI_OS_SCHED_DEADLINE || thread->dl_deadline_inherit != 0);
-}
+MINI_OS_STATIC_INLINE mini_os_bool_t mini_os_dl_scheduled(const mini_os_thread_t* thread) { return (mini_os_bool_t)(thread->sched_policy == MINI_OS_SCHED_DEADLINE || thread->dl_deadline_inherit != 0); }
 #endif /* MINI_OS_THREAD_DEADLINE */
 
 /** @brief Slot of the thread time wheel serviced on the next tick */
@@ -91,10 +88,7 @@ static mini_os_uint64_t s_dl_running_bw = 0u;
 /**
  * @brief Bandwidth of one DL task, in MINI_OS_DL_BW_SCALE units
  */
-static mini_os_uint64_t mini_os_dl_bw_of(mini_os_tick_t runtime, mini_os_tick_t period)
-{
-    return ((mini_os_uint64_t)runtime * (mini_os_uint64_t)MINI_OS_DL_BW_SCALE) / (mini_os_uint64_t)period;
-}
+static mini_os_uint64_t mini_os_dl_bw_of(mini_os_tick_t runtime, mini_os_tick_t period) { return ((mini_os_uint64_t)runtime * (mini_os_uint64_t)MINI_OS_DL_BW_SCALE) / (mini_os_uint64_t)period; }
 
 /**
  * @brief Admission control: reserve runtime/period for a new DL task
@@ -133,7 +127,7 @@ static void* s_dl_miss_param = MINI_OS_NULL;
  */
 mini_os_err_t mini_os_dl_miss_hook_set(mini_os_dl_miss_hook_t hook, void* param)
 {
-    s_dl_miss_hook  = hook;
+    s_dl_miss_hook = hook;
     s_dl_miss_param = param;
     return MINI_OS_OK;
 }
@@ -162,7 +156,7 @@ static void* s_dl_finish_param = MINI_OS_NULL;
  */
 mini_os_err_t mini_os_dl_finish_hook_set(mini_os_dl_finish_hook_t hook, void* param)
 {
-    s_dl_finish_hook  = hook;
+    s_dl_finish_hook = hook;
     s_dl_finish_param = param;
     return MINI_OS_OK;
 }
@@ -204,7 +198,7 @@ mini_os_err_t mini_os_schedule_init(void)
         mini_os_list_init(&s_wheel[i]);
 #if MINI_OS_THREAD_DEADLINE
     mini_os_list_init(&s_dl_ready_list);
-    s_dl_this_bw    = 0u;
+    s_dl_this_bw = 0u;
     s_dl_running_bw = 0u;
 #endif
     s_current_slot = 0;
@@ -268,7 +262,7 @@ mini_os_err_t mini_os_schedule_switch(void)
     else
 #endif
     {
-        mini_os_uint8_t old_priority  = s_current_priority;
+        mini_os_uint8_t old_priority = s_current_priority;
         mini_os_uint8_t next_priority = mini_os_get_highest_priority();
 
         if (next_priority >= (mini_os_uint8_t)MINI_OS_PRIORITY)
@@ -284,8 +278,7 @@ mini_os_err_t mini_os_schedule_switch(void)
         if (mini_os_container_of(next_node, mini_os_thread_t, list_node)->sched_policy == MINI_OS_SCHED_NORMAL)
 #endif
         {
-            if (mini_os_current_thread != MINI_OS_NULL && next_priority == old_priority && mini_os_current_thread->state == MINI_OS_THREAD_STATE_READY &&
-                mini_os_current_thread->list_node.next != &mini_os_current_thread->list_node)
+            if (mini_os_current_thread != MINI_OS_NULL && next_priority == old_priority && mini_os_current_thread->state == MINI_OS_THREAD_STATE_READY && mini_os_current_thread->list_node.next != &mini_os_current_thread->list_node)
             {
                 /* round-robin: successor, wrap past the sentinel at the tail */
                 next_node = mini_os_current_thread->list_node.next;
@@ -358,8 +351,7 @@ mini_os_err_t mini_os_schedule_yield_isr(void)
                  * though the priority number is equal */
                 mini_os_list_t* head = g_ready_running_list[highest].next;
 
-                if (head != &g_ready_running_list[highest] && head != &mini_os_current_thread->list_node &&
-                    mini_os_container_of(head, mini_os_thread_t, list_node)->sched_policy == MINI_OS_SCHED_EDF)
+                if (head != &g_ready_running_list[highest] && head != &mini_os_current_thread->list_node && mini_os_container_of(head, mini_os_thread_t, list_node)->sched_policy == MINI_OS_SCHED_EDF)
                     preempt = MINI_OS_TRUE;
             }
 #endif
@@ -412,7 +404,7 @@ mini_os_err_t mini_os_add_thread_to_ready_running_list(mini_os_thread_t* thread)
     else
 #endif /* MINI_OS_THREAD_DEADLINE */
 #if MINI_OS_THREAD_EDF
-    if (thread->sched_policy == MINI_OS_SCHED_EDF)
+        if (thread->sched_policy == MINI_OS_SCHED_EDF)
     {
         /* same priority, EDF: ahead of every ordinary thread, and ahead of the
          * first EDF thread with a later deadline (equal deadlines stay FIFO) */
@@ -489,7 +481,7 @@ mini_os_err_t mini_os_remove_thread_from_ready_running_list(mini_os_thread_t* th
  * @note clears round and marks the slot as "not in the wheel"; the state stays
  *       BLOCKED, so the caller decides where the thread goes next
  */
-mini_os_err_t mini_os_remove_thread_from_blocked_list(mini_os_thread_t* thread)
+mini_os_err_t mini_os_wheel_remove(mini_os_thread_t* thread)
 {
     if (!thread || thread->state != MINI_OS_THREAD_STATE_BLOCKED)
         return MINI_OS_ERR_INVAL;
@@ -539,14 +531,14 @@ static void mini_os_dl_list_insert(mini_os_thread_t* thread)
  */
 static void mini_os_dl_new_job(mini_os_thread_t* thread, mini_os_uint32_t now)
 {
-    thread->dl_budget      = thread->dl_run_time; /* the new job starts with a full budget */
+    thread->dl_budget = thread->dl_run_time; /* the new job starts with a full budget */
     thread->dl_budget_frac = 0u;
     do
     {
         thread->dl_deadline_time += (mini_os_tick_t)thread->dl_period;
     } while ((mini_os_int32_t)(thread->dl_deadline_time - (mini_os_tick_t)now) <= 0);
     thread->dl_throttled = MINI_OS_FALSE;
-    thread->dl_job_done  = MINI_OS_FALSE;
+    thread->dl_job_done = MINI_OS_FALSE;
 }
 
 /**
@@ -694,7 +686,7 @@ mini_os_err_t mini_os_deadline_job_finish(void)
  * @details walks the slot that just came up: a thread with rounds left is
  *          decremented and stays parked, an expired one is unlinked and made
  *          ready. A thread that is also parked on a sync-object wait list is
- *          unlinked from there and flagged wait_done = MINI_OS_FALSE, so its
+ *          unlinked from there and flagged wait_status = MINI_OS_FALSE, so its
  *          mini_os_sync_wait_park() call reports MINI_OS_ERR_TIMEOUT
  * @note called with interrupts masked from mini_os_systick_handler(); the walk
  *       captures the next pointer first because list_remove re-links the node
@@ -727,12 +719,14 @@ static void mini_os_tick_decrement(void)
 #endif
         if (thread->wait_list != MINI_OS_NULL)
         {
-            /* timed-out sync wait: cancel it, the waiter reports the timeout */
-            mini_os_list_remove(&thread->wait_node);
-            thread->wait_list = MINI_OS_NULL;
-            thread->wait_done = MINI_OS_FALSE;
+            /* timed-out sync wait: unpark it as a timeout; its wheel node is
+             * already unlinked above, so only the wait list is left */
+            mini_os_sync_wake_thread(thread, MINI_OS_FALSE);
         }
-        mini_os_add_thread_to_ready_running_list(thread);
+        else
+        {
+            mini_os_add_thread_to_ready_running_list(thread);
+        }
     }
 }
 
@@ -815,6 +809,9 @@ void mini_os_schedule_delay(mini_os_uint32_t ticks)
  * @param[in] timeout_tick (mini_os_tick_t)-1 = wait forever, otherwise park in
  *            the time wheel for this many ticks
  * @param[in] irq_level IRQ level saved by the caller with mini_os_irq_save()
+ * @param[in] wait_obj object the calling API acquired with mini_os_obj_acquire()
+ * @param[in] wait_storage descriptor storage the caller's release needs
+ * @param[in] wait_size descriptor size for the release above
  * @return MINI_OS_OK when woken by an event; MINI_OS_ERR_TIMEOUT when the wheel
  *         timeout expired first; MINI_OS_ERR_INVAL on invalid arguments
  * @details the park happens inside the caller's critical section, so the
@@ -823,10 +820,13 @@ void mini_os_schedule_delay(mini_os_uint32_t ticks)
  *          for a finite timeout, also in the wheel through list_node (free,
  *          because the thread just left the ready list); the wake side unlinks
  *          both, so there is no retry loop and no deadline recomputation
+ * @note the in-flight reference is recorded while parked and forgotten on the
+ *       way back: a thread deleted while parked gets it dropped by the delete
+ *       path instead of leaking it
  * @note consumes the caller's critical section (restores irq_level itself) and
  *       yields; back only after an event wake or a wheel timeout unlinked it
  */
-mini_os_err_t mini_os_sync_wait_park(mini_os_list_t* wait_list, mini_os_uint32_t wait_mask, mini_os_tick_t timeout_tick, mini_os_irq_t irq_level)
+mini_os_err_t mini_os_sync_wait_park(mini_os_list_t* wait_list, mini_os_uint32_t wait_mask, mini_os_tick_t timeout_tick, mini_os_irq_t irq_level, mini_os_obj_t* wait_obj, void* wait_storage, mini_os_size_t wait_size)
 {
     mini_os_thread_t* current;
     mini_os_bool_t    done;
@@ -846,7 +846,8 @@ mini_os_err_t mini_os_sync_wait_park(mini_os_list_t* wait_list, mini_os_uint32_t
 #if MINI_OS_EVENT
     current->wait_mask = wait_mask;
 #endif
-    current->wait_done = MINI_OS_FALSE;
+    current->wait_status = MINI_OS_FALSE;
+    mini_os_sync_wait_ref_push(current, wait_obj, wait_storage, wait_size);
     mini_os_list_tail(&current->wait_node, wait_list);
     if (timeout_tick != (mini_os_tick_t)-1)
     {
@@ -858,10 +859,73 @@ mini_os_err_t mini_os_sync_wait_park(mini_os_list_t* wait_list, mini_os_uint32_t
 
     /* back only after an event wake or a wheel timeout unlinked us */
     irq = mini_os_irq_save();
-    done = current->wait_done;
-    current->wait_done = MINI_OS_TRUE; /* consume the result */
+    done = current->wait_status;
+    current->wait_status = MINI_OS_TRUE; /* consume the result */
+    mini_os_sync_wait_ref_pop(current);  /* the call drops the reference itself */
     mini_os_irq_restore(irq);
     return (done != MINI_OS_FALSE) ? MINI_OS_OK : MINI_OS_ERR_TIMEOUT;
+}
+
+void mini_os_sync_wait_ref_push(mini_os_thread_t* thread, mini_os_obj_t* obj, void* storage, mini_os_size_t size)
+{
+    if (thread == MINI_OS_NULL || thread->wait_ref_depth >= (mini_os_uint8_t)MINI_OS_THREAD_WAIT_REF_MAX)
+        return; /* tracking full: the reference simply stays held by the call */
+
+    thread->wait_refs[thread->wait_ref_depth].obj = obj;
+    thread->wait_refs[thread->wait_ref_depth].storage = storage;
+    thread->wait_refs[thread->wait_ref_depth].size = size;
+    thread->wait_ref_depth = (mini_os_uint8_t)(thread->wait_ref_depth + 1u);
+}
+
+void mini_os_sync_wait_ref_pop(mini_os_thread_t* thread)
+{
+    if (thread == MINI_OS_NULL || thread->wait_ref_depth == 0u)
+        return;
+    thread->wait_ref_depth = (mini_os_uint8_t)(thread->wait_ref_depth - 1u);
+}
+
+void mini_os_sync_wait_ref_drop_all(mini_os_thread_t* thread)
+{
+    while (thread != MINI_OS_NULL && thread->wait_ref_depth > 0u)
+    {
+        mini_os_wait_ref_t* ref = &thread->wait_refs[thread->wait_ref_depth - 1u];
+
+        thread->wait_ref_depth = (mini_os_uint8_t)(thread->wait_ref_depth - 1u);
+        /* a parked call never returns once its thread is deleted, so the
+         * reference it acquired would keep the waited-on object undeletable
+         * forever; drop it here, reclaiming the descriptor on the last one */
+        mini_os_obj_release(ref->obj, ref->storage, ref->size);
+    }
+}
+
+void mini_os_sync_wake_thread(mini_os_thread_t* thread, mini_os_bool_t succeeded)
+{
+    mini_os_list_remove(&thread->wait_node);
+    thread->wait_list = MINI_OS_NULL;
+    thread->wait_status = succeeded;
+    if (thread->wheel_slot < MINI_OS_TICK_WHEEL)
+    {
+        /* timed wait: the thread is also parked in the time wheel */
+        (void)mini_os_wheel_remove(thread);
+    }
+    (void)mini_os_add_thread_to_ready_running_list(thread);
+}
+
+mini_os_bool_t mini_os_sync_wake_all(mini_os_list_t* wait_list, mini_os_bool_t succeeded)
+{
+    mini_os_list_t* node;
+    mini_os_list_t* next;
+    mini_os_bool_t  woken = MINI_OS_FALSE;
+
+    for (node = wait_list->next; node != wait_list; node = next)
+    {
+        mini_os_thread_t* thread = mini_os_container_of(node, mini_os_thread_t, wait_node);
+
+        next = node->next; /* captured first: the wake re-links the node */
+        mini_os_sync_wake_thread(thread, succeeded);
+        woken = MINI_OS_TRUE;
+    }
+    return woken;
 }
 
 #if MINI_OS_TIME_SLICE

@@ -28,8 +28,8 @@
 extern "C"
 {
 #endif
-#include "list.h"
-#include "redef.h"
+#include <list.h>
+#include <redef.h>
 
 /*---------------------------------------------------------------------------------------------------------*/
 /*                                 slab build selection (mutually exclusive) */
@@ -271,16 +271,6 @@ void* mini_os_calloc(mini_os_size_t count, mini_os_size_t size);
  * @return free bytes; 0 when the heap is not ready
  */
 mini_os_size_t mini_os_heap_free_space(void);
-
-/**
- * @brief Lazily take over the linker-script heap zone (idempotent)
- * @return MINI_OS_OK when the heap is ready; MINI_OS_ERR_NOMEM when the heap
- *         zone is absent (linker symbols collapsed to 0) or init failed
- * @note Normally invoked by the startup constructor before main; environments
- *       without .init_array traversal (bare-metal) call it explicitly or
- *       lazily before the first allocation. Not ISR-safe.
- */
-mini_os_err_t mini_os_heap_ensure_init(void);
 
 #if defined(__cplusplus)
 }
