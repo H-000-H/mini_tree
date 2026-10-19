@@ -15,8 +15,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
@@ -27,10 +26,9 @@ extern "C"
 #define MPU6050_CMD_COUNT 1
 
 /** @brief MPU6050 六轴原始采样 */
-struct mpu6050_sample
-{
-    int16_t ax, ay, az; /**< 加速度计原始 LSB（量程由 DTS 配置） */
-    int16_t gx, gy, gz; /**< 陀螺仪原始 LSB（量程由 DTS 配置） */
+struct mpu6050_sample {
+	int16_t ax, ay, az; /**< 加速度计原始 LSB（量程由 DTS 配置） */
+	int16_t gx, gy, gz; /**< 陀螺仪原始 LSB（量程由 DTS 配置） */
 };
 
 #ifdef __cplusplus

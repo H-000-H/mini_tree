@@ -21,31 +21,30 @@
 #include "system_log.h"
 
 /* 池/缓冲/字段宽度宏见 board_define_dac.h (数量由 DTS 节点数自动生成) */
-static const char* const k_tag = "vfs-dac";
+static const char *const k_tag = "vfs-dac";
 
-struct vfs_dac_priv
-{
-    struct file_operations             ops;                                                /**< VFS 操作表 */
-    struct hal_dac_host_cfg            cfg;                                                /**< host 配置 (DTSI 直投) */
-    struct hal_dac_platform_unique_cfg unique;                                             /**< 平台特有配置 */
-    struct hal_dac_dev                 dac;                                                /**< HAL DAC 设备 */
-    struct fifo_spsc                   dma_fifo;                                           /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
-    fifo_data_type                     dma_data_buf[DAC_DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 波形数据缓冲区 */
-    int                                pool_idx;                                           /**< 池索引 */
+struct vfs_dac_priv {
+	struct file_operations		   ops;	   /**< VFS 操作表 */
+	struct hal_dac_host_cfg		   cfg;	   /**< host 配置 (DTSI 直投) */
+	struct hal_dac_platform_unique_cfg unique; /**< 平台特有配置 */
+	struct hal_dac_dev		   dac;	   /**< HAL DAC 设备 */
+	struct fifo_spsc dma_fifo; /**< DMA 模式 FIFO 句柄 (dma_enable 时由 probe 初始化) */
+	fifo_data_type
+		dma_data_buf[DAC_DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 波形数据缓冲区 */
+	int	pool_idx;					    /**< 池索引 */
 };
 
-static struct vfs_dac_priv              s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
-static uint8_t                          s_dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static struct vfs_dac_priv		s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static uint8_t				s_dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
 static mini_slot_t s_dac_priv_pool_ctrl MINI_ALIGNED(4);
 
 /**
  * @brief DAC Ioctl 命令处理函数指针类型
  */
-typedef mt_err_t (*dac_cmd_handler_t)(struct vfs_dac_priv* priv, void* arg, size_t arg_len);
+typedef mt_err_t (*dac_cmd_handler_t)(struct vfs_dac_priv *priv, void *arg, size_t arg_len);
 
-typedef struct
-{
-    dac_cmd_handler_t handler;
+typedef struct {
+	dac_cmd_handler_t handler;
 } dac_ioctl_map_t;
 
 /* -------------------------------------------------------------------------- */
@@ -59,11 +58,11 @@ typedef struct
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_write_value(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_write_value(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return MINI_ERR_INVAL;
-    return hal_dac_set_value(&priv->dac, ((const vfs_dac_arg*)arg)->value);
+	if (!arg || arg_len < sizeof(vfs_dac_arg))
+		return MINI_ERR_INVAL;
+	return hal_dac_set_value(&priv->dac, ((const vfs_dac_arg *)arg)->value);
 }
 
 /**
@@ -73,11 +72,11 @@ static mt_err_t dac_cmd_write_value(struct vfs_dac_priv* priv, void* arg, size_t
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_get_value(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return MINI_ERR_INVAL;
-    return hal_dac_get_value(&priv->dac, &((vfs_dac_arg*)arg)->value);
+	if (!arg || arg_len < sizeof(vfs_dac_arg))
+		return MINI_ERR_INVAL;
+	return hal_dac_get_value(&priv->dac, &((vfs_dac_arg *)arg)->value);
 }
 
 /**
@@ -87,12 +86,12 @@ static mt_err_t dac_cmd_get_value(struct vfs_dac_priv* priv, void* arg, size_t a
  * @param[in] arg_len 未使用
  * @return 固定返回 MINI_ERR_NOTSUPP
  */
-static mt_err_t dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_calibrate_offset(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    MINI_IGNORE_RESULT(priv);
-    MINI_IGNORE_RESULT(arg);
-    MINI_IGNORE_RESULT(arg_len);
-    return MINI_ERR_NOTSUPP;
+	MINI_IGNORE_RESULT(priv);
+	MINI_IGNORE_RESULT(arg);
+	MINI_IGNORE_RESULT(arg_len);
+	return MINI_ERR_NOTSUPP;
 }
 
 /**
@@ -102,14 +101,14 @@ static mt_err_t dac_cmd_calibrate_offset(struct vfs_dac_priv* priv, void* arg, s
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_dma_pause(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return MINI_ERR_INVAL;
-    const vfs_dac_arg* arg_data = (const vfs_dac_arg*)arg;
-    if (arg_data->pause)
-        return hal_dac_dma_pause(&priv->dac);
-    return hal_dac_resume(&priv->dac);
+	if (!arg || arg_len < sizeof(vfs_dac_arg))
+		return MINI_ERR_INVAL;
+	const vfs_dac_arg *arg_data = (const vfs_dac_arg *)arg;
+	if (arg_data->pause)
+		return hal_dac_dma_pause(&priv->dac);
+	return hal_dac_resume(&priv->dac);
 }
 
 /**
@@ -119,11 +118,11 @@ static mt_err_t dac_cmd_dma_pause(struct vfs_dac_priv* priv, void* arg, size_t a
  * @param[in] arg_len 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_start(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    MINI_IGNORE_RESULT(arg);
-    MINI_IGNORE_RESULT(arg_len);
-    return hal_dac_start(&priv->dac);
+	MINI_IGNORE_RESULT(arg);
+	MINI_IGNORE_RESULT(arg_len);
+	return hal_dac_start(&priv->dac);
 }
 
 /**
@@ -133,11 +132,11 @@ static mt_err_t dac_cmd_start(struct vfs_dac_priv* priv, void* arg, size_t arg_l
  * @param[in] arg_len 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_force_stop(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    MINI_IGNORE_RESULT(arg);
-    MINI_IGNORE_RESULT(arg_len);
-    return hal_dac_force_stop(&priv->dac);
+	MINI_IGNORE_RESULT(arg);
+	MINI_IGNORE_RESULT(arg_len);
+	return hal_dac_force_stop(&priv->dac);
 }
 
 /**
@@ -147,14 +146,14 @@ static mt_err_t dac_cmd_force_stop(struct vfs_dac_priv* priv, void* arg, size_t 
  * @param[in] arg_len 参数长度
  * @return 成功返回写入采样数 (int)len, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_dma_write_buffer(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return MINI_ERR_INVAL;
-    const vfs_dac_arg* arg_data = (const vfs_dac_arg*)arg;
-    if (!arg_data->data || !arg_data->len)
-        return MINI_ERR_INVAL;
-    return hal_dac_write_dma_buffer(&priv->dac, arg_data->data, arg_data->len);
+	if (!arg || arg_len < sizeof(vfs_dac_arg))
+		return MINI_ERR_INVAL;
+	const vfs_dac_arg *arg_data = (const vfs_dac_arg *)arg;
+	if (!arg_data->data || !arg_data->len)
+		return MINI_ERR_INVAL;
+	return hal_dac_write_dma_buffer(&priv->dac, arg_data->data, arg_data->len);
 }
 
 /**
@@ -164,14 +163,14 @@ static mt_err_t dac_cmd_dma_write_buffer(struct vfs_dac_priv* priv, void* arg, s
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t dac_cmd_base_pause(struct vfs_dac_priv* priv, void* arg, size_t arg_len)
+static mt_err_t dac_cmd_base_pause(struct vfs_dac_priv *priv, void *arg, size_t arg_len)
 {
-    if (!arg || arg_len < sizeof(vfs_dac_arg))
-        return MINI_ERR_INVAL;
-    const vfs_dac_arg* arg_data = (const vfs_dac_arg*)arg;
-    if (arg_data->pause)
-        return hal_dac_base_pause(&priv->dac);
-    return hal_dac_resume(&priv->dac);
+	if (!arg || arg_len < sizeof(vfs_dac_arg))
+		return MINI_ERR_INVAL;
+	const vfs_dac_arg *arg_data = (const vfs_dac_arg *)arg;
+	if (arg_data->pause)
+		return hal_dac_base_pause(&priv->dac);
+	return hal_dac_resume(&priv->dac);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -179,14 +178,14 @@ static mt_err_t dac_cmd_base_pause(struct vfs_dac_priv* priv, void* arg, size_t 
 /* -------------------------------------------------------------------------- */
 
 static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
-    [DAC_CMD_WRITE_VALUE - DAC_CMD_BASE - 1] = {dac_cmd_write_value},
-    [DAC_CMD_GET_VALUE - DAC_CMD_BASE - 1] = {dac_cmd_get_value},
-    [DAC_CMD_CALIBRATE_OFFSET - DAC_CMD_BASE - 1] = {dac_cmd_calibrate_offset},
-    [DAC_CMD_DMA_PAUSE - DAC_CMD_BASE - 1] = {dac_cmd_dma_pause},
-    [DAC_CMD_START - DAC_CMD_BASE - 1] = {dac_cmd_start},
-    [DAC_CMD_FORCE_STOP - DAC_CMD_BASE - 1] = {dac_cmd_force_stop},
-    [DAC_CMD_DMA_WRITE_BUFFER - DAC_CMD_BASE - 1] = {dac_cmd_dma_write_buffer},
-    [DAC_CMD_BASE_PAUSE - DAC_CMD_BASE - 1] = {dac_cmd_base_pause},
+	[DAC_CMD_WRITE_VALUE - DAC_CMD_BASE - 1]      = { dac_cmd_write_value },
+	[DAC_CMD_GET_VALUE - DAC_CMD_BASE - 1]	      = { dac_cmd_get_value },
+	[DAC_CMD_CALIBRATE_OFFSET - DAC_CMD_BASE - 1] = { dac_cmd_calibrate_offset },
+	[DAC_CMD_DMA_PAUSE - DAC_CMD_BASE - 1]	      = { dac_cmd_dma_pause },
+	[DAC_CMD_START - DAC_CMD_BASE - 1]	      = { dac_cmd_start },
+	[DAC_CMD_FORCE_STOP - DAC_CMD_BASE - 1]	      = { dac_cmd_force_stop },
+	[DAC_CMD_DMA_WRITE_BUFFER - DAC_CMD_BASE - 1] = { dac_cmd_dma_write_buffer },
+	[DAC_CMD_BASE_PAUSE - DAC_CMD_BASE - 1]	      = { dac_cmd_base_pause },
 };
 
 /**
@@ -194,7 +193,8 @@ static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
 {
-    MINI_IGNORE_RESULT(mini_slot_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
+	MINI_IGNORE_RESULT(
+		mini_slot_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
 }
 
 /**
@@ -203,112 +203,111 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_in
  * @param[in] cfg 输出的 HAL 主机配置指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_cfg* cfg)
+static mt_err_t vfs_dac_priv_parse_dts(struct device *pdev, struct hal_dac_host_cfg *cfg)
 {
-    int dac_base = 0;
-    int tmp = 0;
-    int pin_arr[VFS_DAC_PIN_FIELD_COUNT];
-    int dma_arr[VFS_DAC_DMA_FIELD_COUNT];
+	int dac_base = 0;
+	int tmp	     = 0;
+	int pin_arr[VFS_DAC_PIN_FIELD_COUNT];
+	int dma_arr[VFS_DAC_DMA_FIELD_COUNT];
 
-    if (!pdev || !cfg)
-        return MINI_ERR_INVAL;
+	if (!pdev || !cfg)
+		return MINI_ERR_INVAL;
 
-    if (device_get_prop_int(pdev, "dac-base", &dac_base) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->dac_handle = (uintptr_t)dac_base;
+	if (device_get_prop_int(pdev, "dac-base", &dac_base) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->dac_handle = (uintptr_t)dac_base;
 
-    if (device_get_prop_int(pdev, "dac-clk", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.dac_clk_periph = (uint32_t)tmp;
+	if (device_get_prop_int(pdev, "dac-clk", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.dac_clk_periph = (uint32_t)tmp;
 
-    if (device_get_prop_int(pdev, "channel", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.channel = (uint32_t)tmp;
+	if (device_get_prop_int(pdev, "channel", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.channel = (uint32_t)tmp;
 
-    if (device_get_prop_int(pdev, "trigger-source", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.trigger_source = (uint32_t)tmp;
+	if (device_get_prop_int(pdev, "trigger-source", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.trigger_source = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "data-align", &tmp));
-    cfg->config.data_align = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "data-align", &tmp));
+	cfg->config.data_align = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "output-buf", &tmp));
-    cfg->config.output_buf = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "output-buf", &tmp));
+	cfg->config.output_buf = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-enable", &tmp));
-    cfg->config.dma_enable = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-enable", &tmp));
+	cfg->config.dma_enable = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &tmp));
-    cfg->config.it_enable = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "it-enable", &tmp));
+	cfg->config.it_enable = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-mode", &tmp));
-    cfg->config.wave_auto_generation_mode = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-mode", &tmp));
+	cfg->config.wave_auto_generation_mode = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-config", &tmp));
-    cfg->config.wave_auto_generation_config = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "wave-auto-generation-config", &tmp));
+	cfg->config.wave_auto_generation_config = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
-    cfg->config.dac_sw_trigger = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
+	cfg->config.dac_sw_trigger = (uint32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
-    cfg->config.dma_data_align = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-data-align", &tmp));
+	cfg->config.dma_data_align = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) == VFS_DAC_PIN_FIELD_COUNT)
-    {
-        cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
-        cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
-        cfg->gpio_cfg.clk_bus = (uint32_t)pin_arr[2];
-        cfg->gpio_cfg.af = (uint32_t)pin_arr[3];
-        cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];
-        cfg->gpio_cfg.speed = (uint32_t)pin_arr[5];
-        cfg->gpio_cfg.mode = (uint32_t)pin_arr[6];
-        cfg->gpio_cfg.pull = (uint32_t)pin_arr[7];
-    }
-    else
-        return MINI_ERR_INVAL;
+	if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_DAC_PIN_FIELD_COUNT) ==
+	    VFS_DAC_PIN_FIELD_COUNT) {
+		cfg->gpio_cfg.port	  = (uintptr_t)pin_arr[0];
+		cfg->gpio_cfg.pin	  = (uint16_t)pin_arr[1];
+		cfg->gpio_cfg.clk_bus	  = (uint32_t)pin_arr[2];
+		cfg->gpio_cfg.af	  = (uint32_t)pin_arr[3];
+		cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];
+		cfg->gpio_cfg.speed	  = (uint32_t)pin_arr[5];
+		cfg->gpio_cfg.mode	  = (uint32_t)pin_arr[6];
+		cfg->gpio_cfg.pull	  = (uint32_t)pin_arr[7];
+	} else
+		return MINI_ERR_INVAL;
 
-    if (cfg->config.dma_enable)
-    {
-        if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) != VFS_DAC_DMA_FIELD_COUNT)
-            return MINI_ERR_INVAL;
+	if (cfg->config.dma_enable) {
+		if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_DAC_DMA_FIELD_COUNT) !=
+		    VFS_DAC_DMA_FIELD_COUNT)
+			return MINI_ERR_INVAL;
 
-        cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
-        cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
-        cfg->dma_cfg.dma_channel = (uint32_t)dma_arr[2];
-        cfg->dma_cfg.dma_priority = (uint32_t)dma_arr[3];
-        cfg->dma_cfg.dma_buffer_size = (uint32_t)dma_arr[4];
-        cfg->dma_cfg.dma_data_size = (uint32_t)dma_arr[5];
-        cfg->dma_cfg.dma_fifo_is_enable = (uint32_t)dma_arr[6];
+		cfg->dma_cfg.dma_handle		= (uintptr_t)dma_arr[0];
+		cfg->dma_cfg.dma_stream		= (uint32_t)dma_arr[1];
+		cfg->dma_cfg.dma_channel	= (uint32_t)dma_arr[2];
+		cfg->dma_cfg.dma_priority	= (uint32_t)dma_arr[3];
+		cfg->dma_cfg.dma_buffer_size	= (uint32_t)dma_arr[4];
+		cfg->dma_cfg.dma_data_size	= (uint32_t)dma_arr[5];
+		cfg->dma_cfg.dma_fifo_is_enable = (uint32_t)dma_arr[6];
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mode", &tmp));
-        cfg->dma_cfg.dma_mode = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mode", &tmp));
+		cfg->dma_cfg.dma_mode = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-mode", &tmp));
-        cfg->dma_cfg.dma_fifo_mode = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-mode", &tmp));
+		cfg->dma_cfg.dma_fifo_mode = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-burst", &tmp));
-        cfg->dma_cfg.dma_mem_burst = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-burst", &tmp));
+		cfg->dma_cfg.dma_mem_burst = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-burst", &tmp));
-        cfg->dma_cfg.dma_periph_burst = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-burst", &tmp));
+		cfg->dma_cfg.dma_periph_burst = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-direction", &tmp));
-        cfg->dma_cfg.dma_direction = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-direction", &tmp));
+		cfg->dma_cfg.dma_direction = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-inc", &tmp));
-        cfg->dma_cfg.dma_periph_inc = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-inc", &tmp));
+		cfg->dma_cfg.dma_periph_inc = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-inc", &tmp));
-        cfg->dma_cfg.dma_mem_inc = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-mem-inc", &tmp));
+		cfg->dma_cfg.dma_mem_inc = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-data-size", &tmp));
-        cfg->dma_cfg.dma_periph_data_size = (uint32_t)tmp;
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-periph-data-size", &tmp));
+		cfg->dma_cfg.dma_periph_data_size = (uint32_t)tmp;
 
-        MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-threshold", &tmp));
-        cfg->dma_cfg.dma_fifo_threshold = (uint32_t)tmp;
-    }
+		MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-fifo-threshold", &tmp));
+		cfg->dma_cfg.dma_fifo_threshold = (uint32_t)tmp;
+	}
 
-    return MINI_OK;
+	return MINI_OK;
 }
 
 /**
@@ -317,36 +316,34 @@ static mt_err_t vfs_dac_priv_parse_dts(struct device* pdev, struct hal_dac_host_
  * @param[in] arg 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_open(struct device* pdev, void* arg)
+static mt_err_t vfs_dac_open(struct device *pdev, void *arg)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   first;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      first;
 
-    MINI_IGNORE_RESULT(arg);
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	MINI_IGNORE_RESULT(arg);
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    first = dev_lc_open_begin(lc);
-    if (first < 0)
-        return first;
+	first = dev_lc_open_begin(lc);
+	if (first < 0)
+		return first;
 
-    if (first == 1)
-    {
-        if (hal_dac_start(&priv->dac) != MINI_OK)
-        {
-            dev_lc_open_abort(lc);
-            return MINI_ERR_IO;
-        }
-    }
+	if (first == 1) {
+		if (hal_dac_start(&priv->dac) != MINI_OK) {
+			dev_lc_open_abort(lc);
+			return MINI_ERR_IO;
+		}
+	}
 
-    dev_lc_open_end(lc);
-    return MINI_OK;
+	dev_lc_open_end(lc);
+	return MINI_OK;
 }
 
 /**
@@ -354,29 +351,29 @@ static mt_err_t vfs_dac_open(struct device* pdev, void* arg)
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_close(struct device* pdev)
+static mt_err_t vfs_dac_close(struct device *pdev)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   last;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      last;
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    last = dev_lc_close_begin(lc);
-    if (last < 0)
-        return last;
+	last = dev_lc_close_begin(lc);
+	if (last < 0)
+		return last;
 
-    if (last)
-        MINI_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
+	if (last)
+		MINI_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
 
-    dev_lc_close_end(lc);
-    return MINI_OK;
+	dev_lc_close_end(lc);
+	return MINI_OK;
 }
 
 /**
@@ -387,32 +384,32 @@ static mt_err_t vfs_dac_close(struct device* pdev)
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
+static int vfs_dac_write(struct device *pdev, const void *buf, size_t len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   ret;
-    const vfs_dac_arg*    dac_arg;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      ret;
+	const vfs_dac_arg    *dac_arg;
 
-    MINI_IGNORE_RESULT(len);
-    MINI_IGNORE_RESULT(timeout_ms);
-    if (!pdev || !pdev->ops || !buf)
-        return MINI_ERR_INVAL;
+	MINI_IGNORE_RESULT(len);
+	MINI_IGNORE_RESULT(timeout_ms);
+	if (!pdev || !pdev->ops || !buf)
+		return MINI_ERR_INVAL;
 
-    dac_arg = (const vfs_dac_arg*)buf;
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	dac_arg = (const vfs_dac_arg *)buf;
+	lc	= device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret = hal_dac_set_value(&priv->dac, dac_arg->value);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	ret  = hal_dac_set_value(&priv->dac, dac_arg->value);
 
-    dev_lc_io_end(lc);
-    return ret;
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 /**
@@ -423,32 +420,32 @@ static int vfs_dac_write(struct device* pdev, const void* buf, size_t len, uint3
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
+static int vfs_dac_read(struct device *pdev, void *buf, size_t len, uint32_t timeout_ms)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   ret;
-    vfs_dac_arg*          dac_arg;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      ret;
+	vfs_dac_arg	     *dac_arg;
 
-    MINI_IGNORE_RESULT(len);
-    MINI_IGNORE_RESULT(timeout_ms);
-    if (!pdev || !pdev->ops || !buf)
-        return MINI_ERR_INVAL;
+	MINI_IGNORE_RESULT(len);
+	MINI_IGNORE_RESULT(timeout_ms);
+	if (!pdev || !pdev->ops || !buf)
+		return MINI_ERR_INVAL;
 
-    dac_arg = (vfs_dac_arg*)buf;
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	dac_arg = (vfs_dac_arg *)buf;
+	lc	= device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret = hal_dac_get_value(&priv->dac, &dac_arg->value);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	ret  = hal_dac_get_value(&priv->dac, &dac_arg->value);
 
-    dev_lc_io_end(lc);
-    return ret;
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 /**
@@ -460,43 +457,43 @@ static int vfs_dac_read(struct device* pdev, void* buf, size_t len, uint32_t tim
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK 或写入采样数, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static mt_err_t vfs_dac_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_len,
+			      uint32_t timeout_ms)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   ret;
-    dac_cmd_handler_t     handler = NULL;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      ret;
+	dac_cmd_handler_t     handler = NULL;
 
-    MINI_IGNORE_RESULT(timeout_ms);
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	MINI_IGNORE_RESULT(timeout_ms);
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	lc = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
 
-    int32_t offset = (int32_t)cmd - (int32_t)DAC_CMD_BASE;
-    if (offset < 1 || offset > DAC_CMD_COUNT)
-    {
-        dev_lc_io_end(lc);
-        return MINI_ERR_INVAL;
-    }
-    uint8_t index = (uint8_t)(offset - 1);
+	int32_t offset = (int32_t)cmd - (int32_t)DAC_CMD_BASE;
+	if (offset < 1 || offset > DAC_CMD_COUNT) {
+		dev_lc_io_end(lc);
+		return MINI_ERR_INVAL;
+	}
+	uint8_t index = (uint8_t)(offset - 1);
 
-    handler = s_dac_ioctl_map[index].handler;
-    if (handler != NULL)
-        ret = handler(priv, arg, arg_len);
-    else
-        ret = MINI_ERR_INVAL;
+	handler = s_dac_ioctl_map[index].handler;
+	if (handler != NULL)
+		ret = handler(priv, arg, arg_len);
+	else
+		ret = MINI_ERR_INVAL;
 
-    dev_lc_io_end(lc);
-    return ret;
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 /**
@@ -504,28 +501,28 @@ static mt_err_t vfs_dac_ioctl(struct device* pdev, int cmd, void* arg, size_t ar
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_suspend(struct device* pdev)
+static mt_err_t vfs_dac_suspend(struct device *pdev)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   ret;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      ret;
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	lc = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret = hal_dac_pause(&priv->dac);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	ret  = hal_dac_pause(&priv->dac);
 
-    dev_lc_io_end(lc);
-    return ret;
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 /**
@@ -533,41 +530,41 @@ static mt_err_t vfs_dac_suspend(struct device* pdev)
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_resume(struct device* pdev)
+static mt_err_t vfs_dac_resume(struct device *pdev)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   ret;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      ret;
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	lc = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    ret = hal_dac_resume(&priv->dac);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	ret  = hal_dac_resume(&priv->dac);
 
-    dev_lc_io_end(lc);
-    return ret;
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 /**
  * @brief DAC Host VFS 文件操作
  */
 static const struct file_operations fops = {
-    .close = vfs_dac_close,
-    .open = vfs_dac_open,
-    .ioctl = vfs_dac_ioctl,
-    .read = vfs_dac_read,
-    .write = vfs_dac_write,
-    .suspend = vfs_dac_suspend,
-    .resume = vfs_dac_resume,
+	.close	 = vfs_dac_close,
+	.open	 = vfs_dac_open,
+	.ioctl	 = vfs_dac_ioctl,
+	.read	 = vfs_dac_read,
+	.write	 = vfs_dac_write,
+	.suspend = vfs_dac_suspend,
+	.resume	 = vfs_dac_resume,
 };
 
 /**
@@ -575,79 +572,74 @@ static const struct file_operations fops = {
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_probe(struct device* pdev)
+static mt_err_t vfs_dac_probe(struct device *pdev)
 {
-    struct vfs_dac_priv* priv;
-    int                  pool_idx;
-    int                  ret;
-    int                  private_cfg = 0;
+	struct vfs_dac_priv *priv;
+	int		     pool_idx;
+	int		     ret;
+	int		     private_cfg = 0;
 
-    if (!pdev)
-        return MINI_ERR_INVAL;
+	if (!pdev)
+		return MINI_ERR_INVAL;
 
-    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(dac, pdev));
+	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(dac, pdev));
 
-    pool_idx = mini_slot_claim(&s_dac_priv_pool_ctrl);
-    if (pool_idx < 0)
-        return MINI_ERR_NOMEM;
+	pool_idx = mini_slot_claim(&s_dac_priv_pool_ctrl);
+	if (pool_idx < 0)
+		return MINI_ERR_NOMEM;
 
-    priv = &s_dac_priv_pool[pool_idx];
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx = pool_idx;
+	priv = &s_dac_priv_pool[pool_idx];
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	priv->pool_idx = pool_idx;
 
-    if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
-    {
-        MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
-        ret = MINI_ERR_INVAL;
-        goto err_pool;
-    }
+	if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != MINI_OK) {
+		MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
+		ret = MINI_ERR_INVAL;
+		goto err_pool;
+	}
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "private-cfg", &private_cfg));
-    priv->unique.private_cfg = (uintptr_t)private_cfg;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "private-cfg", &private_cfg));
+	priv->unique.private_cfg = (uintptr_t)private_cfg;
 
-    if (priv->cfg.config.dma_enable)
-    {
-        if (fifo_init(&priv->dma_fifo, priv->dma_data_buf, DAC_DMA_BUFFER_SIZE) != BUFF_OK)
-        {
-            ret = MINI_ERR_INVAL;
-            goto err_pool;
-        }
-        priv->cfg.dma_cfg.dma_fifo = &priv->dma_fifo;
-    }
+	if (priv->cfg.config.dma_enable) {
+		if (fifo_init(&priv->dma_fifo, priv->dma_data_buf, DAC_DMA_BUFFER_SIZE) !=
+		    BUFF_OK) {
+			ret = MINI_ERR_INVAL;
+			goto err_pool;
+		}
+		priv->cfg.dma_cfg.dma_fifo = &priv->dma_fifo;
+	}
 
-    ret = hal_dac_device_init(&priv->dac, &priv->cfg, &priv->unique);
-    if (ret != MINI_OK)
-    {
-        MT_LOG_ERROR(k_tag, "hal_dac_device_init failed: %s", device_get_name(pdev));
-        goto err_pool;
-    }
+	ret = hal_dac_device_init(&priv->dac, &priv->cfg, &priv->unique);
+	if (ret != MINI_OK) {
+		MT_LOG_ERROR(k_tag, "hal_dac_device_init failed: %s", device_get_name(pdev));
+		goto err_pool;
+	}
 
-    ret = hal_dac_init(&priv->dac);
-    if (ret != MINI_OK)
-    {
-        MT_LOG_ERROR(k_tag, "hal_dac_init failed: %s", device_get_name(pdev));
-        goto err_deinit;
-    }
+	ret = hal_dac_init(&priv->dac);
+	if (ret != MINI_OK) {
+		MT_LOG_ERROR(k_tag, "hal_dac_init failed: %s", device_get_name(pdev));
+		goto err_deinit;
+	}
 
-    priv->ops = fops;
-    pdev->ops = &priv->ops;
+	priv->ops = fops;
+	pdev->ops = &priv->ops;
 
-    if (device_set_priv(pdev, priv) != MINI_OK)
-    {
-        ret = MINI_ERR_IO;
-        goto err_deinit;
-    }
+	if (device_set_priv(pdev, priv) != MINI_OK) {
+		ret = MINI_ERR_IO;
+		goto err_deinit;
+	}
 
-    MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
-    return MINI_OK;
+	MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
+	return MINI_OK;
 
 err_deinit:
-    pdev->ops = NULL;
-    MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
+	pdev->ops = NULL;
+	MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
 err_pool:
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    MINI_IGNORE_RESULT(mini_slot_release(&s_dac_priv_pool_ctrl, pool_idx));
-    return ret;
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	MINI_IGNORE_RESULT(mini_slot_release(&s_dac_priv_pool_ctrl, pool_idx));
+	return ret;
 }
 
 /**
@@ -655,39 +647,38 @@ err_pool:
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_dac_remove(struct device* pdev)
+static mt_err_t vfs_dac_remove(struct device *pdev)
 {
-    struct vfs_dac_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   pool_idx;
+	struct vfs_dac_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      pool_idx;
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	priv = container_of(pdev->ops, struct vfs_dac_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    pool_idx = priv->pool_idx;
+	pool_idx = priv->pool_idx;
 
-    dev_lc_remove_start(lc);
-    device_ops_unregister(pdev);
+	dev_lc_remove_start(lc);
+	device_ops_unregister(pdev);
 
-    if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK)
-    {
-        dev_lc_remove_finish(lc);
-        return MINI_ERR_IO;
-    }
+	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
+		dev_lc_remove_finish(lc);
+		return MINI_ERR_IO;
+	}
 
-    MINI_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
-    MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
+	MINI_IGNORE_RESULT(hal_dac_force_stop(&priv->dac));
+	MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
 
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    MINI_IGNORE_RESULT(mini_slot_release(&s_dac_priv_pool_ctrl, pool_idx));
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	MINI_IGNORE_RESULT(mini_slot_release(&s_dac_priv_pool_ctrl, pool_idx));
 
-    dev_lc_remove_finish(lc);
-    return MINI_OK;
+	dev_lc_remove_finish(lc);
+	return MINI_OK;
 }
 
 DRIVER_REGISTER(vfs_dac_priv, "mt-dac", vfs_dac_probe, vfs_dac_remove)

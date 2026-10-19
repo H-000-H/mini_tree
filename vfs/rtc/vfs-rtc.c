@@ -20,24 +20,23 @@
 
 /* 池大小宏见 board_define_rtc.h (数量由 DTS 节点数自动生成) */
 
-struct vfs_rtc_priv
-{
-    struct file_operations ops;      /**< VFS 操作表 */
-    struct hal_rtc_dev     rtc;      /**< HAL RTC 设备 */
-    int                    pool_idx; /**< 池索引 */
+struct vfs_rtc_priv {
+	struct file_operations ops;	 /**< VFS 操作表 */
+	struct hal_rtc_dev     rtc;	 /**< HAL RTC 设备 */
+	int		       pool_idx; /**< 池索引 */
 };
 
 static struct vfs_rtc_priv     s_pool[RTC_VFS_POOL] MINI_ALIGNED(4);
-static uint8_t                 s_used[RTC_VFS_POOL] MINI_ALIGNED(4);
+static uint8_t		       s_used[RTC_VFS_POOL] MINI_ALIGNED(4);
 static mini_slot_t s_pool_ctrl MINI_ALIGNED(4);
-static const char* const       k_tag = "vfs_rtc";
+static const char *const       k_tag = "vfs_rtc";
 
 /**
  * @brief RTC VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void)
 {
-    MINI_IGNORE_RESULT(mini_slot_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
+	MINI_IGNORE_RESULT(mini_slot_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
 }
 
 /**
@@ -46,32 +45,31 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot
  * @param[in] arg 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_rtc_open(struct device* pdev, void* arg)
+static mt_err_t vfs_rtc_open(struct device *pdev, void *arg)
 {
-    struct vfs_rtc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   first, ret;
+	struct vfs_rtc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      first, ret;
 
-    MINI_IGNORE_RESULT(arg);
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
-    priv = container_of(pdev->ops, struct vfs_rtc_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
-    first = dev_lc_open_begin(lc);
-    if (first < 0)
-        return first;
-    ret = MINI_OK;
-    if (first == 1)
-    {
-        ret = hal_rtc_open(&priv->rtc);
-        if (ret != MINI_OK)
-            dev_lc_open_abort(lc);
-    }
-    if (ret == MINI_OK)
-        dev_lc_open_end(lc);
-    return ret;
+	MINI_IGNORE_RESULT(arg);
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
+	priv = container_of(pdev->ops, struct vfs_rtc_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
+	first = dev_lc_open_begin(lc);
+	if (first < 0)
+		return first;
+	ret = MINI_OK;
+	if (first == 1) {
+		ret = hal_rtc_open(&priv->rtc);
+		if (ret != MINI_OK)
+			dev_lc_open_abort(lc);
+	}
+	if (ret == MINI_OK)
+		dev_lc_open_end(lc);
+	return ret;
 }
 
 /**
@@ -79,25 +77,25 @@ static mt_err_t vfs_rtc_open(struct device* pdev, void* arg)
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_rtc_close(struct device* pdev)
+static mt_err_t vfs_rtc_close(struct device *pdev)
 {
-    struct vfs_rtc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   last;
+	struct vfs_rtc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      last;
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
-    priv = container_of(pdev->ops, struct vfs_rtc_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
-    last = dev_lc_close_begin(lc);
-    if (last < 0)
-        return last;
-    if (last == 1)
-        MINI_IGNORE_RESULT(hal_rtc_close(&priv->rtc));
-    dev_lc_close_end(lc);
-    return MINI_OK;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
+	priv = container_of(pdev->ops, struct vfs_rtc_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
+	last = dev_lc_close_begin(lc);
+	if (last < 0)
+		return last;
+	if (last == 1)
+		MINI_IGNORE_RESULT(hal_rtc_close(&priv->rtc));
+	dev_lc_close_end(lc);
+	return MINI_OK;
 }
 
 /**
@@ -108,13 +106,13 @@ static mt_err_t vfs_rtc_close(struct device* pdev)
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t rtc_cmd_set_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_set_time(struct vfs_rtc_priv *priv, void *arg, size_t arg_len, uint32_t to)
 {
-    const struct rtc_time_arg* time_arg = (const struct rtc_time_arg*)arg;
-    MINI_IGNORE_RESULT(to);
-    if (!time_arg || arg_len != sizeof(*time_arg))
-        return MINI_ERR_INVAL;
-    return hal_rtc_set_time(&priv->rtc, &time_arg->time);
+	const struct rtc_time_arg *time_arg = (const struct rtc_time_arg *)arg;
+	MINI_IGNORE_RESULT(to);
+	if (!time_arg || arg_len != sizeof(*time_arg))
+		return MINI_ERR_INVAL;
+	return hal_rtc_set_time(&priv->rtc, &time_arg->time);
 }
 
 /**
@@ -125,13 +123,13 @@ static mt_err_t rtc_cmd_set_time(struct vfs_rtc_priv* priv, void* arg, size_t ar
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t rtc_cmd_get_time(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_get_time(struct vfs_rtc_priv *priv, void *arg, size_t arg_len, uint32_t to)
 {
-    struct rtc_time_arg* time_arg = (struct rtc_time_arg*)arg;
-    MINI_IGNORE_RESULT(to);
-    if (!time_arg || arg_len != sizeof(*time_arg))
-        return MINI_ERR_INVAL;
-    return hal_rtc_get_time(&priv->rtc, &time_arg->time);
+	struct rtc_time_arg *time_arg = (struct rtc_time_arg *)arg;
+	MINI_IGNORE_RESULT(to);
+	if (!time_arg || arg_len != sizeof(*time_arg))
+		return MINI_ERR_INVAL;
+	return hal_rtc_get_time(&priv->rtc, &time_arg->time);
 }
 
 /**
@@ -142,13 +140,13 @@ static mt_err_t rtc_cmd_get_time(struct vfs_rtc_priv* priv, void* arg, size_t ar
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t rtc_cmd_set_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_set_alarm(struct vfs_rtc_priv *priv, void *arg, size_t arg_len, uint32_t to)
 {
-    const struct rtc_time_arg* time_arg = (const struct rtc_time_arg*)arg;
-    MINI_IGNORE_RESULT(to);
-    if (!time_arg || arg_len != sizeof(*time_arg))
-        return MINI_ERR_INVAL;
-    return hal_rtc_set_alarm(&priv->rtc, &time_arg->time, NULL, NULL);
+	const struct rtc_time_arg *time_arg = (const struct rtc_time_arg *)arg;
+	MINI_IGNORE_RESULT(to);
+	if (!time_arg || arg_len != sizeof(*time_arg))
+		return MINI_ERR_INVAL;
+	return hal_rtc_set_alarm(&priv->rtc, &time_arg->time, NULL, NULL);
 }
 
 /**
@@ -159,12 +157,13 @@ static mt_err_t rtc_cmd_set_alarm(struct vfs_rtc_priv* priv, void* arg, size_t a
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t rtc_cmd_cancel_alarm(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_cancel_alarm(struct vfs_rtc_priv *priv, void *arg, size_t arg_len,
+				     uint32_t to)
 {
-    MINI_IGNORE_RESULT(arg);
-    MINI_IGNORE_RESULT(arg_len);
-    MINI_IGNORE_RESULT(to);
-    return hal_rtc_cancel_alarm(&priv->rtc);
+	MINI_IGNORE_RESULT(arg);
+	MINI_IGNORE_RESULT(arg_len);
+	MINI_IGNORE_RESULT(to);
+	return hal_rtc_cancel_alarm(&priv->rtc);
 }
 
 /**
@@ -175,13 +174,14 @@ static mt_err_t rtc_cmd_cancel_alarm(struct vfs_rtc_priv* priv, void* arg, size_
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t rtc_cmd_set_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_set_wakeup(struct vfs_rtc_priv *priv, void *arg, size_t arg_len,
+				   uint32_t to)
 {
-    const struct rtc_wakeup_arg* time_arg = (const struct rtc_wakeup_arg*)arg;
-    MINI_IGNORE_RESULT(to);
-    if (!time_arg || arg_len != sizeof(*time_arg))
-        return MINI_ERR_INVAL;
-    return hal_rtc_set_wakeup_timer(&priv->rtc, time_arg->seconds);
+	const struct rtc_wakeup_arg *time_arg = (const struct rtc_wakeup_arg *)arg;
+	MINI_IGNORE_RESULT(to);
+	if (!time_arg || arg_len != sizeof(*time_arg))
+		return MINI_ERR_INVAL;
+	return hal_rtc_set_wakeup_timer(&priv->rtc, time_arg->seconds);
 }
 
 /**
@@ -192,12 +192,13 @@ static mt_err_t rtc_cmd_set_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t 
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t rtc_cmd_cancel_wakeup(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_cancel_wakeup(struct vfs_rtc_priv *priv, void *arg, size_t arg_len,
+				      uint32_t to)
 {
-    MINI_IGNORE_RESULT(arg);
-    MINI_IGNORE_RESULT(arg_len);
-    MINI_IGNORE_RESULT(to);
-    return hal_rtc_cancel_wakeup_timer(&priv->rtc);
+	MINI_IGNORE_RESULT(arg);
+	MINI_IGNORE_RESULT(arg_len);
+	MINI_IGNORE_RESULT(to);
+	return hal_rtc_cancel_wakeup_timer(&priv->rtc);
 }
 
 /**
@@ -208,22 +209,26 @@ static mt_err_t rtc_cmd_cancel_wakeup(struct vfs_rtc_priv* priv, void* arg, size
  * @param[in] to 未使用
  * @return 成功返回 MINI_OK
  */
-static mt_err_t rtc_cmd_force_stop(struct vfs_rtc_priv* priv, void* arg, size_t arg_len, uint32_t to)
+static mt_err_t rtc_cmd_force_stop(struct vfs_rtc_priv *priv, void *arg, size_t arg_len,
+				   uint32_t to)
 {
-    MINI_IGNORE_RESULT(priv);
-    MINI_IGNORE_RESULT(arg);
-    MINI_IGNORE_RESULT(arg_len);
-    MINI_IGNORE_RESULT(to);
-    MINI_IGNORE_RESULT(hal_rtc_force_stop());
-    return MINI_OK;
+	MINI_IGNORE_RESULT(priv);
+	MINI_IGNORE_RESULT(arg);
+	MINI_IGNORE_RESULT(arg_len);
+	MINI_IGNORE_RESULT(to);
+	MINI_IGNORE_RESULT(hal_rtc_force_stop());
+	return MINI_OK;
 }
 
-typedef mt_err_t (*rtc_ioctl_fn)(struct vfs_rtc_priv*, void*, size_t, uint32_t);
+typedef mt_err_t (*rtc_ioctl_fn)(struct vfs_rtc_priv *, void *, size_t, uint32_t);
 static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
-    [RTC_CMD_SET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_set_time,     [RTC_CMD_GET_TIME - RTC_CMD_BASE - 1] = rtc_cmd_get_time,
-    [RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_set_alarm,   [RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1] = rtc_cmd_cancel_alarm,
-    [RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_set_wakeup, [RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
-    [RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1] = rtc_cmd_force_stop,
+	[RTC_CMD_SET_TIME - RTC_CMD_BASE - 1]	   = rtc_cmd_set_time,
+	[RTC_CMD_GET_TIME - RTC_CMD_BASE - 1]	   = rtc_cmd_get_time,
+	[RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1]	   = rtc_cmd_set_alarm,
+	[RTC_CMD_CANCEL_ALARM - RTC_CMD_BASE - 1]  = rtc_cmd_cancel_alarm,
+	[RTC_CMD_SET_WAKEUP - RTC_CMD_BASE - 1]	   = rtc_cmd_set_wakeup,
+	[RTC_CMD_CANCEL_WAKEUP - RTC_CMD_BASE - 1] = rtc_cmd_cancel_wakeup,
+	[RTC_CMD_FORCE_STOP - RTC_CMD_BASE - 1]	   = rtc_cmd_force_stop,
 };
 
 /**
@@ -235,35 +240,36 @@ static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
  * @param[in] timeout_ms 未使用 (透传给子命令)
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static mt_err_t vfs_rtc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static mt_err_t vfs_rtc_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_len,
+			      uint32_t timeout_ms)
 {
-    struct vfs_rtc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int32_t               off;
-    int                   ret;
+	struct vfs_rtc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int32_t		      off;
+	int		      ret;
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
-    priv = container_of(pdev->ops, struct vfs_rtc_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
-    off = (int32_t)cmd - (int32_t)RTC_CMD_BASE;
-    if (off < 1 || off > RTC_CMD_COUNT || !s_rtc_ioctl[off - 1])
-        ret = MINI_ERR_INVAL;
-    else
-        ret = s_rtc_ioctl[off - 1](priv, arg, arg_len, timeout_ms);
-    dev_lc_io_end(lc);
-    return ret;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
+	priv = container_of(pdev->ops, struct vfs_rtc_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
+	off = (int32_t)cmd - (int32_t)RTC_CMD_BASE;
+	if (off < 1 || off > RTC_CMD_COUNT || !s_rtc_ioctl[off - 1])
+		ret = MINI_ERR_INVAL;
+	else
+		ret = s_rtc_ioctl[off - 1](priv, arg, arg_len, timeout_ms);
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 static const struct file_operations s_rtc_fops = {
-    .open = vfs_rtc_open,
-    .close = vfs_rtc_close,
-    .ioctl = vfs_rtc_ioctl,
+	.open  = vfs_rtc_open,
+	.close = vfs_rtc_close,
+	.ioctl = vfs_rtc_ioctl,
 };
 
 /**
@@ -272,26 +278,26 @@ static const struct file_operations s_rtc_fops = {
  * @param[in] cfg 输出的 RTC 配置结构指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_rtc_parse_dts(struct device* pdev, struct hal_rtc_config* cfg)
+static mt_err_t vfs_rtc_parse_dts(struct device *pdev, struct hal_rtc_config *cfg)
 {
-    int value;
-    MINI_MEM_SET(cfg, 0, sizeof(*cfg));
-    if (device_get_prop_int(pdev, "hw-instance", &value) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->rtc = (uintptr_t)value;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "clk-source", &value));
-    cfg->clk_source = (uint32_t)value;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "async-prediv", &value));
-    cfg->async_prediv = (uint32_t)value;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sync-prediv", &value));
-    cfg->sync_prediv = (uint32_t)value;
-    value = 1;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "format-24h", &value));
-    cfg->format_24h = (uint32_t)value;
-    value = -1;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &value));
-    cfg->irqn = value;
-    return MINI_OK;
+	int value;
+	MINI_MEM_SET(cfg, 0, sizeof(*cfg));
+	if (device_get_prop_int(pdev, "hw-instance", &value) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->rtc = (uintptr_t)value;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "clk-source", &value));
+	cfg->clk_source = (uint32_t)value;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "async-prediv", &value));
+	cfg->async_prediv = (uint32_t)value;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sync-prediv", &value));
+	cfg->sync_prediv = (uint32_t)value;
+	value		 = 1;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "format-24h", &value));
+	cfg->format_24h = (uint32_t)value;
+	value		= -1;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "irqn", &value));
+	cfg->irqn = value;
+	return MINI_OK;
 }
 
 /**
@@ -299,43 +305,42 @@ static mt_err_t vfs_rtc_parse_dts(struct device* pdev, struct hal_rtc_config* cf
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_rtc_probe(struct device* pdev)
+static mt_err_t vfs_rtc_probe(struct device *pdev)
 {
-    struct vfs_rtc_priv* priv;
-    int                  idx, ret;
+	struct vfs_rtc_priv *priv;
+	int		     idx, ret;
 
-    if (!pdev)
-        return MINI_ERR_INVAL;
+	if (!pdev)
+		return MINI_ERR_INVAL;
 
-    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(rtc, pdev));
+	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(rtc, pdev));
 
-    idx = mini_slot_claim(&s_pool_ctrl);
-    if (idx < 0)
-        return MINI_ERR_NOMEM;
-    priv = &s_pool[idx];
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx = idx;
-    ret = vfs_rtc_parse_dts(pdev, &priv->rtc.cfg);
-    if (ret != MINI_OK)
-        goto err;
-    ret = hal_rtc_init(&priv->rtc, &priv->rtc.cfg);
-    if (ret != MINI_OK)
-        goto err;
-    priv->ops = s_rtc_fops;
-    pdev->ops = &priv->ops;
-    device_lc_bind(pdev);
-    if (device_set_priv(pdev, priv) != MINI_OK)
-    {
-        ret = MINI_ERR_IO;
-        goto err_hal;
-    }
-    MT_LOG_INFO(k_tag, "probe OK: %s", device_get_name(pdev));
-    return MINI_OK;
+	idx = mini_slot_claim(&s_pool_ctrl);
+	if (idx < 0)
+		return MINI_ERR_NOMEM;
+	priv = &s_pool[idx];
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	priv->pool_idx = idx;
+	ret	       = vfs_rtc_parse_dts(pdev, &priv->rtc.cfg);
+	if (ret != MINI_OK)
+		goto err;
+	ret = hal_rtc_init(&priv->rtc, &priv->rtc.cfg);
+	if (ret != MINI_OK)
+		goto err;
+	priv->ops = s_rtc_fops;
+	pdev->ops = &priv->ops;
+	device_lc_bind(pdev);
+	if (device_set_priv(pdev, priv) != MINI_OK) {
+		ret = MINI_ERR_IO;
+		goto err_hal;
+	}
+	MT_LOG_INFO(k_tag, "probe OK: %s", device_get_name(pdev));
+	return MINI_OK;
 err_hal:
-    MINI_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));
+	MINI_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));
 err:
-    MINI_IGNORE_RESULT(mini_slot_release(&s_pool_ctrl, idx));
-    return ret;
+	MINI_IGNORE_RESULT(mini_slot_release(&s_pool_ctrl, idx));
+	return ret;
 }
 
 /**
@@ -343,33 +348,32 @@ err:
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_rtc_remove(struct device* pdev)
+static mt_err_t vfs_rtc_remove(struct device *pdev)
 {
-    struct vfs_rtc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   idx;
+	struct vfs_rtc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      idx;
 
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    priv = (struct vfs_rtc_priv*)device_get_priv(pdev);
-    if (IS_ERR(priv))
-        return PTR_ERR(priv);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
-    idx = priv->pool_idx;
-    dev_lc_remove_start(lc);
-    device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK)
-    {
-        dev_lc_remove_finish(lc);
-        return MINI_ERR_IO;
-    }
-    MINI_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    MINI_IGNORE_RESULT(mini_slot_release(&s_pool_ctrl, idx));
-    dev_lc_remove_finish(lc);
-    return MINI_OK;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	priv = (struct vfs_rtc_priv *)device_get_priv(pdev);
+	if (IS_ERR(priv))
+		return PTR_ERR(priv);
+	lc = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
+	idx = priv->pool_idx;
+	dev_lc_remove_start(lc);
+	device_ops_unregister(pdev);
+	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
+		dev_lc_remove_finish(lc);
+		return MINI_ERR_IO;
+	}
+	MINI_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	MINI_IGNORE_RESULT(mini_slot_release(&s_pool_ctrl, idx));
+	dev_lc_remove_finish(lc);
+	return MINI_OK;
 }
 
 DRIVER_REGISTER(vfs_rtc, "mt-rtc", vfs_rtc_probe, vfs_rtc_remove)

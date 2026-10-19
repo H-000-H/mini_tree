@@ -24,9 +24,11 @@
  * @param[in] core_id 绑定 CPU 核心 (-1 表示不绑定)
  * @return 成功返回任务句柄, 失败返回 NULL
  */
-void* board_task_create(const char* name, uint32_t stack_size, uint32_t priority, board_task_entry_t entry, void* param, int core_id)
+void *board_task_create(const char *name, uint32_t stack_size, uint32_t priority,
+			board_task_entry_t entry, void *param, int core_id)
 {
-    mini_task_handle_t handle = NULL;
-    int                ret = mini_task_create_handle(name, stack_size, priority, (mini_task_entry_t)entry, param, core_id, &handle);
-    return (ret == MINI_OK) ? (void*)handle : NULL;
+	mini_task_handle_t handle = NULL;
+	int ret = mini_task_create_handle(name, stack_size, priority, (mini_task_entry_t)entry,
+					  param, core_id, &handle);
+	return (ret == MINI_OK) ? (void *)handle : NULL;
 }

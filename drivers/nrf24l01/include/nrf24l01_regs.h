@@ -9,8 +9,7 @@
 #define NRF24L01_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** 读寄存器操作码 */

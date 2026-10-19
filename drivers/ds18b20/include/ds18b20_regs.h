@@ -9,8 +9,7 @@
 #define DS18B20_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** 跳过 ROM（单点挂载时省去地址匹配） */

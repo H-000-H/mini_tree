@@ -14,8 +14,7 @@
 #ifndef TLS_CLIENT_H
 #define TLS_CLIENT_H
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 #include "buffer.h"
 #include "lwip/altcp.h"
@@ -38,17 +37,16 @@ extern "C"
 /**
  * @brief TLS 客户端上下文结构体
  */
-struct tls_client_context
-{
-    const char*              server_ip;                            /**< 服务器 IP 地址字符串 */
-    uint16_t                 port;                                 /**< 服务器端口 */
-    struct altcp_tls_config* tls_config;                           /**< TLS 配置 (里面存着 CA 证书) */
-    struct altcp_pcb*        pcb;                                  /**< 连接句柄 */
-    volatile bool            is_connected;                         /**< TCP 和 TLS 握手是否都已完成 */
-    struct fifo_uni_spsc     rx_fifo;                              /**< 接收缓冲 (已解密的数据) */
-    struct fifo_uni_spsc     tx_fifo;                              /**< 发送缓冲 (待发数据, 加密由 altcp 内部处理) */
-    uint8_t                  tx_buffer[TLS_CLIENT_TX_BUFFER_SIZE]; /**< 发送物理缓冲区 */
-    uint8_t                  rx_buffer[TLS_CLIENT_RX_BUFFER_SIZE]; /**< 接收物理缓冲区 */
+struct tls_client_context {
+	const char		*server_ip;    /**< 服务器 IP 地址字符串 */
+	uint16_t		 port;	       /**< 服务器端口 */
+	struct altcp_tls_config *tls_config;   /**< TLS 配置 (里面存着 CA 证书) */
+	struct altcp_pcb	*pcb;	       /**< 连接句柄 */
+	volatile bool		 is_connected; /**< TCP 和 TLS 握手是否都已完成 */
+	struct fifo_uni_spsc	 rx_fifo;      /**< 接收缓冲 (已解密的数据) */
+	struct fifo_uni_spsc	 tx_fifo;      /**< 发送缓冲 (待发数据, 加密由 altcp 内部处理) */
+	uint8_t			 tx_buffer[TLS_CLIENT_TX_BUFFER_SIZE]; /**< 发送物理缓冲区 */
+	uint8_t			 rx_buffer[TLS_CLIENT_RX_BUFFER_SIZE]; /**< 接收物理缓冲区 */
 };
 
 /**
@@ -61,7 +59,8 @@ struct tls_client_context
  * @param[in]     ca_len     CA 证书长度 (含结尾 '\0'), ca_cert 为 NULL 时无效
  * @return int ERR_OK 成功发起连接, 其它为 lwIP 错误码
  */
-int tls_client_init_and_connect(struct tls_client_context* ctx, const char* server_ip, uint16_t port, const uint8_t* ca_cert, uint32_t ca_len);
+int tls_client_init_and_connect(struct tls_client_context *ctx, const char *server_ip,
+				uint16_t port, const uint8_t *ca_cert, uint32_t ca_len);
 
 /**
  * @brief 发送数据 (写入 TX FIFO 并尝试经 TLS 加密推送)
@@ -71,7 +70,8 @@ int tls_client_init_and_connect(struct tls_client_context* ctx, const char* serv
  * @param[out] sent_len 实际写入 FIFO 的字节数 (可能小于 len)
  * @return int ERR_OK 成功, ERR_CONN 链路未建立, 其它为错误码
  */
-int tls_client_send(struct tls_client_context* ctx, const void* data, uint16_t len, uint16_t* sent_len);
+int tls_client_send(struct tls_client_context *ctx, const void *data, uint16_t len,
+		    uint16_t *sent_len);
 
 /**
  * @brief 从接收缓冲读取解密后的数据
@@ -81,14 +81,14 @@ int tls_client_send(struct tls_client_context* ctx, const void* data, uint16_t l
  * @param[out] recv_len 实际读取到的字节数
  * @return int ERR_OK 成功, 其它为错误码
  */
-int tls_client_read(struct tls_client_context* ctx, void* buf, uint16_t len, uint16_t* recv_len);
+int tls_client_read(struct tls_client_context *ctx, void *buf, uint16_t len, uint16_t *recv_len);
 
 /**
  * @brief 主动断开连接并清理 altcp 控制块与 TLS 配置
  * @param[in] ctx 客户端上下文
  * @return int ERR_OK 成功, 其它为错误码
  */
-int tls_client_disconnect(struct tls_client_context* ctx);
+int tls_client_disconnect(struct tls_client_context *ctx);
 
 /**
  * @brief 把 TX 缓冲里排队的数据加密发出去 (主循环周期调用)
@@ -96,7 +96,7 @@ int tls_client_disconnect(struct tls_client_context* ctx);
  * @return int ERR_OK 成功, 其它为错误码
  * @note 可发送长度会自动扣除 TLS 本身的开销; 缓冲满了就等下次再发
  */
-int tls_client_poll_send(struct tls_client_context* ctx);
+int tls_client_poll_send(struct tls_client_context *ctx);
 #ifdef __cplusplus
 }
 #endif

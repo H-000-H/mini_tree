@@ -18,8 +18,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define CAN_CMD_BASE MINI_MAGIC(CAN)
@@ -28,22 +27,19 @@ extern "C"
 #define CAN_CMD_GET_STATE (CAN_CMD_BASE + 0x03)
 #define CAN_CMD_COUNT 3
 
-struct can_transfer_arg
-{
-    struct can_frame tx;
-    struct can_frame rx;
-    uint32_t         rx_fifo;
-    uint32_t         do_rx;
+struct can_transfer_arg {
+	struct can_frame tx;
+	struct can_frame rx;
+	uint32_t	 rx_fifo;
+	uint32_t	 do_rx;
 };
 
-struct can_filter_arg
-{
-    struct hal_can_filter_config filter;
+struct can_filter_arg {
+	struct hal_can_filter_config filter;
 };
 
-struct can_state_arg
-{
-    uint32_t state;
+struct can_state_arg {
+	uint32_t state;
 };
 
 #ifdef __cplusplus

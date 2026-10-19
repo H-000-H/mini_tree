@@ -9,8 +9,7 @@
 #define BME280_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** 校准参数寄存器（温度 T1/T2/T3，每参数 2B 小端） */

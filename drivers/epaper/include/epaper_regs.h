@@ -10,8 +10,7 @@
 #define EPAPER_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define EPAPER_BUSY_TIMEOUT_MS 2000U /**< BUSY 等待超时缺省值（ms，DTS busy-timeout-ms 可覆盖） */

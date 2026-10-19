@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define DFPLAYER_CMD_BASE MINI_MAGIC(DFPLAYER)
@@ -26,9 +25,8 @@ extern "C"
 #define DFPLAYER_CMD_COUNT 2
 
 /** @brief 曲目号参数 */
-struct dfplayer_track
-{
-    uint16_t track; /**< 曲目号（1..2999） */
+struct dfplayer_track {
+	uint16_t track; /**< 曲目号（1..2999） */
 };
 #ifdef __cplusplus
 }

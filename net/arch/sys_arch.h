@@ -12,8 +12,7 @@
 #define SYS_ARCH_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #include "lwip/opt.h"
@@ -26,18 +25,18 @@ extern "C"
 /* NO_SYS=1 (裸机): lwip/sys.h 已将 sys_sem/mutex/mbox_t 定义为 u8_t 空桩,     */
 /*   故信号量类型 (裸机后端不提供) 仅在 OS 配置下给出。                        */
 /* -------------------------------------------------------------------------- */
-typedef mini_mutex_t*      port_mutex_t;  /* 互斥锁 */
+typedef mini_mutex_t *port_mutex_t; /* 互斥锁 */
 #if !defined(CONFIG_OS_BARE)
-typedef mini_sem_t*        port_sem_t;    /* 信号量 */
+typedef mini_sem_t *port_sem_t; /* 信号量 */
 #endif
 typedef mini_task_handle_t port_thread_t; /* 线程句柄 */
-typedef mini_queue_t*      port_mbox_t;   /* 邮箱 */
+typedef mini_queue_t	  *port_mbox_t;	  /* 邮箱 */
 
 #if NO_SYS == 0
 typedef port_mutex_t sys_mutex_t; /* 互斥锁 */
-typedef port_sem_t   sys_sem_t;   /* 信号量 */
+typedef port_sem_t   sys_sem_t;	  /* 信号量 */
 typedef port_mbox_t  sys_mbox_t;  /* 邮箱 */
-#endif                            /* NO_SYS == 0 */
+#endif				  /* NO_SYS == 0 */
 
 typedef port_thread_t sys_thread_t; /* 线程句柄 */
 
@@ -56,34 +55,28 @@ typedef port_thread_t sys_thread_t; /* 线程句柄 */
 /* -------------------------------------------------------------------------- */
 #if NO_SYS == 0
 #define sys_sem_valid(sem) (((sem) != NULL) && (*(sem) != NULL))
-#define sys_sem_set_invalid(sem)                                                                                                                     \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        if ((sem) != NULL)                                                                                                                           \
-        {                                                                                                                                            \
-            *(sem) = NULL;                                                                                                                           \
-        }                                                                                                                                            \
-    } while (0)
+#define sys_sem_set_invalid(sem)       \
+	do {                           \
+		if ((sem) != NULL) {   \
+			*(sem) = NULL; \
+		}                      \
+	} while (0)
 
 #define sys_mutex_valid(mutex) (((mutex) != NULL) && (*(mutex) != NULL))
-#define sys_mutex_set_invalid(mutex)                                                                                                                 \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        if ((mutex) != NULL)                                                                                                                         \
-        {                                                                                                                                            \
-            *(mutex) = NULL;                                                                                                                         \
-        }                                                                                                                                            \
-    } while (0)
+#define sys_mutex_set_invalid(mutex)     \
+	do {                             \
+		if ((mutex) != NULL) {   \
+			*(mutex) = NULL; \
+		}                        \
+	} while (0)
 
 #define sys_mbox_valid(mbox) (((mbox) != NULL) && (*(mbox) != NULL))
-#define sys_mbox_set_invalid(mbox)                                                                                                                   \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        if ((mbox) != NULL)                                                                                                                          \
-        {                                                                                                                                            \
-            *(mbox) = NULL;                                                                                                                          \
-        }                                                                                                                                            \
-    } while (0)
+#define sys_mbox_set_invalid(mbox)      \
+	do {                            \
+		if ((mbox) != NULL) {   \
+			*(mbox) = NULL; \
+		}                       \
+	} while (0)
 
 #define sys_sem_valid_val(sem) sys_sem_valid(&(sem))
 #define sys_sem_set_invalid_val(sem) sys_sem_set_invalid(&(sem))

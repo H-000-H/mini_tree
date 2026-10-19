@@ -180,7 +180,10 @@
 /**
  * @brief 触发 CPU 陷阱, 用于不可恢复错误
  */
-MINI_STATIC_INLINE MINI_NO_RETURN void MINI_TRAP(void) { __builtin_trap(); }
+MINI_STATIC_INLINE MINI_NO_RETURN void MINI_TRAP(void)
+{
+	__builtin_trap();
+}
 
 /**
  * @brief 计算 x 的末尾零位 (count trailing zeros)
@@ -190,26 +193,24 @@ MINI_STATIC_INLINE MINI_NO_RETURN void MINI_TRAP(void) { __builtin_trap(); }
 #if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS)
 MINI_STATIC_INLINE uint32_t MINI_CTZ(uint32_t x) /*二分查找*/
 {
-    if (x == 0)
-        return 32; // 0无定义，自定义返回32做异常标记
-    uint8_t  count = 0;
-    uint32_t shift;
-    for (shift = 16; shift; shift >>= 1)
-    {
-        if ((x & ((1U << shift) - 1U)) == 0)
-        {
-            count += shift;
-            x >>= shift;
-        }
-    }
-    return count;
+	if (x == 0)
+		return 32; // 0无定义，自定义返回32做异常标记
+	uint8_t	 count = 0;
+	uint32_t shift;
+	for (shift = 16; shift; shift >>= 1) {
+		if ((x & ((1U << shift) - 1U)) == 0) {
+			count += shift;
+			x >>= shift;
+		}
+	}
+	return count;
 }
 #else
 MINI_STATIC_INLINE uint32_t MINI_CTZ(uint32_t x)
 {
-    if (x == 0U)
-        return 32U;
-    return (uint32_t)__builtin_ctz(x);
+	if (x == 0U)
+		return 32U;
+	return (uint32_t)__builtin_ctz(x);
 }
 #endif
 /**
@@ -221,27 +222,25 @@ MINI_STATIC_INLINE uint32_t MINI_CTZ(uint32_t x)
 #if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS)
 MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_CLZ(uint32_t x)
 {
-    uint32_t count = 31;
-    if (x == 0)
-        return 32;
+	uint32_t count = 31;
+	if (x == 0)
+		return 32;
 
-    for (uint32_t shift = 16; shift; shift >>= 1)
-    {
-        uint32_t val = x >> shift;
-        if (val)
-        {
-            x = val;
-            count -= shift;
-        }
-    }
-    return count;
+	for (uint32_t shift = 16; shift; shift >>= 1) {
+		uint32_t val = x >> shift;
+		if (val) {
+			x = val;
+			count -= shift;
+		}
+	}
+	return count;
 }
 #else
 MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_CLZ(uint32_t x)
 {
-    if (x == 0U)
-        return 32U;
-    return (uint32_t)__builtin_clz(x);
+	if (x == 0U)
+		return 32U;
+	return (uint32_t)__builtin_clz(x);
 }
 #endif
 /**
@@ -249,14 +248,20 @@ MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_CLZ(uint32_t x)
  * @param[in] x 32 位无符号整数
  * @return 置位个数
  */
-MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_POPCOUNT(uint32_t x) { return (uint32_t)__builtin_popcount(x); }
+MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_POPCOUNT(uint32_t x)
+{
+	return (uint32_t)__builtin_popcount(x);
+}
 
 /**
  * @brief 返回最低置位的位号 (find first set)
  * @param[in] x 32 位无符号整数
  * @return 最低置位位号 (1-based); x 为 0 时返回 0
  */
-MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_FFS(uint32_t x) { return (uint32_t)__builtin_ffs(x); }
+MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_FFS(uint32_t x)
+{
+	return (uint32_t)__builtin_ffs(x);
+}
 
 /**
  * @brief 预取内存到缓存
@@ -291,64 +296,64 @@ MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_FFS(uint32_t x) { return (uint3
 #define MINI_MAGIC_SLOT_STRIDE 0x100u
 
 /** @brief 设备魔法槽 X-Macro 表 */
-#define MINI_MAGIC_TABLE(X)                                                                                                                          \
-    X(SPI, 0x00)                                                                                                                                     \
-    X(UART, 0x01)                                                                                                                                    \
-    X(I2C, 0x02)                                                                                                                                     \
-    X(I2S, 0x03)                                                                                                                                     \
-    X(USB, 0x04)                                                                                                                                     \
-    X(CAN, 0x05)                                                                                                                                     \
-    X(ETH, 0x06)                                                                                                                                     \
-    X(GPIO, 0x07)                                                                                                                                    \
-    X(SDIO, 0x08)                                                                                                                                    \
-    X(W25Q64, 0x09)                                                                                                                                  \
-    X(TIM, 0x0A)                                                                                                                                     \
-    X(ADC, 0x0B)                                                                                                                                     \
-    X(DAC, 0x0C)                                                                                                                                     \
-    X(RTC, 0x0D)                                                                                                                                     \
-    X(IWDG, 0x0E)                                                                                                                                    \
-    X(WWDG, 0x0F)                                                                                                                                    \
-    X(WS2812, 0x10)                                                                                                                                  \
-    X(ST7789, 0x11)                                                                                                                                  \
-    X(MAX98357A, 0x12)                                                                                                                               \
-    X(GPIOKEY, 0x13)                                                                                                                                 \
-    X(LIGHT, 0x14)                                                                                                                                   \
-    X(PWMBL, 0x15)                                                                                                                                   \
-    X(SHT30, 0x16)                                                                                                                                   \
-    X(MPU6050, 0x17)                                                                                                                                 \
-    X(AT24C02, 0x18)                                                                                                                                 \
-    X(SSD1306, 0x19)                                                                                                                                 \
-    X(BH1750, 0x1A)                                                                                                                                  \
-    X(BME280, 0x1B)                                                                                                                                  \
-    X(FT5X06, 0x1C)                                                                                                                                  \
-    X(XPT2046, 0x1D)                                                                                                                                 \
-    X(SX1278, 0x1E)                                                                                                                                  \
-    X(EPAPER, 0x1F)                                                                                                                                  \
-    X(NEO_M8N, 0x20)                                                                                                                                 \
-    X(HC05, 0x22)                                                                                                                                    \
-    X(RS485_MODBUS, 0x23)                                                                                                                            \
-    X(DRV8833, 0x24)                                                                                                                                 \
-    X(SG90, 0x25)                                                                                                                                    \
-    X(BUZZER, 0x26)                                                                                                                                  \
-    X(RELAY, 0x27)                                                                                                                                   \
-    X(DS18B20, 0x28)                                                                                                                                 \
-    X(SN65HVD230, 0x29)                                                                                                                              \
-    X(W25QXX, 0x2A)                                                                                                                                  \
-    X(AHT20, 0x2B)                                                                                                                                   \
-    X(SHT40, 0x2C)                                                                                                                                   \
-    X(BMP280, 0x2D)                                                                                                                                  \
-    X(VL53L0X, 0x2E)                                                                                                                                 \
-    X(PCF8574, 0x2F)                                                                                                                                 \
-    X(ADS1115, 0x30)                                                                                                                                 \
-    X(INA219, 0x31)                                                                                                                                  \
-    X(SH1106, 0x32)                                                                                                                                  \
-    X(NRF24L01, 0x33)                                                                                                                                \
-    X(RC522, 0x34)                                                                                                                                   \
-    X(MAX7219, 0x35)                                                                                                                                 \
-    X(PN532, 0x37)                                                                                                                                   \
-    X(DFPLAYER, 0x38)                                                                                                                                \
-    X(DISPLAY, 0x39)                                                                                                                                 \
-    X(MODEM, 0x3A)
+#define MINI_MAGIC_TABLE(X)   \
+	X(SPI, 0x00)          \
+	X(UART, 0x01)         \
+	X(I2C, 0x02)          \
+	X(I2S, 0x03)          \
+	X(USB, 0x04)          \
+	X(CAN, 0x05)          \
+	X(ETH, 0x06)          \
+	X(GPIO, 0x07)         \
+	X(SDIO, 0x08)         \
+	X(W25Q64, 0x09)       \
+	X(TIM, 0x0A)          \
+	X(ADC, 0x0B)          \
+	X(DAC, 0x0C)          \
+	X(RTC, 0x0D)          \
+	X(IWDG, 0x0E)         \
+	X(WWDG, 0x0F)         \
+	X(WS2812, 0x10)       \
+	X(ST7789, 0x11)       \
+	X(MAX98357A, 0x12)    \
+	X(GPIOKEY, 0x13)      \
+	X(LIGHT, 0x14)        \
+	X(PWMBL, 0x15)        \
+	X(SHT30, 0x16)        \
+	X(MPU6050, 0x17)      \
+	X(AT24C02, 0x18)      \
+	X(SSD1306, 0x19)      \
+	X(BH1750, 0x1A)       \
+	X(BME280, 0x1B)       \
+	X(FT5X06, 0x1C)       \
+	X(XPT2046, 0x1D)      \
+	X(SX1278, 0x1E)       \
+	X(EPAPER, 0x1F)       \
+	X(NEO_M8N, 0x20)      \
+	X(HC05, 0x22)         \
+	X(RS485_MODBUS, 0x23) \
+	X(DRV8833, 0x24)      \
+	X(SG90, 0x25)         \
+	X(BUZZER, 0x26)       \
+	X(RELAY, 0x27)        \
+	X(DS18B20, 0x28)      \
+	X(SN65HVD230, 0x29)   \
+	X(W25QXX, 0x2A)       \
+	X(AHT20, 0x2B)        \
+	X(SHT40, 0x2C)        \
+	X(BMP280, 0x2D)       \
+	X(VL53L0X, 0x2E)      \
+	X(PCF8574, 0x2F)      \
+	X(ADS1115, 0x30)      \
+	X(INA219, 0x31)       \
+	X(SH1106, 0x32)       \
+	X(NRF24L01, 0x33)     \
+	X(RC522, 0x34)        \
+	X(MAX7219, 0x35)      \
+	X(PN532, 0x37)        \
+	X(DFPLAYER, 0x38)     \
+	X(DISPLAY, 0x39)      \
+	X(MODEM, 0x3A)
 
 /**
  * @brief 魔法槽枚举生成器
@@ -358,10 +363,7 @@ MINI_STATIC_INLINE MINI_CONST_FUNC uint32_t MINI_FFS(uint32_t x) { return (uint3
 #define MINI_MAGIC_ENUM(name, slot) MINI_MAGIC_##name = (uint32_t)((slot) * MINI_MAGIC_SLOT_STRIDE),
 
 /** @brief 设备魔法槽枚举 */
-enum
-{
-    MINI_MAGIC_TABLE(MINI_MAGIC_ENUM)
-};
+enum { MINI_MAGIC_TABLE(MINI_MAGIC_ENUM) };
 
 #undef MINI_MAGIC_ENUM
 
@@ -409,11 +411,10 @@ enum
  * @details GCC 14+ 下 (void)expr 对 warn_unused_result 无效, 须用此宏
  */
 #if MINI_WUR_ATTR_OK
-#define MINI_IGNORE_RESULT(expr)                                                                                                                     \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        MINI_TYPEOF(expr) _compat_ign_ __attribute__((unused)) = (expr);                                                                             \
-    } while (0)
+#define MINI_IGNORE_RESULT(expr)                                                 \
+	do {                                                                     \
+		MINI_TYPEOF(expr) _compat_ign_ __attribute__((unused)) = (expr); \
+	} while (0)
 #else
 #define MINI_IGNORE_RESULT(expr) ((void)(expr))
 #endif
@@ -428,7 +429,8 @@ enum
  * @param[in] first_var 第一个可变参数序号
  */
 #if defined(__GNUC__)
-#define MINI_FMT_PRINTF(fmt_arg, first_var) __attribute__((format(__printf__, (fmt_arg), (first_var))))
+#define MINI_FMT_PRINTF(fmt_arg, first_var) \
+	__attribute__((format(__printf__, (fmt_arg), (first_var))))
 #else
 #define MINI_FMT_PRINTF(fmt_arg, first_var)
 #endif
@@ -445,14 +447,14 @@ enum
  */
 #if MINI_GNU_EXT_OK
 #undef container_of
-#define container_of(ptr, type, member)                                                                                                              \
-    ({                                                                                                                                               \
-        const MINI_TYPEOF(((type*)0)->member)* __mptr = (ptr);                                                                                       \
-        (type*)((char*)__mptr - __builtin_offsetof(type, member));                                                                                   \
-    })
+#define container_of(ptr, type, member)                                      \
+	({                                                                   \
+		const MINI_TYPEOF(((type *)0)->member) *__mptr = (ptr);      \
+		(type *)((char *)__mptr - __builtin_offsetof(type, member)); \
+	})
 #else
 #ifndef container_of
-#define container_of(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
+#define container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof(type, member)))
 #endif
 #endif
 
@@ -481,7 +483,10 @@ enum
 /**
  * @brief 标记不可达分支
  */
-MINI_STATIC_INLINE MINI_NO_RETURN void unreachable(void) { __builtin_unreachable(); }
+MINI_STATIC_INLINE MINI_NO_RETURN void unreachable(void)
+{
+	__builtin_unreachable();
+}
 
 /* -------------------------------------------------------------------------- */
 /* mini_pre_execution 启动优先级 */
@@ -489,8 +494,8 @@ MINI_STATIC_INLINE MINI_NO_RETURN void unreachable(void) { __builtin_unreachable
 /* 依赖链: 总线/后端资源池(150) → 信号量/队列/事件组池(151/152/153) → 驱动池(160) → 调度器(161) → */
 /* 中断下半部池(170)。 */
 /* -------------------------------------------------------------------------- */
-#define MINI_PRE_EXEC_PRIO_RES_POOL 150    /* 总线池 / VFS 私有池 / 后端互斥锁池 */
-#define MINI_PRE_EXEC_PRIO_SEM_POOL 151    /* 后端信号量池 / DAC 私有池 */
+#define MINI_PRE_EXEC_PRIO_RES_POOL 150	   /* 总线池 / VFS 私有池 / 后端互斥锁池 */
+#define MINI_PRE_EXEC_PRIO_SEM_POOL 151	   /* 后端信号量池 / DAC 私有池 */
 #define MINI_PRE_EXEC_PRIO_QUEUE_POOL 152  /* 队列池 */
 #define MINI_PRE_EXEC_PRIO_DRIVER_POOL 160 /* 驱动静态池 / VFS client 池 / 协调式调度器 */
 #define MINI_PRE_EXEC_PRIO_SCHEDULER 161   /* 抢占式调度器早期初始化 */
@@ -509,14 +514,13 @@ MINI_STATIC_INLINE MINI_NO_RETURN void unreachable(void) { __builtin_unreachable
  * @brief cleanup 回调: 自动释放堆指针
  * @param[in] ptr cleanup 传入的指针地址
  */
-MINI_STATIC_INLINE void auto_free_ptr(void* ptr)
+MINI_STATIC_INLINE void auto_free_ptr(void *ptr)
 {
-    void** real_ptr = (void**)ptr;
-    if (*real_ptr != NULL)
-    {
-        free(*real_ptr);
-        *real_ptr = NULL;
-    }
+	void **real_ptr = (void **)ptr;
+	if (*real_ptr != NULL) {
+		free(*real_ptr);
+		*real_ptr = NULL;
+	}
 }
 /** @brief 作用域结束自动 free 的属性 */
 #define MINI_AUTO_FREE __attribute__((cleanup(auto_free_ptr)))
@@ -542,7 +546,8 @@ MINI_STATIC_INLINE void auto_free_ptr(void* ptr)
  * @note  平台无关的 WFI 封装: Cortex-M 用 __WFI, RISCV 用 wfi;
  *        调用方需保证随后确有中断到达, 否则 CPU 睡死.
  */
-#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) || defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7)
+#if defined(__CORTEX_M0) || defined(__CORTEX_M0PLUS) || defined(__CORTEX_M3) || \
+	defined(__CORTEX_M4) || defined(__CORTEX_M4F) || defined(__CORTEX_M7)
 #define MINI_WFI() __WFI()
 #elif defined(__riscv)
 #define MINI_WFI() __asm__ volatile("wfi")
@@ -561,19 +566,18 @@ MINI_STATIC_INLINE void auto_free_ptr(void* ptr)
  * @param[in] size 内存大小
  * @return MINI_OK 成功, MINI_ERR_INVAL 参数无效
  */
-MINI_STATIC_INLINE mt_err_t MINI_MEM_SET(void* dest, int src, size_t size)
+MINI_STATIC_INLINE mt_err_t MINI_MEM_SET(void *dest, int src, size_t size)
 {
-    if (dest == NULL)
-        return MINI_ERR_INVAL;
-    if (size > 0)
-    {
+	if (dest == NULL)
+		return MINI_ERR_INVAL;
+	if (size > 0) {
 #if defined(__GNUC__) || defined(__clang__)
-        __builtin_memset(dest, src, size);
+		__builtin_memset(dest, src, size);
 #else
-        memset(dest, src, size);
+		memset(dest, src, size);
 #endif
-    }
-    return MINI_OK;
+	}
+	return MINI_OK;
 }
 
 /**
@@ -583,19 +587,18 @@ MINI_STATIC_INLINE mt_err_t MINI_MEM_SET(void* dest, int src, size_t size)
  * @param[in] size 内存大小
  * @return MINI_OK 成功, MINI_ERR_INVAL 参数无效
  */
-MINI_STATIC_INLINE mt_err_t MINI_MEM_COPY(void* dest, const void* src, size_t size)
+MINI_STATIC_INLINE mt_err_t MINI_MEM_COPY(void *dest, const void *src, size_t size)
 {
-    if (dest == NULL || src == NULL)
-        return MINI_ERR_INVAL;
-    if (size > 0)
-    {
+	if (dest == NULL || src == NULL)
+		return MINI_ERR_INVAL;
+	if (size > 0) {
 #if defined(__GNUC__) || defined(__clang__)
-        __builtin_memcpy(dest, src, size);
+		__builtin_memcpy(dest, src, size);
 #else
-        memcpy(dest, src, size);
+		memcpy(dest, src, size);
 #endif
-    }
-    return MINI_OK;
+	}
+	return MINI_OK;
 }
 
 /**
@@ -605,19 +608,18 @@ MINI_STATIC_INLINE mt_err_t MINI_MEM_COPY(void* dest, const void* src, size_t si
  * @param[in] size 内存大小
  * @return MINI_OK 成功, MINI_ERR_INVAL 参数无效
  */
-MINI_STATIC_INLINE mt_err_t MINI_MEM_MOVE(void* dest, const void* src, size_t size)
+MINI_STATIC_INLINE mt_err_t MINI_MEM_MOVE(void *dest, const void *src, size_t size)
 {
-    if (dest == NULL || src == NULL)
-        return MINI_ERR_INVAL;
-    if (size > 0)
-    {
+	if (dest == NULL || src == NULL)
+		return MINI_ERR_INVAL;
+	if (size > 0) {
 #if defined(__GNUC__) || defined(__clang__)
-        __builtin_memmove(dest, src, size);
+		__builtin_memmove(dest, src, size);
 #else
-        memmove(dest, src, size);
+		memmove(dest, src, size);
 #endif
-    }
-    return MINI_OK;
+	}
+	return MINI_OK;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -635,36 +637,60 @@ MINI_STATIC_INLINE mt_err_t MINI_MEM_MOVE(void* dest, const void* src, size_t si
  */
 
 /** @brief 读 32 位寄存器 */
-MINI_STATIC_INLINE uint32_t MINI_REG_READ32(uintptr_t addr) { return *(volatile uint32_t*)addr; }
+MINI_STATIC_INLINE uint32_t MINI_REG_READ32(uintptr_t addr)
+{
+	return *(volatile uint32_t *)addr;
+}
 
 /** @brief 写 32 位寄存器 */
-MINI_STATIC_INLINE void MINI_REG_WRITE32(uintptr_t addr, uint32_t val) { *(volatile uint32_t*)addr = val; }
+MINI_STATIC_INLINE void MINI_REG_WRITE32(uintptr_t addr, uint32_t val)
+{
+	*(volatile uint32_t *)addr = val;
+}
 
 /**
  * @brief 读 64 位寄存器
  * @note 在 32 位 MCU 上 64 位访问由两次 32 位总线事务组成, 非原子;
  *       如需原子读请用两个 MINI_REG_READ32 并在临界区内组合.
  */
-MINI_STATIC_INLINE uint64_t MINI_REG_READ64(uintptr_t addr) { return *(volatile uint64_t*)addr; }
+MINI_STATIC_INLINE uint64_t MINI_REG_READ64(uintptr_t addr)
+{
+	return *(volatile uint64_t *)addr;
+}
 
 /**
  * @brief 写 64 位寄存器
  * @note 在 32 位 MCU 上 64 位访问由两次 32 位总线事务组成, 非原子;
  *       如需原子写请用两个 MINI_REG_WRITE32 并在临界区内组合.
  */
-MINI_STATIC_INLINE void MINI_REG_WRITE64(uintptr_t addr, uint64_t val) { *(volatile uint64_t*)addr = val; }
+MINI_STATIC_INLINE void MINI_REG_WRITE64(uintptr_t addr, uint64_t val)
+{
+	*(volatile uint64_t *)addr = val;
+}
 
 /** @brief 读 16 位寄存器 */
-MINI_STATIC_INLINE uint16_t MINI_REG_READ16(uintptr_t addr) { return *(volatile uint16_t*)addr; }
+MINI_STATIC_INLINE uint16_t MINI_REG_READ16(uintptr_t addr)
+{
+	return *(volatile uint16_t *)addr;
+}
 
 /** @brief 写 16 位寄存器 */
-MINI_STATIC_INLINE void MINI_REG_WRITE16(uintptr_t addr, uint16_t val) { *(volatile uint16_t*)addr = val; }
+MINI_STATIC_INLINE void MINI_REG_WRITE16(uintptr_t addr, uint16_t val)
+{
+	*(volatile uint16_t *)addr = val;
+}
 
 /** @brief 读 8 位寄存器 */
-MINI_STATIC_INLINE uint8_t MINI_REG_READ8(uintptr_t addr) { return *(volatile uint8_t*)addr; }
+MINI_STATIC_INLINE uint8_t MINI_REG_READ8(uintptr_t addr)
+{
+	return *(volatile uint8_t *)addr;
+}
 
 /** @brief 写 8 位寄存器 */
-MINI_STATIC_INLINE void MINI_REG_WRITE8(uintptr_t addr, uint8_t val) { *(volatile uint8_t*)addr = val; }
+MINI_STATIC_INLINE void MINI_REG_WRITE8(uintptr_t addr, uint8_t val)
+{
+	*(volatile uint8_t *)addr = val;
+}
 
 /**
  * @brief 读-改-写 32 位寄存器 (非原子)
@@ -676,9 +702,9 @@ MINI_STATIC_INLINE void MINI_REG_WRITE8(uintptr_t addr, uint8_t val) { *(volatil
  */
 MINI_STATIC_INLINE void MINI_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask, uint32_t set_mask)
 {
-    uint32_t reg_value = MINI_REG_READ32(addr);
-    reg_value = (reg_value & ~clear_mask) | set_mask;
-    MINI_REG_WRITE32(addr, reg_value);
+	uint32_t reg_value = MINI_REG_READ32(addr);
+	reg_value	   = (reg_value & ~clear_mask) | set_mask;
+	MINI_REG_WRITE32(addr, reg_value);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -699,10 +725,13 @@ MINI_STATIC_INLINE void MINI_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask, u
 #if defined(__cplusplus)
 #define MINI_BIT(n) (1UL << (n))
 #elif defined(__GNUC__) || defined(__clang__)
-#define MINI_BIT(n)                                                                                                                                  \
-    __builtin_choose_expr(__builtin_types_compatible_p(MINI_TYPEOF(n), unsigned int) || __builtin_types_compatible_p(MINI_TYPEOF(n), int) ||         \
-                              __builtin_types_compatible_p(MINI_TYPEOF(n), unsigned long) || __builtin_types_compatible_p(MINI_TYPEOF(n), long),     \
-                          (1UL << (n)), ((void)0)) /* 非整数类型: 结果 void, 用于值上下文即编译错误 */
+#define MINI_BIT(n)                                                                    \
+	__builtin_choose_expr(                                                         \
+		__builtin_types_compatible_p(MINI_TYPEOF(n), unsigned int) ||          \
+			__builtin_types_compatible_p(MINI_TYPEOF(n), int) ||           \
+			__builtin_types_compatible_p(MINI_TYPEOF(n), unsigned long) || \
+			__builtin_types_compatible_p(MINI_TYPEOF(n), long),            \
+		(1UL << (n)), ((void)0)) /* 非整数类型: 结果 void, 用于值上下文即编译错误 */
 #else
 #define MINI_BIT(n) (1UL << (n))
 #endif
@@ -713,7 +742,10 @@ MINI_STATIC_INLINE void MINI_REG_MODIFY32(uintptr_t addr, uint32_t clear_mask, u
  * @param[in] mask 置位掩码 (1 = 置位, 等价 reg |= mask)
  * @note 等价于 `reg |= mask`; 并发 RMW 需调用方保护临界区
  */
-MINI_STATIC_INLINE void MINI_REG_SET_BITS(uintptr_t addr, uint32_t mask) { MINI_REG_MODIFY32(addr, 0U, mask); }
+MINI_STATIC_INLINE void MINI_REG_SET_BITS(uintptr_t addr, uint32_t mask)
+{
+	MINI_REG_MODIFY32(addr, 0U, mask);
+}
 
 /**
  * @brief 清位寄存器中的若干位 (read-modify-write, 非原子)
@@ -721,7 +753,10 @@ MINI_STATIC_INLINE void MINI_REG_SET_BITS(uintptr_t addr, uint32_t mask) { MINI_
  * @param[in] mask 清位掩码 (1 = 清零, 等价 reg &= ~mask)
  * @note 等价于 `reg &= ~mask`; 并发 RMW 需调用方保护临界区
  */
-MINI_STATIC_INLINE void MINI_REG_CLR_BITS(uintptr_t addr, uint32_t mask) { MINI_REG_MODIFY32(addr, mask, 0U); }
+MINI_STATIC_INLINE void MINI_REG_CLR_BITS(uintptr_t addr, uint32_t mask)
+{
+	MINI_REG_MODIFY32(addr, mask, 0U);
+}
 
 /**
  * @brief 翻转寄存器中的若干位 (read-modify-write, 非原子)
@@ -731,9 +766,9 @@ MINI_STATIC_INLINE void MINI_REG_CLR_BITS(uintptr_t addr, uint32_t mask) { MINI_
  */
 MINI_STATIC_INLINE void MINI_REG_TOGGLE_BITS(uintptr_t addr, uint32_t mask)
 {
-    uint32_t reg_value = MINI_REG_READ32(addr);
-    reg_value ^= mask;
-    MINI_REG_WRITE32(addr, reg_value);
+	uint32_t reg_value = MINI_REG_READ32(addr);
+	reg_value ^= mask;
+	MINI_REG_WRITE32(addr, reg_value);
 }
 
 /**
@@ -741,21 +776,30 @@ MINI_STATIC_INLINE void MINI_REG_TOGGLE_BITS(uintptr_t addr, uint32_t mask)
  * @param[in] addr 寄存器地址
  * @param[in] n    位序号 (0..31)
  */
-MINI_STATIC_INLINE void MINI_REG_SET_BIT(uintptr_t addr, uint32_t n) { MINI_REG_SET_BITS(addr, MINI_BIT(n)); }
+MINI_STATIC_INLINE void MINI_REG_SET_BIT(uintptr_t addr, uint32_t n)
+{
+	MINI_REG_SET_BITS(addr, MINI_BIT(n));
+}
 
 /**
  * @brief 清位寄存器中的单个位
  * @param[in] addr 寄存器地址
  * @param[in] n    位序号 (0..31)
  */
-MINI_STATIC_INLINE void MINI_REG_CLR_BIT(uintptr_t addr, uint32_t n) { MINI_REG_CLR_BITS(addr, MINI_BIT(n)); }
+MINI_STATIC_INLINE void MINI_REG_CLR_BIT(uintptr_t addr, uint32_t n)
+{
+	MINI_REG_CLR_BITS(addr, MINI_BIT(n));
+}
 
 /**
  * @brief 翻转寄存器中的单个位
  * @param[in] addr 寄存器地址
  * @param[in] n    位序号 (0..31)
  */
-MINI_STATIC_INLINE void MINI_REG_TOGGLE_BIT(uintptr_t addr, uint32_t n) { MINI_REG_TOGGLE_BITS(addr, MINI_BIT(n)); }
+MINI_STATIC_INLINE void MINI_REG_TOGGLE_BIT(uintptr_t addr, uint32_t n)
+{
+	MINI_REG_TOGGLE_BITS(addr, MINI_BIT(n));
+}
 
 /**
  * @brief 读取寄存器中若干位 (掩码提取, 不右移)
@@ -763,7 +807,10 @@ MINI_STATIC_INLINE void MINI_REG_TOGGLE_BIT(uintptr_t addr, uint32_t n) { MINI_R
  * @param[in] mask 要提取的位掩码
  * @return reg & mask
  */
-MINI_STATIC_INLINE uint32_t MINI_REG_GET_BITS(uintptr_t addr, uint32_t mask) { return MINI_REG_READ32(addr) & mask; }
+MINI_STATIC_INLINE uint32_t MINI_REG_GET_BITS(uintptr_t addr, uint32_t mask)
+{
+	return MINI_REG_READ32(addr) & mask;
+}
 
 /**
  * @brief 提取寄存器字段并右移对齐到 0 位
@@ -772,7 +819,10 @@ MINI_STATIC_INLINE uint32_t MINI_REG_GET_BITS(uintptr_t addr, uint32_t mask) { r
  * @param[in] shift 字段低位偏移 (如 8)
  * @return (reg & mask) >> shift
  */
-MINI_STATIC_INLINE uint32_t MINI_REG_FIELD_GET(uintptr_t addr, uint32_t mask, uint32_t shift) { return (MINI_REG_READ32(addr) & mask) >> shift; }
+MINI_STATIC_INLINE uint32_t MINI_REG_FIELD_GET(uintptr_t addr, uint32_t mask, uint32_t shift)
+{
+	return (MINI_REG_READ32(addr) & mask) >> shift;
+}
 
 /**
  * @brief 更新寄存器字段 (读-改-写, 非原子)
@@ -782,9 +832,10 @@ MINI_STATIC_INLINE uint32_t MINI_REG_FIELD_GET(uintptr_t addr, uint32_t mask, ui
  * @param[in] val   字段新值 (未预移位, 函数内自动左移)
  * @note 等价于 reg = (reg & ~mask) | ((val << shift) & mask); 并发 RMW 需临界区
  */
-MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32_t shift, uint32_t val)
+MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32_t shift,
+					   uint32_t val)
 {
-    MINI_REG_MODIFY32(addr, mask, (val << shift) & mask);
+	MINI_REG_MODIFY32(addr, mask, (val << shift) & mask);
 }
 
 /** @} */
@@ -807,9 +858,9 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ATOMIC_UINT8 uint8_t
 #define MINI_ATOMIC_UINT32 uint32_t
 #define MINI_ATOMIC_BOOL bool
-#define MINI_ATOMIC_INIT(val)                                                                                                                        \
-    (val) /* 声明期初值: MINI_ATOMIC_INT x = MINI_ATOMIC_INIT(0);                                                                               \
-           */
+#define MINI_ATOMIC_INIT(val)                                           \
+	(val) /* 声明期初值: MINI_ATOMIC_INT x = MINI_ATOMIC_INIT(0); \
+	       */
 
 #define MINI_RELAXED __ATOMIC_RELAXED
 #define MINI_ACQUIRE __ATOMIC_ACQUIRE
@@ -828,11 +879,11 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
  * 其余目标 (ARMv7+ 含 M3/M4/M7、RISC-V 带 A 扩展、x86) 仍走 __atomic 内建。
  */
 #if (defined(__arm__) || defined(__thumb__)) && defined(__ARM_ARCH) && (__ARM_ARCH < 7)
-#   define MINI_ATOMIC_IRQ_SOFT_ATOMIC 1
+#define MINI_ATOMIC_IRQ_SOFT_ATOMIC 1
 #elif defined(__riscv) && !defined(__riscv_a)
-#   define MINI_ATOMIC_IRQ_SOFT_ATOMIC 1
+#define MINI_ATOMIC_IRQ_SOFT_ATOMIC 1
 #else
-#   define MINI_ATOMIC_IRQ_SOFT_ATOMIC 0
+#define MINI_ATOMIC_IRQ_SOFT_ATOMIC 0
 #endif
 
 #if MINI_ATOMIC_IRQ_SOFT_ATOMIC
@@ -846,76 +897,91 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
  */
 #if defined(__riscv)
 /* RISC-V: 保存整个 mstatus 并清 MIE(bit3), 恢复时写回 (FreeRTOS RISC-V port 同模式) */
-#   define MINI_ATOMIC_IRQ_SAVE() __extension__({                                   \
-        unsigned long _mini_at_ms;                                                  \
-        __asm__ volatile("csrrc %0, mstatus, %1"                                    \
-                         : "=r"(_mini_at_ms) : "rK"(0x8) : "memory");               \
-        _mini_at_ms; })
-#   define MINI_ATOMIC_IRQ_RESTORE(x)                                               \
-        __asm__ volatile("csrw mstatus, %0" :: "r"(x) : "memory")
+#define MINI_ATOMIC_IRQ_SAVE()                           \
+	__extension__({                                  \
+		unsigned long _mini_at_ms;               \
+		__asm__ volatile("csrrc %0, mstatus, %1" \
+				 : "=r"(_mini_at_ms)     \
+				 : "rK"(0x8)             \
+				 : "memory");            \
+		_mini_at_ms;                             \
+	})
+#define MINI_ATOMIC_IRQ_RESTORE(x) __asm__ volatile("csrw mstatus, %0" ::"r"(x) : "memory")
 #else
 /* ARM: 保存 PRIMASK 并关中断, 恢复时写回 (嵌套安全) */
-#   define MINI_ATOMIC_IRQ_SAVE() __extension__({                                   \
-        unsigned long _mini_at_pm;                                                  \
-        __asm__ volatile("mrs %0, primask\ncpsid i"                                 \
-                         : "=r"(_mini_at_pm) :: "memory");                          \
-        _mini_at_pm; })
-#   define MINI_ATOMIC_IRQ_RESTORE(x)                                               \
-        __asm__ volatile("msr primask, %0" :: "r"(x) : "memory")
+#define MINI_ATOMIC_IRQ_SAVE()                                                              \
+	__extension__({                                                                     \
+		unsigned long _mini_at_pm;                                                  \
+		__asm__ volatile("mrs %0, primask\ncpsid i" : "=r"(_mini_at_pm)::"memory"); \
+		_mini_at_pm;                                                                \
+	})
+#define MINI_ATOMIC_IRQ_RESTORE(x) __asm__ volatile("msr primask, %0" ::"r"(x) : "memory")
 #endif
 
 /* 对齐单字 load/store 天然原子 (bool/uint8/uint16/uint32 均单指令), 直接读写 */
 #define MINI_ATOMIC_STORE(p, v, m) (*(p) = (v))
 #define MINI_ATOMIC_LOAD(p, m) (*(p))
 
-#define MINI_ATOMIC_ADD_FETCH(p, v, m) __extension__({                              \
-    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
-    __typeof__(*(p)) _mini_at_new = (__typeof__(*(p)))(*(p) + (v));                 \
-    *(p) = _mini_at_new;                                                            \
-    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
-    _mini_at_new; })
+#define MINI_ATOMIC_ADD_FETCH(p, v, m)                                          \
+	__extension__({                                                         \
+		uint32_t	 _mini_at_pm  = MINI_ATOMIC_IRQ_SAVE();         \
+		__typeof__(*(p)) _mini_at_new = (__typeof__(*(p)))(*(p) + (v)); \
+		*(p)			      = _mini_at_new;                   \
+		MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                           \
+		_mini_at_new;                                                   \
+	})
 
-#define MINI_ATOMIC_SUB_FETCH(p, v, m) __extension__({                              \
-    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
-    __typeof__(*(p)) _mini_at_new = (__typeof__(*(p)))(*(p) - (v));                 \
-    *(p) = _mini_at_new;                                                            \
-    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
-    _mini_at_new; })
+#define MINI_ATOMIC_SUB_FETCH(p, v, m)                                          \
+	__extension__({                                                         \
+		uint32_t	 _mini_at_pm  = MINI_ATOMIC_IRQ_SAVE();         \
+		__typeof__(*(p)) _mini_at_new = (__typeof__(*(p)))(*(p) - (v)); \
+		*(p)			      = _mini_at_new;                   \
+		MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                           \
+		_mini_at_new;                                                   \
+	})
 
-#define MINI_ATOMIC_FETCH_ADD(p, v, m) __extension__({                              \
-    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
-    __typeof__(*(p)) _mini_at_old = *(p);                                           \
-    *(p) = (__typeof__(*(p)))(_mini_at_old + (v));                                  \
-    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
-    _mini_at_old; })
+#define MINI_ATOMIC_FETCH_ADD(p, v, m)                                                  \
+	__extension__({                                                                 \
+		uint32_t	 _mini_at_pm  = MINI_ATOMIC_IRQ_SAVE();                 \
+		__typeof__(*(p)) _mini_at_old = *(p);                                   \
+		*(p)			      = (__typeof__(*(p)))(_mini_at_old + (v)); \
+		MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                   \
+		_mini_at_old;                                                           \
+	})
 
-#define MINI_ATOMIC_FETCH_SUB(p, v, m) __extension__({                              \
-    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
-    __typeof__(*(p)) _mini_at_old = *(p);                                           \
-    *(p) = (__typeof__(*(p)))(_mini_at_old - (v));                                  \
-    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
-    _mini_at_old; })
+#define MINI_ATOMIC_FETCH_SUB(p, v, m)                                                  \
+	__extension__({                                                                 \
+		uint32_t	 _mini_at_pm  = MINI_ATOMIC_IRQ_SAVE();                 \
+		__typeof__(*(p)) _mini_at_old = *(p);                                   \
+		*(p)			      = (__typeof__(*(p)))(_mini_at_old - (v)); \
+		MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                   \
+		_mini_at_old;                                                           \
+	})
 
 /* CAS: 成功写入 desired 返回 1; 失败把旧值回写 *expected 返回 0 (与
  * __atomic_compare_exchange_n 语义一致) */
-#define MINI_ATOMIC_CAS(p, e, d, ms, mf) __extension__({                            \
-    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
-    __typeof__(*(p)) _mini_at_cur = *(p);                                           \
-    bool _mini_at_ok = (_mini_at_cur == *(e));                                      \
-    if (_mini_at_ok) {                                                              \
-        *(p) = (__typeof__(*(p)))(d);                                               \
-    } else {                                                                        \
-        *(e) = _mini_at_cur;                                                        \
-    }                                                                               \
-    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
-    _mini_at_ok; })
+#define MINI_ATOMIC_CAS(p, e, d, ms, mf)                                \
+	__extension__({                                                 \
+		uint32_t	 _mini_at_pm  = MINI_ATOMIC_IRQ_SAVE(); \
+		__typeof__(*(p)) _mini_at_cur = *(p);                   \
+		bool		 _mini_at_ok  = (_mini_at_cur == *(e)); \
+		if (_mini_at_ok) {                                      \
+			*(p) = (__typeof__(*(p)))(d);                   \
+		} else {                                                \
+			*(e) = _mini_at_cur;                            \
+		}                                                       \
+		MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                   \
+		_mini_at_ok;                                            \
+	})
 
-#define MINI_ATOMIC_EXCHANGE(p, v, m) __extension__({                               \
-    uint32_t _mini_at_pm = MINI_ATOMIC_IRQ_SAVE();                                  \
-    __typeof__(*(p)) _mini_at_old = *(p);                                           \
-    *(p) = (__typeof__(*(p)))(v);                                                   \
-    MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                                           \
-    _mini_at_old; })
+#define MINI_ATOMIC_EXCHANGE(p, v, m)                                   \
+	__extension__({                                                 \
+		uint32_t	 _mini_at_pm  = MINI_ATOMIC_IRQ_SAVE(); \
+		__typeof__(*(p)) _mini_at_old = *(p);                   \
+		*(p)			      = (__typeof__(*(p)))(v);  \
+		MINI_ATOMIC_IRQ_RESTORE(_mini_at_pm);                   \
+		_mini_at_old;                                           \
+	})
 
 #else /* 内联原子可用: __atomic 内建 (原路径, 不变) */
 
@@ -930,7 +996,8 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 
 #endif /* MINI_ATOMIC_IRQ_SOFT_ATOMIC */
 
-#define MINI_ATOMIC_RUNTIME_INIT(p, val) MINI_ATOMIC_STORE((p), (val), MINI_RELAXED) /* 运行期初值, 等价 C11 atomic_init */
+#define MINI_ATOMIC_RUNTIME_INIT(p, val) \
+	MINI_ATOMIC_STORE((p), (val), MINI_RELAXED) /* 运行期初值, 等价 C11 atomic_init */
 
 /** @} */
 
@@ -961,7 +1028,8 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ATOMIC_SUB_FETCH(p, v, m) (std::atomic_fetch_sub_explicit((p), (v), (m)) - (v))
 #define MINI_ATOMIC_FETCH_ADD(p, v, m) std::atomic_fetch_add_explicit((p), (v), (m))
 #define MINI_ATOMIC_FETCH_SUB(p, v, m) std::atomic_fetch_sub_explicit((p), (v), (m))
-#define MINI_ATOMIC_CAS(p, e, d, ms, mf) std::atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
+#define MINI_ATOMIC_CAS(p, e, d, ms, mf) \
+	std::atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
 #define MINI_ATOMIC_EXCHANGE(p, v, m) std::atomic_exchange_explicit((p), (v), (m))
 #define MINI_ATOMIC_RUNTIME_INIT(p, val) MINI_ATOMIC_STORE((p), (val), MINI_RELAXED)
 
@@ -994,7 +1062,8 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ATOMIC_SUB_FETCH(p, v, m) (atomic_fetch_sub_explicit((p), (v), (m)) - (v))
 #define MINI_ATOMIC_FETCH_ADD(p, v, m) atomic_fetch_add_explicit((p), (v), (m))
 #define MINI_ATOMIC_FETCH_SUB(p, v, m) atomic_fetch_sub_explicit((p), (v), (m))
-#define MINI_ATOMIC_CAS(p, e, d, ms, mf) atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
+#define MINI_ATOMIC_CAS(p, e, d, ms, mf) \
+	atomic_compare_exchange_strong_explicit((p), (e), (d), (ms), (mf))
 #define MINI_ATOMIC_EXCHANGE(p, v, m) atomic_exchange_explicit((p), (v), (m))
 #define MINI_ATOMIC_RUNTIME_INIT(p, val) MINI_ATOMIC_STORE((p), (val), MINI_RELAXED)
 
@@ -1023,25 +1092,25 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ATOMIC_LOAD(p, m) (*(p))
 #define MINI_ATOMIC_ADD_FETCH(p, v, m) (*(p) += (v), *(p))
 #define MINI_ATOMIC_SUB_FETCH(p, v, m) (*(p) -= (v), *(p))
-#define MINI_ATOMIC_FETCH_ADD(p, v, m)                                                                                                               \
-    __extension__({                                                                                                                                  \
-        __typeof__(*(p)) _o = *(p);                                                                                                                  \
-        *(p) += (v);                                                                                                                                 \
-        _o;                                                                                                                                          \
-    })
-#define MINI_ATOMIC_FETCH_SUB(p, v, m)                                                                                                               \
-    __extension__({                                                                                                                                  \
-        __typeof__(*(p)) _o = *(p);                                                                                                                  \
-        *(p) -= (v);                                                                                                                                 \
-        _o;                                                                                                                                          \
-    })
+#define MINI_ATOMIC_FETCH_ADD(p, v, m)      \
+	__extension__({                     \
+		__typeof__(*(p)) _o = *(p); \
+		*(p) += (v);                \
+		_o;                         \
+	})
+#define MINI_ATOMIC_FETCH_SUB(p, v, m)      \
+	__extension__({                     \
+		__typeof__(*(p)) _o = *(p); \
+		*(p) -= (v);                \
+		_o;                         \
+	})
 #define MINI_ATOMIC_CAS(p, e, d, ms, mf) ((*(p) == *(e)) ? (*(p) = (d), 1) : (*(e) = *(p), 0))
-#define MINI_ATOMIC_EXCHANGE(p, v, m)                                                                                                                \
-    __extension__({                                                                                                                                  \
-        __typeof__(*(p)) _o = *(p);                                                                                                                  \
-        *(p) = (v);                                                                                                                                  \
-        _o;                                                                                                                                          \
-    })
+#define MINI_ATOMIC_EXCHANGE(p, v, m)       \
+	__extension__({                     \
+		__typeof__(*(p)) _o = *(p); \
+		*(p)		    = (v);  \
+		_o;                         \
+	})
 #define MINI_ATOMIC_RUNTIME_INIT(p, val) MINI_ATOMIC_STORE((p), (val), MINI_RELAXED)
 
 #endif

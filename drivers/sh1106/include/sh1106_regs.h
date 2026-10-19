@@ -9,8 +9,7 @@
 #define SH1106_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** 面板几何常量 */

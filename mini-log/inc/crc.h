@@ -19,14 +19,13 @@ extern "C" {
  * @note  refout/xor_out 只在 crc_stream_finish 时应用一次，
  *        中间分段直接把 reg 传回 crc_stream_feed 续算
  */
-typedef struct
-{
-    uint32_t reg;      /* 寄存器值（跨段传递的状态） */
-    uint32_t poly;     /* 归一化后的多项式（refin 时已反射） */
-    uint32_t xor_out;  /* 最终异或输出值 */
-    uint8_t  width;    /* CRC 位宽（0 = 无效状态，feed/finish 直接返回 0） */
-    uint8_t  refin;    /* 输入是否反射 */
-    uint8_t  refout;   /* 输出是否反射 */
+typedef struct {
+	uint32_t reg;	  /* 寄存器值（跨段传递的状态） */
+	uint32_t poly;	  /* 归一化后的多项式（refin 时已反射） */
+	uint32_t xor_out; /* 最终异或输出值 */
+	uint8_t	 width;	  /* CRC 位宽（0 = 无效状态，feed/finish 直接返回 0） */
+	uint8_t	 refin;	  /* 输入是否反射 */
+	uint8_t	 refout;  /* 输出是否反射 */
 } crc_stream_t;
 
 /**
@@ -39,8 +38,8 @@ typedef struct
  * @param poly    生成多项式（MSB 表示）
  * @param width   CRC 位宽（1~32，非法时状态标记为无效）
  */
-void crc_stream_start(crc_stream_t *s, uint32_t init, int refin, int refout,
-                      uint32_t xor_out, uint32_t poly, uint8_t width);
+void crc_stream_start(crc_stream_t *s, uint32_t init, int refin, int refout, uint32_t xor_out,
+		      uint32_t poly, uint8_t width);
 
 /**
  * @brief 喂入一段数据，续算寄存器值（可任意多次调用，顺序必须连续）

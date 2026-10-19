@@ -27,28 +27,27 @@
 #define VFS_ADC_DMA_FIELD_COUNT DTS_ADC_DMA_FIELD_COUNT
 #define VFS_ADC_KEY_MAX DTS_ADC_KEY_MAX
 
-struct vfs_adc_priv
-{
-    struct file_operations             ops;                            /**< VFS 操作表 */
-    struct hal_adc_host_cfg            cfg;                            /**< host 配置 (DTSI 直投) */
-    struct hal_adc_platform_unique_cfg unique;                         /**< 平台特有配置 */
-    struct hal_adc_device              adc;                            /**< HAL ADC 设备 */
-    hal_adc_channel_config             channels[HAL_ADC_MAX_CHANNELS]; /**< 通道配置表 */
-    hal_adc_multi_config               multi;                          /**< 多通道配置 */
-    int                                pool_idx;                       /**< 池索引 */
-    int                                dma_pool_idx;                   /**< DMA 私有配置池索引 (-1 = 未分配) */
+struct vfs_adc_priv {
+	struct file_operations		   ops;	   /**< VFS 操作表 */
+	struct hal_adc_host_cfg		   cfg;	   /**< host 配置 (DTSI 直投) */
+	struct hal_adc_platform_unique_cfg unique; /**< 平台特有配置 */
+	struct hal_adc_device		   adc;	   /**< HAL ADC 设备 */
+	hal_adc_channel_config		   channels[HAL_ADC_MAX_CHANNELS]; /**< 通道配置表 */
+	hal_adc_multi_config		   multi;			   /**< 多通道配置 */
+	int				   pool_idx;			   /**< 池索引 */
+	int				   dma_pool_idx; /**< DMA 私有配置池索引 (-1 = 未分配) */
 };
 
-static struct vfs_adc_priv              s_adc_priv_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t                          s_adc_priv_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static struct vfs_adc_priv		s_adc_priv_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t				s_adc_priv_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
 static mini_slot_t s_adc_priv_pool_ctrl MINI_ALIGNED(4);
 
 /* DMA 私有配置池：仅 DTS 启用 dma/dma_it 模式的实例才 claim，
  * 不用 DMA 的板子零开销（不再内嵌进 struct vfs_adc_priv）。 */
 static struct hal_adc_private_cfg      s_adc_dma_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(32);
-static uint8_t                         s_adc_dma_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			       s_adc_dma_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
 static mini_slot_t s_adc_dma_pool_ctrl MINI_ALIGNED(4);
-static const char* const               k_tag = "vfs-adc-host";
+static const char *const	       k_tag = "vfs-adc-host";
 
 /* -------------------------------------------------------------------------- */
 /* IOCTL 后台控制命令私有实现 */
@@ -61,12 +60,12 @@ static const char* const               k_tag = "vfs-adc-host";
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t adc_cmd_get_value(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
+static mt_err_t adc_cmd_get_value(struct vfs_adc_priv *priv, void *arg, size_t arg_len)
 {
-    if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
-        return MINI_ERR_INVAL;
-    struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_read_value(&priv->adc, adc_arg->channel_id, &adc_arg->value);
+	if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
+		return MINI_ERR_INVAL;
+	struct vfs_adc_arg_t *adc_arg = (struct vfs_adc_arg_t *)arg;
+	return hal_adc_read_value(&priv->adc, adc_arg->channel_id, &adc_arg->value);
 }
 
 /**
@@ -76,12 +75,14 @@ static mt_err_t adc_cmd_get_value(struct vfs_adc_priv* priv, void* arg, size_t a
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t adc_cmd_get_channel_sample_time(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
+static mt_err_t adc_cmd_get_channel_sample_time(struct vfs_adc_priv *priv, void *arg,
+						size_t arg_len)
 {
-    if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
-        return MINI_ERR_INVAL;
-    struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_get_channel_sample_time(&priv->adc, adc_arg->channel_index, &adc_arg->sample_time);
+	if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
+		return MINI_ERR_INVAL;
+	struct vfs_adc_arg_t *adc_arg = (struct vfs_adc_arg_t *)arg;
+	return hal_adc_get_channel_sample_time(&priv->adc, adc_arg->channel_index,
+					       &adc_arg->sample_time);
 }
 
 /**
@@ -91,12 +92,12 @@ static mt_err_t adc_cmd_get_channel_sample_time(struct vfs_adc_priv* priv, void*
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t adc_cmd_get_channel_id(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
+static mt_err_t adc_cmd_get_channel_id(struct vfs_adc_priv *priv, void *arg, size_t arg_len)
 {
-    if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
-        return MINI_ERR_INVAL;
-    struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_get_channel_id(&priv->adc, adc_arg->channel_index, &adc_arg->channel_id);
+	if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
+		return MINI_ERR_INVAL;
+	struct vfs_adc_arg_t *adc_arg = (struct vfs_adc_arg_t *)arg;
+	return hal_adc_get_channel_id(&priv->adc, adc_arg->channel_index, &adc_arg->channel_id);
 }
 
 /**
@@ -106,12 +107,12 @@ static mt_err_t adc_cmd_get_channel_id(struct vfs_adc_priv* priv, void* arg, siz
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t adc_cmd_get_channel_count(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
+static mt_err_t adc_cmd_get_channel_count(struct vfs_adc_priv *priv, void *arg, size_t arg_len)
 {
-    if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
-        return MINI_ERR_INVAL;
-    struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_get_channel_count(&priv->adc, &adc_arg->channel_count);
+	if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
+		return MINI_ERR_INVAL;
+	struct vfs_adc_arg_t *adc_arg = (struct vfs_adc_arg_t *)arg;
+	return hal_adc_get_channel_count(&priv->adc, &adc_arg->channel_count);
 }
 
 /**
@@ -121,12 +122,12 @@ static mt_err_t adc_cmd_get_channel_count(struct vfs_adc_priv* priv, void* arg, 
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t adc_cmd_poll_conversion(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
+static mt_err_t adc_cmd_poll_conversion(struct vfs_adc_priv *priv, void *arg, size_t arg_len)
 {
-    if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
-        return MINI_ERR_INVAL;
-    struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_poll_for_conversion(&priv->adc, &adc_arg->done_status);
+	if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
+		return MINI_ERR_INVAL;
+	struct vfs_adc_arg_t *adc_arg = (struct vfs_adc_arg_t *)arg;
+	return hal_adc_poll_for_conversion(&priv->adc, &adc_arg->done_status);
 }
 
 /**
@@ -136,31 +137,30 @@ static mt_err_t adc_cmd_poll_conversion(struct vfs_adc_priv* priv, void* arg, si
  * @param[in] arg_len 参数长度
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t adc_cmd_close_channel(struct vfs_adc_priv* priv, void* arg, size_t arg_len)
+static mt_err_t adc_cmd_close_channel(struct vfs_adc_priv *priv, void *arg, size_t arg_len)
 {
-    if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
-        return MINI_ERR_INVAL;
-    struct vfs_adc_arg_t* adc_arg = (struct vfs_adc_arg_t*)arg;
-    return hal_adc_deinit_adcx_channel(&priv->adc, adc_arg->channel_id);
+	if (!priv || !arg || arg_len != sizeof(struct vfs_adc_arg_t))
+		return MINI_ERR_INVAL;
+	struct vfs_adc_arg_t *adc_arg = (struct vfs_adc_arg_t *)arg;
+	return hal_adc_deinit_adcx_channel(&priv->adc, adc_arg->channel_id);
 }
 
 /* -------------------------------------------------------------------------- */
 /* ioctl 命令派发基础设施 — typedef + 映射表                                                    */
 /* -------------------------------------------------------------------------- */
-typedef mt_err_t (*adc_cmd_handler_t)(struct vfs_adc_priv* priv, void* arg, size_t arg_len);
+typedef mt_err_t (*adc_cmd_handler_t)(struct vfs_adc_priv *priv, void *arg, size_t arg_len);
 
-typedef struct
-{
-    adc_cmd_handler_t handler;
+typedef struct {
+	adc_cmd_handler_t handler;
 } adc_ioctl_map_t;
 
 static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
-    [ADC_CMD_GET_CHANNEL_SAMPLE_TIME - ADC_CMD_BASE - 1] = {adc_cmd_get_channel_sample_time},
-    [ADC_CMD_GET_CHANNEL_ID - ADC_CMD_BASE - 1] = {adc_cmd_get_channel_id},
-    [ADC_CMD_GET_CHANNEL_COUNT - ADC_CMD_BASE - 1] = {adc_cmd_get_channel_count},
-    [ADC_CMD_POLL_FOR_CONVERSION - ADC_CMD_BASE - 1] = {adc_cmd_poll_conversion},
-    [ADC_CMD_CLOSE_CHANNEL - ADC_CMD_BASE - 1] = {adc_cmd_close_channel},
-    [ADC_CMD_READ_VALUE - ADC_CMD_BASE - 1] = {adc_cmd_get_value},
+	[ADC_CMD_GET_CHANNEL_SAMPLE_TIME - ADC_CMD_BASE - 1] = { adc_cmd_get_channel_sample_time },
+	[ADC_CMD_GET_CHANNEL_ID - ADC_CMD_BASE - 1]	     = { adc_cmd_get_channel_id },
+	[ADC_CMD_GET_CHANNEL_COUNT - ADC_CMD_BASE - 1]	     = { adc_cmd_get_channel_count },
+	[ADC_CMD_POLL_FOR_CONVERSION - ADC_CMD_BASE - 1]     = { adc_cmd_poll_conversion },
+	[ADC_CMD_CLOSE_CHANNEL - ADC_CMD_BASE - 1]	     = { adc_cmd_close_channel },
+	[ADC_CMD_READ_VALUE - ADC_CMD_BASE - 1]		     = { adc_cmd_get_value },
 };
 
 /**
@@ -168,8 +168,10 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_init()
 {
-    MINI_IGNORE_RESULT(mini_slot_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
-    MINI_IGNORE_RESULT(mini_slot_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(
+		mini_slot_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(
+		mini_slot_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
 }
 
 /**
@@ -178,143 +180,140 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_in
  * @param[in] cfg 输出的 HAL 主机配置指针 (通过 container_of 关联 priv)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config* cfg)
+static mt_err_t vfs_adc_priv_parse_dts(struct device *pdev, hal_adc_host_config *cfg)
 {
-    struct vfs_adc_priv* priv;
-    int                  adc_base = 0;
-    int                  channel_num = 0;
-    int                  tmp = 0;
-    int                  pin_arr[VFS_ADC_PIN_FIELD_COUNT];
-    int                  multi_arr[VFS_ADC_MULTI_FIELD_COUNT];
-    int                  dma_arr[VFS_ADC_DMA_FIELD_COUNT];
+	struct vfs_adc_priv *priv;
+	int		     adc_base	 = 0;
+	int		     channel_num = 0;
+	int		     tmp	 = 0;
+	int		     pin_arr[VFS_ADC_PIN_FIELD_COUNT];
+	int		     multi_arr[VFS_ADC_MULTI_FIELD_COUNT];
+	int		     dma_arr[VFS_ADC_DMA_FIELD_COUNT];
 
-    if (!pdev || !cfg)
-        return MINI_ERR_INVAL;
+	if (!pdev || !cfg)
+		return MINI_ERR_INVAL;
 
-    priv = container_of(cfg, struct vfs_adc_priv, cfg);
-    cfg->channels = priv->channels;
-    cfg->multi_cfg = &priv->multi;
-    /* private_cfg 由 probe 按需分配绑定 (仅 DMA 模式), 此处保持 NULL */
+	priv	       = container_of(cfg, struct vfs_adc_priv, cfg);
+	cfg->channels  = priv->channels;
+	cfg->multi_cfg = &priv->multi;
+	/* private_cfg 由 probe 按需分配绑定 (仅 DMA 模式), 此处保持 NULL */
 
-    if (device_get_prop_int(pdev, "adc-base", &adc_base) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->adc_handle = (uintptr_t)adc_base;
+	if (device_get_prop_int(pdev, "adc-base", &adc_base) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->adc_handle = (uintptr_t)adc_base;
 
-    if (device_get_prop_int(pdev, "adc-clk-bus", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.adc_clk_bus = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "channel-num", &channel_num) != MINI_OK)
-        return MINI_ERR_INVAL;
-    if (device_get_prop_int(pdev, "resolution", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.resolution = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "align", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.align = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "sequencer-mode", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.sequencer_mode = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "continuous-mode", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.continuous_mode = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "trigger-src", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.trigger_src = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "sequencer-length", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.SequencerLength = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "sequencer-discont", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.SequencerDiscont = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "eoc-flag", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.EOC_flag = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "dma-mode", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.dma_mode = (int32_t)tmp;
-    if (device_get_prop_int(pdev, "output-buf", &tmp) != MINI_OK)
-        return MINI_ERR_INVAL;
-    cfg->config.output_buf = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "adc-clk-bus", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.adc_clk_bus = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "channel-num", &channel_num) != MINI_OK)
+		return MINI_ERR_INVAL;
+	if (device_get_prop_int(pdev, "resolution", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.resolution = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "align", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.align = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "sequencer-mode", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.sequencer_mode = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "continuous-mode", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.continuous_mode = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "trigger-src", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.trigger_src = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "sequencer-length", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.SequencerLength = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "sequencer-discont", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.SequencerDiscont = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "eoc-flag", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.EOC_flag = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "dma-mode", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.dma_mode = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "output-buf", &tmp) != MINI_OK)
+		return MINI_ERR_INVAL;
+	cfg->config.output_buf = (int32_t)tmp;
 
-    if (channel_num <= 0 || channel_num > HAL_ADC_MAX_CHANNELS)
-        return MINI_ERR_INVAL;
+	if (channel_num <= 0 || channel_num > HAL_ADC_MAX_CHANNELS)
+		return MINI_ERR_INVAL;
 
-    cfg->config.channel_num = (int32_t)channel_num;
-    cfg->channel_count = (uint32_t)channel_num;
+	cfg->config.channel_num = (int32_t)channel_num;
+	cfg->channel_count	= (uint32_t)channel_num;
 
-    if (device_get_prop_int(pdev, "internal-ch-enable", &tmp) == MINI_OK)
-        cfg->config.internal_ch_enable = (int32_t)tmp;
+	if (device_get_prop_int(pdev, "internal-ch-enable", &tmp) == MINI_OK)
+		cfg->config.internal_ch_enable = (int32_t)tmp;
 
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "internal-ch-select", &tmp));
-    cfg->config.internal_ch_select = (uint32_t)tmp;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-reg-mode", &tmp));
-    cfg->config.dma_reg_mode = (uint32_t)tmp;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
-    cfg->config.sw_trigger = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "internal-ch-select", &tmp));
+	cfg->config.internal_ch_select = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-reg-mode", &tmp));
+	cfg->config.dma_reg_mode = (uint32_t)tmp;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "sw-trigger", &tmp));
+	cfg->config.sw_trigger = (uint32_t)tmp;
 
-    if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) == VFS_ADC_PIN_FIELD_COUNT)
-    {
-        cfg->gpio_cfg.port = (uintptr_t)pin_arr[0];
-        cfg->gpio_cfg.pin = (uint16_t)pin_arr[1];
-        cfg->gpio_cfg.clk_bus = (uint32_t)pin_arr[2];
-        cfg->gpio_cfg.af = (uint32_t)pin_arr[3];
-        cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];
-        cfg->gpio_cfg.speed = (uint32_t)pin_arr[5];
-        cfg->gpio_cfg.mode = (uint32_t)pin_arr[6];
-        cfg->gpio_cfg.pull = (uint32_t)pin_arr[7];
-    }
-    else
-        return MINI_ERR_INVAL;
+	if (device_get_prop_int_array(pdev, "gpio-pin", pin_arr, VFS_ADC_PIN_FIELD_COUNT) ==
+	    VFS_ADC_PIN_FIELD_COUNT) {
+		cfg->gpio_cfg.port	  = (uintptr_t)pin_arr[0];
+		cfg->gpio_cfg.pin	  = (uint16_t)pin_arr[1];
+		cfg->gpio_cfg.clk_bus	  = (uint32_t)pin_arr[2];
+		cfg->gpio_cfg.af	  = (uint32_t)pin_arr[3];
+		cfg->gpio_cfg.output_type = (uint32_t)pin_arr[4];
+		cfg->gpio_cfg.speed	  = (uint32_t)pin_arr[5];
+		cfg->gpio_cfg.mode	  = (uint32_t)pin_arr[6];
+		cfg->gpio_cfg.pull	  = (uint32_t)pin_arr[7];
+	} else
+		return MINI_ERR_INVAL;
 
-    if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) == VFS_ADC_MULTI_FIELD_COUNT)
-    {
-        cfg->multi_cfg->multimode = (uint32_t)multi_arr[0];
-        cfg->multi_cfg->common_clock = (uint32_t)multi_arr[1];
-        cfg->multi_cfg->multi_dma = (uint32_t)multi_arr[2];
-        cfg->multi_cfg->sampling_delay = (uint32_t)multi_arr[3];
-    }
-    else
-        return MINI_ERR_INVAL;
+	if (device_get_prop_int_array(pdev, "multi-cfg", multi_arr, VFS_ADC_MULTI_FIELD_COUNT) ==
+	    VFS_ADC_MULTI_FIELD_COUNT) {
+		cfg->multi_cfg->multimode      = (uint32_t)multi_arr[0];
+		cfg->multi_cfg->common_clock   = (uint32_t)multi_arr[1];
+		cfg->multi_cfg->multi_dma      = (uint32_t)multi_arr[2];
+		cfg->multi_cfg->sampling_delay = (uint32_t)multi_arr[3];
+	} else
+		return MINI_ERR_INVAL;
 
-    if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_ADC_DMA_FIELD_COUNT) == VFS_ADC_DMA_FIELD_COUNT)
-    {
-        cfg->dma_cfg.dma_handle = (uintptr_t)dma_arr[0];
-        cfg->dma_cfg.dma_stream = (uint32_t)dma_arr[1];
-        cfg->dma_cfg.dma_channel = (uint32_t)dma_arr[2];
-        cfg->dma_cfg.dma_priority = (uint32_t)dma_arr[3];
-        cfg->dma_cfg.dma_memory_size = (uint32_t)dma_arr[4];
-        cfg->dma_cfg.dma_it_enable = (uint32_t)dma_arr[5];
-        cfg->dma_cfg.dma_enable = (uint32_t)dma_arr[6];
-        cfg->dma_cfg.dma_direction = (uint32_t)dma_arr[7];
-        cfg->dma_cfg.dma_mode = (uint32_t)dma_arr[8];
-        cfg->dma_cfg.dma_periph_inc = (uint32_t)dma_arr[9];
-        cfg->dma_cfg.dma_mem_inc = (uint32_t)dma_arr[10];
-        cfg->dma_cfg.dma_periph_data_size = (uint32_t)dma_arr[11];
-        cfg->dma_cfg.dma_fifo_mode = (uint32_t)dma_arr[12];
-        cfg->dma_cfg.dma_fifo_threshold = (uint32_t)dma_arr[13];
-        cfg->dma_cfg.dma_mem_burst = (uint32_t)dma_arr[14];
-        cfg->dma_cfg.dma_periph_burst = (uint32_t)dma_arr[15];
-    }
-    else
-        return MINI_ERR_INVAL;
+	if (device_get_prop_int_array(pdev, "dma-cfg", dma_arr, VFS_ADC_DMA_FIELD_COUNT) ==
+	    VFS_ADC_DMA_FIELD_COUNT) {
+		cfg->dma_cfg.dma_handle		  = (uintptr_t)dma_arr[0];
+		cfg->dma_cfg.dma_stream		  = (uint32_t)dma_arr[1];
+		cfg->dma_cfg.dma_channel	  = (uint32_t)dma_arr[2];
+		cfg->dma_cfg.dma_priority	  = (uint32_t)dma_arr[3];
+		cfg->dma_cfg.dma_memory_size	  = (uint32_t)dma_arr[4];
+		cfg->dma_cfg.dma_it_enable	  = (uint32_t)dma_arr[5];
+		cfg->dma_cfg.dma_enable		  = (uint32_t)dma_arr[6];
+		cfg->dma_cfg.dma_direction	  = (uint32_t)dma_arr[7];
+		cfg->dma_cfg.dma_mode		  = (uint32_t)dma_arr[8];
+		cfg->dma_cfg.dma_periph_inc	  = (uint32_t)dma_arr[9];
+		cfg->dma_cfg.dma_mem_inc	  = (uint32_t)dma_arr[10];
+		cfg->dma_cfg.dma_periph_data_size = (uint32_t)dma_arr[11];
+		cfg->dma_cfg.dma_fifo_mode	  = (uint32_t)dma_arr[12];
+		cfg->dma_cfg.dma_fifo_threshold	  = (uint32_t)dma_arr[13];
+		cfg->dma_cfg.dma_mem_burst	  = (uint32_t)dma_arr[14];
+		cfg->dma_cfg.dma_periph_burst	  = (uint32_t)dma_arr[15];
+	} else
+		return MINI_ERR_INVAL;
 
-    for (int chan_index = 0; chan_index < channel_num; chan_index++)
-    {
-        char key[VFS_ADC_KEY_MAX];
-        int  ch_arr[VFS_ADC_CHANNEL_FIELD_COUNT];
+	for (int chan_index = 0; chan_index < channel_num; chan_index++) {
+		char key[VFS_ADC_KEY_MAX];
+		int  ch_arr[VFS_ADC_CHANNEL_FIELD_COUNT];
 
-        snprintf(key, sizeof(key), "channel%d", chan_index);
-        if (device_get_prop_int_array(pdev, key, ch_arr, VFS_ADC_CHANNEL_FIELD_COUNT) != VFS_ADC_CHANNEL_FIELD_COUNT)
-            return MINI_ERR_INVAL;
+		snprintf(key, sizeof(key), "channel%d", chan_index);
+		if (device_get_prop_int_array(pdev, key, ch_arr, VFS_ADC_CHANNEL_FIELD_COUNT) !=
+		    VFS_ADC_CHANNEL_FIELD_COUNT)
+			return MINI_ERR_INVAL;
 
-        cfg->channels[chan_index].channel_id = (uint32_t)ch_arr[0];
-        cfg->channels[chan_index].rank = (uint32_t)ch_arr[1];
-        cfg->channels[chan_index].sample_time = (uint32_t)ch_arr[2];
-        cfg->channels[chan_index].diff_mode = (uint32_t)ch_arr[3];
-        cfg->channels[chan_index].attenuation = (uint32_t)ch_arr[4];
-    }
+		cfg->channels[chan_index].channel_id  = (uint32_t)ch_arr[0];
+		cfg->channels[chan_index].rank	      = (uint32_t)ch_arr[1];
+		cfg->channels[chan_index].sample_time = (uint32_t)ch_arr[2];
+		cfg->channels[chan_index].diff_mode   = (uint32_t)ch_arr[3];
+		cfg->channels[chan_index].attenuation = (uint32_t)ch_arr[4];
+	}
 
-    return MINI_OK;
+	return MINI_OK;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -327,41 +326,39 @@ static mt_err_t vfs_adc_priv_parse_dts(struct device* pdev, hal_adc_host_config*
  * @param[in] arg 未使用
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_adc_open(struct device* pdev, void* arg)
+static mt_err_t vfs_adc_open(struct device *pdev, void *arg)
 {
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
-    struct vfs_adc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   first, ret;
-    MINI_IGNORE_RESULT(arg);
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
+	struct vfs_adc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      first, ret;
+	MINI_IGNORE_RESULT(arg);
 
-    priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    first = dev_lc_open_begin(lc);
-    if (first < 0)
-        return first;
+	first = dev_lc_open_begin(lc);
+	if (first < 0)
+		return first;
 
-    if (first == 1)
-    {
-        if (priv->adc.host->dma_cfg.dma_it_enable)
-            ret = hal_adc_dma_it_start(&priv->adc);
-        else if (priv->adc.host->dma_cfg.dma_enable)
-            ret = hal_adc_dma_start(&priv->adc);
-        else
-            ret = hal_adc_start(&priv->adc);
+	if (first == 1) {
+		if (priv->adc.host->dma_cfg.dma_it_enable)
+			ret = hal_adc_dma_it_start(&priv->adc);
+		else if (priv->adc.host->dma_cfg.dma_enable)
+			ret = hal_adc_dma_start(&priv->adc);
+		else
+			ret = hal_adc_start(&priv->adc);
 
-        if (ret != MINI_OK)
-        {
-            dev_lc_open_abort(lc);
-            return ret;
-        }
-    }
-    dev_lc_open_end(lc);
-    return MINI_OK;
+		if (ret != MINI_OK) {
+			dev_lc_open_abort(lc);
+			return ret;
+		}
+	}
+	dev_lc_open_end(lc);
+	return MINI_OK;
 }
 
 /**
@@ -369,28 +366,28 @@ static mt_err_t vfs_adc_open(struct device* pdev, void* arg)
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_adc_close(struct device* pdev)
+static mt_err_t vfs_adc_close(struct device *pdev)
 {
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
-    struct vfs_adc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   last;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
+	struct vfs_adc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      last;
 
-    priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    last = dev_lc_close_begin(lc);
-    if (last < 0)
-        return last;
+	last = dev_lc_close_begin(lc);
+	if (last < 0)
+		return last;
 
-    if (last)
-        MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
+	if (last)
+		MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
 
-    dev_lc_close_end(lc);
-    return MINI_OK;
+	dev_lc_close_end(lc);
+	return MINI_OK;
 }
 
 /**
@@ -402,50 +399,50 @@ static mt_err_t vfs_adc_close(struct device* pdev)
  * @param[in] timeout_ms 未使用
  * @return 成功返回 MINI_OK, 未知命令返回 MINI_ERR_INVAL, 失败返回负数错误码
  */
-static mt_err_t vfs_adc_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+static mt_err_t vfs_adc_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_len,
+			      uint32_t timeout_ms)
 {
-    struct vfs_adc_priv*  priv;
-    struct dev_lifecycle* lc;
-    adc_cmd_handler_t     handler = NULL;
-    int                   ret;
-    int32_t               offset;
-    uint8_t               index;
-    MINI_IGNORE_RESULT(timeout_ms);
+	struct vfs_adc_priv  *priv;
+	struct dev_lifecycle *lc;
+	adc_cmd_handler_t     handler = NULL;
+	int		      ret;
+	int32_t		      offset;
+	uint8_t		      index;
+	MINI_IGNORE_RESULT(timeout_ms);
 
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
 
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
-    ret = dev_lc_io_begin(lc);
-    if (ret != MINI_OK)
-        return ret;
+	lc = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
+	ret = dev_lc_io_begin(lc);
+	if (ret != MINI_OK)
+		return ret;
 
-    priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
+	priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
 
-    offset = (int32_t)cmd - (int32_t)ADC_CMD_BASE;
-    if (offset < 1 || offset > ADC_CMD_COUNT)
-    {
-        dev_lc_io_end(lc);
-        return MINI_ERR_INVAL;
-    }
-    index = (uint8_t)(offset - 1);
+	offset = (int32_t)cmd - (int32_t)ADC_CMD_BASE;
+	if (offset < 1 || offset > ADC_CMD_COUNT) {
+		dev_lc_io_end(lc);
+		return MINI_ERR_INVAL;
+	}
+	index = (uint8_t)(offset - 1);
 
-    handler = s_adc_ioctl_map[index].handler;
-    if (handler != NULL)
-        ret = handler(priv, arg, arg_len);
-    else
-        ret = MINI_ERR_INVAL;
+	handler = s_adc_ioctl_map[index].handler;
+	if (handler != NULL)
+		ret = handler(priv, arg, arg_len);
+	else
+		ret = MINI_ERR_INVAL;
 
-    dev_lc_io_end(lc);
-    return ret;
+	dev_lc_io_end(lc);
+	return ret;
 }
 
 static const struct file_operations fops = {
-    .close = vfs_adc_close,
-    .open = vfs_adc_open,
-    .ioctl = vfs_adc_ioctl,
+	.close = vfs_adc_close,
+	.open  = vfs_adc_open,
+	.ioctl = vfs_adc_ioctl,
 };
 
 /**
@@ -453,97 +450,92 @@ static const struct file_operations fops = {
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_adc_probe(struct device* pdev)
+static mt_err_t vfs_adc_probe(struct device *pdev)
 {
-    struct vfs_adc_priv* priv;
-    int                  pool_idx;
-    int                  ret;
+	struct vfs_adc_priv *priv;
+	int		     pool_idx;
+	int		     ret;
 
-    if (!pdev)
-        return MINI_ERR_INVAL;
+	if (!pdev)
+		return MINI_ERR_INVAL;
 
-    MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(adc, pdev));
+	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(adc, pdev));
 
-    pool_idx = mini_slot_claim(&s_adc_priv_pool_ctrl);
-    if (pool_idx < 0)
-        return MINI_ERR_NOMEM;
+	pool_idx = mini_slot_claim(&s_adc_priv_pool_ctrl);
+	if (pool_idx < 0)
+		return MINI_ERR_NOMEM;
 
-    priv = &s_adc_priv_pool[pool_idx];
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    priv->pool_idx = pool_idx;
-    priv->dma_pool_idx = -1;
+	priv = &s_adc_priv_pool[pool_idx];
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	priv->pool_idx	   = pool_idx;
+	priv->dma_pool_idx = -1;
 
-    if (vfs_adc_priv_parse_dts(pdev, &priv->cfg) != MINI_OK)
-    {
-        MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
-        ret = MINI_ERR_INVAL;
-        goto err_pool;
-    }
+	if (vfs_adc_priv_parse_dts(pdev, &priv->cfg) != MINI_OK) {
+		MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
+		ret = MINI_ERR_INVAL;
+		goto err_pool;
+	}
 
-    /* DMA 私有配置 (双缓冲) 按需分配: 仅 dma / dma_it 模式才 claim, 否则零开销 */
-    if (priv->cfg.dma_cfg.dma_it_enable || priv->cfg.dma_cfg.dma_enable)
-    {
-        int dma_idx = mini_slot_claim(&s_adc_dma_pool_ctrl);
-        if (dma_idx < 0)
-        {
-            MT_LOG_ERROR(k_tag, "dma private pool exhausted: %s", device_get_name(pdev));
-            ret = MINI_ERR_NOMEM;
-            goto err_pool;
-        }
-        MINI_MEM_SET(&s_adc_dma_pool[dma_idx], 0, sizeof(s_adc_dma_pool[dma_idx]));
-        priv->dma_pool_idx = dma_idx;
-        priv->cfg.private_cfg = &s_adc_dma_pool[dma_idx];
-    }
+	/* DMA 私有配置 (双缓冲) 按需分配: 仅 dma / dma_it 模式才 claim, 否则零开销 */
+	if (priv->cfg.dma_cfg.dma_it_enable || priv->cfg.dma_cfg.dma_enable) {
+		int dma_idx = mini_slot_claim(&s_adc_dma_pool_ctrl);
+		if (dma_idx < 0) {
+			MT_LOG_ERROR(k_tag, "dma private pool exhausted: %s",
+				     device_get_name(pdev));
+			ret = MINI_ERR_NOMEM;
+			goto err_pool;
+		}
+		MINI_MEM_SET(&s_adc_dma_pool[dma_idx], 0, sizeof(s_adc_dma_pool[dma_idx]));
+		priv->dma_pool_idx    = dma_idx;
+		priv->cfg.private_cfg = &s_adc_dma_pool[dma_idx];
+	}
 
-    ret = hal_adc_device_init(&priv->adc, &priv->unique, &priv->cfg);
-    if (ret != MINI_OK)
-    {
-        MT_LOG_ERROR(k_tag, "hal_adc_device_init failed: %s", device_get_name(pdev));
-        goto err_pool;
-    }
+	ret = hal_adc_device_init(&priv->adc, &priv->unique, &priv->cfg);
+	if (ret != MINI_OK) {
+		MT_LOG_ERROR(k_tag, "hal_adc_device_init failed: %s", device_get_name(pdev));
+		goto err_pool;
+	}
 
-    ret = hal_adc_init(&priv->adc);
-    if (ret != MINI_OK)
-    {
-        MT_LOG_ERROR(k_tag, "hal_adc_init hardware failed: %s", device_get_name(pdev));
-        goto err_deinit;
-    }
+	ret = hal_adc_init(&priv->adc);
+	if (ret != MINI_OK) {
+		MT_LOG_ERROR(k_tag, "hal_adc_init hardware failed: %s", device_get_name(pdev));
+		goto err_deinit;
+	}
 
 #ifdef CONFIG_VIRQ
-    interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback, &g_adc_dma_bottom_half_work, &priv->adc);
+	interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback,
+				   &g_adc_dma_bottom_half_work, &priv->adc);
 
-    int dma_irqn = -1;
-    MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));
-    interrupt_hw_enable(dma_irqn, 5);
+	int dma_irqn = -1;
+	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));
+	interrupt_hw_enable(dma_irqn, 5);
 #endif
 
-    priv->ops = fops;
-    pdev->ops = &priv->ops;
+	priv->ops = fops;
+	pdev->ops = &priv->ops;
 
-    if (device_set_priv(pdev, priv) != MINI_OK)
-    {
-        ret = MINI_ERR_IO;
-        goto err_hardware_deinit;
-    }
+	if (device_set_priv(pdev, priv) != MINI_OK) {
+		ret = MINI_ERR_IO;
+		goto err_hardware_deinit;
+	}
 
-    MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
-    return MINI_OK;
+	MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
+	return MINI_OK;
 
 err_hardware_deinit:
-    pdev->ops = NULL;
-    MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
+	pdev->ops = NULL;
+	MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
 err_deinit:
-    /* 解绑设备: hal_adc_device_deinit */
-    MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
+	/* 解绑设备: hal_adc_device_deinit */
+	MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
 err_pool:
-    if (priv->cfg.private_cfg != NULL)
-    {
-        MINI_IGNORE_RESULT(mini_slot_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
-        priv->cfg.private_cfg = NULL;
-        priv->dma_pool_idx = -1;
-    }
-    MINI_IGNORE_RESULT(mini_slot_release(&s_adc_priv_pool_ctrl, pool_idx));
-    return ret;
+	if (priv->cfg.private_cfg != NULL) {
+		MINI_IGNORE_RESULT(mini_slot_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+		priv->cfg.private_cfg = NULL;
+		priv->dma_pool_idx    = -1;
+	}
+	MINI_IGNORE_RESULT(mini_slot_release(&s_adc_priv_pool_ctrl, pool_idx));
+	return ret;
 }
 
 /**
@@ -551,44 +543,42 @@ err_pool:
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-static mt_err_t vfs_adc_remove(struct device* pdev)
+static mt_err_t vfs_adc_remove(struct device *pdev)
 {
-    if (!pdev || !pdev->ops)
-        return MINI_ERR_INVAL;
-    struct vfs_adc_priv*  priv;
-    struct dev_lifecycle* lc;
-    int                   pool_idx;
+	if (!pdev || !pdev->ops)
+		return MINI_ERR_INVAL;
+	struct vfs_adc_priv  *priv;
+	struct dev_lifecycle *lc;
+	int		      pool_idx;
 
-    priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
-    lc = device_lc(pdev);
-    if (IS_ERR(lc))
-        return PTR_ERR(lc);
+	priv = container_of(pdev->ops, struct vfs_adc_priv, ops);
+	lc   = device_lc(pdev);
+	if (IS_ERR(lc))
+		return PTR_ERR(lc);
 
-    pool_idx = priv->pool_idx;
-    dev_lc_remove_start(lc);
-    device_ops_unregister(pdev);
-    if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK)
-    {
-        dev_lc_remove_finish(lc);
-        return MINI_ERR_IO;
-    }
+	pool_idx = priv->pool_idx;
+	dev_lc_remove_start(lc);
+	device_ops_unregister(pdev);
+	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
+		dev_lc_remove_finish(lc);
+		return MINI_ERR_IO;
+	}
 
-    MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
-    MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
+	MINI_IGNORE_RESULT(hal_adc_deinit_all_adcx(&priv->adc));
+	MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
 
-    /* 归还 DMA 私有配置 (若有) */
-    if (priv->cfg.private_cfg != NULL)
-    {
-        MINI_IGNORE_RESULT(mini_slot_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
-        priv->cfg.private_cfg = NULL;
-        priv->dma_pool_idx = -1;
-    }
+	/* 归还 DMA 私有配置 (若有) */
+	if (priv->cfg.private_cfg != NULL) {
+		MINI_IGNORE_RESULT(mini_slot_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+		priv->cfg.private_cfg = NULL;
+		priv->dma_pool_idx    = -1;
+	}
 
-    MINI_MEM_SET(priv, 0, sizeof(*priv));
-    MINI_IGNORE_RESULT(mini_slot_release(&s_adc_priv_pool_ctrl, pool_idx));
+	MINI_MEM_SET(priv, 0, sizeof(*priv));
+	MINI_IGNORE_RESULT(mini_slot_release(&s_adc_priv_pool_ctrl, pool_idx));
 
-    dev_lc_remove_finish(lc);
-    return MINI_OK;
+	dev_lc_remove_finish(lc);
+	return MINI_OK;
 }
 
 DRIVER_REGISTER(vfs_adc_priv, "mt-adc", vfs_adc_probe, vfs_adc_remove)

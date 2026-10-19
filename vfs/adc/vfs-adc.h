@@ -13,18 +13,16 @@
 #include "status.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-struct vfs_adc_arg_t
-{
-    uint32_t channel_id;    /**< 通道 ID */
-    uint32_t done_status;   /**< 转换完成状态 */
-    uint32_t channel_count; /**< 通道总数 */
-    uint32_t sample_time;   /**< 采样时间 (LL_ADC_SAMPLINGTIME_*) */
-    uint32_t channel_index; /**< 通道索引 */
-    uint16_t value;         /**< ADC 采样值 */
+struct vfs_adc_arg_t {
+	uint32_t channel_id;	/**< 通道 ID */
+	uint32_t done_status;	/**< 转换完成状态 */
+	uint32_t channel_count; /**< 通道总数 */
+	uint32_t sample_time;	/**< 采样时间 (LL_ADC_SAMPLINGTIME_*) */
+	uint32_t channel_index; /**< 通道索引 */
+	uint16_t value;		/**< ADC 采样值 */
 };
 typedef struct vfs_adc_arg_t vfs_adc_arg;
 
@@ -34,11 +32,11 @@ typedef struct vfs_adc_arg_t vfs_adc_arg;
  * @param[out] out_val 回传转换值
  * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
  */
-MINI_STATIC_INLINE mt_err_t vfs_read_dma_it_adc_value(hal_adc_device* pdev, uint16_t* out_val)
+MINI_STATIC_INLINE mt_err_t vfs_read_dma_it_adc_value(hal_adc_device *pdev, uint16_t *out_val)
 {
-    if (!pdev || !out_val)
-        return MINI_ERR_INVAL;
-    return hal_adc_dma_it_read_value(pdev, (uint16_t*)out_val);
+	if (!pdev || !out_val)
+		return MINI_ERR_INVAL;
+	return hal_adc_dma_it_read_value(pdev, (uint16_t *)out_val);
 }
 
 /**
@@ -47,11 +45,11 @@ MINI_STATIC_INLINE mt_err_t vfs_read_dma_it_adc_value(hal_adc_device* pdev, uint
  * @param[out] out_val 回传转换值
  * @return 成功返回 MINI_OK, 参数为空返回 MINI_ERR_INVAL
  */
-MINI_STATIC_INLINE mt_err_t vfs_read_dma_adc_value(hal_adc_device* pdev, uint16_t* out_val)
+MINI_STATIC_INLINE mt_err_t vfs_read_dma_adc_value(hal_adc_device *pdev, uint16_t *out_val)
 {
-    if (!pdev || !out_val)
-        return MINI_ERR_INVAL;
-    return hal_adc_dma_read_value(pdev, out_val);
+	if (!pdev || !out_val)
+		return MINI_ERR_INVAL;
+	return hal_adc_dma_read_value(pdev, out_val);
 }
 
 /* -------------------------------------------------------------------------- */

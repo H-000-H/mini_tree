@@ -18,18 +18,18 @@
 #include <string.h>
 
 static struct bus_controller s_controllers[DEV_ID_COUNT] MINI_ALIGNED(4);
-static uint8_t               s_controller_used[DEV_ID_COUNT] MINI_ALIGNED(4);
+static uint8_t		     s_controller_used[DEV_ID_COUNT] MINI_ALIGNED(4);
 
 /**
  * @brief 将 device 转换为 device_id (通过 board_dev_find 线性扫描)
  * @param[in] pdev 输入的 device 指针
  * @return 找到返回 device_id, 未找到返回 (device_id_t)-1
  */
-static device_id_t device_to_id(const struct device* pdev)
+static device_id_t device_to_id(const struct device *pdev)
 {
-    if (!pdev || !pdev->node)
-        return (device_id_t)-1;
-    return board_dev_find(device_get_name(pdev));
+	if (!pdev || !pdev->node)
+		return (device_id_t)-1;
+	return board_dev_find(device_get_name(pdev));
 }
 
 /**
@@ -40,22 +40,23 @@ static device_id_t device_to_id(const struct device* pdev)
  * @param[in] hw_ctx 硬件上下文指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx)
+mt_err_t bus_controller_bind_full(struct device *pdev, bus_type_t type,
+				  const struct bus_controller_ops *ctlr_ops, void *hw_ctx)
 {
-    device_id_t id;
+	device_id_t id;
 
-    if (!pdev || type == 0)
-        return MINI_ERR_INVAL;
+	if (!pdev || type == 0)
+		return MINI_ERR_INVAL;
 
-    id = device_to_id(pdev);
-    if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
-        return MINI_ERR_INVAL;
+	id = device_to_id(pdev);
+	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
+		return MINI_ERR_INVAL;
 
-    s_controllers[id].type = type;
-    s_controllers[id].ctlr_ops = ctlr_ops;
-    s_controllers[id].hw_ctx = hw_ctx;
-    s_controller_used[id] = 1;
-    return MINI_OK;
+	s_controllers[id].type	   = type;
+	s_controllers[id].ctlr_ops = ctlr_ops;
+	s_controllers[id].hw_ctx   = hw_ctx;
+	s_controller_used[id]	   = 1;
+	return MINI_OK;
 }
 
 /**
@@ -64,22 +65,22 @@ mt_err_t bus_controller_bind_full(struct device* pdev, bus_type_t type, const st
  * @param[out] out 输出 bus_controller 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t bus_controller_get(const struct device* pdev, struct bus_controller** out)
+mt_err_t bus_controller_get(const struct device *pdev, struct bus_controller **out)
 {
-    device_id_t id;
+	device_id_t id;
 
-    if (!out)
-        return MINI_ERR_INVAL;
-    *out = NULL;
-    if (!pdev)
-        return MINI_ERR_INVAL;
+	if (!out)
+		return MINI_ERR_INVAL;
+	*out = NULL;
+	if (!pdev)
+		return MINI_ERR_INVAL;
 
-    id = device_to_id(pdev);
-    if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
-        return MINI_ERR_NODEV;
+	id = device_to_id(pdev);
+	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
+		return MINI_ERR_NODEV;
 
-    *out = &s_controllers[id];
-    return MINI_OK;
+	*out = &s_controllers[id];
+	return MINI_OK;
 }
 
 /**
@@ -88,47 +89,47 @@ mt_err_t bus_controller_get(const struct device* pdev, struct bus_controller** o
  * @param[out] out 输出 bus_controller 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t bus_controller_of(const struct device* pdev, struct bus_controller** out)
+mt_err_t bus_controller_of(const struct device *pdev, struct bus_controller **out)
 {
-    struct device* parent;
-    device_id_t    id;
+	struct device *parent;
+	device_id_t    id;
 
-    if (!out)
-        return MINI_ERR_INVAL;
-    *out = NULL;
+	if (!out)
+		return MINI_ERR_INVAL;
+	*out = NULL;
 
-    if (!pdev)
-        return MINI_ERR_INVAL;
+	if (!pdev)
+		return MINI_ERR_INVAL;
 
-    parent = device_get_parent(pdev);
-    if (IS_ERR(parent))
-        return PTR_ERR(parent);
+	parent = device_get_parent(pdev);
+	if (IS_ERR(parent))
+		return PTR_ERR(parent);
 
-    id = device_to_id(parent);
-    if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
-        return MINI_ERR_NODEV;
+	id = device_to_id(parent);
+	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
+		return MINI_ERR_NODEV;
 
-    *out = &s_controllers[id];
-    return MINI_OK;
+	*out = &s_controllers[id];
+	return MINI_OK;
 }
 
 /**
  * @brief 解绑 device 的总线控制器并清零槽位
  * @param[in] pdev controller device 指针
  */
-void bus_controller_unbind(struct device* pdev)
+void bus_controller_unbind(struct device *pdev)
 {
-    device_id_t id;
+	device_id_t id;
 
-    if (!pdev)
-        return;
+	if (!pdev)
+		return;
 
-    id = device_to_id(pdev);
-    if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
-        return;
+	id = device_to_id(pdev);
+	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
+		return;
 
-    s_controller_used[id] = 0;
-    MINI_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
+	s_controller_used[id] = 0;
+	MINI_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -140,22 +141,20 @@ void bus_controller_unbind(struct device* pdev)
  * @param slot_count 槽位数量
  * @return 成功返回 bridge 指针, 池满返回 NULL
  */
-struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, size_t slot_count)
+struct bus_async_bridge *bus_async_bridge_claim(struct bus_async_bridge *slots, size_t slot_count)
 {
-    size_t index;
+	size_t index;
 
-    if (!slots || slot_count == 0)
-        return NULL;
+	if (!slots || slot_count == 0)
+		return NULL;
 
-    for (index = 0; index < slot_count; index++)
-    {
-        if (!slots[index].in_use)
-        {
-            slots[index].in_use = 1;
-            return &slots[index];
-        }
-    }
-    return NULL;
+	for (index = 0; index < slot_count; index++) {
+		if (!slots[index].in_use) {
+			slots[index].in_use = 1;
+			return &slots[index];
+		}
+	}
+	return NULL;
 }
 
 /**
@@ -165,35 +164,36 @@ struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, 
  * @param[in] cb 用户完成回调
  * @param[in] userdata 回调用户数据
  */
-void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev, bus_async_user_cb_t cb, void* userdata)
+void bus_async_bridge_bind(struct bus_async_bridge *bridge, struct device *pdev,
+			   bus_async_user_cb_t cb, void *userdata)
 {
-    if (!bridge)
-        return;
-    bridge->pdev = pdev;
-    bridge->cb = cb;
-    bridge->userdata = userdata;
+	if (!bridge)
+		return;
+	bridge->pdev	 = pdev;
+	bridge->cb	 = cb;
+	bridge->userdata = userdata;
 }
 
-void bus_async_bridge_release(struct bus_async_bridge* bridge)
+void bus_async_bridge_release(struct bus_async_bridge *bridge)
 {
-    if (!bridge)
-        return;
-    bridge->pdev = NULL;
-    bridge->cb = NULL;
-    bridge->userdata = NULL;
-    bridge->in_use = 0;
+	if (!bridge)
+		return;
+	bridge->pdev	 = NULL;
+	bridge->cb	 = NULL;
+	bridge->userdata = NULL;
+	bridge->in_use	 = 0;
 }
 
-void bus_async_bridge_complete(void* userdata, const void* trans)
+void bus_async_bridge_complete(void *userdata, const void *trans)
 {
-    struct bus_async_bridge* bridge = (struct bus_async_bridge*)userdata;
+	struct bus_async_bridge *bridge = (struct bus_async_bridge *)userdata;
 
-    if (!bridge)
-        return;
+	if (!bridge)
+		return;
 
-    if (bridge->cb)
-        bridge->cb(bridge->pdev, trans, bridge->userdata);
+	if (bridge->cb)
+		bridge->cb(bridge->pdev, trans, bridge->userdata);
 
-    /* ISR 安全: 单字节写释放槽位 */
-    bridge->in_use = 0;
+	/* ISR 安全: 单字节写释放槽位 */
+	bridge->in_use = 0;
 }

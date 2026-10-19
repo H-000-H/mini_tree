@@ -8,9 +8,9 @@
 #define LOG_CONFIG_H
 
 #if defined(__has_include)
-#  if __has_include("config.h")
-#    include "config.h"
-#  endif
+#if __has_include("config.h")
+#include "config.h"
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -92,7 +92,7 @@ extern "C" {
 #endif
 
 #if ((MINI_LOG_FLASH_RING_SIZE & (MINI_LOG_FLASH_RING_SIZE - 1)) != 0) || \
-    ((MINI_LOG_DEFAULT_ALIGIN & (MINI_LOG_DEFAULT_ALIGIN - 1)) != 0)
+	((MINI_LOG_DEFAULT_ALIGIN & (MINI_LOG_DEFAULT_ALIGIN - 1)) != 0)
 #error "MINI_LOG_FLASH_RING_SIZE and MINI_LOG_DEFAULT_ALIGIN must be powers of two"
 #endif
 
@@ -120,7 +120,8 @@ extern "C" {
 #endif
 
 /**
- * @brief flash 记录帧的 CRC 模型 (默认 CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, 不反射, xor 0x0000)
+ * @brief flash 记录帧的 CRC 模型 (默认 CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, 不反射, xor
+ * 0x0000)
  */
 #ifndef MINI_LOG_FRAME_CRC_WIDTH
 #define MINI_LOG_FRAME_CRC_WIDTH 16u

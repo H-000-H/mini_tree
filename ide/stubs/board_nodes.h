@@ -12,11 +12,7 @@
 
 #include <stdint.h>
 
-typedef enum
-{
-    DEV_ID_NONE = 0,
-    DEV_ID_COUNT = 1
-} device_id_t;
+typedef enum { DEV_ID_NONE = 0, DEV_ID_COUNT = 1 } device_id_t;
 
 /* chosen 占位 (真实值由板级 DTS 生成) */
 #ifndef CHOSEN_SCHEDULER_TIM

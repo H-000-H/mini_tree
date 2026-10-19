@@ -8,8 +8,7 @@
 #ifndef MQTT_BROKER_H
 #define MQTT_BROKER_H
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 #include "core_mqtt.h"
 #include "net_error.h"

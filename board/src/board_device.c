@@ -32,7 +32,7 @@
  * (原先按互斥锁池尺寸宏写的 _Static_assert 与 90% 预警引用的是 lwIP 用的
  *  那个池, 与设备锁无关, 属于遗留失真, 已删。) */
 static struct device s_devices[DEV_ID_COUNT] MINI_ALIGNED(4);
-static uint8_t       s_device_lock_storage[DEV_ID_COUNT][MINI_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
+static uint8_t	     s_device_lock_storage[DEV_ID_COUNT][MINI_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
 
 /**
  * @brief 判断设备状态机是否允许 from→to 迁移
@@ -42,32 +42,36 @@ static uint8_t       s_device_lock_storage[DEV_ID_COUNT][MINI_MUTEX_STORAGE_SIZE
  */
 static int device_status_can_transit(enum device_status from, enum device_status to)
 {
-    if (from == to)
-        return 1;
+	if (from == to)
+		return 1;
 
-    switch (from)
-    {
-    case DEVICE_STATUS_DISABLED:
-        return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_UNINIT;
-    case DEVICE_STATUS_UNINIT:
-        return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_ERROR || to == DEVICE_STATUS_DISABLED;
-    case DEVICE_STATUS_READY:
-        return to == DEVICE_STATUS_PROBED || to == DEVICE_STATUS_DISABLED || to == DEVICE_STATUS_ERROR;
-    case DEVICE_STATUS_PROBED:
-        return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_SUSPENDED || to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED ||
-               to == DEVICE_STATUS_ERROR;
-    case DEVICE_STATUS_RUNNING:
-        return to == DEVICE_STATUS_SUSPENDED || to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR ||
-               to == DEVICE_STATUS_PROBED;
-    case DEVICE_STATUS_SUSPENDED:
-        return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR;
-    case DEVICE_STATUS_ERROR:
-        return to == DEVICE_STATUS_REMOVED;
-    case DEVICE_STATUS_REMOVED:
-        return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_DISABLED;
-    default:
-        return 0;
-    }
+	switch (from) {
+	case DEVICE_STATUS_DISABLED:
+		return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_UNINIT;
+	case DEVICE_STATUS_UNINIT:
+		return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_ERROR ||
+		       to == DEVICE_STATUS_DISABLED;
+	case DEVICE_STATUS_READY:
+		return to == DEVICE_STATUS_PROBED || to == DEVICE_STATUS_DISABLED ||
+		       to == DEVICE_STATUS_ERROR;
+	case DEVICE_STATUS_PROBED:
+		return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_SUSPENDED ||
+		       to == DEVICE_STATUS_READY || to == DEVICE_STATUS_REMOVED ||
+		       to == DEVICE_STATUS_ERROR;
+	case DEVICE_STATUS_RUNNING:
+		return to == DEVICE_STATUS_SUSPENDED || to == DEVICE_STATUS_READY ||
+		       to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR ||
+		       to == DEVICE_STATUS_PROBED;
+	case DEVICE_STATUS_SUSPENDED:
+		return to == DEVICE_STATUS_RUNNING || to == DEVICE_STATUS_READY ||
+		       to == DEVICE_STATUS_REMOVED || to == DEVICE_STATUS_ERROR;
+	case DEVICE_STATUS_ERROR:
+		return to == DEVICE_STATUS_REMOVED;
+	case DEVICE_STATUS_REMOVED:
+		return to == DEVICE_STATUS_READY || to == DEVICE_STATUS_DISABLED;
+	default:
+		return 0;
+	}
 }
 
 /**
@@ -76,42 +80,39 @@ static int device_status_can_transit(enum device_status from, enum device_status
  */
 mt_err_t device_tree_init(void)
 {
-    for (int index = 0; index < DEV_ID_COUNT; index++)
-    {
-        const struct device_node* node = board_node_get((device_id_t)index);
-        s_devices[index].node = node;
-        s_devices[index].status = node ? node->status : DEVICE_STATUS_DISABLED;
-        s_devices[index].priv_data = NULL;
-        s_devices[index].ops = NULL;
-        s_devices[index].lock = NULL;
-        s_devices[index].platform_data = NULL;
-        dev_lc_reset(&s_devices[index].lc);
+	for (int index = 0; index < DEV_ID_COUNT; index++) {
+		const struct device_node *node = board_node_get((device_id_t)index);
+		s_devices[index].node	       = node;
+		s_devices[index].status	       = node ? node->status : DEVICE_STATUS_DISABLED;
+		s_devices[index].priv_data     = NULL;
+		s_devices[index].ops	       = NULL;
+		s_devices[index].lock	       = NULL;
+		s_devices[index].platform_data = NULL;
+		dev_lc_reset(&s_devices[index].lc);
 
-        if (node && s_devices[index].status != DEVICE_STATUS_DISABLED && !(node->flags & DEVICE_FLAG_DIRECT))
-        {
-            /* pdev->lock 必须递归: device_open 持锁后会调 device_set_status 再锁一次 */
-            mini_mutex_t* lock = NULL;
-            if (mini_mutex_create_static_recursive(&lock, s_device_lock_storage[index], sizeof(s_device_lock_storage[index])) == MINI_OK)
-            {
-                s_devices[index].lock = lock;
-                device_lc_bind(&s_devices[index]);
-            }
-            else
-            {
+		if (node && s_devices[index].status != DEVICE_STATUS_DISABLED &&
+		    !(node->flags & DEVICE_FLAG_DIRECT)) {
+			/* pdev->lock 必须递归: device_open 持锁后会调 device_set_status 再锁一次 */
+			mini_mutex_t *lock = NULL;
+			if (mini_mutex_create_static_recursive(
+				    &lock, s_device_lock_storage[index],
+				    sizeof(s_device_lock_storage[index])) == MINI_OK) {
+				s_devices[index].lock = lock;
+				device_lc_bind(&s_devices[index]);
+			} else {
 #ifdef CONFIG_SYSTEM
-                enter_safe_state("device_tree_init: mutex create failed");
+				enter_safe_state("device_tree_init: mutex create failed");
 #else
-                /* System 模块关闭时无 safe_state 实现：退化为忙循环停机 */
-                /* No safe_state when System is off: busy-loop halt */
-                while (1)
-                {
-                }
+				/* System 模块关闭时无 safe_state 实现：退化为忙循环停机 */
+				/* No safe_state when System is off: busy-loop halt */
+				while (1) {
+				}
 #endif
-            }
-        }
-    }
+			}
+		}
+	}
 
-    return board_dev_count() > 0 ? MINI_OK : MINI_ERR_IO;
+	return board_dev_count() > 0 ? MINI_OK : MINI_ERR_IO;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -122,11 +123,11 @@ mt_err_t device_tree_init(void)
  * @param id 设备 ID
  * @return 成功返回 device 指针, 非法 id 返回 ERR_PTR
  */
-struct device* board_dev_get(device_id_t id)
+struct device *board_dev_get(device_id_t id)
 {
-    if ((int)id < 0 || (int)id >= DEV_ID_COUNT)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    return &s_devices[id];
+	if ((int)id < 0 || (int)id >= DEV_ID_COUNT)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	return &s_devices[id];
 }
 
 /**
@@ -134,16 +135,16 @@ struct device* board_dev_get(device_id_t id)
  * @param name 设备名字符串
  * @return 成功返回 device 指针, 未找到返回 ERR_PTR
  */
-struct device* device_find(const char* name)
+struct device *device_find(const char *name)
 {
-    device_id_t id;
+	device_id_t id;
 
-    if (!name)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    id = board_dev_find(name);
-    if ((int)id < 0)
-        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
-    return board_dev_get(id);
+	if (!name)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	id = board_dev_find(name);
+	if ((int)id < 0)
+		return (struct device *)ERR_PTR(MINI_ERR_NODEV);
+	return board_dev_get(id);
 }
 
 /**
@@ -151,16 +152,16 @@ struct device* device_find(const char* name)
  * @param label 设备 label 字符串
  * @return 成功返回 device 指针, 未找到返回 ERR_PTR
  */
-struct device* device_find_by_label(const char* label)
+struct device *device_find_by_label(const char *label)
 {
-    device_id_t id;
+	device_id_t id;
 
-    if (!label)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    id = board_dev_find_by_label(label);
-    if ((int)id < 0)
-        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
-    return board_dev_get(id);
+	if (!label)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	id = board_dev_find_by_label(label);
+	if ((int)id < 0)
+		return (struct device *)ERR_PTR(MINI_ERR_NODEV);
+	return board_dev_get(id);
 }
 
 /**
@@ -169,16 +170,16 @@ struct device* device_find_by_label(const char* label)
  * @param key phandle 属性键名
  * @return 成功返回关联 device 指针, 失败返回 ERR_PTR
  */
-struct device* device_get_phandle_dev(const struct device* pdev, const char* key)
+struct device *device_get_phandle_dev(const struct device *pdev, const char *key)
 {
-    const char* val;
+	const char *val;
 
-    if (!pdev || !key)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    if (device_get_prop_str(pdev, key, &val) != MINI_OK)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    /* dtc-lite 将 phandle 引用存为 label 名字符串 */
-    return device_find_by_label(val);
+	if (!pdev || !key)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	if (device_get_prop_str(pdev, key, &val) != MINI_OK)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	/* dtc-lite 将 phandle 引用存为 label 名字符串 */
+	return device_find_by_label(val);
 }
 
 /**
@@ -186,24 +187,26 @@ struct device* device_get_phandle_dev(const struct device* pdev, const char* key
  * @param id 设备 ID
  * @return device 指针或 ERR_PTR
  */
-struct device* device_find_by_id(device_id_t id) { return board_dev_get(id); }
+struct device *device_find_by_id(device_id_t id)
+{
+	return board_dev_get(id);
+}
 
 /**
  * @brief 按设备树路径查找 device
  * @param path 设备树路径字符串
  * @return 成功返回 device 指针, 未找到返回 ERR_PTR
  */
-struct device* device_find_by_path(const char* path)
+struct device *device_find_by_path(const char *path)
 {
-    if (!path)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    for (int index = 0; index < DEV_ID_COUNT; index++)
-    {
-        const struct device_node* node = board_node_get((device_id_t)index);
-        if (node && node->path && strcmp(node->path, path) == 0)
-            return board_dev_get((device_id_t)index);
-    }
-    return (struct device*)ERR_PTR(MINI_ERR_NODEV);
+	if (!path)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	for (int index = 0; index < DEV_ID_COUNT; index++) {
+		const struct device_node *node = board_node_get((device_id_t)index);
+		if (node && node->path && strcmp(node->path, path) == 0)
+			return board_dev_get((device_id_t)index);
+	}
+	return (struct device *)ERR_PTR(MINI_ERR_NODEV);
 }
 
 /**
@@ -211,16 +214,16 @@ struct device* device_find_by_path(const char* path)
  * @param compatible compatible 字符串
  * @return 成功返回 device 指针, 未找到返回 ERR_PTR
  */
-struct device* device_find_by_compatible(const char* compatible)
+struct device *device_find_by_compatible(const char *compatible)
 {
-    device_id_t id;
+	device_id_t id;
 
-    if (!compatible)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    id = board_dev_find_by_compat(compatible);
-    if ((int)id < 0)
-        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
-    return board_dev_get(id);
+	if (!compatible)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	id = board_dev_find_by_compat(compatible);
+	if ((int)id < 0)
+		return (struct device *)ERR_PTR(MINI_ERR_NODEV);
+	return board_dev_get(id);
 }
 
 /**
@@ -228,16 +231,16 @@ struct device* device_find_by_compatible(const char* compatible)
  * @param pdev 当前 device 指针
  * @return 成功返回父 device 指针, 无父节点返回 ERR_PTR
  */
-struct device* device_get_parent(const struct device* pdev)
+struct device *device_get_parent(const struct device *pdev)
 {
-    const struct device_node* node;
+	const struct device_node *node;
 
-    if (!pdev || !pdev->node)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    node = pdev->node;
-    if (node->dep_count <= 0 || !node->deps)
-        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
-    return board_dev_get(node->deps[0]);
+	if (!pdev || !pdev->node)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	node = pdev->node;
+	if (node->dep_count <= 0 || !node->deps)
+		return (struct device *)ERR_PTR(MINI_ERR_NODEV);
+	return board_dev_get(node->deps[0]);
 }
 
 /**
@@ -247,76 +250,66 @@ struct device* device_get_parent(const struct device* pdev)
  * @return 0 成功, -1 非法字符或溢出
  * @note 无 errno 依赖, 线程安全
  */
-static int safe_parse_int32(const char* str, int* out)
+static int safe_parse_int32(const char *str, int *out)
 {
-    if (!str || !*str || !out)
-        return -1;
+	if (!str || !*str || !out)
+		return -1;
 
-    int         sign = 1;
-    const char* cursor = str;
-    if (*cursor == '-')
-    {
-        sign = -1;
-        cursor++;
-    }
-    else if (*cursor == '+')
-    {
-        cursor++;
-    }
+	int	    sign   = 1;
+	const char *cursor = str;
+	if (*cursor == '-') {
+		sign = -1;
+		cursor++;
+	} else if (*cursor == '+') {
+		cursor++;
+	}
 
-    int base = 10;
-    if (*cursor == '0')
-    {
-        cursor++;
-        if (*cursor == 'x' || *cursor == 'X')
-        {
-            base = 16;
-            cursor++;
-        }
-        else if (*cursor == '\0')
-        {
-            *out = 0;
-            return 0;
-        }
-        else
-        {
-            base = 8;
-        }
-    }
+	int base = 10;
+	if (*cursor == '0') {
+		cursor++;
+		if (*cursor == 'x' || *cursor == 'X') {
+			base = 16;
+			cursor++;
+		} else if (*cursor == '\0') {
+			*out = 0;
+			return 0;
+		} else {
+			base = 8;
+		}
+	}
 
-    if (!*cursor)
-        return -1;
+	if (!*cursor)
+		return -1;
 
-    uint32_t       val = 0;
-    const uint32_t limit = (sign > 0) ? (uint32_t)INT32_MAX : (uint32_t)INT32_MAX + 1UL;
+	uint32_t       val   = 0;
+	const uint32_t limit = (sign > 0) ? (uint32_t)INT32_MAX : (uint32_t)INT32_MAX + 1UL;
 
-    while (*cursor)
-    {
-        /* 空格作为自然终止符 — 兼容 multi-int 属性串如 "1073758208 1024" */
-        if (*cursor == ' ')
-            break;
+	while (*cursor) {
+		/* 空格作为自然终止符 — 兼容 multi-int 属性串如 "1073758208 1024" */
+		if (*cursor == ' ')
+			break;
 
-        uint32_t digit;
-        if (*cursor >= '0' && *cursor <= '9')
-            digit = (uint32_t)(*cursor - '0');
-        else if (*cursor >= 'a' && *cursor <= 'f')
-            digit = (uint32_t)(*cursor - 'a' + 10);
-        else if (*cursor >= 'A' && *cursor <= 'F')
-            digit = (uint32_t)(*cursor - 'A' + 10);
-        else
-            return -1;
+		uint32_t digit;
+		if (*cursor >= '0' && *cursor <= '9')
+			digit = (uint32_t)(*cursor - '0');
+		else if (*cursor >= 'a' && *cursor <= 'f')
+			digit = (uint32_t)(*cursor - 'a' + 10);
+		else if (*cursor >= 'A' && *cursor <= 'F')
+			digit = (uint32_t)(*cursor - 'A' + 10);
+		else
+			return -1;
 
-        if (digit >= (uint32_t)base)
-            return -1;
+		if (digit >= (uint32_t)base)
+			return -1;
 
-        if (val > (limit - digit) / (uint32_t)base)
-            return -1;
-        val = val * (uint32_t)base + digit;
-        cursor++;
-    }
+		if (val > (limit - digit) / (uint32_t)base)
+			return -1;
+		val = val * (uint32_t)base + digit;
+		cursor++;
+	}
 
-    *out = (sign > 0) ? (int)val : -(int)val;
-    return 0;
+	*out = (sign > 0) ? (int)val : -(int)val;
+	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -329,21 +322,19 @@ static int safe_parse_int32(const char* str, int* out)
  * @param[out] val 输出整型值
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_get_prop_int(const struct device* pdev, const char* key, int* val)
+mt_err_t device_get_prop_int(const struct device *pdev, const char *key, int *val)
 {
-    if (!pdev || !pdev->node || !key || !val)
-        return MINI_ERR_INVAL;
-    const struct device_node* node = pdev->node;
-    for (int index = 0; index < node->prop_count; index++)
-    {
-        if (strcmp(node->props[index].key, key) == 0)
-        {
-            if (safe_parse_int32(node->props[index].value, val) != 0)
-                return MINI_ERR_INVAL;
-            return MINI_OK;
-        }
-    }
-    return MINI_ERR_INVAL;
+	if (!pdev || !pdev->node || !key || !val)
+		return MINI_ERR_INVAL;
+	const struct device_node *node = pdev->node;
+	for (int index = 0; index < node->prop_count; index++) {
+		if (strcmp(node->props[index].key, key) == 0) {
+			if (safe_parse_int32(node->props[index].value, val) != 0)
+				return MINI_ERR_INVAL;
+			return MINI_OK;
+		}
+	}
+	return MINI_ERR_INVAL;
 }
 
 /**
@@ -354,52 +345,50 @@ mt_err_t device_get_prop_int(const struct device* pdev, const char* key, int* va
  * @param[out] max_len 数组最大容量
  * @return 成功返回解析元素个数, 失败返回负数错误码
  */
-mt_err_t device_get_prop_int_array(const struct device* pdev, const char* key, int* out_arr, int max_len)
+mt_err_t device_get_prop_int_array(const struct device *pdev, const char *key, int *out_arr,
+				   int max_len)
 {
-    if (!pdev || !pdev->node || !key || !out_arr || max_len <= 0)
-        return MINI_ERR_INVAL;
+	if (!pdev || !pdev->node || !key || !out_arr || max_len <= 0)
+		return MINI_ERR_INVAL;
 
-    const char* value = NULL;
-    for (int index = 0; index < pdev->node->prop_count; index++)
-    {
-        if (strcmp(pdev->node->props[index].key, key) == 0)
-        {
-            value = pdev->node->props[index].value;
-            break;
-        }
-    }
-    if (!value)
-        return MINI_ERR_INVAL;
+	const char *value = NULL;
+	for (int index = 0; index < pdev->node->prop_count; index++) {
+		if (strcmp(pdev->node->props[index].key, key) == 0) {
+			value = pdev->node->props[index].value;
+			break;
+		}
+	}
+	if (!value)
+		return MINI_ERR_INVAL;
 
-    /* 解析空格分隔的整数串 */
-    int         count = 0;
-    const char* cursor = value;
-    while (*cursor && count < max_len)
-    {
-        while (*cursor == ' ')
-            cursor++;
-        if (!*cursor)
-            break;
+	/* 解析空格分隔的整数串 */
+	int	    count  = 0;
+	const char *cursor = value;
+	while (*cursor && count < max_len) {
+		while (*cursor == ' ')
+			cursor++;
+		if (!*cursor)
+			break;
 
-        /* 计算当前 token 长度 */
-        const char* start = cursor;
-        while (*cursor && *cursor != ' ')
-            cursor++;
+		/* 计算当前 token 长度 */
+		const char *start = cursor;
+		while (*cursor && *cursor != ' ')
+			cursor++;
 
-        /* 复制 token 到临时缓冲区 */
-        char   token[64];
-        size_t len = (size_t)(cursor - start);
-        if (len >= sizeof(token))
-            return MINI_ERR_INVAL;
-        __builtin_memcpy(token, start, len);
-        token[len] = '\0';
+		/* 复制 token 到临时缓冲区 */
+		char   token[64];
+		size_t len = (size_t)(cursor - start);
+		if (len >= sizeof(token))
+			return MINI_ERR_INVAL;
+		__builtin_memcpy(token, start, len);
+		token[len] = '\0';
 
-        if (safe_parse_int32(token, &out_arr[count]) != 0)
-            return MINI_ERR_INVAL;
-        count++;
-    }
+		if (safe_parse_int32(token, &out_arr[count]) != 0)
+			return MINI_ERR_INVAL;
+		count++;
+	}
 
-    return count;
+	return count;
 }
 
 /**
@@ -409,20 +398,18 @@ mt_err_t device_get_prop_int_array(const struct device* pdev, const char* key, i
  * @param[out] val 输出字符串指针 (指向 node 内存储)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_get_prop_str(const struct device* pdev, const char* key, const char** val)
+mt_err_t device_get_prop_str(const struct device *pdev, const char *key, const char **val)
 {
-    if (!pdev || !pdev->node || !key || !val)
-        return MINI_ERR_INVAL;
-    const struct device_node* node = pdev->node;
-    for (int index = 0; index < node->prop_count; index++)
-    {
-        if (strcmp(node->props[index].key, key) == 0)
-        {
-            *val = node->props[index].value;
-            return MINI_OK;
-        }
-    }
-    return MINI_ERR_INVAL;
+	if (!pdev || !pdev->node || !key || !val)
+		return MINI_ERR_INVAL;
+	const struct device_node *node = pdev->node;
+	for (int index = 0; index < node->prop_count; index++) {
+		if (strcmp(node->props[index].key, key) == 0) {
+			*val = node->props[index].value;
+			return MINI_OK;
+		}
+	}
+	return MINI_ERR_INVAL;
 }
 
 /**
@@ -432,7 +419,10 @@ mt_err_t device_get_prop_str(const struct device* pdev, const char* key, const c
  * @param[out] val 输出整型布尔值 (0/1)
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_get_prop_bool(const struct device* pdev, const char* key, int* val) { return device_get_prop_int(pdev, key, val); }
+mt_err_t device_get_prop_bool(const struct device *pdev, const char *key, int *val)
+{
+	return device_get_prop_int(pdev, key, val);
+}
 
 /**
  * @brief 获取设备 reg 描述符
@@ -441,16 +431,16 @@ mt_err_t device_get_prop_bool(const struct device* pdev, const char* key, int* v
  * @param[out] out 输出 reg 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_get_reg(const struct device* pdev, int idx, const struct device_reg** out)
+mt_err_t device_get_reg(const struct device *pdev, int idx, const struct device_reg **out)
 {
-    if (!pdev || !pdev->node || !out)
-        return MINI_ERR_INVAL;
-    if (idx < 0 || idx >= (int)pdev->node->reg_count)
-        return MINI_ERR_INVAL;
-    if (!pdev->node->regs)
-        return MINI_ERR_INVAL;
-    *out = &pdev->node->regs[idx];
-    return MINI_OK;
+	if (!pdev || !pdev->node || !out)
+		return MINI_ERR_INVAL;
+	if (idx < 0 || idx >= (int)pdev->node->reg_count)
+		return MINI_ERR_INVAL;
+	if (!pdev->node->regs)
+		return MINI_ERR_INVAL;
+	*out = &pdev->node->regs[idx];
+	return MINI_OK;
 }
 
 /**
@@ -460,16 +450,16 @@ mt_err_t device_get_reg(const struct device* pdev, int idx, const struct device_
  * @param[out] out 输出 irq 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_get_irq(const struct device* pdev, int idx, const struct device_irq** out)
+mt_err_t device_get_irq(const struct device *pdev, int idx, const struct device_irq **out)
 {
-    if (!pdev || !pdev->node || !out)
-        return MINI_ERR_INVAL;
-    if (idx < 0 || idx >= (int)pdev->node->irq_count)
-        return MINI_ERR_INVAL;
-    if (!pdev->node->irqs)
-        return MINI_ERR_INVAL;
-    *out = &pdev->node->irqs[idx];
-    return MINI_OK;
+	if (!pdev || !pdev->node || !out)
+		return MINI_ERR_INVAL;
+	if (idx < 0 || idx >= (int)pdev->node->irq_count)
+		return MINI_ERR_INVAL;
+	if (!pdev->node->irqs)
+		return MINI_ERR_INVAL;
+	*out = &pdev->node->irqs[idx];
+	return MINI_OK;
 }
 
 /**
@@ -477,11 +467,11 @@ mt_err_t device_get_irq(const struct device* pdev, int idx, const struct device_
  * @param[in] pdev device 指针
  * @return 名称字符串, pdev 无效返回 NULL
  */
-const char* device_get_name(const struct device* pdev)
+const char *device_get_name(const struct device *pdev)
 {
-    if (IS_ERR_OR_NULL(pdev) || !pdev->node)
-        return NULL;
-    return pdev->node->name;
+	if (IS_ERR_OR_NULL(pdev) || !pdev->node)
+		return NULL;
+	return pdev->node->name;
 }
 
 /**
@@ -489,11 +479,11 @@ const char* device_get_name(const struct device* pdev)
  * @param[in] pdev device 指针
  * @return compatible 字符串, pdev 无效返回 NULL
  */
-const char* device_get_compatible(const struct device* pdev)
+const char *device_get_compatible(const struct device *pdev)
 {
-    if (IS_ERR_OR_NULL(pdev) || !pdev->node)
-        return NULL;
-    return pdev->node->compatible;
+	if (IS_ERR_OR_NULL(pdev) || !pdev->node)
+		return NULL;
+	return pdev->node->compatible;
 }
 
 /**
@@ -501,11 +491,11 @@ const char* device_get_compatible(const struct device* pdev)
  * @param pdev device 指针
  * @return 设备状态枚举, pdev 无效返回 DEVICE_STATUS_DISABLED
  */
-enum device_status device_get_status(const struct device* pdev)
+enum device_status device_get_status(const struct device *pdev)
 {
-    if (IS_ERR_OR_NULL(pdev))
-        return DEVICE_STATUS_DISABLED;
-    return pdev->status;
+	if (IS_ERR_OR_NULL(pdev))
+		return DEVICE_STATUS_DISABLED;
+	return pdev->status;
 }
 
 /**
@@ -513,11 +503,11 @@ enum device_status device_get_status(const struct device* pdev)
  * @param pdev device 指针
  * @return 关键性枚举, pdev 无效返回 DEVICE_CRIT_WARNING
  */
-enum device_criticality device_get_criticality(const struct device* pdev)
+enum device_criticality device_get_criticality(const struct device *pdev)
 {
-    if (IS_ERR_OR_NULL(pdev) || !pdev->node)
-        return DEVICE_CRIT_WARNING;
-    return (enum device_criticality)pdev->node->criticality;
+	if (IS_ERR_OR_NULL(pdev) || !pdev->node)
+		return DEVICE_CRIT_WARNING;
+	return (enum device_criticality)pdev->node->criticality;
 }
 
 /**
@@ -526,23 +516,23 @@ enum device_criticality device_get_criticality(const struct device* pdev)
  * @param[in] status 目标状态
  * @return 成功返回 MINI_OK, 非法迁移返回 MINI_ERR_INVAL
  */
-mt_err_t device_set_status(struct device* pdev, enum device_status status)
+mt_err_t device_set_status(struct device *pdev, enum device_status status)
 {
-    int ret = MINI_OK;
+	int ret = MINI_OK;
 
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    if (pdev->lock && mini_mutex_lock(pdev->lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) != MINI_OK)
-        return MINI_ERR_BUSY;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	if (pdev->lock && mini_mutex_lock(pdev->lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) != MINI_OK)
+		return MINI_ERR_BUSY;
 
-    if (!device_status_can_transit(pdev->status, status))
-        ret = MINI_ERR_INVAL;
-    else
-        pdev->status = status;
+	if (!device_status_can_transit(pdev->status, status))
+		ret = MINI_ERR_INVAL;
+	else
+		pdev->status = status;
 
-    if (pdev->lock)
-        MINI_IGNORE_RESULT(mini_mutex_unlock(pdev->lock));
-    return ret;
+	if (pdev->lock)
+		MINI_IGNORE_RESULT(mini_mutex_unlock(pdev->lock));
+	return ret;
 }
 
 /**
@@ -551,12 +541,12 @@ mt_err_t device_set_status(struct device* pdev, enum device_status status)
  * @param[in] priv 私有数据指针
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_INVAL
  */
-mt_err_t device_set_priv(struct device* pdev, void* priv)
+mt_err_t device_set_priv(struct device *pdev, void *priv)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    pdev->priv_data = priv;
-    return MINI_OK;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	pdev->priv_data = priv;
+	return MINI_OK;
 }
 
 /**
@@ -564,13 +554,13 @@ mt_err_t device_set_priv(struct device* pdev, void* priv)
  * @param[in] pdev device 指针
  * @return 成功返回 priv 指针, 未设置或非法返回 ERR_PTR
  */
-void* device_get_priv(const struct device* pdev)
+void *device_get_priv(const struct device *pdev)
 {
-    if (!pdev)
-        return ERR_PTR(MINI_ERR_INVAL);
-    if (!pdev->priv_data)
-        return ERR_PTR(MINI_ERR_NODEV);
-    return pdev->priv_data;
+	if (!pdev)
+		return ERR_PTR(MINI_ERR_INVAL);
+	if (!pdev->priv_data)
+		return ERR_PTR(MINI_ERR_NODEV);
+	return pdev->priv_data;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -580,11 +570,11 @@ void* device_get_priv(const struct device* pdev)
  * @brief 获取第一个 device (按 devtable 顺序)
  * @return 成功返回 device 指针, 无设备返回 ERR_PTR
  */
-struct device* device_get_first(void)
+struct device *device_get_first(void)
 {
-    if (board_dev_count() <= 0)
-        return (struct device*)ERR_PTR(MINI_ERR_NODEV);
-    return board_dev_get((device_id_t)0);
+	if (board_dev_count() <= 0)
+		return (struct device *)ERR_PTR(MINI_ERR_NODEV);
+	return board_dev_get((device_id_t)0);
 }
 
 /**
@@ -592,30 +582,31 @@ struct device* device_get_first(void)
  * @param prev 当前 device 指针
  * @return 成功返回下一 device 指针, 末尾或非法返回 ERR_PTR
  */
-struct device* device_get_next(const struct device* prev)
+struct device *device_get_next(const struct device *prev)
 {
-    if (!prev)
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    if (IS_ERR(prev))
-        return (struct device*)ERR_PTR(MINI_ERR_INVAL);
-    for (int index = 0; index < board_dev_count(); index++)
-    {
-        if (board_dev_get((device_id_t)index) == prev)
-        {
-            int next = index + 1;
-            if (next >= board_dev_count())
-                return (struct device*)ERR_PTR(MINI_ERR_NODEV);
-            return board_dev_get((device_id_t)next);
-        }
-    }
-    return (struct device*)ERR_PTR(MINI_ERR_INVAL);
+	if (!prev)
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	if (IS_ERR(prev))
+		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
+	for (int index = 0; index < board_dev_count(); index++) {
+		if (board_dev_get((device_id_t)index) == prev) {
+			int next = index + 1;
+			if (next >= board_dev_count())
+				return (struct device *)ERR_PTR(MINI_ERR_NODEV);
+			return board_dev_get((device_id_t)next);
+		}
+	}
+	return (struct device *)ERR_PTR(MINI_ERR_INVAL);
 }
 
 /**
  * @brief 获取已注册 device 数量
  * @return device 数量
  */
-int device_get_count(void) { return board_dev_count(); }
+int device_get_count(void)
+{
+	return board_dev_count();
+}
 
 /* -------------------------------------------------------------------------- */
 /* VFS 转发层 */
@@ -633,35 +624,32 @@ int device_get_count(void) { return board_dev_count(); }
  * @param[in] arg 传递给驱动 open/init 的参数
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_open(struct device* pdev, void* arg)
+mt_err_t device_open(struct device *pdev, void *arg)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
 
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (!pdev->ops || (!pdev->ops->open && !pdev->ops->init))
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
-    if (pdev->status == DEVICE_STATUS_RUNNING)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_OK;
-    }
-    if (pdev->status != DEVICE_STATUS_PROBED)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (!pdev->ops || (!pdev->ops->open && !pdev->ops->init)) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
+	if (pdev->status == DEVICE_STATUS_RUNNING) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_OK;
+	}
+	if (pdev->status != DEVICE_STATUS_PROBED) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
 
-    int ret = pdev->ops->open ? pdev->ops->open(pdev, arg) : pdev->ops->init(pdev);
-    if (ret == MINI_OK)
-        MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return ret;
+	int ret = pdev->ops->open ? pdev->ops->open(pdev, arg) : pdev->ops->init(pdev);
+	if (ret == MINI_OK)
+		MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return ret;
 }
 
 /**
@@ -669,29 +657,27 @@ mt_err_t device_open(struct device* pdev, void* arg)
  * @param[in] pdev device 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_close(struct device* pdev)
+mt_err_t device_close(struct device *pdev)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (!pdev->ops || !pdev->ops->close)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
-    if (pdev->status != DEVICE_STATUS_RUNNING && pdev->status != DEVICE_STATUS_SUSPENDED)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (!pdev->ops || !pdev->ops->close) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
+	if (pdev->status != DEVICE_STATUS_RUNNING && pdev->status != DEVICE_STATUS_SUSPENDED) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
 
-    int ret = pdev->ops->close(pdev);
-    if (ret == MINI_OK)
-        MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_PROBED));
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return ret;
+	int ret = pdev->ops->close(pdev);
+	if (ret == MINI_OK)
+		MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_PROBED));
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return ret;
 }
 
 /**
@@ -702,21 +688,20 @@ mt_err_t device_close(struct device* pdev)
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 MINI_OK 或驱动返回值, 失败返回负数错误码
  */
-mt_err_t device_write(struct device* pdev, const void* buf, size_t len, uint32_t timeout_ms)
+mt_err_t device_write(struct device *pdev, const void *buf, size_t len, uint32_t timeout_ms)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (!pdev->ops || !pdev->ops->write || pdev->status != DEVICE_STATUS_RUNNING)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
-    int ret = pdev->ops->write(pdev, buf, len, timeout_ms);
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return ret;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (!pdev->ops || !pdev->ops->write || pdev->status != DEVICE_STATUS_RUNNING) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
+	int ret = pdev->ops->write(pdev, buf, len, timeout_ms);
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return ret;
 }
 
 /**
@@ -727,21 +712,20 @@ mt_err_t device_write(struct device* pdev, const void* buf, size_t len, uint32_t
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回已读字节数或 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_read(struct device* pdev, void* buf, size_t len, uint32_t timeout_ms)
+mt_err_t device_read(struct device *pdev, void *buf, size_t len, uint32_t timeout_ms)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (!pdev->ops || !pdev->ops->read || pdev->status != DEVICE_STATUS_RUNNING)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
-    int ret = pdev->ops->read(pdev, buf, len, timeout_ms);
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return ret;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (!pdev->ops || !pdev->ops->read || pdev->status != DEVICE_STATUS_RUNNING) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
+	int ret = pdev->ops->read(pdev, buf, len, timeout_ms);
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return ret;
 }
 
 /**
@@ -753,21 +737,20 @@ mt_err_t device_read(struct device* pdev, void* buf, size_t len, uint32_t timeou
  * @param[in] timeout_ms 超时 (毫秒)
  * @return 成功返回 MINI_OK 或驱动返回值, 失败返回负数错误码
  */
-mt_err_t device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, uint32_t timeout_ms)
+mt_err_t device_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_len, uint32_t timeout_ms)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (!pdev->ops || !pdev->ops->ioctl || pdev->status != DEVICE_STATUS_RUNNING)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
-    int ret = pdev->ops->ioctl(pdev, cmd, arg, arg_len, timeout_ms);
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return ret;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (!pdev->ops || !pdev->ops->ioctl || pdev->status != DEVICE_STATUS_RUNNING) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
+	int ret = pdev->ops->ioctl(pdev, cmd, arg, arg_len, timeout_ms);
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return ret;
 }
 
 /**
@@ -775,33 +758,30 @@ mt_err_t device_ioctl(struct device* pdev, int cmd, void* arg, size_t arg_len, u
  * @param[in] pdev device 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_suspend(struct device* pdev)
+mt_err_t device_suspend(struct device *pdev)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
 
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (pdev->status != DEVICE_STATUS_RUNNING)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (pdev->status != DEVICE_STATUS_RUNNING) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
 
-    int ret = MINI_OK;
-    if (pdev->ops && pdev->ops->suspend)
-    {
-        ret = pdev->ops->suspend(pdev);
-        if (ret != MINI_OK)
-        {
-            MINI_IGNORE_RESULT(device_unlock(pdev));
-            return ret;
-        }
-    }
-    MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_SUSPENDED));
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return MINI_OK;
+	int ret = MINI_OK;
+	if (pdev->ops && pdev->ops->suspend) {
+		ret = pdev->ops->suspend(pdev);
+		if (ret != MINI_OK) {
+			MINI_IGNORE_RESULT(device_unlock(pdev));
+			return ret;
+		}
+	}
+	MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_SUSPENDED));
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return MINI_OK;
 }
 
 /**
@@ -809,33 +789,30 @@ mt_err_t device_suspend(struct device* pdev)
  * @param[in] pdev device 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_resume(struct device* pdev)
+mt_err_t device_resume(struct device *pdev)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    HAL_ASSERT_NOT_ISR();
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	HAL_ASSERT_NOT_ISR();
 
-    if (device_lock(pdev) != MINI_OK)
-        return MINI_ERR_BUSY;
-    if (pdev->status != DEVICE_STATUS_SUSPENDED)
-    {
-        MINI_IGNORE_RESULT(device_unlock(pdev));
-        return MINI_ERR_IO;
-    }
+	if (device_lock(pdev) != MINI_OK)
+		return MINI_ERR_BUSY;
+	if (pdev->status != DEVICE_STATUS_SUSPENDED) {
+		MINI_IGNORE_RESULT(device_unlock(pdev));
+		return MINI_ERR_IO;
+	}
 
-    int ret = MINI_OK;
-    if (pdev->ops && pdev->ops->resume)
-    {
-        ret = pdev->ops->resume(pdev);
-        if (ret != MINI_OK)
-        {
-            MINI_IGNORE_RESULT(device_unlock(pdev));
-            return ret;
-        }
-    }
-    MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
-    MINI_IGNORE_RESULT(device_unlock(pdev));
-    return MINI_OK;
+	int ret = MINI_OK;
+	if (pdev->ops && pdev->ops->resume) {
+		ret = pdev->ops->resume(pdev);
+		if (ret != MINI_OK) {
+			MINI_IGNORE_RESULT(device_unlock(pdev));
+			return ret;
+		}
+	}
+	MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_RUNNING));
+	MINI_IGNORE_RESULT(device_unlock(pdev));
+	return MINI_OK;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -846,13 +823,14 @@ mt_err_t device_resume(struct device* pdev)
  * @param[in] pdev device 指针
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_BUSY 或 MINI_ERR_INVAL
  */
-mt_err_t device_lock(struct device* pdev)
+mt_err_t device_lock(struct device *pdev)
 {
-    if (!pdev)
-        return MINI_ERR_INVAL;
-    if (!pdev->lock)
-        return MINI_ERR_BUSY;
-    return mini_mutex_lock(pdev->lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) == MINI_OK ? MINI_OK : MINI_ERR_BUSY;
+	if (!pdev)
+		return MINI_ERR_INVAL;
+	if (!pdev->lock)
+		return MINI_ERR_BUSY;
+	return mini_mutex_lock(pdev->lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) == MINI_OK ? MINI_OK
+										    : MINI_ERR_BUSY;
 }
 
 /**
@@ -860,11 +838,11 @@ mt_err_t device_lock(struct device* pdev)
  * @param[in] pdev device 指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t device_unlock(struct device* pdev)
+mt_err_t device_unlock(struct device *pdev)
 {
-    if (!pdev || !pdev->lock)
-        return MINI_ERR_INVAL;
-    return mini_mutex_unlock(pdev->lock) == MINI_OK ? MINI_OK : MINI_ERR_IO;
+	if (!pdev || !pdev->lock)
+		return MINI_ERR_INVAL;
+	return mini_mutex_unlock(pdev->lock) == MINI_OK ? MINI_OK : MINI_ERR_IO;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -882,29 +860,29 @@ mt_err_t device_unlock(struct device* pdev)
  * @brief 卸载驱动: 标记 REMOVED、广播事件、持锁清空 ops/priv
  * @param[in] pdev device 指针
  */
-void device_ops_unregister(struct device* pdev)
+void device_ops_unregister(struct device *pdev)
 {
-    if (!pdev)
-        return;
+	if (!pdev)
+		return;
 
-    if (device_lock(pdev) != MINI_OK)
-        return;
+	if (device_lock(pdev) != MINI_OK)
+		return;
 
-    MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_REMOVED));
+	MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_REMOVED));
 
-    MINI_IGNORE_RESULT(device_unlock(pdev));
+	MINI_IGNORE_RESULT(device_unlock(pdev));
 
 #ifdef CONFIG_EVENT_BUS
-    MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_DEVICE_REMOVED, (uintptr_t)pdev));
+	MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_DEVICE_REMOVED, (uintptr_t)pdev));
 #endif
 
-    if (device_lock(pdev) != MINI_OK)
-        return;
+	if (device_lock(pdev) != MINI_OK)
+		return;
 
-    MINI_IGNORE_RESULT(device_set_priv(pdev, NULL));
-    pdev->ops = NULL;
+	MINI_IGNORE_RESULT(device_set_priv(pdev, NULL));
+	pdev->ops = NULL;
 
-    MINI_IGNORE_RESULT(device_unlock(pdev));
+	MINI_IGNORE_RESULT(device_unlock(pdev));
 }
 
 /**
@@ -912,19 +890,19 @@ void device_ops_unregister(struct device* pdev)
  * @param pdev device 指针
  * @return 成功返回 dev_lifecycle 指针, 非法返回 ERR_PTR
  */
-struct dev_lifecycle* device_lc(struct device* pdev)
+struct dev_lifecycle *device_lc(struct device *pdev)
 {
-    if (!pdev)
-        return (struct dev_lifecycle*)ERR_PTR(MINI_ERR_INVAL);
-    return &pdev->lc;
+	if (!pdev)
+		return (struct dev_lifecycle *)ERR_PTR(MINI_ERR_INVAL);
+	return &pdev->lc;
 }
 
 /**
  * @brief 初始化并绑定 device 生命周期状态机
  * @param[in] pdev device 指针
  */
-void device_lc_bind(struct device* pdev)
+void device_lc_bind(struct device *pdev)
 {
-    if (pdev)
-        dev_lc_init(&pdev->lc);
+	if (pdev)
+		dev_lc_init(&pdev->lc);
 }

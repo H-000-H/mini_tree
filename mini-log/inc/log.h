@@ -12,12 +12,12 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
+#include "log_config.h"
+#include "log_err.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "log_config.h"
-#include "log_err.h"
+#include <stdio.h>
 
 /*----------------------------------------------------------------------*/
 /* Flash 接口抽象                                                        */
@@ -30,7 +30,8 @@ extern "C" {
  * @param[in] sector_count 扇区数量
  * @return 0 成功, 非 0 失败
  */
-typedef int (*mini_log_flash_open_fn)(uint32_t sector_start, size_t sector_size, uint16_t sector_count);
+typedef int (*mini_log_flash_open_fn)(uint32_t sector_start, size_t sector_size,
+				      uint16_t sector_count);
 
 /**
  * @brief 关闭 flash 分区窗口
@@ -68,21 +69,21 @@ typedef int (*mini_log_flash_read_fn)(size_t offset, uint8_t *buf, size_t len);
  * @brief flash 底层操作集合 (五项缺一不可)
  */
 typedef struct {
-    mini_log_flash_open_fn  open;  /**< 打开分区 */
-    mini_log_flash_close_fn close; /**< 关闭分区 */
-    mini_log_flash_erase_fn erase; /**< 扇区擦除 */
-    mini_log_flash_write_fn write; /**< 写入 */
-    mini_log_flash_read_fn  read;  /**< 读取 */
+	mini_log_flash_open_fn	open;  /**< 打开分区 */
+	mini_log_flash_close_fn close; /**< 关闭分区 */
+	mini_log_flash_erase_fn erase; /**< 扇区擦除 */
+	mini_log_flash_write_fn write; /**< 写入 */
+	mini_log_flash_read_fn	read;  /**< 读取 */
 } mini_log_flash_ops_t;
 
 /**
  * @brief flash 分区信息
  */
 typedef struct {
-    uint32_t base_addr;   /**< 分区物理基地址 */
-    size_t   total_size;  /**< 分区总大小 (须为 sector_size 的整数倍) */
-    size_t   sector_size; /**< 扇区大小 (如 4096) */
-    size_t   write_gran;  /**< 最小写入粒度 (如 1/4/8, 为 0 取默认) */
+	uint32_t base_addr;   /**< 分区物理基地址 */
+	size_t	 total_size;  /**< 分区总大小 (须为 sector_size 的整数倍) */
+	size_t	 sector_size; /**< 扇区大小 (如 4096) */
+	size_t	 write_gran;  /**< 最小写入粒度 (如 1/4/8, 为 0 取默认) */
 } mini_log_flash_info_t;
 
 /**
@@ -210,30 +211,30 @@ void mini_log_default_output(const char *str, ...) __attribute__((format(printf,
  * @brief 日志级别 (数值越大越详细, 用于编译期过滤)
  */
 typedef enum {
-    MINI_LOG_LEVEL_NONE    = 0, /**< 关闭 */
-    MINI_LOG_LEVEL_ERROR   = 1, /**< 错误 */
-    MINI_LOG_LEVEL_WARNING = 2, /**< 警告 */
-    MINI_LOG_LEVEL_INFO    = 3, /**< 信息 */
-    MINI_LOG_LEVEL_DEBUG   = 4, /**< 调试 */
+	MINI_LOG_LEVEL_NONE    = 0, /**< 关闭 */
+	MINI_LOG_LEVEL_ERROR   = 1, /**< 错误 */
+	MINI_LOG_LEVEL_WARNING = 2, /**< 警告 */
+	MINI_LOG_LEVEL_INFO    = 3, /**< 信息 */
+	MINI_LOG_LEVEL_DEBUG   = 4, /**< 调试 */
 } MiniLogLevel;
 
 /**
  * @brief 终端 ANSI 颜色码 (MINI_LOG_COLOR_ENABLE == 0 时全部展开为空串)
  */
 #if (defined(MINI_LOG_COLOR_ENABLE) && (MINI_LOG_COLOR_ENABLE == 1))
-    #define LOG_COLOR_RED       "\033[0;31m"
-    #define LOG_COLOR_YELLOW    "\033[0;33m"
-    #define LOG_COLOR_GREEN     "\033[0;32m"
-    #define LOG_COLOR_CYAN      "\033[0;36m"
-    #define LOG_COLOR_GOLD      "\033[1;33m"
-    #define LOG_COLOR_RESET     "\033[0m"
+#define LOG_COLOR_RED "\033[0;31m"
+#define LOG_COLOR_YELLOW "\033[0;33m"
+#define LOG_COLOR_GREEN "\033[0;32m"
+#define LOG_COLOR_CYAN "\033[0;36m"
+#define LOG_COLOR_GOLD "\033[1;33m"
+#define LOG_COLOR_RESET "\033[0m"
 #else
-    #define LOG_COLOR_RED
-    #define LOG_COLOR_YELLOW
-    #define LOG_COLOR_GREEN
-    #define LOG_COLOR_CYAN
-    #define LOG_COLOR_GOLD
-    #define LOG_COLOR_RESET
+#define LOG_COLOR_RED
+#define LOG_COLOR_YELLOW
+#define LOG_COLOR_GREEN
+#define LOG_COLOR_CYAN
+#define LOG_COLOR_GOLD
+#define LOG_COLOR_RESET
 #endif
 
 /**
@@ -270,8 +271,8 @@ int mini_log_get_tick(void);
  */
 static inline uint32_t mini_log_tick_value(void)
 {
-    int t = mini_log_get_tick();
-    return (t < 0) ? 0u : (uint32_t)t;
+	int t = mini_log_get_tick();
+	return (t < 0) ? 0u : (uint32_t)t;
 }
 
 /**
@@ -292,11 +293,11 @@ static inline uint32_t mini_log_tick_value(void)
  */
 static inline const char *mini_log_tick_str(char *buf, size_t n)
 {
-    int t = mini_log_get_tick();
-    if (t < 0)
-        return "not support check time";
-    (void)snprintf(buf, n, "t=%d", t);
-    return buf;
+	int t = mini_log_get_tick();
+	if (t < 0)
+		return "not support check time";
+	(void)snprintf(buf, n, "t=%d", t);
+	return buf;
 }
 
 /*----------------------------------------------------------------------*/
@@ -306,39 +307,41 @@ static inline const char *mini_log_tick_str(char *buf, size_t n)
  * @brief 内部: 统一发射一条日志 (先渲染时间字段再投递; __VA_ARGS__ 只求值一次)
  * @note 时间字段: 已接入 tick -> "t=<tick>"; 未接入 -> "not support check time"
  */
-#define MINI_LOG_EMIT_(sink, color, tag, fmt, ...)                                  \
-    do {                                                                            \
-        char _mini_log_ts[MINI_LOG_TIME_LEN];                                        \
-        (sink)(color tag " (%u) %s " fmt LOG_COLOR_RESET "\r\n",                    \
-               (unsigned int)__LINE__,                                              \
-               mini_log_tick_str(_mini_log_ts, sizeof(_mini_log_ts)),               \
-               ##__VA_ARGS__);                                                      \
-    } while (0)
+#define MINI_LOG_EMIT_(sink, color, tag, fmt, ...)                                               \
+	do {                                                                                     \
+		char _mini_log_ts[MINI_LOG_TIME_LEN];                                            \
+		(sink)(color tag " (%u) %s " fmt LOG_COLOR_RESET "\r\n", (unsigned int)__LINE__, \
+		       mini_log_tick_str(_mini_log_ts, sizeof(_mini_log_ts)), ##__VA_ARGS__);    \
+	} while (0)
 
 /**
  * @brief 控制台日志宏 (E/W/I/D): 格式化后投递到控制台日志环
  * @note 输出前缀为 "<color><tag> (<行号>) <时间> "; 时间未接入 tick 时显示 "not support check time"
  */
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_ERROR)
-#define MINI_LOG_E(fmt, ...) MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_RED, "[ERROR]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_E(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_RED, "[ERROR]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_E(fmt, ...) ((void)0)
 #endif
 
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_WARNING)
-#define MINI_LOG_W(fmt, ...) MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_YELLOW, "[WARN]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_W(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_YELLOW, "[WARN]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_W(fmt, ...) ((void)0)
 #endif
 
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_INFO)
-#define MINI_LOG_I(fmt, ...) MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_GREEN, "[INFO]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_I(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_GREEN, "[INFO]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_I(fmt, ...) ((void)0)
 #endif
 
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_DEBUG)
-#define MINI_LOG_D(fmt, ...) MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_CYAN, "[DEBUG]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_D(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_default_output, LOG_COLOR_CYAN, "[DEBUG]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_D(fmt, ...) ((void)0)
 #endif
@@ -352,25 +355,29 @@ static inline const char *mini_log_tick_str(char *buf, size_t n)
  * @note 输出前缀同控制台宏; 仅入队, 需配合 mini_log_flash_flush 落盘
  */
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_ERROR)
-#define MINI_LOG_FLASH_E(fmt, ...) MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_RED, "[ERROR]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_FLASH_E(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_RED, "[ERROR]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_FLASH_E(fmt, ...) ((void)0)
 #endif
 
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_WARNING)
-#define MINI_LOG_FLASH_W(fmt, ...) MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_YELLOW, "[WARN]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_FLASH_W(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_YELLOW, "[WARN]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_FLASH_W(fmt, ...) ((void)0)
 #endif
 
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_INFO)
-#define MINI_LOG_FLASH_I(fmt, ...) MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_GREEN, "[INFO]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_FLASH_I(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_GREEN, "[INFO]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_FLASH_I(fmt, ...) ((void)0)
 #endif
 
 #if (MINI_LOG_LOCAL_LEVEL >= MINI_LOG_LEVEL_DEBUG)
-#define MINI_LOG_FLASH_D(fmt, ...) MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_CYAN, "[DEBUG]", fmt, ##__VA_ARGS__)
+#define MINI_LOG_FLASH_D(fmt, ...) \
+	MINI_LOG_EMIT_(mini_log_flash_output, LOG_COLOR_CYAN, "[DEBUG]", fmt, ##__VA_ARGS__)
 #else
 #define MINI_LOG_FLASH_D(fmt, ...) ((void)0)
 #endif

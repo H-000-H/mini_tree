@@ -17,8 +17,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define I2S_CMD_BASE MINI_MAGIC(I2S)
@@ -30,7 +29,7 @@ extern "C"
 #define I2S_CMD_CIRC_START (I2S_CMD_BASE + 0x06)     /**< arg: i2s_circ_arg */
 #define I2S_CMD_CIRC_STOP (I2S_CMD_BASE + 0x07)
 #define I2S_CMD_CIRC_WRITE (I2S_CMD_BASE + 0x08)       /**< arg: i2s_circ_buf_arg */
-#define I2S_CMD_CIRC_READ (I2S_CMD_BASE + 0x09)        /**< arg: i2s_circ_buf_arg */
+#define I2S_CMD_CIRC_READ (I2S_CMD_BASE + 0x09)	       /**< arg: i2s_circ_buf_arg */
 #define I2S_CMD_SET_DMA_IRQ_MODE (I2S_CMD_BASE + 0x0A) /**< arg: i2s_dma_irq_mode_arg */
 #define I2S_CMD_GET_DMA_IRQ_MODE (I2S_CMD_BASE + 0x0B) /**< arg: i2s_dma_irq_mode_arg */
 #define I2S_CMD_COUNT 11
@@ -44,46 +43,40 @@ extern "C"
 #define I2S_IRQ_HT 2U
 #define I2S_IRQ_HT_TC 3U
 
-struct i2s_transfer_arg
-{
-    const uint16_t* tx;        /**< 发送缓冲区 (可为 NULL) */
-    uint16_t*       rx;        /**< 接收缓冲区 (可为 NULL) */
-    size_t          samples;   /**< 采样点数 */
-    uint32_t        xfer_mode; /**< I2S_XFER_AUTO / POLL / DMA */
+struct i2s_transfer_arg {
+	const uint16_t *tx;	   /**< 发送缓冲区 (可为 NULL) */
+	uint16_t       *rx;	   /**< 接收缓冲区 (可为 NULL) */
+	size_t		samples;   /**< 采样点数 */
+	uint32_t	xfer_mode; /**< I2S_XFER_AUTO / POLL / DMA */
 };
 
-struct i2s_xfer_mode_arg
-{
-    uint32_t xfer_mode; /**< I2S_XFER_AUTO / POLL / DMA */
+struct i2s_xfer_mode_arg {
+	uint32_t xfer_mode; /**< I2S_XFER_AUTO / POLL / DMA */
 };
 
 /** @brief 异步传输参数 (提交即返回; 完成经 cb — 当前 HAL 存档占位) */
-typedef void (*i2s_async_cb_t)(struct device* pdev, const void* trans, void* userdata);
+typedef void (*i2s_async_cb_t)(struct device *pdev, const void *trans, void *userdata);
 
-struct i2s_transfer_async_arg
-{
-    const uint16_t* tx;       /**< 发送缓冲区 (可为 NULL) */
-    uint16_t*       rx;       /**< 接收缓冲区 (可为 NULL) */
-    size_t          samples;  /**< 采样点数 */
-    i2s_async_cb_t  cb;       /**< 完成回调 */
-    void*           userdata; /**< 用户私有数据 */
+struct i2s_transfer_async_arg {
+	const uint16_t *tx;	  /**< 发送缓冲区 (可为 NULL) */
+	uint16_t       *rx;	  /**< 接收缓冲区 (可为 NULL) */
+	size_t		samples;  /**< 采样点数 */
+	i2s_async_cb_t	cb;	  /**< 完成回调 */
+	void	       *userdata; /**< 用户私有数据 */
 };
 
-struct i2s_dma_irq_mode_arg
-{
-    uint32_t irq_mode; /**< I2S_IRQ_NONE / TC / HT / HT_TC */
+struct i2s_dma_irq_mode_arg {
+	uint32_t irq_mode; /**< I2S_IRQ_NONE / TC / HT / HT_TC */
 };
 
-struct i2s_circ_arg
-{
-    uint32_t tx_enable; /**< 1=启动 TX circular */
-    uint32_t rx_enable; /**< 1=启动 RX circular */
+struct i2s_circ_arg {
+	uint32_t tx_enable; /**< 1=启动 TX circular */
+	uint32_t rx_enable; /**< 1=启动 RX circular */
 };
 
-struct i2s_circ_buf_arg
-{
-    uint16_t* data;    /**< 数据缓冲区 */
-    uint32_t  samples; /**< 采样点数 */
+struct i2s_circ_buf_arg {
+	uint16_t *data;	   /**< 数据缓冲区 */
+	uint32_t  samples; /**< 采样点数 */
 };
 
 #ifdef __cplusplus

@@ -13,8 +13,7 @@
 #include <stdlib.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*
@@ -39,18 +38,18 @@ extern "C"
  *   }
  */
 
-#define CRITICAL_VAR_DECL(type, name)                                                                                                                \
-    volatile type name;                                                                                                                              \
-    volatile type name##_inv
+#define CRITICAL_VAR_DECL(type, name) \
+	volatile type name;           \
+	volatile type name##_inv
 
-#define CRITICAL_VAR_WRITE(name, val)                                                                                                                \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        (name) = (val);                                                                                                                              \
-        (name##_inv) = ~(val);                                                                                                                       \
-    } while (0)
+#define CRITICAL_VAR_WRITE(name, val)  \
+	do {                           \
+		(name)	     = (val);  \
+		(name##_inv) = ~(val); \
+	} while (0)
 
-#define CRITICAL_VAR_READ(name, out) (((name) == ~(name##_inv)) ? ((void)(*(out) = (name)), true) : (false))
+#define CRITICAL_VAR_READ(name, out) \
+	(((name) == ~(name##_inv)) ? ((void)(*(out) = (name)), true) : (false))
 
 #ifdef __cplusplus
 }
@@ -74,42 +73,44 @@ extern "C"
  */
 template <typename T> class CriticalStorage
 {
-    static_assert(sizeof(T) <= sizeof(uint32_t), "CriticalStorage: type must fit in 32 bits");
+	static_assert(sizeof(T) <= sizeof(uint32_t), "CriticalStorage: type must fit in 32 bits");
 
-public:
-    explicit CriticalStorage(T init_val = T()) { set(init_val); }
+      public:
+	explicit CriticalStorage(T init_val = T())
+	{
+		set(init_val);
+	}
 
-    void set(T val)
-    {
-        m_data = val;
-        uint32_t raw = 0;
-        MINI_MEM_COPY(&raw, &val, sizeof(T));
-        m_inv_data = ~raw;
-    }
+	void set(T val)
+	{
+		m_data	     = val;
+		uint32_t raw = 0;
+		MINI_MEM_COPY(&raw, &val, sizeof(T));
+		m_inv_data = ~raw;
+	}
 
-    bool validate() const
-    {
-        uint32_t raw = 0;
-        MINI_MEM_COPY(&raw, &m_data, sizeof(T));
-        return raw == ~m_inv_data;
-    }
+	bool validate() const
+	{
+		uint32_t raw = 0;
+		MINI_MEM_COPY(&raw, &m_data, sizeof(T));
+		return raw == ~m_inv_data;
+	}
 
-    T get_secure(bool* is_corrupted = nullptr) const
-    {
-        if (!validate())
-        {
-            if (is_corrupted)
-                *is_corrupted = true;
-            return T(0);
-        }
-        if (is_corrupted)
-            *is_corrupted = false;
-        return m_data;
-    }
+	T get_secure(bool *is_corrupted = nullptr) const
+	{
+		if (!validate()) {
+			if (is_corrupted)
+				*is_corrupted = true;
+			return T(0);
+		}
+		if (is_corrupted)
+			*is_corrupted = false;
+		return m_data;
+	}
 
-private:
-    volatile T        m_data;
-    volatile uint32_t m_inv_data;
+      private:
+	volatile T	  m_data;
+	volatile uint32_t m_inv_data;
 };
 
 #endif /* __cplusplus */

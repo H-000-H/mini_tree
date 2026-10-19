@@ -18,8 +18,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /* TinyUSB 粘合：协议栈入口（tusb_init / tud_task / tud_int_handler） */
@@ -51,7 +50,7 @@ bool usb_tusb_cdc_connected(void);
  * @param[in] len 字节数
  * @return 实际写入字节数
  */
-uint32_t usb_tusb_cdc_write(const void* buf, uint32_t len);
+uint32_t usb_tusb_cdc_write(const void *buf, uint32_t len);
 /**
  * @brief 强制刷新 CDC ACM 发送缓冲 (平台实现)
  */
@@ -67,7 +66,7 @@ uint32_t usb_tusb_cdc_available(void);
  * @param[in] len 缓冲区长度
  * @return 实际读取字节数
  */
-uint32_t usb_tusb_cdc_read(void* buf, uint32_t len);
+uint32_t usb_tusb_cdc_read(void *buf, uint32_t len);
 
 /* HID 数据通路 */
 /**
@@ -83,7 +82,7 @@ bool usb_tusb_hid_ready(void);
  * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码 (如 MINI_ERR_AGAIN 未就绪, MINI_ERR_NOSPC
  * 缓冲满)
  */
-mt_err_t usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len);
+mt_err_t usb_tusb_hid_report(uint8_t report_id, const void *report, uint16_t len);
 
 /**
  * @brief 推送一帧到 ECM TX 队列 (平台实现)
@@ -91,14 +90,14 @@ mt_err_t usb_tusb_hid_report(uint8_t report_id, const void* report, uint16_t len
  * @param[in] len 帧长度
  * @return 成功返回 MINI_OK, 队列满返回 MINI_ERR_NOMEM
  */
-mt_err_t usb_net_frame_push_tx(const void* frame, size_t len);
+mt_err_t usb_net_frame_push_tx(const void *frame, size_t len);
 /**
  * @brief 从 ECM RX 队列弹出一帧 (平台实现)
  * @param[out] frame 帧缓冲区
  * @param[in] len 缓冲区长度
  * @return 成功返回 MINI_OK, 无数据返回 MINI_ERR_AGAIN
  */
-mt_err_t usb_net_frame_pop_rx(void* frame, size_t len);
+mt_err_t usb_net_frame_pop_rx(void *frame, size_t len);
 
 #ifdef __cplusplus
 }

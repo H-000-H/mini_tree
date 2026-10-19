@@ -15,8 +15,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*GPIO 电平与模式配置*/
@@ -32,16 +31,15 @@ extern "C"
  * @brief GPIO 配置
  * @note 用于配置GPIO的电气特性
  */
-struct hal_gpio_cfg
-{
-    uint32_t mode;        /**< 模式 */
-    uint32_t pull;        /**< 上拉/下拉 */
-    uint32_t speed;       /**< 速度 */
-    uint32_t output_type; /**< 输出类型 */
-    uint32_t af;          /**< 复用功能 */
-    uint32_t intr;        /**< 中断类型 */
-    uint32_t deinit_mode; /**< deinit 时恢复的引脚模式 (0=用安全复位值 LL_GPIO_MODE_ANALOG) */
-    uint32_t deinit_pull; /**< deinit 时恢复的上下拉  (0=用安全复位值 LL_GPIO_PULL_NO) */
+struct hal_gpio_cfg {
+	uint32_t mode;	      /**< 模式 */
+	uint32_t pull;	      /**< 上拉/下拉 */
+	uint32_t speed;	      /**< 速度 */
+	uint32_t output_type; /**< 输出类型 */
+	uint32_t af;	      /**< 复用功能 */
+	uint32_t intr;	      /**< 中断类型 */
+	uint32_t deinit_mode; /**< deinit 时恢复的引脚模式 (0=用安全复位值 LL_GPIO_MODE_ANALOG) */
+	uint32_t deinit_pull; /**< deinit 时恢复的上下拉  (0=用安全复位值 LL_GPIO_PULL_NO) */
 };
 /* -------------------------------------------------------------------------- */
 
@@ -51,14 +49,13 @@ struct hal_gpio_cfg
  */
 typedef struct hal_gpio_cfg hal_gpio_config;
 
-typedef struct
-{
-    uintptr_t       port;     /**< 端口基地址 */
-    uint32_t        pin;      /**< 引脚 (LL_GPIO_PIN_x 复合值，如 STM32F1 为 32 位复合值放不进 uint16_t) */
-    uint32_t        clk_bus;  /**< 时钟总线/RCC位 */
-    uint8_t         virq_idx; /**< VIRQ(gpio, idx) 槽位 (DTS virq-idx, < BLOCK_SIZE) */
-    hal_gpio_config cfg;      /**< 配置 */
-    bool            is_used;  /**< 运行时激活状态 (VFS probe 置 true) */
+typedef struct {
+	uintptr_t port; /**< 端口基地址 */
+	uint32_t  pin; /**< 引脚 (LL_GPIO_PIN_x 复合值，如 STM32F1 为 32 位复合值放不进 uint16_t) */
+	uint32_t  clk_bus;	 /**< 时钟总线/RCC位 */
+	uint8_t	  virq_idx;	 /**< VIRQ(gpio, idx) 槽位 (DTS virq-idx, < BLOCK_SIZE) */
+	hal_gpio_config cfg;	 /**< 配置 */
+	bool		is_used; /**< 运行时激活状态 (VFS probe 置 true) */
 } hal_gpio_dev_t;
 /* -------------------------------------------------------------------------- */
 
@@ -70,7 +67,7 @@ typedef struct
  * @param[in] level 目标电平 (1=高, 0=低)
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_set_level(hal_gpio_dev_t* pdev, int level);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_set_level(hal_gpio_dev_t *pdev, int level);
 
 /**
  * @brief 快路径: 读取 GPIO 当前输入/输出引脚的实际电平状态
@@ -78,14 +75,14 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_set_level(hal_gpio_dev_t* pdev, i
  * @param[out] level_out 用于回传电平的指针 (1=高, 0=低)
  * @return 成功返回 MINI_OK, pdev 或 level_out 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_get_level(hal_gpio_dev_t* pdev, int* level_out);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_get_level(hal_gpio_dev_t *pdev, int *level_out);
 
 /**
  * @brief 快路径: 翻转 GPIO 输出电平
  * @param[in] pdev GPIO 对象指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_toggle(hal_gpio_dev_t* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_toggle(hal_gpio_dev_t *pdev);
 /* -------------------------------------------------------------------------- */
 
 /*HAL API (基于对象指针)*/
@@ -95,14 +92,14 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_fast_toggle(hal_gpio_dev_t* pdev);
  * @param[in] pdev GPIO 对象指针
  * @return 成功返回 MINI_OK, pdev 或内部配置为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_init(hal_gpio_dev_t* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_init(hal_gpio_dev_t *pdev);
 
 /**
  * @brief GPIO 释放
  * @param[in] pdev GPIO 对象指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_deinit(hal_gpio_dev_t* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_deinit(hal_gpio_dev_t *pdev);
 
 /**
  * @brief GPIO 设置模式
@@ -110,7 +107,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_deinit(hal_gpio_dev_t* pdev);
  * @param[in] mode 模式宏值 (如 LL_GPIO_MODE_OUTPUT)
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_mode(hal_gpio_dev_t* pdev, uint32_t mode);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_mode(hal_gpio_dev_t *pdev, uint32_t mode);
 
 /**
  * @brief GPIO 获取当前模式
@@ -118,7 +115,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_mode(hal_gpio_dev_t* pdev, uint32_
  * @param[in] mode 用于回传当前模式宏值的指针
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_mode(hal_gpio_dev_t* pdev, uint32_t* mode);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_mode(hal_gpio_dev_t *pdev, uint32_t *mode);
 
 /**
  * @brief GPIO 设置上拉/下拉
@@ -126,7 +123,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_mode(hal_gpio_dev_t* pdev, uint32_
  * @param[in] pull 上拉/下拉宏值 (如 LL_GPIO_PULL_UP)
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_pull(hal_gpio_dev_t* pdev, uint32_t pull);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_pull(hal_gpio_dev_t *pdev, uint32_t pull);
 
 /**
  * @brief GPIO 获取当前上拉/下拉配置
@@ -134,7 +131,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_pull(hal_gpio_dev_t* pdev, uint32_
  * @param[in] pull 用于回传上拉/下拉宏值的指针
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_pull(hal_gpio_dev_t* pdev, uint32_t* pull);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_pull(hal_gpio_dev_t *pdev, uint32_t *pull);
 
 /**
  * @brief GPIO 设置速度
@@ -142,7 +139,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_pull(hal_gpio_dev_t* pdev, uint32_
  * @param[in] speed 速度宏值 (如 LL_GPIO_SPEED_FREQ_HIGH)
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_speed(hal_gpio_dev_t* pdev, uint32_t speed);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_speed(hal_gpio_dev_t *pdev, uint32_t speed);
 
 /**
  * @brief GPIO 获取当前速度配置
@@ -150,7 +147,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_speed(hal_gpio_dev_t* pdev, uint32
  * @param[in] speed 用于回传速度宏值的指针
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_speed(hal_gpio_dev_t* pdev, uint32_t* speed);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_speed(hal_gpio_dev_t *pdev, uint32_t *speed);
 
 /**
  * @brief GPIO 设置输出类型
@@ -158,7 +155,8 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_speed(hal_gpio_dev_t* pdev, uint32
  * @param[out] output_type 输出类型宏值 (如 LL_GPIO_OUTPUT_PUSHPULL)
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_output_type(hal_gpio_dev_t* pdev, uint32_t output_type);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_output_type(hal_gpio_dev_t *pdev,
+							  uint32_t	  output_type);
 
 /**
  * @brief GPIO 获取当前输出类型配置
@@ -166,7 +164,8 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_output_type(hal_gpio_dev_t* pdev, 
  * @param[out] output_type 用于回传输出类型宏值的指针
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_output_type(hal_gpio_dev_t* pdev, uint32_t* output_type);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_output_type(hal_gpio_dev_t *pdev,
+							  uint32_t	 *output_type);
 
 /**
  * @brief GPIO 设置复用功能寄存器值(AFR)
@@ -174,7 +173,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_output_type(hal_gpio_dev_t* pdev, 
  * @param[in] af 复用功能宏值 (如 LL_GPIO_AF_1)
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_af(hal_gpio_dev_t* pdev, uint32_t af);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_af(hal_gpio_dev_t *pdev, uint32_t af);
 
 /**
  * @brief GPIO 获取当前引脚的复用功能寄存器值(AFR)
@@ -182,7 +181,7 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_af(hal_gpio_dev_t* pdev, uint32_t 
  * @param[in] af 用于回传复用功能宏值的指针
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_af(hal_gpio_dev_t* pdev, uint32_t* af);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_af(hal_gpio_dev_t *pdev, uint32_t *af);
 
 /**
  * @brief GPIO 设置复用功能并自动将引脚切换为复用模式
@@ -190,18 +189,18 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_get_af(hal_gpio_dev_t* pdev, uint32_t*
  * @param[in] af 复用功能宏值
  * @return 成功返回 MINI_OK
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_af_mode(hal_gpio_dev_t* pdev, uint32_t af);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_set_af_mode(hal_gpio_dev_t *pdev, uint32_t af);
 
 /**
  * @brief 使能硬件 GPIO 中断 → 仅 interrupt_virtual_dispatch(VIRQ(gpio, virq_idx))
  * @note  产品驱动用 interrupt_virtual_register 挂上下半部；禁止直挂业务 ISR
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_irq_enable(hal_gpio_dev_t* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_irq_enable(hal_gpio_dev_t *pdev);
 
 /**
  * @brief 关闭该脚硬件 GPIO 中断路由
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_irq_disable(hal_gpio_dev_t* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_gpio_irq_disable(hal_gpio_dev_t *pdev);
 /* -------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

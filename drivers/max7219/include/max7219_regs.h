@@ -9,8 +9,7 @@
 #define MAX7219_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** 空操作寄存器（多片级联用） */

@@ -4,7 +4,8 @@
  * @brief vfs-wwdg 头文件
  * @note WWDG VFS — 窗口看门狗 VFS 层
  * @note 架构位置: [VFS Layer (本文件)] → HAL Layer (无 bus)
- * @note 职责: file_operations + dev_lifecycle + DTS (window/counter/prescaler); open 首次 start, ioctl
+ * @note 职责: file_operations + dev_lifecycle + DTS (window/counter/prescaler); open 首次 start,
+ * ioctl
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,8 +15,7 @@
 #include "hal_wwdg.h"
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define WWDG_CMD_BASE MINI_MAGIC(WWDG)

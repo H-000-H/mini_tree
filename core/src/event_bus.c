@@ -11,8 +11,8 @@
 #include "event_bus.h"
 
 #include "compiler_compat.h"
-#include "hal_amp.h"
 #include "config.h"
+#include "hal_amp.h"
 #include "mini_backend.h"
 #include "mini_time.h"
 #include "safe_state.h"
@@ -44,33 +44,31 @@ extern volatile bool g_system_os_initialized;
 /* -------------------------------------------------------------------------- */
 /* 内部数据结构 */
 /* -------------------------------------------------------------------------- */
-struct subscriber
-{
-    uint32_t         id_min;    /**< 订阅起始事件 ID */
-    uint32_t         id_max;    /**< 订阅结束事件 ID */
-    event_callback_t callback;  /**< 事件回调函数 */
-    void*            user_data; /**< 用户私有数据 */
+struct subscriber {
+	uint32_t	 id_min;    /**< 订阅起始事件 ID */
+	uint32_t	 id_max;    /**< 订阅结束事件 ID */
+	event_callback_t callback;  /**< 事件回调函数 */
+	void		*user_data; /**< 用户私有数据 */
 };
 
-struct event_bus
-{
-    struct subscriber subscribers[K_MAX_SUBSCRIBERS]; /**< 订阅者表 */
-    size_t            count;                          /**< 当前订阅者数量 */
-    bool              inited;                         /**< 是否已初始化 */
-    bool              is_sealed;                      /**< 是否已封禁 (不再接受新订阅) */
+struct event_bus {
+	struct subscriber subscribers[K_MAX_SUBSCRIBERS]; /**< 订阅者表 */
+	size_t		  count;			  /**< 当前订阅者数量 */
+	bool		  inited;			  /**< 是否已初始化 */
+	bool		  is_sealed;			  /**< 是否已封禁 (不再接受新订阅) */
 
-    mini_queue_t* queue;   /**< 事件队列 */
-    void*               task;    /**< 分派任务句柄 */
-    size_t              dropped; /**< 丢弃事件计数 */
+	mini_queue_t *queue;   /**< 事件队列 */
+	void	     *task;    /**< 分派任务句柄 */
+	size_t	      dropped; /**< 丢弃事件计数 */
 
-    mini_mutex_t* sub_lock;                                  /**< 订阅者表锁 */
-    uint8_t            sub_lock_storage[MINI_MUTEX_STORAGE_SIZE]; /**< 锁存储 */
+	mini_mutex_t *sub_lock;					 /**< 订阅者表锁 */
+	uint8_t	      sub_lock_storage[MINI_MUTEX_STORAGE_SIZE]; /**< 锁存储 */
 };
 
 /* -------------------------------------------------------------------------- */
 /* 内部静态单例 */
 /* -------------------------------------------------------------------------- */
-static struct event_bus s_bus = {0};
+static struct event_bus s_bus = { 0 };
 
 /* -------------------------------------------------------------------------- */
 /* 分派任务 (静态函数, 仅内部使用) */
@@ -79,48 +77,48 @@ static struct event_bus s_bus = {0};
  * @brief EventBus 后台分派任务: 从队列取事件并回调匹配订阅者
  * @param[in] param 任务入口参数 (未使用)
  */
-static void event_bus_dispatch_task(void* param)
+static void event_bus_dispatch_task(void *param)
 {
-    MINI_UNUSED_PARAM(param);
-    struct event event;
+	MINI_UNUSED_PARAM(param);
+	struct event event;
 
-    while (mini_queue_receive(s_bus.queue, &event, MINI_WAIT_FOREVER))
-    {
-        if (s_bus.task == NULL)
-            break;
+	while (mini_queue_receive(s_bus.queue, &event, MINI_WAIT_FOREVER)) {
+		if (s_bus.task == NULL)
+			break;
 
-        system_wdt_feed();
-        system_wdt_feed_iwdg();
+		system_wdt_feed();
+		system_wdt_feed_iwdg();
 
-        /* 快照订阅者表 — 不持锁执行回调, 避免优先级反转锁死 */
-        struct subscriber snapshot[K_MAX_SUBSCRIBERS];
-        size_t            snapshot_count = 0;
+		/* 快照订阅者表 — 不持锁执行回调, 避免优先级反转锁死 */
+		struct subscriber snapshot[K_MAX_SUBSCRIBERS];
+		size_t		  snapshot_count = 0;
 
-        if (s_bus.sub_lock)
-        {
-            if (mini_mutex_lock(s_bus.sub_lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) != MINI_OK)
-            {
-                MT_LOG_ERROR(K_TAG, "Fatal: EventBus dispatch lock timeout — safe shutdown");
-                enter_safe_state("EventBus mutex deadlock");
-                break;
-            }
-        }
-        snapshot_count = s_bus.count;
-        for (size_t index = 0; index < snapshot_count; index++)
-            snapshot[index] = s_bus.subscribers[index];
-        if (s_bus.sub_lock)
-            MINI_IGNORE_RESULT(mini_mutex_unlock(s_bus.sub_lock));
+		if (s_bus.sub_lock) {
+			if (mini_mutex_lock(s_bus.sub_lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) !=
+			    MINI_OK) {
+				MT_LOG_ERROR(
+					K_TAG,
+					"Fatal: EventBus dispatch lock timeout — safe shutdown");
+				enter_safe_state("EventBus mutex deadlock");
+				break;
+			}
+		}
+		snapshot_count = s_bus.count;
+		for (size_t index = 0; index < snapshot_count; index++)
+			snapshot[index] = s_bus.subscribers[index];
+		if (s_bus.sub_lock)
+			MINI_IGNORE_RESULT(mini_mutex_unlock(s_bus.sub_lock));
 
-        for (size_t index = 0; index < snapshot_count; index++)
-        {
-            struct subscriber* sub = &snapshot[index];
-            if (sub->callback != NULL && event.id >= sub->id_min && event.id <= sub->id_max)
-                sub->callback(&event, sub->user_data);
-        }
-    }
+		for (size_t index = 0; index < snapshot_count; index++) {
+			struct subscriber *sub = &snapshot[index];
+			if (sub->callback != NULL && event.id >= sub->id_min &&
+			    event.id <= sub->id_max)
+				sub->callback(&event, sub->user_data);
+		}
+	}
 
-    MT_LOG_INFO(K_TAG, "dispatch task exiting");
-    mini_task_self_delete();
+	MT_LOG_INFO(K_TAG, "dispatch task exiting");
+	mini_task_self_delete();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -133,27 +131,27 @@ static void event_bus_dispatch_task(void* param)
  */
 mt_err_t event_bus_init(void)
 {
-    if (s_bus.inited)
-        return MINI_OK;
+	if (s_bus.inited)
+		return MINI_OK;
 
-    s_bus.queue = mini_queue_create(K_QUEUE_LEN, sizeof(struct event));
-    if (s_bus.queue == NULL)
-    {
-        MT_LOG_ERROR(K_TAG, "FATAL: mini_queue_create failed — event bus unusable");
-        return MINI_ERR_NOMEM;
-    }
+	s_bus.queue = mini_queue_create(K_QUEUE_LEN, sizeof(struct event));
+	if (s_bus.queue == NULL) {
+		MT_LOG_ERROR(K_TAG, "FATAL: mini_queue_create failed — event bus unusable");
+		return MINI_ERR_NOMEM;
+	}
 
-    if (mini_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage, sizeof(s_bus.sub_lock_storage)) != 0 || s_bus.sub_lock == NULL)
-    {
-        MT_LOG_ERROR(K_TAG, "FATAL: mutex create failed");
-        mini_queue_delete(s_bus.queue);
-        s_bus.queue = NULL;
-        return MINI_ERR_NOMEM;
-    }
+	if (mini_mutex_create_static(&s_bus.sub_lock, s_bus.sub_lock_storage,
+				     sizeof(s_bus.sub_lock_storage)) != 0 ||
+	    s_bus.sub_lock == NULL) {
+		MT_LOG_ERROR(K_TAG, "FATAL: mutex create failed");
+		mini_queue_delete(s_bus.queue);
+		s_bus.queue = NULL;
+		return MINI_ERR_NOMEM;
+	}
 
-    s_bus.inited = true;
-    MT_LOG_INFO(K_TAG, "event bus initialized, queue=%u slots", (unsigned)K_QUEUE_LEN);
-    return MINI_OK;
+	s_bus.inited = true;
+	MT_LOG_INFO(K_TAG, "event bus initialized, queue=%u slots", (unsigned)K_QUEUE_LEN);
+	return MINI_OK;
 }
 
 /**
@@ -165,38 +163,37 @@ mt_err_t event_bus_init(void)
  * @return MINI_OK 成功; MINI_ERR_ISR 中断上下文; MINI_ERR_NOTSUPP 封表;
  *         MINI_ERR_INVAL 参数非法/未初始化; MINI_ERR_TIMEOUT 锁超时; MINI_ERR_NOSPC 表满
  */
-mt_err_t event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback, void* user_data)
+mt_err_t event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t callback,
+			     void *user_data)
 {
-    if (hal_is_in_isr())
-        return MINI_ERR_ISR;
-    if (s_bus.is_sealed)
-        return MINI_ERR_NOTSUPP;
-    if (callback == NULL)
-        return MINI_ERR_INVAL;
-    if (s_bus.sub_lock == NULL)
-        return MINI_ERR_INVAL;
-    if (id_min > id_max)
-        return MINI_ERR_INVAL;
+	if (hal_is_in_isr())
+		return MINI_ERR_ISR;
+	if (s_bus.is_sealed)
+		return MINI_ERR_NOTSUPP;
+	if (callback == NULL)
+		return MINI_ERR_INVAL;
+	if (s_bus.sub_lock == NULL)
+		return MINI_ERR_INVAL;
+	if (id_min > id_max)
+		return MINI_ERR_INVAL;
 
-    if (mini_mutex_lock(s_bus.sub_lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) != MINI_OK)
-    {
-        MT_LOG_ERROR(K_TAG, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
-        return MINI_ERR_TIMEOUT;
-    }
+	if (mini_mutex_lock(s_bus.sub_lock, MINI_LOCK_TIMEOUT_DEFAULT_MS) != MINI_OK) {
+		MT_LOG_ERROR(K_TAG, "Fatal: EventBus subscribe lock timeout (possible deadlock)");
+		return MINI_ERR_TIMEOUT;
+	}
 
-    int ret = MINI_ERR_NOSPC;
-    if (s_bus.count < K_MAX_SUBSCRIBERS)
-    {
-        s_bus.subscribers[s_bus.count].id_min = id_min;
-        s_bus.subscribers[s_bus.count].id_max = id_max;
-        s_bus.subscribers[s_bus.count].callback = callback;
-        s_bus.subscribers[s_bus.count].user_data = user_data;
-        s_bus.count++;
-        ret = MINI_OK;
-    }
+	int ret = MINI_ERR_NOSPC;
+	if (s_bus.count < K_MAX_SUBSCRIBERS) {
+		s_bus.subscribers[s_bus.count].id_min	 = id_min;
+		s_bus.subscribers[s_bus.count].id_max	 = id_max;
+		s_bus.subscribers[s_bus.count].callback	 = callback;
+		s_bus.subscribers[s_bus.count].user_data = user_data;
+		s_bus.count++;
+		ret = MINI_OK;
+	}
 
-    MINI_IGNORE_RESULT(mini_mutex_unlock(s_bus.sub_lock));
-    return ret;
+	MINI_IGNORE_RESULT(mini_mutex_unlock(s_bus.sub_lock));
+	return ret;
 }
 
 /**
@@ -207,34 +204,33 @@ mt_err_t event_bus_subscribe(uint32_t id_min, uint32_t id_max, event_callback_t 
  * @param[in] px_yield_required ISR 路径下输出是否需要 yield (可为 NULL)
  * @return MINI_OK 入队成功; MINI_ERR_AGAIN 总线未初始化/OS 未就绪; MINI_ERR_NOSPC 队列满
  */
-static mt_err_t event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr, bool* px_yield_required)
+static mt_err_t event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_isr,
+					bool *px_yield_required)
 {
-    if (s_bus.queue == NULL || !s_bus.inited)
-        return MINI_ERR_AGAIN;
+	if (s_bus.queue == NULL || !s_bus.inited)
+		return MINI_ERR_AGAIN;
 
-    if (!g_system_os_initialized)
-        return MINI_ERR_AGAIN;
+	if (!g_system_os_initialized)
+		return MINI_ERR_AGAIN;
 
-    const struct event event = {id, arg};
-    bool               ok;
+	const struct event event = { id, arg };
+	bool		   ok;
 
-    if (from_isr)
-        ok = mini_queue_send_from_isr(s_bus.queue, &event, px_yield_required);
-    else
-        ok = mini_queue_send(s_bus.queue, &event, 0);
+	if (from_isr)
+		ok = mini_queue_send_from_isr(s_bus.queue, &event, px_yield_required);
+	else
+		ok = mini_queue_send(s_bus.queue, &event, 0);
 
-    if (!ok)
-    {
-        __atomic_add_fetch(&s_bus.dropped, 1, __ATOMIC_RELAXED);
-        if (!from_isr)
-        {
-            size_t cur = __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED);
-            if ((cur % 8) == 0 && cur != 0)
-                MT_LOG_WARN(K_TAG, "event queue full, dropped=%u", (unsigned)cur);
-        }
-        return MINI_ERR_NOSPC;
-    }
-    return MINI_OK;
+	if (!ok) {
+		__atomic_add_fetch(&s_bus.dropped, 1, __ATOMIC_RELAXED);
+		if (!from_isr) {
+			size_t cur = __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED);
+			if ((cur % 8) == 0 && cur != 0)
+				MT_LOG_WARN(K_TAG, "event queue full, dropped=%u", (unsigned)cur);
+		}
+		return MINI_ERR_NOSPC;
+	}
+	return MINI_OK;
 }
 
 /**
@@ -245,10 +241,10 @@ static mt_err_t event_bus_post_internal(uint32_t id, uintptr_t arg, bool from_is
  */
 mt_err_t event_bus_post(uint32_t id, uintptr_t arg)
 {
-    if (hal_is_in_isr())
-        return MINI_ERR_ISR;
+	if (hal_is_in_isr())
+		return MINI_ERR_ISR;
 
-    return event_bus_post_internal(id, arg, false, NULL);
+	return event_bus_post_internal(id, arg, false, NULL);
 }
 
 /**
@@ -258,30 +254,36 @@ mt_err_t event_bus_post(uint32_t id, uintptr_t arg)
  * @param[in] px_yield_required yield
  * @return MINI_OK 成功; MINI_ERR_AGAIN 未就绪; MINI_ERR_NOSPC 队列满
  */
-mt_err_t event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool* px_yield_required) { return event_bus_post_internal(id, arg, true, px_yield_required); }
+mt_err_t event_bus_post_from_isr(uint32_t id, uintptr_t arg, bool *px_yield_required)
+{
+	return event_bus_post_internal(id, arg, true, px_yield_required);
+}
 
 /**
  * @brief 丢弃计数
  * @return 次数
  */
-size_t event_bus_dropped_count(void) { return __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED); }
+size_t event_bus_dropped_count(void)
+{
+	return __atomic_load_n(&s_bus.dropped, __ATOMIC_RELAXED);
+}
 
 /**
  * @brief 启动 dispatch 任务
  */
 void event_bus_start(void)
 {
-    if (s_bus.task != NULL || s_bus.queue == NULL)
-        return;
+	if (s_bus.task != NULL || s_bus.queue == NULL)
+		return;
 
-    if (mini_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO, event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 ||
-        s_bus.task == NULL)
-    {
-        MT_LOG_WARN(K_TAG, "dispatch task create failed");
-        return;
-    }
-    MINI_IGNORE_RESULT(system_wdt_subscribe(s_bus.task));
-    MT_LOG_INFO(K_TAG, "dispatch task started prio %lu", (unsigned long)K_DISPATCH_PRIO);
+	if (mini_task_create_handle("evt_bus", K_DISPATCH_STACK, K_DISPATCH_PRIO,
+				    event_bus_dispatch_task, NULL, 0, &s_bus.task) != 0 ||
+	    s_bus.task == NULL) {
+		MT_LOG_WARN(K_TAG, "dispatch task create failed");
+		return;
+	}
+	MINI_IGNORE_RESULT(system_wdt_subscribe(s_bus.task));
+	MT_LOG_INFO(K_TAG, "dispatch task started prio %lu", (unsigned long)K_DISPATCH_PRIO);
 }
 
 /**
@@ -289,36 +291,37 @@ void event_bus_start(void)
  */
 void event_bus_stop(void)
 {
-    if (!s_bus.task)
-        return;
+	if (!s_bus.task)
+		return;
 
-    void* handle = s_bus.task;
-    s_bus.task = NULL;
+	void *handle = s_bus.task;
+	s_bus.task   = NULL;
 
-    /* 向队列发空事件唤醒 dispatch 线程 */
-    const struct event dummy = {EVENT_SYS_FAULT, 0};
-    MINI_IGNORE_RESULT(mini_queue_send(s_bus.queue, &dummy, 0));
+	/* 向队列发空事件唤醒 dispatch 线程 */
+	const struct event dummy = { EVENT_SYS_FAULT, 0 };
+	MINI_IGNORE_RESULT(mini_queue_send(s_bus.queue, &dummy, 0));
 
-    uint32_t waited = 0;
-    while (mini_task_is_running(handle) && waited < K_STOP_WAIT_MS)
-    {
-        mini_delay_ms(10);
-        waited += 10;
-    }
+	uint32_t waited = 0;
+	while (mini_task_is_running(handle) && waited < K_STOP_WAIT_MS) {
+		mini_delay_ms(10);
+		waited += 10;
+	}
 
-    if (mini_task_is_running(handle))
-    {
-        MT_LOG_WARN(K_TAG, "dispatch task did not exit, force deleting");
-        mini_task_delete(handle);
-    }
+	if (mini_task_is_running(handle)) {
+		MT_LOG_WARN(K_TAG, "dispatch task did not exit, force deleting");
+		mini_task_delete(handle);
+	}
 
-    /* 先标记未初始化, 阻止新的 post, 再销毁队列 */
-    s_bus.inited = false;
-    mini_queue_delete(s_bus.queue);
-    s_bus.queue = NULL;
+	/* 先标记未初始化, 阻止新的 post, 再销毁队列 */
+	s_bus.inited = false;
+	mini_queue_delete(s_bus.queue);
+	s_bus.queue = NULL;
 }
 
 /**
  * @brief 封表
  */
-void event_bus_seal(void) { s_bus.is_sealed = true; }
+void event_bus_seal(void)
+{
+	s_bus.is_sealed = true;
+}

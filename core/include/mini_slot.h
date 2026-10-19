@@ -18,8 +18,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #ifndef MINI_SLOT_MUX_STORAGE_SIZE
@@ -29,11 +28,11 @@ extern "C"
 /**
  * @brief 槽位池描述符
  */
-typedef struct mini_slot
-{
-    volatile uint8_t* used_slots;                              /**< 已占用槽位位图 (调用方提供, 每槽 1 字节) */
-    size_t            slot_count;                              /**< 槽位数量 */
-    uint8_t           mux_storage[MINI_SLOT_MUX_STORAGE_SIZE]; /**< ESP 平台临界区锁存储; 其它后端预留不使用 */
+typedef struct mini_slot {
+	volatile uint8_t *used_slots; /**< 已占用槽位位图 (调用方提供, 每槽 1 字节) */
+	size_t		  slot_count; /**< 槽位数量 */
+	uint8_t		  mux_storage[MINI_SLOT_MUX_STORAGE_SIZE]; /**< ESP 平台临界区锁存储;
+								      其它后端预留不使用 */
 } mini_slot_t;
 
 /**
@@ -43,14 +42,15 @@ typedef struct mini_slot
  * @param[in] slot_count 槽位数量
  * @return 成功返回 MINI_OK; 参数非法返回 MINI_ERR_INVAL
  */
-mt_err_t mini_slot_init(mini_slot_t* pool, volatile uint8_t* used_slots, size_t slot_count) MINI_WARN_UNUSED_RESULT;
+mt_err_t mini_slot_init(mini_slot_t *pool, volatile uint8_t *used_slots,
+			size_t slot_count) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief 申请一个空闲槽位
  * @param[in] pool 槽位池指针
  * @return 成功返回槽位下标 (>= 0); 参数非法或池满返回负错误码
  */
-int mini_slot_claim(mini_slot_t* pool) MINI_WARN_UNUSED_RESULT;
+int mini_slot_claim(mini_slot_t *pool) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief 释放指定槽位
@@ -58,7 +58,7 @@ int mini_slot_claim(mini_slot_t* pool) MINI_WARN_UNUSED_RESULT;
  * @param[in] slot_index 槽位下标
  * @return 成功返回 MINI_OK; 下标越界返回 MINI_ERR_INVAL
  */
-mt_err_t mini_slot_release(mini_slot_t* pool, int slot_index) MINI_WARN_UNUSED_RESULT;
+mt_err_t mini_slot_release(mini_slot_t *pool, int slot_index) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief 查询槽位是否被占用
@@ -66,7 +66,7 @@ mt_err_t mini_slot_release(mini_slot_t* pool, int slot_index) MINI_WARN_UNUSED_R
  * @param[in] slot_index 槽位下标
  * @return 已占用返回 true; 参数非法或未占用返回 false
  */
-bool mini_slot_is_used(mini_slot_t* pool, int slot_index);
+bool mini_slot_is_used(mini_slot_t *pool, int slot_index);
 
 #ifdef __cplusplus
 }

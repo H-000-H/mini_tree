@@ -17,8 +17,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define UART_CMD_BASE MINI_MAGIC(UART)
@@ -26,12 +25,11 @@ extern "C"
 #define UART_CMD_COUNT 1
 
 /** @brief UART 收发参数 (ioctl TRANSFER) */
-struct uart_transfer_arg
-{
-    const uint8_t* tx;     /**< 发送缓冲区 (可为 NULL) */
-    uint8_t*       rx;     /**< 接收缓冲区 (可为 NULL) */
-    size_t         tx_len; /**< 发送长度 */
-    size_t         rx_len; /**< 接收长度 */
+struct uart_transfer_arg {
+	const uint8_t *tx;     /**< 发送缓冲区 (可为 NULL) */
+	uint8_t	      *rx;     /**< 接收缓冲区 (可为 NULL) */
+	size_t	       tx_len; /**< 发送长度 */
+	size_t	       rx_len; /**< 接收长度 */
 };
 
 /**
@@ -39,14 +37,14 @@ struct uart_transfer_arg
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t uart_vfs_probe(struct device* pdev) MINI_WARN_UNUSED_RESULT;
+mt_err_t uart_vfs_probe(struct device *pdev) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief UART Client 设备移除: 拒新 IO, 排空已有 IO, 注销 client, 释放池槽
  * @param[in] pdev 设备对象指针
  * @return 成功返回 MINI_OK, 失败返回负数错误码
  */
-mt_err_t uart_vfs_remove(struct device* pdev) MINI_WARN_UNUSED_RESULT;
+mt_err_t uart_vfs_remove(struct device *pdev) MINI_WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

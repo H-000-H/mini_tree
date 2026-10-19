@@ -1,123 +1,44 @@
 # 编码风格
 
-> 自动化优先：格式与命名交给 clang-format / clang-tidy；人工只盯「规范里没有的」。
+> 本项目就是 **Linux 内核代码风格**：仓库根 `.clang-format` 是唯一事实来源（内容即内核官方配置）。
+> 格式化一条命令 `bash use_clang_format.sh`；IDE 保存时同样按它执行，所以**别手改格式**。
 
-| 项 | 内容 |
-| :--- | :--- |
-| **读者** | 要改中间件代码、或做 IDE 跳转的人 |
-| **前置** | [getting_started.md](getting_started.md)（clangd 章节） |
-| **相关** | [architecture.md](architecture.md) · [faq.md](faq.md) |
+| 项 | 值 | 一眼看出来的样子 |
+| :--- | :--- | :--- |
+| 缩进 | Tab，宽度 8 | 一级缩进 = 一个 Tab；纵向对齐用 Tab，尾端补空格 |
+| 列宽 | 100 | 超长即折行，续行再缩进 8 |
+| 括号 | 函数 `{` 换行；`if/for/while` 的 `{` 不换行 | `BreakBeforeBraces: Linux` |
+| 单语句 | 不加 `{}`，也不压成一行 | `if (err)` 换行 `return -1;` |
+| 指针 | 靠右 | `char *p`、`void (*fn)(int)` |
+| 连续声明 / 赋值 | 对齐 | `node`、`ops` 字段竖着排齐 |
+| 尾注 | 对齐，前面 1 空格 | `/**< ... */` |
+| `extern "C"` | 块内不缩进 | `extern "C" {` |
 
----
+## 命名（clang-format 管不了，clang-tidy 强制）
 
-## 目录
+`readability-identifier-naming` 强制；全小写 `snake_case`，唯一大写是宏：
 
-1. [自动化优先](#1-自动化优先)
-2. [clang-format](#2-clang-format)
-3. [clang-tidy](#3-clang-tidy)
-4. [命名](#4-命名)
-5. [头文件 / 包含](#5-头文件-包含)
-6. [日志](#6-日志)
-7. [危险 API 与 poison](#7-危险-api-与-poison)
+| 类别 | 约定 | 例 |
+| :--- | :--- | :--- |
+| 函数 / 变量 / 类型 | 小写 | `device_open`、`struct device`、`device_id_t` |
+| C++ 类 | `PascalCase` | `SystemCmd` |
+| 宏 / 枚举值 | 大写 | `MINI_ERR_INVAL`、`DEV_ID_UART0` |
+| 前缀 | `s_` 文件内 static、`g_` 全局、`k_` 常量 | `s_uart_pool`、`k_map` |
 
----
+`app` 层为建议，`app` 以下为强规定。
 
-## 1. 自动化优先
+## 头文件
 
-先从根 `compile_flags.txt` 找 clangd（否则 IDE 只有残缺索引）：
-
-- `Clangd: Restart language server`
-- 改了宏 / 配置 → 重跑 genconfig（见 [getting_started.md](getting_started.md)）
-
-格式与命名：**交给工具**，不要手改。
-
----
-
-## 2. clang-format
-
-仓库根 `.clang-format`：
-
-| 项 | 值 |
-| :--- | :--- |
-| BasedOnStyle | LLVM |
-| 大括号 | Allman（换行） |
-| 单语句去括号 | `true`（即单语句 `if/for/while` 也去掉 `{}`，见上例） |
-| 缩进 | 4 空格 |
-| 列宽 | 200 |
-| 指针/引用对齐 | 左对齐（`int *p`） |
-
-平台工程若想自定义，复制一份改 `ColumnLimit`，但 **不要** 破坏 Allman / 4 空格主干约定。
-
----
-
-## 3. clang-tidy
-
-仓库根 `.clang-tidy`：
-
-| 项 | 值 |
-| :--- | :--- |
-| 检查集 | `bugprone-*`、`clang-analyzer-*`、`modernize-*`、`performance-*`、`readability-*` |
-| 命名强制 | 小写（`x_task`、`x_scheduler`、`list_node`、`k_tag`、`struct event` …） |
-
-命名违规在 tidy 阶段报，不是编译错——CI 会拦。
-
----
-
-## 4. 命名
-
-统一小写（`readability-identifier-naming` 强制）：
-
-| 类别 | 约定 |
-| :--- | :--- |
-| 函数 / 变量 | `snake_case` |
-| 类型（`struct/typedef`） | 小写（`device`、`hal_can_config`） |
-| C++ 类（`system_cmd`） | `PascalCase`（`SystemCmd`） |
-| 宏 / 枚举值 | 大写 `SNAKE_CASE`（`DEV_ID_UART0`、`MINI_ERR_*`） |
-
-`app` 层为建议，app 以下为强规定。
-
----
-
-## 5. 头文件 / 包含
-
-- 每个 `.c` 对应一个 `.h`（除非纯内部模块）
-- 头用 `#pragma once`（不用旧式 `#ifndef` 守卫）
-- 包含顺序：自己的 `.h` → 系统/库 → 项目内
+- 每个 `.c` 一个 `.h`（纯内部模块除外），一律 `#pragma once`
+- 包含顺序：自己的 `.h` → 系统/库 → 项目内；`compiler_compat_poison.h` **固定最后**
 - 禁止裸 `.c` 互 `include`
+- 危险 API（malloc / printf / strcpy / memcpy …）由 poison 默认禁用，需 `ALLOW_HEAP_ALLOC` / `ALLOW_STDIO_OUTPUT` 豁免，完整列表见 `core/include/compiler_compat_poison.h`
 
----
-
-## 6. 日志
+## 日志
 
 - `MT_LOG_ERROR/WARN/INFO` 系统级；`MT_DRV_LOG_*` 驱动级（见 [debug_monitor.md](debug_monitor.md)）
 - 热路径只 `LOGD`/`LOGV`，勿刷 INFO
-- 不把日志当调试断点塞满
-
----
-
-## 7. 危险 API 与 poison
-
-`core/include/compiler_compat_poison.h` 通过 `#pragma GCC poison` 禁用危险 API（完整列表见该头）；并非由某个独立 Kconfig 符号门控，而是**默认生效**，仅在定义了豁免宏时才放行：
-
-| 豁免宏 | 放行的 poison |
-| :--- | :--- |
-| `ALLOW_HEAP_ALLOC` | `malloc` / `calloc` / `realloc` / `free`（以及 C++ `new` / `delete`） |
-| `ALLOW_STDIO_OUTPUT` | `printf` / `fprintf` / `sprintf` / `vprintf` 等 stdio 输出 |
-
-常用被 poison 的 API 与替代：
-
-| 被 poison 的 API | 替代 |
-| :--- | :--- |
-| `malloc` / `free` / `calloc` / `realloc` | 静态池 / `mini_slot` / `kalloc` |
-| `printf` / `fprintf` / `sprintf` | `MT_LOG_*` |
-| 裸 `memcpy` / `memset` / `memmove` | `safe_mem*` 或显式长度校验 |
-| `strcpy` / `strcat` / `strdup` / `strndup` | `safe_str*` |
-| 文件 IO：`fopen` / `fclose` / `fread` / `fwrite` / `fseek` / `tmpfile` / `popen` / `gets` … | 走中间件/板级提供的 IO 接口 |
-
-poison 只在受控翻译单元生效；HAL 强符号、平台裸机部分可能通过 `ALLOW_*` 宏豁免。
-
----
 
 ## 相关文档
 
-- [getting_started.md](getting_started.md) · [faq.md](faq.md) · [debug_monitor.md](debug_monitor.md) · [service_spec.md](service_spec.md)
+- [getting_started.md](getting_started.md)（clangd 配置）· [driver_guide.md](driver_guide.md) · [faq.md](faq.md)

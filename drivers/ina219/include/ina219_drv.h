@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define INA219_CMD_BASE MINI_MAGIC(INA219)
@@ -24,11 +23,10 @@ extern "C"
 #define INA219_CMD_COUNT 1
 
 /** @brief INA219 电源监测结果 */
-struct ina219_sample
-{
-    int16_t bus_mV;     /**< 总线电压，mV */
-    int16_t current_mA; /**< 分流电流，mA */
-    int16_t power_mW;   /**< 功率，mW */
+struct ina219_sample {
+	int16_t bus_mV;	    /**< 总线电压，mV */
+	int16_t current_mA; /**< 分流电流，mA */
+	int16_t power_mW;   /**< 功率，mW */
 };
 #ifdef __cplusplus
 }

@@ -34,40 +34,45 @@ static volatile uint32_t s_panic_counter = 0;
  */
 bool safe_state_check_bootloop(void)
 {
-    if (s_panic_counter >= BOOTLOOP_THRESHOLD)
-    {
-        enter_safe_state("BOOTLOOP DETECTED > 5 — SYSTEM FROZEN");
-        return false;
-    }
-    s_panic_counter++;
-    return true;
+	if (s_panic_counter >= BOOTLOOP_THRESHOLD) {
+		enter_safe_state("BOOTLOOP DETECTED > 5 — SYSTEM FROZEN");
+		return false;
+	}
+	s_panic_counter++;
+	return true;
 }
 
 /**
  * @brief 清零计数
  */
-void safe_state_clear_bootloop(void) { s_panic_counter = 0; }
+void safe_state_clear_bootloop(void)
+{
+	s_panic_counter = 0;
+}
 
 /**
  * @brief 进入不可恢复的安全状态 (硬件闭锁 → 冻结调度 → 关中断 → 死循环)
  * @param[in] reason 触发原因描述 (当前忽略, 预留日志)
  */
-void enter_safe_state(const char* reason)
+void enter_safe_state(const char *reason)
 {
-    (void)reason;
+	(void)reason;
 
-    /* 平台具体硬件闭锁 (PWM/I2S/SPI 停止, LED, 蜂鸣器) */
-    MINI_IGNORE_RESULT(hal_platform_critical_hardware_lock());
+	/* 平台具体硬件闭锁 (PWM/I2S/SPI 停止, LED, 蜂鸣器) */
+	MINI_IGNORE_RESULT(hal_platform_critical_hardware_lock());
 
-    /* 冻结 OS (单向不可恢复): 先挂起调度器, 再关中断; 两者都不可恢复 */
-    mini_sched_freeze();
-    mini_irq_disable();
+	/* 冻结 OS (单向不可恢复): 先挂起调度器, 再关中断; 两者都不可恢复 */
+	mini_sched_freeze();
+	mini_irq_disable();
 
-    while (1)
-        __asm__ volatile("nop");
+	while (1)
+		__asm__ volatile("nop");
 }
 
 /**
  * @brief NMI 紧急标记 (委托平台 IRAM 安全实现)
  */
-void safe_state_nmi_emergency_stamp(void) { hal_platform_nmi_emergency_stamp(); }
+void safe_state_nmi_emergency_stamp(void)
+{
+	hal_platform_nmi_emergency_stamp();
+}

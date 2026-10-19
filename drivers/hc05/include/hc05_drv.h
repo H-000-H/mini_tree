@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define HC05_CMD_BASE MINI_MAGIC(HC05)
@@ -24,10 +23,9 @@ extern "C"
 #define HC05_CMD_COUNT 1
 
 /** @brief AT 命令发送参数 */
-struct hc05_at
-{
-    const uint8_t* tx;     /**< 发送缓冲 */
-    size_t         tx_len; /**< 发送长度 */
+struct hc05_at {
+	const uint8_t *tx;     /**< 发送缓冲 */
+	size_t	       tx_len; /**< 发送长度 */
 };
 #ifdef __cplusplus
 }

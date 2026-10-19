@@ -12,6 +12,11 @@
 
 #include "compiler_compat.h"
 
-MINI_WEAK void safety_hardware_shutdown(void) { MINI_TRAP(); }
+MINI_WEAK void safety_hardware_shutdown(void)
+{
+	MINI_TRAP();
+}
 
-MINI_WEAK void mini_panic_interlock(void) {}
+MINI_WEAK void mini_panic_interlock(void)
+{
+}

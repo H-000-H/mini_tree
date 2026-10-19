@@ -10,15 +10,14 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
  * @brief 板级任务入口函数类型
  * @param[in] param 任务参数
  */
-typedef void (*board_task_entry_t)(void* param);
+typedef void (*board_task_entry_t)(void *param);
 
 /**
  * @brief 创建板级任务 (封装统一接口任务创建的薄包装)
@@ -30,7 +29,8 @@ typedef void (*board_task_entry_t)(void* param);
  * @param[in] core_id 核心号 (-1=任意核心)
  * @return 任务句柄; 创建失败返回 NULL
  */
-void* board_task_create(const char* name, uint32_t stack_size, uint32_t priority, board_task_entry_t entry, void* param, int core_id);
+void *board_task_create(const char *name, uint32_t stack_size, uint32_t priority,
+			board_task_entry_t entry, void *param, int core_id);
 
 #ifdef __cplusplus
 }

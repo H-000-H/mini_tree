@@ -17,8 +17,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -37,14 +36,13 @@ void usb_bus_task(void);
 /** 与 HAL_USB_XFER_* 同值 */
 #define USB_XFER_AUTO 0U /**< 隐式: dma_enable 非 0 则 DMA, 否则 poll */
 #define USB_XFER_POLL 1U /**< 强制普通路径 */
-#define USB_XFER_DMA 2U  /**< 强制 DMA; host 未开 dma-enable 则 NOTSUPP */
+#define USB_XFER_DMA 2U	 /**< 强制 DMA; host 未开 dma-enable 则 NOTSUPP */
 
 /**
  * @brief 传输模式参数 (SET_XFER_MODE / GET_XFER_MODE)
  */
-struct usb_xfer_mode_arg
-{
-    uint32_t xfer_mode; /**< USB_XFER_AUTO / POLL / DMA */
+struct usb_xfer_mode_arg {
+	uint32_t xfer_mode; /**< USB_XFER_AUTO / POLL / DMA */
 };
 
 #ifdef __cplusplus

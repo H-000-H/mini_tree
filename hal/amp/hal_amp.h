@@ -12,8 +12,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*CPU 紧急停止与 AMP API*/
@@ -47,17 +46,17 @@ mt_err_t hal_cpu_get_id(void);
  */
 MINI_STATIC_INLINE int hal_is_in_isr(void)
 {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__)
-    int ipsr;
-    __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
-    return ipsr;
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+	int ipsr;
+	__asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
+	return ipsr;
 #elif defined(__riscv)
-    int mcause;
-    __asm__ volatile("csrr %0, mcause" : "=r"(mcause));
-    return mcause;
+	int mcause;
+	__asm__ volatile("csrr %0, mcause" : "=r"(mcause));
+	return mcause;
 #else
-    return 0;
+	return 0;
 #endif
 }
 
@@ -65,14 +64,12 @@ MINI_STATIC_INLINE int hal_is_in_isr(void)
 #define HAL_ASSERT_NOT_ISR() ((void)0)
 #else
 #include "compiler_compat.h"
-#define HAL_ASSERT_NOT_ISR()                                                                                                                         \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        if (hal_is_in_isr())                                                                                                                         \
-        {                                                                                                                                            \
-            MINI_TRAP();                                                                                                                             \
-        }                                                                                                                                            \
-    } while (0)
+#define HAL_ASSERT_NOT_ISR()           \
+	do {                           \
+		if (hal_is_in_isr()) { \
+			MINI_TRAP();   \
+		}                      \
+	} while (0)
 #endif
 /* -------------------------------------------------------------------------- */
 
@@ -88,8 +85,8 @@ MINI_STATIC_INLINE int hal_is_in_isr(void)
  */
 MINI_STATIC_INLINE void hal_irq_enable(int irq_num)
 {
-    uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
-    MINI_REG_WRITE32(HAL_NVIC_ISER_BASE + reg, MINI_BIT(irq_num & 0x1F));
+	uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
+	MINI_REG_WRITE32(HAL_NVIC_ISER_BASE + reg, MINI_BIT(irq_num & 0x1F));
 }
 
 /**
@@ -98,8 +95,8 @@ MINI_STATIC_INLINE void hal_irq_enable(int irq_num)
  */
 MINI_STATIC_INLINE void hal_irq_disable(int irq_num)
 {
-    uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
-    MINI_REG_WRITE32(HAL_NVIC_ICER_BASE + reg, MINI_BIT(irq_num & 0x1F));
+	uint32_t reg = (uint32_t)(irq_num >> 5) << 2;
+	MINI_REG_WRITE32(HAL_NVIC_ICER_BASE + reg, MINI_BIT(irq_num & 0x1F));
 }
 
 /**
@@ -109,7 +106,7 @@ MINI_STATIC_INLINE void hal_irq_disable(int irq_num)
  */
 MINI_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority)
 {
-    MINI_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF));
+	MINI_REG_WRITE8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num, (uint8_t)(priority & 0xFF));
 }
 
 /**
@@ -117,13 +114,16 @@ MINI_STATIC_INLINE void hal_irq_set_priority(int irq_num, int priority)
  * @param[in] irq_num NVIC 中断号
  * @return 当前优先级
  */
-MINI_STATIC_INLINE int hal_irq_get_priority(int irq_num) { return MINI_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num); }
+MINI_STATIC_INLINE int hal_irq_get_priority(int irq_num)
+{
+	return MINI_REG_READ8(HAL_NVIC_IPR_BASE + (uint32_t)irq_num);
+}
 /* -------------------------------------------------------------------------- */
 
 /*全局中断屏蔽 inline*/
 /* -------------------------------------------------------------------------- */
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__)
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
 
 /**
  * @brief 关闭全局中断并保存掩码 (临界区入口)
@@ -131,28 +131,34 @@ MINI_STATIC_INLINE int hal_irq_get_priority(int irq_num) { return MINI_REG_READ8
  */
 MINI_STATIC_INLINE uint32_t hal_irq_disable_all(void)
 {
-    uint32_t mask;
-    __asm__ volatile("mrs %0, primask\n\t"
-                     "cpsid i"
-                     : "=r"(mask));
-    return mask;
+	uint32_t mask;
+	__asm__ volatile("mrs %0, primask\n\t"
+			 "cpsid i"
+			 : "=r"(mask));
+	return mask;
 }
 
 /**
  * @brief 恢复全局中断掩码 (临界区出口)
  * @param[in] mask hal_irq_disable_all 返回的掩码
  */
-MINI_STATIC_INLINE void hal_irq_restore(uint32_t mask) { __asm__ volatile("msr primask, %0" : : "r"(mask)); }
+MINI_STATIC_INLINE void hal_irq_restore(uint32_t mask)
+{
+	__asm__ volatile("msr primask, %0" : : "r"(mask));
+}
 
 #else
 /* 非 ARM/RISC-V 平台的 fallback: 无全局中断开关, 仅透传 (API 语义同 #if 分支) */
 MINI_STATIC_INLINE uint32_t hal_irq_disable_all(void)
 {
-    uint32_t irq_mask;
-    __asm__ volatile("" : "=r"(irq_mask));
-    return irq_mask;
+	uint32_t irq_mask;
+	__asm__ volatile("" : "=r"(irq_mask));
+	return irq_mask;
 }
-MINI_STATIC_INLINE void hal_irq_restore(uint32_t mask) { MINI_IGNORE_RESULT(mask); }
+MINI_STATIC_INLINE void hal_irq_restore(uint32_t mask)
+{
+	MINI_IGNORE_RESULT(mask);
+}
 
 #endif
 /* -------------------------------------------------------------------------- */

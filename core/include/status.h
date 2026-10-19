@@ -3,7 +3,8 @@
  * @author H-000-H
  * @brief 公共错误码与指针错误编码 (层无关, HAL/bus/VFS/OSAL 共用)
  * @note  编号: 0=成功, -1..-63=通用段, -64..-511=子体系段(每片固定32码)
- * @note  命名空间: MINI_ERR_* 栈内通用; NET_ERR_* net私有; BUFF_* buffer私有; MINI_LOG_ERR_* mini-log私有
+ * @note  命名空间: MINI_ERR_* 栈内通用; NET_ERR_* net私有; BUFF_* buffer私有; MINI_LOG_ERR_*
+ * mini-log私有
  * @note  不同命名空间码不可按数值比较, 层边界处翻译
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -19,7 +20,8 @@
 extern "C" {
 #endif
 
-#define MINI_ERR_MAX 511U /**< 错误码幅度上限 (0 成功 + 511 个错误码 = 512 个码位), ERR_PTR 编码上限 */
+#define MINI_ERR_MAX \
+	511U /**< 错误码幅度上限 (0 成功 + 511 个错误码 = 512 个码位), ERR_PTR 编码上限 */
 
 /**
  * @brief 错误码类型 (0 成功, 负数失败)
@@ -27,42 +29,41 @@ extern "C" {
  * @note 返回错误码的函数应把返回类型写成 mt_err_t; 参数类型保持 int,
  *       以兼容 C++ 侧 (enum -> int 隐式可行, int -> enum 需显式转换)
  */
-enum mt_err
-{
-    MINI_OK = 0, /**< 成功 */
+enum mt_err {
+	MINI_OK = 0, /**< 成功 */
 
-    /* ── 通用/栈层段 [-1..-27] ── */
-    MINI_ERR_INVAL    = -1,  /**< 无效参数 */
-    MINI_ERR_ISR      = -2,  /**< 中断上下文非法调用 */
-    MINI_ERR_NOMEM    = -3,  /**< 内存不足 */
-    MINI_ERR_IO       = -4,  /**< 物理 IO 错误 */
-    MINI_ERR_BUSY     = -5,  /**< 设备忙 */
-    MINI_ERR_AGAIN    = -6,  /**< 重试 */
-    MINI_ERR_NOSPC    = -7,  /**< 无剩余空间/通道 */
-    MINI_ERR_TIMEOUT  = -8,  /**< 锁获取/操作超时 */
-    MINI_ERR_HW_FATAL = -9,  /**< 硬件物理故障, 不可恢复 */
-    MINI_ERR_DEFER    = -10, /**< 依赖未就绪, 稍后重试 */
-    MINI_ERR_NODEV    = -11, /**< 设备已拆除或不存在 */
-    MINI_ERR_NOTSUPP  = -12, /**< 操作不支持/未实现 */
-    MINI_ERR_STATE    = -13, /**< 状态非法/时序错误 */
+	/* ── 通用/栈层段 [-1..-27] ── */
+	MINI_ERR_INVAL	  = -1,	 /**< 无效参数 */
+	MINI_ERR_ISR	  = -2,	 /**< 中断上下文非法调用 */
+	MINI_ERR_NOMEM	  = -3,	 /**< 内存不足 */
+	MINI_ERR_IO	  = -4,	 /**< 物理 IO 错误 */
+	MINI_ERR_BUSY	  = -5,	 /**< 设备忙 */
+	MINI_ERR_AGAIN	  = -6,	 /**< 重试 */
+	MINI_ERR_NOSPC	  = -7,	 /**< 无剩余空间/通道 */
+	MINI_ERR_TIMEOUT  = -8,	 /**< 锁获取/操作超时 */
+	MINI_ERR_HW_FATAL = -9,	 /**< 硬件物理故障, 不可恢复 */
+	MINI_ERR_DEFER	  = -10, /**< 依赖未就绪, 稍后重试 */
+	MINI_ERR_NODEV	  = -11, /**< 设备已拆除或不存在 */
+	MINI_ERR_NOTSUPP  = -12, /**< 操作不支持/未实现 */
+	MINI_ERR_STATE	  = -13, /**< 状态非法/时序错误 */
 
-    /* ── 扩容 [-14..-27] ── */
-    MINI_ERR_RANGE    = -14, /**< 数值/索引越界 */
-    MINI_ERR_NOENT    = -15, /**< 目标不存在 (节点/键/表项) */
-    MINI_ERR_EXIST    = -16, /**< 目标已存在 */
-    MINI_ERR_NOTINIT  = -17, /**< 尚未初始化 */
-    MINI_ERR_NODATA   = -18, /**< 无数据可读 (非错误性为空) */
-    MINI_ERR_CORRUPT  = -19, /**< 数据损坏/完整性校验失败 */
-    MINI_ERR_CRC      = -20, /**< 校验和不匹配 (CRC/LRC) */
-    MINI_ERR_PARITY   = -21, /**< 帧/奇偶错误 */
-    MINI_ERR_OVERFLOW = -22, /**< 计数/缓冲溢出 */
-    MINI_ERR_NOTREADY = -23, /**< 未就绪 (上电/标定/预热未完成) */
-    MINI_ERR_CANCELED = -24, /**< 操作被取消/中止 */
-    MINI_ERR_PERM     = -25, /**< 无权限 */
-    MINI_ERR_PROTO    = -26, /**< 协议违例 */
-    MINI_ERR_AUTH     = -27  /**< 认证/鉴权失败 */
+	/* ── 扩容 [-14..-27] ── */
+	MINI_ERR_RANGE	  = -14, /**< 数值/索引越界 */
+	MINI_ERR_NOENT	  = -15, /**< 目标不存在 (节点/键/表项) */
+	MINI_ERR_EXIST	  = -16, /**< 目标已存在 */
+	MINI_ERR_NOTINIT  = -17, /**< 尚未初始化 */
+	MINI_ERR_NODATA	  = -18, /**< 无数据可读 (非错误性为空) */
+	MINI_ERR_CORRUPT  = -19, /**< 数据损坏/完整性校验失败 */
+	MINI_ERR_CRC	  = -20, /**< 校验和不匹配 (CRC/LRC) */
+	MINI_ERR_PARITY	  = -21, /**< 帧/奇偶错误 */
+	MINI_ERR_OVERFLOW = -22, /**< 计数/缓冲溢出 */
+	MINI_ERR_NOTREADY = -23, /**< 未就绪 (上电/标定/预热未完成) */
+	MINI_ERR_CANCELED = -24, /**< 操作被取消/中止 */
+	MINI_ERR_PERM	  = -25, /**< 无权限 */
+	MINI_ERR_PROTO	  = -26, /**< 协议违例 */
+	MINI_ERR_AUTH	  = -27	 /**< 认证/鉴权失败 */
 
-    /* [-28..] 预留: 通用扩容, 不分配给子系统 */
+	/* [-28..] 预留: 通用扩容, 不分配给子系统 */
 };
 
 #ifdef __cplusplus
@@ -70,7 +71,6 @@ typedef int mt_err_t;
 #else
 typedef enum mt_err mt_err_t;
 #endif
-
 
 /* ── 分段边界 (幅度, 均为正整数) ── */
 #define MINI_ERR_SECTOR_COMMON_FIRST 1U
@@ -81,15 +81,17 @@ typedef enum mt_err mt_err_t;
 /* ── 子体系配额: 每片 32 码, 片号 0..13 (6..13 预留)  */
 #define MINI_ERR_SUBSYS_SLOT_SIZE 32U
 #define MINI_ERR_SUBSYS_SLOT_COUNT 14U /**< (512 - 64) / 32 */
-#define MINI_ERR_SUBSYS_SLOT_BASE(slot) (MINI_ERR_SECTOR_SUBSYS_FIRST + (unsigned)(slot) * MINI_ERR_SUBSYS_SLOT_SIZE)
-#define MINI_ERR_SUBSYS_SLOT_LAST(slot) (MINI_ERR_SUBSYS_SLOT_BASE(slot) + MINI_ERR_SUBSYS_SLOT_SIZE - 1U)
+#define MINI_ERR_SUBSYS_SLOT_BASE(slot) \
+	(MINI_ERR_SECTOR_SUBSYS_FIRST + (unsigned)(slot) * MINI_ERR_SUBSYS_SLOT_SIZE)
+#define MINI_ERR_SUBSYS_SLOT_LAST(slot) \
+	(MINI_ERR_SUBSYS_SLOT_BASE(slot) + MINI_ERR_SUBSYS_SLOT_SIZE - 1U)
 
-#define MINI_ERR_SUBSYS_NET_SLOT 0U    /**< 64..95    net 协议/传输层 */
-#define MINI_ERR_SUBSYS_FS_SLOT 1U     /**< 96..127   fs 文件系统 (预留) */
-#define MINI_ERR_SUBSYS_OTA_SLOT 2U    /**< 128..159  ota 升级/引导 (预留) */
-#define MINI_ERR_SUBSYS_LOG_SLOT 3U    /**< 160..191  log 日志后端 */
-#define MINI_ERR_SUBSYS_SYSTEM_SLOT 4U /**< 192..223  system 系统服务 */
-#define MINI_ERR_SUBSYS_DRIVER_SLOT 5U  /**< 224..255  驱动/板级私有 */
+#define MINI_ERR_SUBSYS_NET_SLOT 0U	/**< 64..95    net 协议/传输层 */
+#define MINI_ERR_SUBSYS_FS_SLOT 1U	/**< 96..127   fs 文件系统 (预留) */
+#define MINI_ERR_SUBSYS_OTA_SLOT 2U	/**< 128..159  ota 升级/引导 (预留) */
+#define MINI_ERR_SUBSYS_LOG_SLOT 3U	/**< 160..191  log 日志后端 */
+#define MINI_ERR_SUBSYS_SYSTEM_SLOT 4U	/**< 192..223  system 系统服务 */
+#define MINI_ERR_SUBSYS_DRIVER_SLOT 5U	/**< 224..255  驱动/板级私有 */
 #define MINI_ERR_SUBSYS_MINI_OS_SLOT 6U /**< 256..287  mini-os 内核私有 */
 
 /* 片基准幅度 */
@@ -117,10 +119,12 @@ typedef enum mt_err mt_err_t;
 #endif
 
 MINI_ERR_STATIC_ASSERT((MINI_ERR_SECTOR_SUBSYS_LAST - MINI_ERR_SECTOR_SUBSYS_FIRST + 1U) ==
-                           (MINI_ERR_SUBSYS_SLOT_COUNT * MINI_ERR_SUBSYS_SLOT_SIZE),
-                       "MINI_ERR: subsystem sector must hold a whole number of 32-code slots");
-MINI_ERR_STATIC_ASSERT((MINI_ERR_SUBSYS_DRIVER_BASE - MINI_ERR_SECTOR_SUBSYS_FIRST) % MINI_ERR_SUBSYS_SLOT_SIZE == 0U,
-                       "MINI_ERR: driver slot base must be slot-size aligned");
+			       (MINI_ERR_SUBSYS_SLOT_COUNT * MINI_ERR_SUBSYS_SLOT_SIZE),
+		       "MINI_ERR: subsystem sector must hold a whole number of 32-code slots");
+MINI_ERR_STATIC_ASSERT((MINI_ERR_SUBSYS_DRIVER_BASE - MINI_ERR_SECTOR_SUBSYS_FIRST) %
+				       MINI_ERR_SUBSYS_SLOT_SIZE ==
+			       0U,
+		       "MINI_ERR: driver slot base must be slot-size aligned");
 
 /**
  * @brief 由幅度直接构造私有码
@@ -151,12 +155,11 @@ MINI_ERR_STATIC_ASSERT((MINI_ERR_SUBSYS_DRIVER_BASE - MINI_ERR_SECTOR_SUBSYS_FIR
 /**
  * @brief 错误码所属段
  */
-typedef enum mt_err_sector
-{
-    MINI_ERR_SECTOR_INVALID = 0, /**< 非负, 或幅度超出 MINI_ERR_MAX */
-    MINI_ERR_SECTOR_COMMON  = 1, /**< [-1..-63]    通用/栈层 */
-    MINI_ERR_SECTOR_SUBSYS  = 2, /**< [-64..-512]  子体系私有 (每片 32 码, 驱动片除外) */
-    MINI_ERR_SECTOR_DRIVER  = 3  /**< [-224..-255] 驱动/板级片 (子体系段第 5 片) */
+typedef enum mt_err_sector {
+	MINI_ERR_SECTOR_INVALID = 0, /**< 非负, 或幅度超出 MINI_ERR_MAX */
+	MINI_ERR_SECTOR_COMMON	= 1, /**< [-1..-63]    通用/栈层 */
+	MINI_ERR_SECTOR_SUBSYS	= 2, /**< [-64..-512]  子体系私有 (每片 32 码, 驱动片除外) */
+	MINI_ERR_SECTOR_DRIVER	= 3  /**< [-224..-255] 驱动/板级片 (子体系段第 5 片) */
 } mt_err_sector_t;
 
 /**
@@ -168,27 +171,36 @@ typedef enum mt_err_sector
  */
 MINI_STATIC_INLINE mt_err_sector_t MINI_ERR_SECTOR_OF(int err)
 {
-    unsigned mag;
+	unsigned mag;
 
-    if (err >= 0)
-        return MINI_ERR_SECTOR_INVALID;
+	if (err >= 0)
+		return MINI_ERR_SECTOR_INVALID;
 
-    mag = MINI_ERR_MAGNITUDE(err);
-    if (mag > MINI_ERR_MAX)
-        return MINI_ERR_SECTOR_INVALID;
-    if (mag <= MINI_ERR_SECTOR_COMMON_LAST)
-        return MINI_ERR_SECTOR_COMMON;
-    if (mag >= MINI_ERR_SECTOR_DRIVER_FIRST && mag <= MINI_ERR_SECTOR_DRIVER_LAST)
-        return MINI_ERR_SECTOR_DRIVER;
-    return MINI_ERR_SECTOR_SUBSYS;
+	mag = MINI_ERR_MAGNITUDE(err);
+	if (mag > MINI_ERR_MAX)
+		return MINI_ERR_SECTOR_INVALID;
+	if (mag <= MINI_ERR_SECTOR_COMMON_LAST)
+		return MINI_ERR_SECTOR_COMMON;
+	if (mag >= MINI_ERR_SECTOR_DRIVER_FIRST && mag <= MINI_ERR_SECTOR_DRIVER_LAST)
+		return MINI_ERR_SECTOR_DRIVER;
+	return MINI_ERR_SECTOR_SUBSYS;
 }
 
 /** @brief 是否为通用/栈层段错误码 */
-MINI_STATIC_INLINE bool MINI_ERR_IS_COMMON(int err) { return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_COMMON; }
+MINI_STATIC_INLINE bool MINI_ERR_IS_COMMON(int err)
+{
+	return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_COMMON;
+}
 /** @brief 是否为子体系段私有错误码 (驱动片除外, 用 MINI_ERR_IS_DRIVER 判) */
-MINI_STATIC_INLINE bool MINI_ERR_IS_SUBSYS(int err) { return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_SUBSYS; }
+MINI_STATIC_INLINE bool MINI_ERR_IS_SUBSYS(int err)
+{
+	return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_SUBSYS;
+}
 /** @brief 是否为驱动/板级片私有错误码 */
-MINI_STATIC_INLINE bool MINI_ERR_IS_DRIVER(int err) { return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_DRIVER; }
+MINI_STATIC_INLINE bool MINI_ERR_IS_DRIVER(int err)
+{
+	return MINI_ERR_SECTOR_OF(err) == MINI_ERR_SECTOR_DRIVER;
+}
 
 /**
  * @brief 子体系段错误码所属片号
@@ -198,42 +210,42 @@ MINI_STATIC_INLINE bool MINI_ERR_IS_DRIVER(int err) { return MINI_ERR_SECTOR_OF(
  */
 MINI_STATIC_INLINE unsigned MINI_ERR_SUBSYS_SLOT_OF(int err)
 {
-    unsigned mag;
+	unsigned mag;
 
-    if (err >= 0)
-        return MINI_ERR_SUBSYS_SLOT_COUNT;
+	if (err >= 0)
+		return MINI_ERR_SUBSYS_SLOT_COUNT;
 
-    mag = MINI_ERR_MAGNITUDE(err);
-    if (mag < MINI_ERR_SECTOR_SUBSYS_FIRST || mag > MINI_ERR_SECTOR_SUBSYS_LAST)
-        return MINI_ERR_SUBSYS_SLOT_COUNT;
+	mag = MINI_ERR_MAGNITUDE(err);
+	if (mag < MINI_ERR_SECTOR_SUBSYS_FIRST || mag > MINI_ERR_SECTOR_SUBSYS_LAST)
+		return MINI_ERR_SUBSYS_SLOT_COUNT;
 
-    return (mag - MINI_ERR_SECTOR_SUBSYS_FIRST) / MINI_ERR_SUBSYS_SLOT_SIZE;
+	return (mag - MINI_ERR_SECTOR_SUBSYS_FIRST) / MINI_ERR_SUBSYS_SLOT_SIZE;
 }
 
 /**
- * @brief 错误码转可读字符串 
+ * @brief 错误码转可读字符串
  * @param[in] err MINI_OK / MINI_ERR_* 码
  * @return 常量字符串; 未知码返回 "MINI_ERR_UNKNOWN"
  * @note 无动态分配、无静态缓冲, 线程与 ISR 安全; 实现见 core/src/status.c,
  *       未被引用时由链接器整体丢弃, 不用字符串表的构建零开销。
  */
-const char* MINI_ERR_TO_STR(int err);
+const char *MINI_ERR_TO_STR(int err);
 
-#define MINI_IRQ_ENTRY_BOTTOM (0X01U)   /* 中断下部入口标识 */
+#define MINI_IRQ_ENTRY_BOTTOM (0X01U)	/* 中断下部入口标识 */
 #define MINI_IRQ_ENTRY_NOBOTTOM (0X00U) /* 中断上部入口标识 */
 
 /* 指针的特殊处理 */
 extern const char ERR_SECTION_BASE;
 #define ERR_BASE ((uintptr_t)&ERR_SECTION_BASE)
 
-MINI_STATIC_INLINE void* ERR_PTR(int err)
+MINI_STATIC_INLINE void *ERR_PTR(int err)
 {
-    unsigned mag = MINI_ERR_MAGNITUDE(err); /* MINI_OK(0) 得 0, 与旧行为一致 */
+	unsigned mag = MINI_ERR_MAGNITUDE(err); /* MINI_OK(0) 得 0, 与旧行为一致 */
 
-    if (mag > MINI_ERR_MAX)
-        mag = MINI_ERR_MAGNITUDE(MINI_ERR_INVAL);
+	if (mag > MINI_ERR_MAX)
+		mag = MINI_ERR_MAGNITUDE(MINI_ERR_INVAL);
 
-    return (void*)(ERR_BASE + (uintptr_t)mag);
+	return (void *)(ERR_BASE + (uintptr_t)mag);
 }
 
 /**
@@ -241,21 +253,30 @@ MINI_STATIC_INLINE void* ERR_PTR(int err)
  * @param[in] PTR ERR_PTR 返回的指针
  * @return 负的错误码 (MINI_ERR_*)
  */
-MINI_STATIC_INLINE mt_err_t PTR_ERR(const void* PTR) { return (mt_err_t)(-(int)(((uintptr_t)PTR) - ERR_BASE)); }
+MINI_STATIC_INLINE mt_err_t PTR_ERR(const void *PTR)
+{
+	return (mt_err_t)(-(int)(((uintptr_t)PTR) - ERR_BASE));
+}
 
 /**
  * @brief 判断指针是否为 ERR_PTR 编码的错误指针
  * @param[in] ptr 待判断指针
  * @return 错误指针返回 true
  */
-MINI_STATIC_INLINE bool IS_ERR(const void* ptr) { return (uintptr_t)ptr >= ERR_BASE; }
+MINI_STATIC_INLINE bool IS_ERR(const void *ptr)
+{
+	return (uintptr_t)ptr >= ERR_BASE;
+}
 
 /**
  * @brief 判断指针为 NULL 或 ERR_PTR 编码的错误指针
  * @param[in] ptr 待判断指针
  * @return NULL 或错误指针返回 true
  */
-MINI_STATIC_INLINE bool IS_ERR_OR_NULL(const void* ptr) { return (ptr == NULL) || IS_ERR(ptr); }
+MINI_STATIC_INLINE bool IS_ERR_OR_NULL(const void *ptr)
+{
+	return (ptr == NULL) || IS_ERR(ptr);
+}
 
 #ifdef __cplusplus
 }

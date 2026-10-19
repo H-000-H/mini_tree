@@ -13,8 +13,8 @@ extern "C" {
 #endif
 
 /* ---------------- 引擎选择 ---------------- */
-#define CRC_MODE_BITWISE 0  /**< 逐位法: 零额外 RAM, 小数据量/资源紧张 */
-#define CRC_MODE_TABLE   1  /**< 查表法: 约 1KB 静态表, 大数据量快 5~8 倍 */
+#define CRC_MODE_BITWISE 0 /**< 逐位法: 零额外 RAM, 小数据量/资源紧张 */
+#define CRC_MODE_TABLE 1   /**< 查表法: 约 1KB 静态表, 大数据量快 5~8 倍 */
 
 #if defined(CONFIG_CRC_MODE)
 #define CRC_MODE CONFIG_CRC_MODE

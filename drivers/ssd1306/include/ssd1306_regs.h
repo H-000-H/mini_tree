@@ -9,8 +9,7 @@
 #define SSD1306_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define SSD1306_WIDTH 128

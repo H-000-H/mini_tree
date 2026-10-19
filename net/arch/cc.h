@@ -19,8 +19,7 @@
 #include <stdlib.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -64,20 +63,19 @@ typedef uint32_t sys_prot_t;
  * @brief lwIP 诊断输出
  * @param[in] x 双括号形式的参数列表 (fmt, args...)
  */
-void lwip_diag(const char* fmt, ...);
+void lwip_diag(const char *fmt, ...);
 
-#define LWIP_PLATFORM_DIAG(x)                                                                                                                        \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        lwip_diag x;                                                                                                                                 \
-    } while (0)
-#define LWIP_PLATFORM_ASSERT(x)                                                                                                                      \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        MT_LOG_ERROR("lwIP", "Assertion \"%s\" failed at line %d in %s", x, __LINE__, __FILE__);                                                         \
-        while (1)                                                                                                                                    \
-            ;                                                                                                                                        \
-    } while (0)
+#define LWIP_PLATFORM_DIAG(x) \
+	do {                  \
+		lwip_diag x;  \
+	} while (0)
+#define LWIP_PLATFORM_ASSERT(x)                                                               \
+	do {                                                                                  \
+		MT_LOG_ERROR("lwIP", "Assertion \"%s\" failed at line %d in %s", x, __LINE__, \
+			     __FILE__);                                                       \
+		while (1)                                                                     \
+			;                                                                     \
+	} while (0)
 
 /* -------------------------------------------------------------------------- */
 /* 随机数生成宏 (TCP 初始序号 / DHCP XID)                                     */

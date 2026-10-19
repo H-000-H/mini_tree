@@ -16,8 +16,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -46,12 +45,12 @@ extern "C"
  * @brief ADC HAL 内部私有运行时上下文
  * @note  供 DMA 中断路径使用，由 VFS 层分配内存并绑定到 host->private_cfg
  */
-struct hal_adc_private_cfg
-{
-    bool             dma_it_enable;                                      /**< DMA 中断模式使能标志 */
-    uint16_t         dma_raw_data_buf[DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 原始采样缓冲区 */
-    struct fifo_spsc dma_buffer_handle;                                  /**< DMA 中断 FIFO 句柄 */
-    fifo_data_type   dma_data_buf[DMA_BUFFER_SIZE] MINI_ALIGNED(32);     /**< DMA 中断 FIFO 数据缓冲区 */
+struct hal_adc_private_cfg {
+	bool	 dma_it_enable;					     /**< DMA 中断模式使能标志 */
+	uint16_t dma_raw_data_buf[DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 原始采样缓冲区 */
+	struct fifo_spsc dma_buffer_handle;			     /**< DMA 中断 FIFO 句柄 */
+	fifo_data_type
+		dma_data_buf[DMA_BUFFER_SIZE] MINI_ALIGNED(32); /**< DMA 中断 FIFO 数据缓冲区 */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -61,28 +60,26 @@ struct hal_adc_private_cfg
 /**
  * @brief ADC 引脚底层物理配置结构体
  */
-typedef struct hal_adc_gpio_cfg
-{
-    uintptr_t port;        /**< GPIO 端口基地址或端口号 (支持 32/64 位平台指针转换) */
-    uint16_t  pin;         /**< 引脚编号 */
-    uint32_t  clk_bus;     /**< 该引脚所属的外设时钟总线 */
-    uint32_t  af;          /**< 引脚复用功能设置 (Alternate Function 选择) */
-    uint32_t  output_type; /**< 引脚输出类型 */
-    uint32_t  speed;       /**< 引脚速度 */
-    uint32_t  mode;        /**< 引脚工作模式 */
-    uint32_t  pull;        /**< 引脚上拉/下拉 */
+typedef struct hal_adc_gpio_cfg {
+	uintptr_t port;	       /**< GPIO 端口基地址或端口号 (支持 32/64 位平台指针转换) */
+	uint16_t  pin;	       /**< 引脚编号 */
+	uint32_t  clk_bus;     /**< 该引脚所属的外设时钟总线 */
+	uint32_t  af;	       /**< 引脚复用功能设置 (Alternate Function 选择) */
+	uint32_t  output_type; /**< 引脚输出类型 */
+	uint32_t  speed;       /**< 引脚速度 */
+	uint32_t  mode;	       /**< 引脚工作模式 */
+	uint32_t  pull;	       /**< 引脚上拉/下拉 */
 } hal_adc_gpio_config;
 
 /**
  * @brief ADC 通道配置结构体
  */
-typedef struct hal_adc_channel_cfg
-{
-    uint32_t channel_id;  /**< 硬件通道号 */
-    uint32_t rank;        /**< 序列排队次序 */
-    uint32_t sample_time; /**< 硬件采样周期时间 */
-    uint32_t diff_mode;   /**< 单端/差分输入选择 */
-    uint32_t attenuation; /**< 衰减器配置 */
+typedef struct hal_adc_channel_cfg {
+	uint32_t channel_id;  /**< 硬件通道号 */
+	uint32_t rank;	      /**< 序列排队次序 */
+	uint32_t sample_time; /**< 硬件采样周期时间 */
+	uint32_t diff_mode;   /**< 单端/差分输入选择 */
+	uint32_t attenuation; /**< 衰减器配置 */
 } hal_adc_channel_config;
 
 /* -------------------------------------------------------------------------- */
@@ -92,35 +89,33 @@ typedef struct hal_adc_channel_cfg
 /**
  * @brief ADC 多实例联动公共配置
  */
-typedef struct hal_adc_multi_cfg
-{
-    uint32_t multimode;      /**< 多模式选择 */
-    uint32_t common_clock;   /**< 全局公共时钟分频源 */
-    uint32_t multi_dma;      /**< 多模式下的多路全局 DMA 传输控制 */
-    uint32_t sampling_delay; /**< 交替/交叉采样模式下的交错延迟周期数 */
+typedef struct hal_adc_multi_cfg {
+	uint32_t multimode;	 /**< 多模式选择 */
+	uint32_t common_clock;	 /**< 全局公共时钟分频源 */
+	uint32_t multi_dma;	 /**< 多模式下的多路全局 DMA 传输控制 */
+	uint32_t sampling_delay; /**< 交替/交叉采样模式下的交错延迟周期数 */
 } hal_adc_multi_config;
 
 /**
  * @brief DMA 配置
  */
-typedef struct hal_adc_dma_cfg
-{
-    uint32_t  dma_it_enable;        /**< DMA 中断模式使能标志 */
-    uint32_t  dma_enable;           /**< DMA 模式使能标志 */
-    uintptr_t dma_handle;           /**< DMA 寄存器基地址或系统原生硬句柄 */
-    uint32_t  dma_stream;           /**< DMA 流选择 */
-    uint32_t  dma_channel;          /**< DMA 通道选择 */
-    uint32_t  dma_priority;         /**< DMA 优先级选择 */
-    uint32_t  dma_memory_size;      /**< DMA 内存大小选择 */
-    uint32_t  dma_direction;        /**< DMA 传输方向 (外设→内存 / 内存→外设) */
-    uint32_t  dma_mode;             /**< DMA 传输模式 (正常 / 循环) */
-    uint32_t  dma_periph_inc;       /**< DMA 外设地址自增模式 */
-    uint32_t  dma_mem_inc;          /**< DMA 内存地址自增模式 */
-    uint32_t  dma_periph_data_size; /**< DMA 外设端数据宽度 */
-    uint32_t  dma_fifo_mode;        /**< DMA FIFO 模式控制 */
-    uint32_t  dma_fifo_threshold;   /**< DMA FIFO 阈值 */
-    uint32_t  dma_mem_burst;        /**< DMA 内存突发传输大小 */
-    uint32_t  dma_periph_burst;     /**< DMA 外设突发传输大小 */
+typedef struct hal_adc_dma_cfg {
+	uint32_t  dma_it_enable;	/**< DMA 中断模式使能标志 */
+	uint32_t  dma_enable;		/**< DMA 模式使能标志 */
+	uintptr_t dma_handle;		/**< DMA 寄存器基地址或系统原生硬句柄 */
+	uint32_t  dma_stream;		/**< DMA 流选择 */
+	uint32_t  dma_channel;		/**< DMA 通道选择 */
+	uint32_t  dma_priority;		/**< DMA 优先级选择 */
+	uint32_t  dma_memory_size;	/**< DMA 内存大小选择 */
+	uint32_t  dma_direction;	/**< DMA 传输方向 (外设→内存 / 内存→外设) */
+	uint32_t  dma_mode;		/**< DMA 传输模式 (正常 / 循环) */
+	uint32_t  dma_periph_inc;	/**< DMA 外设地址自增模式 */
+	uint32_t  dma_mem_inc;		/**< DMA 内存地址自增模式 */
+	uint32_t  dma_periph_data_size; /**< DMA 外设端数据宽度 */
+	uint32_t  dma_fifo_mode;	/**< DMA FIFO 模式控制 */
+	uint32_t  dma_fifo_threshold;	/**< DMA FIFO 阈值 */
+	uint32_t  dma_mem_burst;	/**< DMA 内存突发传输大小 */
+	uint32_t  dma_periph_burst;	/**< DMA 外设突发传输大小 */
 } hal_adc_dma_config;
 
 /* -------------------------------------------------------------------------- */
@@ -130,29 +125,28 @@ typedef struct hal_adc_dma_cfg
 /**
  * @brief ADC 寄存器级核心运行属性配置
  */
-typedef struct hal_adc_cfg
-{
-    /**软件直射配置*/
-    int32_t channel_num;        /**< 动态维护的有效通道数量 */
-    int32_t adc_clk_bus;        /**< ADC 外设所属的总线时钟 */
-    int32_t internal_ch_enable; /**< 内部特殊通道供电开关使能 */
-    /* -------------------------------------------------------------------------- */
-    /* 硬件直射配置                                                                */
-    /* -------------------------------------------------------------------------- */
-    int32_t  resolution;         /**< 分辨率设置 */
-    int32_t  align;              /**< 数据对齐模式 */
-    int32_t  EOC_flag;           /**< 转换结束标志触发逻辑 */
-    int32_t  sequencer_mode;     /**< 扫描/序列器模式使能控制 */
-    int32_t  continuous_mode;    /**< 连续转换模式控制 */
-    int32_t  TriggerSource;      /**< 触发大类选择 */
-    int32_t  trigger_src;        /**< 具体硬件触发源物理映射 ID */
-    int32_t  SequencerLength;    /**< 序列器硬件长度寄存器掩码 */
-    int32_t  SequencerDiscont;   /**< 序列器间断/间歇转换模式控制 */
-    int32_t  dma_mode;           /**< DMA 数据搬运模式选择 */
-    int32_t  output_buf;         /**< 输出缓冲使能开关 */
-    uint32_t internal_ch_select; /**< 内部通道选择位掩码 (替代 LL_ADC_PATH_INTERNAL_*) */
-    uint32_t dma_reg_mode;       /**< DMA 规则组数据寄存器模式 (替代 LL_ADC_DMA_REG_REGULAR_DATA) */
-    uint32_t sw_trigger;         /**< 软件触发源选择 (替代 LL_ADC_REG_TRIG_SOFTWARE) */
+typedef struct hal_adc_cfg {
+	/**软件直射配置*/
+	int32_t channel_num;	    /**< 动态维护的有效通道数量 */
+	int32_t adc_clk_bus;	    /**< ADC 外设所属的总线时钟 */
+	int32_t internal_ch_enable; /**< 内部特殊通道供电开关使能 */
+	/* -------------------------------------------------------------------------- */
+	/* 硬件直射配置                                                                */
+	/* -------------------------------------------------------------------------- */
+	int32_t	 resolution;	     /**< 分辨率设置 */
+	int32_t	 align;		     /**< 数据对齐模式 */
+	int32_t	 EOC_flag;	     /**< 转换结束标志触发逻辑 */
+	int32_t	 sequencer_mode;     /**< 扫描/序列器模式使能控制 */
+	int32_t	 continuous_mode;    /**< 连续转换模式控制 */
+	int32_t	 TriggerSource;	     /**< 触发大类选择 */
+	int32_t	 trigger_src;	     /**< 具体硬件触发源物理映射 ID */
+	int32_t	 SequencerLength;    /**< 序列器硬件长度寄存器掩码 */
+	int32_t	 SequencerDiscont;   /**< 序列器间断/间歇转换模式控制 */
+	int32_t	 dma_mode;	     /**< DMA 数据搬运模式选择 */
+	int32_t	 output_buf;	     /**< 输出缓冲使能开关 */
+	uint32_t internal_ch_select; /**< 内部通道选择位掩码 (替代 LL_ADC_PATH_INTERNAL_*) */
+	uint32_t dma_reg_mode; /**< DMA 规则组数据寄存器模式 (替代 LL_ADC_DMA_REG_REGULAR_DATA) */
+	uint32_t sw_trigger;   /**< 软件触发源选择 (替代 LL_ADC_REG_TRIG_SOFTWARE) */
 } hal_adc_config;
 
 /* -------------------------------------------------------------------------- */
@@ -163,35 +157,32 @@ typedef struct hal_adc_cfg
  * @brief 平台唯一配置结构体
  * @note adc_handle 存储 ADC 寄存器基址, 由 hal_adc.c 在 device_init 中填入
  */
-struct hal_adc_platform_unique_cfg
-{
-    uintptr_t private_cfg; /**< 平台私有配置 */
+struct hal_adc_platform_unique_cfg {
+	uintptr_t private_cfg; /**< 平台私有配置 */
 };
 typedef struct hal_adc_platform_unique_cfg hal_adc_platform_unique_config;
 
 /**
  * @brief ADC 主机配置结构体
  */
-typedef struct hal_adc_host_cfg
-{
-    hal_adc_dma_config          dma_cfg;       /**< DMA 配置 */
-    uintptr_t                   adc_handle;    /**< ADC 寄存器基地址 */
-    hal_adc_gpio_config         gpio_cfg;      /**< 物理 GPIO 配置 */
-    hal_adc_config              config;        /**< ADC 寄存器直投配置属性 */
-    hal_adc_channel_config*     channels;      /**< 通道结构体数组首地址 */
-    uint32_t                    channel_count; /**< 当前有效通道总数 */
-    hal_adc_multi_config*       multi_cfg;     /**< 多 ADC 同步联动公共配置 */
-    struct hal_adc_private_cfg* private_cfg;   /**< 平台特殊私有扩展配置 */
-    uint32_t                    dev_index;     /**< 设备索引 */
+typedef struct hal_adc_host_cfg {
+	hal_adc_dma_config	    dma_cfg;	   /**< DMA 配置 */
+	uintptr_t		    adc_handle;	   /**< ADC 寄存器基地址 */
+	hal_adc_gpio_config	    gpio_cfg;	   /**< 物理 GPIO 配置 */
+	hal_adc_config		    config;	   /**< ADC 寄存器直投配置属性 */
+	hal_adc_channel_config	   *channels;	   /**< 通道结构体数组首地址 */
+	uint32_t		    channel_count; /**< 当前有效通道总数 */
+	hal_adc_multi_config	   *multi_cfg;	   /**< 多 ADC 同步联动公共配置 */
+	struct hal_adc_private_cfg *private_cfg;   /**< 平台特殊私有扩展配置 */
+	uint32_t		    dev_index;	   /**< 设备索引 */
 } hal_adc_host_config;
 
 /**
  * @brief ADC 设备驱动核心上下文
  */
-typedef struct hal_adc_device
-{
-    hal_adc_host_config*            host;   /**< 指向当前主机配置的指针 */
-    hal_adc_platform_unique_config* unique; /**< 指向底层芯片平台特性的不透明指针 */
+typedef struct hal_adc_device {
+	hal_adc_host_config	       *host;	/**< 指向当前主机配置的指针 */
+	hal_adc_platform_unique_config *unique; /**< 指向底层芯片平台特性的不透明指针 */
 } hal_adc_device;
 
 /* -------------------------------------------------------------------------- */
@@ -204,46 +195,49 @@ typedef struct hal_adc_device
  * @param[in] host 主机配置指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_device_init(hal_adc_device* pdev, hal_adc_platform_unique_config* unique_cfg, hal_adc_host_config* host);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_device_init(hal_adc_device		    *pdev,
+						     hal_adc_platform_unique_config *unique_cfg,
+						     hal_adc_host_config	    *host);
 
 /**
  * @brief 释放 ADC 设备运行时资源
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_device_deinit(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_device_deinit(hal_adc_device *pdev);
 
 /**
  * @brief 初始化 ADC 外设寄存器 (应用 host->config 直投属性)
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_init(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_init(hal_adc_device *pdev);
 /**
  * @brief 关闭全部 ADC 设备通道并复位外设
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_deinit_all_adcx(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_deinit_all_adcx(hal_adc_device *pdev);
 /**
  * @brief 关闭 ADC 设备指定通道
  * @param[in] pdev ADC 设备指针
  * @param[in] channel_id 硬件通道号
  * @return 成功返回 MINI_OK, 通道无效返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_deinit_adcx_channel(hal_adc_device* pdev, uint32_t channel_id);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_deinit_adcx_channel(hal_adc_device *pdev,
+							     uint32_t	     channel_id);
 /**
  * @brief 启动 ADC 连续/单次转换
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_start(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_start(hal_adc_device *pdev);
 /**
  * @brief 停止 ADC 转换并关闭外设
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_stop(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_stop(hal_adc_device *pdev);
 /**
  * @brief 读取指定通道的 ADC 转换值 (poll 模式)
  * @param[in] pdev ADC 设备指针
@@ -251,21 +245,23 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_stop(hal_adc_device* pdev);
  * @param[out] out_val 回传转换结果 (12/16 位, 取决于 resolution)
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_*
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_read_value(hal_adc_device* pdev, uint32_t channel_num, uint16_t* out_val);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_read_value(hal_adc_device *pdev, uint32_t channel_num,
+						    uint16_t *out_val);
 /**
  * @brief 轮询等待 ADC 转换完成
  * @param[in] pdev ADC 设备指针
  * @param[out] out_status 回传转换完成状态 (非 0=完成)
  * @return 成功返回 MINI_OK, 超时返回 MINI_ERR_TIMEOUT
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_poll_for_conversion(hal_adc_device* pdev, uint32_t* out_status);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_poll_for_conversion(hal_adc_device *pdev,
+							     uint32_t	    *out_status);
 /**
  * @brief 获取 ADC 设备有效通道数量
  * @param[in] pdev ADC 设备指针
  * @param[out] count 回传当前有效通道总数
  * @return 成功返回 MINI_OK, pdev 或 count 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_count(hal_adc_device* pdev, uint32_t* count);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_count(hal_adc_device *pdev, uint32_t *count);
 /**
  * @brief 获取 ADC 设备指定索引的通道 ID
  * @param[in] pdev ADC 设备指针
@@ -273,7 +269,8 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_count(hal_adc_device* pdev,
  * @param[out] channel_id 回传硬件通道号
  * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_id(hal_adc_device* pdev, int index, uint32_t* channel_id);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_id(hal_adc_device *pdev, int index,
+							uint32_t *channel_id);
 /**
  * @brief 获取 ADC 设备指定索引通道的采样时间
  * @param[in] pdev ADC 设备指针
@@ -281,33 +278,34 @@ mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_id(hal_adc_device* pdev, in
  * @param[out] sample_time 回传硬件采样周期时间
  * @return 成功返回 MINI_OK, 索引越界返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_sample_time(hal_adc_device* pdev, int index, uint32_t* sample_time);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_get_channel_sample_time(hal_adc_device *pdev, int index,
+								 uint32_t *sample_time);
 /**
  * @brief 启动 ADC DMA 传输 (无 OS 等待, 依赖 DMA TC 中断)
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_start(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_start(hal_adc_device *pdev);
 /**
  * @brief 启动 ADC DMA 中断模式传输
  * @param[in] pdev ADC 设备指针
  * @return 成功返回 MINI_OK, DMA 不可用返回 MINI_ERR_NOTSUPP, pdev 为空返回 MINI_ERR_INVAL
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_it_start(hal_adc_device* pdev);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_it_start(hal_adc_device *pdev);
 /**
  * @brief 读取 DMA 中断模式下的转换值
  * @param[in] pdev ADC 设备指针
  * @param[out] out_val 回传转换结果
  * @return 成功返回 MINI_OK, 数据未就绪返回 MINI_ERR_AGAIN, 失败返回 MINI_ERR_*
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_it_read_value(hal_adc_device* pdev, uint16_t* out_val);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_it_read_value(hal_adc_device *pdev, uint16_t *out_val);
 /**
  * @brief 读取 DMA 模式下的转换值
  * @param[in] pdev ADC 设备指针
  * @param[out] out_val 回传转换结果
  * @return 成功返回 MINI_OK, 数据未就绪返回 MINI_ERR_AGAIN, 失败返回 MINI_ERR_*
  */
-mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_read_value(hal_adc_device* pdev, uint16_t* out_val);
+mt_err_t MINI_WARN_UNUSED_RESULT hal_adc_dma_read_value(hal_adc_device *pdev, uint16_t *out_val);
 
 #ifdef __cplusplus
 }

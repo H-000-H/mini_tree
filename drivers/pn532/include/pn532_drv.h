@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define PN532_CMD_BASE MINI_MAGIC(PN532)
@@ -24,12 +23,11 @@ extern "C"
 #define PN532_CMD_COUNT 1
 
 /** @brief PN532 固件版本信息 */
-struct pn532_fw
-{
-    uint8_t ic;      /**< IC 型号 */
-    uint8_t ver;     /**< 主版本 */
-    uint8_t rev;     /**< 修订版本 */
-    uint8_t support; /**< 支持位图 */
+struct pn532_fw {
+	uint8_t ic;	 /**< IC 型号 */
+	uint8_t ver;	 /**< 主版本 */
+	uint8_t rev;	 /**< 修订版本 */
+	uint8_t support; /**< 支持位图 */
 };
 #ifdef __cplusplus
 }

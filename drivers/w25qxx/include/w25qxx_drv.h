@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define W25QXX_CMD_BASE MINI_MAGIC(W25QXX)
@@ -24,9 +23,8 @@ extern "C"
 #define W25QXX_CMD_COUNT 1
 
 /** @brief JEDEC 厂商 ID（MFR + 型号 + 容量） */
-struct w25qxx_jedec
-{
-    uint8_t id[3]; /**< id[0]=厂商, id[1]=型号, id[2]=容量 */
+struct w25qxx_jedec {
+	uint8_t id[3]; /**< id[0]=厂商, id[1]=型号, id[2]=容量 */
 };
 #ifdef __cplusplus
 }

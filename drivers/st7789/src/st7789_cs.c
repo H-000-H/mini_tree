@@ -11,6 +11,9 @@
 /**
  * @brief 有 CS 场景 probe（require_nocs=0）
  */
-static int st7789_probe(struct device* pdev) { return st7789_probe_common(pdev, 0); }
+static int st7789_probe(struct device *pdev)
+{
+	return st7789_probe_common(pdev, 0);
+}
 
 DRIVER_REGISTER(st7789, "mt-st7789", st7789_probe, st7789_remove_common)

@@ -14,8 +14,7 @@
 #include "log.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -33,7 +32,7 @@ void safety_hardware_shutdown(void);
  * @brief 板级硬件安全关断 (必须由板级强制实现)
  * @param[in] reason 关断原因 (用于日志/黑匣子)
  */
-void system_safety_hardware_shutdown(const char* reason);
+void system_safety_hardware_shutdown(const char *reason);
 
 #ifdef __cplusplus
 }
@@ -46,16 +45,14 @@ void system_safety_hardware_shutdown(const char* reason);
  * @details 输出致命原因 -> 板级硬件安全关断 -> 驻留死循环等看门狗复位
  */
 #undef MINI_PANIC
-#define MINI_PANIC(fmt, ...)                                                                                                                         \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        mini_log_default_output("[FATAL ERROR] " fmt "\r\n", ##__VA_ARGS__);                                                                        \
-        system_safety_hardware_shutdown("MINI_PANIC");                                                                                               \
-        while (1)                                                                                                                                    \
-        {                                                                                                                                            \
-            ;                                                                                                                                        \
-        }                                                                                                                                            \
-    } while (0)
+#define MINI_PANIC(fmt, ...)                                                         \
+	do {                                                                         \
+		mini_log_default_output("[FATAL ERROR] " fmt "\r\n", ##__VA_ARGS__); \
+		system_safety_hardware_shutdown("MINI_PANIC");                       \
+		while (1) {                                                          \
+			;                                                            \
+		}                                                                    \
+	} while (0)
 
 /**
  * @brief 关键断言
@@ -65,18 +62,16 @@ void system_safety_hardware_shutdown(const char* reason);
  * @details cond 为假时: 输出关键原因 -> 板级硬件安全关断 -> 驻留死循环等看门狗复位
  */
 #undef MINI_CRITICAL_ASSERT
-#define MINI_CRITICAL_ASSERT(cond, fmt, ...)                                                                                                         \
-    do                                                                                                                                               \
-    {                                                                                                                                                \
-        if (!(cond))                                                                                                                                 \
-        {                                                                                                                                            \
-            mini_log_default_output("[1 FAILED] %s:%d: " fmt "\r\n", __FILE__, __LINE__, ##__VA_ARGS__);                                            \
-            system_safety_hardware_shutdown("MINI_CRITICAL_ASSERT");                                                                                 \
-            while (1)                                                                                                                                \
-            {                                                                                                                                        \
-                ;                                                                                                                                    \
-            }                                                                                                                                        \
-        }                                                                                                                                            \
-    } while (0)
+#define MINI_CRITICAL_ASSERT(cond, fmt, ...)                                               \
+	do {                                                                               \
+		if (!(cond)) {                                                             \
+			mini_log_default_output("[1 FAILED] %s:%d: " fmt "\r\n", __FILE__, \
+						__LINE__, ##__VA_ARGS__);                  \
+			system_safety_hardware_shutdown("MINI_CRITICAL_ASSERT");           \
+			while (1) {                                                        \
+				;                                                          \
+			}                                                                  \
+		}                                                                          \
+	} while (0)
 
 #endif /* MINI_PANIC_H */

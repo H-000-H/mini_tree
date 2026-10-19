@@ -8,8 +8,7 @@
 #ifndef PPPIF_H
 #define PPPIF_H
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /**
  * @brief PPP 拨号初始化 (绑定 4G 模组串口, 建立 PPPoS 链路)
@@ -20,7 +19,8 @@ extern "C"
  * @return 成功返回 0 (MINI_OK), 失败返回负值错误码
  * @note 裸机 (NO_SYS=1) 下初始化后需周期调用 pppif_poll() 驱动状态机。
  */
-mt_err_t pppif_init(const char* modem_dev_name, const char* apn, const char* user, const char* pass);
+mt_err_t pppif_init(const char *modem_dev_name, const char *apn, const char *user,
+		    const char *pass);
 
 /**
  * @brief PPP 数据态轮询

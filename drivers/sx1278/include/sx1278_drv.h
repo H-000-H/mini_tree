@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define SX1278_CMD_BASE MINI_MAGIC(SX1278)
@@ -29,10 +28,9 @@ extern "C"
 /** 命令总数 */
 #define SX1278_CMD_COUNT 4
 /** SEND: data=TX；RECV: data=RX 缓冲（可写） */
-struct sx1278_payload
-{
-    uint8_t* data; /**< 载荷缓冲 */
-    size_t   len;  /**< 载荷长度 */
+struct sx1278_payload {
+	uint8_t *data; /**< 载荷缓冲 */
+	size_t	 len;  /**< 载荷长度 */
 };
 #ifdef __cplusplus
 }

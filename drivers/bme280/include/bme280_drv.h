@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define BME280_CMD_BASE MINI_MAGIC(BME280)
@@ -24,11 +23,10 @@ extern "C"
 #define BME280_CMD_COUNT 1
 
 /** @brief BME280 环境采样结果 */
-struct bme280_env
-{
-    int16_t  temp_c_x100;   /**< 温度，摄氏度 ×100 */
-    uint16_t humidity_x100; /**< 相对湿度 ×100（0..10000） */
-    uint32_t pressure;      /**< 气压，Pa */
+struct bme280_env {
+	int16_t	 temp_c_x100;	/**< 温度，摄氏度 ×100 */
+	uint16_t humidity_x100; /**< 相对湿度 ×100（0..10000） */
+	uint32_t pressure;	/**< 气压，Pa */
 };
 #ifdef __cplusplus
 }

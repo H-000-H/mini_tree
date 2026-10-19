@@ -14,8 +14,7 @@
 #include "display_drv.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /* probe/remove 均为驱动内部 static，无需对外声明 */

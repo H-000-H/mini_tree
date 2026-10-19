@@ -17,8 +17,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -27,31 +26,29 @@ extern "C"
 #define VIRTUAL_IRQ_BLOCK_SIZE 8U /**<可以改但是必须 2 的 x 次方 */
 
 /**< 虚拟中断块表 */
-#define VIRTUAL_IRQ_BLOCK_TABLE(X)                                                                                                                   \
-    X(system)                                                                                                                                        \
-    X(tim)                                                                                                                                           \
-    X(gpio)                                                                                                                                          \
-    X(adc)                                                                                                                                           \
-    X(uart)                                                                                                                                          \
-    X(spi)                                                                                                                                           \
-    X(i2c)                                                                                                                                           \
-    X(i2s)                                                                                                                                           \
-    X(user)
+#define VIRTUAL_IRQ_BLOCK_TABLE(X) \
+	X(system)                  \
+	X(tim)                     \
+	X(gpio)                    \
+	X(adc)                     \
+	X(uart)                    \
+	X(spi)                     \
+	X(i2c)                     \
+	X(i2s)                     \
+	X(user)
 
 /**< 阶段一：自动生成索引序号 */
 #define BLOCK_INDEX_ENUM(name) VIRTUAL_BLOCK_IDX_##name,
-enum
-{
-    VIRTUAL_IRQ_BLOCK_TABLE(BLOCK_INDEX_ENUM) VIRTUAL_BLOCK_COUNT
-};
+enum { VIRTUAL_IRQ_BLOCK_TABLE(BLOCK_INDEX_ENUM) VIRTUAL_BLOCK_COUNT };
 #undef BLOCK_INDEX_ENUM
 
 /**< 阶段二：生成基地址枚举 */
-#define VIRTUAL_IRQ_BLOCK_ENUM(name) VIRTUAL_IRQ_##name = (uint32_t)(VIRTUAL_BLOCK_IDX_##name * VIRTUAL_IRQ_BLOCK_SIZE),
+#define VIRTUAL_IRQ_BLOCK_ENUM(name) \
+	VIRTUAL_IRQ_##name = (uint32_t)(VIRTUAL_BLOCK_IDX_##name * VIRTUAL_IRQ_BLOCK_SIZE),
 
-typedef enum
-{
-    VIRTUAL_IRQ_BLOCK_TABLE(VIRTUAL_IRQ_BLOCK_ENUM) VIRTUAL_IRQ_MAX_BASE = (uint32_t)(VIRTUAL_BLOCK_COUNT * VIRTUAL_IRQ_BLOCK_SIZE)
+typedef enum {
+	VIRTUAL_IRQ_BLOCK_TABLE(VIRTUAL_IRQ_BLOCK_ENUM) VIRTUAL_IRQ_MAX_BASE =
+		(uint32_t)(VIRTUAL_BLOCK_COUNT * VIRTUAL_IRQ_BLOCK_SIZE)
 } virtual_irq_base_t;
 #undef VIRTUAL_IRQ_BLOCK_ENUM
 
@@ -60,14 +57,14 @@ typedef enum
 #define VIRTUAL_IRQ_BLOCK(x) (VIRTUAL_IRQ_BLOCK_##x)
 
 /**< 上半部回调类型 — 返回非零表示需要 submit 下半部 (MINI_IRQ_ENTRY_*, 不是错误码) */
-typedef int (*interrupt_top_half_t)(void* arg, uint16_t irq_num);
+typedef int (*interrupt_top_half_t)(void *arg, uint16_t irq_num);
 
 /**< 下半部工作函数类型 */
-typedef void (*bottom_half_fn_t)(void* arg);
+typedef void (*bottom_half_fn_t)(void *arg);
 
-extern interrupt_top_half_t     interrupt_virtual_top_half[VIRTUAL_IRQ_MAX_BASE];
-extern struct bottom_half_work* interrupt_virtual_bottom_half_work[VIRTUAL_IRQ_MAX_BASE];
-extern void*                    interrupt_virtual_arg[VIRTUAL_IRQ_MAX_BASE];
+extern interrupt_top_half_t	interrupt_virtual_top_half[VIRTUAL_IRQ_MAX_BASE];
+extern struct bottom_half_work *interrupt_virtual_bottom_half_work[VIRTUAL_IRQ_MAX_BASE];
+extern void		       *interrupt_virtual_arg[VIRTUAL_IRQ_MAX_BASE];
 
 /**< ADC DMA 下半部全局工作项 (fn/arg 由 hal_adc.c 在初始化时绑定) */
 extern struct bottom_half_work g_adc_dma_bottom_half_work;
@@ -90,59 +87,59 @@ extern struct bottom_half_work g_i2s_bottom_half_work;
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_adc_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_adc_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief I2S VIRQ 上半部钩子 (板级以强符号覆盖)
  * @param[in] arg 中断上下文参数
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_i2s_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_i2s_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief SPI VIRQ 上半部钩子 (板级以强符号覆盖)
  * @param[in] arg 中断上下文参数
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_spi_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_spi_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief CAN VIRQ 上半部钩子 (板级以强符号覆盖)
  * @param[in] arg 中断上下文参数
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_can_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_can_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief DAC VIRQ 上半部钩子 (板级以强符号覆盖)
  * @param[in] arg 中断上下文参数
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_dac_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_dac_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief TIM VIRQ 上半部钩子 (板级以强符号覆盖)
  * @param[in] arg 中断上下文参数
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_tim_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_tim_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief UART VIRQ 上半部钩子 (板级以强符号覆盖)
  * @param[in] arg 中断上下文参数
  * @param[in] irq_num 虚拟中断号
  * @return MINI_IRQ_ENTRY_BOTTOM(1)=需 submit 下半部; MINI_IRQ_ENTRY_NOBOTTOM(0)=不需要
  */
-int hal_virtual_uart_irq_callback(void* arg, uint16_t irq_num);
+int hal_virtual_uart_irq_callback(void *arg, uint16_t irq_num);
 /**
  * @brief ADC DMA 下半部处理函数 (hal_adc.c 初始化时绑定到 g_adc_dma_bottom_half_work)
  * @param[in] arg 下半部参数
  */
-void hal_adc_dma_bottom_half_handler(void* arg);
+void hal_adc_dma_bottom_half_handler(void *arg);
 /**
  * @brief I2S DMA 下半部处理函数 (板级 hal_i2s 初始化时绑定到 g_i2s_bottom_half_work)
  * @param[in] arg 下半部参数
  */
-void hal_i2s_dma_bottom_half_handler(void* arg);
+void hal_i2s_dma_bottom_half_handler(void *arg);
 
 /* -------------------------------------------------------------------------- */
 /*                              下半部配置参数 */
@@ -176,25 +173,32 @@ void hal_i2s_dma_bottom_half_handler(void* arg);
  * @brief 下半部工作项
  * @note  pending/executing/rerun 三原子位实现合并与补跑, 执行期间再触发不丢失
  */
-struct bottom_half_work
-{
-    bottom_half_fn_t fn;        /**< 下半部处理函数 */
-    void*            arg;       /**< 处理函数参数 */
-    MINI_ATOMIC_BOOL pending;   /**< 已在队列或正在执行 */
-    MINI_ATOMIC_BOOL executing; /**< run_pending 内 fn() 执行中 (仅消费者写) */
-    MINI_ATOMIC_BOOL rerun;     /**< fn() 执行期间再次 trigger, run_pending 结束后补跑 */
+struct bottom_half_work {
+	bottom_half_fn_t fn;	    /**< 下半部处理函数 */
+	void		*arg;	    /**< 处理函数参数 */
+	MINI_ATOMIC_BOOL pending;   /**< 已在队列或正在执行 */
+	MINI_ATOMIC_BOOL executing; /**< run_pending 内 fn() 执行中 (仅消费者写) */
+	MINI_ATOMIC_BOOL rerun;	    /**< fn() 执行期间再次 trigger, run_pending 结束后补跑 */
 };
 
-#define BOTTOM_HALF_WORK_INIT(work_fn, work_arg)                                                                                                     \
-    {.fn = (work_fn), .arg = (work_arg), .pending = MINI_ATOMIC_INIT(false), .executing = MINI_ATOMIC_INIT(false), .rerun = MINI_ATOMIC_INIT(false)}
+#define BOTTOM_HALF_WORK_INIT(work_fn, work_arg) \
+	{ .fn	     = (work_fn),                \
+	  .arg	     = (work_arg),               \
+	  .pending   = MINI_ATOMIC_INIT(false),  \
+	  .executing = MINI_ATOMIC_INIT(false),  \
+	  .rerun     = MINI_ATOMIC_INIT(false) }
 
-MINI_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) && ((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U),
-                   "BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
+MINI_STATIC_ASSERT((BOTTOM_HALF_QUEUE_DEPTH >= 2U) &&
+			   ((BOTTOM_HALF_QUEUE_DEPTH & (BOTTOM_HALF_QUEUE_DEPTH - 1U)) == 0U),
+		   "BOTTOM_HALF_QUEUE_DEPTH must be a power of two >= 2");
 
 /**
  * @brief 判断当前是否在中断上下文
  */
-MINI_STATIC_INLINE bool bottom_half_in_isr(void) { return hal_is_in_isr() != 0; }
+MINI_STATIC_INLINE bool bottom_half_in_isr(void)
+{
+	return hal_is_in_isr() != 0;
+}
 
 /**
  * @brief 补跑入队 (内部使用)
@@ -202,18 +206,19 @@ MINI_STATIC_INLINE bool bottom_half_in_isr(void) { return hal_is_in_isr() != 0; 
  * @param[in] work  工作项指针
  * @return MINI_OK 成功; MINI_ERR_NOSPC 队列满
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_submit_rerun(struct fifo_spsc* fifo, struct bottom_half_work* work)
+MINI_STATIC_INLINE mt_err_t bottom_half_submit_rerun(struct fifo_spsc	     *fifo,
+						     struct bottom_half_work *work)
 {
-    bool expected = false;
+	bool expected = false;
 
-    if (!MINI_ATOMIC_CAS(&work->pending, &expected, true, MINI_ACQ_REL, MINI_RELAXED))
-        return MINI_OK;
+	if (!MINI_ATOMIC_CAS(&work->pending, &expected, true, MINI_ACQ_REL, MINI_RELAXED))
+		return MINI_OK;
 
-    if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) == BUFF_OK)
-        return MINI_OK;
+	if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) == BUFF_OK)
+		return MINI_OK;
 
-    MINI_ATOMIC_STORE(&work->pending, false, MINI_RELEASE);
-    return MINI_ERR_NOSPC;
+	MINI_ATOMIC_STORE(&work->pending, false, MINI_RELEASE);
+	return MINI_ERR_NOSPC;
 }
 
 /**
@@ -224,30 +229,29 @@ MINI_STATIC_INLINE mt_err_t bottom_half_submit_rerun(struct fifo_spsc* fifo, str
  * 队列满 (work 被丢弃)
  * @note   本函数不执行 work->fn(); 调用方 return-from-ISR 后由消费者 run_pending
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_submit_from_isr(struct fifo_spsc* fifo, struct bottom_half_work* work)
+MINI_STATIC_INLINE mt_err_t bottom_half_submit_from_isr(struct fifo_spsc	*fifo,
+							struct bottom_half_work *work)
 {
-    bool expected = false;
+	bool expected = false;
 
-    if (!fifo || !work || !work->fn)
-        return MINI_ERR_INVAL;
+	if (!fifo || !work || !work->fn)
+		return MINI_ERR_INVAL;
 
-    if (!MINI_ATOMIC_CAS(&work->pending, &expected, true, MINI_ACQ_REL, MINI_RELAXED))
-    {
-        if (MINI_ATOMIC_LOAD(&work->executing, MINI_ACQUIRE))
-            MINI_ATOMIC_STORE(&work->rerun, true, MINI_RELEASE);
-        return MINI_OK;
-    }
+	if (!MINI_ATOMIC_CAS(&work->pending, &expected, true, MINI_ACQ_REL, MINI_RELAXED)) {
+		if (MINI_ATOMIC_LOAD(&work->executing, MINI_ACQUIRE))
+			MINI_ATOMIC_STORE(&work->rerun, true, MINI_RELEASE);
+		return MINI_OK;
+	}
 
-    if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) != BUFF_OK)
-    {
-        MINI_ATOMIC_STORE(&work->pending, false, MINI_RELEASE);
-        return MINI_ERR_NOSPC;
-    }
-    return MINI_OK;
+	if (fifo_write_data(fifo, (fifo_data_type)(uintptr_t)work) != BUFF_OK) {
+		MINI_ATOMIC_STORE(&work->pending, false, MINI_RELEASE);
+		return MINI_ERR_NOSPC;
+	}
+	return MINI_OK;
 }
 
 /**< 非 inline 实现, 在 interrupt.c 中定义 */
-void bottom_half_run_pending(struct fifo_spsc* fifo);
+void bottom_half_run_pending(struct fifo_spsc *fifo);
 
 /* -------------------------------------------------------------------------- */
 /*                              下半部裸机轮询适配 */
@@ -257,23 +261,22 @@ void bottom_half_run_pending(struct fifo_spsc* fifo);
  * @note  在 fifo_spsc 上叠加 pending_drain 标志, ISR 置位、主循环轮询
  *        bottom_half_poller_run() 先清标志再 run_pending, 期间新 ISR 重新置位, 防丢唤醒
  */
-struct bottom_half_poller
-{
-    struct fifo_spsc fifo;                          /**< 工作项 FIFO */
-    fifo_data_type   ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
-    volatile bool    pending_drain;                 /**< ISR 写, 主循环读 */
+struct bottom_half_poller {
+	struct fifo_spsc fifo;				/**< 工作项 FIFO */
+	fifo_data_type	 ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
+	volatile bool	 pending_drain;			/**< ISR 写, 主循环读 */
 };
 
 /**
  * @brief 初始化裸机下半部轮询器
  * @param[in] poller 轮询器指针
  */
-MINI_STATIC_INLINE void bottom_half_poller_init(struct bottom_half_poller* poller)
+MINI_STATIC_INLINE void bottom_half_poller_init(struct bottom_half_poller *poller)
 {
-    if (!poller)
-        return;
-    MINI_IGNORE_RESULT(fifo_init(&poller->fifo, poller->ring, BOTTOM_HALF_QUEUE_DEPTH));
-    poller->pending_drain = false;
+	if (!poller)
+		return;
+	MINI_IGNORE_RESULT(fifo_init(&poller->fifo, poller->ring, BOTTOM_HALF_QUEUE_DEPTH));
+	poller->pending_drain = false;
 }
 
 /**
@@ -283,19 +286,20 @@ MINI_STATIC_INLINE void bottom_half_poller_init(struct bottom_half_poller* polle
  * @note   return-from-ISR 后, 主循环 bottom_half_poller_run() 才 run_pending
  * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_poller_submit(struct bottom_half_poller* poller, struct bottom_half_work* work)
+MINI_STATIC_INLINE mt_err_t bottom_half_poller_submit(struct bottom_half_poller *poller,
+						      struct bottom_half_work	*work)
 {
-    if (!poller)
-        return MINI_ERR_INVAL;
+	if (!poller)
+		return MINI_ERR_INVAL;
 
-    int ret = bottom_half_submit_from_isr(&poller->fifo, work);
-    if (ret == MINI_OK)
-        poller->pending_drain = true;
-    return ret;
+	int ret = bottom_half_submit_from_isr(&poller->fifo, work);
+	if (ret == MINI_OK)
+		poller->pending_drain = true;
+	return ret;
 }
 
 /**< 非 inline 实现, 在 interrupt.c 中定义 */
-void bottom_half_poller_run(struct bottom_half_poller* poller);
+void bottom_half_poller_run(struct bottom_half_poller *poller);
 
 /* -------------------------------------------------------------------------- */
 /*                              下半部 RTOS 任务适配 (可选) */
@@ -305,11 +309,10 @@ void bottom_half_poller_run(struct bottom_half_poller* poller);
  * @brief 下半部任务适配结构 (RTOS 用)
  * @note  在 fifo_spsc 上叠加二值信号量, ISR 入队后 post 唤醒专用下半部任务
  */
-struct bottom_half_task
-{
-    struct fifo_spsc fifo;                          /**< 工作项 FIFO */
-    fifo_data_type   ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
-    mini_sem_t* sem;                                 /**< 二值信号量 (唤醒下半部任务) */
+struct bottom_half_task {
+	struct fifo_spsc fifo;				/**< 工作项 FIFO */
+	fifo_data_type	 ring[BOTTOM_HALF_QUEUE_DEPTH]; /**< FIFO 环形缓冲 */
+	mini_sem_t	*sem;				/**< 二值信号量 (唤醒下半部任务) */
 };
 
 /**
@@ -318,14 +321,14 @@ struct bottom_half_task
  * @param[in] sem 二值信号量 (ISR 入队后用于唤醒)
  * @return MINI_OK 成功; MINI_ERR_INVAL 参数非法或 FIFO 初始化失败
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_task_init(struct bottom_half_task* task, mini_sem_t* sem)
+MINI_STATIC_INLINE mt_err_t bottom_half_task_init(struct bottom_half_task *task, mini_sem_t *sem)
 {
-    if (!task || !sem)
-        return MINI_ERR_INVAL;
-    if (fifo_init(&task->fifo, task->ring, BOTTOM_HALF_QUEUE_DEPTH) != BUFF_OK)
-        return MINI_ERR_INVAL;
-    task->sem = sem;
-    return MINI_OK;
+	if (!task || !sem)
+		return MINI_ERR_INVAL;
+	if (fifo_init(&task->fifo, task->ring, BOTTOM_HALF_QUEUE_DEPTH) != BUFF_OK)
+		return MINI_ERR_INVAL;
+	task->sem = sem;
+	return MINI_OK;
 }
 
 /**
@@ -335,19 +338,21 @@ MINI_STATIC_INLINE mt_err_t bottom_half_task_init(struct bottom_half_task* task,
  * @param[out] px_yield_required ISR 出口是否需要 yield
  * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_task_submit_from_isr(struct bottom_half_task* task, struct bottom_half_work* work, bool* px_yield_required)
+MINI_STATIC_INLINE mt_err_t bottom_half_task_submit_from_isr(struct bottom_half_task *task,
+							     struct bottom_half_work *work,
+							     bool *px_yield_required)
 {
-    if (!task || !task->sem)
-        return MINI_ERR_INVAL;
+	if (!task || !task->sem)
+		return MINI_ERR_INVAL;
 
-    int ret = bottom_half_submit_from_isr(&task->fifo, work);
-    if (ret != MINI_OK)
-        return ret;
+	int ret = bottom_half_submit_from_isr(&task->fifo, work);
+	if (ret != MINI_OK)
+		return ret;
 
-    /* mini_sem_post_from_isr 带 MINI_WARN_UNUSED_RESULT: GCC 14+ 起 (void) 转换
-     * 已不能抑制 -Wunused-result (GCC 15 下直接 -Werror), 须用 MINI_IGNORE_RESULT */
-    MINI_IGNORE_RESULT(mini_sem_post_from_isr(task->sem, px_yield_required));
-    return MINI_OK;
+	/* mini_sem_post_from_isr 带 MINI_WARN_UNUSED_RESULT: GCC 14+ 起 (void) 转换
+	 * 已不能抑制 -Wunused-result (GCC 15 下直接 -Werror), 须用 MINI_IGNORE_RESULT */
+	MINI_IGNORE_RESULT(mini_sem_post_from_isr(task->sem, px_yield_required));
+	return MINI_OK;
 }
 
 /**
@@ -357,21 +362,22 @@ MINI_STATIC_INLINE mt_err_t bottom_half_task_submit_from_isr(struct bottom_half_
  * @return MINI_OK 成功入队; MINI_ERR_INVAL 入参非法; MINI_ERR_ISR 在 ISR 中调用; MINI_ERR_NOSPC
  * 队列满
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_task_submit(struct bottom_half_task* task, struct bottom_half_work* work)
+MINI_STATIC_INLINE mt_err_t bottom_half_task_submit(struct bottom_half_task *task,
+						    struct bottom_half_work *work)
 {
-    if (!task || !task->sem)
-        return MINI_ERR_INVAL;
-    if (bottom_half_in_isr())
-        return MINI_ERR_ISR;
+	if (!task || !task->sem)
+		return MINI_ERR_INVAL;
+	if (bottom_half_in_isr())
+		return MINI_ERR_ISR;
 
-    int ret = bottom_half_submit_from_isr(&task->fifo, work);
-    if (ret != MINI_OK)
-        return ret;
+	int ret = bottom_half_submit_from_isr(&task->fifo, work);
+	if (ret != MINI_OK)
+		return ret;
 
-    /* mini_sem_post 带 MINI_WARN_UNUSED_RESULT: GCC 14+ 起 (void) 转换已不能抑制
-     * -Wunused-result (GCC 15 下直接 -Werror), 须用 MINI_IGNORE_RESULT */
-    MINI_IGNORE_RESULT(mini_sem_post(task->sem));
-    return MINI_OK;
+	/* mini_sem_post 带 MINI_WARN_UNUSED_RESULT: GCC 14+ 起 (void) 转换已不能抑制
+	 * -Wunused-result (GCC 15 下直接 -Werror), 须用 MINI_IGNORE_RESULT */
+	MINI_IGNORE_RESULT(mini_sem_post(task->sem));
+	return MINI_OK;
 }
 
 /**
@@ -379,18 +385,17 @@ MINI_STATIC_INLINE mt_err_t bottom_half_task_submit(struct bottom_half_task* tas
  * @param[in] arg 指向 struct bottom_half_task 的指针
  * @note  sem wait 返回时已脱离中断; 随后 run_pending 执行下半部
  */
-MINI_STATIC_INLINE void bottom_half_task_entry(void* arg)
+MINI_STATIC_INLINE void bottom_half_task_entry(void *arg)
 {
-    struct bottom_half_task* task = (struct bottom_half_task*)arg;
-    if (!task || !task->sem)
-        return;
+	struct bottom_half_task *task = (struct bottom_half_task *)arg;
+	if (!task || !task->sem)
+		return;
 
-    for (;;)
-    {
-        if (mini_sem_wait(task->sem, MINI_WAIT_FOREVER) != MINI_OK)
-            continue;
-        bottom_half_run_pending(&task->fifo);
-    }
+	for (;;) {
+		if (mini_sem_wait(task->sem, MINI_WAIT_FOREVER) != MINI_OK)
+			continue;
+		bottom_half_run_pending(&task->fifo);
+	}
 }
 
 /**
@@ -401,13 +406,15 @@ MINI_STATIC_INLINE void bottom_half_task_entry(void* arg)
  * @param[in] priority 优先级
  * @return 成功返回 MINI_OK, 创建失败返回负数错误码
  */
-MINI_STATIC_INLINE mt_err_t bottom_half_task_start(struct bottom_half_task* task, const char* name, uint32_t stack_size, uint32_t priority)
+MINI_STATIC_INLINE mt_err_t bottom_half_task_start(struct bottom_half_task *task, const char *name,
+						   uint32_t stack_size, uint32_t priority)
 {
-    if (!task)
-        return MINI_ERR_INVAL;
-    mini_task_handle_t handle = NULL;
-    return mini_task_create_handle(name ? name : BOTTOM_HALF_TASK_NAME, stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE, priority,
-                                   bottom_half_task_entry, task, 0, &handle);
+	if (!task)
+		return MINI_ERR_INVAL;
+	mini_task_handle_t handle = NULL;
+	return mini_task_create_handle(name ? name : BOTTOM_HALF_TASK_NAME,
+				       stack_size ? stack_size : BOTTOM_HALF_TASK_STACK_SIZE,
+				       priority, bottom_half_task_entry, task, 0, &handle);
 }
 #endif /* CONFIG_OS_BARE */
 
@@ -422,7 +429,8 @@ MINI_STATIC_INLINE mt_err_t bottom_half_task_start(struct bottom_half_task* task
  * @param[in] arg       传递给上半部回调和下半部 work 的参数 (ISR 调 dispatch 时从表读取)
  * @note  top_half 返回非零表示需要 submit 下半部; 返回零表示不需要
  */
-void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half, struct bottom_half_work* work, void* arg);
+void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half,
+				struct bottom_half_work *work, void *arg);
 
 /**
  * @brief 虚拟中断调度入口 (ISR 内调用)
@@ -460,7 +468,7 @@ void interrupt_hw_disable(int irqn);
  * @param[in] work 工作项指针
  * @return MINI_OK 成功; MINI_ERR_INVAL 入参非法; MINI_ERR_NOSPC 队列满
  */
-mt_err_t interrupt_bottom_half_submit(struct bottom_half_work* work);
+mt_err_t interrupt_bottom_half_submit(struct bottom_half_work *work);
 
 /**
  * @brief 主循环执行下半部队列

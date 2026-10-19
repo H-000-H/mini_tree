@@ -14,8 +14,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*持久化存储 API*/
@@ -30,7 +29,7 @@ mt_err_t hal_storage_init(void);
  * @param[out] flag 回传当前有效槽位标记
  * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
  */
-mt_err_t hal_storage_read_flag(uint8_t* flag);
+mt_err_t hal_storage_read_flag(uint8_t *flag);
 /**
  * @brief 写入槽位元数据标记
  * @param[in] flag 待写入的有效槽位标记
@@ -44,7 +43,7 @@ mt_err_t hal_storage_write_flag(uint8_t flag);
  * @param[in,out] len 入参=缓冲区容量, 出参=实际读取长度
  * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
  */
-mt_err_t hal_storage_read_blob(uint8_t slot, uint8_t* buf, size_t* len);
+mt_err_t hal_storage_read_blob(uint8_t slot, uint8_t *buf, size_t *len);
 /**
  * @brief 写入 blob 数据到指定槽位
  * @param[in] slot 槽位号 (0=A 区, 1=B 区)
@@ -52,7 +51,7 @@ mt_err_t hal_storage_read_blob(uint8_t slot, uint8_t* buf, size_t* len);
  * @param[in] len 数据长度
  * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
  */
-mt_err_t hal_storage_write_blob(uint8_t slot, const uint8_t* buf, size_t len);
+mt_err_t hal_storage_write_blob(uint8_t slot, const uint8_t *buf, size_t len);
 /**
  * @brief 全擦除存储介质
  * @return MINI_OK 成功; 失败返回 MINI_ERR_* 负错误码
@@ -67,22 +66,19 @@ mt_err_t hal_storage_erase_all(void);
 #define STORAGE_IOC_WRITE_PROTECT 0x22 /* 开启/关闭硬件写保护 */
 
 /** @brief 存储介质几何参数 (扇区大小 + 总数) */
-struct storage_geometry
-{
-    uint32_t sector_size;  /**< 扇区大小 (字节, 如 4096) */
-    uint32_t sector_count; /**< 总扇区数 */
+struct storage_geometry {
+	uint32_t sector_size;  /**< 扇区大小 (字节, 如 4096) */
+	uint32_t sector_count; /**< 总扇区数 */
 };
 
 /** @brief 扇区擦除参数 (ioctl ERASE_SECTOR) */
-struct storage_erase_arg
-{
-    uint32_t sector; /**< 目标扇区号 */
+struct storage_erase_arg {
+	uint32_t sector; /**< 目标扇区号 */
 };
 
 /** @brief 写保护开关参数 (ioctl WRITE_PROTECT) */
-struct storage_wp_arg
-{
-    bool enable; /**< true = 开启写保护, false = 关闭 */
+struct storage_wp_arg {
+	bool enable; /**< true = 开启写保护, false = 关闭 */
 };
 /* -------------------------------------------------------------------------- */
 

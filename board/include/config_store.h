@@ -14,8 +14,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -24,7 +23,7 @@ extern "C"
  * @param[in] size 缓冲区字节数
  * @note 必须在 config_store_init() 之前调用
  */
-void config_store_bind_source(const char* json_buffer, size_t size);
+void config_store_bind_source(const char *json_buffer, size_t size);
 
 /**
  * @brief 初始化配置存储 (解析绑定的 JSON 工厂默认值, 装载当前配置)
@@ -38,28 +37,28 @@ mt_err_t config_store_init(void);
  * @param[in] default_value 缺省值
  * @return 配置值
  */
-bool config_store_get_bool(const char* key, bool default_value);
+bool config_store_get_bool(const char *key, bool default_value);
 /**
  * @brief 读取 int 配置 (key 不存在时返回默认值)
  * @param[in] key 配置键
  * @param[in] default_value 缺省值
  * @return 配置值
  */
-int config_store_get_int(const char* key, int default_value);
+int config_store_get_int(const char *key, int default_value);
 /**
  * @brief 读取 float 配置 (key 不存在时返回默认值)
  * @param[in] key 配置键
  * @param[in] default_value 缺省值
  * @return 配置值
  */
-float config_store_get_float(const char* key, float default_value);
+float config_store_get_float(const char *key, float default_value);
 /**
  * @brief 读取 string 配置 (key 不存在时返回默认值)
  * @param[in] key 配置键
  * @param[in] default_value 缺省值
  * @return 配置字符串指针; 键不存在且无默认值时返回 NULL
  */
-const char* config_store_get_string(const char* key, const char* default_value);
+const char *config_store_get_string(const char *key, const char *default_value);
 
 /**
  * @brief 写入 bool 配置 (RAM 中生效, 需 commit 持久化)
@@ -67,28 +66,28 @@ const char* config_store_get_string(const char* key, const char* default_value);
  * @param[in] value 配置值
  * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
  */
-mt_err_t config_store_set_bool(const char* key, bool value);
+mt_err_t config_store_set_bool(const char *key, bool value);
 /**
  * @brief 写入 int 配置
  * @param[in] key 配置键
  * @param[in] value 配置值
  * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
  */
-mt_err_t config_store_set_int(const char* key, int value);
+mt_err_t config_store_set_int(const char *key, int value);
 /**
  * @brief 写入 float 配置
  * @param[in] key 配置键
  * @param[in] value 配置值
  * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
  */
-mt_err_t config_store_set_float(const char* key, float value);
+mt_err_t config_store_set_float(const char *key, float value);
 /**
  * @brief 写入 string 配置
  * @param[in] key 配置键
  * @param[in] value 配置值 (内部拷贝)
  * @return MINI_OK 成功; MINI_ERR_INVAL 键无效
  */
-mt_err_t config_store_set_string(const char* key, const char* value);
+mt_err_t config_store_set_string(const char *key, const char *value);
 
 /**
  * @brief 将 RAM 中配置持久化到底层存储
@@ -110,7 +109,7 @@ int config_store_health(void);
 
 /* -------------------------------------------------------------------------- */
 /* 持久化后端回调: 不注册则 commit() 走默认 hal_storage 路径 */
-typedef int (*config_store_write_hook_t)(const uint8_t* data, size_t len);
+typedef int (*config_store_write_hook_t)(const uint8_t *data, size_t len);
 /**
  * @brief 注册持久化写入回调 (替代默认 hal_storage 路径)
  * @param[in] hook 写入回调 (可为 NULL 恢复默认)

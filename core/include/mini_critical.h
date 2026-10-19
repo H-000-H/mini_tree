@@ -15,8 +15,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -34,20 +33,20 @@ typedef uint32_t mini_irq_state_t;
  */
 MINI_STATIC_INLINE mini_irq_state_t mini_critical_enter(void)
 {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
-    mini_irq_state_t primask;
-    __asm__ volatile("mrs %0, primask\ncpsid i" : "=r"(primask) : : "memory");
-    return primask;
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
+	mini_irq_state_t primask;
+	__asm__ volatile("mrs %0, primask\ncpsid i" : "=r"(primask) : : "memory");
+	return primask;
 #elif defined(__riscv)
-    uintptr_t mstatus;
-    __asm__ volatile("csrr %0, mstatus" : "=r"(mstatus));
-    __asm__ volatile("csrci mstatus, 8" ::: "memory");
-    return (mini_irq_state_t)mstatus;
+	uintptr_t mstatus;
+	__asm__ volatile("csrr %0, mstatus" : "=r"(mstatus));
+	__asm__ volatile("csrci mstatus, 8" ::: "memory");
+	return (mini_irq_state_t)mstatus;
 #else
-    /* 未支持的目标 (含 host / x86 构建): 退化为空临界区, 由调用方的
-     * 单线程运行假设保证正确性。 */
-    return 0U;
+	/* 未支持的目标 (含 host / x86 构建): 退化为空临界区, 由调用方的
+	 * 单线程运行假设保证正确性。 */
+	return 0U;
 #endif
 }
 
@@ -58,14 +57,14 @@ MINI_STATIC_INLINE mini_irq_state_t mini_critical_enter(void)
  */
 MINI_STATIC_INLINE void mini_critical_exit(mini_irq_state_t state)
 {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
-    __asm__ volatile("msr primask, %0" ::"r"(state) : "memory");
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
+	__asm__ volatile("msr primask, %0" ::"r"(state) : "memory");
 #elif defined(__riscv)
-    if ((state & 8U) != 0U)
-        __asm__ volatile("csrsi mstatus, 8" ::: "memory");
+	if ((state & 8U) != 0U)
+		__asm__ volatile("csrsi mstatus, 8" ::: "memory");
 #else
-    MINI_UNUSED_PARAM(state);
+	MINI_UNUSED_PARAM(state);
 #endif
 }
 
@@ -77,13 +76,13 @@ MINI_STATIC_INLINE void mini_critical_exit(mini_irq_state_t state)
  */
 MINI_STATIC_INLINE void mini_irq_disable(void)
 {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
-    __asm__ volatile("cpsid i" ::: "memory");
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
+	__asm__ volatile("cpsid i" ::: "memory");
 #elif defined(__riscv)
-    __asm__ volatile("csrci mstatus, 8" ::: "memory");
+	__asm__ volatile("csrci mstatus, 8" ::: "memory");
 #else
-    /* 未支持的目标: 无操作 (见 mini_critical_enter 的同款说明) */
+	/* 未支持的目标: 无操作 (见 mini_critical_enter 的同款说明) */
 #endif
 }
 
@@ -99,13 +98,13 @@ MINI_STATIC_INLINE void mini_irq_disable(void)
  */
 MINI_STATIC_INLINE void mini_irq_enable(void)
 {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
-    __asm__ volatile("cpsie i" ::: "memory");
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M)
+	__asm__ volatile("cpsie i" ::: "memory");
 #elif defined(__riscv)
-    __asm__ volatile("csrsi mstatus, 8" ::: "memory");
+	__asm__ volatile("csrsi mstatus, 8" ::: "memory");
 #else
-    /* 未支持的目标: 无操作 */
+	/* 未支持的目标: 无操作 */
 #endif
 }
 

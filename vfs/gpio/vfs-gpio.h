@@ -17,8 +17,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define GPIO_CMD_BASE MINI_MAGIC(GPIO)
@@ -27,10 +26,9 @@ extern "C"
 #define GPIO_CMD_GET_LEVEL GPIO_CMD_BASE + 0x03
 #define GPIO_CMD_COUNT 3
 
-struct vfs_gpio_arg
-{
-    int             level; /**< 电平值 (0=LOW, 1=HIGH) */
-    hal_gpio_dev_t* obj;   /**< 指向 VFS priv 嵌入的 HAL 对象 */
+struct vfs_gpio_arg {
+	int		level; /**< 电平值 (0=LOW, 1=HIGH) */
+	hal_gpio_dev_t *obj;   /**< 指向 VFS priv 嵌入的 HAL 对象 */
 };
 
 /**
@@ -38,13 +36,13 @@ struct vfs_gpio_arg
  * @param[in] vfs_arg 参数包 (含 obj 与 level)
  * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
  */
-MINI_STATIC_INLINE mt_err_t vfs_gpio_set_level(struct vfs_gpio_arg* vfs_arg)
+MINI_STATIC_INLINE mt_err_t vfs_gpio_set_level(struct vfs_gpio_arg *vfs_arg)
 {
-    if (IS_ERR(vfs_arg))
-        return PTR_ERR(vfs_arg);
-    if (!vfs_arg || !vfs_arg->obj)
-        return MINI_ERR_INVAL;
-    return hal_gpio_fast_set_level(vfs_arg->obj, vfs_arg->level);
+	if (IS_ERR(vfs_arg))
+		return PTR_ERR(vfs_arg);
+	if (!vfs_arg || !vfs_arg->obj)
+		return MINI_ERR_INVAL;
+	return hal_gpio_fast_set_level(vfs_arg->obj, vfs_arg->level);
 }
 
 /**
@@ -52,13 +50,13 @@ MINI_STATIC_INLINE mt_err_t vfs_gpio_set_level(struct vfs_gpio_arg* vfs_arg)
  * @param[in] vfs_arg 参数包 (含 obj; level 回传结果)
  * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
  */
-MINI_STATIC_INLINE mt_err_t vfs_gpio_get_level(struct vfs_gpio_arg* vfs_arg)
+MINI_STATIC_INLINE mt_err_t vfs_gpio_get_level(struct vfs_gpio_arg *vfs_arg)
 {
-    if (IS_ERR(vfs_arg))
-        return PTR_ERR(vfs_arg);
-    if (!vfs_arg || !vfs_arg->obj)
-        return MINI_ERR_INVAL;
-    return hal_gpio_fast_get_level(vfs_arg->obj, &vfs_arg->level);
+	if (IS_ERR(vfs_arg))
+		return PTR_ERR(vfs_arg);
+	if (!vfs_arg || !vfs_arg->obj)
+		return MINI_ERR_INVAL;
+	return hal_gpio_fast_get_level(vfs_arg->obj, &vfs_arg->level);
 }
 
 /**
@@ -66,13 +64,13 @@ MINI_STATIC_INLINE mt_err_t vfs_gpio_get_level(struct vfs_gpio_arg* vfs_arg)
  * @param[in] vfs_arg 参数包 (含 obj)
  * @return 成功返回 MINI_OK, 参数非法返回 MINI_ERR_INVAL
  */
-MINI_STATIC_INLINE mt_err_t vfs_gpio_toggle(struct vfs_gpio_arg* vfs_arg)
+MINI_STATIC_INLINE mt_err_t vfs_gpio_toggle(struct vfs_gpio_arg *vfs_arg)
 {
-    if (IS_ERR(vfs_arg))
-        return PTR_ERR(vfs_arg);
-    if (!vfs_arg || !vfs_arg->obj)
-        return MINI_ERR_INVAL;
-    return hal_gpio_fast_toggle(vfs_arg->obj);
+	if (IS_ERR(vfs_arg))
+		return PTR_ERR(vfs_arg);
+	if (!vfs_arg || !vfs_arg->obj)
+		return MINI_ERR_INVAL;
+	return hal_gpio_fast_toggle(vfs_arg->obj);
 }
 
 #ifdef __cplusplus

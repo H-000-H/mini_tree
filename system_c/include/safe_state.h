@@ -13,8 +13,7 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /*
@@ -34,7 +33,7 @@ void safe_state_clear_bootloop(void);
  *
  * 本函数永不返回.
  */
-void enter_safe_state(const char* reason) __attribute__((noreturn));
+void enter_safe_state(const char *reason) __attribute__((noreturn));
 
 /*
  * BOD NMI 紧急标记 (掉电保护)

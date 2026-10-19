@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define AHT20_CMD_BASE MINI_MAGIC(AHT20)
@@ -24,10 +23,9 @@ extern "C"
 #define AHT20_CMD_COUNT 1
 
 /** @brief AHT20 采样结果 */
-struct aht20_sample
-{
-    int16_t  temp_c_x100; /**< 温度，摄氏度 ×100（25.5℃ → 2550） */
-    uint16_t rh_x100;     /**< 相对湿度 ×100（0..10000，60% → 6000） */
+struct aht20_sample {
+	int16_t	 temp_c_x100; /**< 温度，摄氏度 ×100（25.5℃ → 2550） */
+	uint16_t rh_x100;     /**< 相对湿度 ×100（0..10000，60% → 6000） */
 };
 #ifdef __cplusplus
 }

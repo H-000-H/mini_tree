@@ -15,8 +15,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
@@ -27,10 +26,9 @@ extern "C"
 #define SHT30_CMD_COUNT 1
 
 /** @brief SHT30 采样结果 */
-struct sht30_sample
-{
-    int16_t  temp_c_x100; /**< 摄氏度 ×100 */
-    uint16_t rh_x100;     /**< 相对湿度 ×100 (0..10000) */
+struct sht30_sample {
+	int16_t	 temp_c_x100; /**< 摄氏度 ×100 */
+	uint16_t rh_x100;     /**< 相对湿度 ×100 (0..10000) */
 };
 
 #ifdef __cplusplus

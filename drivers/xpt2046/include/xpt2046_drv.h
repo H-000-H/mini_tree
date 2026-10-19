@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define XPT2046_CMD_BASE MINI_MAGIC(XPT2046)
@@ -24,11 +23,10 @@ extern "C"
 #define XPT2046_CMD_COUNT 1
 
 /** @brief XPT2046 采样结果 */
-struct xpt2046_xy
-{
-    uint16_t pos_x;   /**< X 坐标 */
-    uint16_t pos_y;   /**< Y 坐标 */
-    int      pressed; /**< 按压状态：1=按下，0=抬起 */
+struct xpt2046_xy {
+	uint16_t pos_x;	  /**< X 坐标 */
+	uint16_t pos_y;	  /**< Y 坐标 */
+	int	 pressed; /**< 按压状态：1=按下，0=抬起 */
 };
 #ifdef __cplusplus
 }

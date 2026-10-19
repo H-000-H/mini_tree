@@ -9,8 +9,7 @@
 #define DFPLAYER_REGS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /** 帧起始字节 */

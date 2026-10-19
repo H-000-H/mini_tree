@@ -2,4 +2,10 @@
 # 不跟随 mini_tree 主工程。此处显式排除,避免:
 #   - 直接对单个文件运行 clang-format / IDE 插件时,被主工程配置重排;
 #   - 主工程后续若放开对 lib/ 的排除,也不会误格式化 mini-os。
-lib/mini-os/
+lib/
+
+# 发布产物与构建产物: 不进入版本库, 也不应被格式化
+dist/
+build/
+.venv/
+.cache/

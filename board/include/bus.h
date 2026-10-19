@@ -14,8 +14,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 struct device;
@@ -40,13 +39,13 @@ typedef uint16_t bus_type_t;
  * @brief Host 级控制器操作表 — 管理控制器生命周期与 client 挂载
  * @return 各回调成功返回 MINI_OK, 失败返回 MINI_ERR_*
  */
-struct bus_controller_ops
-{
-    mt_err_t (*init)(struct device* pdev, const void* cfg);                        /**< 初始化 host */
-    mt_err_t (*deinit)(struct device* pdev);                                       /**< 反初始化 host (返回 int, BUSY 时不销毁) */
-    int (*role)(struct device* pdev);                                         /**< 查询角色 (MASTER/SLAVE) */
-    mt_err_t (*client_register)(struct device* pdev, const void* cfg, void** out); /**< 注册 client */
-    void (*client_unregister)(struct device* pdev);                           /**< 注销 client */
+struct bus_controller_ops {
+	mt_err_t (*init)(struct device *pdev, const void *cfg); /**< 初始化 host */
+	mt_err_t (*deinit)(struct device *pdev); /**< 反初始化 host (返回 int, BUSY 时不销毁) */
+	int (*role)(struct device *pdev);	 /**< 查询角色 (MASTER/SLAVE) */
+	mt_err_t (*client_register)(struct device *pdev, const void *cfg,
+				    void **out);	/**< 注册 client */
+	void (*client_unregister)(struct device *pdev); /**< 注销 client */
 };
 /* -------------------------------------------------------------------------- */
 
@@ -56,11 +55,10 @@ struct bus_controller_ops
  * @brief 总线控制器 (host) 描述符
  * @note  每个 controller device 对应一个, 由 bus_controller_bind_full 注册
  */
-struct bus_controller
-{
-    bus_type_t                       type;     /**< 总线类型 (BUS_TYPE_SPI 等) */
-    const struct bus_controller_ops* ctlr_ops; /**< host 级 ops */
-    void*                            hw_ctx;   /**< host 私有上下文 (struct xxx_bus_host*) */
+struct bus_controller {
+	bus_type_t			 type;	   /**< 总线类型 (BUS_TYPE_SPI 等) */
+	const struct bus_controller_ops *ctlr_ops; /**< host 级 ops */
+	void				*hw_ctx;   /**< host 私有上下文 (struct xxx_bus_host*) */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -72,7 +70,9 @@ struct bus_controller
  * @param[in] hw_ctx    host 私有上下文
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_*
  */
-mt_err_t bus_controller_bind_full(struct device* pdev, bus_type_t type, const struct bus_controller_ops* ctlr_ops, void* hw_ctx) MINI_WARN_UNUSED_RESULT;
+mt_err_t bus_controller_bind_full(struct device *pdev, bus_type_t type,
+				  const struct bus_controller_ops *ctlr_ops,
+				  void				  *hw_ctx) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief 查找 device 自身绑定的 controller (传 host)
@@ -80,7 +80,8 @@ mt_err_t bus_controller_bind_full(struct device* pdev, bus_type_t type, const st
  * @param[out] out 回传 bus_controller 指针
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
  */
-mt_err_t bus_controller_get(const struct device* pdev, struct bus_controller** out) MINI_WARN_UNUSED_RESULT;
+mt_err_t bus_controller_get(const struct device	   *pdev,
+			    struct bus_controller **out) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief 查找 client 所属的 controller (通过 device parent 查找 host)
@@ -88,13 +89,14 @@ mt_err_t bus_controller_get(const struct device* pdev, struct bus_controller** o
  * @param[out] out  输出 bus_controller 指针
  * @return 成功返回 MINI_OK, 失败返回 MINI_ERR_NODEV
  */
-mt_err_t bus_controller_of(const struct device* pdev, struct bus_controller** out) MINI_WARN_UNUSED_RESULT;
+mt_err_t bus_controller_of(const struct device	  *pdev,
+			   struct bus_controller **out) MINI_WARN_UNUSED_RESULT;
 
 /**
  * @brief 解绑 controller (清空绑定, 不检查 ref_count, 调用者应先行检查)
  * @param[in] pdev controller device (host)
  */
-void bus_controller_unbind(struct device* pdev);
+void bus_controller_unbind(struct device *pdev);
 
 /* -------------------------------------------------------------------------- */
 /* Async callback bridge */
@@ -102,18 +104,17 @@ void bus_controller_unbind(struct device* pdev);
 /**
  * @brief 用户侧异步完成回调 (device* 视图, 非 HAL 句柄)
  */
-typedef void (*bus_async_user_cb_t)(struct device* pdev, const void* trans, void* userdata);
+typedef void (*bus_async_user_cb_t)(struct device *pdev, const void *trans, void *userdata);
 
 /**
  * @brief HAL→VFS 回调桥接描述符
  * @note  必须静态分配: ISR 异步触发时栈帧已销毁
  */
-struct bus_async_bridge
-{
-    struct device*      pdev;     /**< 关联设备 */
-    bus_async_user_cb_t cb;       /**< 用户回调 */
-    void*               userdata; /**< 用户私有数据 */
-    uint8_t             in_use;   /**< 槽位占用标志 */
+struct bus_async_bridge {
+	struct device	   *pdev;     /**< 关联设备 */
+	bus_async_user_cb_t cb;	      /**< 用户回调 */
+	void		   *userdata; /**< 用户私有数据 */
+	uint8_t		    in_use;   /**< 槽位占用标志 */
 };
 
 /**
@@ -122,7 +123,7 @@ struct bus_async_bridge
  * @param[in] slot_count 槽位数量
  * @return 成功返回 bridge 指针, 池满返回 NULL
  */
-struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, size_t slot_count);
+struct bus_async_bridge *bus_async_bridge_claim(struct bus_async_bridge *slots, size_t slot_count);
 
 /**
  * @brief 绑定 device / 用户回调 / userdata (claim 之后调用)
@@ -131,20 +132,21 @@ struct bus_async_bridge* bus_async_bridge_claim(struct bus_async_bridge* slots, 
  * @param[in] cb 用户完成回调
  * @param[in] userdata 用户私有数据
  */
-void bus_async_bridge_bind(struct bus_async_bridge* bridge, struct device* pdev, bus_async_user_cb_t cb, void* userdata);
+void bus_async_bridge_bind(struct bus_async_bridge *bridge, struct device *pdev,
+			   bus_async_user_cb_t cb, void *userdata);
 
 /**
  * @brief 释放槽位 (HAL 提交失败时立即调用, 不触发用户 cb)
  * @param[in] bridge bridge 指针
  */
-void bus_async_bridge_release(struct bus_async_bridge* bridge);
+void bus_async_bridge_release(struct bus_async_bridge *bridge);
 
 /**
  * @brief ISR 安全完成: 调用户 cb 后释放 in_use
  * @param[in] userdata 必须为 struct bus_async_bridge*
  * @param[in] trans    传给用户 cb 的传输描述符 (可为 NULL)
  */
-void bus_async_bridge_complete(void* userdata, const void* trans);
+void bus_async_bridge_complete(void *userdata, const void *trans);
 /* -------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

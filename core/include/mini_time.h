@@ -15,8 +15,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -26,11 +25,12 @@ extern "C"
  */
 MINI_STATIC_INLINE void mini_wfi(void)
 {
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__) ||                            \
-    defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M) || defined(__riscv)
-    __asm__ volatile("wfi");
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_6M__) ||         \
+	defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__CORTEX_M) || \
+	defined(__riscv)
+	__asm__ volatile("wfi");
 #else
-    /* 未支持的目标 (含 host / x86 构建): 空操作 */
+	/* 未支持的目标 (含 host / x86 构建): 空操作 */
 #endif
 }
 

@@ -13,8 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 /** ioctl 命令基址（MINI_MAGIC 魔数，防跨模块冲突） */
 #define ADS1115_CMD_BASE MINI_MAGIC(ADS1115)
@@ -24,10 +23,9 @@ extern "C"
 #define ADS1115_CMD_COUNT 1
 
 /** @brief ADS1115 单通道采样 */
-struct ads1115_sample
-{
-    int     channel; /**< 通道号（0..3） */
-    int16_t raw;     /**< 16bit 原始采样值（补码） */
+struct ads1115_sample {
+	int	channel; /**< 通道号（0..3） */
+	int16_t raw;	 /**< 16bit 原始采样值（补码） */
 };
 #ifdef __cplusplus
 }
