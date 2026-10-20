@@ -2,7 +2,7 @@
  * @file pn532_drv.c
  * @author H-000-H
  * @brief PN532 NFC 模块驱动实现 — 挂在 UART（HSU）总线 client 下的 VFS 设备驱动
- * @note 静态池: s_pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: pn532_pool[PN532_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 pn532_drv.h。
  * @note 数据流: VFS ioctl → pn532_cmd_fw → device_read/write(UART) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -38,17 +38,17 @@ struct pn532_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct pn532_device	     s_pn532_pool[PN532_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			     s_pn532_used[PN532_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_pn532_pool_ctrl MINI_ALIGNED(4);
-static const char *const	     k_tag = "pn532";
+static struct pn532_device	   pn532_pool[PN532_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			   pn532_used[PN532_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t pn532_pool_ctrl MINI_ALIGNED(4);
+static const char *const	   tag = "pn532";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void pn532_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_pn532_pool_ctrl, s_pn532_used, PN532_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&pn532_pool_ctrl, pn532_used, PN532_POOL_COUNT));
 }
 
 /**
@@ -214,7 +214,7 @@ static mt_err_t pn532_cmd_fw(struct pn532_device *dev, void *arg, size_t len, ui
 	return MINI_OK;
 }
 
-static const struct pn532_ioctl_map s_pn532_map[PN532_CMD_COUNT] = {
+static const struct pn532_ioctl_map pn532_map[PN532_CMD_COUNT] = {
 	[PN532_CMD_GET_FIRMWARE - PN532_CMD_BASE - 1] = { pn532_cmd_fw },
 };
 
@@ -239,10 +239,10 @@ static mt_err_t pn532_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)PN532_CMD_BASE;
-	if (off < 1 || off > PN532_CMD_COUNT || !s_pn532_map[off - 1].handler)
+	if (off < 1 || off > PN532_CMD_COUNT || !pn532_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_pn532_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = pn532_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -265,10 +265,10 @@ static mt_err_t pn532_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(pn532, pdev));
 
-	pool_idx = mini_slot_claim(&s_pn532_pool_ctrl);
+	pool_idx = mini_slot_claim(&pn532_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_pn532_pool[pool_idx];
+	dev = &pn532_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->uart_dev = device_get_parent(pdev);
 	if (!dev->uart_dev) {
@@ -282,12 +282,12 @@ static mt_err_t pn532_probe(struct device *pdev)
 	}
 	dev->ops  = pn532_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pn532_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&pn532_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -307,7 +307,7 @@ static mt_err_t pn532_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_pn532_pool);
+	idx = (int)(dev - pn532_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -316,7 +316,7 @@ static mt_err_t pn532_remove(struct device *pdev)
 	}
 	pn532_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pn532_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&pn532_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

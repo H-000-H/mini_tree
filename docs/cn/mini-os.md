@@ -188,7 +188,7 @@ mini-os 的 PI 是 **per-thread 跟踪** 模型：
 - **堆来源**：链接脚本 `lib/mini-os/mini-os-heap.ld` 提供 `__mini_os_heap_start` / `__mini_os_heap_end`，堆位于 bss 之后、MSP 栈之前——**不占 bss**（对 [memory_footprint.md](memory_footprint.md) §4 的 bss 口径比较很重要）；
 - **可选 slab**：定长类 16/32/64/128/256（`MINI_OS_SLAB_LONG` 再加 512），页大小 2 KiB（2 的幂 ≤ 64 KiB）；页可从堆按 `1/MINI_OS_SLAB_PROPORTION`（默认 1/4）划出，或用 `MINI_OS_SLAB_STATIC` 指定独立静态区；超出最大类的请求直走 free list。
 
-> 与 mini_tree 其他后端不同：`mini_calloc/mini_free`（mini-os 后端）走 mini-os 自有堆而非 libc，因此 RT-Thread/FreeRTOS 后端的 `s_rtt_heap`/`ucHeap` 式 bss 大数组在这里不存在。
+> 与 mini_tree 其他后端不同：`mini_calloc/mini_free`（mini-os 后端）走 mini-os 自有堆而非 libc，因此 RT-Thread/FreeRTOS 后端的 `rtt_heap`/`ucHeap` 式 bss 大数组在这里不存在。
 >
 > **内存模块可单独复用（裸机）**：`memory.c` 不依赖调度器/port，可单文件编入裸机固件 —— 开启 `CONFIG_OS_BARE_MINI_OS_MEM`（默认关）后，裸机后端的 `mini_malloc/mini_calloc/mini_free` 从 libc 堆切换为 mini-os 堆（只编 `memory.c` 单文件，不链整个内核）；关闭时维持 libc `malloc/calloc/free`。堆区由链接脚本提供 `__mini_os_heap_start/__mini_os_heap_end`（可 `INCLUDE lib/mini-os/mini-os-heap.ld`），首次分配时惰性接管（`mini_os_heap_ensure_init()`，幂等），无需启动遍历 `.init_array`。
 >
@@ -318,7 +318,7 @@ port 汇编是核特定的，配错核会直接破坏上下文。启动构造函
 | mini-os C++（历史，后端已移除） | 14381 / 128 / 3016 | 38912 / 1780 / 3064 |
 
 - 四后端中 **text 最小**（比 FreeRTOS 少 ~3 KB，比 RT-Thread 少 ~3.6 KB，nano 口径）；
-- **bss 最小且不随堆配置膨胀**：堆来自链接区不计 bss（FreeRTOS `ucHeap` 8 KiB / RT-Thread `s_rtt_heap` 32 KiB 均计入 bss），剔除可配堆后框架 bss 2620 B（C）仍显著小于其余后端；
+- **bss 最小且不随堆配置膨胀**：堆来自链接区不计 bss（FreeRTOS `ucHeap` 8 KiB / RT-Thread `rtt_heap` 32 KiB 均计入 bss），剔除可配堆后框架 bss 2620 B（C）仍显著小于其余后端；
 - C++ 系统后端（原 `SYSTEM_CPP`）已移除，系统层现为纯 C；上表 C++ 行为历史数据（曾比 C 多 +136 text / +396 bss，nano 口径）。
 
 ---

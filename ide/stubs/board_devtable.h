@@ -10,6 +10,7 @@
 #define BOARD_DEVTABLE_H
 
 #include "board_nodes.h"
+#include "status.h" /* mt_err_t — 与 dtc-lite 生成的正式头一致 */
 
 #ifdef __cplusplus
 extern "C" {

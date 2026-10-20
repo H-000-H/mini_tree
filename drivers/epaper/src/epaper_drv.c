@@ -2,7 +2,7 @@
  * @file epaper_drv.c
  * @author H-000-H
  * @brief 电子纸驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: epaper_pool[EPAPER_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 epaper_drv.h。
  * @note 引脚: DC/RST/BUSY 均为 GPIO（phandle: dc-gpio / reset-gpio / busy-gpio）；
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -50,17 +50,17 @@ struct epaper_device {
 	int	 hw_ready;	  /**< 硬件已初始化标志 */
 };
 
-static struct epaper_device	      s_epaper_pool[EPAPER_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_epaper_used[EPAPER_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_epaper_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_tag = "epaper";
+static struct epaper_device	    epaper_pool[EPAPER_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			    epaper_used[EPAPER_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t epaper_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    tag = "epaper";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void epaper_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_epaper_pool_ctrl, s_epaper_used, EPAPER_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&epaper_pool_ctrl, epaper_used, EPAPER_POOL_COUNT));
 }
 
 /**
@@ -316,7 +316,7 @@ static mt_err_t epaper_cmd_set_brightness(struct epaper_device *dev, void *arg, 
 	MINI_IGNORE_RESULT(ms);
 	return MINI_ERR_NOTSUPP;
 }
-static const struct epaper_ioctl_map s_epaper_map[DISPLAY_CMD_COUNT] = {
+static const struct epaper_ioctl_map epaper_map[DISPLAY_CMD_COUNT] = {
 	[DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1]	    = { epaper_cmd_get_info },
 	[DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1]	    = { epaper_cmd_clear },
 	[DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1]	    = { epaper_cmd_fill_rect },
@@ -346,10 +346,10 @@ static mt_err_t epaper_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
-	if (off < 1 || off > DISPLAY_CMD_COUNT || !s_epaper_map[off - 1].handler)
+	if (off < 1 || off > DISPLAY_CMD_COUNT || !epaper_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_epaper_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = epaper_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -377,10 +377,10 @@ static mt_err_t epaper_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(epaper, pdev));
 
-	pool_idx = mini_slot_claim(&s_epaper_pool_ctrl);
+	pool_idx = mini_slot_claim(&epaper_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_epaper_pool[pool_idx];
+	dev = &epaper_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->spi_dev = device_get_parent(pdev);
 	if (!dev->spi_dev) {
@@ -398,7 +398,7 @@ static mt_err_t epaper_probe(struct device *pdev)
 	/* 几何参数走 DTS（必填），不依赖驱动内部默认常量 */
 	if (device_get_prop_int(pdev, "width", &width) != MINI_OK ||
 	    device_get_prop_int(pdev, "height", &height) != MINI_OK || width <= 0 || height <= 0) {
-		MT_LOG_ERROR(k_tag, "probe requires width/height in DTS");
+		MT_LOG_ERROR(tag, "probe requires width/height in DTS");
 		ret = MINI_ERR_INVAL;
 		goto err;
 	}
@@ -414,12 +414,12 @@ static mt_err_t epaper_probe(struct device *pdev)
 	}
 	dev->ops  = epaper_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev %dx%dev", pool_idx, width, height);
+	MT_LOG_INFO(tag, "probe OK pool=%dev %dx%dev", pool_idx, width, height);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_epaper_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&epaper_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -439,7 +439,7 @@ static mt_err_t epaper_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_epaper_pool);
+	idx = (int)(dev - epaper_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -448,7 +448,7 @@ static mt_err_t epaper_remove(struct device *pdev)
 	}
 	epaper_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_epaper_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&epaper_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

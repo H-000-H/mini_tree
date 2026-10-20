@@ -14,7 +14,7 @@
 #include "system_log.h"
 #include <string.h>
 
-static const char *const s_kTag = "https_client";
+static const char *const tag = "https_client";
 
 #ifdef CONFIG_TLS_HANDSHAKE_TIMEOUT_MS
 #define HTTPS_CONNECT_TIMEOUT_MS CONFIG_TLS_HANDSHAKE_TIMEOUT_MS
@@ -154,21 +154,21 @@ int https_client_do_connect(struct https_client_context *context)
 		return NET_ERR_INVAL;
 
 	if (context->connect_requested || is_https_client_connected(context)) {
-		MT_LOG_WARN(s_kTag, "already connecting/connected");
+		MT_LOG_WARN(tag, "already connecting/connected");
 		return NET_ERR_STATE;
 	}
 
 	int err = tls_client_init_and_connect(&context->tls_client, context->server_ip,
 					      context->port, context->ca_cert, context->ca_len);
 	if (err != ERR_OK) {
-		MT_LOG_ERROR(s_kTag, "tls connect start failed: %d", err);
+		MT_LOG_ERROR(tag, "tls connect start failed: %d", err);
 		return NET_ERR_CONN;
 	}
 
 	context->connect_requested    = true;
 	context->tls_connect_start_ms = mini_time_ms();
 
-	MT_LOG_INFO(s_kTag, "connecting to %s:%u (tls)...", context->server_ip, context->port);
+	MT_LOG_INFO(tag, "connecting to %s:%u (tls)...", context->server_ip, context->port);
 	return NET_OK;
 }
 
@@ -178,7 +178,7 @@ int https_client_disconnect(struct https_client_context *context)
 		return NET_ERR_INVAL;
 
 	https_reset_connection(context);
-	MT_LOG_INFO(s_kTag, "https disconnected");
+	MT_LOG_INFO(tag, "https disconnected");
 	return NET_OK;
 }
 
@@ -198,7 +198,7 @@ int https_client_request(struct https_client_context *context, const char *metho
 		return NET_ERR_INVAL;
 
 	if (!is_https_client_connected(context)) {
-		MT_LOG_ERROR(s_kTag, "request rejected: not connected");
+		MT_LOG_ERROR(tag, "request rejected: not connected");
 		return NET_ERR_INVAL;
 	}
 
@@ -216,7 +216,7 @@ int https_client_request(struct https_client_context *context, const char *metho
 	HTTPStatus_t status =
 		HTTPClient_InitializeRequestHeaders(&context->request_headers, &request_info);
 	if (status != HTTPSuccess) {
-		MT_LOG_ERROR(s_kTag, "InitRequestHeaders failed: %s", HTTPClient_strerror(status));
+		MT_LOG_ERROR(tag, "InitRequestHeaders failed: %s", HTTPClient_strerror(status));
 		return https_status_to_net(status);
 	}
 
@@ -229,7 +229,7 @@ int https_client_request(struct https_client_context *context, const char *metho
 					      strlen(headers[i].field), headers[i].value,
 					      strlen(headers[i].value));
 		if (status != HTTPSuccess) {
-			MT_LOG_ERROR(s_kTag, "AddHeader %s failed: %s", headers[i].field,
+			MT_LOG_ERROR(tag, "AddHeader %s failed: %s", headers[i].field,
 				     HTTPClient_strerror(status));
 			return https_status_to_net(status);
 		}
@@ -247,7 +247,7 @@ int https_client_request(struct https_client_context *context, const char *metho
 	status = HTTPClient_Send(&context->transport_interface, &context->request_headers,
 				 (const uint8_t *)body, body_len, &context->response, 0);
 	if (status != HTTPSuccess) {
-		MT_LOG_ERROR(s_kTag, "HTTPClient_Send failed: %s", HTTPClient_strerror(status));
+		MT_LOG_ERROR(tag, "HTTPClient_Send failed: %s", HTTPClient_strerror(status));
 		return https_status_to_net(status);
 	}
 
@@ -257,7 +257,7 @@ int https_client_request(struct https_client_context *context, const char *metho
 	response->headers     = context->response.pHeaders;
 	response->headers_len = context->response.headersLen;
 
-	MT_LOG_INFO(s_kTag, "%s %s -> %u (%u bytes)", method, path, (unsigned)response->status_code,
+	MT_LOG_INFO(tag, "%s %s -> %u (%u bytes)", method, path, (unsigned)response->status_code,
 		    (unsigned)response->body_len);
 	return NET_OK;
 }
@@ -273,7 +273,7 @@ int https_client_process(struct https_client_context *context)
 	/* 两段式建连: do_connect 发起, connected 回调 (TLS 握手后) 置位; 此处超时兜底 */
 	if (context->connect_requested && !context->tls_client.is_connected) {
 		if ((mini_time_ms() - context->tls_connect_start_ms) >= HTTPS_CONNECT_TIMEOUT_MS) {
-			MT_LOG_ERROR(s_kTag, "tls handshake timeout");
+			MT_LOG_ERROR(tag, "tls handshake timeout");
 			https_reset_connection(context);
 			return NET_OK;
 		}

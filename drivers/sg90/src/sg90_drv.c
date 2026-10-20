@@ -2,7 +2,7 @@
  * @file sg90_drv.c
  * @author H-000-H
  * @brief SG90 舵机驱动实现 — 挂在 TIM（PWM）下的 VFS 设备驱动
- * @note 静态池: s_sg90_pool[SG90_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: sg90_pool[SG90_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令见 sg90_drv.h。
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -38,17 +38,17 @@ struct sg90_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sg90_device	    s_sg90_pool[SG90_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			    s_sg90_used[SG90_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_sg90_pool_ctrl MINI_ALIGNED(4);
-static const char *const	    k_tag = "sg90";
+static struct sg90_device	  sg90_pool[SG90_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			  sg90_used[SG90_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t sg90_pool_ctrl MINI_ALIGNED(4);
+static const char *const	  tag = "sg90";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sg90_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_sg90_pool_ctrl, s_sg90_used, SG90_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&sg90_pool_ctrl, sg90_used, SG90_POOL_COUNT));
 }
 
 /**
@@ -178,7 +178,7 @@ static mt_err_t sg90_cmd_angle(struct sg90_device *dev, void *arg, size_t len, u
 	dev->tim.ccr	 = 1000U + (uint32_t)deg * 1000U / 180U;
 	return device_ioctl(dev->tim_dev, TIM_CMD_PWM_UPDATE, &dev->tim, sizeof(dev->tim), 100);
 }
-static const struct sg90_ioctl_map s_sg90_map[SG90_CMD_COUNT] = {
+static const struct sg90_ioctl_map sg90_map[SG90_CMD_COUNT] = {
 	[SG90_CMD_SET_ANGLE - SG90_CMD_BASE - 1] = { sg90_cmd_angle },
 };
 
@@ -203,10 +203,10 @@ static mt_err_t sg90_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_l
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)SG90_CMD_BASE;
-	if (off < 1 || off > SG90_CMD_COUNT || !s_sg90_map[off - 1].handler)
+	if (off < 1 || off > SG90_CMD_COUNT || !sg90_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_sg90_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = sg90_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -229,10 +229,10 @@ static mt_err_t sg90_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(sg90, pdev));
 
-	pool_idx = mini_slot_claim(&s_sg90_pool_ctrl);
+	pool_idx = mini_slot_claim(&sg90_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_sg90_pool[pool_idx];
+	dev = &sg90_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->tim_dev = device_get_phandle_dev(pdev, "pwm");
 	if (IS_ERR(dev->tim_dev)) {
@@ -253,12 +253,12 @@ static mt_err_t sg90_probe(struct device *pdev)
 	}
 	dev->ops  = sg90_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sg90_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sg90_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -278,7 +278,7 @@ static mt_err_t sg90_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_sg90_pool);
+	idx = (int)(dev - sg90_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -287,7 +287,7 @@ static mt_err_t sg90_remove(struct device *pdev)
 	}
 	sg90_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sg90_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sg90_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

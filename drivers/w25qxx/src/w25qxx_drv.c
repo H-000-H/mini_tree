@@ -2,7 +2,7 @@
  * @file w25qxx_drv.c
  * @author H-000-H
  * @brief W25Qxx SPI NOR Flash 驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_w25qxx_pool[W25QXX_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: w25qxx_pool[W25QXX_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 w25qxx_drv.h。
  * @note 数据流: VFS ioctl → w25qxx_cmd_jedec → SPI transfer（vfs-spi）→ HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -37,17 +37,17 @@ struct w25qxx_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct w25qxx_device	      s_w25qxx_pool[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_w25qxx_used[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_w25qxx_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_tag = "w25qxx";
+static struct w25qxx_device	    w25qxx_pool[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			    w25qxx_used[W25QXX_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t w25qxx_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    tag = "w25qxx";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void w25qxx_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_w25qxx_pool_ctrl, s_w25qxx_used, W25QXX_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&w25qxx_pool_ctrl, w25qxx_used, W25QXX_POOL_COUNT));
 }
 
 /**
@@ -191,7 +191,7 @@ static mt_err_t w25qxx_cmd_jedec(struct w25qxx_device *dev, void *arg, size_t le
 	jedec->id[2] = rx[3];
 	return MINI_OK;
 }
-static const struct w25qxx_ioctl_map s_w25qxx_map[W25QXX_CMD_COUNT] = {
+static const struct w25qxx_ioctl_map w25qxx_map[W25QXX_CMD_COUNT] = {
 	[W25QXX_CMD_READ_JEDEC_ID - W25QXX_CMD_BASE - 1] = { w25qxx_cmd_jedec },
 };
 
@@ -216,10 +216,10 @@ static mt_err_t w25qxx_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)W25QXX_CMD_BASE;
-	if (off < 1 || off > W25QXX_CMD_COUNT || !s_w25qxx_map[off - 1].handler)
+	if (off < 1 || off > W25QXX_CMD_COUNT || !w25qxx_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_w25qxx_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = w25qxx_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -242,10 +242,10 @@ static mt_err_t w25qxx_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(w25qxx, pdev));
 
-	pool_idx = mini_slot_claim(&s_w25qxx_pool_ctrl);
+	pool_idx = mini_slot_claim(&w25qxx_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_w25qxx_pool[pool_idx];
+	dev = &w25qxx_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->spi_dev = device_get_parent(pdev);
 	if (!dev->spi_dev) {
@@ -259,12 +259,12 @@ static mt_err_t w25qxx_probe(struct device *pdev)
 	}
 	dev->ops  = w25qxx_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_w25qxx_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&w25qxx_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -284,7 +284,7 @@ static mt_err_t w25qxx_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_w25qxx_pool);
+	idx = (int)(dev - w25qxx_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -293,7 +293,7 @@ static mt_err_t w25qxx_remove(struct device *pdev)
 	}
 	w25qxx_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_w25qxx_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&w25qxx_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

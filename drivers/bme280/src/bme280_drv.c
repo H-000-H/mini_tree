@@ -2,7 +2,7 @@
  * @file bme280_drv.c
  * @author H-000-H
  * @brief BME280 温湿度/气压传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_bme280_pool[BME280_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: bme280_pool[BME280_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与采样结构见 bme280_drv.h，寄存器定义见 bme280_regs.h。
  * @note 数据流: VFS ioctl → bme280_cmd_env → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -58,17 +58,17 @@ struct bme280_device {
 	int		       hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct bme280_device	      s_bme280_pool[BME280_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_bme280_used[BME280_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_bme280_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_tag = "bme280";
+static struct bme280_device	    bme280_pool[BME280_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			    bme280_used[BME280_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t bme280_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    tag = "bme280";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void bme280_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_bme280_pool_ctrl, s_bme280_used, BME280_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&bme280_pool_ctrl, bme280_used, BME280_POOL_COUNT));
 }
 
 /**
@@ -384,7 +384,7 @@ static mt_err_t bme280_cmd_env(struct bme280_device *dev, void *arg, size_t len,
 	env->humidity_x100 = (uint16_t)((hum_q22 * 100U) / 1024U);
 	return MINI_OK;
 }
-static const struct bme280_ioctl_map s_bme280_map[BME280_CMD_COUNT] = {
+static const struct bme280_ioctl_map bme280_map[BME280_CMD_COUNT] = {
 	[BME280_CMD_READ_ENV - BME280_CMD_BASE - 1] = { bme280_cmd_env },
 };
 
@@ -409,10 +409,10 @@ static mt_err_t bme280_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)BME280_CMD_BASE;
-	if (off < 1 || off > BME280_CMD_COUNT || !s_bme280_map[off - 1].handler)
+	if (off < 1 || off > BME280_CMD_COUNT || !bme280_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_bme280_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = bme280_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -435,10 +435,10 @@ static mt_err_t bme280_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(bme280, pdev));
 
-	pool_idx = mini_slot_claim(&s_bme280_pool_ctrl);
+	pool_idx = mini_slot_claim(&bme280_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_bme280_pool[pool_idx];
+	dev = &bme280_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -452,12 +452,12 @@ static mt_err_t bme280_probe(struct device *pdev)
 	}
 	dev->ops  = bme280_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_bme280_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&bme280_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -477,7 +477,7 @@ static mt_err_t bme280_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_bme280_pool);
+	idx = (int)(dev - bme280_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -486,7 +486,7 @@ static mt_err_t bme280_remove(struct device *pdev)
 	}
 	bme280_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_bme280_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&bme280_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

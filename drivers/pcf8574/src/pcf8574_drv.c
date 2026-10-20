@@ -2,7 +2,7 @@
  * @file pcf8574_drv.c
  * @author H-000-H
  * @brief PCF8574 GPIO 扩展芯片驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_pcf8574_pool[PCF8574_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: pcf8574_pool[PCF8574_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令见 pcf8574_drv.h。
  * @note 数据流: VFS ioctl → pcf8574_cmd_* → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -37,18 +37,17 @@ struct pcf8574_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct pcf8574_device	       s_pcf8574_pool[PCF8574_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			       s_pcf8574_used[PCF8574_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_pcf8574_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "pcf8574";
+static struct pcf8574_device	     pcf8574_pool[PCF8574_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			     pcf8574_used[PCF8574_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t pcf8574_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "pcf8574";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void pcf8574_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_pcf8574_pool_ctrl, s_pcf8574_used, PCF8574_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&pcf8574_pool_ctrl, pcf8574_used, PCF8574_POOL_COUNT));
 }
 
 /**
@@ -205,7 +204,7 @@ static mt_err_t pcf8574_cmd_read(struct pcf8574_device *dev, void *arg, size_t l
 	return pcf8574_i2c_rd(dev, (uint8_t *)arg, 1, timeout_ms);
 }
 
-static const struct pcf8574_ioctl_map s_pcf8574_map[PCF8574_CMD_COUNT] = {
+static const struct pcf8574_ioctl_map pcf8574_map[PCF8574_CMD_COUNT] = {
 	[PCF8574_CMD_WRITE - PCF8574_CMD_BASE - 1] = { pcf8574_cmd_write },
 	[PCF8574_CMD_READ - PCF8574_CMD_BASE - 1]  = { pcf8574_cmd_read },
 };
@@ -231,10 +230,10 @@ static mt_err_t pcf8574_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)PCF8574_CMD_BASE;
-	if (off < 1 || off > PCF8574_CMD_COUNT || !s_pcf8574_map[off - 1].handler)
+	if (off < 1 || off > PCF8574_CMD_COUNT || !pcf8574_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_pcf8574_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = pcf8574_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -257,10 +256,10 @@ static mt_err_t pcf8574_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(pcf8574, pdev));
 
-	pool_idx = mini_slot_claim(&s_pcf8574_pool_ctrl);
+	pool_idx = mini_slot_claim(&pcf8574_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_pcf8574_pool[pool_idx];
+	dev = &pcf8574_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -274,12 +273,12 @@ static mt_err_t pcf8574_probe(struct device *pdev)
 	}
 	dev->ops  = pcf8574_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pcf8574_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&pcf8574_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -299,7 +298,7 @@ static mt_err_t pcf8574_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_pcf8574_pool);
+	idx = (int)(dev - pcf8574_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -308,7 +307,7 @@ static mt_err_t pcf8574_remove(struct device *pdev)
 	}
 	pcf8574_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pcf8574_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&pcf8574_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

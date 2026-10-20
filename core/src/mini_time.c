@@ -59,7 +59,7 @@ uint32_t mini_time_ms(void)
 	return rt_tick_get() * 1000 / RT_TICK_PER_SECOND;
 #else
 	/* 裸机: 复用 xtask 调度器 tick (tick 与 ms 1:1) */
-	return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED);
+	return MINI_ATOMIC_LOAD(&scheduler.tick_count, MINI_RELAXED);
 #endif
 }
 

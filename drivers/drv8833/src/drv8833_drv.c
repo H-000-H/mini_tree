@@ -2,7 +2,7 @@
  * @file drv8833_drv.c
  * @author H-000-H
  * @brief DRV8833 双路电机驱动实现 — 挂在 GPIO（AIN1/2、BIN1/2）下的 VFS 设备驱动
- * @note 静态池: s_drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: drv8833_pool[DRV8833_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 drv8833_drv.h。
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -43,18 +43,17 @@ struct drv8833_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct drv8833_device	       s_drv8833_pool[DRV8833_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			       s_drv8833_used[DRV8833_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_drv8833_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "drv8833";
+static struct drv8833_device	     drv8833_pool[DRV8833_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			     drv8833_used[DRV8833_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t drv8833_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "drv8833";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void drv8833_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_drv8833_pool_ctrl, s_drv8833_used, DRV8833_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&drv8833_pool_ctrl, drv8833_used, DRV8833_POOL_COUNT));
 }
 
 /**
@@ -204,7 +203,7 @@ static mt_err_t drv8833_cmd_motor(struct drv8833_device *dev, void *arg, size_t 
 	}
 	return MINI_OK;
 }
-static const struct drv8833_ioctl_map s_drv8833_map[DRV8833_CMD_COUNT] = {
+static const struct drv8833_ioctl_map drv8833_map[DRV8833_CMD_COUNT] = {
 	[DRV8833_CMD_SET_MOTOR - DRV8833_CMD_BASE - 1] = { drv8833_cmd_motor },
 };
 
@@ -229,10 +228,10 @@ static mt_err_t drv8833_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)DRV8833_CMD_BASE;
-	if (off < 1 || off > DRV8833_CMD_COUNT || !s_drv8833_map[off - 1].handler)
+	if (off < 1 || off > DRV8833_CMD_COUNT || !drv8833_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_drv8833_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = drv8833_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -255,10 +254,10 @@ static mt_err_t drv8833_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(drv8833, pdev));
 
-	pool_idx = mini_slot_claim(&s_drv8833_pool_ctrl);
+	pool_idx = mini_slot_claim(&drv8833_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_drv8833_pool[pool_idx];
+	dev = &drv8833_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->ain1_dev = device_get_phandle_dev(pdev, "ain1-gpio");
 	dev->ain2_dev = device_get_phandle_dev(pdev, "ain2-gpio");
@@ -276,12 +275,12 @@ static mt_err_t drv8833_probe(struct device *pdev)
 	}
 	dev->ops  = drv8833_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_drv8833_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&drv8833_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -301,7 +300,7 @@ static mt_err_t drv8833_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_drv8833_pool);
+	idx = (int)(dev - drv8833_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -310,7 +309,7 @@ static mt_err_t drv8833_remove(struct device *pdev)
 	}
 	drv8833_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_drv8833_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&drv8833_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

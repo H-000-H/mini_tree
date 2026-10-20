@@ -67,9 +67,9 @@ extern struct bottom_half_work *interrupt_virtual_bottom_half_work[VIRTUAL_IRQ_M
 extern void		       *interrupt_virtual_arg[VIRTUAL_IRQ_MAX_BASE];
 
 /**< ADC DMA 下半部全局工作项 (fn/arg 由 hal_adc.c 在初始化时绑定) */
-extern struct bottom_half_work g_adc_dma_bottom_half_work;
+extern struct bottom_half_work adc_dma_bottom_half_work;
 /**< I2S DMA 下半部全局工作项 (fn/arg 由板级 hal_i2s 在初始化时绑定) */
-extern struct bottom_half_work g_i2s_bottom_half_work;
+extern struct bottom_half_work i2s_bottom_half_work;
 
 /* -------------------------------------------------------------------------- */
 /*                              VIRQ 外围弱钩子 (板级强符号覆盖) */
@@ -131,12 +131,12 @@ int hal_virtual_tim_irq_callback(void *arg, uint16_t irq_num);
  */
 int hal_virtual_uart_irq_callback(void *arg, uint16_t irq_num);
 /**
- * @brief ADC DMA 下半部处理函数 (hal_adc.c 初始化时绑定到 g_adc_dma_bottom_half_work)
+ * @brief ADC DMA 下半部处理函数 (hal_adc.c 初始化时绑定到 adc_dma_bottom_half_work)
  * @param[in] arg 下半部参数
  */
 void hal_adc_dma_bottom_half_handler(void *arg);
 /**
- * @brief I2S DMA 下半部处理函数 (板级 hal_i2s 初始化时绑定到 g_i2s_bottom_half_work)
+ * @brief I2S DMA 下半部处理函数 (板级 hal_i2s 初始化时绑定到 i2s_bottom_half_work)
  * @param[in] arg 下半部参数
  */
 void hal_i2s_dma_bottom_half_handler(void *arg);

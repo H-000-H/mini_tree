@@ -23,7 +23,7 @@
 | 函数 / 变量 / 类型 | 小写 | `device_open`、`struct device`、`device_id_t` |
 | C++ 类 | `PascalCase` | `SystemCmd` |
 | 宏 / 枚举值 | 大写 | `MINI_ERR_INVAL`、`DEV_ID_UART0` |
-| 前缀 | `s_` 文件内 static、`g_` 全局、`k_` 常量 | `s_uart_pool`、`k_map` |
+| 前缀 | **不加前缀**（内核风，非 Google 的 `s_`/`g_`/`k_`）；函数以模块名作前缀 | `client_pool_ctrl`、`nrf24l01_ioctl` |
 
 `app` 层为建议，`app` 以下为强规定。
 

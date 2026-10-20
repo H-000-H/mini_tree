@@ -33,18 +33,17 @@ struct vfs_spi_priv {
 	int			  pool_idx; /**< 池索引 */
 };
 
-static struct vfs_spi_priv		s_spi_priv_pool[SPI_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_spi_priv_used[SPI_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_spi_priv_pool_ctrl MINI_ALIGNED(4);
-static const char *const		k_host_tag = "spi_vfs_host";
+static struct vfs_spi_priv	      spi_priv_pool[SPI_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			      spi_priv_used[SPI_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t spi_priv_pool_ctrl MINI_ALIGNED(4);
+static const char *const	      host_tag = "spi_vfs_host";
 
 /**
  * @brief SPI Host VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_spi_priv_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_spi_priv_pool_ctrl, s_spi_priv_used, SPI_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&spi_priv_pool_ctrl, spi_priv_used, SPI_VFS_PRIV_COUNT));
 }
 
 /**
@@ -217,11 +216,11 @@ static mt_err_t vfs_spi_priv_probe_impl(struct device *pdev, int bus_role)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(spi, pdev));
 
-	pool_idx = mini_slot_claim(&s_spi_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&spi_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_spi_priv_pool[pool_idx];
+	priv = &spi_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -238,14 +237,14 @@ static mt_err_t vfs_spi_priv_probe_impl(struct device *pdev, int bus_role)
 		goto err_bus;
 	}
 
-	MT_LOG_INFO(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
+	MT_LOG_INFO(host_tag, "probe OK: %s role=%s", device_get_name(pdev),
 		    bus_role == SPI_BUS_ROLE_MASTER ? "master" : "slave");
 	return MINI_OK;
 
 err_bus:
 	MINI_IGNORE_RESULT(spi_bus_host_deinit(pdev));
 err_pool:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_spi_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&spi_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -304,14 +303,14 @@ static mt_err_t vfs_spi_priv_remove(struct device *pdev)
 
 	ret = spi_bus_host_deinit(pdev);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_host_tag, "host remove busy: %s (ret=%d) — keeping resources",
+		MT_LOG_ERROR(host_tag, "host remove busy: %s (ret=%d) — keeping resources",
 			     device_get_name(pdev), ret);
 		dev_lc_remove_finish(lc);
 		return ret;
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_spi_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&spi_priv_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
@@ -329,18 +328,17 @@ struct spi_vfs_client {
 	int			     pool_idx;	/**< 池索引 */
 };
 
-static struct spi_vfs_client	      s_client_pool[SPI_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_client_used[SPI_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_client_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_client_tag = "spi_vfs_client";
+static struct spi_vfs_client	    client_pool[SPI_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t			    client_used[SPI_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static mini_slot_t client_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    client_tag = "spi_vfs_client";
 
 /**
  * @brief SPI Client VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void spi_vfs_client_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_client_pool_ctrl, s_client_used, SPI_VFS_CLIENT_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&client_pool_ctrl, client_used, SPI_VFS_CLIENT_COUNT));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -664,7 +662,7 @@ static mt_err_t spi_cmd_get_trans_result(struct device *pdev, void *arg, size_t 
 					      timeout_ms);
 }
 
-static const struct spi_ioctl_map s_spi_ioctl_map[SPI_CMD_COUNT] = {
+static const struct spi_ioctl_map spi_ioctl_map[SPI_CMD_COUNT] = {
 	[SPI_CMD_TRANSFER - SPI_CMD_BASE - 1]	      = { spi_cmd_transfer },
 	[SPI_CMD_QUEUE_TX - SPI_CMD_BASE - 1]	      = { spi_cmd_queue_tx },
 	[SPI_CMD_GET_TRANS_RESULT - SPI_CMD_BASE - 1] = { spi_cmd_get_trans_result },
@@ -702,10 +700,10 @@ static mt_err_t spi_vfs_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)SPI_CMD_BASE;
-	if (offset < 1 || offset > SPI_CMD_COUNT || !s_spi_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > SPI_CMD_COUNT || !spi_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_spi_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
+		ret = spi_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
 
 	dev_lc_io_end(lc);
 	return ret;
@@ -796,15 +794,15 @@ static mt_err_t spi_vfs_probe(struct device *pdev)
 
 	role = spi_bus_host_role(pdev);
 	if (role != SPI_BUS_ROLE_MASTER && role != SPI_BUS_ROLE_SLAVE) {
-		MT_LOG_ERROR(k_client_tag, "invalid SPI role: %s", device_get_name(pdev));
+		MT_LOG_ERROR(client_tag, "invalid SPI role: %s", device_get_name(pdev));
 		return MINI_ERR_INVAL;
 	}
 
-	pool_idx = mini_slot_claim(&s_client_pool_ctrl);
+	pool_idx = mini_slot_claim(&client_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_client_pool[pool_idx];
+	priv = &client_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx	= pool_idx;
 	priv->role	= role;
@@ -828,7 +826,7 @@ static mt_err_t spi_vfs_probe(struct device *pdev)
 	}
 
 	/* clock_speed_hz 为 uint32_t: Xtensa 上 uint32_t == unsigned long, %d 会触发 -Wformat */
-	MT_LOG_INFO(k_client_tag, "probe OK: %s role=%s mode=%d freq=%u", device_get_name(pdev),
+	MT_LOG_INFO(client_tag, "probe OK: %s role=%s mode=%d freq=%u", device_get_name(pdev),
 		    role == SPI_BUS_ROLE_MASTER ? "master" : "slave", priv->cfg.mode,
 		    (unsigned)priv->cfg.clock_speed_hz);
 	return MINI_OK;
@@ -836,7 +834,7 @@ static mt_err_t spi_vfs_probe(struct device *pdev)
 err_pool:
 	pdev->ops = NULL;	       /* 切断 fops, 防 UAF */
 	dev_lc_reset(device_lc(pdev)); /* 重置生命周期 */
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -874,7 +872,7 @@ static mt_err_t spi_vfs_remove(struct device *pdev)
 
 	spi_bus_client_unregister(pdev);
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;

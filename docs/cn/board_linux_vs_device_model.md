@@ -40,11 +40,11 @@ VFS（虚拟文件 / file）
 | L0 用户 / Userspace | `open/read` on `/dev` | `device_open/read` | mini_tree 无 `/dev` 文件系统节点 |
 | L1 VFS | `struct file` / `inode` | `dev_lifecycle` | 无 inode，生命周期由 `dev_lifecycle` 跟踪 |
 | L2 cdev | `struct cdev` + `dev_t` | `dev->ops`（无 `dev_t`） | 无主次设备号，靠 `device_id_t` 句柄 |
-| L3 core | `device` + `driver` + `bus_type` | `s_devices` + `DRIVER_REGISTER` | 全量静态、无运行时 `device_add` |
+| L3 core | `device` + `driver` + `bus_type` | `devices` + `DRIVER_REGISTER` | 全量静态、无运行时 `device_add` |
 | L4 bus | `spi_master` / `platform_device` | `bus_controller/client` | 总线描述静态写在 DTS |
 | L5 子系统 / subsystem | MTD / input / misc | `fft_spi_drv` / `ws2812_drv` | 无统一子系统层，驱动即服务 |
 | L6 资源 / resources | `devm_*` | HAL + DTS props | 资源不随 device 自动释放 |
-| L7 DT | `device_node` + DTB | `s_nodes`（dtc-lite） | 编译期生成 C 数组，无运行时 unflatten |
+| L7 DT | `device_node` + DTB | `nodes`（dtc-lite） | 编译期生成 C 数组，无运行时 unflatten |
 | L8 HW | SoC 驱动 / SoC drivers | ESP-IDF HAL | 硬件访问走厂商 HAL |
 
 ---
@@ -53,8 +53,8 @@ VFS（虚拟文件 / file）
 
 | 概念 / Concept | Linux | mini_tree |
 | ----- | ------------------------ | ------------------- |
-| 静态 DT / static DT | `struct device_node` | `s_nodes[]` |
-| 运行时设备 / runtime device | `struct device` | `s_devices[]` |
+| 静态 DT / static DT | `struct device_node` | `nodes[]` |
+| 运行时设备 / runtime device | `struct device` | `devices[]` |
 | 驱动 / driver | `struct device_driver` | `DRIVER_REGISTER` 宏注册 |
 | 总线 / bus | `struct bus_type` | `bus_type` / `bus.c` |
 | 字符设备 / char device | `struct cdev` | `dev->ops` |
@@ -74,7 +74,7 @@ VFS（虚拟文件 / file）
 
 ### 4.1 编译期静态生成（对应 Linux 运行时注册）
 - Linux：`device_add` / `driver_register` 在运行时把对象挂进总线，支持热插拔与动态匹配。
-- mini_tree：`dtc-lite` 在编译期把 DTS 解析成 `s_nodes[]`（节点）与 `s_devices[]`（设备），全量静态，启动即就绪，无运行时创建、无热插拔。
+- mini_tree：`dtc-lite` 在编译期把 DTS 解析成 `nodes[]`（节点）与 `devices[]`（设备），全量静态，启动即就绪，无运行时创建、无热插拔。
 - 代价：板级硬件必须写字面量 DTS；收益：零运行时分配、确定性的启动顺序。
 
 ### 4.2 手动 probe（对应 Linux 总线自动匹配）

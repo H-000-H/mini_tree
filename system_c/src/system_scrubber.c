@@ -21,17 +21,17 @@
 
 #include "compiler_compat_poison.h"
 
-static const char    *k_tag = "Scrubber";
-static const uint32_t k_scrubber_prio =
+static const char    *tag = "Scrubber";
+static const uint32_t scrubber_prio =
 #if defined(CONFIG_OS_FREERTOS)
 	1; /* FreeRTOS: 0=最低, 31=最高 — 后台巡检, 最低优先级 */
 #else
 	30; /* RT-Thread: 0=最高, 31=最低 — 后台巡检, 最低优先级 */
 #endif
-static const uint32_t k_scrubber_stack = 2048;
+static const uint32_t scrubber_stack = 2048;
 
-static mini_task_handle_t s_handle  = NULL;
-static volatile bool	  s_running = false;
+static mini_task_handle_t handle  = NULL;
+static volatile bool	  running = false;
 
 /**
  * @brief Flash 巡检后台任务: 定期对当前镜像分区做纯数据校验
@@ -46,11 +46,11 @@ static void scrubber_task(void *param)
 	const uint32_t image_len    = SYSTEM_SCRUBBER_IMAGE_LEN;
 
 	if (baseline_crc == 0U || image_len == 0U) {
-		MT_LOG_WARN(k_tag,
+		MT_LOG_WARN(tag,
 			    "baseline not set (crc=0x%08X len=%u) — scrubber inactive, run "
 			    "post_build_crc.py",
 			    (unsigned)baseline_crc, (unsigned)image_len);
-		s_running = false;
+		running = false;
 		mini_task_self_delete();
 		return;
 	}
@@ -59,31 +59,31 @@ static void scrubber_task(void *param)
 	const uint32_t area_id =
 		(uint32_t)FLASH_AREA_ID_IMAGE_0 + (uint32_t)ota_current_partition_get();
 
-	MT_LOG_INFO(k_tag, "scrubber started: area=%u len=%u bytes interval=%ums baseline=0x%08X",
+	MT_LOG_INFO(tag, "scrubber started: area=%u len=%u bytes interval=%ums baseline=0x%08X",
 		    (unsigned)area_id, (unsigned)image_len, (unsigned)SYSTEM_SCRUBBER_INTERVAL_MS,
 		    (unsigned)baseline_crc);
 
-	while (s_running) {
+	while (running) {
 		system_wdt_feed_iwdg();
 
 		int ret = image_verify_area(area_id, 0U, image_len, baseline_crc);
 
 		if (ret == ERR_CRC_MISMATCH) {
-			MT_LOG_ERROR(k_tag, "FLASH CORRUPTION: area=%u len=%u baseline=0x%08X",
+			MT_LOG_ERROR(tag, "FLASH CORRUPTION: area=%u len=%u baseline=0x%08X",
 				     (unsigned)area_id, (unsigned)image_len,
 				     (unsigned)baseline_crc);
 			enter_safe_state("Flash bit-rot detected — firmware corruption");
 		} else if (ret == ERR_OK) {
-			MT_LOG_INFO(k_tag, "scrub pass complete: area=%u OK", (unsigned)area_id);
+			MT_LOG_INFO(tag, "scrub pass complete: area=%u OK", (unsigned)area_id);
 		} else {
 			/* 读失败 / 分区未注册等: 记账并等下一轮, 不误判成位翻转 */
-			MT_LOG_WARN(k_tag, "scrub pass skipped: image_verify_area ret=%d", ret);
+			MT_LOG_WARN(tag, "scrub pass skipped: image_verify_area ret=%d", ret);
 		}
 
 		mini_delay_ms(SYSTEM_SCRUBBER_INTERVAL_MS);
 	}
 
-	MT_LOG_INFO(k_tag, "scrubber task exiting");
+	MT_LOG_INFO(tag, "scrubber task exiting");
 	mini_task_self_delete();
 }
 
@@ -93,19 +93,19 @@ static void scrubber_task(void *param)
  */
 mt_err_t system_scrubber_start(void)
 {
-	if (s_running)
+	if (running)
 		return MINI_OK;
 
-	s_running = true;
-	int ret	  = mini_task_create_handle("scrubber", k_scrubber_stack, k_scrubber_prio,
-					    scrubber_task, NULL, 0, &s_handle);
+	running = true;
+	int ret = mini_task_create_handle("scrubber", scrubber_stack, scrubber_prio, scrubber_task,
+					  NULL, 0, &handle);
 	if (ret != 0) {
-		MT_LOG_ERROR(k_tag, "failed to create scrubber task");
-		s_running = false;
+		MT_LOG_ERROR(tag, "failed to create scrubber task");
+		running = false;
 		return MINI_ERR_NOMEM;
 	}
 
-	MT_LOG_INFO(k_tag, "scrubber task created, prio=%u", (unsigned)k_scrubber_prio);
+	MT_LOG_INFO(tag, "scrubber task created, prio=%u", (unsigned)scrubber_prio);
 	return MINI_OK;
 }
 
@@ -115,5 +115,5 @@ mt_err_t system_scrubber_start(void)
  */
 bool system_scrubber_is_running(void)
 {
-	return s_running;
+	return running;
 }

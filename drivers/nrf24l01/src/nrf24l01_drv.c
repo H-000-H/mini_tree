@@ -2,7 +2,7 @@
  * @file nrf24l01_drv.c
  * @author H-000-H
  * @brief NRF24L01 2.4G 无线驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_nrf24l01_pool[NRF24L01_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: nrf24l01_pool[NRF24L01_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 nrf24l01_drv.h，操作码定义见 nrf24l01_regs.h。
  * @note 数据流: VFS ioctl → nrf24l01_cmd_* → SPI transfer（vfs-spi）→ HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -38,18 +38,17 @@ struct nrf24l01_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct nrf24l01_device		s_nrf24l01_pool[NRF24L01_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_nrf24l01_used[NRF24L01_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_nrf24l01_pool_ctrl MINI_ALIGNED(4);
-static const char *const		k_tag = "nrf24l01";
+static struct nrf24l01_device	      nrf24l01_pool[NRF24L01_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			      nrf24l01_used[NRF24L01_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t nrf24l01_pool_ctrl MINI_ALIGNED(4);
+static const char *const	      tag = "nrf24l01";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void nrf24l01_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_nrf24l01_pool_ctrl, s_nrf24l01_used, NRF24L01_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&nrf24l01_pool_ctrl, nrf24l01_used, NRF24L01_POOL_COUNT));
 }
 
 /**
@@ -230,7 +229,7 @@ static mt_err_t nrf24l01_cmd_send(struct nrf24l01_device *dev, void *arg, size_t
 	return nrf24l01_spi_xfer(dev, tx, NULL, count + 1U, timeout_ms);
 }
 
-static const struct nrf24l01_ioctl_map s_nrf24l01_map[NRF24L01_CMD_COUNT] = {
+static const struct nrf24l01_ioctl_map nrf24l01_map[NRF24L01_CMD_COUNT] = {
 	[NRF24L01_CMD_WRITE_REG - NRF24L01_CMD_BASE - 1] = { nrf24l01_cmd_wreg },
 	[NRF24L01_CMD_READ_REG - NRF24L01_CMD_BASE - 1]	 = { nrf24l01_cmd_rreg },
 	[NRF24L01_CMD_SEND - NRF24L01_CMD_BASE - 1]	 = { nrf24l01_cmd_send },
@@ -257,10 +256,10 @@ static mt_err_t nrf24l01_ioctl(struct device *pdev, int cmd, void *arg, size_t a
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)NRF24L01_CMD_BASE;
-	if (off < 1 || off > NRF24L01_CMD_COUNT || !s_nrf24l01_map[off - 1].handler)
+	if (off < 1 || off > NRF24L01_CMD_COUNT || !nrf24l01_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_nrf24l01_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = nrf24l01_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -283,10 +282,10 @@ static mt_err_t nrf24l01_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(nrf24l01, pdev));
 
-	pool_idx = mini_slot_claim(&s_nrf24l01_pool_ctrl);
+	pool_idx = mini_slot_claim(&nrf24l01_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_nrf24l01_pool[pool_idx];
+	dev = &nrf24l01_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->spi_dev = device_get_parent(pdev);
 	if (!dev->spi_dev) {
@@ -300,12 +299,12 @@ static mt_err_t nrf24l01_probe(struct device *pdev)
 	}
 	dev->ops  = nrf24l01_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_nrf24l01_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&nrf24l01_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -325,7 +324,7 @@ static mt_err_t nrf24l01_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_nrf24l01_pool);
+	idx = (int)(dev - nrf24l01_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -334,7 +333,7 @@ static mt_err_t nrf24l01_remove(struct device *pdev)
 	}
 	nrf24l01_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_nrf24l01_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&nrf24l01_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

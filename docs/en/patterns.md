@@ -39,7 +39,7 @@
 | :---: | :--- | :--- |
 | `170` | `interrupt/interrupt.c` | Global bottom-half poller (FIFO + pending_drain) |
 | `161` | `time_slice/task/xtask_preempt.c` | N+1 preemptive scheduler (grouped priority + CLZ lookup, delayable/sleepable/preemptible, precise WFI when idle) |
-| `160` | `time_slice/task/xtask_coop.c` | Cooperative scheduler `g_scheduler` (default) |
+| `160` | `time_slice/task/xtask_coop.c` | Cooperative scheduler `scheduler` (default) |
 | `152` | `core/src/mini_backend_bare.c` | Bare-metal queue pool |
 | `151` | `core/src/mini_backend_bare.c` | Bare-metal semaphore pool |
 | `150` | `core/src/mini_backend_bare.c` | Bare-metal mutex pool |
@@ -144,7 +144,7 @@ On the bare-metal backend (`CONFIG_OS_BARE`), the whole system has exactly one t
   → SysTick_Handler → hal_systick_irq_handler() + x_scheduler_tick(+tick_delay)  ← ISR only, nothing else
 
 Non-ARM (RISC-V) has no SysTick; hal_systick_init returns NOTSUPP, so RISC-V boards must set chosen in DTS.
-→ mini_time_ms() reads g_scheduler.tick_count directly                 ← one global clock
+→ mini_time_ms() reads scheduler.tick_count directly                 ← one global clock
 ```
 
 Task model (`time_slice/task/xtask.h`):
@@ -157,7 +157,7 @@ Task model (`time_slice/task/xtask.h`):
 
 - **Fixed time base, no drift**: `next_running = now + period` means callback execution time is not counted into the next period - no cumulative drift.
 - **`is_running` is a re-entry guard, not an enable switch**: the comment states "only enters when not running", preventing a task re-entering from within its own callback; it is reset whether or not the task expired, so an un-expired branch cannot leave the task stuck as running.
-- **Single global time base**: bare-metal `mini_time_ms()`, `mini_delay_ms()`, scheduler ticks, and bottom-half polling all share `g_scheduler.tick_count`; after switching to an RTOS, `mini_time_ms()` swaps to the RTOS tick with zero application changes.
+- **Single global time base**: bare-metal `mini_time_ms()`, `mini_delay_ms()`, scheduler ticks, and bottom-half polling all share `scheduler.tick_count`; after switching to an RTOS, `mini_time_ms()` swaps to the RTOS tick with zero application changes.
 - **Bare-metal delay has a deadlock backstop**: `mini_delay_ms` uses WFI busy-wait plus a tick-hang detector (breaks out after 10000 consecutive ticks without progress), preventing a hard deadlock if the time base never starts.
 
 ### Task Periods and Time Budget
@@ -185,7 +185,7 @@ For "delay inside a callback without stalling other tasks", use the protothread 
 
 ```c
 /* LED blink: on 100ms / off 100ms, without blocking other tasks */
-static uint32_t s_led_blink_count;   /* cross-yield locals must be static or in TCB */
+static uint32_t led_blink_count;   /* cross-yield locals must be static or in TCB */
 
 static void led_task_cb(x_task* task)
 {
@@ -194,7 +194,7 @@ static void led_task_cb(x_task* task)
     for (;;)
     {
         led_on();
-        s_led_blink_count++;
+        led_blink_count++;
         PT_DELAY(task, 100);           /* yield 100ms, resume at the next line */
 
         led_off();
@@ -205,8 +205,8 @@ static void led_task_cb(x_task* task)
 }
 
 /* Creation: period is the first dispatch delay; inner pacing is driven by PT_DELAY */
-static x_task s_led_task;
-/* xscheduler_task_create(&s_led_task, "led", led_task_cb, 0); */
+static x_task led_task;
+/* xscheduler_task_create(&led_task, "led", led_task_cb, 0); */
 ```
 
 Key points:
@@ -313,7 +313,7 @@ struct fifo_spsc {
 
 ### Double Buffer (`double_buffer_spsc`)
 
-Read/write separation with swap switching: **DMA capture runs in parallel with CPU processing**. `double_buffer_write_data/read_data` each own one side; when DMA fills a block, the sides swap - the ADC / I2S DMA bottom halves (`g_adc_dma_bottom_half_work`) are the typical use.
+Read/write separation with swap switching: **DMA capture runs in parallel with CPU processing**. `double_buffer_write_data/read_data` each own one side; when DMA fills a block, the sides swap - the ADC / I2S DMA bottom halves (`adc_dma_bottom_half_work`) are the typical use.
 
 ### Common Pitfalls
 

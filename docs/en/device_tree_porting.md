@@ -287,17 +287,17 @@ struct bmp280_device {
 };
 
 /* Static pool: fixed size at compile time, no runtime heap allocation */
-static struct bmp280_device s_bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t s_bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static struct bmp280_device bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
 
 static struct bmp280_device* bmp280_claim(void)
 {
     for (int i = 0; i < BMP280_POOL_COUNT; i++)
     {
-        if (!s_bmp280_used[i])
+        if (!bmp280_used[i])
         {
-            s_bmp280_used[i] = 1u;
-            return &s_bmp280_pool[i];
+            bmp280_used[i] = 1u;
+            return &bmp280_pool[i];
         }
     }
     return NULL;
@@ -529,7 +529,7 @@ namespace App_Led
         static constexpr const char* kTag = "Led";
 
 #ifndef CONFIG_XTASK_PREEMPT
-        static x_task s_tcb;   // cooperative: static TCB
+        static x_task tcb;   // cooperative: static TCB
 #endif
     };
 } // namespace App_Led
@@ -547,13 +547,13 @@ namespace App_Led
 namespace App_Led
 {
 #ifndef CONFIG_XTASK_PREEMPT
-    x_task Led::s_tcb;   // cooperative TCB definition
+    x_task Led::tcb;   // cooperative TCB definition
 #endif
 
     Led& Led::get_instance()
     {
-        static Led s_instance;
-        return s_instance;
+        static Led instance;
+        return instance;
     }
 
     Led::Led()
@@ -601,7 +601,7 @@ namespace App_Led
             [](x_task* self) { get_instance().thread(self); }, nullptr);
 #else
         x_task_handle_t handle = xscheduler_task_create(
-            &s_tcb, kName,
+            &tcb, kName,
             [](x_task* self) { get_instance().thread(self); },
             kDelay);
 #endif
@@ -630,7 +630,7 @@ namespace App_Led
 #define APP_LED_PERIOD_MS 500u
 
 void App_Led_register(void);          /* task-registration entry (called from main) */
-extern x_task g_led_task;             /* static TCB (caller-allocated for cooperative) */
+extern x_task led_task;             /* static TCB (caller-allocated for cooperative) */
 ```
 
 `led.c` (business callback + registration, cooperative `XTASK_COOP`):
@@ -643,10 +643,10 @@ extern x_task g_led_task;             /* static TCB (caller-allocated for cooper
 #include "system_log.h"
 #include "vfs-gpio.h"
 
-static const char* const s_kTag = "Led_Task";
-x_task g_led_task;                    /* static TCB */
+static const char* const tag = "Led_Task";
+x_task led_task;                    /* static TCB */
 
-static struct device* s_led_dev = NULL;
+static struct device* led_dev = NULL;
 
 /* task callback: toggle LED each deadline (no-op safely if DTS lacks a led node) */
 static void led_task_cb(x_task* self)
@@ -655,29 +655,29 @@ static void led_task_cb(x_task* self)
     int ret;
     MINI_IGNORE_RESULT(self);
 
-    if (s_led_dev == NULL)
+    if (led_dev == NULL)
     {
         struct device* pdev = device_find_by_label("led");
         if (IS_ERR_OR_NULL(pdev))
             return;
         if (device_open(pdev, NULL) != MINI_OK)
         {
-            MT_LOG_ERROR(s_kTag, "device_open(led) failed");
+            MT_LOG_ERROR(tag, "device_open(led) failed");
             return;
         }
-        s_led_dev = pdev;
+        led_dev = pdev;
     }
 
-    ret = device_ioctl(s_led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
+    ret = device_ioctl(led_dev, GPIO_CMD_TOGGLE, &arg, sizeof(arg), 100);
     if (ret != MINI_OK)
-        MT_LOG_ERROR(s_kTag, "device_ioctl(TOGGLE) failed: %d", ret);
+        MT_LOG_ERROR(tag, "device_ioctl(TOGGLE) failed: %d", ret);
 }
 
 /* task registration: cooperative signature (task, name, cb, period_ms) */
 void App_Led_register(void)
 {
-    if (xscheduler_task_create(&g_led_task, APP_LED_NAME, led_task_cb, APP_LED_PERIOD_MS) == 0)
-        MT_LOG_ERROR(s_kTag, "register failed");
+    if (xscheduler_task_create(&led_task, APP_LED_NAME, led_task_cb, APP_LED_PERIOD_MS) == 0)
+        MT_LOG_ERROR(tag, "register failed");
 }
 ```
 

@@ -3,7 +3,7 @@
  * @author H-000-H
  * @brief can bus 实现
  * @note CAN BUS 实现 — CAN 总线子系统 bus 层 (平台中立共享代码)
- * @note 静态池: s_can_hosts[HOST_MAX] (含 hal_host, ref_count) + s_can_clients[DEV_ID_COUNT]
+ * @note 静态池: can_hosts[HOST_MAX] (含 hal_host, ref_count) + can_clients[DEV_ID_COUNT]
  * @note 数据流:
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -37,19 +37,18 @@ struct can_bus_client {
 	int		     hw_open; /**< 硬件打开计数 */
 };
 
-static struct can_bus_host   s_can_hosts[CAN_BUS_HOST_MAX];
-static uint8_t		     s_can_host_used[CAN_BUS_HOST_MAX];
-static mini_slot_t	     s_can_host_pool_ctrl;
-static struct can_bus_client s_can_clients[DEV_ID_COUNT];
-static const char *const     k_tag = "can_bus";
+static struct can_bus_host   can_hosts[CAN_BUS_HOST_MAX];
+static uint8_t		     can_host_used[CAN_BUS_HOST_MAX];
+static mini_slot_t	     can_host_pool_ctrl;
+static struct can_bus_client can_clients[DEV_ID_COUNT];
+static const char *const     tag = "can_bus";
 
 /**
  * @brief CAN Host 池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_can_host_pool_ctrl, s_can_host_used, CAN_BUS_HOST_MAX));
+	MINI_IGNORE_RESULT(mini_slot_init(&can_host_pool_ctrl, can_host_used, CAN_BUS_HOST_MAX));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -63,9 +62,8 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void can_bus_pool_init(vo
 static struct can_bus_host *can_host_from_device(struct device *pdev)
 {
 	for (int index = 0; index < CAN_BUS_HOST_MAX; index++)
-		if (mini_slot_is_used(&s_can_host_pool_ctrl, index) &&
-		    s_can_hosts[index].pdev == pdev)
-			return &s_can_hosts[index];
+		if (mini_slot_is_used(&can_host_pool_ctrl, index) && can_hosts[index].pdev == pdev)
+			return &can_hosts[index];
 	return NULL;
 }
 
@@ -77,9 +75,9 @@ static struct can_bus_host *can_host_from_device(struct device *pdev)
 static struct can_bus_client *can_client_from_device(struct device *pdev)
 {
 	int id = (int)board_dev_find(device_get_name(pdev));
-	if (id < 0 || id >= DEV_ID_COUNT || !s_can_clients[id].pdev)
+	if (id < 0 || id >= DEV_ID_COUNT || !can_clients[id].pdev)
 		return NULL;
-	return &s_can_clients[id];
+	return &can_clients[id];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -94,7 +92,7 @@ static void	can_client_unregister_impl(struct device *pdev);
 /**
  * @brief CAN 总线控制器操作表
  */
-static const struct bus_controller_ops s_can_controller_ops = {
+static const struct bus_controller_ops can_controller_ops = {
 	.init		   = can_host_init_impl,
 	.deinit		   = can_host_deinit_impl,
 	.role		   = can_host_role_impl,
@@ -123,11 +121,11 @@ static mt_err_t can_host_init_impl(struct device *pdev, const void *cfg)
 	if (can_host_from_device(pdev))
 		return MINI_OK;
 
-	idx = mini_slot_claim(&s_can_host_pool_ctrl);
+	idx = mini_slot_claim(&can_host_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	host = &s_can_hosts[idx];
+	host = &can_hosts[idx];
 
 	MINI_MEM_SET(host, 0, sizeof(*host));
 
@@ -138,15 +136,15 @@ static mt_err_t can_host_init_impl(struct device *pdev, const void *cfg)
 	ret = hal_can_bus_host_init(&host->hal_host, idx, host_cfg);
 	if (ret != MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_can_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&can_host_pool_ctrl, idx));
 		return ret;
 	}
 
-	ret = bus_controller_bind_full(pdev, BUS_TYPE_CAN, &s_can_controller_ops, host);
+	ret = bus_controller_bind_full(pdev, BUS_TYPE_CAN, &can_controller_ops, host);
 	if (ret != MINI_OK) {
 		MINI_IGNORE_RESULT(hal_can_bus_host_deinit(&host->hal_host));
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_can_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&can_host_pool_ctrl, idx));
 		return ret;
 	}
 
@@ -177,18 +175,18 @@ static mt_err_t can_host_deinit_impl(struct device *pdev)
 		return MINI_ERR_NODEV;
 
 	if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0) {
-		MT_LOG_WARN(k_tag, "host deinit busy: ref_count=%d",
+		MT_LOG_WARN(tag, "host deinit busy: ref_count=%d",
 			    MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST));
 		return MINI_ERR_BUSY;
 	}
 
-	idx = (int)(host - s_can_hosts);
+	idx = (int)(host - can_hosts);
 	bus_controller_unbind(pdev);
 
 	ret = hal_can_bus_host_deinit(&host->hal_host);
 	if (ret == MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_can_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&can_host_pool_ctrl, idx));
 	}
 	return ret;
 }
@@ -239,7 +237,7 @@ static mt_err_t can_client_register_impl(struct device *pdev, const void *cfg, v
 	if (id < 0 || id >= DEV_ID_COUNT)
 		return MINI_ERR_INVAL;
 
-	client = &s_can_clients[id];
+	client = &can_clients[id];
 
 	if (client->pdev) {
 		if (client->pdev != pdev)

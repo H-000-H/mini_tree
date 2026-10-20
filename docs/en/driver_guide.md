@@ -113,7 +113,7 @@ Rules:
 - `compatible`: **exactly** matches the DTS node's `compatible = "..."`
 - `probe`/`remove`: return `MINI_OK` or `MINI_ERR_*`
 
-Identifiers are uniformly lowercase (enforced by `.clang-tidy` `readability-identifier-naming`): `x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event`, etc. The code style is **Linux kernel style** (tab = 8, 100 columns, function brace on its own line, pointer attached to the name); see [coding_style.md](coding_style.md). Recommended at `app`, mandatory below `app`.
+Identifiers are uniformly lowercase `snake_case` with **no `s_`/`g_`/`k_` prefixes** (Linux kernel naming, enforced by `.clang-tidy` `readability-identifier-naming`; functions carry the module name): `x_task` / `list_node` / `struct event`, etc. File-scope statics are named directly (`client_pool_ctrl`). The code style is **Linux kernel style** (tab = 8, 100 columns, function brace on its own line, pointer attached to the name); see [coding_style.md](coding_style.md). Recommended at `app`, mandatory below `app`.
 
 ---
 

@@ -2,7 +2,7 @@
  * @file relay_drv.c
  * @author H-000-H
  * @brief 继电器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
- * @note 静态池: s_relay_pool[RELAY_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: relay_pool[RELAY_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令见 relay_drv.h。
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -37,17 +37,17 @@ struct relay_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct relay_device	     s_relay_pool[RELAY_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			     s_relay_used[RELAY_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_relay_pool_ctrl MINI_ALIGNED(4);
-static const char *const	     k_tag = "relay";
+static struct relay_device	   relay_pool[RELAY_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			   relay_used[RELAY_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t relay_pool_ctrl MINI_ALIGNED(4);
+static const char *const	   tag = "relay";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void relay_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_relay_pool_ctrl, s_relay_used, RELAY_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&relay_pool_ctrl, relay_used, RELAY_POOL_COUNT));
 }
 
 /**
@@ -186,7 +186,7 @@ static mt_err_t relay_cmd(struct relay_device *dev, void *arg, size_t len, uint3
 	return vfs_gpio_set_level(&dev->gpio);
 }
 
-static const struct relay_ioctl_map s_relay_map[RELAY_CMD_COUNT] = {
+static const struct relay_ioctl_map relay_map[RELAY_CMD_COUNT] = {
 	[RELAY_CMD_SET - RELAY_CMD_BASE - 1] = { relay_cmd },
 };
 
@@ -211,10 +211,10 @@ static mt_err_t relay_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)RELAY_CMD_BASE;
-	if (off < 1 || off > RELAY_CMD_COUNT || !s_relay_map[off - 1].handler)
+	if (off < 1 || off > RELAY_CMD_COUNT || !relay_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_relay_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = relay_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -237,10 +237,10 @@ static mt_err_t relay_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(relay, pdev));
 
-	pool_idx = mini_slot_claim(&s_relay_pool_ctrl);
+	pool_idx = mini_slot_claim(&relay_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_relay_pool[pool_idx];
+	dev = &relay_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->gdev = device_get_phandle_dev(pdev, "ctl-gpio");
 	if (IS_ERR(dev->gdev)) {
@@ -254,12 +254,12 @@ static mt_err_t relay_probe(struct device *pdev)
 	}
 	dev->ops  = relay_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_relay_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&relay_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -279,7 +279,7 @@ static mt_err_t relay_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_relay_pool);
+	idx = (int)(dev - relay_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -288,7 +288,7 @@ static mt_err_t relay_remove(struct device *pdev)
 	}
 	relay_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_relay_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&relay_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

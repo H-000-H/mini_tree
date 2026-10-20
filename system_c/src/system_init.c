@@ -50,10 +50,10 @@ void usb_bus_task(void); /* TinyUSB 事件轮询 (声明见 bus/usb/usb_bus.h) *
 	} while (0)
 #endif
 
-static const char *k_tag = "SysInit";
+static const char *tag = "SysInit";
 
 /*禁止全局构造函数偷跑 */
-volatile bool g_system_os_initialized = false;
+volatile bool system_os_initialized = false;
 
 /**
  * @brief Phase1 Pre-OS 初始化
@@ -61,10 +61,10 @@ volatile bool g_system_os_initialized = false;
 void mini_tree_pre_os_init(void)
 {
 	IRQ_DISABLE(); /* 关全局中断 — ISR 不得在框架就绪前触发 */
-	MT_LOG_INFO(k_tag, "=== mini_tree Phase 1: Pre-OS Init ===");
+	MT_LOG_INFO(tag, "=== mini_tree Phase 1: Pre-OS Init ===");
 
 	if (!safe_state_check_bootloop()) {
-		MT_LOG_ERROR(k_tag, "bootloop protection triggered — system halted");
+		MT_LOG_ERROR(tag, "bootloop protection triggered — system halted");
 		return;
 	}
 
@@ -73,19 +73,19 @@ void mini_tree_pre_os_init(void)
 #endif
 
 	if (device_tree_init() != MINI_OK)
-		MT_LOG_WARN(k_tag, "device_tree_init failed (non-fatal)");
+		MT_LOG_WARN(tag, "device_tree_init failed (non-fatal)");
 
 #ifdef CONFIG_EVENT_BUS
 	if (event_bus_init() != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "EventBus init failed — entering safe state");
+		MT_LOG_ERROR(tag, "EventBus init failed — entering safe state");
 		enter_safe_state("EventBus init failed");
 		return;
 	}
 	MINI_IGNORE_RESULT(event_bus_post(EVENT_SYS_BOOT, 0));
 #endif
-	g_system_os_initialized = true;
+	system_os_initialized = true;
 
-	MT_LOG_INFO(k_tag, "=== mini_tree Phase 1 complete ===");
+	MT_LOG_INFO(tag, "=== mini_tree Phase 1 complete ===");
 }
 
 /**
@@ -93,7 +93,7 @@ void mini_tree_pre_os_init(void)
  */
 void mini_tree_start_tasks(void)
 {
-	MT_LOG_INFO(k_tag, "=== mini_tree Phase 2: Start Tasks ===");
+	MT_LOG_INFO(tag, "=== mini_tree Phase 2: Start Tasks ===");
 
 #ifdef CONFIG_EVENT_BUS
 	event_bus_start();
@@ -101,7 +101,7 @@ void mini_tree_start_tasks(void)
 
 	int probe_fail = board_driver_probe_all();
 	if (probe_fail != 0)
-		MT_LOG_WARN(k_tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
+		MT_LOG_WARN(tag, "board_driver_probe_all: %d device(s) failed", probe_fail);
 
 #ifdef CONFIG_SYSTEM_WDT
 	MINI_IGNORE_RESULT(system_wdt_init(3000));
@@ -125,7 +125,7 @@ void mini_tree_start_tasks(void)
 	hal_cpu_secondary_startup();
 #endif
 
-	MT_LOG_INFO(k_tag, "=== mini_tree Phase 2 complete ===");
+	MT_LOG_INFO(tag, "=== mini_tree Phase 2 complete ===");
 }
 
 /**

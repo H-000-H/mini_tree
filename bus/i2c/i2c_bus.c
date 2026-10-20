@@ -3,7 +3,7 @@
  * @author H-000-H
  * @brief i2c bus 实现
  * @note I2C BUS 实现 — I2C 总线子系统 bus 层 (平台中立共享代码)
- * @note 静态池: s_i2c_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2c_clients[DEV_ID_COUNT]
+ * @note 静态池: i2c_hosts[HOST_MAX] (含 hal_host, ref_count) + i2c_clients[DEV_ID_COUNT]
  * @note 数据流:
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -50,19 +50,18 @@ struct i2c_bus_client {
 	int			     hw_open; /**< 硬件打开计数 */
 };
 
-static struct i2c_bus_host   s_i2c_hosts[I2C_BUS_HOST_MAX];
-static uint8_t		     s_i2c_host_used[I2C_BUS_HOST_MAX];
-static mini_slot_t	     s_i2c_host_pool_ctrl;
-static struct i2c_bus_client s_i2c_clients[DEV_ID_COUNT];
-static const char *const     k_tag = "i2c_bus";
+static struct i2c_bus_host   i2c_hosts[I2C_BUS_HOST_MAX];
+static uint8_t		     i2c_host_used[I2C_BUS_HOST_MAX];
+static mini_slot_t	     i2c_host_pool_ctrl;
+static struct i2c_bus_client i2c_clients[DEV_ID_COUNT];
+static const char *const     tag = "i2c_bus";
 
 /**
  * @brief I2C Host 池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_i2c_host_pool_ctrl, s_i2c_host_used, I2C_BUS_HOST_MAX));
+	MINI_IGNORE_RESULT(mini_slot_init(&i2c_host_pool_ctrl, i2c_host_used, I2C_BUS_HOST_MAX));
 }
 /* -------------------------------------------------------------------------- */
 /* Host pool helpers */
@@ -75,9 +74,8 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void i2c_bus_pool_init(vo
 static struct i2c_bus_host *i2c_host_from_device(struct device *pdev)
 {
 	for (int index = 0; index < I2C_BUS_HOST_MAX; index++)
-		if (mini_slot_is_used(&s_i2c_host_pool_ctrl, index) &&
-		    s_i2c_hosts[index].pdev == pdev)
-			return &s_i2c_hosts[index];
+		if (mini_slot_is_used(&i2c_host_pool_ctrl, index) && i2c_hosts[index].pdev == pdev)
+			return &i2c_hosts[index];
 	return NULL;
 }
 
@@ -89,15 +87,15 @@ static struct i2c_bus_host *i2c_host_from_device(struct device *pdev)
 static struct i2c_bus_client *i2c_client_from_device(struct device *pdev)
 {
 	int id = (int)board_dev_find(device_get_name(pdev));
-	if (id < 0 || id >= DEV_ID_COUNT || !s_i2c_clients[id].pdev)
+	if (id < 0 || id >= DEV_ID_COUNT || !i2c_clients[id].pdev)
 		return NULL;
-	return &s_i2c_clients[id];
+	return &i2c_clients[id];
 }
 
 /* -------------------------------------------------------------------------- */
 /* controller_ops (host 级操作) */
 /* -------------------------------------------------------------------------- */
-/* 前向声明: s_i2c_controller_ops 引用 impl 函数, 但 impl 定义在 ops 表之后 */
+/* 前向声明: i2c_controller_ops 引用 impl 函数, 但 impl 定义在 ops 表之后 */
 static mt_err_t i2c_host_init_impl(struct device *pdev, const void *cfg);
 static mt_err_t i2c_host_deinit_impl(struct device *pdev);
 static int	i2c_host_role_impl(struct device *pdev);
@@ -108,7 +106,7 @@ static void	i2c_client_unregister_impl(struct device *pdev);
  * @brief I2C 总线控制器操作表
  * @note 控制器操作表注册到 bus_controller_bind_full; impl 实现逻辑, public 函数转发
  */
-static const struct bus_controller_ops s_i2c_controller_ops = {
+static const struct bus_controller_ops i2c_controller_ops = {
 	.init		   = i2c_host_init_impl,
 	.deinit		   = i2c_host_deinit_impl,
 	.role		   = i2c_host_role_impl,
@@ -137,11 +135,11 @@ static mt_err_t i2c_host_init_impl(struct device *pdev, const void *cfg)
 	if (i2c_host_from_device(pdev))
 		return MINI_OK;
 
-	idx = mini_slot_claim(&s_i2c_host_pool_ctrl);
+	idx = mini_slot_claim(&i2c_host_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	host = &s_i2c_hosts[idx];
+	host = &i2c_hosts[idx];
 
 	MINI_MEM_SET(host, 0, sizeof(*host));
 
@@ -152,15 +150,15 @@ static mt_err_t i2c_host_init_impl(struct device *pdev, const void *cfg)
 	ret = hal_i2c_bus_host_init(&host->hal_host, idx, host_cfg);
 	if (ret != MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_i2c_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&i2c_host_pool_ctrl, idx));
 		return ret;
 	}
 
-	ret = bus_controller_bind_full(pdev, BUS_TYPE_I2C, &s_i2c_controller_ops, host);
+	ret = bus_controller_bind_full(pdev, BUS_TYPE_I2C, &i2c_controller_ops, host);
 	if (ret != MINI_OK) {
 		MINI_IGNORE_RESULT(hal_i2c_bus_host_deinit(&host->hal_host));
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_i2c_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&i2c_host_pool_ctrl, idx));
 		return ret;
 	}
 
@@ -191,18 +189,18 @@ static mt_err_t i2c_host_deinit_impl(struct device *pdev)
 		return MINI_ERR_NODEV;
 
 	if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0) {
-		MT_LOG_WARN(k_tag, "host deinit busy: ref_count=%d",
+		MT_LOG_WARN(tag, "host deinit busy: ref_count=%d",
 			    MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST));
 		return MINI_ERR_BUSY;
 	}
 
-	idx = (int)(host - s_i2c_hosts);
+	idx = (int)(host - i2c_hosts);
 	bus_controller_unbind(pdev);
 
 	ret = hal_i2c_bus_host_deinit(&host->hal_host);
 	if (ret == MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_i2c_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&i2c_host_pool_ctrl, idx));
 	}
 	return ret;
 }
@@ -277,7 +275,7 @@ static mt_err_t i2c_client_register_impl(struct device *pdev, const void *cfg, v
 	if (id < 0 || id >= DEV_ID_COUNT)
 		return MINI_ERR_INVAL;
 
-	client = &s_i2c_clients[id];
+	client = &i2c_clients[id];
 
 	if (client->pdev) {
 		if (client->pdev != pdev)

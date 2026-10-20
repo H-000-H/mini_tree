@@ -2,7 +2,7 @@
  * @file sht30_drv.c
  * @author H-000-H
  * @brief SHT30 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_sht30_pool[SHT30_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: sht30_pool[SHT30_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与采样结构见 sht30_drv.h。
  * @note 数据流: VFS ioctl → sht30_cmd_read → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -38,17 +38,17 @@ struct sht30_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sht30_device	     s_sht30_pool[SHT30_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			     s_sht30_used[SHT30_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_sht30_pool_ctrl MINI_ALIGNED(4);
-static const char *const	     k_tag = "sht30";
+static struct sht30_device	   sht30_pool[SHT30_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			   sht30_used[SHT30_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t sht30_pool_ctrl MINI_ALIGNED(4);
+static const char *const	   tag = "sht30";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sht30_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_sht30_pool_ctrl, s_sht30_used, SHT30_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&sht30_pool_ctrl, sht30_used, SHT30_POOL_COUNT));
 }
 
 /**
@@ -207,7 +207,7 @@ static mt_err_t sht30_cmd_read(struct sht30_device *dev, void *arg, size_t len, 
 	}
 	return MINI_OK;
 }
-static const struct sht30_ioctl_map s_sht30_map[SHT30_CMD_COUNT] = {
+static const struct sht30_ioctl_map sht30_map[SHT30_CMD_COUNT] = {
 	[SHT30_CMD_READ_TEMP_RH - SHT30_CMD_BASE - 1] = { sht30_cmd_read },
 };
 
@@ -232,10 +232,10 @@ static mt_err_t sht30_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)SHT30_CMD_BASE;
-	if (off < 1 || off > SHT30_CMD_COUNT || !s_sht30_map[off - 1].handler)
+	if (off < 1 || off > SHT30_CMD_COUNT || !sht30_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_sht30_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = sht30_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -258,10 +258,10 @@ static mt_err_t sht30_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(sht30, pdev));
 
-	pool_idx = mini_slot_claim(&s_sht30_pool_ctrl);
+	pool_idx = mini_slot_claim(&sht30_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_sht30_pool[pool_idx];
+	dev = &sht30_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -275,12 +275,12 @@ static mt_err_t sht30_probe(struct device *pdev)
 	}
 	dev->ops  = sht30_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sht30_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sht30_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -300,7 +300,7 @@ static mt_err_t sht30_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_sht30_pool);
+	idx = (int)(dev - sht30_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -309,7 +309,7 @@ static mt_err_t sht30_remove(struct device *pdev)
 	}
 	sht30_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sht30_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sht30_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

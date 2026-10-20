@@ -24,7 +24,7 @@
 | functions / variables / types | lowercase | `device_open`, `struct device`, `device_id_t` |
 | C++ classes | `PascalCase` | `SystemCmd` |
 | macros / enum values | UPPERCASE | `MINI_ERR_INVAL`, `DEV_ID_UART0` |
-| prefixes | `s_` file-static, `g_` global, `k_` constant | `s_uart_pool`, `k_map` |
+| prefixes | **none** (kernel style — no Google `s_`/`g_`/`k_`); functions carry the module name | `client_pool_ctrl`, `nrf24l01_ioctl` |
 
 Recommended at the `app` layer, mandatory below it.
 

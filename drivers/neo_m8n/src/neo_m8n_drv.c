@@ -2,7 +2,7 @@
  * @file neo_m8n_drv.c
  * @author H-000-H
  * @brief NEO-M8N GPS 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_neo_m8n_pool[NEO_M8N_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: neo_m8n_pool[NEO_M8N_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 neo_m8n_drv.h。
  * @note 数据流: VFS ioctl → neo_m8n_cmd_nmea → device_read(UART) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -38,18 +38,17 @@ struct neo_m8n_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct neo_m8n_device	       s_neo_m8n_pool[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			       s_neo_m8n_used[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_neo_m8n_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "neo_m8n";
+static struct neo_m8n_device	     neo_m8n_pool[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			     neo_m8n_used[NEO_M8N_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t neo_m8n_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "neo_m8n";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void neo_m8n_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_neo_m8n_pool_ctrl, s_neo_m8n_used, NEO_M8N_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&neo_m8n_pool_ctrl, neo_m8n_used, NEO_M8N_POOL_COUNT));
 }
 
 /**
@@ -204,7 +203,7 @@ static mt_err_t neo_m8n_cmd_nmea(struct neo_m8n_device *dev, void *arg, size_t l
 	buf->len = got;
 	return MINI_OK;
 }
-static const struct neo_m8n_ioctl_map s_neo_m8n_map[NEO_M8N_CMD_COUNT] = {
+static const struct neo_m8n_ioctl_map neo_m8n_map[NEO_M8N_CMD_COUNT] = {
 	[NEO_M8N_CMD_READ_NMEA - NEO_M8N_CMD_BASE - 1] = { neo_m8n_cmd_nmea },
 };
 
@@ -229,10 +228,10 @@ static mt_err_t neo_m8n_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)NEO_M8N_CMD_BASE;
-	if (off < 1 || off > NEO_M8N_CMD_COUNT || !s_neo_m8n_map[off - 1].handler)
+	if (off < 1 || off > NEO_M8N_CMD_COUNT || !neo_m8n_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_neo_m8n_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = neo_m8n_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -255,10 +254,10 @@ static mt_err_t neo_m8n_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(neo_m8n, pdev));
 
-	pool_idx = mini_slot_claim(&s_neo_m8n_pool_ctrl);
+	pool_idx = mini_slot_claim(&neo_m8n_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_neo_m8n_pool[pool_idx];
+	dev = &neo_m8n_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->uart_dev = device_get_parent(pdev);
 	if (!dev->uart_dev) {
@@ -272,12 +271,12 @@ static mt_err_t neo_m8n_probe(struct device *pdev)
 	}
 	dev->ops  = neo_m8n_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_neo_m8n_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&neo_m8n_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -297,7 +296,7 @@ static mt_err_t neo_m8n_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_neo_m8n_pool);
+	idx = (int)(dev - neo_m8n_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -306,7 +305,7 @@ static mt_err_t neo_m8n_remove(struct device *pdev)
 	}
 	neo_m8n_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_neo_m8n_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&neo_m8n_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

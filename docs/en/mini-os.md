@@ -188,7 +188,7 @@ Implementation in `lib/mini-os/src/memory.c` (~840 lines) + `inc/mem_heap.h`:
 - **Heap source**: the linker script `lib/mini-os/mini-os-heap.ld` provides `__mini_os_heap_start` / `__mini_os_heap_end`; the heap sits between bss and the MSP stack and **does not count into bss** (important for the bss accounting in [memory_footprint.md](memory_footprint.md) §4);
 - **Optional slab**: fixed-size classes 16/32/64/128/256 (plus 512 with `MINI_OS_SLAB_LONG`), page size 2 KiB (power of two ≤ 64 KiB); pages are carved from the heap by `1/MINI_OS_SLAB_PROPORTION` (default 1/4), or served from an independent static region via `MINI_OS_SLAB_STATIC`; requests above the largest class fall through to the free list.
 
-> Unlike the other mini_tree backends: `mini_calloc/mini_free` (mini-os backend) use the mini-os own heap instead of libc, so the `s_rtt_heap`/`ucHeap`-style large bss arrays seen with RT-Thread/FreeRTOS do not exist here.
+> Unlike the other mini_tree backends: `mini_calloc/mini_free` (mini-os backend) use the mini-os own heap instead of libc, so the `rtt_heap`/`ucHeap`-style large bss arrays seen with RT-Thread/FreeRTOS do not exist here.
 >
 > **The memory module is reusable standalone (bare-metal)**: `memory.c` has no scheduler/port dependency and can be compiled into a bare-metal firmware as a single file — with `CONFIG_OS_BARE_MINI_OS_MEM` (default off) the bare-metal backend's `mini_malloc/mini_calloc/mini_free` switch from the libc heap to the mini-os heap (only `memory.c` is compiled in, the whole kernel is not linked); with it off they keep using libc `malloc/calloc/free`. The heap zone comes from `__mini_os_heap_start/__mini_os_heap_end` (`INCLUDE lib/mini-os/mini-os-heap.ld`), taken over lazily on the first allocation (`mini_os_heap_ensure_init()`, idempotent), no `.init_array` traversal needed.
 >
@@ -318,7 +318,7 @@ Full methodology and the four-backend comparison: [memory_footprint.md](memory_f
 | mini-os C++ (historical, backend removed) | 14381 / 128 / 3016 | 38912 / 1780 / 3064 |
 
 - **Smallest text** of the four backends (~3 KB less than FreeRTOS, ~3.6 KB less than RT-Thread, nano figures);
-- **Smallest bss, and it does not grow with heap config**: the heap lives in a linker region and does not count into bss (FreeRTOS `ucHeap` 8 KiB / RT-Thread `s_rtt_heap` 32 KiB both land in bss); even excluding configurable heaps, the framework bss is 2620 B (C) — clearly below the others;
+- **Smallest bss, and it does not grow with heap config**: the heap lives in a linker region and does not count into bss (FreeRTOS `ucHeap` 8 KiB / RT-Thread `rtt_heap` 32 KiB both land in bss); even excluding configurable heaps, the framework bss is 2620 B (C) — clearly below the others;
 - The C++ system backend (formerly `SYSTEM_CPP`) has been removed; the system layer is now pure C. The C++ row above is historical (it once cost +136 text / +396 bss over C, nano figures).
 
 ---

@@ -33,10 +33,10 @@ struct vfs_uart_priv {
 	int		       pool_idx; /**< 池索引 */
 };
 
-static struct vfs_uart_priv		 s_uart_priv_pool[UART_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				 s_uart_priv_used[UART_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_uart_priv_pool_ctrl MINI_ALIGNED(4);
-static const char *const		 k_host_tag = "uart_host_vfs";
+static struct vfs_uart_priv	       uart_priv_pool[UART_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			       uart_priv_used[UART_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t uart_priv_pool_ctrl MINI_ALIGNED(4);
+static const char *const	       host_tag = "uart_host_vfs";
 
 /**
  * @brief UART Host VFS 私有数据池启动初始化
@@ -44,7 +44,7 @@ static const char *const		 k_host_tag = "uart_host_vfs";
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_uart_priv_pool_init(void)
 {
 	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_uart_priv_pool_ctrl, s_uart_priv_used, UART_VFS_PRIV_COUNT));
+		mini_slot_init(&uart_priv_pool_ctrl, uart_priv_used, UART_VFS_PRIV_COUNT));
 }
 
 /**
@@ -179,16 +179,16 @@ static mt_err_t vfs_uart_priv_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(uart, pdev));
 
-	pool_idx = mini_slot_claim(&s_uart_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&uart_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_uart_priv_pool[pool_idx];
+	priv = &uart_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
 	if (vfs_uart_priv_parse_dts(pdev, &priv->cfg) != MINI_OK) {
-		MT_LOG_ERROR(k_host_tag, "dts parse failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(host_tag, "dts parse failed: %s", device_get_name(pdev));
 		ret = MINI_ERR_INVAL;
 		goto err_pool;
 	}
@@ -202,14 +202,14 @@ static mt_err_t vfs_uart_priv_probe(struct device *pdev)
 		goto err_bus;
 	}
 
-	MT_LOG_INFO(k_host_tag, "probe OK: %s baud=%lu", device_get_name(pdev),
+	MT_LOG_INFO(host_tag, "probe OK: %s baud=%lu", device_get_name(pdev),
 		    (unsigned long)priv->cfg.baud_rate);
 	return MINI_OK;
 
 err_bus:
 	MINI_IGNORE_RESULT(uart_bus_host_deinit(pdev));
 err_pool:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_uart_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&uart_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -248,13 +248,13 @@ static mt_err_t vfs_uart_priv_remove(struct device *pdev)
 
 	ret = uart_bus_host_deinit(pdev);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_host_tag, "host_deinit failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(host_tag, "host_deinit failed: %s", device_get_name(pdev));
 		dev_lc_remove_finish(lc);
 		return ret;
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_uart_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&uart_priv_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
@@ -270,17 +270,17 @@ struct uart_vfs_client {
 	int		       pool_idx; /**< 池索引 */
 };
 
-static struct uart_vfs_client s_uart_vfs_pool[UART_VFS_COUNT];
-static uint8_t		      s_uart_vfs_used[UART_VFS_COUNT];
-static mini_slot_t	      s_uart_vfs_pool_ctrl;
-static const char *const      k_tag = "uart_vfs";
+static struct uart_vfs_client uart_vfs_pool[UART_VFS_COUNT];
+static uint8_t		      uart_vfs_used[UART_VFS_COUNT];
+static mini_slot_t	      uart_vfs_pool_ctrl;
+static const char *const      tag = "uart_vfs";
 
 /**
  * @brief UART Client VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void uart_vfs_pool_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_uart_vfs_pool_ctrl, s_uart_vfs_used, UART_VFS_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&uart_vfs_pool_ctrl, uart_vfs_used, UART_VFS_COUNT));
 }
 
 /**
@@ -436,7 +436,7 @@ static mt_err_t uart_cmd_transfer(struct device *pdev, void *arg, size_t arg_len
 				 transfer_arg->rx_len, timeout_ms);
 }
 
-static const struct uart_ioctl_map s_uart_ioctl_map[UART_CMD_COUNT] = {
+static const struct uart_ioctl_map uart_ioctl_map[UART_CMD_COUNT] = {
 	[UART_CMD_TRANSFER - UART_CMD_BASE - 1] = { uart_cmd_transfer },
 };
 
@@ -468,10 +468,10 @@ static mt_err_t uart_vfs_ioctl(struct device *pdev, int cmd, void *arg, size_t a
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)UART_CMD_BASE;
-	if (offset < 1 || offset > UART_CMD_COUNT || !s_uart_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > UART_CMD_COUNT || !uart_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_uart_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
+		ret = uart_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
 
 	dev_lc_io_end(lc);
 	return ret;
@@ -496,11 +496,11 @@ mt_err_t uart_vfs_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(uart, pdev));
 
-	pool_idx = mini_slot_claim(&s_uart_vfs_pool_ctrl);
+	pool_idx = mini_slot_claim(&uart_vfs_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_uart_vfs_pool[pool_idx];
+	priv = &uart_vfs_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -518,13 +518,13 @@ mt_err_t uart_vfs_probe(struct device *pdev)
 		goto err_pool;
 	}
 
-	MT_LOG_INFO(k_tag, "probe OK: %s", device_get_name(pdev));
+	MT_LOG_INFO(tag, "probe OK: %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_pool:
 	pdev->ops = NULL;	       /* 切断 fops, 防 UAF */
 	dev_lc_reset(device_lc(pdev)); /* 重置生命周期 */
-	MINI_IGNORE_RESULT(mini_slot_release(&s_uart_vfs_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&uart_vfs_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -554,7 +554,7 @@ mt_err_t uart_vfs_remove(struct device *pdev)
 
 	uart_bus_client_unregister(pdev);
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_uart_vfs_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&uart_vfs_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;

@@ -90,11 +90,11 @@ static uint32_t crc_bitwise_engine(const uint8_t *data, size_t length, uint32_t 
 #if CRC_MODE
 
 /* 查表法缓存：表由 (poly, width, refin) 决定，按需重建（静态分配约 1KB RAM） */
-static uint32_t s_crc_table[CRC_TABLE_SIZE];
-static uint32_t s_table_poly;
-static uint8_t	s_table_width;
-static uint8_t	s_table_refin;
-static int	s_table_ready = 0;
+static uint32_t crc_table[CRC_TABLE_SIZE];
+static uint32_t table_poly;
+static uint8_t	table_width;
+static uint8_t	table_refin;
+static int	table_ready = 0;
 
 /**
  * @brief 查表法构建函数：构建查表法所需的 256 项表，poly 为引擎域内多项式（refin 时已反射）
@@ -123,13 +123,13 @@ static void crc_table_build(uint32_t poly, uint8_t width, int refin)
 			}
 		}
 
-		s_crc_table[i] = r & mask;
+		crc_table[i] = r & mask;
 	}
 
-	s_table_poly  = poly;
-	s_table_width = width;
-	s_table_refin = (refin != 0) ? 1u : 0u;
-	s_table_ready = 1;
+	table_poly  = poly;
+	table_width = width;
+	table_refin = (refin != 0) ? 1u : 0u;
+	table_ready = 1;
 }
 
 /**
@@ -153,20 +153,20 @@ static uint32_t crc_table_engine(const uint8_t *data, size_t length, uint32_t re
 	}
 
 	/* 参数变化时重建表 */
-	if (!s_table_ready || s_table_width != width || s_table_refin != (uint8_t)(refin != 0) ||
-	    s_table_poly != poly) {
+	if (!table_ready || table_width != width || table_refin != (uint8_t)(refin != 0) ||
+	    table_poly != poly) {
 		crc_table_build(poly, width, refin);
 	}
 
 	if (refin) {
 		while (length-- > 0) {
-			reg = (reg >> 8) ^ s_crc_table[(reg ^ *data++) & 0xFFu];
+			reg = (reg >> 8) ^ crc_table[(reg ^ *data++) & 0xFFu];
 		}
 	} else {
 		while (length-- > 0) {
 			uint8_t idx = (uint8_t)((reg >> (width - 8)) ^ *data++);
 
-			reg = ((reg << 8) & mask) ^ s_crc_table[idx];
+			reg = ((reg << 8) & mask) ^ crc_table[idx];
 		}
 	}
 

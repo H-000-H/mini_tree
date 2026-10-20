@@ -23,7 +23,7 @@
 #include <stdint.h>
 
 /* 池大小宏见 board_define_gpio.h (数量由 DTS 节点数自动生成) */
-static const char *const k_tag = "vfs-gpio";
+static const char *const tag = "vfs-gpio";
 
 struct vfs_gpio_priv {
 	struct file_operations ops;	      /**< VFS 操作表 */
@@ -32,9 +32,9 @@ struct vfs_gpio_priv {
 	int		       pool_idx;      /**< 池索引 */
 };
 
-static struct vfs_gpio_priv		 s_gpio_priv_pool[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
-static uint8_t				 s_gpio_priv_used[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_gpio_priv_pool_ctrl MINI_ALIGNED(4);
+static struct vfs_gpio_priv	       gpio_priv_pool[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
+static uint8_t			       gpio_priv_used[VFS_GPIO_PIN_COUNT] MINI_ALIGNED(4);
+static mini_slot_t gpio_priv_pool_ctrl MINI_ALIGNED(4);
 
 /**
  * @brief GPIO VFS 私有数据池启动初始化
@@ -42,7 +42,7 @@ static mini_slot_t s_gpio_priv_pool_ctrl MINI_ALIGNED(4);
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void gpio_priv_pool_boot_init(void)
 {
 	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_gpio_priv_pool_ctrl, s_gpio_priv_used, VFS_GPIO_PIN_COUNT));
+		mini_slot_init(&gpio_priv_pool_ctrl, gpio_priv_used, VFS_GPIO_PIN_COUNT));
 }
 
 /**
@@ -189,7 +189,7 @@ static mt_err_t gpio_cmd_get_level(struct vfs_gpio_priv *priv, void *arg, size_t
 /* -------------------------------------------------------------------------- */
 /* ioctl 命令映射表 — index = (cmd - GPIO_CMD_BASE - 1), 与 GPIO_CMD_* 一一对应 */
 /* -------------------------------------------------------------------------- */
-static const gpio_ioctl_map_t s_gpio_ioctl_map[GPIO_CMD_COUNT] = {
+static const gpio_ioctl_map_t gpio_ioctl_map[GPIO_CMD_COUNT] = {
 	[GPIO_CMD_TOGGLE - GPIO_CMD_BASE - 1]	 = { gpio_cmd_toggle },
 	[GPIO_CMD_SET_LEVEL - GPIO_CMD_BASE - 1] = { gpio_cmd_set_level },
 	[GPIO_CMD_GET_LEVEL - GPIO_CMD_BASE - 1] = { gpio_cmd_get_level },
@@ -235,7 +235,7 @@ static mt_err_t vfs_gpio_ioctl(struct device *pdev, int cmd, void *arg, size_t a
 	}
 	index = (uint8_t)(offset - 1);
 
-	handler = s_gpio_ioctl_map[index].handler;
+	handler = gpio_ioctl_map[index].handler;
 	if (handler != NULL)
 		ret = handler(priv, arg, arg_len);
 	else
@@ -275,13 +275,13 @@ static mt_err_t vfs_gpio_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(gpio, pdev));
 
-	pool_idx = mini_slot_claim(&s_gpio_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&gpio_priv_pool_ctrl);
 	if (pool_idx < 0) {
-		MT_LOG_ERROR(k_tag, "Failed to claim gpio pool");
+		MT_LOG_ERROR(tag, "Failed to claim gpio pool");
 		return MINI_ERR_NOMEM;
 	}
 
-	priv = &s_gpio_priv_pool[pool_idx];
+	priv = &gpio_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -303,7 +303,7 @@ static mt_err_t vfs_gpio_probe(struct device *pdev)
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "virq-idx", &virq_idx));
 
 	if (intr_val != 0 && (virq_idx < 0 || virq_idx >= (int)VIRTUAL_IRQ_BLOCK_SIZE)) {
-		MT_LOG_ERROR(k_tag, "gpio-intr set but virq-idx invalid (%d)", virq_idx);
+		MT_LOG_ERROR(tag, "gpio-intr set but virq-idx invalid (%d)", virq_idx);
 		ret = MINI_ERR_INVAL;
 		goto err_pool;
 	}
@@ -335,7 +335,7 @@ static mt_err_t vfs_gpio_probe(struct device *pdev)
 	}
 
 	/* mode 为 uint32_t: Xtensa 上 uint32_t == unsigned long, %d 会触发 -Wformat */
-	MT_LOG_INFO(k_tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%u", (unsigned)port_val,
+	MT_LOG_INFO(tag, "probe OK: port=0x%x pin=0x%x clk=0x%x mode=%u", (unsigned)port_val,
 		    (unsigned)pin_val, (unsigned)clk_val, (unsigned)priv->obj.cfg.mode);
 	return MINI_OK;
 
@@ -345,7 +345,7 @@ err_unbind:
 	dev_lc_reset(device_lc(pdev));
 err_pool:
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_gpio_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&gpio_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -374,13 +374,13 @@ static mt_err_t vfs_gpio_remove(struct device *pdev)
 	device_ops_unregister(pdev);
 
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "remove drain failed");
+		MT_LOG_ERROR(tag, "remove drain failed");
 		dev_lc_remove_finish(lc);
 		return MINI_ERR_IO;
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_gpio_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&gpio_priv_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

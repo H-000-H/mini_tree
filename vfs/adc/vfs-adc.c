@@ -38,16 +38,16 @@ struct vfs_adc_priv {
 	int				   dma_pool_idx; /**< DMA 私有配置池索引 (-1 = 未分配) */
 };
 
-static struct vfs_adc_priv		s_adc_priv_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_adc_priv_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_adc_priv_pool_ctrl MINI_ALIGNED(4);
+static struct vfs_adc_priv	      adc_priv_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			      adc_priv_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t adc_priv_pool_ctrl MINI_ALIGNED(4);
 
 /* DMA 私有配置池：仅 DTS 启用 dma/dma_it 模式的实例才 claim，
  * 不用 DMA 的板子零开销（不再内嵌进 struct vfs_adc_priv）。 */
-static struct hal_adc_private_cfg      s_adc_dma_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(32);
-static uint8_t			       s_adc_dma_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_adc_dma_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "vfs-adc-host";
+static struct hal_adc_private_cfg    adc_dma_pool[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(32);
+static uint8_t			     adc_dma_used[ADC_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t adc_dma_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "vfs-adc-host";
 
 /* -------------------------------------------------------------------------- */
 /* IOCTL 后台控制命令私有实现 */
@@ -154,7 +154,7 @@ typedef struct {
 	adc_cmd_handler_t handler;
 } adc_ioctl_map_t;
 
-static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
+static const adc_ioctl_map_t adc_ioctl_map[ADC_CMD_COUNT] = {
 	[ADC_CMD_GET_CHANNEL_SAMPLE_TIME - ADC_CMD_BASE - 1] = { adc_cmd_get_channel_sample_time },
 	[ADC_CMD_GET_CHANNEL_ID - ADC_CMD_BASE - 1]	     = { adc_cmd_get_channel_id },
 	[ADC_CMD_GET_CHANNEL_COUNT - ADC_CMD_BASE - 1]	     = { adc_cmd_get_channel_count },
@@ -168,10 +168,8 @@ static const adc_ioctl_map_t s_adc_ioctl_map[ADC_CMD_COUNT] = {
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_adc_priv_pool_init()
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_adc_priv_pool_ctrl, s_adc_priv_used, ADC_VFS_PRIV_COUNT));
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_adc_dma_pool_ctrl, s_adc_dma_used, ADC_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&adc_priv_pool_ctrl, adc_priv_used, ADC_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&adc_dma_pool_ctrl, adc_dma_used, ADC_VFS_PRIV_COUNT));
 }
 
 /**
@@ -429,7 +427,7 @@ static mt_err_t vfs_adc_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	}
 	index = (uint8_t)(offset - 1);
 
-	handler = s_adc_ioctl_map[index].handler;
+	handler = adc_ioctl_map[index].handler;
 	if (handler != NULL)
 		ret = handler(priv, arg, arg_len);
 	else
@@ -461,50 +459,49 @@ static mt_err_t vfs_adc_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(adc, pdev));
 
-	pool_idx = mini_slot_claim(&s_adc_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&adc_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_adc_priv_pool[pool_idx];
+	priv = &adc_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx	   = pool_idx;
 	priv->dma_pool_idx = -1;
 
 	if (vfs_adc_priv_parse_dts(pdev, &priv->cfg) != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "dts parse failed: %s", device_get_name(pdev));
 		ret = MINI_ERR_INVAL;
 		goto err_pool;
 	}
 
 	/* DMA 私有配置 (双缓冲) 按需分配: 仅 dma / dma_it 模式才 claim, 否则零开销 */
 	if (priv->cfg.dma_cfg.dma_it_enable || priv->cfg.dma_cfg.dma_enable) {
-		int dma_idx = mini_slot_claim(&s_adc_dma_pool_ctrl);
+		int dma_idx = mini_slot_claim(&adc_dma_pool_ctrl);
 		if (dma_idx < 0) {
-			MT_LOG_ERROR(k_tag, "dma private pool exhausted: %s",
-				     device_get_name(pdev));
+			MT_LOG_ERROR(tag, "dma private pool exhausted: %s", device_get_name(pdev));
 			ret = MINI_ERR_NOMEM;
 			goto err_pool;
 		}
-		MINI_MEM_SET(&s_adc_dma_pool[dma_idx], 0, sizeof(s_adc_dma_pool[dma_idx]));
+		MINI_MEM_SET(&adc_dma_pool[dma_idx], 0, sizeof(adc_dma_pool[dma_idx]));
 		priv->dma_pool_idx    = dma_idx;
-		priv->cfg.private_cfg = &s_adc_dma_pool[dma_idx];
+		priv->cfg.private_cfg = &adc_dma_pool[dma_idx];
 	}
 
 	ret = hal_adc_device_init(&priv->adc, &priv->unique, &priv->cfg);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "hal_adc_device_init failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "hal_adc_device_init failed: %s", device_get_name(pdev));
 		goto err_pool;
 	}
 
 	ret = hal_adc_init(&priv->adc);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "hal_adc_init hardware failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "hal_adc_init hardware failed: %s", device_get_name(pdev));
 		goto err_deinit;
 	}
 
 #ifdef CONFIG_VIRQ
 	interrupt_virtual_register(VIRQ(adc, 0), hal_virtual_adc_irq_callback,
-				   &g_adc_dma_bottom_half_work, &priv->adc);
+				   &adc_dma_bottom_half_work, &priv->adc);
 
 	int dma_irqn = -1;
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "dma-irqn", &dma_irqn));
@@ -519,7 +516,7 @@ static mt_err_t vfs_adc_probe(struct device *pdev)
 		goto err_hardware_deinit;
 	}
 
-	MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
+	MT_LOG_INFO(tag, "probe OK %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_hardware_deinit:
@@ -530,11 +527,11 @@ err_deinit:
 	MINI_IGNORE_RESULT(hal_adc_device_deinit(&priv->adc));
 err_pool:
 	if (priv->cfg.private_cfg != NULL) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&adc_dma_pool_ctrl, priv->dma_pool_idx));
 		priv->cfg.private_cfg = NULL;
 		priv->dma_pool_idx    = -1;
 	}
-	MINI_IGNORE_RESULT(mini_slot_release(&s_adc_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&adc_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -569,13 +566,13 @@ static mt_err_t vfs_adc_remove(struct device *pdev)
 
 	/* 归还 DMA 私有配置 (若有) */
 	if (priv->cfg.private_cfg != NULL) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_adc_dma_pool_ctrl, priv->dma_pool_idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&adc_dma_pool_ctrl, priv->dma_pool_idx));
 		priv->cfg.private_cfg = NULL;
 		priv->dma_pool_idx    = -1;
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_adc_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&adc_priv_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;

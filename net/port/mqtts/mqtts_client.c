@@ -17,7 +17,7 @@
 #include "system_log.h"
 #include <string.h>
 
-static const char *const s_kTag = "mqtts_client";
+static const char *const tag = "mqtts_client";
 
 #define MQTTS_CONNACK_TIMEOUT_MS 10000 /**< CONNECT 发出后等待 CONNACK 的超时时间 */
 
@@ -133,7 +133,7 @@ static bool mqtts_event_callback(MQTTContext_t *mqtt_context, MQTTPacketInfo_t *
 		container_of(mqtt_context, struct mqtts_client_context, mqtt_context);
 
 	if (deserialized_info->deserializationResult != MQTTSuccess) {
-		MT_LOG_ERROR(s_kTag, "packet deserialize failed: %d",
+		MT_LOG_ERROR(tag, "packet deserialize failed: %d",
 			     (int)deserialized_info->deserializationResult);
 		return true;
 	}
@@ -163,13 +163,13 @@ static bool mqtts_event_callback(MQTTContext_t *mqtt_context, MQTTPacketInfo_t *
 	case MQTT_PACKET_TYPE_PUBREL:
 	case MQTT_PACKET_TYPE_PUBCOMP: {
 		/* 请求完成确认: 仅记录包标识, 不跟踪在途请求 */
-		MT_LOG_INFO(s_kTag, "ack type 0x%02X, pid %u", (unsigned)packet_info->type,
+		MT_LOG_INFO(tag, "ack type 0x%02X, pid %u", (unsigned)packet_info->type,
 			    (unsigned)deserialized_info->packetIdentifier);
 		break;
 	}
 
 	case MQTT_PACKET_TYPE_DISCONNECT: {
-		MT_LOG_WARN(s_kTag, "broker sent DISCONNECT");
+		MT_LOG_WARN(tag, "broker sent DISCONNECT");
 		context->is_mqtt_connected = false;
 		break;
 	}
@@ -179,7 +179,7 @@ static bool mqtts_event_callback(MQTTContext_t *mqtt_context, MQTTPacketInfo_t *
 	}
 
 	default: {
-		MT_LOG_WARN(s_kTag, "unhandled packet type 0x%02X", (unsigned)packet_info->type);
+		MT_LOG_WARN(tag, "unhandled packet type 0x%02X", (unsigned)packet_info->type);
 		break;
 	}
 	}
@@ -212,7 +212,7 @@ int mqtts_client_init(struct mqtts_client_context *context)
 		MQTT_Init(&context->mqtt_context, &context->transport_interface, mqtts_get_time_ms,
 			  mqtts_event_callback, &context->network_buffer);
 	if (status != MQTTSuccess) {
-		MT_LOG_ERROR(s_kTag, "MQTT_Init failed: %d", (int)status);
+		MT_LOG_ERROR(tag, "MQTT_Init failed: %d", (int)status);
 		return NET_ERR_INVAL;
 	}
 	return NET_OK;
@@ -245,14 +245,14 @@ int mqtts_client_do_connect(struct mqtts_client_context *context)
 		return NET_ERR_INVAL;
 
 	if (context->connect_requested || context->is_mqtt_connected) {
-		MT_LOG_WARN(s_kTag, "already connecting/connected");
+		MT_LOG_WARN(tag, "already connecting/connected");
 		return NET_ERR_STATE;
 	}
 
 	int err = tls_client_init_and_connect(&context->tls_client, context->broker_ip,
 					      context->port, context->ca_cert, context->ca_len);
 	if (err != ERR_OK) {
-		MT_LOG_ERROR(s_kTag, "tls connect start failed: %d", err);
+		MT_LOG_ERROR(tag, "tls connect start failed: %d", err);
 		return NET_ERR_CONN;
 	}
 
@@ -261,7 +261,7 @@ int mqtts_client_do_connect(struct mqtts_client_context *context)
 	context->is_mqtt_connected    = false;
 	context->tls_connect_start_ms = mini_time_ms();
 
-	MT_LOG_INFO(s_kTag, "connecting to %s:%u (tls)...", context->broker_ip, context->port);
+	MT_LOG_INFO(tag, "connecting to %s:%u (tls)...", context->broker_ip, context->port);
 	return NET_OK;
 }
 
@@ -310,11 +310,11 @@ static int mqtts_handshake(struct mqtts_client_context *context)
 
 	if (status == MQTTSuccess) {
 		context->is_mqtt_connected = true;
-		MT_LOG_INFO(s_kTag, "CONNACK ok, mqtts connected");
+		MT_LOG_INFO(tag, "CONNACK ok, mqtts connected");
 		return NET_OK;
 	}
 
-	MT_LOG_ERROR(s_kTag, "MQTT_Connect failed: %d", (int)status);
+	MT_LOG_ERROR(tag, "MQTT_Connect failed: %d", (int)status);
 	mqtts_reset_connection(context);
 	return NET_ERR_CONN;
 }
@@ -329,7 +329,7 @@ int mqtts_client_disconnect(struct mqtts_client_context *context)
 		MINI_IGNORE_RESULT(MQTT_Disconnect(&context->mqtt_context, NULL, NULL));
 
 	mqtts_reset_connection(context);
-	MT_LOG_INFO(s_kTag, "mqtts disconnected");
+	MT_LOG_INFO(tag, "mqtts disconnected");
 	return NET_OK;
 }
 
@@ -345,7 +345,7 @@ int mqtts_client_publish(struct mqtts_client_context *context, const char *topic
 			 const void *payload, uint16_t length, uint8_t qos, bool retain)
 {
 	if (!is_mqtts_client_connected(context) || !topic) {
-		MT_LOG_ERROR(s_kTag, "publish rejected: not connected or topic NULL");
+		MT_LOG_ERROR(tag, "publish rejected: not connected or topic NULL");
 		return NET_ERR_INVAL;
 	}
 
@@ -364,7 +364,7 @@ int mqtts_client_publish(struct mqtts_client_context *context, const char *topic
 
 	MQTTStatus_t status = MQTT_Publish(&context->mqtt_context, &publish_info, packet_id, NULL);
 	if (status != MQTTSuccess) {
-		MT_LOG_ERROR(s_kTag, "MQTT_Publish failed: %d", (int)status);
+		MT_LOG_ERROR(tag, "MQTT_Publish failed: %d", (int)status);
 		return NET_ERR_NOSPC;
 	}
 	return NET_OK;
@@ -373,13 +373,13 @@ int mqtts_client_publish(struct mqtts_client_context *context, const char *topic
 int mqtts_client_subscribe(struct mqtts_client_context *context, const char *topic, uint8_t qos)
 {
 	if (!is_mqtts_client_connected(context) || !topic) {
-		MT_LOG_ERROR(s_kTag, "subscribe rejected: not connected or topic NULL");
+		MT_LOG_ERROR(tag, "subscribe rejected: not connected or topic NULL");
 		return NET_ERR_INVAL;
 	}
 
 	size_t topic_length = strlen(topic);
 	if (topic_length == 0 || topic_length > UINT16_MAX) {
-		MT_LOG_ERROR(s_kTag, "subscribe topic len invalid: %u", (unsigned)topic_length);
+		MT_LOG_ERROR(tag, "subscribe topic len invalid: %u", (unsigned)topic_length);
 		return NET_ERR_INVAL;
 	}
 
@@ -391,7 +391,7 @@ int mqtts_client_subscribe(struct mqtts_client_context *context, const char *top
 	MQTTStatus_t status = MQTT_Subscribe(&context->mqtt_context, &subscribe_info, 1U,
 					     MQTT_GetPacketId(&context->mqtt_context), NULL);
 	if (status != MQTTSuccess) {
-		MT_LOG_ERROR(s_kTag, "MQTT_Subscribe failed: %d", (int)status);
+		MT_LOG_ERROR(tag, "MQTT_Subscribe failed: %d", (int)status);
 		return NET_ERR_NOSPC;
 	}
 	return NET_OK;
@@ -400,7 +400,7 @@ int mqtts_client_subscribe(struct mqtts_client_context *context, const char *top
 int mqtts_client_unsubscribe(struct mqtts_client_context *context, const char *topic)
 {
 	if (!is_mqtts_client_connected(context) || !topic) {
-		MT_LOG_ERROR(s_kTag, "unsubscribe rejected: not connected or topic NULL");
+		MT_LOG_ERROR(tag, "unsubscribe rejected: not connected or topic NULL");
 		return NET_ERR_INVAL;
 	}
 
@@ -412,7 +412,7 @@ int mqtts_client_unsubscribe(struct mqtts_client_context *context, const char *t
 	MQTTStatus_t status = MQTT_Unsubscribe(&context->mqtt_context, &subscribe_info, 1U,
 					       MQTT_GetPacketId(&context->mqtt_context), NULL);
 	if (status != MQTTSuccess) {
-		MT_LOG_ERROR(s_kTag, "MQTT_Unsubscribe failed: %d", (int)status);
+		MT_LOG_ERROR(tag, "MQTT_Unsubscribe failed: %d", (int)status);
 		return NET_ERR_NOSPC;
 	}
 	return NET_OK;
@@ -434,7 +434,7 @@ int mqtts_client_process(struct mqtts_client_context *context)
 		} else if ((mini_time_ms() - context->tls_connect_start_ms) >=
 			   MQTTS_TLS_CONNECT_TIMEOUT_MS) {
 			/* TLS 握手失败 (err 回调已复位) 或超时 */
-			MT_LOG_ERROR(s_kTag, "tls handshake failed/timeout");
+			MT_LOG_ERROR(tag, "tls handshake failed/timeout");
 			mqtts_reset_connection(context);
 		}
 	}
@@ -443,8 +443,7 @@ int mqtts_client_process(struct mqtts_client_context *context)
 	if (context->connack_pending || context->is_mqtt_connected) {
 		MQTTStatus_t status = MQTT_ProcessLoop(&context->mqtt_context);
 		if ((status != MQTTSuccess) && (status != MQTTNeedMoreBytes)) {
-			MT_LOG_ERROR(s_kTag, "ProcessLoop error: %d, reset connection",
-				     (int)status);
+			MT_LOG_ERROR(tag, "ProcessLoop error: %d, reset connection", (int)status);
 			mqtts_reset_connection(context);
 			return NET_OK;
 		}

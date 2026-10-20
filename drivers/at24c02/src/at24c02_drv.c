@@ -2,7 +2,7 @@
  * @file at24c02_drv.c
  * @author H-000-H
  * @brief AT24C02 EEPROM 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_at24c02_pool[AT24C02_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: at24c02_pool[AT24C02_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 at24c02_drv.h。
  * @note 数据流: VFS ioctl → at24c02_cmd_read/write → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -38,18 +38,17 @@ struct at24c02_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct at24c02_device	       s_at24c02_pool[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			       s_at24c02_used[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_at24c02_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "at24c02";
+static struct at24c02_device	     at24c02_pool[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			     at24c02_used[AT24C02_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t at24c02_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "at24c02";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void at24c02_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_at24c02_pool_ctrl, s_at24c02_used, AT24C02_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&at24c02_pool_ctrl, at24c02_used, AT24C02_POOL_COUNT));
 }
 
 /**
@@ -226,7 +225,7 @@ static mt_err_t at24c02_cmd_write(struct at24c02_device *dev, void *arg, size_t 
 	}
 	return MINI_OK;
 }
-static const struct at24c02_ioctl_map s_at24c02_map[AT24C02_CMD_COUNT] = {
+static const struct at24c02_ioctl_map at24c02_map[AT24C02_CMD_COUNT] = {
 	[AT24C02_CMD_READ - AT24C02_CMD_BASE - 1]  = { at24c02_cmd_read },
 	[AT24C02_CMD_WRITE - AT24C02_CMD_BASE - 1] = { at24c02_cmd_write },
 };
@@ -252,10 +251,10 @@ static mt_err_t at24c02_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)AT24C02_CMD_BASE;
-	if (off < 1 || off > AT24C02_CMD_COUNT || !s_at24c02_map[off - 1].handler)
+	if (off < 1 || off > AT24C02_CMD_COUNT || !at24c02_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_at24c02_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = at24c02_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -278,10 +277,10 @@ static mt_err_t at24c02_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(at24c02, pdev));
 
-	pool_idx = mini_slot_claim(&s_at24c02_pool_ctrl);
+	pool_idx = mini_slot_claim(&at24c02_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_at24c02_pool[pool_idx];
+	dev = &at24c02_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -295,12 +294,12 @@ static mt_err_t at24c02_probe(struct device *pdev)
 	}
 	dev->ops  = at24c02_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_at24c02_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&at24c02_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -320,7 +319,7 @@ static mt_err_t at24c02_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_at24c02_pool);
+	idx = (int)(dev - at24c02_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -329,7 +328,7 @@ static mt_err_t at24c02_remove(struct device *pdev)
 	}
 	at24c02_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_at24c02_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&at24c02_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

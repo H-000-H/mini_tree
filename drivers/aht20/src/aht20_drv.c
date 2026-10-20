@@ -2,7 +2,7 @@
  * @file aht20_drv.c
  * @author H-000-H
  * @brief AHT20 温湿度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_aht20_pool[AHT20_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: aht20_pool[AHT20_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与采样结构见 aht20_drv.h。
  * @note 数据流: VFS ioctl → aht20_cmd_read → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -38,17 +38,17 @@ struct aht20_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct aht20_device	     s_aht20_pool[AHT20_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			     s_aht20_used[AHT20_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_aht20_pool_ctrl MINI_ALIGNED(4);
-static const char *const	     k_tag = "aht20";
+static struct aht20_device	   aht20_pool[AHT20_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			   aht20_used[AHT20_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t aht20_pool_ctrl MINI_ALIGNED(4);
+static const char *const	   tag = "aht20";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void aht20_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_aht20_pool_ctrl, s_aht20_used, AHT20_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&aht20_pool_ctrl, aht20_used, AHT20_POOL_COUNT));
 }
 
 /**
@@ -207,7 +207,7 @@ static mt_err_t aht20_cmd_read(struct aht20_device *dev, void *arg, size_t len, 
 	return MINI_OK;
 }
 
-static const struct aht20_ioctl_map s_aht20_map[AHT20_CMD_COUNT] = {
+static const struct aht20_ioctl_map aht20_map[AHT20_CMD_COUNT] = {
 	[AHT20_CMD_READ_TEMP_RH - AHT20_CMD_BASE - 1] = { aht20_cmd_read },
 };
 
@@ -232,10 +232,10 @@ static mt_err_t aht20_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)AHT20_CMD_BASE;
-	if (off < 1 || off > AHT20_CMD_COUNT || !s_aht20_map[off - 1].handler)
+	if (off < 1 || off > AHT20_CMD_COUNT || !aht20_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_aht20_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = aht20_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -258,10 +258,10 @@ static mt_err_t aht20_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(aht20, pdev));
 
-	pool_idx = mini_slot_claim(&s_aht20_pool_ctrl);
+	pool_idx = mini_slot_claim(&aht20_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_aht20_pool[pool_idx];
+	dev = &aht20_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -275,12 +275,12 @@ static mt_err_t aht20_probe(struct device *pdev)
 	}
 	dev->ops  = aht20_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_aht20_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&aht20_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -300,7 +300,7 @@ static mt_err_t aht20_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_aht20_pool);
+	idx = (int)(dev - aht20_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -309,7 +309,7 @@ static mt_err_t aht20_remove(struct device *pdev)
 	}
 	aht20_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_aht20_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&aht20_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

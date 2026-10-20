@@ -6,7 +6,7 @@
  * @note  *_from_isr 无需上报 yield (RT-Thread 异常返回时自行调度), px_yield_required 一律忽略
  * @note  递归锁用 rt_mutex (带优先级继承), 普通锁用 count=1 的 rt_sem
  * (无继承)——既有语义勿“顺手统一”
- * @note  内存走独立系统堆 s_rtt_heap (RTT_HEAP_SIZE, 板级可覆盖), 首次分配时惰性初始化
+ * @note  内存走独立系统堆 rtt_heap (RTT_HEAP_SIZE, 板级可覆盖), 首次分配时惰性初始化
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
@@ -34,14 +34,14 @@
 #endif
 #endif
 
-static uint8_t	    s_rtt_heap[RTT_HEAP_SIZE] MINI_ALIGNED(4);
-static volatile int s_rtt_heap_inited = 0;
+static uint8_t	    rtt_heap[RTT_HEAP_SIZE] MINI_ALIGNED(4);
+static volatile int rtt_heap_inited = 0;
 
 static void rtt_heap_init_once(void)
 {
-	if (!s_rtt_heap_inited) {
-		rt_system_heap_init(s_rtt_heap, s_rtt_heap + sizeof(s_rtt_heap));
-		s_rtt_heap_inited = 1;
+	if (!rtt_heap_inited) {
+		rt_system_heap_init(rtt_heap, rtt_heap + sizeof(rtt_heap));
+		rtt_heap_inited = 1;
 	}
 }
 
@@ -123,13 +123,13 @@ mt_err_t mini_mutex_create_static_recursive(mini_mutex_t **out, void *storage, s
 }
 
 /* 池化互斥锁: 给拿不出静态存储的调用方 (lwIP sys_mutex_new) 用 */
-static struct mini_mutex	     s_mutex_pool[MINI_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
-static uint8_t			     s_mutex_used[MINI_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
-static mini_slot_t s_mutex_pool_ctrl MINI_ALIGNED(4);
+static struct mini_mutex	   mutex_pool[MINI_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t			   mutex_used[MINI_MUTEX_POOL_SIZE] MINI_ALIGNED(4);
+static mini_slot_t mutex_pool_ctrl MINI_ALIGNED(4);
 
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void mini_mutex_pool_boot(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_mutex_pool_ctrl, s_mutex_used, MINI_MUTEX_POOL_SIZE));
+	MINI_IGNORE_RESULT(mini_slot_init(&mutex_pool_ctrl, mutex_used, MINI_MUTEX_POOL_SIZE));
 }
 
 mt_err_t mini_mutex_create(mini_mutex_t **out)
@@ -140,16 +140,16 @@ mt_err_t mini_mutex_create(mini_mutex_t **out)
 		return MINI_ERR_ISR;
 	*out = NULL;
 
-	int idx = mini_slot_claim(&s_mutex_pool_ctrl);
+	int idx = mini_slot_claim(&mutex_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	if (mini_mutex_init(&s_mutex_pool[idx], MINI_MUTEX_PLAIN, "mini_mtx") != MINI_OK) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_mutex_pool_ctrl, idx));
+	if (mini_mutex_init(&mutex_pool[idx], MINI_MUTEX_PLAIN, "mini_mtx") != MINI_OK) {
+		MINI_IGNORE_RESULT(mini_slot_release(&mutex_pool_ctrl, idx));
 		return MINI_ERR_NOMEM;
 	}
 
-	*out = (mini_mutex_t *)&s_mutex_pool[idx];
+	*out = (mini_mutex_t *)&mutex_pool[idx];
 	return MINI_OK;
 }
 
@@ -192,9 +192,8 @@ void mini_mutex_destroy(mini_mutex_t *mtx)
 		rt_sem_detach(&mutex->u.sem);
 
 	/* 仅池内对象归还槽位; 静态存储的对象不在池内 */
-	if (mutex >= s_mutex_pool && mutex < &s_mutex_pool[MINI_MUTEX_POOL_SIZE])
-		MINI_IGNORE_RESULT(
-			mini_slot_release(&s_mutex_pool_ctrl, (int)(mutex - s_mutex_pool)));
+	if (mutex >= mutex_pool && mutex < &mutex_pool[MINI_MUTEX_POOL_SIZE])
+		MINI_IGNORE_RESULT(mini_slot_release(&mutex_pool_ctrl, (int)(mutex - mutex_pool)));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -231,13 +230,13 @@ mt_err_t mini_sem_create_binary_static(mini_sem_t **out, void *storage, size_t s
 }
 
 /* 池化信号量: 给拿不出静态存储的调用方 (lwIP sys_sem_new) 用 */
-static struct mini_sem		   s_sem_pool[MINI_SEM_POOL_SIZE] MINI_ALIGNED(4);
-static uint8_t			   s_sem_used[MINI_SEM_POOL_SIZE] MINI_ALIGNED(4);
-static mini_slot_t s_sem_pool_ctrl MINI_ALIGNED(4);
+static struct mini_sem		 sem_pool[MINI_SEM_POOL_SIZE] MINI_ALIGNED(4);
+static uint8_t			 sem_used[MINI_SEM_POOL_SIZE] MINI_ALIGNED(4);
+static mini_slot_t sem_pool_ctrl MINI_ALIGNED(4);
 
 mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void mini_sem_pool_boot(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_sem_pool_ctrl, s_sem_used, MINI_SEM_POOL_SIZE));
+	MINI_IGNORE_RESULT(mini_slot_init(&sem_pool_ctrl, sem_used, MINI_SEM_POOL_SIZE));
 }
 
 mt_err_t mini_sem_create_binary(mini_sem_t **out)
@@ -246,13 +245,13 @@ mt_err_t mini_sem_create_binary(mini_sem_t **out)
 		return MINI_ERR_INVAL;
 	*out = NULL;
 
-	int idx = mini_slot_claim(&s_sem_pool_ctrl);
+	int idx = mini_slot_claim(&sem_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	struct mini_sem *sem = &s_sem_pool[idx];
+	struct mini_sem *sem = &sem_pool[idx];
 	if (mini_sem_init(sem) != MINI_OK) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_sem_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&sem_pool_ctrl, idx));
 		return MINI_ERR_NOMEM;
 	}
 
@@ -314,8 +313,8 @@ void mini_sem_destroy(mini_sem_t *sem)
 	obj->inited = false;
 
 	/* 仅池内对象归还槽位 */
-	if (obj >= s_sem_pool && obj < &s_sem_pool[MINI_SEM_POOL_SIZE])
-		MINI_IGNORE_RESULT(mini_slot_release(&s_sem_pool_ctrl, (int)(obj - s_sem_pool)));
+	if (obj >= sem_pool && obj < &sem_pool[MINI_SEM_POOL_SIZE])
+		MINI_IGNORE_RESULT(mini_slot_release(&sem_pool_ctrl, (int)(obj - sem_pool)));
 }
 
 /* -------------------------------------------------------------------------- */

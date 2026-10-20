@@ -2,7 +2,7 @@
  * @file ina219_drv.c
  * @author H-000-H
  * @brief INA219 电流/功率监测驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_ina219_pool[INA219_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: ina219_pool[INA219_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与采样结构见 ina219_drv.h。
  * @note 数据流: VFS ioctl → ina219_cmd_read → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -37,17 +37,17 @@ struct ina219_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct ina219_device	      s_ina219_pool[INA219_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_ina219_used[INA219_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_ina219_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_tag = "ina219";
+static struct ina219_device	    ina219_pool[INA219_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			    ina219_used[INA219_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t ina219_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    tag = "ina219";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void ina219_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_ina219_pool_ctrl, s_ina219_used, INA219_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&ina219_pool_ctrl, ina219_used, INA219_POOL_COUNT));
 }
 
 /**
@@ -224,7 +224,7 @@ static mt_err_t ina219_cmd_read(struct ina219_device *dev, void *arg, size_t len
 	return MINI_OK;
 }
 
-static const struct ina219_ioctl_map s_ina219_map[INA219_CMD_COUNT] = {
+static const struct ina219_ioctl_map ina219_map[INA219_CMD_COUNT] = {
 	[INA219_CMD_READ_POWER - INA219_CMD_BASE - 1] = { ina219_cmd_read },
 };
 
@@ -249,10 +249,10 @@ static mt_err_t ina219_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)INA219_CMD_BASE;
-	if (off < 1 || off > INA219_CMD_COUNT || !s_ina219_map[off - 1].handler)
+	if (off < 1 || off > INA219_CMD_COUNT || !ina219_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_ina219_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = ina219_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -275,10 +275,10 @@ static mt_err_t ina219_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(ina219, pdev));
 
-	pool_idx = mini_slot_claim(&s_ina219_pool_ctrl);
+	pool_idx = mini_slot_claim(&ina219_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_ina219_pool[pool_idx];
+	dev = &ina219_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -292,12 +292,12 @@ static mt_err_t ina219_probe(struct device *pdev)
 	}
 	dev->ops  = ina219_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_ina219_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&ina219_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -317,7 +317,7 @@ static mt_err_t ina219_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_ina219_pool);
+	idx = (int)(dev - ina219_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -326,7 +326,7 @@ static mt_err_t ina219_remove(struct device *pdev)
 	}
 	ina219_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_ina219_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&ina219_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

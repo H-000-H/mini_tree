@@ -39,7 +39,7 @@
 | :---: | :--- | :--- |
 | `170` | `interrupt/interrupt.c` | 全局下半部 poller（FIFO + pending_drain） |
 | `161` | `time_slice/task/xtask_preempt.c` | N+1 抢占式调度器（分组优先级 + CLZ 定位，可延迟/休眠/抢占，无就绪时精确 WFI） |
-| `160` | `time_slice/task/xtask_coop.c` | 协调式调度器 `g_scheduler`（默认） |
+| `160` | `time_slice/task/xtask_coop.c` | 协调式调度器 `scheduler`（默认） |
 | `152` | `core/src/mini_backend_bare.c` | 裸机队列池 |
 | `151` | `core/src/mini_backend_bare.c` | 裸机信号量池 |
 | `150` | `core/src/mini_backend_bare.c` | 裸机互斥锁池 |
@@ -144,7 +144,7 @@ board_driver_probe_all()
   → SysTick_Handler → hal_systick_irq_handler() + x_scheduler_tick(+tick_delay)  ← ISR 内，仅此而已
 
 非 ARM（RISC-V）无 SysTick，hal_systick_init 返回 NOTSUPP，RISC-V 板必须在 DTS 配 chosen。
-→ mini_time_ms() 直接读 g_scheduler.tick_count                     ← 全局统一时钟
+→ mini_time_ms() 直接读 scheduler.tick_count                     ← 全局统一时钟
 ```
 
 任务模型（`time_slice/task/xtask.h`）：
@@ -157,7 +157,7 @@ board_driver_probe_all()
 
 - **固定时基不漂移**：`next_running = now + period`，任务执行耗时不会被计入下一周期，长期无累积漂移。
 - **is_running 是重入保护而非使能开关**：注释明确"非运行态才允许进入"，防止同一任务在回调内再次进入；到期与否都复位，避免未到期分支把任务卡死在 running。
-- **单一全局时基**：裸机 `mini_time_ms()`、`mini_delay_ms()`、调度器 tick、下半部轮询共用 `g_scheduler.tick_count`，语义一致；切到 RTOS 后 `mini_time_ms()` 换成 RTOS tick，业务代码零改动。
+- **单一全局时基**：裸机 `mini_time_ms()`、`mini_delay_ms()`、调度器 tick、下半部轮询共用 `scheduler.tick_count`，语义一致；切到 RTOS 后 `mini_time_ms()` 换成 RTOS tick，业务代码零改动。
 - **裸机 delay 有防死锁兜底**：`mini_delay_ms` 用 WFI 忙等 + tick hang 检测（连续 10000 次无 tick 前进即退出），防止时基未启动时硬死锁。
 
 ### 任务周期与时间预算
@@ -185,7 +185,7 @@ board_driver_probe_all()
 
 ```c
 /* LED 闪烁: on 100ms / off 100ms, 期间不阻塞其他任务 */
-static uint32_t s_led_blink_count;   /* 跨让出点的变量必须静态或存 TCB */
+static uint32_t led_blink_count;   /* 跨让出点的变量必须静态或存 TCB */
 
 static void led_task_cb(x_task* task)
 {
@@ -194,7 +194,7 @@ static void led_task_cb(x_task* task)
     for (;;)
     {
         led_on();
-        s_led_blink_count++;
+        led_blink_count++;
         PT_DELAY(task, 100);           /* 让出 100ms, 到期从下一行继续 */
 
         led_off();
@@ -205,8 +205,8 @@ static void led_task_cb(x_task* task)
 }
 
 /* 创建: period 为首次调度延迟, 协程内部节奏由 PT_DELAY 控制 */
-static x_task s_led_task;
-/* xscheduler_task_create(&s_led_task, "led", led_task_cb, 0); */
+static x_task led_task;
+/* xscheduler_task_create(&led_task, "led", led_task_cb, 0); */
 ```
 
 要点：
@@ -313,7 +313,7 @@ struct fifo_spsc {
 
 ### 双缓冲（`double_buffer_spsc`）
 
-读写分离、swap 切换：**DMA 采集与 CPU 处理并行**。`double_buffer_write_data/read_data` 各自独占一侧，DMA 写满一块后交换——ADC / I2S DMA 下半部（`g_adc_dma_bottom_half_work`）是典型用法。
+读写分离、swap 切换：**DMA 采集与 CPU 处理并行**。`double_buffer_write_data/read_data` 各自独占一侧，DMA 写满一块后交换——ADC / I2S DMA 下半部（`adc_dma_bottom_half_work`）是典型用法。
 
 ### 常见坑
 

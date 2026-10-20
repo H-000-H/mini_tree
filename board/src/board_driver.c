@@ -23,9 +23,9 @@
 
 #include "compiler_compat_poison.h"
 
-static const char *k_tag = "board_drv";
+static const char *tag = "board_drv";
 
-static volatile int s_shutdown_entered = 0;
+static volatile int shutdown_entered = 0;
 
 /* -------------------------------------------------------------------------- */
 /* 安全停机子系统 */
@@ -40,11 +40,11 @@ struct safety_pin {
 	int safe_level; /**< 安全停机时的目标电平 */
 };
 
-static struct safety_pin g_safety_pins[BOARD_MAX_SAFETY_PINS];
-static int		 g_safety_pin_count;
+static struct safety_pin safety_pins[BOARD_MAX_SAFETY_PINS];
+static int		 safety_pin_count;
 
-static safety_shutdown_fn_t g_safety_cbs[BOARD_SAFETY_MAX_CALLBACKS];
-static int		    g_safety_cb_count;
+static safety_shutdown_fn_t safety_cbs[BOARD_SAFETY_MAX_CALLBACKS];
+static int		    safety_cb_count;
 
 /**
  * @brief 注册安全停机 GPIO 引脚及安全电平
@@ -53,10 +53,10 @@ static int		    g_safety_cb_count;
  */
 void board_safety_add_pin(int pin, int safe_level)
 {
-	if (g_safety_pin_count < BOARD_MAX_SAFETY_PINS) {
-		g_safety_pins[g_safety_pin_count].pin	     = pin;
-		g_safety_pins[g_safety_pin_count].safe_level = safe_level;
-		g_safety_pin_count++;
+	if (safety_pin_count < BOARD_MAX_SAFETY_PINS) {
+		safety_pins[safety_pin_count].pin	 = pin;
+		safety_pins[safety_pin_count].safe_level = safe_level;
+		safety_pin_count++;
 	}
 }
 
@@ -66,8 +66,8 @@ void board_safety_add_pin(int pin, int safe_level)
  */
 void board_safety_register_shutdown(safety_shutdown_fn_t fn)
 {
-	if (fn && g_safety_cb_count < BOARD_SAFETY_MAX_CALLBACKS)
-		g_safety_cbs[g_safety_cb_count++] = fn;
+	if (fn && safety_cb_count < BOARD_SAFETY_MAX_CALLBACKS)
+		safety_cbs[safety_cb_count++] = fn;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -93,7 +93,7 @@ static mt_err_t board_safety_hw_probe(struct device *pdev)
 		board_safety_add_pin(pin, safe_level);
 		idx++;
 	}
-	MT_DRV_LOG_INFO(k_tag, "safety-hw: %d shutdown pins registered", g_safety_pin_count);
+	MT_DRV_LOG_INFO(tag, "safety-hw: %d shutdown pins registered", safety_pin_count);
 	return MINI_OK;
 }
 
@@ -105,8 +105,8 @@ static mt_err_t board_safety_hw_probe(struct device *pdev)
 static mt_err_t board_safety_hw_remove(struct device *pdev)
 {
 	MINI_UNUSED_PARAM(pdev);
-	g_safety_pin_count = 0;
-	g_safety_cb_count  = 0;
+	safety_pin_count = 0;
+	safety_cb_count	 = 0;
 	return MINI_OK;
 }
 
@@ -200,7 +200,7 @@ static void handle_probe_failure(struct device *pdev, device_id_t id)
 	enum device_criticality crit = device_get_criticality(pdev);
 	switch (crit) {
 	case DEVICE_CRIT_FATAL:
-		MT_DRV_LOG_ERROR(k_tag, "FATAL: '%s' probe failed — initiating safe shutdown",
+		MT_DRV_LOG_ERROR(tag, "FATAL: '%s' probe failed — initiating safe shutdown",
 				 device_get_name(pdev));
 		MINI_PANIC("FATAL device '%s' probe failed", device_get_name(pdev));
 		break;
@@ -208,7 +208,7 @@ static void handle_probe_failure(struct device *pdev, device_id_t id)
 		break;
 	case DEVICE_CRIT_WARNING:
 	default:
-		MT_DRV_LOG_WARN(k_tag, "non-fatal probe failure for '%s'", device_get_name(pdev));
+		MT_DRV_LOG_WARN(tag, "non-fatal probe failure for '%s'", device_get_name(pdev));
 		break;
 	}
 }
@@ -232,7 +232,7 @@ static void disable_dependents(device_id_t failed_id)
 		if (st == DEVICE_STATUS_DISABLED || st == DEVICE_STATUS_REMOVED)
 			continue;
 		MINI_IGNORE_RESULT(device_set_status(child, DEVICE_STATUS_DISABLED));
-		MT_DRV_LOG_WARN(k_tag, "cascade: '%s' disabled (dependency '%s' failed)",
+		MT_DRV_LOG_WARN(tag, "cascade: '%s' disabled (dependency '%s' failed)",
 				device_get_name(child), device_get_name(board_dev_get(failed_id)));
 	}
 }
@@ -243,25 +243,24 @@ static void disable_dependents(device_id_t failed_id)
  */
 void system_safety_hardware_shutdown(const char *reason)
 {
-	if (__sync_val_compare_and_swap(&s_shutdown_entered, 0, 1) != 0)
+	if (__sync_val_compare_and_swap(&shutdown_entered, 0, 1) != 0)
 		return;
 
 #ifdef CONFIG_SAFETY_SHUTDOWN
 	MINI_UNUSED_PARAM(reason);
 
 	if (!hal_is_in_isr()) {
-		for (int loop_index = 0; loop_index < g_safety_cb_count; loop_index++)
-			if (g_safety_cbs[loop_index])
-				g_safety_cbs[loop_index]();
+		for (int loop_index = 0; loop_index < safety_cb_count; loop_index++)
+			if (safety_cbs[loop_index])
+				safety_cbs[loop_index]();
 	}
 
 	MINI_IGNORE_RESULT(hal_pwm_force_stop_all());
 
 	/* 注: 所有 GPIO 写操作必须在 hal_cpu_emergency_stop_all_cores() 之前完成,
 	 * 因为 CPU STOP 后可能冻结外设总线, 后续 GPIO 写将失效. */
-	for (int loop_index = 0; loop_index < g_safety_pin_count; loop_index++)
-		hal_gpio_set_level(g_safety_pins[loop_index].pin,
-				   g_safety_pins[loop_index].safe_level);
+	for (int loop_index = 0; loop_index < safety_pin_count; loop_index++)
+		hal_gpio_set_level(safety_pins[loop_index].pin, safety_pins[loop_index].safe_level);
 	hal_gpio_set_level(BOARD_SAFE_STATE_FAULT_LED_PIN, 1);
 
 	hal_cpu_emergency_stop_all_cores();
@@ -304,7 +303,7 @@ static device_id_t board_probe_order_at(int index)
  */
 mt_err_t board_driver_probe_all(void)
 {
-	MT_DRV_LOG_INFO(k_tag, "probing all devices from compile-time DTS table ...");
+	MT_DRV_LOG_INFO(tag, "probing all devices from compile-time DTS table ...");
 	volatile uint8_t ok	       = 0;
 	volatile uint8_t fail	       = 0;
 	volatile int	 count	       = board_probe_order_count();
@@ -325,7 +324,7 @@ mt_err_t board_driver_probe_all(void)
 				continue;
 			/* DIRECT 设备不经过 VFS probe, 跳过 */
 			if (pdev->node && (pdev->node->flags & DEVICE_FLAG_DIRECT)) {
-				MT_DRV_LOG_VERBOSE(k_tag, "skip probe: '%s' (direct)",
+				MT_DRV_LOG_VERBOSE(tag, "skip probe: '%s' (direct)",
 						   device_get_name(pdev));
 				continue;
 			}
@@ -340,7 +339,7 @@ mt_err_t board_driver_probe_all(void)
 				}
 				MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_DISABLED));
 				fail++;
-				MT_DRV_LOG_WARN(k_tag,
+				MT_DRV_LOG_WARN(tag,
 						"skip '%s': dependency permanently unavailable",
 						device_get_name(pdev));
 				continue;
@@ -354,7 +353,7 @@ mt_err_t board_driver_probe_all(void)
 						device_set_status(pdev, DEVICE_STATUS_DISABLED));
 					continue;
 				}
-				MT_DRV_LOG_WARN(k_tag, "no generated probe for '%s' (compat=%s)",
+				MT_DRV_LOG_WARN(tag, "no generated probe for '%s' (compat=%s)",
 						name, device_get_compatible(pdev));
 				MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_DISABLED));
 				handle_probe_failure(pdev, id);
@@ -363,7 +362,7 @@ mt_err_t board_driver_probe_all(void)
 				continue;
 			}
 
-			MT_DRV_LOG_INFO(k_tag, "probing '%s' (%s) ...", device_get_name(pdev),
+			MT_DRV_LOG_INFO(tag, "probing '%s' (%s) ...", device_get_name(pdev),
 					device_get_compatible(pdev));
 			int ret = probe(pdev);
 			if (ret == MINI_OK) {
@@ -374,7 +373,7 @@ mt_err_t board_driver_probe_all(void)
 				if (open_ret != MINI_OK) {
 					MINI_IGNORE_RESULT(
 						device_set_status(pdev, DEVICE_STATUS_ERROR));
-					MT_DRV_LOG_ERROR(k_tag, "device_open FAILED: %s (ret=%d)",
+					MT_DRV_LOG_ERROR(tag, "device_open FAILED: %s (ret=%d)",
 							 device_get_name(pdev), open_ret);
 					handle_probe_failure(pdev, id);
 					disable_dependents(id);
@@ -383,13 +382,13 @@ mt_err_t board_driver_probe_all(void)
 				}
 				ok++;
 			} else if (ret == MINI_ERR_DEFER) {
-				MT_DRV_LOG_INFO(k_tag,
+				MT_DRV_LOG_INFO(tag,
 						"DEFER '%s': phandle dependency not yet probed",
 						device_get_name(pdev));
 				deferred++;
 			} else {
 				MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_ERROR));
-				MT_DRV_LOG_ERROR(k_tag, "probe FAILED: %s (ret=%d)",
+				MT_DRV_LOG_ERROR(tag, "probe FAILED: %s (ret=%d)",
 						 device_get_name(pdev), ret);
 				handle_probe_failure(pdev, id);
 				disable_dependents(id);
@@ -400,7 +399,7 @@ mt_err_t board_driver_probe_all(void)
 		if (deferred == 0)
 			break;
 		if (deferred == deferred_prev) {
-			MT_DRV_LOG_ERROR(k_tag,
+			MT_DRV_LOG_ERROR(tag,
 					 "MINI_ERR_DEFER stall: %d devices stuck after %d passes",
 					 (int)deferred, (int)pass + 1);
 			for (volatile int loop_index = 0; loop_index < count; loop_index++) {
@@ -413,7 +412,7 @@ mt_err_t board_driver_probe_all(void)
 					MINI_IGNORE_RESULT(
 						device_set_status(pdev, DEVICE_STATUS_DISABLED));
 					fail++;
-					MT_DRV_LOG_ERROR(k_tag,
+					MT_DRV_LOG_ERROR(tag,
 							 "DEFER stall: '%s' permanently disabled",
 							 device_get_name(pdev));
 				}
@@ -421,11 +420,11 @@ mt_err_t board_driver_probe_all(void)
 			break;
 		}
 		deferred_prev = deferred;
-		MT_DRV_LOG_INFO(k_tag, "pass %d: %d deferred, retrying ...", (int)pass + 1,
+		MT_DRV_LOG_INFO(tag, "pass %d: %d deferred, retrying ...", (int)pass + 1,
 				(int)deferred);
 	}
 
-	MT_DRV_LOG_INFO(k_tag, "probe complete: %d ok, %d fail", (int)ok, (int)fail);
+	MT_DRV_LOG_INFO(tag, "probe complete: %d ok, %d fail", (int)ok, (int)fail);
 	return (int)fail;
 }
 
@@ -435,7 +434,7 @@ mt_err_t board_driver_probe_all(void)
  */
 mt_err_t board_driver_remove_all(void)
 {
-	MT_DRV_LOG_INFO(k_tag, "removing all devices (reverse probe order) ...");
+	MT_DRV_LOG_INFO(tag, "removing all devices (reverse probe order) ...");
 
 	int count = board_probe_order_count();
 
@@ -455,7 +454,7 @@ mt_err_t board_driver_remove_all(void)
 		if (remove_fn) {
 			int ret = remove_fn(pdev);
 			if (ret != MINI_OK) {
-				MT_DRV_LOG_ERROR(k_tag,
+				MT_DRV_LOG_ERROR(tag,
 						 "remove FAILED: %s (ret=%d) — keeping ERROR state",
 						 device_get_name(pdev), ret);
 				MINI_IGNORE_RESULT(device_set_status(pdev, DEVICE_STATUS_ERROR));

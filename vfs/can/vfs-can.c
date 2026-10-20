@@ -34,18 +34,17 @@ struct vfs_can_priv {
 	int			  pool_idx; /**< 池索引 */
 };
 
-static struct vfs_can_priv		s_can_priv_pool[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_can_priv_used[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_can_priv_pool_ctrl MINI_ALIGNED(4);
-static const char *const		k_host_tag = "can_vfs_host";
+static struct vfs_can_priv	      can_priv_pool[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			      can_priv_used[CAN_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t can_priv_pool_ctrl MINI_ALIGNED(4);
+static const char *const	      host_tag = "can_vfs_host";
 
 /**
  * @brief CAN Host 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_can_priv_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_can_priv_pool_ctrl, s_can_priv_used, CAN_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&can_priv_pool_ctrl, can_priv_used, CAN_VFS_PRIV_COUNT));
 }
 
 /**
@@ -163,11 +162,11 @@ static mt_err_t vfs_can_priv_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(can, pdev));
 
-	pool_idx = mini_slot_claim(&s_can_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&can_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_can_priv_pool[pool_idx];
+	priv = &can_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -184,13 +183,13 @@ static mt_err_t vfs_can_priv_probe(struct device *pdev)
 		goto err_bus;
 	}
 
-	MT_LOG_INFO(k_host_tag, "probe OK: %s", device_get_name(pdev));
+	MT_LOG_INFO(host_tag, "probe OK: %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_bus:
 	MINI_IGNORE_RESULT(can_bus_host_deinit(pdev));
 err_pool:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_can_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&can_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -228,14 +227,13 @@ static mt_err_t vfs_can_priv_remove(struct device *pdev)
 
 	ret = can_bus_host_deinit(pdev);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_host_tag, "host remove busy: %s (ret=%d)", device_get_name(pdev),
-			     ret);
+		MT_LOG_ERROR(host_tag, "host remove busy: %s (ret=%d)", device_get_name(pdev), ret);
 		dev_lc_remove_finish(lc);
 		return ret;
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_can_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&can_priv_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }
@@ -251,18 +249,17 @@ struct can_vfs_client {
 	int		       pool_idx; /**< 池索引 */
 };
 
-static struct can_vfs_client	      s_client_pool[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_client_used[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_client_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_client_tag = "can_vfs_client";
+static struct can_vfs_client	    client_pool[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t			    client_used[CAN_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static mini_slot_t client_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    client_tag = "can_vfs_client";
 
 /**
  * @brief CAN Client 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void can_vfs_client_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_client_pool_ctrl, s_client_used, CAN_VFS_CLIENT_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&client_pool_ctrl, client_used, CAN_VFS_CLIENT_COUNT));
 }
 
 /**
@@ -521,7 +518,7 @@ static mt_err_t can_cmd_get_state(struct device *pdev, void *arg, size_t arg_len
 	return can_bus_get_state(pdev, &sa->state);
 }
 
-static const struct can_ioctl_map s_can_ioctl_map[CAN_CMD_COUNT] = {
+static const struct can_ioctl_map can_ioctl_map[CAN_CMD_COUNT] = {
 	[CAN_CMD_TRANSFER - CAN_CMD_BASE - 1]	= { can_cmd_transfer },
 	[CAN_CMD_SET_FILTER - CAN_CMD_BASE - 1] = { can_cmd_set_filter },
 	[CAN_CMD_GET_STATE - CAN_CMD_BASE - 1]	= { can_cmd_get_state },
@@ -549,10 +546,10 @@ static mt_err_t can_vfs_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)CAN_CMD_BASE;
-	if (offset < 1 || offset > CAN_CMD_COUNT || !s_can_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > CAN_CMD_COUNT || !can_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_can_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
+		ret = can_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
 
 	dev_lc_io_end(lc);
 	return ret;
@@ -583,11 +580,11 @@ static mt_err_t can_vfs_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(can, pdev));
 
-	pool_idx = mini_slot_claim(&s_client_pool_ctrl);
+	pool_idx = mini_slot_claim(&client_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_client_pool[pool_idx];
+	priv = &client_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -604,13 +601,13 @@ static mt_err_t can_vfs_probe(struct device *pdev)
 		goto err_pool;
 	}
 
-	MT_LOG_INFO(k_client_tag, "probe OK: %s", device_get_name(pdev));
+	MT_LOG_INFO(client_tag, "probe OK: %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_pool:
 	pdev->ops = NULL;
 	dev_lc_reset(device_lc(pdev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -644,7 +641,7 @@ static mt_err_t can_vfs_remove(struct device *pdev)
 
 	can_bus_client_unregister(pdev);
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

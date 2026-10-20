@@ -1,10 +1,10 @@
 ---
-# mini_tree 命名规范（clang-tidy readability-identifier-naming）
-# 内核区（app 以下 + 非 cpp 文件）: 全 Linux 内核风格 — 所有标识符小写,
-#   不加 s_/g_/k_ 前缀, 函数以模块名作前缀; 宏定义全大写。
-# C++ 构造（class/namespace/别名）与枚举值: 遵循 Google C++ 风格。
-# 分层: 本文件 = 内核区; app/ 与 system_cpp/ 为 Google 区（类型 PascalCase,
-#   并保留用户 s_/g_/k_ 前缀规则）, 见各自目录下的 .clang-tidy。
+# mini_tree 命名规范（clang-tidy readability-identifier-naming）= Linux 内核命名
+# 全仓一致: 标识符全小写 snake_case, 不加 s_/g_/k_ 前缀（内核风, 非 Google 作用域前缀）,
+#   函数以模块名作前缀; 宏定义全大写。
+# C++ 构造（class/union/enum/typedef/别名）用 PascalCase、namespace 小写 —— 内核没有
+#   C++ 类型可参照, 这是唯一保留的 Google 习惯, app/ 与 system_cpp/ 同样如此。
+# 分层: 本文件管内核区（app 以下 + 非 cpp 文件）; app/ 与 system_cpp/ 见各自 .clang-tidy。
 # 例外（内核风格 API）: container_of/offsetof/likely/unlikely/mini_pre_execution、
 #   IS_ERR/PTR_ERR/ERR_PTR、COMPAT_*、__XXX_H__ 头文件卫士。
 # 注意: 文件作用域 static 与 extern 全局均归 GlobalVariable, 仅强制小写,

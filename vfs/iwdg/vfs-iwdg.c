@@ -21,17 +21,17 @@ struct vfs_iwdg_priv {
 	struct hal_iwdg_dev    iwdg;	 /**< HAL IWDG 设备 */
 	int		       pool_idx; /**< 池索引 */
 };
-static struct vfs_iwdg_priv s_priv;
-static uint8_t		    s_used;
-static mini_slot_t	    s_pool;
-static const char	   *k_tag = "vfs_iwdg";
+static struct vfs_iwdg_priv iwdg_priv;
+static uint8_t		    used;
+static mini_slot_t	    pool;
+static const char	   *tag = "vfs_iwdg";
 
 /**
  * @brief IWDG VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void boot(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_pool, &s_used, 1));
+	MINI_IGNORE_RESULT(mini_slot_init(&pool, &used, 1));
 }
 
 /**
@@ -137,7 +137,7 @@ static mt_err_t vfs_iwdg_ioctl(struct device *pdev, int cmd, void *arg, size_t a
 	return ret;
 }
 
-static const struct file_operations s_fops = {
+static const struct file_operations fops = {
 	.open  = vfs_iwdg_open,
 	.close = vfs_iwdg_close,
 	.ioctl = vfs_iwdg_ioctl,
@@ -159,27 +159,27 @@ static mt_err_t vfs_iwdg_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(iwdg, pdev));
 
-	idx = mini_slot_claim(&s_pool);
+	idx = mini_slot_claim(&pool);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "timeout-ms", &value));
 	if (value > 0)
 		cfg.timeout_ms = (uint32_t)value;
-	MINI_MEM_SET(&s_priv, 0, sizeof(s_priv));
-	s_priv.pool_idx = idx;
-	ret		= hal_iwdg_init(&s_priv.iwdg, &cfg);
+	MINI_MEM_SET(&iwdg_priv, 0, sizeof(iwdg_priv));
+	iwdg_priv.pool_idx = idx;
+	ret		   = hal_iwdg_init(&iwdg_priv.iwdg, &cfg);
 	if (ret != MINI_OK) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_pool, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&pool, idx));
 		return ret;
 	}
-	s_priv.ops = s_fops;
-	pdev->ops  = &s_priv.ops;
+	iwdg_priv.ops = fops;
+	pdev->ops     = &iwdg_priv.ops;
 	device_lc_bind(pdev);
-	if (device_set_priv(pdev, &s_priv) != MINI_OK) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_pool, idx));
+	if (device_set_priv(pdev, &iwdg_priv) != MINI_OK) {
+		MINI_IGNORE_RESULT(mini_slot_release(&pool, idx));
 		return MINI_ERR_IO;
 	}
-	MT_LOG_INFO(k_tag, "probe OK");
+	MT_LOG_INFO(tag, "probe OK");
 	return MINI_OK;
 }
 
@@ -192,7 +192,7 @@ static mt_err_t vfs_iwdg_remove(struct device *pdev)
 {
 	MINI_IGNORE_RESULT(pdev);
 	device_ops_unregister(pdev);
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pool, 0));
+	MINI_IGNORE_RESULT(mini_slot_release(&pool, 0));
 	return MINI_OK;
 }
 

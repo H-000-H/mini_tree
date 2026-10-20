@@ -32,7 +32,7 @@ extern "C" {
 #define TCP_CLIENT_RX_TX_BYTE_TYPE CONFIG_TCP_CLIENT_RX_TX_BYTE_TYPE
 #endif
 
-static const char *k_tag = "tcp_client";
+static const char *tag = "tcp_client";
 /**
  * @brief TCP 客户端上下文结构体
  */

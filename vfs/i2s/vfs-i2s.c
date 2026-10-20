@@ -42,22 +42,22 @@ struct vfs_i2s_client {
 	int			     pool_idx;	/**< 池索引 */
 };
 
-static struct vfs_i2s_host_priv s_host_pool[I2S_HOST_POOL];
-static uint8_t			s_host_used[I2S_HOST_POOL];
-static mini_slot_t		s_host_pool_ctrl;
-static struct vfs_i2s_client	s_client_pool[I2S_CLIENT_POOL];
-static uint8_t			s_client_used[I2S_CLIENT_POOL];
-static mini_slot_t		s_client_pool_ctrl;
-static const char	       *k_host = "i2s_host";
-static const char	       *k_cli  = "i2s_vfs";
+static struct vfs_i2s_host_priv host_pool[I2S_HOST_POOL];
+static uint8_t			host_used[I2S_HOST_POOL];
+static mini_slot_t		host_pool_ctrl;
+static struct vfs_i2s_client	client_pool[I2S_CLIENT_POOL];
+static uint8_t			client_used[I2S_CLIENT_POOL];
+static mini_slot_t		client_pool_ctrl;
+static const char	       *host = "i2s_host";
+static const char	       *cli  = "i2s_vfs";
 
 /**
  * @brief Host/Client 私有池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void pools(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_host_pool_ctrl, s_host_used, I2S_HOST_POOL));
-	MINI_IGNORE_RESULT(mini_slot_init(&s_client_pool_ctrl, s_client_used, I2S_CLIENT_POOL));
+	MINI_IGNORE_RESULT(mini_slot_init(&host_pool_ctrl, host_used, I2S_HOST_POOL));
+	MINI_IGNORE_RESULT(mini_slot_init(&client_pool_ctrl, client_used, I2S_CLIENT_POOL));
 }
 
 /**
@@ -218,11 +218,11 @@ static mt_err_t host_probe(struct device *pdev, uint32_t role)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2s, pdev));
 
-	idx = mini_slot_claim(&s_host_pool_ctrl);
+	idx = mini_slot_claim(&host_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_host_pool[idx];
+	priv = &host_pool[idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = idx;
 
@@ -246,13 +246,13 @@ static mt_err_t host_probe(struct device *pdev, uint32_t role)
 		goto err;
 	}
 
-	MT_LOG_INFO(k_host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev),
+	MT_LOG_INFO(host, "probe OK %s (dma_tx=%u dma_rx=%u it=%u)", device_get_name(pdev),
 		    (unsigned)priv->cfg.dma_tx.dma_enable, (unsigned)priv->cfg.dma_rx.dma_enable,
 		    (unsigned)priv->cfg.it_enable);
 	return MINI_OK;
 
 err:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_host_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&host_pool_ctrl, idx));
 	return ret;
 }
 
@@ -274,7 +274,7 @@ static mt_err_t host_remove(struct device *pdev)
 	ret = i2s_bus_host_deinit(pdev);
 	if (ret != MINI_OK)
 		return ret;
-	MINI_IGNORE_RESULT(mini_slot_release(&s_host_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&host_pool_ctrl, idx));
 	return MINI_OK;
 }
 
@@ -661,7 +661,7 @@ static mt_err_t i2s_cmd_get_dma_irq_mode(struct device *pdev, void *arg, size_t 
 	return i2s_bus_get_dma_irq_mode(pdev, &xfer_arg->irq_mode);
 }
 
-static const struct i2s_ioctl_map s_i2s_ioctl_map[I2S_CMD_COUNT] = {
+static const struct i2s_ioctl_map i2s_ioctl_map[I2S_CMD_COUNT] = {
 	[I2S_CMD_TRANSFER - I2S_CMD_BASE - 1]	      = { i2s_cmd_transfer },
 	[I2S_CMD_SET_XFER_MODE - I2S_CMD_BASE - 1]    = { i2s_cmd_set_xfer_mode },
 	[I2S_CMD_GET_XFER_MODE - I2S_CMD_BASE - 1]    = { i2s_cmd_get_xfer_mode },
@@ -702,16 +702,16 @@ static mt_err_t i2s_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_le
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)I2S_CMD_BASE;
-	if (offset < 1 || offset > I2S_CMD_COUNT || !s_i2s_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > I2S_CMD_COUNT || !i2s_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_i2s_ioctl_map[offset - 1].handler(pdev, arg, arg_len, to);
+		ret = i2s_ioctl_map[offset - 1].handler(pdev, arg, arg_len, to);
 
 	dev_lc_io_end(lc);
 	return ret;
 }
 
-static const struct file_operations s_fops = {
+static const struct file_operations fops = {
 	.open  = i2s_open,
 	.close = i2s_close,
 	.read  = i2s_read,
@@ -736,11 +736,11 @@ static mt_err_t client_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2s, pdev));
 
-	idx = mini_slot_claim(&s_client_pool_ctrl);
+	idx = mini_slot_claim(&client_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_client_pool[idx];
+	priv = &client_pool[idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx	= idx;
 	priv->xfer_mode = I2S_XFER_AUTO;
@@ -753,7 +753,7 @@ static mt_err_t client_probe(struct device *pdev)
 	if (ret != MINI_OK)
 		goto err;
 
-	priv->ops = s_fops;
+	priv->ops = fops;
 	pdev->ops = &priv->ops;
 	device_lc_bind(pdev);
 
@@ -763,11 +763,11 @@ static mt_err_t client_probe(struct device *pdev)
 		goto err;
 	}
 
-	MT_LOG_INFO(k_cli, "probe OK %s", device_get_name(pdev));
+	MT_LOG_INFO(cli, "probe OK %s", device_get_name(pdev));
 	return MINI_OK;
 
 err:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, idx));
 	return ret;
 }
 
@@ -798,7 +798,7 @@ static mt_err_t client_remove(struct device *pdev)
 	}
 
 	i2s_bus_client_unregister(pdev);
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

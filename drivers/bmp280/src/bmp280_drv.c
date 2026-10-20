@@ -2,7 +2,7 @@
  * @file bmp280_drv.c
  * @author H-000-H
  * @brief BMP280 气压/温度传感器驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_bmp280_pool[BMP280_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: bmp280_pool[BMP280_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与采样结构见 bmp280_drv.h，寄存器定义见 bmp280_regs.h。
  * @note 数据流: VFS ioctl → bmp280_cmd_read → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -52,17 +52,17 @@ struct bmp280_device {
 	int		       hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct bmp280_device	      s_bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_bmp280_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_tag = "bmp280";
+static struct bmp280_device	    bmp280_pool[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			    bmp280_used[BMP280_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t bmp280_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    tag = "bmp280";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void bmp280_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_bmp280_pool_ctrl, s_bmp280_used, BMP280_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&bmp280_pool_ctrl, bmp280_used, BMP280_POOL_COUNT));
 }
 
 /**
@@ -332,7 +332,7 @@ static mt_err_t bmp280_cmd_read(struct bmp280_device *dev, void *arg, size_t len
 	return MINI_OK;
 }
 
-static const struct bmp280_ioctl_map s_bmp280_map[BMP280_CMD_COUNT] = {
+static const struct bmp280_ioctl_map bmp280_map[BMP280_CMD_COUNT] = {
 	[BMP280_CMD_READ_PRESS_TEMP - BMP280_CMD_BASE - 1] = { bmp280_cmd_read },
 };
 
@@ -357,10 +357,10 @@ static mt_err_t bmp280_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)BMP280_CMD_BASE;
-	if (off < 1 || off > BMP280_CMD_COUNT || !s_bmp280_map[off - 1].handler)
+	if (off < 1 || off > BMP280_CMD_COUNT || !bmp280_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_bmp280_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = bmp280_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -383,10 +383,10 @@ static mt_err_t bmp280_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(bmp280, pdev));
 
-	pool_idx = mini_slot_claim(&s_bmp280_pool_ctrl);
+	pool_idx = mini_slot_claim(&bmp280_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_bmp280_pool[pool_idx];
+	dev = &bmp280_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -400,12 +400,12 @@ static mt_err_t bmp280_probe(struct device *pdev)
 	}
 	dev->ops  = bmp280_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_bmp280_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&bmp280_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -425,7 +425,7 @@ static mt_err_t bmp280_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_bmp280_pool);
+	idx = (int)(dev - bmp280_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -434,7 +434,7 @@ static mt_err_t bmp280_remove(struct device *pdev)
 	}
 	bmp280_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_bmp280_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&bmp280_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

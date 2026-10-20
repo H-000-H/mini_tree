@@ -3,8 +3,8 @@
  * @author H-000-H
  * @brief uart bus 实现
  * @note UART BUS 实现 — UART 总线子系统 bus 层
- * @note 静态池: s_uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) +
- * s_uart_clients[CLIENT_MAX]
+ * @note 静态池: uart_hosts[HOST_MAX] (含 hal_uart_bus_host, ref_count) +
+ * uart_clients[CLIENT_MAX]
  * @note 数据流: VFS → uart_bus_open/close/read/write/transfer → uart_client_from_device →
  * hal_uart_*
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -58,23 +58,22 @@ struct uart_bus_client {
 	struct uart_bus_host *host; /**< 所属 host */
 };
 
-static struct uart_bus_host   s_uart_hosts[UART_BUS_HOST_MAX];
-static uint8_t		      s_uart_host_used[UART_BUS_HOST_MAX];
-static mini_slot_t	      s_uart_host_pool_ctrl;
-static struct uart_bus_client s_uart_clients[UART_BUS_CLIENT_MAX];
-static uint8_t		      s_uart_client_used[UART_BUS_CLIENT_MAX];
-static mini_slot_t	      s_uart_client_pool_ctrl;
-static const char *const      k_tag = "uart_bus";
+static struct uart_bus_host   uart_hosts[UART_BUS_HOST_MAX];
+static uint8_t		      uart_host_used[UART_BUS_HOST_MAX];
+static mini_slot_t	      uart_host_pool_ctrl;
+static struct uart_bus_client uart_clients[UART_BUS_CLIENT_MAX];
+static uint8_t		      uart_client_used[UART_BUS_CLIENT_MAX];
+static mini_slot_t	      uart_client_pool_ctrl;
+static const char *const      tag = "uart_bus";
 
 /**
  * @brief UART Host/Client 池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void uart_bus_pool_init(void)
 {
+	MINI_IGNORE_RESULT(mini_slot_init(&uart_host_pool_ctrl, uart_host_used, UART_BUS_HOST_MAX));
 	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_uart_host_pool_ctrl, s_uart_host_used, UART_BUS_HOST_MAX));
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_uart_client_pool_ctrl, s_uart_client_used, UART_BUS_CLIENT_MAX));
+		mini_slot_init(&uart_client_pool_ctrl, uart_client_used, UART_BUS_CLIENT_MAX));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -88,9 +87,9 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void uart_bus_pool_init(v
 static struct uart_bus_host *uart_host_from_device(struct device *pdev)
 {
 	for (int index = 0; index < UART_BUS_HOST_MAX; index++)
-		if (mini_slot_is_used(&s_uart_host_pool_ctrl, index) &&
-		    s_uart_hosts[index].pdev == pdev)
-			return &s_uart_hosts[index];
+		if (mini_slot_is_used(&uart_host_pool_ctrl, index) &&
+		    uart_hosts[index].pdev == pdev)
+			return &uart_hosts[index];
 	return NULL;
 }
 
@@ -105,9 +104,9 @@ static struct uart_bus_host *uart_host_from_device(struct device *pdev)
 static struct uart_bus_client *uart_client_from_device(struct device *pdev)
 {
 	for (int index = 0; index < UART_BUS_CLIENT_MAX; index++)
-		if (mini_slot_is_used(&s_uart_client_pool_ctrl, index) &&
-		    s_uart_clients[index].pdev == pdev)
-			return &s_uart_clients[index];
+		if (mini_slot_is_used(&uart_client_pool_ctrl, index) &&
+		    uart_clients[index].pdev == pdev)
+			return &uart_clients[index];
 	return NULL;
 }
 
@@ -120,7 +119,7 @@ static int	uart_host_role_impl(struct device *pdev);
 static mt_err_t uart_client_register_impl(struct device *pdev, const void *cfg, void **out);
 static void	uart_client_unregister_impl(struct device *pdev);
 
-static const struct bus_controller_ops s_uart_controller_ops = {
+static const struct bus_controller_ops uart_controller_ops = {
 	.init		   = uart_host_init_impl,
 	.deinit		   = uart_host_deinit_impl,
 	.role		   = uart_host_role_impl,
@@ -151,11 +150,11 @@ static mt_err_t uart_host_init_impl(struct device *pdev, const void *cfg)
 	if (uart_host_from_device(pdev))
 		return MINI_OK;
 
-	idx = mini_slot_claim(&s_uart_host_pool_ctrl);
+	idx = mini_slot_claim(&uart_host_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	host = &s_uart_hosts[idx];
+	host = &uart_hosts[idx];
 	MINI_MEM_SET(host, 0, sizeof(*host));
 	host->pdev = pdev;
 	MINI_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
@@ -164,18 +163,18 @@ static mt_err_t uart_host_init_impl(struct device *pdev, const void *cfg)
 	ret = hal_uart_dev_init(&host->hal_host, host_cfg);
 	if (ret != MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_uart_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&uart_host_pool_ctrl, idx));
 		return ret;
 	}
 
-	ret = bus_controller_bind_full(pdev, BUS_TYPE_UART, &s_uart_controller_ops, host);
+	ret = bus_controller_bind_full(pdev, BUS_TYPE_UART, &uart_controller_ops, host);
 	if (ret != MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_uart_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&uart_host_pool_ctrl, idx));
 		return ret;
 	}
 
-	MT_LOG_INFO(k_tag, "host init OK: %s uart=%lu baud=%lu", device_get_name(pdev),
+	MT_LOG_INFO(tag, "host init OK: %s uart=%lu baud=%lu", device_get_name(pdev),
 		    (unsigned long)host_cfg->uart, (unsigned long)host_cfg->baud_rate);
 	return MINI_OK;
 }
@@ -207,9 +206,9 @@ static mt_err_t uart_host_deinit_impl(struct device *pdev)
 	if (host->hal_host.hw_inited)
 		MINI_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
 
-	idx = (int)(host - s_uart_hosts);
+	idx = (int)(host - uart_hosts);
 	MINI_MEM_SET(host, 0, sizeof(*host));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_uart_host_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&uart_host_pool_ctrl, idx));
 	return MINI_OK;
 }
 
@@ -260,7 +259,7 @@ static mt_err_t uart_client_register_impl(struct device *pdev, const void *cfg, 
 	if (uart_client_from_device(pdev))
 		return MINI_OK;
 
-	/* 通过 parent 查找 host (pdev = client → device_get_parent → host device → s_controllers →
+	/* 通过 parent 查找 host (pdev = client → device_get_parent → host device → controllers →
 	 * hw_ctx) */
 	if (bus_controller_of(pdev, &ctlr) != MINI_OK)
 		return MINI_ERR_NODEV;
@@ -270,11 +269,11 @@ static mt_err_t uart_client_register_impl(struct device *pdev, const void *cfg, 
 	if (!host)
 		return MINI_ERR_IO;
 
-	idx = mini_slot_claim(&s_uart_client_pool_ctrl);
+	idx = mini_slot_claim(&uart_client_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	cli = &s_uart_clients[idx];
+	cli = &uart_clients[idx];
 	MINI_MEM_SET(cli, 0, sizeof(*cli));
 	cli->pdev = pdev;
 	cli->host = host;
@@ -283,7 +282,7 @@ static mt_err_t uart_client_register_impl(struct device *pdev, const void *cfg, 
 	ret = hal_uart_dev_hw_open(&host->hal_host);
 	if (ret != MINI_OK) {
 		MINI_MEM_SET(cli, 0, sizeof(*cli));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_uart_client_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&uart_client_pool_ctrl, idx));
 		return ret;
 	}
 
@@ -336,9 +335,9 @@ static void uart_client_unregister_impl(struct device *pdev)
 			MINI_IGNORE_RESULT(hal_uart_dev_hw_close(&host->hal_host));
 	}
 
-	idx = (int)(cli - s_uart_clients);
+	idx = (int)(cli - uart_clients);
 	MINI_MEM_SET(cli, 0, sizeof(*cli));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_uart_client_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&uart_client_pool_ctrl, idx));
 }
 
 mt_err_t uart_bus_client_register(struct device *pdev)

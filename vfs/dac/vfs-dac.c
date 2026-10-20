@@ -21,7 +21,7 @@
 #include "system_log.h"
 
 /* 池/缓冲/字段宽度宏见 board_define_dac.h (数量由 DTS 节点数自动生成) */
-static const char *const k_tag = "vfs-dac";
+static const char *const tag = "vfs-dac";
 
 struct vfs_dac_priv {
 	struct file_operations		   ops;	   /**< VFS 操作表 */
@@ -34,9 +34,9 @@ struct vfs_dac_priv {
 	int	pool_idx;					    /**< 池索引 */
 };
 
-static struct vfs_dac_priv		s_dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_dac_priv_pool_ctrl MINI_ALIGNED(4);
+static struct vfs_dac_priv	      dac_priv_pool[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static uint8_t			      dac_priv_used[DAC_VFS_DEVICE_COUNT] MINI_ALIGNED(4);
+static mini_slot_t dac_priv_pool_ctrl MINI_ALIGNED(4);
 
 /**
  * @brief DAC Ioctl 命令处理函数指针类型
@@ -177,7 +177,7 @@ static mt_err_t dac_cmd_base_pause(struct vfs_dac_priv *priv, void *arg, size_t 
 /* ioctl 命令映射表 — index = (cmd - DAC_CMD_BASE - 1), 与 DAC_CMD_* 编号一一对应 */
 /* -------------------------------------------------------------------------- */
 
-static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
+static const dac_ioctl_map_t dac_ioctl_map[DAC_CMD_COUNT] = {
 	[DAC_CMD_WRITE_VALUE - DAC_CMD_BASE - 1]      = { dac_cmd_write_value },
 	[DAC_CMD_GET_VALUE - DAC_CMD_BASE - 1]	      = { dac_cmd_get_value },
 	[DAC_CMD_CALIBRATE_OFFSET - DAC_CMD_BASE - 1] = { dac_cmd_calibrate_offset },
@@ -194,7 +194,7 @@ static const dac_ioctl_map_t s_dac_ioctl_map[DAC_CMD_COUNT] = {
 mini_pre_execution(MINI_PRE_EXEC_PRIO_SEM_POOL) static void vfs_dac_priv_pool_init(void)
 {
 	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_dac_priv_pool_ctrl, s_dac_priv_used, DAC_VFS_DEVICE_COUNT));
+		mini_slot_init(&dac_priv_pool_ctrl, dac_priv_used, DAC_VFS_DEVICE_COUNT));
 }
 
 /**
@@ -486,7 +486,7 @@ static mt_err_t vfs_dac_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	}
 	uint8_t index = (uint8_t)(offset - 1);
 
-	handler = s_dac_ioctl_map[index].handler;
+	handler = dac_ioctl_map[index].handler;
 	if (handler != NULL)
 		ret = handler(priv, arg, arg_len);
 	else
@@ -584,16 +584,16 @@ static mt_err_t vfs_dac_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(dac, pdev));
 
-	pool_idx = mini_slot_claim(&s_dac_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&dac_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_dac_priv_pool[pool_idx];
+	priv = &dac_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
 	if (vfs_dac_priv_parse_dts(pdev, &priv->cfg) != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "dts parse failed: %s", device_get_name(pdev));
 		ret = MINI_ERR_INVAL;
 		goto err_pool;
 	}
@@ -612,13 +612,13 @@ static mt_err_t vfs_dac_probe(struct device *pdev)
 
 	ret = hal_dac_device_init(&priv->dac, &priv->cfg, &priv->unique);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "hal_dac_device_init failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "hal_dac_device_init failed: %s", device_get_name(pdev));
 		goto err_pool;
 	}
 
 	ret = hal_dac_init(&priv->dac);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "hal_dac_init failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "hal_dac_init failed: %s", device_get_name(pdev));
 		goto err_deinit;
 	}
 
@@ -630,7 +630,7 @@ static mt_err_t vfs_dac_probe(struct device *pdev)
 		goto err_deinit;
 	}
 
-	MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
+	MT_LOG_INFO(tag, "probe OK %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_deinit:
@@ -638,7 +638,7 @@ err_deinit:
 	MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
 err_pool:
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_dac_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&dac_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -675,7 +675,7 @@ static mt_err_t vfs_dac_remove(struct device *pdev)
 	MINI_IGNORE_RESULT(hal_dac_close(&priv->dac));
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_dac_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&dac_priv_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;

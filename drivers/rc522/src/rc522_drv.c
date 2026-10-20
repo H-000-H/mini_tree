@@ -2,7 +2,7 @@
  * @file rc522_drv.c
  * @author H-000-H
  * @brief RC522 RFID 读卡驱动实现 — 挂在 SPI 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_rc522_pool[RC522_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: rc522_pool[RC522_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 rc522_drv.h，寄存器定义见 rc522_regs.h。
  * @note 数据流: VFS ioctl → rc522_cmd_* → rc522_to_card → SPI transfer（vfs-spi）→ HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -39,17 +39,17 @@ struct rc522_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct rc522_device	     s_rc522_pool[RC522_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			     s_rc522_used[RC522_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_rc522_pool_ctrl MINI_ALIGNED(4);
-static const char *const	     k_tag = "rc522";
+static struct rc522_device	   rc522_pool[RC522_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			   rc522_used[RC522_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t rc522_pool_ctrl MINI_ALIGNED(4);
+static const char *const	   tag = "rc522";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void rc522_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_rc522_pool_ctrl, s_rc522_used, RC522_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&rc522_pool_ctrl, rc522_used, RC522_POOL_COUNT));
 }
 
 /**
@@ -388,7 +388,7 @@ static mt_err_t rc522_cmd_uid(struct rc522_device *dev, void *arg, size_t len, u
 	return MINI_OK;
 }
 
-static const struct rc522_ioctl_map s_rc522_map[RC522_CMD_COUNT] = {
+static const struct rc522_ioctl_map rc522_map[RC522_CMD_COUNT] = {
 	[RC522_CMD_INIT - RC522_CMD_BASE - 1]	  = { rc522_cmd_init },
 	[RC522_CMD_READ_UID - RC522_CMD_BASE - 1] = { rc522_cmd_uid },
 };
@@ -414,10 +414,10 @@ static mt_err_t rc522_ioctl(struct device *pdev, int cmd, void *arg, size_t arg_
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)RC522_CMD_BASE;
-	if (off < 1 || off > RC522_CMD_COUNT || !s_rc522_map[off - 1].handler)
+	if (off < 1 || off > RC522_CMD_COUNT || !rc522_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_rc522_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = rc522_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -440,10 +440,10 @@ static mt_err_t rc522_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(rc522, pdev));
 
-	pool_idx = mini_slot_claim(&s_rc522_pool_ctrl);
+	pool_idx = mini_slot_claim(&rc522_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_rc522_pool[pool_idx];
+	dev = &rc522_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->spi_dev = device_get_parent(pdev);
 	if (!dev->spi_dev) {
@@ -457,12 +457,12 @@ static mt_err_t rc522_probe(struct device *pdev)
 	}
 	dev->ops  = rc522_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_rc522_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&rc522_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -482,7 +482,7 @@ static mt_err_t rc522_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_rc522_pool);
+	idx = (int)(dev - rc522_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -491,7 +491,7 @@ static mt_err_t rc522_remove(struct device *pdev)
 	}
 	rc522_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_rc522_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&rc522_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

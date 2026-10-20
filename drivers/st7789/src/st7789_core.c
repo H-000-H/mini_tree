@@ -4,7 +4,7 @@
  * @brief ST7789 公共核心 — 有 CS / 无 CS 两个入口共用（probe/remove/ioctl 全量实现）
  * @note SPI: device_get_parent → SPI_CMD_TRANSFER / device_write。
  * @note DC/RST: vfs-gpio；背光: vfs-tim（LEDC 后端）。禁止厂商 SDK。
- * @note 静态池: s_st7789_pool[ST7789_COUNT]（有 CS + 无 CS 两路 DTS 节点数量之和）
+ * @note 静态池: st7789_pool[ST7789_COUNT]（有 CS + 无 CS 两路 DTS 节点数量之和）
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
@@ -58,19 +58,19 @@ struct st7789_device {
 	uint8_t		      *block_buf;      /**< 分块填充/传输缓冲（静态池） */
 };
 
-static struct st7789_device	      s_st7789_pool[ST7789_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_st7789_used[ST7789_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_st7789_pool_ctrl MINI_ALIGNED(4);
-static uint8_t s_st7789_block_buf[ST7789_COUNT][ST7789_BLOCK_BUF_SIZE] MINI_ALIGNED(4);
+static struct st7789_device	    st7789_pool[ST7789_COUNT] MINI_ALIGNED(4);
+static uint8_t			    st7789_used[ST7789_COUNT] MINI_ALIGNED(4);
+static mini_slot_t st7789_pool_ctrl MINI_ALIGNED(4);
+static uint8_t st7789_block_buf[ST7789_COUNT][ST7789_BLOCK_BUF_SIZE] MINI_ALIGNED(4);
 
-static const char *const k_tag = "st7789";
+static const char *const tag = "st7789";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void st7789_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_st7789_pool_ctrl, s_st7789_used, ST7789_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&st7789_pool_ctrl, st7789_used, ST7789_COUNT));
 }
 
 /**
@@ -655,7 +655,7 @@ static mt_err_t st7789_cmd_flush(struct st7789_device *lcd, void *arg, size_t ar
 				     arg_data->data, timeout_ms);
 }
 
-static const struct st7789_ioctl_map s_st7789_ioctl_map[DISPLAY_CMD_COUNT] = {
+static const struct st7789_ioctl_map st7789_ioctl_map[DISPLAY_CMD_COUNT] = {
 	[DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1]	    = { st7789_cmd_fill_rect },
 	[DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1]	    = { st7789_cmd_clear },
 	[DISPLAY_CMD_DRAW_AREA - DISPLAY_CMD_BASE - 1]	    = { st7789_cmd_draw_area },
@@ -691,10 +691,10 @@ static mt_err_t st7789_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
-	if (offset < 1 || offset > DISPLAY_CMD_COUNT || !s_st7789_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > DISPLAY_CMD_COUNT || !st7789_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_st7789_ioctl_map[offset - 1].handler(lcd, arg, arg_len, timeout_ms);
+		ret = st7789_ioctl_map[offset - 1].handler(lcd, arg, arg_len, timeout_ms);
 
 	dev_lc_io_end(lc);
 	return ret;
@@ -761,11 +761,11 @@ mt_err_t st7789_probe_common(struct device *pdev, int require_nocs)
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "madctl", &madctl));
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "invert", &invert));
 
-	pool_idx = mini_slot_claim(&s_st7789_pool_ctrl);
+	pool_idx = mini_slot_claim(&st7789_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	lcd = &s_st7789_pool[pool_idx];
+	lcd = &st7789_pool[pool_idx];
 	MINI_MEM_SET(lcd, 0, sizeof(*lcd));
 
 	lcd->spi_dev = device_get_parent(pdev);
@@ -777,7 +777,7 @@ mt_err_t st7789_probe_common(struct device *pdev, int require_nocs)
 	if (require_nocs) {
 		if (device_get_prop_int(lcd->spi_dev, "cs-pin", &parent_cs) != MINI_OK ||
 		    parent_cs >= 0) {
-			MT_LOG_ERROR(k_tag, "nocs requires parent cs-pin < 0");
+			MT_LOG_ERROR(tag, "nocs requires parent cs-pin < 0");
 			ret = MINI_ERR_INVAL;
 			goto err_pool;
 		}
@@ -805,7 +805,7 @@ mt_err_t st7789_probe_common(struct device *pdev, int require_nocs)
 	lcd->invert	    = invert ? 1U : 0U;
 	lcd->bl_brightness  = 255U;
 	lcd->spi_chunk	    = (size_t)max_trans;
-	lcd->block_buf	    = s_st7789_block_buf[pool_idx];
+	lcd->block_buf	    = st7789_block_buf[pool_idx];
 
 	if (device_set_priv(pdev, lcd) != MINI_OK) {
 		ret = MINI_ERR_IO;
@@ -815,7 +815,7 @@ mt_err_t st7789_probe_common(struct device *pdev, int require_nocs)
 	lcd->ops  = st7789_fops;
 	pdev->ops = &lcd->ops;
 
-	MT_LOG_INFO(k_tag, "probe OK: pool=%d %dx%d dc=%s bl=%s nocs=%d", pool_idx, width, height,
+	MT_LOG_INFO(tag, "probe OK: pool=%d %dx%d dc=%s bl=%s nocs=%d", pool_idx, width, height,
 		    device_get_name(dc_dev), bl_tim_dev ? device_get_name(bl_tim_dev) : "none",
 		    require_nocs);
 	return MINI_OK;
@@ -823,7 +823,7 @@ mt_err_t st7789_probe_common(struct device *pdev, int require_nocs)
 err_pool:
 	pdev->ops = NULL;
 	MINI_MEM_SET(lcd, 0, sizeof(*lcd));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_st7789_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&st7789_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -847,7 +847,7 @@ mt_err_t st7789_remove_common(struct device *pdev)
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
 
-	pool_idx = (int)(lcd - s_st7789_pool);
+	pool_idx = (int)(lcd - st7789_pool);
 
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
@@ -861,7 +861,7 @@ mt_err_t st7789_remove_common(struct device *pdev)
 		MINI_IGNORE_RESULT(st7789_apply_backlight(lcd, 0U));
 
 	MINI_MEM_SET(lcd, 0, sizeof(*lcd));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_st7789_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&st7789_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

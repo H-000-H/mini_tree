@@ -26,17 +26,17 @@ struct vfs_rtc_priv {
 	int		       pool_idx; /**< 池索引 */
 };
 
-static struct vfs_rtc_priv     s_pool[RTC_VFS_POOL] MINI_ALIGNED(4);
-static uint8_t		       s_used[RTC_VFS_POOL] MINI_ALIGNED(4);
-static mini_slot_t s_pool_ctrl MINI_ALIGNED(4);
-static const char *const       k_tag = "vfs_rtc";
+static struct vfs_rtc_priv   pool[RTC_VFS_POOL] MINI_ALIGNED(4);
+static uint8_t		     used[RTC_VFS_POOL] MINI_ALIGNED(4);
+static mini_slot_t pool_ctrl MINI_ALIGNED(4);
+static const char *const     tag = "vfs_rtc";
 
 /**
  * @brief RTC VFS 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void vfs_rtc_pool_boot(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_pool_ctrl, s_used, RTC_VFS_POOL));
+	MINI_IGNORE_RESULT(mini_slot_init(&pool_ctrl, used, RTC_VFS_POOL));
 }
 
 /**
@@ -221,7 +221,7 @@ static mt_err_t rtc_cmd_force_stop(struct vfs_rtc_priv *priv, void *arg, size_t 
 }
 
 typedef mt_err_t (*rtc_ioctl_fn)(struct vfs_rtc_priv *, void *, size_t, uint32_t);
-static const rtc_ioctl_fn s_rtc_ioctl[RTC_CMD_COUNT] = {
+static const rtc_ioctl_fn rtc_ioctl[RTC_CMD_COUNT] = {
 	[RTC_CMD_SET_TIME - RTC_CMD_BASE - 1]	   = rtc_cmd_set_time,
 	[RTC_CMD_GET_TIME - RTC_CMD_BASE - 1]	   = rtc_cmd_get_time,
 	[RTC_CMD_SET_ALARM - RTC_CMD_BASE - 1]	   = rtc_cmd_set_alarm,
@@ -258,15 +258,15 @@ static mt_err_t vfs_rtc_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)RTC_CMD_BASE;
-	if (off < 1 || off > RTC_CMD_COUNT || !s_rtc_ioctl[off - 1])
+	if (off < 1 || off > RTC_CMD_COUNT || !rtc_ioctl[off - 1])
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_rtc_ioctl[off - 1](priv, arg, arg_len, timeout_ms);
+		ret = rtc_ioctl[off - 1](priv, arg, arg_len, timeout_ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
 
-static const struct file_operations s_rtc_fops = {
+static const struct file_operations rtc_fops = {
 	.open  = vfs_rtc_open,
 	.close = vfs_rtc_close,
 	.ioctl = vfs_rtc_ioctl,
@@ -315,10 +315,10 @@ static mt_err_t vfs_rtc_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(rtc, pdev));
 
-	idx = mini_slot_claim(&s_pool_ctrl);
+	idx = mini_slot_claim(&pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
-	priv = &s_pool[idx];
+	priv = &pool[idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = idx;
 	ret	       = vfs_rtc_parse_dts(pdev, &priv->rtc.cfg);
@@ -327,19 +327,19 @@ static mt_err_t vfs_rtc_probe(struct device *pdev)
 	ret = hal_rtc_init(&priv->rtc, &priv->rtc.cfg);
 	if (ret != MINI_OK)
 		goto err;
-	priv->ops = s_rtc_fops;
+	priv->ops = rtc_fops;
 	pdev->ops = &priv->ops;
 	device_lc_bind(pdev);
 	if (device_set_priv(pdev, priv) != MINI_OK) {
 		ret = MINI_ERR_IO;
 		goto err_hal;
 	}
-	MT_LOG_INFO(k_tag, "probe OK: %s", device_get_name(pdev));
+	MT_LOG_INFO(tag, "probe OK: %s", device_get_name(pdev));
 	return MINI_OK;
 err_hal:
 	MINI_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));
 err:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&pool_ctrl, idx));
 	return ret;
 }
 
@@ -371,7 +371,7 @@ static mt_err_t vfs_rtc_remove(struct device *pdev)
 	}
 	MINI_IGNORE_RESULT(hal_rtc_deinit(&priv->rtc));
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

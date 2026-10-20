@@ -2,7 +2,7 @@
  * @file max98357a_drv.c
  * @author H-000-H
  * @brief MAX98357A 功放驱动实现 — SDN 经 vfs-gpio（禁止厂商 SDK）
- * @note 静态池: s_max98357a_pool[MAX98357A_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: max98357a_pool[MAX98357A_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令见 max98357a_drv.h。
  * @note PCM 走 I2S 总线，本驱动仅控 SDN 引脚；支持挂起/恢复回调。
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -39,19 +39,18 @@ struct max98357a_device {
 	int		       hw_ready;     /**< 硬件已初始化标志 */
 };
 
-static struct max98357a_device		 s_max98357a_pool[MAX98357A_COUNT] MINI_ALIGNED(4);
-static uint8_t				 s_max98357a_used[MAX98357A_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_max98357a_pool_ctrl MINI_ALIGNED(4);
+static struct max98357a_device	       max98357a_pool[MAX98357A_COUNT] MINI_ALIGNED(4);
+static uint8_t			       max98357a_used[MAX98357A_COUNT] MINI_ALIGNED(4);
+static mini_slot_t max98357a_pool_ctrl MINI_ALIGNED(4);
 
-static const char *const k_tag = "max98357a";
+static const char *const tag = "max98357a";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void max98357a_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_max98357a_pool_ctrl, s_max98357a_used, MAX98357A_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&max98357a_pool_ctrl, max98357a_used, MAX98357A_COUNT));
 }
 
 /**
@@ -218,7 +217,7 @@ struct max98357a_ioctl_map {
 	max98357a_ioctl_fn_t handler;
 };
 
-static const struct max98357a_ioctl_map s_max98357a_ioctl_map[MAX98357A_CMD_COUNT] = {
+static const struct max98357a_ioctl_map max98357a_ioctl_map[MAX98357A_CMD_COUNT] = {
 	[MAX98357A_CMD_SET_ENABLE - MAX98357A_CMD_BASE - 1] = { max98357a_cmd_set_enable },
 };
 
@@ -249,11 +248,10 @@ static mt_err_t max98357a_ioctl(struct device *pdev, int cmd, void *arg, size_t 
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)MAX98357A_CMD_BASE;
-	if (offset < 1 || offset > MAX98357A_CMD_COUNT ||
-	    !s_max98357a_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > MAX98357A_CMD_COUNT || !max98357a_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_max98357a_ioctl_map[offset - 1].handler(amp, arg, arg_len, timeout_ms);
+		ret = max98357a_ioctl_map[offset - 1].handler(amp, arg, arg_len, timeout_ms);
 
 	dev_lc_io_end(lc);
 	return ret;
@@ -311,11 +309,11 @@ static mt_err_t max98357a_probe(struct device *pdev)
 	if (IS_ERR(sdn_dev))
 		return PTR_ERR(sdn_dev);
 
-	pool_idx = mini_slot_claim(&s_max98357a_pool_ctrl);
+	pool_idx = mini_slot_claim(&max98357a_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	amp = &s_max98357a_pool[pool_idx];
+	amp = &max98357a_pool[pool_idx];
 	MINI_MEM_SET(amp, 0, sizeof(*amp));
 
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "active-level", &active));
@@ -331,14 +329,14 @@ static mt_err_t max98357a_probe(struct device *pdev)
 	amp->ops  = max98357a_fops;
 	pdev->ops = &amp->ops;
 
-	MT_LOG_INFO(k_tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev),
+	MT_LOG_INFO(tag, "probe OK: pool=%d sdn=%s active=%d", pool_idx, device_get_name(sdn_dev),
 		    amp->active_level);
 	return MINI_OK;
 
 err_pool:
 	pdev->ops = NULL;
 	MINI_MEM_SET(amp, 0, sizeof(*amp));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_max98357a_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&max98357a_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -362,7 +360,7 @@ static mt_err_t max98357a_remove(struct device *pdev)
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
 
-	pool_idx = (int)(amp - s_max98357a_pool);
+	pool_idx = (int)(amp - max98357a_pool);
 
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
@@ -374,7 +372,7 @@ static mt_err_t max98357a_remove(struct device *pdev)
 
 	max98357a_hw_destroy(amp);
 	MINI_MEM_SET(amp, 0, sizeof(*amp));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_max98357a_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&max98357a_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

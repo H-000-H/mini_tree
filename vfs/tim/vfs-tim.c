@@ -27,10 +27,10 @@ struct vfs_tim_priv {
 	int			       pool_idx; /**< 池索引 */
 };
 
-static struct vfs_tim_priv		s_tim_priv_pool[TIM_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_tim_priv_used[TIM_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_tim_priv_pool_ctrl MINI_ALIGNED(4);
-static const char *const		k_tag = "vfs-tim-host";
+static struct vfs_tim_priv	      tim_priv_pool[TIM_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			      tim_priv_used[TIM_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t tim_priv_pool_ctrl MINI_ALIGNED(4);
+static const char *const	      tag = "vfs-tim-host";
 
 /**
  * @brief 获取 TIM VFS 设备关联的 HAL 定时器句柄
@@ -416,7 +416,7 @@ static mt_err_t tim_cmd_start(struct vfs_tim_priv *priv, void *arg, size_t arg_l
 /* ioctl 命令映射表 — index = (cmd & 0xFF) - 1, 与 TIM_CMD_* 编号一一对应 */
 /* -------------------------------------------------------------------------- */
 
-static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
+static const tim_ioctl_map_t tim_ioctl_map[TIM_CMD_COUNT] = {
 	[TIM_CMD_START - TIM_CMD_BASE - 1]		 = { tim_cmd_start },
 	[TIM_CMD_STOP - TIM_CMD_BASE - 1]		 = { tim_cmd_stop },
 	[TIM_CMD_PAUSE - TIM_CMD_BASE - 1]		 = { tim_cmd_pause },
@@ -448,8 +448,7 @@ static const tim_ioctl_map_t s_tim_ioctl_map[TIM_CMD_COUNT] = {
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_tim_priv_pool_init()
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_tim_priv_pool_ctrl, s_tim_priv_used, TIM_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&tim_priv_pool_ctrl, tim_priv_used, TIM_VFS_PRIV_COUNT));
 }
 
 /**
@@ -522,7 +521,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 			     field_index++) {
 				snprintf(key, sizeof(key), fmt[field_index], chan_index);
 				if (device_get_prop_int(pdev, key, dst[field_index]) != MINI_OK)
-					MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+					MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 			}
 			snprintf(key, sizeof(key), "oc%d-pin", chan_index);
 			if (device_get_prop_int_array(pdev, key, pin_arr,
@@ -537,7 +536,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 				pin_cfg->mode	     = (uint32_t)pin_arr[6];
 				pin_cfg->pull	     = (uint32_t)pin_arr[7];
 			} else
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 		}
 		break;
 	}
@@ -568,7 +567,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 			     field_index++) {
 				snprintf(key, sizeof(key), fmt[field_index], chan_index);
 				if (device_get_prop_int(pdev, key, dst[field_index]) != MINI_OK)
-					MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+					MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 			}
 			snprintf(key, sizeof(key), "ic%d-pin", chan_index);
 			if (device_get_prop_int_array(pdev, key, pin_arr,
@@ -583,7 +582,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 				pin_cfg->mode	     = (uint32_t)pin_arr[6];
 				pin_cfg->pull	     = (uint32_t)pin_arr[7];
 			} else
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 		}
 		break;
 	}
@@ -616,7 +615,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 		     field_index < (int)(sizeof(cfg_keys) / sizeof(cfg_keys[0])); field_index++)
 			if (device_get_prop_int(pdev, cfg_keys[field_index],
 						cfg_dst[field_index]) != MINI_OK)
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", cfg_keys[field_index]);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", cfg_keys[field_index]);
 
 		static const char *const ch_fmt[] = { "encoder-ch%d-channel-id",
 						      "encoder-ch%d-chn-mode",
@@ -636,7 +635,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 			     field_index++) {
 				snprintf(key, sizeof(key), ch_fmt[field_index], chan_index);
 				if (device_get_prop_int(pdev, key, dst[field_index]) != MINI_OK)
-					MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+					MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 			}
 			snprintf(key, sizeof(key), "encoder-ch%d-pin", chan_index);
 			if (device_get_prop_int_array(pdev, key, pin_arr,
@@ -651,7 +650,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 				pin_cfg->mode	     = (uint32_t)pin_arr[6];
 				pin_cfg->pull	     = (uint32_t)pin_arr[7];
 			} else
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 		}
 		break;
 	}
@@ -680,7 +679,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 		     field_index++)
 			if (device_get_prop_int(pdev, keys[field_index], dst[field_index]) !=
 			    MINI_OK)
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", keys[field_index]);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", keys[field_index]);
 		for (int chan_index = 0; chan_index < HAL_HALL_TIM_MAX_CHANNELS; chan_index++) {
 			char		    key[VFS_TIM_KEY_MAX];
 			hal_tim_pin_config *pin_cfg = &cfg->hall_mode.phase_pins[chan_index];
@@ -698,7 +697,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 				pin_cfg->mode	     = (uint32_t)pin_arr[6];
 				pin_cfg->pull	     = (uint32_t)pin_arr[7];
 			} else
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", key);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", key);
 		}
 		break;
 	}
@@ -721,7 +720,7 @@ static mt_err_t vfs_tim_priv_parse_dts(struct device *pdev, struct hal_tim_host_
 		     field_index++)
 			if (device_get_prop_int(pdev, keys[field_index], dst[field_index]) !=
 			    MINI_OK)
-				MT_LOG_WARN(k_tag, "missing DTS prop %s\n", keys[field_index]);
+				MT_LOG_WARN(tag, "missing DTS prop %s\n", keys[field_index]);
 	}
 
 	return MINI_OK;
@@ -830,7 +829,7 @@ static mt_err_t vfs_tim_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	}
 	uint8_t index = (uint8_t)(offset - 1); /*<此处用(cmd&0xff-1)也可以一样的效果*/
 
-	handler = s_tim_ioctl_map[index].handler;
+	handler = tim_ioctl_map[index].handler;
 	if (handler != NULL)
 		ret = handler(priv, arg, arg_len);
 	else
@@ -994,16 +993,16 @@ static mt_err_t vfs_tim_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(tim, pdev));
 
-	pool_idx = mini_slot_claim(&s_tim_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&tim_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_tim_priv_pool[pool_idx];
+	priv = &tim_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
 	if (vfs_tim_priv_parse_dts(pdev, &priv->cfg) != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "dts parse failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "dts parse failed: %s", device_get_name(pdev));
 		ret = MINI_ERR_INVAL;
 		goto err_pool;
 	}
@@ -1014,7 +1013,7 @@ static mt_err_t vfs_tim_probe(struct device *pdev)
 		int irqn	= -1;
 		int int_mask	= 0;
 		if (device_get_prop_int(pdev, "hw-instance", &hw_instance) != MINI_OK) {
-			MT_LOG_ERROR(k_tag, "missing hw-instance: %s", device_get_name(pdev));
+			MT_LOG_ERROR(tag, "missing hw-instance: %s", device_get_name(pdev));
 			ret = MINI_ERR_INVAL;
 			goto err_pool;
 		}
@@ -1029,7 +1028,7 @@ static mt_err_t vfs_tim_probe(struct device *pdev)
 
 	ret = hal_tim_device_init(&priv->tim, &priv->unique, &priv->cfg);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "hal_tim_device_init failed: %s", device_get_name(pdev));
+		MT_LOG_ERROR(tag, "hal_tim_device_init failed: %s", device_get_name(pdev));
 		goto err_pool;
 	}
 
@@ -1041,14 +1040,14 @@ static mt_err_t vfs_tim_probe(struct device *pdev)
 		goto err_deinit;
 	}
 
-	MT_LOG_INFO(k_tag, "probe OK %s", device_get_name(pdev));
+	MT_LOG_INFO(tag, "probe OK %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_deinit:
 	pdev->ops = NULL;
 	MINI_IGNORE_RESULT(hal_tim_device_deinit(&priv->tim));
 err_pool:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_tim_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&tim_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -1085,7 +1084,7 @@ static mt_err_t vfs_tim_remove(struct device *pdev)
 	MINI_IGNORE_RESULT(hal_tim_device_deinit(&priv->tim));
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_tim_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&tim_priv_pool_ctrl, pool_idx));
 
 	dev_lc_remove_finish(lc);
 	return MINI_OK;

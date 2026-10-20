@@ -18,7 +18,7 @@
 #include "mini_time.h"
 #include "system_log.h"
 
-static const char *const s_kTag = "tls_client";
+static const char *const tag = "tls_client";
 
 _Static_assert((TLS_CLIENT_TX_BUFFER_SIZE & (TLS_CLIENT_TX_BUFFER_SIZE - 1U)) == 0U,
 	       "TLS_CLIENT_TX_BUFFER_SIZE must be power of 2");
@@ -40,16 +40,16 @@ _Static_assert((TLS_CLIENT_RX_BUFFER_SIZE & (TLS_CLIENT_RX_BUFFER_SIZE - 1U)) ==
  */
 __attribute__((weak)) mt_err_t mbedtls_hardware_poll(void *data, size_t len, size_t *olen)
 {
-	static uint32_t s_lfsr = 0x5EED5EEDU;
-	uint8_t	       *out    = (uint8_t *)data;
+	static uint32_t lfsr = 0x5EED5EEDU;
+	uint8_t	       *out  = (uint8_t *)data;
 
 	for (size_t i = 0; i < len; i++) {
 		/* 占位的伪随机算法, 不能当真正的随机源用 */
-		uint32_t lsb = s_lfsr & 1U;
-		s_lfsr >>= 1;
+		uint32_t lsb = lfsr & 1U;
+		lfsr >>= 1;
 		if (lsb != 0U)
-			s_lfsr ^= 0x80200003U;
-		out[i] = (uint8_t)(s_lfsr ^ (s_lfsr >> 8) ^ (s_lfsr >> 16) ^ (s_lfsr >> 24));
+			lfsr ^= 0x80200003U;
+		out[i] = (uint8_t)(lfsr ^ (lfsr >> 8) ^ (lfsr >> 16) ^ (lfsr >> 24));
 	}
 	*olen = len;
 	return 0;
@@ -85,7 +85,7 @@ static void tls_client_error_callback(void *arg, err_t err)
 {
 	struct tls_client_context *ctx = (struct tls_client_context *)arg;
 	if (ctx != NULL) {
-		MT_LOG_ERROR(s_kTag, "err occurred: %d\r\n", err);
+		MT_LOG_ERROR(tag, "err occurred: %d\r\n", err);
 		ctx->pcb	  = NULL; /* lwIP 内部已释放控制块, 此处不调用 altcp_close */
 		ctx->is_connected = false;
 	}
@@ -112,7 +112,7 @@ static err_t tls_client_recv_callback(void *arg, struct altcp_pcb *conn, struct 
 
 	/* 对端关闭 (FIN / close_notify 已透传) */
 	if (pbuf_in == NULL) {
-		MT_LOG_INFO(s_kTag, "server disconnected\r\n");
+		MT_LOG_INFO(tag, "server disconnected\r\n");
 		ctx->is_connected = false;
 		if (ctx->pcb != NULL) {
 			altcp_arg(ctx->pcb, NULL);
@@ -124,7 +124,7 @@ static err_t tls_client_recv_callback(void *arg, struct altcp_pcb *conn, struct 
 	}
 
 	if (err != ERR_OK) {
-		MT_LOG_ERROR(s_kTag, "recv callback error: %d\r\n", err);
+		MT_LOG_ERROR(tag, "recv callback error: %d\r\n", err);
 		pbuf_free(pbuf_in);
 		return err;
 	}
@@ -140,7 +140,7 @@ static err_t tls_client_recv_callback(void *arg, struct altcp_pcb *conn, struct 
 								pbuf_walk->len, &written));
 			total_bytes = (uint16_t)(total_bytes + written);
 			if (written < pbuf_walk->len)
-				MT_LOG_WARN(s_kTag, "RX FIFO full, dropped %u bytes\r\n",
+				MT_LOG_WARN(tag, "RX FIFO full, dropped %u bytes\r\n",
 					    (unsigned int)(pbuf_walk->len - written));
 		}
 		pbuf_walk = pbuf_walk->next;
@@ -182,13 +182,13 @@ static err_t tls_client_connected_callback(void *arg, struct altcp_pcb *conn, er
 {
 	struct tls_client_context *ctx = (struct tls_client_context *)arg;
 	if (ctx == NULL || err != ERR_OK) {
-		MT_LOG_ERROR(s_kTag, "connected callback error: %d\r\n", err);
+		MT_LOG_ERROR(tag, "connected callback error: %d\r\n", err);
 		if (ctx != NULL)
 			ctx->is_connected = false;
 		return err;
 	}
 
-	MT_LOG_INFO(s_kTag, "tls connected to %s:%u\r\n", ctx->server_ip, ctx->port);
+	MT_LOG_INFO(tag, "tls connected to %s:%u\r\n", ctx->server_ip, ctx->port);
 	ctx->is_connected = true;
 
 	/* 握手完成后才注册数据回调; TX FIFO 里有预压数据时立即触发推送 */
@@ -223,7 +223,7 @@ int tls_client_poll_send(struct tls_client_context *ctx)
 	/* 每次写满一块再交给 altcp, 它内部会把数据加密后发出 */
 	err_t err = altcp_write(ctx->pcb, temp_buf, read_bytes, TCP_WRITE_FLAG_COPY);
 	if (err != ERR_OK) {
-		MT_LOG_WARN(s_kTag, "altcp_write failed: %d, retry later\r\n", err);
+		MT_LOG_WARN(tag, "altcp_write failed: %d, retry later\r\n", err);
 		return err;
 	}
 
@@ -287,7 +287,7 @@ int tls_client_init_and_connect(struct tls_client_context *ctx, const char *serv
 
 	/* 解析 IP */
 	if (!ip_addr_aton(server_ip, &dest_ip)) {
-		MT_LOG_ERROR(s_kTag, "invalid IP: %s\r\n", server_ip);
+		MT_LOG_ERROR(tag, "invalid IP: %s\r\n", server_ip);
 		return ERR_ARG;
 	}
 
@@ -297,14 +297,14 @@ int tls_client_init_and_connect(struct tls_client_context *ctx, const char *serv
 	/* 创建 TLS 客户端配置: CA 为 NULL 时不校验服务器证书 (仅调试) */
 	ctx->tls_config = altcp_tls_create_config_client(ca_cert, (size_t)ca_len);
 	if (ctx->tls_config == NULL) {
-		MT_LOG_ERROR(s_kTag, "altcp_tls_create_config_client failed\r\n");
+		MT_LOG_ERROR(tag, "altcp_tls_create_config_client failed\r\n");
 		return ERR_MEM;
 	}
 
 	/* 创建 altcp 控制块 (外层, 内层 TCP 由 altcp_tls 自建) */
 	ctx->pcb = altcp_tls_new(ctx->tls_config, IPADDR_TYPE_V4);
 	if (ctx->pcb == NULL) {
-		MT_LOG_ERROR(s_kTag, "altcp_tls_new failed\r\n");
+		MT_LOG_ERROR(tag, "altcp_tls_new failed\r\n");
 		altcp_tls_free_config(ctx->tls_config);
 		ctx->tls_config = NULL;
 		return ERR_MEM;
@@ -316,7 +316,7 @@ int tls_client_init_and_connect(struct tls_client_context *ctx, const char *serv
 	/* connected 回调在 TLS 握手完成后才会触发 */
 	ret = altcp_connect(ctx->pcb, &dest_ip, port, tls_client_connected_callback);
 	if (ret != ERR_OK) {
-		MT_LOG_ERROR(s_kTag, "altcp_connect failed: %d\r\n", ret);
+		MT_LOG_ERROR(tag, "altcp_connect failed: %d\r\n", ret);
 		altcp_close(ctx->pcb);
 		ctx->pcb = NULL;
 		altcp_tls_free_config(ctx->tls_config);
@@ -324,7 +324,7 @@ int tls_client_init_and_connect(struct tls_client_context *ctx, const char *serv
 		return ret;
 	}
 
-	MT_LOG_INFO(s_kTag, "connecting (tls) to %s:%u...\r\n", server_ip, port);
+	MT_LOG_INFO(tag, "connecting (tls) to %s:%u...\r\n", server_ip, port);
 	return ERR_OK;
 }
 
@@ -352,6 +352,6 @@ int tls_client_disconnect(struct tls_client_context *ctx)
 	}
 
 	ctx->is_connected = false;
-	MT_LOG_INFO(s_kTag, "tls client disconnected\r\n");
+	MT_LOG_INFO(tag, "tls client disconnected\r\n");
 	return ERR_OK;
 }

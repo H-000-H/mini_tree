@@ -3,8 +3,8 @@
  * @author H-000-H
  * @brief bus 实现
  * @note BUS CORE 实现 — 总线子系统通用框架
- * @note 静态表: s_controllers[DEV_ID_COUNT] (按 device_id 索引) + s_controller_used[] 位图
- * @note 查找: device_get_name → board_dev_find → device_id → s_controllers[id]
+ * @note 静态表: controllers[DEV_ID_COUNT] (按 device_id 索引) + controller_used[] 位图
+ * @note 查找: device_get_name → board_dev_find → device_id → controllers[id]
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
 
@@ -17,8 +17,8 @@
 #include <stddef.h>
 #include <string.h>
 
-static struct bus_controller s_controllers[DEV_ID_COUNT] MINI_ALIGNED(4);
-static uint8_t		     s_controller_used[DEV_ID_COUNT] MINI_ALIGNED(4);
+static struct bus_controller controllers[DEV_ID_COUNT] MINI_ALIGNED(4);
+static uint8_t		     controller_used[DEV_ID_COUNT] MINI_ALIGNED(4);
 
 /**
  * @brief 将 device 转换为 device_id (通过 board_dev_find 线性扫描)
@@ -52,10 +52,10 @@ mt_err_t bus_controller_bind_full(struct device *pdev, bus_type_t type,
 	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
 		return MINI_ERR_INVAL;
 
-	s_controllers[id].type	   = type;
-	s_controllers[id].ctlr_ops = ctlr_ops;
-	s_controllers[id].hw_ctx   = hw_ctx;
-	s_controller_used[id]	   = 1;
+	controllers[id].type	 = type;
+	controllers[id].ctlr_ops = ctlr_ops;
+	controllers[id].hw_ctx	 = hw_ctx;
+	controller_used[id]	 = 1;
 	return MINI_OK;
 }
 
@@ -76,10 +76,10 @@ mt_err_t bus_controller_get(const struct device *pdev, struct bus_controller **o
 		return MINI_ERR_INVAL;
 
 	id = device_to_id(pdev);
-	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
+	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !controller_used[id])
 		return MINI_ERR_NODEV;
 
-	*out = &s_controllers[id];
+	*out = &controllers[id];
 	return MINI_OK;
 }
 
@@ -106,10 +106,10 @@ mt_err_t bus_controller_of(const struct device *pdev, struct bus_controller **ou
 		return PTR_ERR(parent);
 
 	id = device_to_id(parent);
-	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !s_controller_used[id])
+	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT || !controller_used[id])
 		return MINI_ERR_NODEV;
 
-	*out = &s_controllers[id];
+	*out = &controllers[id];
 	return MINI_OK;
 }
 
@@ -128,8 +128,8 @@ void bus_controller_unbind(struct device *pdev)
 	if (id == (device_id_t)-1 || (int)id >= DEV_ID_COUNT)
 		return;
 
-	s_controller_used[id] = 0;
-	MINI_MEM_SET(&s_controllers[id], 0, sizeof(s_controllers[id]));
+	controller_used[id] = 0;
+	MINI_MEM_SET(&controllers[id], 0, sizeof(controllers[id]));
 }
 
 /* -------------------------------------------------------------------------- */

@@ -16,7 +16,7 @@
 #include "system_log.h"
 #include <stdbool.h>
 
-static const char *const s_kTag = "transport_glue";
+static const char *const tag = "transport_glue";
 
 /* -------------------------------------------------------------------------- */
 /* 建连 / 断连 / 链路状态                                                     */
@@ -68,7 +68,7 @@ int network_transport_write(struct NetworkContext *context, const void *buffer, 
 
 	while (remaining > 0U) {
 		if (!tcp_client->is_connected) {
-			MT_LOG_WARN(s_kTag, "write aborted, link down");
+			MT_LOG_WARN(tag, "write aborted, link down");
 			return NET_ERR_CONN;
 		}
 
@@ -83,7 +83,7 @@ int network_transport_write(struct NetworkContext *context, const void *buffer, 
 		if (written == 0U) {
 			/* TX FIFO 满: 让出调度等待窗口释放 */
 			if ((mini_time_ms() - start_ms) >= NETWORK_TRANSPORT_TX_TIMEOUT_MS) {
-				MT_LOG_ERROR(s_kTag, "write timeout, fifo full");
+				MT_LOG_ERROR(tag, "write timeout, fifo full");
 				return NET_ERR_TIMEOUT;
 			}
 			mini_delay_ms(1);

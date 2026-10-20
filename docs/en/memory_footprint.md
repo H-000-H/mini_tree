@@ -98,7 +98,7 @@
 **Heap accounting (why bss is not directly comparable across backends)**:
 
 - FreeRTOS: heap is a static array `ucHeap[CONFIG_FREERTOS_HEAP_SIZE]` (default 8192), **counted in bss**;
-- RT-Thread: heap is a static array `s_rtt_heap[CONFIG_RTT_HEAP_SIZE]` (default 32×1024, see `mini_backend_rtthread.c`), **counted in bss**;
+- RT-Thread: heap is a static array `rtt_heap[CONFIG_RTT_HEAP_SIZE]` (default 32×1024, see `mini_backend_rtthread.c`), **counted in bss**;
 - mini-os: heap is a link-time region (`__mini_os_heap_start`→`__mini_os_heap_end`, from end of bss to top of stack), **not counted in bss** — all remaining RAM goes to the heap;
 - bare-metal xtask: no heap.
 

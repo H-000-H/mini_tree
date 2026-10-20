@@ -33,18 +33,17 @@ struct vfs_i2c_priv {
 	int			  pool_idx; /**< 池索引 */
 };
 
-static struct vfs_i2c_priv		s_i2c_priv_pool[I2C_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_i2c_priv_used[I2C_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_i2c_priv_pool_ctrl MINI_ALIGNED(4);
-static const char *const		k_host_tag = "i2c_vfs_host";
+static struct vfs_i2c_priv	      i2c_priv_pool[I2C_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			      i2c_priv_used[I2C_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t i2c_priv_pool_ctrl MINI_ALIGNED(4);
+static const char *const	      host_tag = "i2c_vfs_host";
 
 /**
  * @brief I2C Host 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_i2c_priv_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_i2c_priv_pool_ctrl, s_i2c_priv_used, I2C_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&i2c_priv_pool_ctrl, i2c_priv_used, I2C_VFS_PRIV_COUNT));
 }
 
 /**
@@ -170,11 +169,11 @@ static mt_err_t vfs_i2c_priv_probe_impl(struct device *pdev, int bus_role)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(i2c, pdev));
 
-	pool_idx = mini_slot_claim(&s_i2c_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&i2c_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_i2c_priv_pool[pool_idx];
+	priv = &i2c_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -191,14 +190,14 @@ static mt_err_t vfs_i2c_priv_probe_impl(struct device *pdev, int bus_role)
 		goto err_bus;
 	}
 
-	MT_LOG_INFO(k_host_tag, "probe OK: %s role=%s", device_get_name(pdev),
+	MT_LOG_INFO(host_tag, "probe OK: %s role=%s", device_get_name(pdev),
 		    bus_role == I2C_BUS_ROLE_MASTER ? "master" : "slave");
 	return MINI_OK;
 
 err_bus:
 	MINI_IGNORE_RESULT(i2c_bus_host_deinit(pdev));
 err_pool:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_i2c_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&i2c_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -256,14 +255,13 @@ static mt_err_t vfs_i2c_priv_remove(struct device *pdev)
 
 	ret = i2c_bus_host_deinit(pdev);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_host_tag, "host remove busy: %s (ret=%d)", device_get_name(pdev),
-			     ret);
+		MT_LOG_ERROR(host_tag, "host remove busy: %s (ret=%d)", device_get_name(pdev), ret);
 		dev_lc_remove_finish(lc);
 		return ret;
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_i2c_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&i2c_priv_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }
@@ -282,18 +280,17 @@ struct i2c_vfs_client {
 	int			     pool_idx;	/**< 池索引 */
 };
 
-static struct i2c_vfs_client	      s_client_pool[I2C_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_client_used[I2C_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_client_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_client_tag = "i2c_vfs_client";
+static struct i2c_vfs_client	    client_pool[I2C_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t			    client_used[I2C_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static mini_slot_t client_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    client_tag = "i2c_vfs_client";
 
 /**
  * @brief I2C Client 私有数据池启动初始化
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void i2c_vfs_client_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_client_pool_ctrl, s_client_used, I2C_VFS_CLIENT_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&client_pool_ctrl, client_used, I2C_VFS_CLIENT_COUNT));
 }
 
 /**
@@ -566,7 +563,7 @@ static mt_err_t i2c_cmd_get_trans_result(struct device *pdev, void *arg, size_t 
 					      timeout_ms);
 }
 
-static const struct i2c_ioctl_map s_i2c_ioctl_map[I2C_CMD_COUNT] = {
+static const struct i2c_ioctl_map i2c_ioctl_map[I2C_CMD_COUNT] = {
 	[I2C_CMD_TRANSFER - I2C_CMD_BASE - 1]	      = { i2c_cmd_transfer },
 	[I2C_CMD_QUEUE_TX - I2C_CMD_BASE - 1]	      = { i2c_cmd_queue_tx },
 	[I2C_CMD_GET_TRANS_RESULT - I2C_CMD_BASE - 1] = { i2c_cmd_get_trans_result },
@@ -602,10 +599,10 @@ static mt_err_t i2c_vfs_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 		return ret;
 
 	offset = (int32_t)cmd - (int32_t)I2C_CMD_BASE;
-	if (offset < 1 || offset > I2C_CMD_COUNT || !s_i2c_ioctl_map[offset - 1].handler)
+	if (offset < 1 || offset > I2C_CMD_COUNT || !i2c_ioctl_map[offset - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_i2c_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
+		ret = i2c_ioctl_map[offset - 1].handler(pdev, arg, arg_len, timeout_ms);
 
 	dev_lc_io_end(lc);
 	return ret;
@@ -667,15 +664,15 @@ static mt_err_t i2c_vfs_probe(struct device *pdev)
 
 	role = i2c_bus_host_role(pdev);
 	if (role != I2C_BUS_ROLE_MASTER && role != I2C_BUS_ROLE_SLAVE) {
-		MT_LOG_ERROR(k_client_tag, "invalid I2C role: %s", device_get_name(pdev));
+		MT_LOG_ERROR(client_tag, "invalid I2C role: %s", device_get_name(pdev));
 		return MINI_ERR_INVAL;
 	}
 
-	pool_idx = mini_slot_claim(&s_client_pool_ctrl);
+	pool_idx = mini_slot_claim(&client_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_client_pool[pool_idx];
+	priv = &client_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx	= pool_idx;
 	priv->role	= role;
@@ -698,7 +695,7 @@ static mt_err_t i2c_vfs_probe(struct device *pdev)
 		goto err_pool;
 	}
 
-	MT_LOG_INFO(k_client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev),
+	MT_LOG_INFO(client_tag, "probe OK: %s role=%s addr=0x%x freq=%u", device_get_name(pdev),
 		    role == I2C_BUS_ROLE_MASTER ? "master" : "slave", (unsigned)priv->cfg.address,
 		    (unsigned)priv->cfg.clock_speed_hz);
 	return MINI_OK;
@@ -706,7 +703,7 @@ static mt_err_t i2c_vfs_probe(struct device *pdev)
 err_pool:
 	pdev->ops = NULL;
 	dev_lc_reset(device_lc(pdev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -740,7 +737,7 @@ static mt_err_t i2c_vfs_remove(struct device *pdev)
 
 	i2c_bus_client_unregister(pdev);
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

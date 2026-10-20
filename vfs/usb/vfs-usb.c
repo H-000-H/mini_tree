@@ -34,16 +34,15 @@ struct vfs_usb_priv {
 	int			  pool_idx;
 };
 
-static struct vfs_usb_priv		s_usb_priv_pool[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static uint8_t				s_usb_priv_used[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_usb_priv_pool_ctrl MINI_ALIGNED(4);
-static const char *const		k_host_tag = "usb_host_vfs";
+static struct vfs_usb_priv	      usb_priv_pool[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static uint8_t			      usb_priv_used[USB_VFS_PRIV_COUNT] MINI_ALIGNED(4);
+static mini_slot_t usb_priv_pool_ctrl MINI_ALIGNED(4);
+static const char *const	      host_tag = "usb_host_vfs";
 
 /** 资源池初始化 (mini_pre_execution 阶段, 供 device 池复用) */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_priv_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_usb_priv_pool_ctrl, s_usb_priv_used, USB_VFS_PRIV_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&usb_priv_pool_ctrl, usb_priv_used, USB_VFS_PRIV_COUNT));
 }
 
 /**
@@ -102,11 +101,11 @@ static mt_err_t vfs_usb_priv_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(usb, pdev));
 
-	pool_idx = mini_slot_claim(&s_usb_priv_pool_ctrl);
+	pool_idx = mini_slot_claim(&usb_priv_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_usb_priv_pool[pool_idx];
+	priv = &usb_priv_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx = pool_idx;
 
@@ -123,13 +122,13 @@ static mt_err_t vfs_usb_priv_probe(struct device *pdev)
 		goto err_bus;
 	}
 
-	MT_LOG_INFO(k_host_tag, "probe OK: %s", device_get_name(pdev));
+	MT_LOG_INFO(host_tag, "probe OK: %s", device_get_name(pdev));
 	return MINI_OK;
 
 err_bus:
 	MINI_IGNORE_RESULT(usb_bus_host_deinit(pdev));
 err_pool:
-	MINI_IGNORE_RESULT(mini_slot_release(&s_usb_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&usb_priv_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -168,7 +167,7 @@ static mt_err_t vfs_usb_priv_remove(struct device *pdev)
 	}
 
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_usb_priv_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&usb_priv_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }
@@ -185,16 +184,15 @@ struct usb_vfs_client {
 	int		       pool_idx;
 };
 
-static struct usb_vfs_client	      s_client_pool[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_client_used[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_client_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_client_tag = "usb_client_vfs";
+static struct usb_vfs_client	    client_pool[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static uint8_t			    client_used[USB_VFS_CLIENT_COUNT] MINI_ALIGNED(4);
+static mini_slot_t client_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    client_tag = "usb_client_vfs";
 
 /** 客户端池初始化 (mini_pre_execution 阶段) */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void vfs_usb_client_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_client_pool_ctrl, s_client_used, USB_VFS_CLIENT_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&client_pool_ctrl, client_used, USB_VFS_CLIENT_COUNT));
 }
 
 /**
@@ -342,7 +340,7 @@ static mt_err_t usb_vfs_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	return MINI_ERR_NOTSUPP;
 }
 
-static const struct file_operations s_usb_fops_template = {
+static const struct file_operations usb_fops_template = {
 	.open  = usb_vfs_open,
 	.close = usb_vfs_close,
 	.write = usb_vfs_write,
@@ -367,16 +365,16 @@ static mt_err_t usb_vfs_client_probe_cls(struct device *pdev, enum usb_client_cl
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(usb, pdev));
 
-	pool_idx = mini_slot_claim(&s_client_pool_ctrl);
+	pool_idx = mini_slot_claim(&client_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
 
-	priv = &s_client_pool[pool_idx];
+	priv = &client_pool[pool_idx];
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
 	priv->pool_idx	= pool_idx;
 	priv->cls	= cls;
 	priv->xfer_mode = USB_XFER_AUTO; /* write/read 默认 AUTO */
-	priv->ops	= s_usb_fops_template;
+	priv->ops	= usb_fops_template;
 
 	ret = usb_bus_client_register(pdev, cls, &bus_cli);
 	if (ret != MINI_OK)
@@ -389,13 +387,13 @@ static mt_err_t usb_vfs_client_probe_cls(struct device *pdev, enum usb_client_cl
 		goto err_pool;
 	}
 
-	MT_LOG_INFO(k_client_tag, "probe OK: %s cls=%d", device_get_name(pdev), (int)cls);
+	MT_LOG_INFO(client_tag, "probe OK: %s cls=%d", device_get_name(pdev), (int)cls);
 	return MINI_OK;
 
 err_pool:
 	pdev->ops = NULL;
 	dev_lc_reset(device_lc(pdev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -428,7 +426,7 @@ static mt_err_t usb_vfs_client_remove(struct device *pdev)
 
 	usb_bus_client_unregister(pdev);
 	MINI_MEM_SET(priv, 0, sizeof(*priv));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_client_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&client_pool_ctrl, pool_idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

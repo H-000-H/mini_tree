@@ -2,7 +2,7 @@
  * @file mpu6050_drv.c
  * @author H-000-H
  * @brief MPU6050 六轴 IMU 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: mpu6050_pool[MPU6050_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与采样结构见 mpu6050_drv.h。
  * @note 数据流: VFS ioctl → mpu6050_cmd_read → device_read/write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -37,18 +37,17 @@ struct mpu6050_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct mpu6050_device	       s_mpu6050_pool[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			       s_mpu6050_used[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_mpu6050_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "mpu6050";
+static struct mpu6050_device	     mpu6050_pool[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			     mpu6050_used[MPU6050_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t mpu6050_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "mpu6050";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void mpu6050_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_mpu6050_pool_ctrl, s_mpu6050_used, MPU6050_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&mpu6050_pool_ctrl, mpu6050_used, MPU6050_POOL_COUNT));
 }
 
 /**
@@ -208,7 +207,7 @@ static mt_err_t mpu6050_cmd_read(struct mpu6050_device *dev, void *arg, size_t l
 	sample->gz = (int16_t)((raw[12] << 8) | raw[13]);
 	return MINI_OK;
 }
-static const struct mpu6050_ioctl_map s_mpu6050_map[MPU6050_CMD_COUNT] = {
+static const struct mpu6050_ioctl_map mpu6050_map[MPU6050_CMD_COUNT] = {
 	[MPU6050_CMD_READ_ACCEL_GYRO - MPU6050_CMD_BASE - 1] = { mpu6050_cmd_read },
 };
 
@@ -233,10 +232,10 @@ static mt_err_t mpu6050_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)MPU6050_CMD_BASE;
-	if (off < 1 || off > MPU6050_CMD_COUNT || !s_mpu6050_map[off - 1].handler)
+	if (off < 1 || off > MPU6050_CMD_COUNT || !mpu6050_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_mpu6050_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = mpu6050_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -259,10 +258,10 @@ static mt_err_t mpu6050_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(mpu6050, pdev));
 
-	pool_idx = mini_slot_claim(&s_mpu6050_pool_ctrl);
+	pool_idx = mini_slot_claim(&mpu6050_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_mpu6050_pool[pool_idx];
+	dev = &mpu6050_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -276,12 +275,12 @@ static mt_err_t mpu6050_probe(struct device *pdev)
 	}
 	dev->ops  = mpu6050_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_mpu6050_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&mpu6050_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -301,7 +300,7 @@ static mt_err_t mpu6050_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_mpu6050_pool);
+	idx = (int)(dev - mpu6050_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -310,7 +309,7 @@ static mt_err_t mpu6050_remove(struct device *pdev)
 	}
 	mpu6050_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_mpu6050_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&mpu6050_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

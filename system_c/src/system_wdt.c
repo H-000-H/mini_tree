@@ -14,11 +14,11 @@
 
 #include "compiler_compat_poison.h"
 
-static const char *k_tag	 = "SysWDT";
-static bool	   s_initialized = false;
+static const char *tag	       = "SysWDT";
+static bool	   initialized = false;
 
-static struct hal_iwdg_dev s_iwdg;
-static bool		   s_iwdg_active = false;
+static struct hal_iwdg_dev iwdg;
+static bool		   iwdg_active = false;
 
 /**
  * @brief 启动 IWDG
@@ -29,19 +29,19 @@ mt_err_t system_wdt_init_iwdg(uint32_t timeout_ms)
 {
 	struct hal_iwdg_config cfg;
 
-	if (s_iwdg_active)
+	if (iwdg_active)
 		return MINI_OK;
 
 	cfg.timeout_ms = timeout_ms;
 	cfg.prer       = 0xFFFFFFFFU;
 	cfg.rlr	       = 0xFFFFFFFFU;
-	if (hal_iwdg_init(&s_iwdg, &cfg) != 0)
+	if (hal_iwdg_init(&iwdg, &cfg) != 0)
 		return MINI_ERR_IO;
-	if (hal_iwdg_start(&s_iwdg) != 0)
+	if (hal_iwdg_start(&iwdg) != 0)
 		return MINI_ERR_IO;
 
-	s_iwdg_active = true;
-	MT_LOG_INFO(k_tag, "IWDG started, timeout=%ums", (unsigned)timeout_ms);
+	iwdg_active = true;
+	MT_LOG_INFO(tag, "IWDG started, timeout=%ums", (unsigned)timeout_ms);
 	return MINI_OK;
 }
 
@@ -50,10 +50,10 @@ mt_err_t system_wdt_init_iwdg(uint32_t timeout_ms)
  */
 void system_wdt_iwdg_set_long_timeout(void)
 {
-	if (!s_iwdg_active)
+	if (!iwdg_active)
 		return;
-	MINI_IGNORE_RESULT(hal_iwdg_set_long_timeout(&s_iwdg));
-	MT_LOG_INFO(k_tag, "IWDG extended to hardware max (~32768ms) for OTA");
+	MINI_IGNORE_RESULT(hal_iwdg_set_long_timeout(&iwdg));
+	MT_LOG_INFO(tag, "IWDG extended to hardware max (~32768ms) for OTA");
 }
 
 /**
@@ -61,10 +61,10 @@ void system_wdt_iwdg_set_long_timeout(void)
  */
 void system_wdt_iwdg_restore_timeout(void)
 {
-	if (!s_iwdg_active)
+	if (!iwdg_active)
 		return;
-	MINI_IGNORE_RESULT(hal_iwdg_restore_timeout(&s_iwdg));
-	MT_LOG_INFO(k_tag, "IWDG restored to %ums", (unsigned)s_iwdg.normal_timeout_ms);
+	MINI_IGNORE_RESULT(hal_iwdg_restore_timeout(&iwdg));
+	MT_LOG_INFO(tag, "IWDG restored to %ums", (unsigned)iwdg.normal_timeout_ms);
 }
 
 /**
@@ -72,8 +72,8 @@ void system_wdt_iwdg_restore_timeout(void)
  */
 void system_wdt_feed_iwdg(void)
 {
-	if (s_iwdg_active)
-		MINI_IGNORE_RESULT(hal_iwdg_feed(&s_iwdg));
+	if (iwdg_active)
+		MINI_IGNORE_RESULT(hal_iwdg_feed(&iwdg));
 }
 
 struct stack_monitor_entry {
@@ -81,8 +81,8 @@ struct stack_monitor_entry {
 	uint32_t	   alarm_threshold_bytes; /**< 栈剩余报警阈值 (字节) */
 };
 
-static struct stack_monitor_entry s_stack_entries[BOARD_STACK_MONITOR_MAX_TASKS];
-static size_t			  s_stack_entry_count = 0;
+static struct stack_monitor_entry stack_entries[BOARD_STACK_MONITOR_MAX_TASKS];
+static size_t			  stack_entry_count = 0;
 
 /**
  * @brief 注册栈监控
@@ -94,15 +94,15 @@ mt_err_t system_wdt_stack_monitor_register(mini_task_handle_t task, uint32_t ala
 {
 	if (task == NULL || alarm_threshold_bytes == 0)
 		return MINI_ERR_INVAL;
-	if (s_stack_entry_count >= BOARD_STACK_MONITOR_MAX_TASKS) {
-		MT_LOG_ERROR(k_tag, "stack monitor: max entries (%d) reached",
+	if (stack_entry_count >= BOARD_STACK_MONITOR_MAX_TASKS) {
+		MT_LOG_ERROR(tag, "stack monitor: max entries (%d) reached",
 			     BOARD_STACK_MONITOR_MAX_TASKS);
 		return MINI_ERR_NOSPC;
 	}
 
-	s_stack_entries[s_stack_entry_count].task		   = task;
-	s_stack_entries[s_stack_entry_count].alarm_threshold_bytes = alarm_threshold_bytes;
-	s_stack_entry_count++;
+	stack_entries[stack_entry_count].task		       = task;
+	stack_entries[stack_entry_count].alarm_threshold_bytes = alarm_threshold_bytes;
+	stack_entry_count++;
 	return MINI_OK;
 }
 
@@ -111,25 +111,25 @@ mt_err_t system_wdt_stack_monitor_register(mini_task_handle_t task, uint32_t ala
  */
 void system_wdt_stack_check_all(void)
 {
-	for (size_t index = 0; index < s_stack_entry_count; index++) {
-		const struct stack_monitor_entry *entry = &s_stack_entries[index];
+	for (size_t index = 0; index < stack_entry_count; index++) {
+		const struct stack_monitor_entry *entry = &stack_entries[index];
 		if (entry->task == NULL)
 			continue;
 
 		uint32_t wm_bytes = mini_task_get_stack_watermark(entry->task);
 
 		if (wm_bytes == 0) {
-			MT_LOG_ERROR(k_tag, "FAIL: task '%s' stack overflowed (wm=0)!",
+			MT_LOG_ERROR(tag, "FAIL: task '%s' stack overflowed (wm=0)!",
 				     mini_task_get_name(entry->task));
 			continue;
 		}
 
 		if (wm_bytes < entry->alarm_threshold_bytes)
-			MT_LOG_ERROR(k_tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u",
+			MT_LOG_ERROR(tag, "STACK CRITICAL: '%s' watermark %u bytes < alarm %u",
 				     mini_task_get_name(entry->task), (unsigned)wm_bytes,
 				     (unsigned)entry->alarm_threshold_bytes);
 		else if (wm_bytes < entry->alarm_threshold_bytes * 2)
-			MT_LOG_WARN(k_tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)",
+			MT_LOG_WARN(tag, "STACK WARN: '%s' watermark %u bytes (alarm=%u)",
 				    mini_task_get_name(entry->task), (unsigned)wm_bytes,
 				    (unsigned)entry->alarm_threshold_bytes);
 	}
@@ -143,10 +143,10 @@ void system_wdt_stack_check_all(void)
 mt_err_t system_wdt_init(uint32_t timeout_ms)
 {
 	(void)timeout_ms;
-	if (s_initialized)
+	if (initialized)
 		return MINI_OK;
-	s_initialized = true;
-	MT_LOG_INFO(k_tag, "TWDT placeholder started");
+	initialized = true;
+	MT_LOG_INFO(tag, "TWDT placeholder started");
 	return MINI_OK;
 }
 
@@ -159,7 +159,7 @@ mt_err_t system_wdt_subscribe(mini_task_handle_t task)
 {
 	if (task == NULL)
 		return MINI_ERR_INVAL;
-	if (!s_initialized)
+	if (!initialized)
 		return MINI_ERR_AGAIN;
 	return MINI_OK;
 }
@@ -173,7 +173,7 @@ mt_err_t system_wdt_unsubscribe(mini_task_handle_t task)
 {
 	if (task == NULL)
 		return MINI_ERR_INVAL;
-	if (!s_initialized)
+	if (!initialized)
 		return MINI_ERR_AGAIN;
 	return MINI_OK;
 }

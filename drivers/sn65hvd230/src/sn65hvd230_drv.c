@@ -2,7 +2,7 @@
  * @file sn65hvd230_drv.c
  * @author H-000-H
  * @brief SN65HVD230 CAN 收发器驱动实现 — 挂在 GPIO 下的 VFS 设备驱动
- * @note 静态池: s_sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: sn65hvd230_pool[SN65HVD230_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令见 sn65hvd230_drv.h。
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -37,10 +37,10 @@ struct sn65hvd230_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sn65hvd230_device		  s_sn65hvd230_pool[SN65HVD230_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t				  s_sn65hvd230_used[SN65HVD230_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_sn65hvd230_pool_ctrl MINI_ALIGNED(4);
-static const char *const		  k_tag = "sn65hvd230";
+static struct sn65hvd230_device		sn65hvd230_pool[SN65HVD230_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t				sn65hvd230_used[SN65HVD230_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t sn65hvd230_pool_ctrl MINI_ALIGNED(4);
+static const char *const		tag = "sn65hvd230";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
@@ -48,7 +48,7 @@ static const char *const		  k_tag = "sn65hvd230";
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sn65hvd230_pool_boot_init(void)
 {
 	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_sn65hvd230_pool_ctrl, s_sn65hvd230_used, SN65HVD230_POOL_COUNT));
+		mini_slot_init(&sn65hvd230_pool_ctrl, sn65hvd230_used, SN65HVD230_POOL_COUNT));
 }
 
 /**
@@ -185,7 +185,7 @@ static mt_err_t sn65hvd230_cmd(struct sn65hvd230_device *dev, void *arg, size_t 
 	return vfs_gpio_set_level(&dev->gpio);
 }
 
-static const struct sn65hvd230_ioctl_map s_sn65hvd230_map[SN65HVD230_CMD_COUNT] = {
+static const struct sn65hvd230_ioctl_map sn65hvd230_map[SN65HVD230_CMD_COUNT] = {
 	[SN65HVD230_CMD_SET_STANDBY - SN65HVD230_CMD_BASE - 1] = { sn65hvd230_cmd },
 };
 
@@ -211,10 +211,10 @@ static mt_err_t sn65hvd230_ioctl(struct device *pdev, int cmd, void *arg, size_t
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)SN65HVD230_CMD_BASE;
-	if (off < 1 || off > SN65HVD230_CMD_COUNT || !s_sn65hvd230_map[off - 1].handler)
+	if (off < 1 || off > SN65HVD230_CMD_COUNT || !sn65hvd230_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_sn65hvd230_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = sn65hvd230_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -237,10 +237,10 @@ static mt_err_t sn65hvd230_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(sn65hvd230, pdev));
 
-	pool_idx = mini_slot_claim(&s_sn65hvd230_pool_ctrl);
+	pool_idx = mini_slot_claim(&sn65hvd230_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_sn65hvd230_pool[pool_idx];
+	dev = &sn65hvd230_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->gdev = device_get_phandle_dev(pdev, "stb-gpio");
 	if (IS_ERR(dev->gdev)) {
@@ -254,12 +254,12 @@ static mt_err_t sn65hvd230_probe(struct device *pdev)
 	}
 	dev->ops  = sn65hvd230_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sn65hvd230_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sn65hvd230_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -279,7 +279,7 @@ static mt_err_t sn65hvd230_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_sn65hvd230_pool);
+	idx = (int)(dev - sn65hvd230_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -288,7 +288,7 @@ static mt_err_t sn65hvd230_remove(struct device *pdev)
 	}
 	sn65hvd230_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sn65hvd230_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sn65hvd230_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

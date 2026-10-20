@@ -113,7 +113,7 @@ typedef struct x_scheduler {
 	list_node	 task_list_head; /**< 任务链表头 */
 } x_scheduler;
 
-extern x_scheduler g_scheduler;
+extern x_scheduler scheduler;
 
 /**
  * @brief 初始化调度器

@@ -3,7 +3,7 @@
  * @author H-000-H
  * @brief i2s bus 实现
  * @note I2S BUS 实现 — I2S 总线子系统 bus 层
- * @note 静态池: s_i2s_hosts[HOST_MAX] (含 hal_host, ref_count) + s_i2s_clients[DEV_ID_COUNT]
+ * @note 静态池: i2s_hosts[HOST_MAX] (含 hal_host, ref_count) + i2s_clients[DEV_ID_COUNT]
  * @note 职责: host init/open/close + client register + transfer (poll/DMA) + circular + HT/TC
  * irq_mode
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -40,18 +40,18 @@ struct i2s_bus_client {
 	int			     hw_open;	  /**< 硬件打开计数 */
 };
 
-static struct i2s_bus_host   s_hosts[I2S_BUS_HOST_MAX];
-static uint8_t		     s_host_used[I2S_BUS_HOST_MAX];
-static mini_slot_t	     s_host_pool;
-static struct i2s_bus_client s_clients[DEV_ID_COUNT];
-static const char	    *k_tag = "i2s_bus";
+static struct i2s_bus_host   hosts[I2S_BUS_HOST_MAX];
+static uint8_t		     host_used[I2S_BUS_HOST_MAX];
+static mini_slot_t	     host_pool;
+static struct i2s_bus_client clients[DEV_ID_COUNT];
+static const char	    *tag = "i2s_bus";
 
 /**
  * @brief 初始化 I2S 总线 host 对象池
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void i2s_bus_pool_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_host_pool, s_host_used, I2S_BUS_HOST_MAX));
+	MINI_IGNORE_RESULT(mini_slot_init(&host_pool, host_used, I2S_BUS_HOST_MAX));
 }
 
 /**
@@ -63,8 +63,8 @@ static struct i2s_bus_host *host_from_dev(struct device *pdev)
 {
 	int index;
 	for (index = 0; index < I2S_BUS_HOST_MAX; index++)
-		if (mini_slot_is_used(&s_host_pool, index) && s_hosts[index].pdev == pdev)
-			return &s_hosts[index];
+		if (mini_slot_is_used(&host_pool, index) && hosts[index].pdev == pdev)
+			return &hosts[index];
 	return NULL;
 }
 
@@ -76,9 +76,9 @@ static struct i2s_bus_host *host_from_dev(struct device *pdev)
 static struct i2s_bus_client *client_from_dev(struct device *pdev)
 {
 	int id = (int)board_dev_find(device_get_name(pdev));
-	if (id < 0 || id >= DEV_ID_COUNT || !s_clients[id].pdev)
+	if (id < 0 || id >= DEV_ID_COUNT || !clients[id].pdev)
 		return NULL;
-	return &s_clients[id];
+	return &clients[id];
 }
 
 static mt_err_t i2s_host_init_impl(struct device *pdev, const void *cfg);
@@ -87,7 +87,7 @@ static int	i2s_host_role_impl(struct device *pdev);
 static mt_err_t i2s_client_register_impl(struct device *pdev, const void *cfg, void **out);
 static void	i2s_client_unregister_impl(struct device *pdev);
 
-static const struct bus_controller_ops s_ops = {
+static const struct bus_controller_ops ops = {
 	.init		   = i2s_host_init_impl,
 	.deinit		   = i2s_host_deinit_impl,
 	.role		   = i2s_host_role_impl,
@@ -111,25 +111,25 @@ static mt_err_t i2s_host_init_impl(struct device *pdev, const void *cfg)
 		return MINI_ERR_INVAL;
 	if (host_from_dev(pdev))
 		return MINI_OK;
-	idx = mini_slot_claim(&s_host_pool);
+	idx = mini_slot_claim(&host_pool);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
-	host = &s_hosts[idx];
+	host = &hosts[idx];
 	MINI_MEM_SET(host, 0, sizeof(*host));
 	host->pdev = pdev;
 	MINI_ATOMIC_RUNTIME_INIT(&host->ref_count, 0);
 	ret = hal_i2s_bus_host_init(&host->hal_host, idx, host_cfg);
 	if (ret != MINI_OK) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_host_pool, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&host_pool, idx));
 		return ret;
 	}
-	ret = bus_controller_bind_full(pdev, BUS_TYPE_I2S, &s_ops, host);
+	ret = bus_controller_bind_full(pdev, BUS_TYPE_I2S, &ops, host);
 	if (ret != MINI_OK) {
 		MINI_IGNORE_RESULT(hal_i2s_bus_host_deinit(&host->hal_host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_host_pool, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&host_pool, idx));
 		return ret;
 	}
-	MT_LOG_INFO(k_tag, "host init OK: %s", device_get_name(pdev));
+	MT_LOG_INFO(tag, "host init OK: %s", device_get_name(pdev));
 	return MINI_OK;
 }
 
@@ -149,12 +149,12 @@ static mt_err_t i2s_host_deinit_impl(struct device *pdev)
 		return MINI_ERR_NODEV;
 	if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0)
 		return MINI_ERR_BUSY;
-	idx = (int)(host - s_hosts);
+	idx = (int)(host - hosts);
 	bus_controller_unbind(pdev);
 	ret = hal_i2s_bus_host_deinit(&host->hal_host);
 	if (ret == MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_host_pool, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&host_pool, idx));
 	}
 	return ret;
 }
@@ -206,7 +206,7 @@ static mt_err_t i2s_client_register_impl(struct device *pdev, const void *cfg, v
 	id = (int)board_dev_find(device_get_name(pdev));
 	if (id < 0 || id >= DEV_ID_COUNT)
 		return MINI_ERR_INVAL;
-	client = &s_clients[id];
+	client = &clients[id];
 	if (client->pdev) {
 		if (client->pdev != pdev)
 			return MINI_ERR_BUSY;
@@ -287,12 +287,12 @@ mt_err_t i2s_bus_open(struct device *pdev)
 	/*
 	 * 虚拟中断注册 (对齐 ADC vfs_adc_probe; 不走 ioctl):
 	 *   top  = hal_virtual_i2s_irq_callback
-	 *   work = &g_i2s_bottom_half_work (fn/arg 在 circular/async 使能 IT 时绑定)
+	 *   work = &i2s_bottom_half_work (fn/arg 在 circular/async 使能 IT 时绑定)
 	 *   arg  = &client->hal_i2s_dev
 	 */
 	if (host->cfg.it_enable) {
 		interrupt_virtual_register(VIRQ(i2s, host->hw_idx), hal_virtual_i2s_irq_callback,
-					   &g_i2s_bottom_half_work, &client->hal_i2s_dev);
+					   &i2s_bottom_half_work, &client->hal_i2s_dev);
 		interrupt_hw_enable((int)host->cfg.irqn, host->cfg.irq_priority);
 		interrupt_hw_enable((int)host->cfg.irqn_rx, host->cfg.irq_priority);
 	}

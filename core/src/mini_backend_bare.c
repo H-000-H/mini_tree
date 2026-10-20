@@ -375,14 +375,13 @@ struct mini_queue {
 };
 
 #if MINI_BARE_QUEUE_POOL_SIZE > 0
-static struct mini_queue	     s_queues[MINI_BARE_QUEUE_POOL_SIZE] MINI_ALIGNED(64);
-static uint8_t			     s_queue_used[MINI_BARE_QUEUE_POOL_SIZE] MINI_ALIGNED(4);
-static mini_slot_t s_queue_pool_ctrl MINI_ALIGNED(4);
+static struct mini_queue	   queues[MINI_BARE_QUEUE_POOL_SIZE] MINI_ALIGNED(64);
+static uint8_t			   queue_used[MINI_BARE_QUEUE_POOL_SIZE] MINI_ALIGNED(4);
+static mini_slot_t queue_pool_ctrl MINI_ALIGNED(4);
 
 mini_pre_execution(MINI_PRE_EXEC_PRIO_QUEUE_POOL) static void mini_queue_pool_boot(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_queue_pool_ctrl, s_queue_used, MINI_BARE_QUEUE_POOL_SIZE));
+	MINI_IGNORE_RESULT(mini_slot_init(&queue_pool_ctrl, queue_used, MINI_BARE_QUEUE_POOL_SIZE));
 }
 
 /* 句柄 -> 池下标 (同时校验该槽位确实被占用) */
@@ -390,8 +389,8 @@ static int mini_queue_index_of(mini_queue_t *queue)
 {
 	if (!queue)
 		return -1;
-	int idx = (int)((struct mini_queue *)queue - s_queues);
-	if (idx < 0 || idx >= MINI_BARE_QUEUE_POOL_SIZE || !s_queue_used[idx])
+	int idx = (int)((struct mini_queue *)queue - queues);
+	if (idx < 0 || idx >= MINI_BARE_QUEUE_POOL_SIZE || !queue_used[idx])
 		return -1;
 	return idx;
 }
@@ -425,14 +424,14 @@ mini_queue_t *mini_queue_create(size_t queue_len, size_t item_size)
 		return NULL;
 
 #if MINI_BARE_QUEUE_POOL_SIZE > 0
-	int idx = mini_slot_claim(&s_queue_pool_ctrl);
+	int idx = mini_slot_claim(&queue_pool_ctrl);
 	if (idx < 0)
 		return NULL;
 
-	struct mini_queue *queue = &s_queues[idx];
+	struct mini_queue *queue = &queues[idx];
 	queue->elements_per_item = elements_per_item;
 	if (fifo_init(&queue->fifo, queue->buf, (uint16_t)total_elements) != BUFF_OK) {
-		MINI_IGNORE_RESULT(mini_slot_release(&s_queue_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&queue_pool_ctrl, idx));
 		return NULL;
 	}
 
@@ -449,7 +448,7 @@ void mini_queue_delete(mini_queue_t *queue)
 	int idx = mini_queue_index_of(queue);
 	if (idx < 0)
 		return;
-	MINI_IGNORE_RESULT(mini_slot_release(&s_queue_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&queue_pool_ctrl, idx));
 #else
 	MINI_UNUSED_PARAM(queue);
 #endif
@@ -463,7 +462,7 @@ static bool mini_queue_send_internal(mini_queue_t *queue, const void *item)
 	if (idx < 0 || !item)
 		return false;
 
-	struct mini_queue *obj	   = &s_queues[idx];
+	struct mini_queue *obj	   = &queues[idx];
 	uint16_t	   epi	   = (uint16_t)obj->elements_per_item;
 	uint16_t	   count   = 0;
 	uint16_t	   written = 0;
@@ -507,7 +506,7 @@ bool mini_queue_receive(mini_queue_t *queue, void *item, uint32_t timeout_ms)
 	if (idx < 0 || !item)
 		return false;
 
-	struct mini_queue *obj	 = &s_queues[idx];
+	struct mini_queue *obj	 = &queues[idx];
 	uint16_t	   epi	 = (uint16_t)obj->elements_per_item;
 	uint16_t	   count = 0;
 	uint16_t	   rd	 = 0;
@@ -557,7 +556,7 @@ bool mini_queue_receive_from_isr(mini_queue_t *queue, void *item, bool *px_yield
 	if (idx < 0 || !item)
 		return false;
 
-	struct mini_queue *obj	 = &s_queues[idx];
+	struct mini_queue *obj	 = &queues[idx];
 	uint16_t	   epi	 = (uint16_t)obj->elements_per_item;
 	uint16_t	   count = 0;
 	uint16_t	   rd	 = 0;

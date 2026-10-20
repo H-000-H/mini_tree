@@ -14,7 +14,7 @@
 #include "system_log.h"
 #include <string.h>
 
-static const char *const s_kTag = "http_client";
+static const char *const tag = "http_client";
 
 #define HTTP_TCP_CONNECT_TIMEOUT_MS 15000 /**< TCP 三次握手等待上限 */
 #define HTTP_TRANSPORT_RECV_WAIT_MS 1	  /**< 传输层 recv 单次等待 (让出调度给收包泵) */
@@ -95,7 +95,7 @@ int http_client_do_connect(struct http_client_context *context)
 		return NET_ERR_INVAL;
 
 	if (context->connect_requested || is_http_client_connected(context)) {
-		MT_LOG_WARN(s_kTag, "already connecting/connected");
+		MT_LOG_WARN(tag, "already connecting/connected");
 		return NET_ERR_STATE;
 	}
 
@@ -107,7 +107,7 @@ int http_client_do_connect(struct http_client_context *context)
 	context->connect_requested    = true;
 	context->tcp_connect_start_ms = mini_time_ms();
 
-	MT_LOG_INFO(s_kTag, "connecting to %s:%u...", context->server_ip, context->port);
+	MT_LOG_INFO(tag, "connecting to %s:%u...", context->server_ip, context->port);
 	return NET_OK;
 }
 
@@ -117,7 +117,7 @@ int http_client_disconnect(struct http_client_context *context)
 		return NET_ERR_INVAL;
 
 	http_reset_connection(context);
-	MT_LOG_INFO(s_kTag, "http disconnected");
+	MT_LOG_INFO(tag, "http disconnected");
 	return NET_OK;
 }
 
@@ -138,7 +138,7 @@ int http_client_request(struct http_client_context *context, const char *method,
 		return NET_ERR_INVAL;
 
 	if (!is_http_client_connected(context)) {
-		MT_LOG_ERROR(s_kTag, "request rejected: not connected");
+		MT_LOG_ERROR(tag, "request rejected: not connected");
 		return NET_ERR_INVAL;
 	}
 
@@ -156,7 +156,7 @@ int http_client_request(struct http_client_context *context, const char *method,
 	HTTPStatus_t status =
 		HTTPClient_InitializeRequestHeaders(&context->request_headers, &request_info);
 	if (status != HTTPSuccess) {
-		MT_LOG_ERROR(s_kTag, "InitRequestHeaders failed: %s", HTTPClient_strerror(status));
+		MT_LOG_ERROR(tag, "InitRequestHeaders failed: %s", HTTPClient_strerror(status));
 		return http_status_to_net(status);
 	}
 
@@ -169,7 +169,7 @@ int http_client_request(struct http_client_context *context, const char *method,
 					      strlen(headers[i].field), headers[i].value,
 					      strlen(headers[i].value));
 		if (status != HTTPSuccess) {
-			MT_LOG_ERROR(s_kTag, "AddHeader %s failed: %s", headers[i].field,
+			MT_LOG_ERROR(tag, "AddHeader %s failed: %s", headers[i].field,
 				     HTTPClient_strerror(status));
 			return http_status_to_net(status);
 		}
@@ -187,7 +187,7 @@ int http_client_request(struct http_client_context *context, const char *method,
 	status = HTTPClient_Send(&context->transport_interface, &context->request_headers,
 				 (const uint8_t *)body, body_len, &context->response, 0);
 	if (status != HTTPSuccess) {
-		MT_LOG_ERROR(s_kTag, "HTTPClient_Send failed: %s", HTTPClient_strerror(status));
+		MT_LOG_ERROR(tag, "HTTPClient_Send failed: %s", HTTPClient_strerror(status));
 		return http_status_to_net(status);
 	}
 
@@ -197,7 +197,7 @@ int http_client_request(struct http_client_context *context, const char *method,
 	response->headers     = context->response.pHeaders;
 	response->headers_len = context->response.headersLen;
 
-	MT_LOG_INFO(s_kTag, "%s %s -> %u (%u bytes)", method, path, (unsigned)response->status_code,
+	MT_LOG_INFO(tag, "%s %s -> %u (%u bytes)", method, path, (unsigned)response->status_code,
 		    (unsigned)response->body_len);
 	return NET_OK;
 }
@@ -216,7 +216,7 @@ int http_client_process(struct http_client_context *context)
 		    ((mini_time_ms() - context->tcp_connect_start_ms) >=
 		     HTTP_TCP_CONNECT_TIMEOUT_MS)) {
 			/* 底层建连失败 (err 回调已置空控制块) 或超时 */
-			MT_LOG_ERROR(s_kTag, "link connect failed/timeout");
+			MT_LOG_ERROR(tag, "link connect failed/timeout");
 			http_reset_connection(context);
 		}
 	}

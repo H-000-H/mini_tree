@@ -2,7 +2,7 @@
  * @file sh1106_drv.c
  * @author H-000-H
  * @brief SH1106 OLED 驱动实现 — 挂在 I2C 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: sh1106_pool[SH1106_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 sh1106_drv.h，寄存器定义见 sh1106_regs.h。
  * @note 数据流: VFS ioctl → sh1106_cmd_* → device_write(I2C) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -37,17 +37,17 @@ struct sh1106_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct sh1106_device	      s_sh1106_pool[SH1106_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			      s_sh1106_used[SH1106_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_sh1106_pool_ctrl MINI_ALIGNED(4);
-static const char *const	      k_tag = "sh1106";
+static struct sh1106_device	    sh1106_pool[SH1106_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			    sh1106_used[SH1106_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t sh1106_pool_ctrl MINI_ALIGNED(4);
+static const char *const	    tag = "sh1106";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void sh1106_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(mini_slot_init(&s_sh1106_pool_ctrl, s_sh1106_used, SH1106_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&sh1106_pool_ctrl, sh1106_used, SH1106_POOL_COUNT));
 }
 
 /**
@@ -322,7 +322,7 @@ static mt_err_t sh1106_cmd_set_brightness(struct sh1106_device *dev, void *arg, 
 	return sh1106_cmd_byte(dev, SH1106_I2C_CTRL_CMD, darg->value, to_ms);
 }
 
-static const struct sh1106_ioctl_map s_sh1106_map[DISPLAY_CMD_COUNT] = {
+static const struct sh1106_ioctl_map sh1106_map[DISPLAY_CMD_COUNT] = {
 	[DISPLAY_CMD_GET_INFO - DISPLAY_CMD_BASE - 1]	    = { sh1106_cmd_get_info },
 	[DISPLAY_CMD_CLEAR - DISPLAY_CMD_BASE - 1]	    = { sh1106_cmd_clear },
 	[DISPLAY_CMD_FILL_RECT - DISPLAY_CMD_BASE - 1]	    = { sh1106_cmd_fill_rect },
@@ -352,10 +352,10 @@ static mt_err_t sh1106_ioctl(struct device *pdev, int cmd, void *arg, size_t arg
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)DISPLAY_CMD_BASE;
-	if (off < 1 || off > DISPLAY_CMD_COUNT || !s_sh1106_map[off - 1].handler)
+	if (off < 1 || off > DISPLAY_CMD_COUNT || !sh1106_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_sh1106_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = sh1106_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -378,10 +378,10 @@ static mt_err_t sh1106_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(sh1106, pdev));
 
-	pool_idx = mini_slot_claim(&s_sh1106_pool_ctrl);
+	pool_idx = mini_slot_claim(&sh1106_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_sh1106_pool[pool_idx];
+	dev = &sh1106_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->i2c_dev = device_get_parent(pdev);
 	if (!dev->i2c_dev) {
@@ -395,12 +395,12 @@ static mt_err_t sh1106_probe(struct device *pdev)
 	}
 	dev->ops  = sh1106_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sh1106_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sh1106_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -420,7 +420,7 @@ static mt_err_t sh1106_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_sh1106_pool);
+	idx = (int)(dev - sh1106_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -429,7 +429,7 @@ static mt_err_t sh1106_remove(struct device *pdev)
 	}
 	sh1106_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_sh1106_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&sh1106_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

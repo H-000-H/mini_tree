@@ -40,11 +40,11 @@ The difference is not in the layers but in whether each layer is built at runtim
 | L0 Userspace | `open/read` on `/dev` | `device_open/read` | no `/dev` node in mini_tree |
 | L1 VFS | `struct file` / `inode` | `dev_lifecycle` | no inode; lifecycle tracked by `dev_lifecycle` |
 | L2 cdev | `struct cdev` + `dev_t` | `dev->ops` (no `dev_t`) | no major/minor; `device_id_t` handle instead |
-| L3 core | `device` + `driver` + `bus_type` | `s_devices` + `DRIVER_REGISTER` | fully static, no runtime `device_add` |
+| L3 core | `device` + `driver` + `bus_type` | `devices` + `DRIVER_REGISTER` | fully static, no runtime `device_add` |
 | L4 bus | `spi_master` / `platform_device` | `bus_controller/client` | bus described statically in DTS |
 | L5 subsystem | MTD / input / misc | `fft_spi_drv` / `ws2812_drv` | no unified subsystem layer; a driver is a service |
 | L6 resources | `devm_*` | HAL + DTS props | resources not auto-released with device |
-| L7 DT | `device_node` + DTB | `s_nodes` (dtc-lite) | compiled to C arrays; no runtime unflatten |
+| L7 DT | `device_node` + DTB | `nodes` (dtc-lite) | compiled to C arrays; no runtime unflatten |
 | L8 HW | SoC drivers | ESP-IDF HAL | hardware access via vendor HAL |
 
 ---
@@ -53,8 +53,8 @@ The difference is not in the layers but in whether each layer is built at runtim
 
 | Concept | Linux | mini_tree |
 | ----- | ------------------------ | ------------------- |
-| static DT | `struct device_node` | `s_nodes[]` |
-| runtime device | `struct device` | `s_devices[]` |
+| static DT | `struct device_node` | `nodes[]` |
+| runtime device | `struct device` | `devices[]` |
 | driver | `struct device_driver` | `DRIVER_REGISTER` macro |
 | bus | `struct bus_type` | `bus_type` / `bus.c` |
 | char device | `struct cdev` | `dev->ops` |
@@ -74,7 +74,7 @@ The difference is not in the layers but in whether each layer is built at runtim
 
 ### 4.1 Compile-time static generation (vs Linux runtime registration)
 - Linux: `device_add` / `driver_register` attach objects to a bus at runtime, supporting hotplug and dynamic matching.
-- mini_tree: `dtc-lite` parses the DTS into `s_nodes[]` (nodes) and `s_devices[]` (devices) at compile time — fully static, ready at boot. No runtime creation, no hotplug.
+- mini_tree: `dtc-lite` parses the DTS into `nodes[]` (nodes) and `devices[]` (devices) at compile time — fully static, ready at boot. No runtime creation, no hotplug.
 - Trade-off: board hardware must be written as literal DTS; benefit: zero runtime allocation and a deterministic boot order.
 
 ### 4.2 Manual probe (vs Linux bus auto-matching)

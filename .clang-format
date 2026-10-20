@@ -1,6 +1,9 @@
 ---
 # mini_tree 代码风格 = Linux 内核风格（kernel CodingStyle）
 # 基准: Linux 内核官方 .clang-format（Documentation/process/clang-format 同款）
+# 命名同为内核风: 全小写 snake_case, 不加 s_/g_/k_ 前缀, 函数以模块名作前缀, 宏全大写
+#   （clang-format 管不了命名, 由 .clang-tidy readability-identifier-naming 强制,
+#     详见 docs/cn/coding_style.md）
 
 BasedOnStyle: LLVM
 

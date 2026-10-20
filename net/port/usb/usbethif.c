@@ -20,12 +20,12 @@
 #define USB_ETHIF_IMPL
 #include "usbethif.h"
 
-static const char *const k_tag = "usb_ethif";
+static const char *const tag = "usb_ethif";
 
 /* 数量由 DTS ECM 节点数决定 (dtc-lite 生成, 缺省 1)。 */
 #define USBETHIF_NETIF_MAX DTC_GEN_COUNT_MT_USB_CDC_ECM
-static struct netif s_usb_netif[USBETHIF_NETIF_MAX];
-static uint8_t	    s_usb_netif_used[USBETHIF_NETIF_MAX];
+static struct netif usb_netif[USBETHIF_NETIF_MAX];
+static uint8_t	    usb_netif_used[USBETHIF_NETIF_MAX];
 
 /* lwIP netif->mtu 为 IP MTU (不含 14 字节 ethhdr)*/
 #define USBETHIF_MTU (CONFIG_USB_NET_MTU - 14)
@@ -33,8 +33,8 @@ static uint8_t	    s_usb_netif_used[USBETHIF_NETIF_MAX];
 #define USBETHIF_TX_TIMEOUT_MS CONFIG_USB_NET_TX_TIMEOUT_MS
 #define USBETHIF_RX_TIMEOUT_MS CONFIG_USB_NET_RX_TIMEOUT_MS /* 非阻塞尝试 */
 
-static uint8_t s_mac[6] = { CONFIG_USB_NET_MAC0, CONFIG_USB_NET_MAC1, CONFIG_USB_NET_MAC2,
-			    CONFIG_USB_NET_MAC3, CONFIG_USB_NET_MAC4, CONFIG_USB_NET_MAC5 };
+static uint8_t mac[6] = { CONFIG_USB_NET_MAC0, CONFIG_USB_NET_MAC1, CONFIG_USB_NET_MAC2,
+			  CONFIG_USB_NET_MAC3, CONFIG_USB_NET_MAC4, CONFIG_USB_NET_MAC5 };
 
 /**
  * @brief 从 netif->state 取回 USB 网卡 device 句柄
@@ -62,7 +62,7 @@ static err_t usb_ethif_link_output(struct netif *netif, struct pbuf *pbuf)
 		return ERR_ARG;
 
 	if (pbuf->tot_len != pbuf->len) {
-		MT_LOG_ERROR(k_tag, "usb_ethif_link_output: pbuf is not contiguous");
+		MT_LOG_ERROR(tag, "usb_ethif_link_output: pbuf is not contiguous");
 		return ERR_BUF;
 	}
 	frame = (uint8_t *)pbuf->payload;
@@ -70,7 +70,7 @@ static err_t usb_ethif_link_output(struct netif *netif, struct pbuf *pbuf)
 	/* 走 VFS: device_write → usb_vfs_write → usb_bus_ecm_write → usb_net_frame_push_tx */
 	sent = device_write(dev, frame, pbuf->tot_len, USBETHIF_TX_TIMEOUT_MS);
 	if (sent < 0) {
-		MT_LOG_ERROR(k_tag, "usb_ethif_link_output: device_write failed %d", sent);
+		MT_LOG_ERROR(tag, "usb_ethif_link_output: device_write failed %d", sent);
 		return ERR_IF;
 	}
 	return ERR_OK;
@@ -85,13 +85,13 @@ int usb_ethif_input(struct netif *netif, const uint8_t *frame, size_t len)
 
 	temp_buf = pbuf_alloc(PBUF_RAW, (u16_t)len, PBUF_POOL);
 	if (!temp_buf) {
-		MT_LOG_ERROR(k_tag, "usb_ethif_input: pbuf_alloc failed (%u)", (unsigned)len);
+		MT_LOG_ERROR(tag, "usb_ethif_input: pbuf_alloc failed (%u)", (unsigned)len);
 		return ERR_BUF;
 	}
 	MINI_IGNORE_RESULT(pbuf_take(temp_buf, frame, (u16_t)len));
 
 	if (netif->input(temp_buf, netif) != ERR_OK) {
-		MT_LOG_WARN(k_tag, "usb_ethif_input: netif->input drop frame");
+		MT_LOG_WARN(tag, "usb_ethif_input: netif->input drop frame");
 		pbuf_free(temp_buf);
 		return ERR_IF;
 	}
@@ -110,7 +110,7 @@ err_t usb_ethif_init(struct netif *netif)
 	netif->input	  = ethernet_input;
 	netif->mtu	  = USBETHIF_MTU;
 	netif->hwaddr_len = 6;
-	MINI_MEM_COPY(netif->hwaddr, s_mac, 6);
+	MINI_MEM_COPY(netif->hwaddr, mac, 6);
 	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
 	return ERR_OK;
 }
@@ -130,35 +130,35 @@ int usb_ethif_init_dev(const char *dev_name)
 	dev = device_find_by_label(dev_name);
 	if (IS_ERR(dev)) {
 		ret = PTR_ERR(dev);
-		MT_LOG_ERROR(k_tag, "USB eth '%s' not found: %d", dev_name, ret);
+		MT_LOG_ERROR(tag, "USB eth '%s' not found: %d", dev_name, ret);
 		return -1;
 	}
 	ret = device_open(dev, NULL);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "Open USB eth '%s' failed: %d", dev_name, ret);
+		MT_LOG_ERROR(tag, "Open USB eth '%s' failed: %d", dev_name, ret);
 		return -1;
 	}
 
 	/* 分配一个空闲静态 netif 槽位 */
 	for (index = 0; index < USBETHIF_NETIF_MAX; index++) {
-		if (!s_usb_netif_used[index]) {
+		if (!usb_netif_used[index]) {
 			idx = index;
 			break;
 		}
 	}
 	if (idx < 0) {
-		MT_LOG_ERROR(k_tag, "usb_ethif_init_dev: no free netif slot");
+		MT_LOG_ERROR(tag, "usb_ethif_init_dev: no free netif slot");
 		MINI_IGNORE_RESULT(device_close(dev));
 		return -1;
 	}
-	s_usb_netif_used[idx] = 1;
-	MINI_MEM_SET(&s_usb_netif[idx], 0, sizeof(s_usb_netif[idx]));
+	usb_netif_used[idx] = 1;
+	MINI_MEM_SET(&usb_netif[idx], 0, sizeof(usb_netif[idx]));
 
 	/* state 传 device, netif_add 会回调 usb_ethif_init 完成初始化 */
-	nif = netif_add(&s_usb_netif[idx], NULL, NULL, NULL, dev, usb_ethif_init, ethernet_input);
+	nif = netif_add(&usb_netif[idx], NULL, NULL, NULL, dev, usb_ethif_init, ethernet_input);
 	if (!nif) {
-		MT_LOG_ERROR(k_tag, "usb_ethif_init_dev: netif_add failed");
-		s_usb_netif_used[idx] = 0;
+		MT_LOG_ERROR(tag, "usb_ethif_init_dev: netif_add failed");
+		usb_netif_used[idx] = 0;
 		MINI_IGNORE_RESULT(device_close(dev));
 		return -1;
 	}

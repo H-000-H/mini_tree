@@ -77,23 +77,23 @@ struct x_preempt_priv {
 /* 全局 */
 /* -------------------------------------------------------------------------- */
 
-x_scheduler		     g_scheduler = { 0 }; /**< 对外契约 (xtask.h), preempt 内部不用其字段 */
-static struct x_preempt_priv s_priv;		  /**< 内部完整状态 */
+x_scheduler		     scheduler = { 0 }; /**< 对外契约 (xtask.h), preempt 内部不用其字段 */
+static struct x_preempt_priv preempt_priv;	/**< 内部完整状态 */
 
 #ifdef CONFIG_XTASK_COROUTINE
 /** 当前正在执行的任务 (protothread 协程让出时供感知) */
-static x_task *s_current_task;
+static x_task *current_task;
 
-/** @brief 当前系统滴答 (抢占式读内部 s_priv.tick_count) */
+/** @brief 当前系统滴答 (抢占式读内部 preempt_priv.tick_count) */
 uint32_t x_scheduler_now(void)
 {
-	return s_priv.tick_count;
+	return preempt_priv.tick_count;
 }
 
 /** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
 x_task *x_scheduler_current(void)
 {
-	return s_current_task;
+	return current_task;
 }
 #endif /* CONFIG_XTASK_COROUTINE */
 /* -------------------------------------------------------------------------- */
@@ -117,7 +117,7 @@ static uint32_t prio_group(uint32_t priority)
 static void ready_insert(struct x_preempt_task *task)
 {
 	uint32_t   group = prio_group(task->priority);
-	list_node *head	 = &s_priv.ready_head[group];
+	list_node *head	 = &preempt_priv.ready_head[group];
 	list_node *pos	 = head->next;
 
 	while (pos != head) {
@@ -127,7 +127,7 @@ static void ready_insert(struct x_preempt_task *task)
 		pos = pos->next;
 	}
 	list_add(&task->ready_node, pos, pos->prev);
-	s_priv.group_bitmap |= (1u << group);
+	preempt_priv.group_bitmap |= (1u << group);
 }
 
 /**
@@ -138,8 +138,8 @@ static void ready_remove(struct x_preempt_task *task)
 {
 	uint32_t group = prio_group(task->priority);
 	list_del(&task->ready_node);
-	if (list_empty(&s_priv.ready_head[group]))
-		s_priv.group_bitmap &= ~(1u << group);
+	if (list_empty(&preempt_priv.ready_head[group]))
+		preempt_priv.group_bitmap &= ~(1u << group);
 }
 
 /**
@@ -148,7 +148,7 @@ static void ready_remove(struct x_preempt_task *task)
  */
 static void sleep_insert(struct x_preempt_task *task)
 {
-	list_node *head = &s_priv.sleep_head;
+	list_node *head = &preempt_priv.sleep_head;
 	list_node *pos	= head->next;
 
 	while (pos != head) {
@@ -164,10 +164,10 @@ static void sleep_insert(struct x_preempt_task *task)
 /** 取最高优先级就绪任务 (O(1): CLZ + 组内表头) */
 static struct x_preempt_task *ready_highest(void)
 {
-	if (s_priv.group_bitmap == 0)
+	if (preempt_priv.group_bitmap == 0)
 		return NULL;
-	uint32_t   group_index = 31u - MINI_CLZ(s_priv.group_bitmap);
-	list_node *head	       = &s_priv.ready_head[group_index];
+	uint32_t   group_index = 31u - MINI_CLZ(preempt_priv.group_bitmap);
+	list_node *head	       = &preempt_priv.ready_head[group_index];
 	if (list_empty(head))
 		return NULL;
 	return container_of(head->next, struct x_preempt_task, ready_node);
@@ -176,11 +176,11 @@ static struct x_preempt_task *ready_highest(void)
 /** 唤醒所有到期任务: 休眠表头 → 就绪链表 */
 static void wakeup_due(void)
 {
-	while (!list_empty(&s_priv.sleep_head)) {
-		struct x_preempt_task *task =
-			container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
+	while (!list_empty(&preempt_priv.sleep_head)) {
+		struct x_preempt_task *task = container_of(preempt_priv.sleep_head.next,
+							   struct x_preempt_task, sleep_node);
 		if ((int32_t)(MINI_ATOMIC_LOAD(&task->task.next_running, MINI_RELAXED) -
-			      s_priv.tick_count) > 0)
+			      preempt_priv.tick_count) > 0)
 			break; /* 表头未到期, 有序性保证后续全未到期 */
 		list_del(&task->sleep_node);
 		ready_insert(task);
@@ -191,51 +191,52 @@ static void wakeup_due(void)
 static void idle_wfi(void)
 {
 	/* SysTick 路径: 固定周期架构中断, WFI 等下一个 tick 即可省电 (无法改单次到期时刻) */
-	if (s_priv.systick_active) {
+	if (preempt_priv.systick_active) {
 		MINI_WFI();
 		return;
 	}
 
-	if (list_empty(&s_priv.sleep_head) || s_priv.tim == NULL || s_priv.tick_period == 0)
+	if (list_empty(&preempt_priv.sleep_head) || preempt_priv.tim == NULL ||
+	    preempt_priv.tick_period == 0)
 		return;
 
 	struct x_preempt_task *next =
-		container_of(s_priv.sleep_head.next, struct x_preempt_task, sleep_node);
+		container_of(preempt_priv.sleep_head.next, struct x_preempt_task, sleep_node);
 	uint32_t remaining =
-		MINI_ATOMIC_LOAD(&next->task.next_running, MINI_RELAXED) - s_priv.tick_count;
+		MINI_ATOMIC_LOAD(&next->task.next_running, MINI_RELAXED) - preempt_priv.tick_count;
 
 	/* 单次休眠钳位: 通用 TIM 计数器可能仅 16 位 (如 TIM7), ARR = period × remaining
 	 * 超宽会被硬件截断 → 提前唤醒且记账失真。按 16 位上限截断休眠时长,
 	 * 到期前分多次休眠, 每次按真实休眠时长记账。 */
-	uint32_t max_sleep = 0xFFFFu / s_priv.tick_period;
+	uint32_t max_sleep = 0xFFFFu / preempt_priv.tick_period;
 	if (remaining > max_sleep)
 		remaining = max_sleep;
 
-	uint32_t arr = s_priv.tick_period * remaining;
+	uint32_t arr = preempt_priv.tick_period * remaining;
 	if (arr == 0)
 		return;
 
 	struct vfs_tim_arg tim_arg = { 0 };
-	tim_arg.obj		   = s_priv.tim;
+	tim_arg.obj		   = preempt_priv.tim;
 	MINI_IGNORE_RESULT(vfs_tim_fast_set_counter(&tim_arg));
-	tim_arg.arr	     = arr;
-	s_priv.oneshot_ticks = remaining; /* ISR 按本次休眠时长记账 */
+	tim_arg.arr		   = arr;
+	preempt_priv.oneshot_ticks = remaining; /* ISR 按本次休眠时长记账 */
 	MINI_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
 	MINI_WFI();
 
 	/* 非更新事件唤醒 (其他中断先行): 按计数器实际流逝补偿, 防 tick 欠账 */
 	tim_arg.value = 0;
 	if (vfs_tim_fast_get_counter(&tim_arg) == MINI_OK && tim_arg.value != 0) {
-		uint32_t elapsed = tim_arg.value / s_priv.tick_period;
+		uint32_t elapsed = tim_arg.value / preempt_priv.tick_period;
 		if (elapsed > 0) {
-			s_priv.oneshot_ticks -= elapsed;
-			x_scheduler_tick(&g_scheduler, elapsed);
+			preempt_priv.oneshot_ticks -= elapsed;
+			x_scheduler_tick(&scheduler, elapsed);
 		}
 	}
 
-	tim_arg.arr = s_priv.tick_period;
+	tim_arg.arr = preempt_priv.tick_period;
 	MINI_IGNORE_RESULT(vfs_tim_fast_set_autoreload(&tim_arg));
-	s_priv.oneshot_ticks = (uint32_t)s_priv.tick_delay; /* 恢复周期模式记账 */
+	preempt_priv.oneshot_ticks = (uint32_t)preempt_priv.tick_delay; /* 恢复周期模式记账 */
 }
 
 /* -------------------------------------------------------------------------- */
@@ -246,22 +247,22 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_SCHEDULER) static void xscheduler_early_in
 {
 	uint32_t group;
 	for (group = 0; group < X_PREEMPT_PRIO_GROUP; group++)
-		list_init(&s_priv.ready_head[group]);
-	list_init(&s_priv.sleep_head);
-	s_priv.tick_count     = 0;
-	s_priv.group_bitmap   = 0;
-	s_priv.tim	      = NULL;
-	s_priv.tick_period    = 0;
-	s_priv.tick_delay     = 1;
-	s_priv.oneshot_ticks  = 1;
-	s_priv.systick_active = false;
+		list_init(&preempt_priv.ready_head[group]);
+	list_init(&preempt_priv.sleep_head);
+	preempt_priv.tick_count	    = 0;
+	preempt_priv.group_bitmap   = 0;
+	preempt_priv.tim	    = NULL;
+	preempt_priv.tick_period    = 0;
+	preempt_priv.tick_delay	    = 1;
+	preempt_priv.oneshot_ticks  = 1;
+	preempt_priv.systick_active = false;
 }
 
 /**
  * @brief 启动 tick 源: chosen TIM 显式覆盖优先, 否则默认 SysTick
  * @note  - DTS 配了 chosen { scheduler-tim = &timN; } → 显式覆盖, 走通用 TIM + VIRQ
  *        - 未配 chosen → 默认 SysTick (Cortex-M 架构标准件; 非 ARM 返回 NOTSUPP)
- * @note  SysTick 路径下 s_priv.tim 置 NULL, idle_wfi 的精确休眠退化为等 SysTick 中断
+ * @note  SysTick 路径下 preempt_priv.tim 置 NULL, idle_wfi 的精确休眠退化为等 SysTick 中断
  *        (固定周期, 无需软件改 ARR)。
  */
 void xscheduler_start(void)
@@ -270,20 +271,20 @@ void xscheduler_start(void)
 #ifdef CHOSEN_SCHEDULER_TIM
 	struct device *tick_dev = board_dev_get(CHOSEN_SCHEDULER_TIM);
 	if (tick_dev != NULL && device_open(tick_dev, NULL) == MINI_OK) {
-		s_priv.tim = vfs_tim_get_hal_dev(tick_dev);
-		if (s_priv.tim != NULL) {
+		preempt_priv.tim = vfs_tim_get_hal_dev(tick_dev);
+		if (preempt_priv.tim != NULL) {
 			/* 记录周期 tick 的硬件 ARR (精确 WFI 后恢复用, 走 VFS 快路径) */
 			struct vfs_tim_arg tim_arg = { 0 };
-			tim_arg.obj		   = s_priv.tim;
+			tim_arg.obj		   = preempt_priv.tim;
 			if (vfs_tim_fast_get_autoreload(&tim_arg) == MINI_OK && tim_arg.value != 0)
-				s_priv.tick_period = tim_arg.value;
-			s_priv.oneshot_ticks = (uint32_t)s_priv.tick_delay;
+				preempt_priv.tick_period = tim_arg.value;
+			preempt_priv.oneshot_ticks = (uint32_t)preempt_priv.tick_delay;
 
 #ifdef CONFIG_VIRQ
-			MINI_IGNORE_RESULT(
-				device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
+			MINI_IGNORE_RESULT(device_get_prop_int(tick_dev, "tick_delay",
+							       &preempt_priv.tick_delay));
 			interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL,
-						   &s_priv);
+						   &preempt_priv);
 
 			int irqn     = -1;
 			int priority = 5;
@@ -299,11 +300,11 @@ void xscheduler_start(void)
 
 	/* ② 没配 chosen (或打开失败) → 默认 SysTick (仅 Cortex-M 存在; 非 ARM 返回 NOTSUPP) */
 	if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == MINI_OK) {
-		s_priv.tim	      = NULL; /* SysTick 路径: 不占用通用 TIM */
-		s_priv.systick_active = true;
+		preempt_priv.tim	    = NULL; /* SysTick 路径: 不占用通用 TIM */
+		preempt_priv.systick_active = true;
 		/* 每 SysTick 中断推进 ms = 1000 / tick-rate; 亚毫秒 tick-rate 按 1ms 兜底 */
-		int delay	  = 1000 / DTC_GEN_TICK_RATE_HZ;
-		s_priv.tick_delay = (delay >= 1) ? delay : 1;
+		int delay		= 1000 / DTC_GEN_TICK_RATE_HZ;
+		preempt_priv.tick_delay = (delay >= 1) ? delay : 1;
 		return;
 	}
 }
@@ -314,7 +315,7 @@ void xscheduler_start(void)
  */
 void hal_systick_irq_handler(void)
 {
-	x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay);
+	x_scheduler_tick(&scheduler, (unsigned int)preempt_priv.tick_delay);
 }
 
 /**
@@ -336,8 +337,8 @@ x_task_handle_t x_scheduler_task_create(const char *name, uint32_t period_ms, ui
 	/* 从任务池找空闲槽 */
 	struct x_preempt_task *slot = NULL;
 	for (uint32_t index = 0; index < CONFIG_X_PREEMPT_MAX_TASKS; index++) {
-		if (s_priv.task[index].task.name == NULL) {
-			slot = &s_priv.task[index];
+		if (preempt_priv.task[index].task.name == NULL) {
+			slot = &preempt_priv.task[index];
 			break;
 		}
 	}
@@ -348,7 +349,7 @@ x_task_handle_t x_scheduler_task_create(const char *name, uint32_t period_ms, ui
 	task->name     = name;
 	task->xTask_cb = cb;
 	slot->priority = (uint8_t)priority;
-	MINI_ATOMIC_STORE(&task->next_running, s_priv.tick_count + period_ms, MINI_RELAXED);
+	MINI_ATOMIC_STORE(&task->next_running, preempt_priv.tick_count + period_ms, MINI_RELAXED);
 	MINI_ATOMIC_STORE(&task->period, period_ms, MINI_RELAXED);
 	MINI_ATOMIC_STORE(&task->is_running, false, MINI_RELAXED);
 #ifdef CONFIG_XTASK_COROUTINE
@@ -380,35 +381,35 @@ mt_err_t scheduler_tim_isr_top(void *context, uint16_t irq_num)
 	struct vfs_tim_arg tim_arg = { 0 };
 	tim_arg.obj		   = priv->tim;
 	if (vfs_tim_fast_clear_update_flag(&tim_arg) == MINI_OK)
-		x_scheduler_tick(&g_scheduler, (unsigned int)priv->oneshot_ticks);
+		x_scheduler_tick(&scheduler, (unsigned int)priv->oneshot_ticks);
 	return MINI_OK;
 }
 
 /**
  * @brief 累加系统滴答并唤醒到期任务
- * @param[in] sched 忽略 (preempt 用全局 s_priv)
+ * @param[in] sched 忽略 (preempt 用全局 preempt_priv)
  * @param[in] ms 滴答增量
  * @return MINI_OK
  */
 mt_err_t x_scheduler_tick(x_scheduler *sched, unsigned int ms)
 {
-	s_priv.tick_count += ms;
-	/* 同步对外契约时钟 (mini_time_ms 等读 g_scheduler.tick_count) */
-	MINI_ATOMIC_STORE(&g_scheduler.tick_count, s_priv.tick_count, MINI_RELAXED);
+	preempt_priv.tick_count += ms;
+	/* 同步对外契约时钟 (mini_time_ms 等读 scheduler.tick_count) */
+	MINI_ATOMIC_STORE(&scheduler.tick_count, preempt_priv.tick_count, MINI_RELAXED);
 	if (sched != NULL)
-		MINI_IGNORE_RESULT(sched); /* preempt 用全局 s_priv, sched 仅契约 */
+		MINI_IGNORE_RESULT(sched); /* preempt 用全局 preempt_priv, sched 仅契约 */
 	wakeup_due();
 	return MINI_OK;
 }
 
 /**
  * @brief 抢占式调度核心: 运行最高优先级任务, 无任务时精确 WFI
- * @param[in] sched 忽略 (preempt 用全局 s_priv)
+ * @param[in] sched 忽略 (preempt 用全局 preempt_priv)
  * @return MINI_OK
  */
 mt_err_t x_task_run_preempt(x_scheduler *sched)
 {
-	MINI_IGNORE_RESULT(sched); /* preempt 用全局 s_priv */
+	MINI_IGNORE_RESULT(sched); /* preempt 用全局 preempt_priv */
 
 	/* 临界区: 与 tick 中断 (wakeup_due) 互斥, 防就绪/休眠链表被撕裂 */
 	mini_irq_state_t       irq  = mini_critical_enter();
@@ -423,20 +424,21 @@ mt_err_t x_task_run_preempt(x_scheduler *sched)
 	mini_critical_exit(irq);
 	if (task->task.xTask_cb) {
 #ifdef CONFIG_XTASK_COROUTINE
-		s_current_task = &task->task; /* protothread 让出时感知当前任务 */
+		current_task = &task->task; /* protothread 让出时感知当前任务 */
 		task->task.xTask_cb(&task->task);
-		s_current_task = NULL;
+		current_task = NULL;
 
 		if (task->task.pt_line == 0) {
 			/* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
 			MINI_ATOMIC_STORE(&task->task.next_running,
-					  s_priv.tick_count + task->task.period, MINI_RELAXED);
+					  preempt_priv.tick_count + task->task.period,
+					  MINI_RELAXED);
 		}
 		/* else: 协程挂起中, PT_DELAY 已设 next_running, sleep_insert 按到期排序 */
 #else
 		task->task.xTask_cb(&task->task);
-		MINI_ATOMIC_STORE(&task->task.next_running, s_priv.tick_count + task->task.period,
-				  MINI_RELAXED);
+		MINI_ATOMIC_STORE(&task->task.next_running,
+				  preempt_priv.tick_count + task->task.period, MINI_RELAXED);
 #endif
 	}
 	/* 与 tick 中断互斥: wakeup_due 可能正从休眠链表摘节点 */
@@ -449,7 +451,7 @@ mt_err_t x_task_run_preempt(x_scheduler *sched)
 /** 轮询全局抢占式调度器 (与协调式同名, 应用层无感知) */
 void x_scheduler_poll(void)
 {
-	x_task_run_preempt(&g_scheduler);
+	x_task_run_preempt(&scheduler);
 }
 
 #endif /* CONFIG_XTASK_PREEMPT */

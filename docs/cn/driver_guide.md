@@ -113,7 +113,7 @@ dtc-lite 把它们收进静态表；**运行期不再 `strcmp` 匹配驱动名**
 - `compatible`：与 DTS 节点 `compatible = "..."` **完全一致**
 - `probe`/`remove`：返回 `MINI_OK` 或 `MINI_ERR_*`
 
-命名统一小写（`.clang-tidy` 的 `readability-identifier-naming` 强制）：`x_task` / `x_scheduler` / `list_node` / `k_tag` / `struct event` 等。代码风格即 **Linux 内核风**（Tab=8 缩进、100 列、函数大括号换行、指针靠右），见 [coding_style.md](coding_style.md)。app 层为建议，app 以下为强规定。
+命名全小写 `snake_case`，**不加 `s_`/`g_`/`k_` 前缀**（Linux 内核命名，`.clang-tidy` 的 `readability-identifier-naming` 强制，函数以模块名作前缀）：`x_task` / `list_node` / `struct event` 等；文件作用域静态对象直接起名（`client_pool_ctrl`）。代码风格即 **Linux 内核风**（Tab=8 缩进、100 列、函数大括号换行、指针靠右），见 [coding_style.md](coding_style.md)。app 层为建议，app 以下为强规定。
 
 ---
 

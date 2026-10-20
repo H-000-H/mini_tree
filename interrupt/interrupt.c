@@ -18,10 +18,10 @@ struct bottom_half_work *interrupt_virtual_bottom_half_work[VIRTUAL_IRQ_MAX_BASE
 void			*interrupt_virtual_arg[VIRTUAL_IRQ_MAX_BASE]		  = { 0 };
 
 /**< ADC DMA 下半部全局工作项 (fn/arg 由板级 HAL 绑定) */
-struct bottom_half_work g_adc_dma_bottom_half_work;
+struct bottom_half_work adc_dma_bottom_half_work;
 
 /**< I2S DMA 下半部全局工作项 (fn/arg 由板级 HAL 绑定) */
-struct bottom_half_work g_i2s_bottom_half_work;
+struct bottom_half_work i2s_bottom_half_work;
 
 void interrupt_virtual_register(uint16_t virq_num, interrupt_top_half_t top_half,
 				struct bottom_half_work *work, void *arg)
@@ -167,25 +167,25 @@ void bottom_half_poller_run(struct bottom_half_poller *poller)
 /* -------------------------------------------------------------------------- */
 /*                              全局下半部实例 */
 /* -------------------------------------------------------------------------- */
-static struct bottom_half_poller s_global_poller;
+static struct bottom_half_poller global_poller;
 
 /** 全局下半部轮询器初始化 (mini_pre_execution 阶段) */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_IRQ_BOTTOM) static void interrupt_bottom_half_pool_init(void)
 {
-	bottom_half_poller_init(&s_global_poller);
+	bottom_half_poller_init(&global_poller);
 }
 
 void interrupt_bottom_half_init(void)
 {
-	bottom_half_poller_init(&s_global_poller);
+	bottom_half_poller_init(&global_poller);
 }
 
 mt_err_t interrupt_bottom_half_submit(struct bottom_half_work *work)
 {
-	return bottom_half_poller_submit(&s_global_poller, work);
+	return bottom_half_poller_submit(&global_poller, work);
 }
 
 void interrupt_bottom_half_poll(void)
 {
-	bottom_half_poller_run(&s_global_poller);
+	bottom_half_poller_run(&global_poller);
 }

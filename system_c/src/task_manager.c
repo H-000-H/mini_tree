@@ -15,7 +15,7 @@
 
 #include "compiler_compat_poison.h"
 
-static const char *k_tag = "TaskManager";
+static const char *tag = "TaskManager";
 
 /**
  * @brief 按 board_task_config 创建统一接口任务并自动订阅 TWDT
@@ -29,7 +29,7 @@ mini_task_handle_t task_manager_create(const struct board_task_config *config,
 {
 	if (entry == NULL || config == NULL) {
 		if (config)
-			MT_LOG_ERROR(k_tag, "task entry is null: %s", config->name);
+			MT_LOG_ERROR(tag, "task entry is null: %s", config->name);
 		return NULL;
 	}
 
@@ -37,7 +37,7 @@ mini_task_handle_t task_manager_create(const struct board_task_config *config,
 	int ret = mini_task_create_handle(config->name, config->stack_size, config->priority, entry,
 					  param, config->core_id, &handle);
 	if (ret != 0) {
-		MT_LOG_ERROR(k_tag, "failed to create task: %s", config->name);
+		MT_LOG_ERROR(tag, "failed to create task: %s", config->name);
 		return NULL;
 	}
 

@@ -2,7 +2,7 @@
  * @file air780e_drv.c
  * @author H-000-H
  * @brief Air780E 4G 模块驱动实现 — 挂在 UART 总线 client 下的 VFS 设备驱动
- * @note 静态池: s_air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
+ * @note 静态池: air780e_pool[AIR780E_POOL_COUNT]，probe 时 claim、remove 时 release；
  * @note ioctl 命令与参数结构见 air780e_drv.h。
  * @note 数据流: VFS ioctl → air780e_cmd_send/recv → device_read/write(UART) → HAL
  * @copyright SPDX-License-Identifier: Apache-2.0
@@ -37,18 +37,17 @@ struct air780e_device {
 	int hw_ready; /**< 硬件已初始化标志 */
 };
 
-static struct air780e_device	       s_air780e_pool[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
-static uint8_t			       s_air780e_used[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
-static mini_slot_t s_air780e_pool_ctrl MINI_ALIGNED(4);
-static const char *const	       k_tag = "air780e";
+static struct air780e_device	     air780e_pool[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
+static uint8_t			     air780e_used[AIR780E_POOL_COUNT] MINI_ALIGNED(4);
+static mini_slot_t air780e_pool_ctrl MINI_ALIGNED(4);
+static const char *const	     tag = "air780e";
 
 /**
  * @brief 驱动池启动初始化（mini_pre_execution 阶段，创建静态对象池）
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void air780e_pool_boot_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_air780e_pool_ctrl, s_air780e_used, AIR780E_POOL_COUNT));
+	MINI_IGNORE_RESULT(mini_slot_init(&air780e_pool_ctrl, air780e_used, AIR780E_POOL_COUNT));
 }
 
 /**
@@ -260,7 +259,7 @@ static int air780e_read(struct device *pdev, void *buffer, size_t len, uint32_t 
 	dev_lc_io_end(lc);
 	return ret;
 }
-static const struct air780e_ioctl_map s_air780e_map[MODEM_CMD_COUNT] = {
+static const struct air780e_ioctl_map air780e_map[MODEM_CMD_COUNT] = {
 	[MODEM_CMD_AT_SEND - MODEM_CMD_BASE - 1] = { air780e_cmd_send },
 	[MODEM_CMD_AT_RECV - MODEM_CMD_BASE - 1] = { air780e_cmd_recv },
 };
@@ -286,10 +285,10 @@ static mt_err_t air780e_ioctl(struct device *pdev, int cmd, void *arg, size_t ar
 	if (ret != MINI_OK)
 		return ret;
 	off = (int32_t)cmd - (int32_t)MODEM_CMD_BASE;
-	if (off < 1 || off > MODEM_CMD_COUNT || !s_air780e_map[off - 1].handler)
+	if (off < 1 || off > MODEM_CMD_COUNT || !air780e_map[off - 1].handler)
 		ret = MINI_ERR_INVAL;
 	else
-		ret = s_air780e_map[off - 1].handler(dev, arg, arg_len, ms);
+		ret = air780e_map[off - 1].handler(dev, arg, arg_len, ms);
 	dev_lc_io_end(lc);
 	return ret;
 }
@@ -314,10 +313,10 @@ static mt_err_t air780e_probe(struct device *pdev)
 
 	MINI_IGNORE_RESULT(MINI_TREE_DEVICE_MAGIC_CREATE(air780e, pdev));
 
-	pool_idx = mini_slot_claim(&s_air780e_pool_ctrl);
+	pool_idx = mini_slot_claim(&air780e_pool_ctrl);
 	if (pool_idx < 0)
 		return MINI_ERR_NOMEM;
-	dev = &s_air780e_pool[pool_idx];
+	dev = &air780e_pool[pool_idx];
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
 	dev->uart_dev = device_get_parent(pdev);
 	if (!dev->uart_dev) {
@@ -331,12 +330,12 @@ static mt_err_t air780e_probe(struct device *pdev)
 	}
 	dev->ops  = air780e_fops;
 	pdev->ops = &dev->ops;
-	MT_LOG_INFO(k_tag, "probe OK pool=%dev", pool_idx);
+	MT_LOG_INFO(tag, "probe OK pool=%dev", pool_idx);
 	return MINI_OK;
 err:
 	pdev->ops = NULL;
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_air780e_pool_ctrl, pool_idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&air780e_pool_ctrl, pool_idx));
 	return ret;
 }
 
@@ -356,7 +355,7 @@ static mt_err_t air780e_remove(struct device *pdev)
 	lc = device_lc(pdev);
 	if (IS_ERR(lc))
 		return PTR_ERR(lc);
-	idx = (int)(dev - s_air780e_pool);
+	idx = (int)(dev - air780e_pool);
 	dev_lc_remove_start(lc);
 	device_ops_unregister(pdev);
 	if (dev_lc_remove_drain(lc, MINI_WAIT_FOREVER) != MINI_OK) {
@@ -365,7 +364,7 @@ static mt_err_t air780e_remove(struct device *pdev)
 	}
 	air780e_hw_destroy(dev);
 	MINI_MEM_SET(dev, 0, sizeof(*dev));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_air780e_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&air780e_pool_ctrl, idx));
 	dev_lc_remove_finish(lc);
 	return MINI_OK;
 }

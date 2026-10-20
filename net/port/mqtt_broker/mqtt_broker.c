@@ -19,7 +19,7 @@
 #include "tcp/tcp_server.h"
 #include <string.h>
 
-static const char *const s_kTag = "mqtt_broker";
+static const char *const tag = "mqtt_broker";
 
 #define BROKER_MAX_CLIENTS CONFIG_TCP_SERVER_MAX_CLIENTS /**< 会话槽位上限 (同 tcp_server) */
 #define BROKER_READ_CHUNK 128				 /**< 单次从会话读取的字节数 */
@@ -52,10 +52,10 @@ struct broker_subscription {
 	char	filter[MQTT_BROKER_MAX_TOPIC_LEN + 1]; /**< 主题过滤器 ('\0' 结尾副本) */
 };
 
-static bool			  s_broker_initialized = false;
-static struct broker_session	  s_sessions[BROKER_MAX_CLIENTS];
-static struct broker_subscription s_subscriptions[MQTT_BROKER_MAX_SUBSCRIPTIONS];
-static uint8_t s_tx_buf[MQTT_BROKER_PACKET_BUFFER_SIZE]; /**< 应答/转发组装缓冲 (单线程共享) */
+static bool			  broker_initialized = false;
+static struct broker_session	  sessions[BROKER_MAX_CLIENTS];
+static struct broker_subscription subscriptions[MQTT_BROKER_MAX_SUBSCRIPTIONS];
+static uint8_t tx_buf[MQTT_BROKER_PACKET_BUFFER_SIZE]; /**< 应答/转发组装缓冲 (单线程共享) */
 
 /* -------------------------------------------------------------------------- */
 /* 基础工具                                                                   */
@@ -152,7 +152,7 @@ static int broker_send(int session_id, const void *data, uint16_t len)
 {
 	int ret = tcp_server_send(session_id, data, len);
 	if (ret < 0)
-		MT_LOG_WARN(s_kTag, "session [%d] send failed: %d", session_id, ret);
+		MT_LOG_WARN(tag, "session [%d] send failed: %d", session_id, ret);
 	return ret;
 }
 
@@ -166,8 +166,8 @@ static int broker_send(int session_id, const void *data, uint16_t len)
 static void broker_remove_subscriptions(int session_id)
 {
 	for (int i = 0; i < MQTT_BROKER_MAX_SUBSCRIPTIONS; i++)
-		if (s_subscriptions[i].is_used && s_subscriptions[i].session_id == session_id)
-			s_subscriptions[i].is_used = false;
+		if (subscriptions[i].is_used && subscriptions[i].session_id == session_id)
+			subscriptions[i].is_used = false;
 }
 
 /**
@@ -186,7 +186,7 @@ static bool broker_add_subscription(int session_id, const char *filter, size_t f
 
 	struct broker_subscription *free_slot = NULL;
 	for (int i = 0; i < MQTT_BROKER_MAX_SUBSCRIPTIONS; i++) {
-		struct broker_subscription *sub = &s_subscriptions[i];
+		struct broker_subscription *sub = &subscriptions[i];
 		if (sub->is_used && sub->session_id == session_id &&
 		    strlen(sub->filter) == filter_len &&
 		    memcmp(sub->filter, filter, filter_len) == 0) {
@@ -232,8 +232,8 @@ static void broker_session_reset(struct broker_session *session, int session_id)
  */
 static void broker_protocol_violation(int session_id, const char *reason)
 {
-	MT_LOG_ERROR(s_kTag, "session [%d] protocol violation: %s, disconnect", session_id, reason);
-	broker_session_reset(&s_sessions[session_id], session_id);
+	MT_LOG_ERROR(tag, "session [%d] protocol violation: %s, disconnect", session_id, reason);
+	broker_session_reset(&sessions[session_id], session_id);
 	MINI_IGNORE_RESULT(close_session(session_id));
 }
 
@@ -283,14 +283,14 @@ static void broker_send_suback(int session_id, uint16_t packet_id, const uint8_t
 	uint32_t remaining = 2U + count;
 	size_t	 idx	   = 0;
 
-	s_tx_buf[idx++] = 0x90;
-	idx += broker_encode_remaining_length(remaining, &s_tx_buf[idx]);
-	s_tx_buf[idx++] = (uint8_t)(packet_id >> 8U);
-	s_tx_buf[idx++] = (uint8_t)(packet_id & 0xFFU);
-	memcpy(&s_tx_buf[idx], codes, count);
+	tx_buf[idx++] = 0x90;
+	idx += broker_encode_remaining_length(remaining, &tx_buf[idx]);
+	tx_buf[idx++] = (uint8_t)(packet_id >> 8U);
+	tx_buf[idx++] = (uint8_t)(packet_id & 0xFFU);
+	memcpy(&tx_buf[idx], codes, count);
 	idx += count;
 
-	MINI_IGNORE_RESULT(broker_send(session_id, s_tx_buf, (uint16_t)idx));
+	MINI_IGNORE_RESULT(broker_send(session_id, tx_buf, (uint16_t)idx));
 }
 
 /**
@@ -306,16 +306,16 @@ static void broker_send_unsuback(int session_id, uint8_t protocol_level, uint16_
 	uint32_t remaining = (protocol_level >= 5U) ? (2U + count) : 2U;
 	size_t	 idx	   = 0;
 
-	s_tx_buf[idx++] = 0xB0;
-	idx += broker_encode_remaining_length(remaining, &s_tx_buf[idx]);
-	s_tx_buf[idx++] = (uint8_t)(packet_id >> 8U);
-	s_tx_buf[idx++] = (uint8_t)(packet_id & 0xFFU);
+	tx_buf[idx++] = 0xB0;
+	idx += broker_encode_remaining_length(remaining, &tx_buf[idx]);
+	tx_buf[idx++] = (uint8_t)(packet_id >> 8U);
+	tx_buf[idx++] = (uint8_t)(packet_id & 0xFFU);
 	if (protocol_level >= 5U) {
-		memset(&s_tx_buf[idx], 0x00, count); /* 全部成功 */
+		memset(&tx_buf[idx], 0x00, count); /* 全部成功 */
 		idx += count;
 	}
 
-	MINI_IGNORE_RESULT(broker_send(session_id, s_tx_buf, (uint16_t)idx));
+	MINI_IGNORE_RESULT(broker_send(session_id, tx_buf, (uint16_t)idx));
 }
 
 /**
@@ -340,20 +340,20 @@ static void broker_forward_publish(int session_id, const char *topic, uint16_t t
 	uint32_t     remaining_length = 0;
 	uint32_t     packet_size      = 0;
 	MQTTStatus_t status = MQTT_GetPublishPacketSize(&fwd, NULL, &remaining_length, &packet_size,
-							sizeof(s_tx_buf));
+							sizeof(tx_buf));
 	if (status != MQTTSuccess) {
-		MT_LOG_WARN(s_kTag, "forward too large for tx buf: %u", (unsigned)packet_size);
+		MT_LOG_WARN(tag, "forward too large for tx buf: %u", (unsigned)packet_size);
 		return;
 	}
 
-	MQTTFixedBuffer_t fixed_buffer = { s_tx_buf, sizeof(s_tx_buf) };
+	MQTTFixedBuffer_t fixed_buffer = { tx_buf, sizeof(tx_buf) };
 	status = MQTT_SerializePublish(&fwd, NULL, 0U, remaining_length, &fixed_buffer);
 	if (status != MQTTSuccess) {
-		MT_LOG_ERROR(s_kTag, "SerializePublish failed: %d", (int)status);
+		MT_LOG_ERROR(tag, "SerializePublish failed: %d", (int)status);
 		return;
 	}
 
-	MINI_IGNORE_RESULT(broker_send(session_id, s_tx_buf, (uint16_t)packet_size));
+	MINI_IGNORE_RESULT(broker_send(session_id, tx_buf, (uint16_t)packet_size));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -367,7 +367,7 @@ static void broker_forward_publish(int session_id, const char *topic, uint16_t t
  */
 static void broker_handle_connect(int session_id, const uint8_t *data, size_t len)
 {
-	struct broker_session *session = &s_sessions[session_id];
+	struct broker_session *session = &sessions[session_id];
 	size_t		       off     = 0;
 
 	/* 重复 CONNECT: 先复位旧状态 */
@@ -391,7 +391,7 @@ static void broker_handle_connect(int session_id, const uint8_t *data, size_t le
 	off += 4U;
 
 	if (protocol_level != 4U && protocol_level != 5U) {
-		MT_LOG_WARN(s_kTag, "session [%d] unsupported protocol level %u", session_id,
+		MT_LOG_WARN(tag, "session [%d] unsupported protocol level %u", session_id,
 			    protocol_level);
 		broker_send_connack(session_id, 0x01); /* 不支持的协议版本 */
 		MINI_IGNORE_RESULT(close_session(session_id));
@@ -436,7 +436,7 @@ static void broker_handle_connect(int session_id, const uint8_t *data, size_t le
 	session->mqtt_connected = true;
 	session->protocol_level = protocol_level;
 	session->keep_alive_s	= keep_alive;
-	MT_LOG_INFO(s_kTag, "session [%d] CONNECT ok (level %u, keepalive %us)", session_id,
+	MT_LOG_INFO(tag, "session [%d] CONNECT ok (level %u, keepalive %us)", session_id,
 		    (unsigned)protocol_level, (unsigned)keep_alive);
 
 	broker_send_connack(session_id, 0x00); /* 接受 */
@@ -450,7 +450,7 @@ static void broker_handle_connect(int session_id, const uint8_t *data, size_t le
  */
 static void broker_handle_subscribe(int session_id, const uint8_t *data, size_t len)
 {
-	struct broker_session *session = &s_sessions[session_id];
+	struct broker_session *session = &sessions[session_id];
 
 	if (!session->mqtt_connected || len < 2U) {
 		broker_protocol_violation(session_id, "SUBSCRIBE before CONNECT");
@@ -500,8 +500,7 @@ static void broker_handle_subscribe(int session_id, const uint8_t *data, size_t 
 		uint8_t granted = (req_qos > 1U) ? 1U : req_qos; /* 本层仅支持 QoS 0/1 */
 		if (!broker_add_subscription(session_id, filter, filter_len, granted)) {
 			granted = 0x80U; /* 失败 (表满/过滤器过长) */
-			MT_LOG_WARN(s_kTag,
-				    "session [%d] subscription table full or filter too long",
+			MT_LOG_WARN(tag, "session [%d] subscription table full or filter too long",
 				    session_id);
 		}
 		codes[count++] = granted;
@@ -512,7 +511,7 @@ static void broker_handle_subscribe(int session_id, const uint8_t *data, size_t 
 		return;
 	}
 
-	MT_LOG_INFO(s_kTag, "session [%d] subscribed %u filter(s), pid %u", session_id,
+	MT_LOG_INFO(tag, "session [%d] subscribed %u filter(s), pid %u", session_id,
 		    (unsigned)count, (unsigned)packet_id);
 	broker_send_suback(session_id, packet_id, codes, count);
 }
@@ -525,7 +524,7 @@ static void broker_handle_subscribe(int session_id, const uint8_t *data, size_t 
  */
 static void broker_handle_unsubscribe(int session_id, const uint8_t *data, size_t len)
 {
-	struct broker_session *session = &s_sessions[session_id];
+	struct broker_session *session = &sessions[session_id];
 
 	if (!session->mqtt_connected || len < 2U) {
 		broker_protocol_violation(session_id, "UNSUBSCRIBE before CONNECT");
@@ -552,7 +551,7 @@ static void broker_handle_unsubscribe(int session_id, const uint8_t *data, size_
 
 		/* 逐条从订阅表删除 (同会话同过滤器) */
 		for (int i = 0; i < MQTT_BROKER_MAX_SUBSCRIPTIONS; i++) {
-			struct broker_subscription *sub = &s_subscriptions[i];
+			struct broker_subscription *sub = &subscriptions[i];
 			if (sub->is_used && sub->session_id == session_id &&
 			    strlen(sub->filter) == filter_len &&
 			    memcmp(sub->filter, &data[filter_start + 2U], filter_len) == 0) {
@@ -561,7 +560,7 @@ static void broker_handle_unsubscribe(int session_id, const uint8_t *data, size_
 		}
 	}
 
-	MT_LOG_INFO(s_kTag, "session [%d] unsubscribed %u filter(s), pid %u", session_id,
+	MT_LOG_INFO(tag, "session [%d] unsubscribed %u filter(s), pid %u", session_id,
 		    (unsigned)count, (unsigned)packet_id);
 	broker_send_unsuback(session_id, session->protocol_level, packet_id, count);
 }
@@ -573,7 +572,7 @@ static void broker_handle_unsubscribe(int session_id, const uint8_t *data, size_
  */
 static void broker_handle_publish(int session_id, MQTTPacketInfo_t *packet)
 {
-	struct broker_session *session = &s_sessions[session_id];
+	struct broker_session *session = &sessions[session_id];
 
 	if (!session->mqtt_connected) {
 		broker_protocol_violation(session_id, "PUBLISH before CONNECT");
@@ -592,7 +591,7 @@ static void broker_handle_publish(int session_id, MQTTPacketInfo_t *packet)
 
 	/* 订阅匹配转发 (下行统一 QoS0, 不区分订阅授予等级) */
 	for (int i = 0; i < MQTT_BROKER_MAX_SUBSCRIPTIONS; i++) {
-		struct broker_subscription *sub = &s_subscriptions[i];
+		struct broker_subscription *sub = &subscriptions[i];
 		if (!sub->is_used || !is_session_connected(sub->session_id))
 			continue;
 
@@ -658,8 +657,8 @@ static void broker_dispatch_packet(int session_id, MQTTPacketInfo_t *packet)
 	}
 
 	case MQTT_PACKET_TYPE_DISCONNECT: {
-		MT_LOG_INFO(s_kTag, "session [%d] DISCONNECT", session_id);
-		broker_session_reset(&s_sessions[session_id], session_id);
+		MT_LOG_INFO(tag, "session [%d] DISCONNECT", session_id);
+		broker_session_reset(&sessions[session_id], session_id);
 		break;
 	}
 
@@ -685,7 +684,7 @@ static void broker_dispatch_packet(int session_id, MQTTPacketInfo_t *packet)
  */
 static void broker_process_session(int session_id)
 {
-	struct broker_session *session = &s_sessions[session_id];
+	struct broker_session *session = &sessions[session_id];
 
 	if (!is_session_connected(session_id)) {
 		/* 链路已断 (对端关闭/异常): 静默回收状态与订阅 */
@@ -752,8 +751,7 @@ static void broker_process_session(int session_id)
 		uint32_t timeout_ms =
 			(uint32_t)session->keep_alive_s * 1000U * MQTT_BROKER_KEEPALIVE_FACTOR;
 		if ((mini_time_ms() - session->last_rx_ms) >= timeout_ms) {
-			MT_LOG_WARN(s_kTag, "session [%d] keep-alive timeout, disconnect",
-				    session_id);
+			MT_LOG_WARN(tag, "session [%d] keep-alive timeout, disconnect", session_id);
 			broker_session_reset(session, session_id);
 			MINI_IGNORE_RESULT(close_session(session_id));
 		}
@@ -765,24 +763,24 @@ int mqtt_broker_init(uint16_t port)
 	if (port == 0U)
 		return NET_ERR_INVAL;
 
-	memset(s_sessions, 0, sizeof(s_sessions));
-	memset(s_subscriptions, 0, sizeof(s_subscriptions));
+	memset(sessions, 0, sizeof(sessions));
+	memset(subscriptions, 0, sizeof(subscriptions));
 
 	int err = tcp_server_init((int)port);
 	if (err != ERR_OK) {
-		MT_LOG_ERROR(s_kTag, "tcp_server_init failed: %d", err);
+		MT_LOG_ERROR(tag, "tcp_server_init failed: %d", err);
 		return NET_ERR_CONN;
 	}
 
-	s_broker_initialized = true;
-	MT_LOG_INFO(s_kTag, "broker listening on port %u (max clients %d, subscriptions %d)",
+	broker_initialized = true;
+	MT_LOG_INFO(tag, "broker listening on port %u (max clients %d, subscriptions %d)",
 		    (unsigned)port, BROKER_MAX_CLIENTS, MQTT_BROKER_MAX_SUBSCRIPTIONS);
 	return NET_OK;
 }
 
 int mqtt_broker_process(void)
 {
-	if (!s_broker_initialized)
+	if (!broker_initialized)
 		return NET_ERR_INVAL;
 
 	for (int session_id = 0; session_id < BROKER_MAX_CLIENTS; session_id++)

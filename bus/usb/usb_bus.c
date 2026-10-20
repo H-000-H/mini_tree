@@ -3,7 +3,7 @@
  * @author H-000-H
  * @brief usb bus 实现
  * @note USB BUS 实现 — host/client 池 + TinyUSB 粘合 (usb_tusb_port)
- * @note 静态池: s_usb_hosts[HOST_MAX] + s_usb_clients[DEV_ID_COUNT]
+ * @note 静态池: usb_hosts[HOST_MAX] + usb_clients[DEV_ID_COUNT]
  * @note 数据流: VFS → usb_bus_* → hal_usb_* / usb_tusb_* / usb_net_frame_*
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
@@ -40,18 +40,17 @@ struct usb_bus_client {
 	int		      hw_open;
 };
 
-static struct usb_bus_host   s_usb_hosts[USB_BUS_HOST_MAX];
-static uint8_t		     s_usb_host_used[USB_BUS_HOST_MAX];
-static mini_slot_t	     s_usb_host_pool_ctrl;
-static struct usb_bus_client s_usb_clients[DEV_ID_COUNT];
-static struct usb_bus_host  *s_irq_host;
-static const char *const     k_tag = "usb_bus";
+static struct usb_bus_host   usb_hosts[USB_BUS_HOST_MAX];
+static uint8_t		     usb_host_used[USB_BUS_HOST_MAX];
+static mini_slot_t	     usb_host_pool_ctrl;
+static struct usb_bus_client usb_clients[DEV_ID_COUNT];
+static struct usb_bus_host  *irq_host;
+static const char *const     tag = "usb_bus";
 
 /** host 池初始化 (mini_pre_execution 阶段, 供 device 池复用) */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(void)
 {
-	MINI_IGNORE_RESULT(
-		mini_slot_init(&s_usb_host_pool_ctrl, s_usb_host_used, USB_BUS_HOST_MAX));
+	MINI_IGNORE_RESULT(mini_slot_init(&usb_host_pool_ctrl, usb_host_used, USB_BUS_HOST_MAX));
 }
 
 /**
@@ -62,9 +61,8 @@ mini_pre_execution(MINI_PRE_EXEC_PRIO_RES_POOL) static void usb_bus_pool_init(vo
 static struct usb_bus_host *usb_host_from_device(struct device *pdev)
 {
 	for (int index = 0; index < USB_BUS_HOST_MAX; index++)
-		if (mini_slot_is_used(&s_usb_host_pool_ctrl, index) &&
-		    s_usb_hosts[index].pdev == pdev)
-			return &s_usb_hosts[index];
+		if (mini_slot_is_used(&usb_host_pool_ctrl, index) && usb_hosts[index].pdev == pdev)
+			return &usb_hosts[index];
 	return NULL;
 }
 
@@ -76,9 +74,9 @@ static struct usb_bus_host *usb_host_from_device(struct device *pdev)
 static struct usb_bus_client *usb_client_from_device(struct device *pdev)
 {
 	int id = (int)board_dev_find(device_get_name(pdev));
-	if (id < 0 || id >= DEV_ID_COUNT || !s_usb_clients[id].pdev)
+	if (id < 0 || id >= DEV_ID_COUNT || !usb_clients[id].pdev)
 		return NULL;
-	return &s_usb_clients[id];
+	return &usb_clients[id];
 }
 
 static mt_err_t usb_host_init_impl(struct device *pdev, const void *cfg);
@@ -87,7 +85,7 @@ static int	usb_host_role_impl(struct device *pdev);
 static mt_err_t usb_client_register_impl(struct device *pdev, const void *cfg, void **out);
 static void	usb_client_unregister_impl(struct device *pdev);
 
-static const struct bus_controller_ops s_usb_controller_ops = {
+static const struct bus_controller_ops usb_controller_ops = {
 	.init		   = usb_host_init_impl,
 	.deinit		   = usb_host_deinit_impl,
 	.role		   = usb_host_role_impl,
@@ -114,11 +112,11 @@ static mt_err_t usb_host_init_impl(struct device *pdev, const void *cfg)
 	if (usb_host_from_device(pdev))
 		return MINI_OK;
 
-	idx = mini_slot_claim(&s_usb_host_pool_ctrl);
+	idx = mini_slot_claim(&usb_host_pool_ctrl);
 	if (idx < 0)
 		return MINI_ERR_NOMEM;
 
-	host = &s_usb_hosts[idx];
+	host = &usb_hosts[idx];
 	MINI_MEM_SET(host, 0, sizeof(*host));
 	host->pdev   = pdev;
 	host->rhport = (uint8_t)host_cfg->rhport;
@@ -134,23 +132,23 @@ static mt_err_t usb_host_init_impl(struct device *pdev, const void *cfg)
 		goto fail_pool;
 	}
 	host->tusb_inited = 1;
-	s_irq_host	  = host;
+	irq_host	  = host;
 	MINI_IGNORE_RESULT(hal_usb_irq_enable(&host->hal_host));
 
-	ret = bus_controller_bind_full(pdev, BUS_TYPE_USB, &s_usb_controller_ops, host);
+	ret = bus_controller_bind_full(pdev, BUS_TYPE_USB, &usb_controller_ops, host);
 	if (ret != MINI_OK) {
 		MINI_IGNORE_RESULT(hal_usb_irq_disable(&host->hal_host));
-		s_irq_host = NULL;
+		irq_host = NULL;
 		MINI_IGNORE_RESULT(hal_usb_bus_host_deinit(&host->hal_host));
 		goto fail_pool;
 	}
 
-	MT_LOG_INFO(k_tag, "host init OK rhport=%u", (unsigned)host->rhport);
+	MT_LOG_INFO(tag, "host init OK rhport=%u", (unsigned)host->rhport);
 	return MINI_OK;
 
 fail_pool:
 	MINI_MEM_SET(host, 0, sizeof(*host));
-	MINI_IGNORE_RESULT(mini_slot_release(&s_usb_host_pool_ctrl, idx));
+	MINI_IGNORE_RESULT(mini_slot_release(&usb_host_pool_ctrl, idx));
 	return ret;
 }
 
@@ -177,14 +175,14 @@ static mt_err_t usb_host_deinit_impl(struct device *pdev)
 	if (MINI_ATOMIC_LOAD(&host->ref_count, MINI_SEQ_CST) != 0)
 		return MINI_ERR_BUSY;
 
-	idx = (int)(host - s_usb_hosts);
+	idx = (int)(host - usb_hosts);
 	bus_controller_unbind(pdev);
-	if (s_irq_host == host)
-		s_irq_host = NULL;
+	if (irq_host == host)
+		irq_host = NULL;
 	ret = hal_usb_bus_host_deinit(&host->hal_host);
 	if (ret == MINI_OK) {
 		MINI_MEM_SET(host, 0, sizeof(*host));
-		MINI_IGNORE_RESULT(mini_slot_release(&s_usb_host_pool_ctrl, idx));
+		MINI_IGNORE_RESULT(mini_slot_release(&usb_host_pool_ctrl, idx));
 	}
 	return ret;
 }
@@ -234,7 +232,7 @@ static mt_err_t usb_client_register_impl(struct device *pdev, const void *cfg, v
 	if (id < 0 || id >= DEV_ID_COUNT)
 		return MINI_ERR_INVAL;
 
-	client = &s_usb_clients[id];
+	client = &usb_clients[id];
 	if (client->pdev) {
 		if (client->pdev != pdev)
 			return MINI_ERR_BUSY;
@@ -317,7 +315,7 @@ mt_err_t usb_bus_resolve_xfer_mode(struct device *client_or_host, uint32_t xfer_
 
 void usb_bus_task(void)
 {
-	if (s_irq_host && s_irq_host->tusb_inited)
+	if (irq_host && irq_host->tusb_inited)
 		usb_tusb_task();
 }
 

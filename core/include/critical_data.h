@@ -26,11 +26,11 @@ extern "C" {
  * 优化删除 (编译器可静态证明此恒真).
  *
  * 用法:
- *   CRITICAL_VAR_DECL(int32_t, g_infusion_rate_ml_h);
- *   CRITICAL_VAR_WRITE(g_infusion_rate_ml_h, 50);
+ *   CRITICAL_VAR_DECL(int32_t, infusion_rate_ml_h);
+ *   CRITICAL_VAR_WRITE(infusion_rate_ml_h, 50);
  *
  *   int32_t rate;
- *   if (CRITICAL_VAR_READ(g_infusion_rate_ml_h, &rate))
+ *   if (CRITICAL_VAR_READ(infusion_rate_ml_h, &rate))
  {
  *       // 校验通过
  *   } else {

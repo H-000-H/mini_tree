@@ -31,8 +31,8 @@
  * 不占后端互斥锁池, 所以不存在"池耗尽 / 池水位"这回事。
  * (原先按互斥锁池尺寸宏写的 _Static_assert 与 90% 预警引用的是 lwIP 用的
  *  那个池, 与设备锁无关, 属于遗留失真, 已删。) */
-static struct device s_devices[DEV_ID_COUNT] MINI_ALIGNED(4);
-static uint8_t	     s_device_lock_storage[DEV_ID_COUNT][MINI_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
+static struct device devices[DEV_ID_COUNT] MINI_ALIGNED(4);
+static uint8_t	     device_lock_storage[DEV_ID_COUNT][MINI_MUTEX_STORAGE_SIZE] MINI_ALIGNED(4);
 
 /**
  * @brief 判断设备状态机是否允许 from→to 迁移
@@ -82,23 +82,23 @@ mt_err_t device_tree_init(void)
 {
 	for (int index = 0; index < DEV_ID_COUNT; index++) {
 		const struct device_node *node = board_node_get((device_id_t)index);
-		s_devices[index].node	       = node;
-		s_devices[index].status	       = node ? node->status : DEVICE_STATUS_DISABLED;
-		s_devices[index].priv_data     = NULL;
-		s_devices[index].ops	       = NULL;
-		s_devices[index].lock	       = NULL;
-		s_devices[index].platform_data = NULL;
-		dev_lc_reset(&s_devices[index].lc);
+		devices[index].node	       = node;
+		devices[index].status	       = node ? node->status : DEVICE_STATUS_DISABLED;
+		devices[index].priv_data       = NULL;
+		devices[index].ops	       = NULL;
+		devices[index].lock	       = NULL;
+		devices[index].platform_data   = NULL;
+		dev_lc_reset(&devices[index].lc);
 
-		if (node && s_devices[index].status != DEVICE_STATUS_DISABLED &&
+		if (node && devices[index].status != DEVICE_STATUS_DISABLED &&
 		    !(node->flags & DEVICE_FLAG_DIRECT)) {
 			/* pdev->lock 必须递归: device_open 持锁后会调 device_set_status 再锁一次 */
 			mini_mutex_t *lock = NULL;
 			if (mini_mutex_create_static_recursive(
-				    &lock, s_device_lock_storage[index],
-				    sizeof(s_device_lock_storage[index])) == MINI_OK) {
-				s_devices[index].lock = lock;
-				device_lc_bind(&s_devices[index]);
+				    &lock, device_lock_storage[index],
+				    sizeof(device_lock_storage[index])) == MINI_OK) {
+				devices[index].lock = lock;
+				device_lc_bind(&devices[index]);
 			} else {
 #ifdef CONFIG_SYSTEM
 				enter_safe_state("device_tree_init: mutex create failed");
@@ -127,7 +127,7 @@ struct device *board_dev_get(device_id_t id)
 {
 	if ((int)id < 0 || (int)id >= DEV_ID_COUNT)
 		return (struct device *)ERR_PTR(MINI_ERR_INVAL);
-	return &s_devices[id];
+	return &devices[id];
 }
 
 /**

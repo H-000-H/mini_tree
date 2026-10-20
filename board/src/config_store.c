@@ -23,8 +23,8 @@
  * 通过 config_store_bind_source() 在 config_store_init() 之前注入.
  * 不保留编译期链接符号, 新平台直接 bind_source() 即可.
  */
-static const char *s_json_buffer = NULL;
-static size_t	   s_json_size	 = 0;
+static const char *json_buffer = NULL;
+static size_t	   json_size   = 0;
 
 /**
  * @brief 绑定配置源缓冲区
@@ -33,8 +33,8 @@ static size_t	   s_json_size	 = 0;
  */
 void config_store_bind_source(const char *buffer, size_t size)
 {
-	s_json_buffer = buffer;
-	s_json_size   = size;
+	json_buffer = buffer;
+	json_size   = size;
 }
 
 #ifndef MAX_ENTRIES
@@ -64,11 +64,11 @@ struct cs_entry {
 	bool dirty;	     /**< 是否已修改待写回 */
 };
 
-static struct cs_entry		 s_entries[MAX_ENTRIES];
-static int			 s_entry_count;
-static int			 s_health;
-static bool			 s_storage_ready;
-static config_store_write_hook_t s_write_hook = NULL;
+static struct cs_entry		 entries[MAX_ENTRIES];
+static int			 entry_count;
+static int			 health;
+static bool			 storage_ready;
+static config_store_write_hook_t write_hook = NULL;
 
 /*
  * 软件 CRC32 (多项式 0xEDB88320, 与 esp_rom_crc32_le 兼容)
@@ -82,7 +82,7 @@ static config_store_write_hook_t s_write_hook = NULL;
  */
 static uint32_t crc32_le(uint32_t crc, const uint8_t *buf, uint32_t len)
 {
-	static const uint32_t k_table[256] = {
+	static const uint32_t table[256] = {
 		0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535,
 		0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD,
 		0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2, 0xF3B97148, 0x84BE41DE, 0x1ADAD47D,
@@ -123,7 +123,7 @@ static uint32_t crc32_le(uint32_t crc, const uint8_t *buf, uint32_t len)
 	};
 
 	for (uint32_t index = 0; index < len; index++)
-		crc = k_table[(crc ^ buf[index]) & 0xFF] ^ (crc >> 8);
+		crc = table[(crc ^ buf[index]) & 0xFF] ^ (crc >> 8);
 	return crc;
 }
 
@@ -134,9 +134,9 @@ static uint32_t crc32_le(uint32_t crc, const uint8_t *buf, uint32_t len)
  */
 static const char *find_json_value(const char *key)
 {
-	if (!s_json_buffer || !key)
+	if (!json_buffer || !key)
 		return NULL;
-	const char *json = s_json_buffer;
+	const char *json = json_buffer;
 
 	size_t key_len = strlen(key);
 	if (key_len + 3 > 63)
@@ -163,9 +163,9 @@ static const char *find_json_value(const char *key)
  */
 static struct cs_entry *find_entry(const char *key)
 {
-	for (int index = 0; index < s_entry_count; index++)
-		if (strcmp(s_entries[index].key, key) == 0)
-			return &s_entries[index];
+	for (int index = 0; index < entry_count; index++)
+		if (strcmp(entries[index].key, key) == 0)
+			return &entries[index];
 	return NULL;
 }
 
@@ -177,9 +177,9 @@ static struct cs_entry *find_entry(const char *key)
  */
 static struct cs_entry *add_entry(const char *key, cs_type_t type)
 {
-	if (s_entry_count >= MAX_ENTRIES)
+	if (entry_count >= MAX_ENTRIES)
 		return NULL;
-	struct cs_entry *entry = &s_entries[s_entry_count++];
+	struct cs_entry *entry = &entries[entry_count++];
 	strncpy(entry->key, key, sizeof(entry->key) - 1);
 	entry->key[sizeof(entry->key) - 1] = '\0';
 	entry->type			   = type;
@@ -194,12 +194,12 @@ static struct cs_entry *add_entry(const char *key, cs_type_t type)
  */
 static bool load_factory_defaults(void)
 {
-	if (!s_json_buffer || s_json_size == 0)
+	if (!json_buffer || json_size == 0)
 		return false;
-	const char *json = s_json_buffer;
-	size_t	    size = s_json_size;
+	const char *json = json_buffer;
+	size_t	    size = json_size;
 
-	s_entry_count	   = 0;
+	entry_count	   = 0;
 	const char *cursor = json;
 	while (cursor < json + size) {
 		const char *key_start = strchr(cursor, '"');
@@ -284,11 +284,11 @@ static bool blob_serialize(uint8_t *buf, size_t buf_size, size_t *out_len)
 	size_t pos = 0;
 	if (pos + 2 > buf_size)
 		return false;
-	buf[pos++] = (uint8_t)(s_entry_count & 0xFF);
-	buf[pos++] = (uint8_t)((s_entry_count >> 8) & 0xFF);
+	buf[pos++] = (uint8_t)(entry_count & 0xFF);
+	buf[pos++] = (uint8_t)((entry_count >> 8) & 0xFF);
 
-	for (int index = 0; index < s_entry_count; index++) {
-		struct cs_entry *entry	 = &s_entries[index];
+	for (int index = 0; index < entry_count; index++) {
+		struct cs_entry *entry	 = &entries[index];
 		uint8_t		 key_len = (uint8_t)strlen(entry->key);
 		if (pos + 1 + key_len + 1 + 8 > buf_size)
 			return false;
@@ -414,7 +414,7 @@ static bool blob_deserialize(const uint8_t *buf, size_t len)
  */
 static uint8_t read_slot_flag(void)
 {
-	if (!s_storage_ready)
+	if (!storage_ready)
 		return 0xFF;
 	uint8_t flag = 0xFF;
 	MINI_IGNORE_RESULT(hal_storage_read_flag(&flag));
@@ -428,7 +428,7 @@ static uint8_t read_slot_flag(void)
  */
 static bool write_slot_flag(uint8_t flag)
 {
-	if (!s_storage_ready)
+	if (!storage_ready)
 		return false;
 	return hal_storage_write_flag(flag) == MINI_OK;
 }
@@ -458,11 +458,11 @@ static bool load_from_storage(uint8_t slot)
 		if (read_slot_flag() != alt_flag) {
 			if (load_from_storage(alt_slot)) {
 				write_slot_flag(alt_flag);
-				s_health = 1;
+				health = 1;
 				return true;
 			}
 		}
-		s_health = -1;
+		health = -1;
 		load_factory_defaults();
 		return true;
 	}
@@ -508,12 +508,12 @@ static bool save_to_storage(uint8_t slot)
  */
 mt_err_t config_store_init(void)
 {
-	s_storage_ready = (hal_storage_init() == MINI_OK);
+	storage_ready = (hal_storage_init() == MINI_OK);
 
 	if (!load_factory_defaults())
 		return MINI_ERR_INVAL;
 
-	if (s_storage_ready) {
+	if (storage_ready) {
 		uint8_t flag = read_slot_flag();
 		if (flag == FLAG_A_VALID)
 			load_from_storage(0);
@@ -682,7 +682,7 @@ mt_err_t config_store_set_string(const char *key, const char *value)
  */
 void config_store_register_write_hook(config_store_write_hook_t hook)
 {
-	s_write_hook = hook;
+	write_hook = hook;
 }
 
 /**
@@ -698,16 +698,16 @@ mt_err_t config_store_commit(void)
 		return MINI_ERR_NOSPC;
 
 	/* 优先使用注册的回调桥 */
-	if (s_write_hook) {
-		int ret = s_write_hook(buf, out_len);
+	if (write_hook) {
+		int ret = write_hook(buf, out_len);
 		if (ret == MINI_OK)
-			for (int index = 0; index < s_entry_count; index++)
-				s_entries[index].dirty = false;
+			for (int index = 0; index < entry_count; index++)
+				entries[index].dirty = false;
 		return ret;
 	}
 
 	/* 默认 hal_storage A/B slot 路径 */
-	if (!s_storage_ready)
+	if (!storage_ready)
 		return MINI_ERR_AGAIN;
 
 	uint8_t current = read_slot_flag();
@@ -720,8 +720,8 @@ mt_err_t config_store_commit(void)
 	if (!write_slot_flag(new_flag))
 		return MINI_ERR_IO;
 
-	for (int index = 0; index < s_entry_count; index++)
-		s_entries[index].dirty = false;
+	for (int index = 0; index < entry_count; index++)
+		entries[index].dirty = false;
 
 	return MINI_OK;
 }
@@ -732,15 +732,15 @@ mt_err_t config_store_commit(void)
  */
 mt_err_t config_store_factory_reset(void)
 {
-	if (!s_storage_ready) {
-		s_entry_count = 0;
+	if (!storage_ready) {
+		entry_count = 0;
 		return load_factory_defaults() ? MINI_OK : MINI_ERR_INVAL;
 	}
 
 	MINI_IGNORE_RESULT(hal_storage_erase_all());
 
-	s_entry_count = 0;
-	s_health      = 0;
+	entry_count = 0;
+	health	    = 0;
 
 	if (!load_factory_defaults())
 		return MINI_ERR_INVAL;
@@ -758,5 +758,5 @@ mt_err_t config_store_factory_reset(void)
  */
 int config_store_health(void)
 {
-	return s_health;
+	return health;
 }

@@ -57,7 +57,7 @@
 #define PPPIF_AT_TIMEOUT_MS 3000U   /**< 单条 AT 命令整体超时 (ms) */
 #define PPPIF_UART_TIMEOUT_MS 100U  /**< 数据态 UART 阻塞读取超时 (ms) */
 
-static const char *const k_tag = "pppif";
+static const char *const tag = "pppif";
 
 struct pppif_context {
 	struct device	*modem_dev;		    /**< 模组设备句柄 */
@@ -69,7 +69,7 @@ struct pppif_context {
 	uint8_t		 rx_buf[PPPIF_RX_BUF_SIZE]; /**< 接收数据流缓存 */
 };
 
-static struct pppif_context s_pppif_context = { 0 };
+static struct pppif_context pppif_context = { 0 };
 
 /**
  * @brief AT 指令交互：发送指令并阻塞匹配期望返回关键字
@@ -86,7 +86,7 @@ static mt_err_t pppif_at_send_expect(const char *cmd, const char *expect_resp, u
 	size_t		    total_receive = 0;
 	int		    ret		  = 0;
 
-	if (!s_pppif_context.modem_dev || !cmd || !expect_resp)
+	if (!pppif_context.modem_dev || !cmd || !expect_resp)
 		return MINI_ERR_INVAL;
 
 	at_buf.tx     = (const uint8_t *)cmd;
@@ -95,7 +95,7 @@ static mt_err_t pppif_at_send_expect(const char *cmd, const char *expect_resp, u
 	at_buf.rx_cap = sizeof(resp_buf) - 1U;
 	at_buf.rx_len = 0;
 
-	ret = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf),
+	ret = device_ioctl(pppif_context.modem_dev, MODEM_CMD_AT_SEND, &at_buf, sizeof(at_buf),
 			   timeout_ms);
 
 	if (ret != MINI_OK)
@@ -107,7 +107,7 @@ static mt_err_t pppif_at_send_expect(const char *cmd, const char *expect_resp, u
 		at_buf.rx     = &resp_buf[total_receive];
 		at_buf.rx_cap = sizeof(resp_buf) - 1 - total_receive;
 		at_buf.rx_len = 0;
-		ret	      = device_ioctl(s_pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf,
+		ret	      = device_ioctl(pppif_context.modem_dev, MODEM_CMD_AT_RECV, &at_buf,
 					     sizeof(at_buf), PPPIF_AT_RECV_CHUNK_MS);
 		if (ret == MINI_OK && at_buf.rx_len > 0) {
 			total_receive += at_buf.rx_len;
@@ -138,7 +138,7 @@ static mt_err_t pppif_modem_dial(const char *apn)
 	/*基础AT通信握手*/
 	ret = pppif_at_send_expect("AT\r", "OK", PPPIF_AT_TIMEOUT_MS);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "Modem AT no response: %d", ret);
+		MT_LOG_ERROR(tag, "Modem AT no response: %d", ret);
 		return ret;
 	}
 	/* 关闭命令回显 */
@@ -148,12 +148,12 @@ static mt_err_t pppif_modem_dial(const char *apn)
 		int snprintf_ret =
 			snprintf(cmd_buf, sizeof(cmd_buf), "AT+CGDCONT=1,\"IP\",\"%s\"\r", apn);
 		if (snprintf_ret <= 0 || (size_t)snprintf_ret >= sizeof(cmd_buf)) {
-			MT_LOG_ERROR(k_tag, "APN too long: %s", apn);
+			MT_LOG_ERROR(tag, "APN too long: %s", apn);
 			return MINI_ERR_INVAL;
 		}
 		ret = pppif_at_send_expect(cmd_buf, "OK", PPPIF_AT_TIMEOUT_MS);
 		if (ret != MINI_OK) {
-			MT_LOG_ERROR(k_tag, "Set APN failed: %d", ret);
+			MT_LOG_ERROR(tag, "Set APN failed: %d", ret);
 			return ret;
 		}
 	}
@@ -161,7 +161,7 @@ static mt_err_t pppif_modem_dial(const char *apn)
 	/*  触发 PPP 拨号命令，等待模组切入透传数据态 */
 	ret = pppif_at_send_expect("ATD*99#\r", "CONNECT", PPPIF_AT_TIMEOUT_MS);
 	if (ret != MINI_OK)
-		MT_LOG_ERROR(k_tag, "Modem dial failed: %d", ret);
+		MT_LOG_ERROR(tag, "Modem dial failed: %d", ret);
 	return ret;
 }
 
@@ -198,7 +198,7 @@ static void pppif_link_status_callback(ppp_pcb *pcb, int err_code, void *ctx)
 	case PPPERR_NONE: {
 		/*ppp成功获得IP*/
 		p_ctx->is_link_up = true;
-		MT_LOG_INFO(k_tag, "PPP link up. IP: %s, GW: %s, MASK: %s",
+		MT_LOG_INFO(tag, "PPP link up. IP: %s, GW: %s, MASK: %s",
 			    ip4addr_ntoa(netif_ip4_addr(ppp_netif)),
 			    ip4addr_ntoa(netif_ip4_gw(ppp_netif)),
 			    ip4addr_ntoa(netif_ip4_netmask(ppp_netif)));
@@ -206,7 +206,7 @@ static void pppif_link_status_callback(ppp_pcb *pcb, int err_code, void *ctx)
 		/* 打印 DNS 地址 */
 		const ip_addr_t *primary_dns   = dns_getserver(0);
 		const ip_addr_t *secondary_dns = dns_getserver(1);
-		MT_LOG_INFO(k_tag, "DNS Server: 1: %s, 2: %s", ipaddr_ntoa(primary_dns),
+		MT_LOG_INFO(tag, "DNS Server: 1: %s, 2: %s", ipaddr_ntoa(primary_dns),
 			    ipaddr_ntoa(secondary_dns));
 #endif
 		netif_set_link_up(ppp_netif);
@@ -216,14 +216,14 @@ static void pppif_link_status_callback(ppp_pcb *pcb, int err_code, void *ctx)
 	case PPPERR_USER: {
 		/*主动关闭对话*/
 		p_ctx->is_link_up = false;
-		MT_LOG_INFO(k_tag, "PPP session closed gracefully");
+		MT_LOG_INFO(tag, "PPP session closed gracefully");
 		ppp_free(p_ctx->ppp_pcb);
 		p_ctx->ppp_pcb = NULL;
 		break;
 	}
 	default: {
 		p_ctx->is_link_up = false;
-		MT_LOG_WARN(k_tag, "PPP link down or error: %d", err_code);
+		MT_LOG_WARN(tag, "PPP link down or error: %d", err_code);
 		netif_set_link_down(ppp_netif);
 		break;
 	}
@@ -239,7 +239,7 @@ static void pppif_rx_thread_entry(void *param)
 {
 	struct pppif_context *p_ctx = (struct pppif_context *)param;
 	int		      receive_len;
-	MT_LOG_INFO(k_tag, "ppp rx task started");
+	MT_LOG_INFO(tag, "ppp rx task started");
 
 	while (p_ctx->is_running) {
 		if (!p_ctx->modem_dev || !p_ctx->ppp_pcb) {
@@ -251,7 +251,7 @@ static void pppif_rx_thread_entry(void *param)
 		if (receive_len > 0)
 			pppos_input(p_ctx->ppp_pcb, p_ctx->rx_buf, receive_len);
 	}
-	MT_LOG_INFO(k_tag, "PPP RX task exited");
+	MT_LOG_INFO(tag, "PPP RX task exited");
 	mini_task_delete(NULL);
 }
 #endif /* !NO_SYS */
@@ -265,13 +265,13 @@ static void pppif_rx_thread_entry(void *param)
 mt_err_t pppif_poll(void)
 {
 	int receive_len;
-	if (!s_pppif_context.modem_dev || !s_pppif_context.ppp_pcb)
+	if (!pppif_context.modem_dev || !pppif_context.ppp_pcb)
 		return MINI_ERR_INVAL;
 
-	receive_len = device_read(s_pppif_context.modem_dev, s_pppif_context.rx_buf,
-				  sizeof(s_pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
+	receive_len = device_read(pppif_context.modem_dev, pppif_context.rx_buf,
+				  sizeof(pppif_context.rx_buf), PPPIF_UART_TIMEOUT_MS);
 	if (receive_len > 0)
-		pppos_input(s_pppif_context.ppp_pcb, s_pppif_context.rx_buf, receive_len);
+		pppos_input(pppif_context.ppp_pcb, pppif_context.rx_buf, receive_len);
 
 	sys_check_timeouts();
 	return MINI_OK;
@@ -292,21 +292,21 @@ mt_err_t pppif_init(const char *modem_label, const char *apn, const char *userna
 	if (!modem_label)
 		return MINI_ERR_INVAL;
 
-	if (s_pppif_context.modem_dev || s_pppif_context.ppp_pcb)
+	if (pppif_context.modem_dev || pppif_context.ppp_pcb)
 		return MINI_ERR_BUSY;
 
-	s_pppif_context.modem_dev = device_find_by_label(modem_label);
-	if (IS_ERR(s_pppif_context.modem_dev)) {
-		ret = PTR_ERR(s_pppif_context.modem_dev);
-		MT_LOG_ERROR(k_tag, "Modem '%s' not found: %d", modem_label, ret);
-		s_pppif_context.modem_dev = NULL;
+	pppif_context.modem_dev = device_find_by_label(modem_label);
+	if (IS_ERR(pppif_context.modem_dev)) {
+		ret = PTR_ERR(pppif_context.modem_dev);
+		MT_LOG_ERROR(tag, "Modem '%s' not found: %d", modem_label, ret);
+		pppif_context.modem_dev = NULL;
 		return ret;
 	}
 
-	ret = device_open(s_pppif_context.modem_dev, NULL);
+	ret = device_open(pppif_context.modem_dev, NULL);
 	if (ret != MINI_OK) {
-		MT_LOG_ERROR(k_tag, "Open modem device failed: %d", ret);
-		s_pppif_context.modem_dev = NULL;
+		MT_LOG_ERROR(tag, "Open modem device failed: %d", ret);
+		pppif_context.modem_dev = NULL;
 		return ret;
 	}
 
@@ -316,35 +316,35 @@ mt_err_t pppif_init(const char *modem_label, const char *apn, const char *userna
 		goto err_clean_device;
 
 	/* 创建 lwIP PPPoS 控制块 */
-	s_pppif_context.ppp_pcb = pppos_create(&s_pppif_context.ppp_netif, pppif_output_callback,
-					       pppif_link_status_callback, &s_pppif_context);
-	if (!s_pppif_context.ppp_pcb) {
+	pppif_context.ppp_pcb = pppos_create(&pppif_context.ppp_netif, pppif_output_callback,
+					     pppif_link_status_callback, &pppif_context);
+	if (!pppif_context.ppp_pcb) {
 		ret = MINI_ERR_NOMEM;
 		goto err_clean_device;
 	}
 
 	/* 配置认证、DNS 获取以及默认网卡路由 */
 	if (username && password)
-		ppp_set_auth(s_pppif_context.ppp_pcb, PPPAUTHTYPE_ANY, username, password);
-	ppp_set_usepeerdns(s_pppif_context.ppp_pcb, 1);
-	ppp_set_default(s_pppif_context.ppp_pcb);
+		ppp_set_auth(pppif_context.ppp_pcb, PPPAUTHTYPE_ANY, username, password);
+	ppp_set_usepeerdns(pppif_context.ppp_pcb, 1);
+	ppp_set_default(pppif_context.ppp_pcb);
 
 #if !NO_SYS
 	/* 创建后台接收数据处理任务 (RTOS 模式) */
-	s_pppif_context.is_running = true;
+	pppif_context.is_running = true;
 	ret = mini_task_create_handle("pppos_rx", PPPIF_RX_TASK_STACK_SIZE, PPPIF_RX_TASK_PRIO,
-				      pppif_rx_thread_entry, &s_pppif_context, (int)-1,
-				      &s_pppif_context.rx_thread);
-	if (ret != 0 || !s_pppif_context.rx_thread) {
+				      pppif_rx_thread_entry, &pppif_context, (int)-1,
+				      &pppif_context.rx_thread);
+	if (ret != 0 || !pppif_context.rx_thread) {
 		ret = MINI_ERR_NOMEM;
 		goto err_clean_ppp;
 	}
 #else
 	/* 裸机模式: 无独立接收任务, 由主循环周期调用 pppif_poll() 驱动 */
-	s_pppif_context.is_running = true;
+	pppif_context.is_running = true;
 #endif /* !NO_SYS */
 
-	ret = ppp_connect(s_pppif_context.ppp_pcb, 0);
+	ret = ppp_connect(pppif_context.ppp_pcb, 0);
 	if (ret != MINI_OK) {
 		ret = MINI_ERR_IO;
 		goto err_clean_ppp;
@@ -352,34 +352,34 @@ mt_err_t pppif_init(const char *modem_label, const char *apn, const char *userna
 
 	return MINI_OK;
 err_clean_ppp:
-	if (s_pppif_context.ppp_pcb) {
-		MINI_IGNORE_RESULT(ppp_close(s_pppif_context.ppp_pcb, 1));
-		MINI_IGNORE_RESULT(ppp_free(s_pppif_context.ppp_pcb));
-		s_pppif_context.ppp_pcb = NULL;
+	if (pppif_context.ppp_pcb) {
+		MINI_IGNORE_RESULT(ppp_close(pppif_context.ppp_pcb, 1));
+		MINI_IGNORE_RESULT(ppp_free(pppif_context.ppp_pcb));
+		pppif_context.ppp_pcb = NULL;
 	}
 err_clean_device:
-	MINI_IGNORE_RESULT(device_close(s_pppif_context.modem_dev));
-	s_pppif_context.modem_dev = NULL;
+	MINI_IGNORE_RESULT(device_close(pppif_context.modem_dev));
+	pppif_context.modem_dev = NULL;
 	return ret;
 }
 
 mt_err_t pppif_deinit(void)
 {
-	if (!s_pppif_context.ppp_pcb && !s_pppif_context.modem_dev)
+	if (!pppif_context.ppp_pcb && !pppif_context.modem_dev)
 		return MINI_ERR_INVAL;
 
 	/* 停止后台接收线程 (RTOS 模式) / 标记轮询停止 (裸机模式) */
-	s_pppif_context.is_running = 0;
-	s_pppif_context.is_link_up = 0;
+	pppif_context.is_running = 0;
+	pppif_context.is_link_up = 0;
 
 	/* 异步优雅断开 PPP (触发 PPPERR_USER 在状态回调中释放控制块) */
-	if (s_pppif_context.ppp_pcb)
-		MINI_IGNORE_RESULT(ppp_close(s_pppif_context.ppp_pcb, 0));
+	if (pppif_context.ppp_pcb)
+		MINI_IGNORE_RESULT(ppp_close(pppif_context.ppp_pcb, 0));
 
 	/* 关闭底层模组设备 */
-	if (s_pppif_context.modem_dev) {
-		MINI_IGNORE_RESULT(device_close(s_pppif_context.modem_dev));
-		s_pppif_context.modem_dev = NULL;
+	if (pppif_context.modem_dev) {
+		MINI_IGNORE_RESULT(device_close(pppif_context.modem_dev));
+		pppif_context.modem_dev = NULL;
 	}
 
 	return MINI_OK;
@@ -387,6 +387,6 @@ mt_err_t pppif_deinit(void)
 
 int pppif_is_link_up(void)
 {
-	return s_pppif_context.is_link_up;
+	return pppif_context.is_link_up;
 }
 #endif /* PPP_SUPPORT && PPPOS_SUPPORT */

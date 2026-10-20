@@ -23,24 +23,24 @@ struct x_coop_priv {
 	int		tick_delay; /**< 每次中断 tick 增量 */
 };
 
-static struct x_coop_priv s_priv;
+static struct x_coop_priv coop_priv;
 
-x_scheduler g_scheduler;
+x_scheduler scheduler;
 
 #ifdef CONFIG_XTASK_COROUTINE
 /** 当前正在执行的任务 (protothread 协程让出时供感知) */
-static x_task *s_current_task;
+static x_task *current_task;
 
-/** @brief 当前系统滴答 (协调式读 g_scheduler.tick_count) */
+/** @brief 当前系统滴答 (协调式读 scheduler.tick_count) */
 uint32_t x_scheduler_now(void)
 {
-	return MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED);
+	return MINI_ATOMIC_LOAD(&scheduler.tick_count, MINI_RELAXED);
 }
 
 /** @brief 返回当前执行的任务 (主循环上下文为 NULL) */
 x_task *x_scheduler_current(void)
 {
-	return s_current_task;
+	return current_task;
 }
 #endif /* CONFIG_XTASK_COROUTINE */
 
@@ -49,9 +49,9 @@ x_task *x_scheduler_current(void)
  */
 mini_pre_execution(MINI_PRE_EXEC_PRIO_DRIVER_POOL) static void xscheduler_early_init(void)
 {
-	x_scheduler_init(&g_scheduler);
-	s_priv.tim	  = NULL;
-	s_priv.tick_delay = 1;
+	x_scheduler_init(&scheduler);
+	coop_priv.tim	     = NULL;
+	coop_priv.tick_delay = 1;
 }
 
 /**
@@ -67,13 +67,13 @@ void xscheduler_start(void)
 #ifdef CHOSEN_SCHEDULER_TIM
 	struct device *tick_dev = board_dev_get(CHOSEN_SCHEDULER_TIM);
 	if (tick_dev != NULL && device_open(tick_dev, NULL) == MINI_OK) {
-		s_priv.tim = vfs_tim_get_hal_dev(tick_dev);
-		if (s_priv.tim != NULL) {
+		coop_priv.tim = vfs_tim_get_hal_dev(tick_dev);
+		if (coop_priv.tim != NULL) {
 #ifdef CONFIG_VIRQ
 			MINI_IGNORE_RESULT(
-				device_get_prop_int(tick_dev, "tick_delay", &s_priv.tick_delay));
+				device_get_prop_int(tick_dev, "tick_delay", &coop_priv.tick_delay));
 			interrupt_virtual_register(VIRQ(tim, 0), scheduler_tim_isr_top, NULL,
-						   &s_priv);
+						   &coop_priv);
 
 			int irqn     = -1;
 			int priority = 5;
@@ -89,10 +89,10 @@ void xscheduler_start(void)
 
 	/* ② 没配 chosen (或打开失败) → 默认 SysTick (仅 Cortex-M 存在; 非 ARM 返回 NOTSUPP) */
 	if (hal_systick_init(DTC_GEN_TICK_RATE_HZ) == MINI_OK) {
-		s_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
+		coop_priv.tim = NULL; /* SysTick 路径: 不占用通用 TIM */
 		/* 每 SysTick 中断推进 ms = 1000 / tick-rate; 亚毫秒 tick-rate 按 1ms 兜底 */
-		int delay	  = 1000 / DTC_GEN_TICK_RATE_HZ;
-		s_priv.tick_delay = (delay >= 1) ? delay : 1;
+		int delay	     = 1000 / DTC_GEN_TICK_RATE_HZ;
+		coop_priv.tick_delay = (delay >= 1) ? delay : 1;
 		return;
 	}
 }
@@ -103,7 +103,7 @@ void xscheduler_start(void)
  */
 void hal_systick_irq_handler(void)
 {
-	x_scheduler_tick(&g_scheduler, (unsigned int)s_priv.tick_delay);
+	x_scheduler_tick(&scheduler, (unsigned int)coop_priv.tick_delay);
 }
 
 /**
@@ -122,12 +122,12 @@ mt_err_t scheduler_tim_isr_top(void *context, uint16_t irq_num)
 	struct vfs_tim_arg tim_arg = { 0 };
 	tim_arg.obj		   = priv->tim;
 	if (vfs_tim_fast_clear_update_flag(&tim_arg) == MINI_OK)
-		x_scheduler_tick(&g_scheduler, (unsigned int)priv->tick_delay);
+		x_scheduler_tick(&scheduler, (unsigned int)priv->tick_delay);
 	return MINI_IRQ_ENTRY_NOBOTTOM;
 }
 
 /**
- * @brief 注册周期任务 (使用全局 g_scheduler)
+ * @brief 注册周期任务 (使用全局 scheduler)
  * @param[in] task 调用方静态分配的 x_task TCB
  * @param[in] name 任务名
  * @param[in] cb 回调
@@ -144,7 +144,7 @@ x_task_handle_t xscheduler_task_create(x_task *task, const char *name, void (*cb
 	task->xTask_cb = cb;
 	MINI_ATOMIC_STORE(&task->period, period_ms, MINI_RELAXED);
 	MINI_ATOMIC_STORE(&task->next_running,
-			  MINI_ATOMIC_LOAD(&g_scheduler.tick_count, MINI_RELAXED) + period_ms,
+			  MINI_ATOMIC_LOAD(&scheduler.tick_count, MINI_RELAXED) + period_ms,
 			  MINI_RELAXED);
 	MINI_ATOMIC_STORE(&task->is_running, false,
 			  MINI_RELAXED); /**<（非运行态），首轮 poll 即可进入 */
@@ -152,7 +152,7 @@ x_task_handle_t xscheduler_task_create(x_task *task, const char *name, void (*cb
 	task->pt_line = 0; /**< 协程让出点复位 (首次进入 case 0) */
 #endif
 
-	list_add_tail(&task->node, &g_scheduler.task_list_head);
+	list_add_tail(&task->node, &scheduler.task_list_head);
 
 	return (x_task_handle_t)(uintptr_t)task;
 }
@@ -196,9 +196,9 @@ mt_err_t x_task_run(x_scheduler *sched)
 
 			if ((int32_t)(now - next_run) >= 0) {
 #ifdef CONFIG_XTASK_COROUTINE
-				s_current_task = task; /* protothread 让出时感知当前任务 */
+				current_task = task; /* protothread 让出时感知当前任务 */
 				task->xTask_cb(task);
-				s_current_task = NULL;
+				current_task = NULL;
 				if (task->pt_line == 0) {
 					/* 协程跑完 (PT_END 复位) 或普通回调: 按周期推进下一轮 */
 					MINI_ATOMIC_STORE(
@@ -225,11 +225,11 @@ mt_err_t x_task_run(x_scheduler *sched)
 }
 
 /**
- * @brief poll g_scheduler
+ * @brief poll scheduler
  */
 void x_scheduler_poll(void)
 {
-	x_task_run(&g_scheduler);
+	x_task_run(&scheduler);
 }
 
 #endif /* !CONFIG_XTASK_PREEMPT */

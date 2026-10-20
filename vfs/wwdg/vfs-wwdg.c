@@ -19,8 +19,8 @@ struct vfs_wwdg_priv {
 	struct file_operations ops;  /**< VFS 操作表 */
 	struct hal_wwdg_dev    wwdg; /**< HAL WWDG 设备 */
 };
-static struct vfs_wwdg_priv s_priv;
-static const char	   *k_tag = "vfs_wwdg";
+static struct vfs_wwdg_priv wwdg_priv;
+static const char	   *tag = "vfs_wwdg";
 
 /**
  * @brief WWDG 打开: 引用计数, 首次打开时调用 hal_wwdg_start 启动窗口看门狗
@@ -106,7 +106,7 @@ static mt_err_t vfs_wwdg_ioctl(struct device *pdev, int cmd, void *arg, size_t a
 	return ret;
 }
 
-static const struct file_operations s_fops = {
+static const struct file_operations fops = {
 	.open  = vfs_wwdg_open,
 	.close = vfs_wwdg_close,
 	.ioctl = vfs_wwdg_ioctl,
@@ -136,16 +136,16 @@ static mt_err_t vfs_wwdg_probe(struct device *pdev)
 		cfg.counter = (uint32_t)value;
 	MINI_IGNORE_RESULT(device_get_prop_int(pdev, "prescaler", &value));
 	cfg.prescaler = (uint32_t)value;
-	MINI_MEM_SET(&s_priv, 0, sizeof(s_priv));
-	ret = hal_wwdg_init(&s_priv.wwdg, &cfg);
+	MINI_MEM_SET(&wwdg_priv, 0, sizeof(wwdg_priv));
+	ret = hal_wwdg_init(&wwdg_priv.wwdg, &cfg);
 	if (ret != MINI_OK)
 		return ret;
-	s_priv.ops = s_fops;
-	pdev->ops  = &s_priv.ops;
+	wwdg_priv.ops = fops;
+	pdev->ops     = &wwdg_priv.ops;
 	device_lc_bind(pdev);
-	if (device_set_priv(pdev, &s_priv) != MINI_OK)
+	if (device_set_priv(pdev, &wwdg_priv) != MINI_OK)
 		return MINI_ERR_IO;
-	MT_LOG_INFO(k_tag, "probe OK");
+	MT_LOG_INFO(tag, "probe OK");
 	return MINI_OK;
 }
 

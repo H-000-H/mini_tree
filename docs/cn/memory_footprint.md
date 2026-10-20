@@ -98,7 +98,7 @@
 **堆口径（bss 不可直接横比的原因）**：
 
 - FreeRTOS：堆为静态数组 `ucHeap[CONFIG_FREERTOS_HEAP_SIZE]`（默认 8192），**计入 bss**；
-- RT-Thread：堆为静态数组 `s_rtt_heap[CONFIG_RTT_HEAP_SIZE]`（默认 32×1024，见 `mini_backend_rtthread.c`），**计入 bss**；
+- RT-Thread：堆为静态数组 `rtt_heap[CONFIG_RTT_HEAP_SIZE]`（默认 32×1024，见 `mini_backend_rtthread.c`），**计入 bss**；
 - mini-os：堆为链接期区域（`__mini_os_heap_start`→`__mini_os_heap_end`，bss 末尾到栈顶），**不计入 bss**——剩余 RAM 全归堆；
 - 裸机 xtask：无堆。
 
