@@ -7,7 +7,7 @@
  */
 #include "port.h"
 
-#include "err.h"
+#include "minierr.h"
 #include "mini_config.h"
 #include "redef.h"
 

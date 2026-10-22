@@ -107,7 +107,7 @@ static void sh1106_hw_destroy(struct sh1106_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int sh1106_open(struct device *pdev, void *arg)
+static mt_err_t sh1106_open(struct device *pdev, void *arg)
 {
 	struct sh1106_device *dev;
 	struct dev_lifecycle *lc;
@@ -139,7 +139,7 @@ static int sh1106_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int sh1106_close(struct device *pdev)
+static mt_err_t sh1106_close(struct device *pdev)
 {
 	struct sh1106_device *dev;
 	struct dev_lifecycle *lc;

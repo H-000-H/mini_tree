@@ -83,17 +83,19 @@ template <typename T> class CriticalStorage
 
 	void set(T val)
 	{
-		m_data	     = val;
+		data_	     = val;
 		uint32_t raw = 0;
 		MINI_MEM_COPY(&raw, &val, sizeof(T));
-		m_inv_data = ~raw;
+		inv_data_ = ~raw;
 	}
 
 	bool validate() const
 	{
 		uint32_t raw = 0;
-		MINI_MEM_COPY(&raw, &m_data, sizeof(T));
-		return raw == ~m_inv_data;
+		/* const_cast 仅剥离 cv 限定以匹配 MINI_MEM_COPY 的形参类型,
+		 * 实际读取仍走 volatile, 保证从物理 RAM 重读 */
+		MINI_MEM_COPY(&raw, const_cast<const T *>(&data_), sizeof(T));
+		return raw == ~inv_data_;
 	}
 
 	T get_secure(bool *is_corrupted = nullptr) const
@@ -105,12 +107,12 @@ template <typename T> class CriticalStorage
 		}
 		if (is_corrupted)
 			*is_corrupted = false;
-		return m_data;
+		return data_;
 	}
 
       private:
-	volatile T	  m_data;
-	volatile uint32_t m_inv_data;
+	volatile T	  data_;
+	volatile uint32_t inv_data_;
 };
 
 #endif /* __cplusplus */

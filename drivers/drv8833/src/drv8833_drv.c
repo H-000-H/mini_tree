@@ -117,7 +117,7 @@ static void drv8833_hw_destroy(struct drv8833_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int drv8833_open(struct device *pdev, void *arg)
+static mt_err_t drv8833_open(struct device *pdev, void *arg)
 {
 	struct drv8833_device *dev;
 	struct dev_lifecycle  *lc;
@@ -149,7 +149,7 @@ static int drv8833_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int drv8833_close(struct device *pdev)
+static mt_err_t drv8833_close(struct device *pdev)
 {
 	struct drv8833_device *dev;
 	struct dev_lifecycle  *lc;

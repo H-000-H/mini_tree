@@ -6,7 +6,7 @@
  */
 #ifndef SCHEDULE_H
 #define SCHEDULE_H
-#include <err.h>
+#include "minierr.h"
 #ifdef __cplusplus
 extern "C"
 {

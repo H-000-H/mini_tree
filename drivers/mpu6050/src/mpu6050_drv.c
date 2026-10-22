@@ -118,7 +118,7 @@ static void mpu6050_hw_destroy(struct mpu6050_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int mpu6050_open(struct device *pdev, void *arg)
+static mt_err_t mpu6050_open(struct device *pdev, void *arg)
 {
 	struct mpu6050_device *dev;
 	struct dev_lifecycle  *lc;
@@ -150,7 +150,7 @@ static int mpu6050_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int mpu6050_close(struct device *pdev)
+static mt_err_t mpu6050_close(struct device *pdev)
 {
 	struct mpu6050_device *dev;
 	struct dev_lifecycle  *lc;

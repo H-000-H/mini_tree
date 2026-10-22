@@ -77,7 +77,7 @@ if(OS_BACKEND STREQUAL "MINI_OS")
         set(MINI_OS_MCU cortex-m0)
     endif()
     add_subdirectory(mini-os)
-    # 错误码对齐: mini-os err.h 需看到 mini_tree 的 config.h / compiler_compat.h,
+    # 错误码对齐: mini-os minierr.h 需看到 mini_tree 的 config.h / compiler_compat.h,
     # 才能使 MINI_OS_ERR_* == MINI_ERR_* 零转换互转
     target_include_directories(mini-os SYSTEM PRIVATE
         "${MINI_TREE_KCONFIG_GEN_DIR}"

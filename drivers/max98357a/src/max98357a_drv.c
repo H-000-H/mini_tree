@@ -126,7 +126,7 @@ static void max98357a_hw_destroy(struct max98357a_device *amp)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int max98357a_open(struct device *pdev, void *arg)
+static mt_err_t max98357a_open(struct device *pdev, void *arg)
 {
 	struct max98357a_device *amp;
 	struct dev_lifecycle	*lc;
@@ -165,7 +165,7 @@ static int max98357a_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int max98357a_close(struct device *pdev)
+static mt_err_t max98357a_close(struct device *pdev)
 {
 	struct max98357a_device *amp;
 	struct dev_lifecycle	*lc;
@@ -260,7 +260,7 @@ static mt_err_t max98357a_ioctl(struct device *pdev, int cmd, void *arg, size_t 
 /**
  * @brief fops.suspend：关功放（静音）
  */
-static int max98357a_suspend(struct device *pdev)
+static mt_err_t max98357a_suspend(struct device *pdev)
 {
 	struct max98357a_device *amp = max98357a_get_drvdata(pdev);
 
@@ -272,7 +272,7 @@ static int max98357a_suspend(struct device *pdev)
 /**
  * @brief fops.resume：恢复功放使能
  */
-static int max98357a_resume(struct device *pdev)
+static mt_err_t max98357a_resume(struct device *pdev)
 {
 	struct max98357a_device *amp = max98357a_get_drvdata(pdev);
 

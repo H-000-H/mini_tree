@@ -25,7 +25,7 @@ extern "C" {
 
 /**
  * @brief 错误码类型 (0 成功, 负数失败)
- * @note 负值顺序与 lib/mini-os/inc/err.h 的后备分支逐位对齐, 保证两分支等价
+ * @note 负值顺序与 lib/mini-os/inc/minierr.h 的后备分支逐位对齐, 保证两分支等价
  * @note 返回错误码的函数应把返回类型写成 mt_err_t; 参数类型保持 int,
  *       以兼容 C++ 侧 (enum -> int 隐式可行, int -> enum 需显式转换)
  */

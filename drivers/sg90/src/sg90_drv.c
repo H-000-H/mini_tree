@@ -99,7 +99,7 @@ static void sg90_hw_destroy(struct sg90_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int sg90_open(struct device *pdev, void *arg)
+static mt_err_t sg90_open(struct device *pdev, void *arg)
 {
 	struct sg90_device   *dev;
 	struct dev_lifecycle *lc;
@@ -131,7 +131,7 @@ static int sg90_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int sg90_close(struct device *pdev)
+static mt_err_t sg90_close(struct device *pdev)
 {
 	struct sg90_device   *dev;
 	struct dev_lifecycle *lc;

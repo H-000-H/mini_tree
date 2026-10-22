@@ -7,7 +7,7 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include <err.h>
+#include "minierr.h"
 #include <mini_config.h>
 #include <redef.h>
 #if defined(__cplusplus)

@@ -285,7 +285,7 @@ static void bme280_hw_destroy(struct bme280_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int bme280_open(struct device *pdev, void *arg)
+static mt_err_t bme280_open(struct device *pdev, void *arg)
 {
 	struct bme280_device *dev;
 	struct dev_lifecycle *lc;
@@ -317,7 +317,7 @@ static int bme280_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int bme280_close(struct device *pdev)
+static mt_err_t bme280_close(struct device *pdev)
 {
 	struct bme280_device *dev;
 	struct dev_lifecycle *lc;

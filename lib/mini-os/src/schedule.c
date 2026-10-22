@@ -14,7 +14,7 @@
  */
 #include <schedule.h>
 
-#include <err.h>
+#include "minierr.h"
 #include <list.h>
 #include <mini_config.h>
 #include <port.h>

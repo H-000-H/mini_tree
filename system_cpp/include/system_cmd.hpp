@@ -42,8 +42,8 @@
 class SystemCmd
 {
 private:
-    static constexpr size_t MaxNameLen  = SYS_CMD_MAX_NAME_LEN; /**< 命令名最大字符数 (含 '\0') */
-    static constexpr size_t MaxCommands = SYS_CMD_MAX_COUNT;    /**< 最大可注册命令节点总数 */
+    static constexpr size_t MaxNameLen = SYS_CMD_MAX_NAME_LEN; /**< 命令名最大字符数 (含 '\0') */
+    static constexpr size_t MaxCommands = SYS_CMD_MAX_COUNT;   /**< 最大可注册命令节点总数 */
 
     /* 轻量 RTTI: 基于静态单例地址实现的编译期类型指纹 */
 
@@ -51,7 +51,7 @@ private:
      * @brief 类型身份令牌指针
      * @note 指向全局唯一的静态标志变量, 其地址作为类型的唯一指纹
      */
-    using TypeIdToken = const void *;
+    using TypeIdToken = const void*;
 
     /**
      * @brief 经类型擦除后的统一函数入口
@@ -59,16 +59,16 @@ private:
      *       字节内联空间中完成原地存储与调用。
      */
     using RawHandler =
-        etl::inplace_function<bool(const void *, size_t, void *), SYS_CMD_WRAPPER_FN_SZ>;
+        etl::inplace_function<bool(const void*, size_t, void*), SYS_CMD_WRAPPER_FN_SZ>;
 
     /**
      * @brief 命令分发节点
      */
     struct HandlerNode
     {
-        RawHandler  wrapper_;   /**< 类型擦除后的闭包包装体 */
-        TypeIdToken args_id_;   /**< 注册时绑定的入参类型令牌 (分发时做强一致校验) */
-        TypeIdToken ctx_id_;    /**< 注册时绑定的上下文类型令牌 (分发时做强一致校验) */
+        RawHandler  wrapper_; /**< 类型擦除后的闭包包装体 */
+        TypeIdToken args_id_; /**< 注册时绑定的入参类型令牌 (分发时做强一致校验) */
+        TypeIdToken ctx_id_;  /**< 注册时绑定的上下文类型令牌 (分发时做强一致校验) */
     };
 
     /**
@@ -80,13 +80,13 @@ private:
         HandlerNode node_;             /**< 对应的处理节点 (包装函数与类型令牌) */
     };
 
-    CmdEntry m_entries_[MaxCommands]; /**< 连续内存的命令节点静态数组 */
-    size_t   m_count_;                /**< 当前数组中已登记的有效命令节点数 */
+    CmdEntry entries_[MaxCommands]; /**< 连续内存的命令节点静态数组 */
+    size_t   count_;                /**< 当前数组中已登记的有效命令节点数 */
 
     SystemCmd();                                     /**< 构造函数私有化 (纯单例模式) */
     ~SystemCmd() = default;                          /**< 默认析构函数 */
-    SystemCmd(const SystemCmd &)            = delete; /**< 禁用拷贝构造 */
-    SystemCmd &operator=(const SystemCmd &) = delete; /**< 禁用拷贝赋值 */
+    SystemCmd(const SystemCmd&) = delete;            /**< 禁用拷贝构造 */
+    SystemCmd& operator=(const SystemCmd&) = delete; /**< 禁用拷贝赋值 */
 
     /**
      * @brief 底层统一注册实现
@@ -96,7 +96,7 @@ private:
      * @param[in] ctx_id   上下文类型令牌
      * @return 状态码 (处理临界区加锁、重名检测、静态表扩容检查)
      */
-    int register_raw(const char *name, const RawHandler &wrapper, TypeIdToken args_id,
+    int register_raw(const char* name, const RawHandler& wrapper, TypeIdToken args_id,
                      TypeIdToken ctx_id);
 
     /**
@@ -112,14 +112,14 @@ private:
      *       内部采用栈上对齐缓冲区与字节拷贝提取入参, 避免外部未对齐内存直接解引用导致硬件异常。
      */
     template <typename Args, typename Ctx, typename F>
-    static RawHandler make_wrapper(F &&f)
+    static RawHandler make_wrapper(F&& f)
     {
-        auto wrapper = [fn = etl::forward<F>(f)](const void *arg, size_t len, void *ctx) -> bool
+        auto wrapper = [fn = etl::forward<F>(f)](const void* arg, size_t len, void* ctx) -> bool
         {
             /* 分支 1: 无参数命令 (Args == void) */
-            if constexpr (etl::is_same_v<Args, void>)
+            if constexpr(etl::is_same_v<Args, void>)
             {
-                if constexpr (etl::is_same_v<Ctx, void>)
+                if constexpr(etl::is_same_v<Ctx, void>)
                 {
                     /* 纯无参调用: fn() */
                     return fn();
@@ -127,7 +127,7 @@ private:
                 else
                 {
                     /* 仅上下文调用: fn(Ctx*) */
-                    return (ctx != nullptr) && fn(static_cast<Ctx *>(ctx));
+                    return (ctx != nullptr) && fn(static_cast<Ctx*>(ctx));
                 }
             }
             /* 分支 2: 带参数命令 (Args != void) */
@@ -138,7 +138,7 @@ private:
                               "Args must be trivially copyable");
 
                 /* 运行时基础安全校验: 严禁空指针, 且传入字节流长度必须覆盖结构体大小 */
-                if ((arg == nullptr) || (len < sizeof(Args)))
+                if((arg == nullptr) || (len < sizeof(Args)))
                     return false;
 
                 /*
@@ -147,9 +147,9 @@ private:
                  */
                 alignas(Args) uint8_t arg_buf[sizeof(Args)];
                 MINI_MEM_COPY(arg_buf, arg, sizeof(Args));
-                const Args &typed_arg = *reinterpret_cast<const Args *>(arg_buf);
+                const Args& typed_arg = *reinterpret_cast<const Args*>(arg_buf);
 
-                if constexpr (etl::is_same_v<Ctx, void>)
+                if constexpr(etl::is_same_v<Ctx, void>)
                 {
                     /* 无上下文模式: 传递参数, 上下文置空 */
                     return fn(typed_arg, nullptr);
@@ -157,14 +157,13 @@ private:
                 else
                 {
                     /* 完整模式: 校验非空后同时传入参数和转换后的上下文指针 */
-                    return (ctx != nullptr) && fn(typed_arg, static_cast<Ctx *>(ctx));
+                    return (ctx != nullptr) && fn(typed_arg, static_cast<Ctx*>(ctx));
                 }
             }
         };
 
         return RawHandler(wrapper);
     }
-
 public:
     /**
      * @brief 获取指定类型的全局唯一身份令牌 (轻量 RTTI)
@@ -175,15 +174,15 @@ public:
     template <typename T>
     static TypeIdToken get_type_id()
     {
-        static const char k_type_marker = 0;
-        return static_cast<TypeIdToken>(&k_type_marker);
+        static const char kTypeMarker = 0;
+        return static_cast<TypeIdToken>(&kTypeMarker);
     }
 
     /**
      * @brief 获取命令分发器单例实例
      * @return SystemCmd& 单例对象的引用
      */
-    static SystemCmd &get_instance();
+    static SystemCmd& get_instance();
 
     /**
      * @brief 注册强类型系统命令
@@ -202,7 +201,7 @@ public:
      * @retval MINI_ERR_BUSY     该命令名已被注册 (禁止重复注册同名命令)
      */
     template <typename Args, typename Ctx = void, typename F>
-    int register_cmd(const char *name, F &&f)
+    int register_cmd(const char* name, F&& f)
     {
         RawHandler wrapper = make_wrapper<Args, Ctx>(etl::forward<F>(f));
         return register_raw(name, wrapper, get_type_id<Args>(), get_type_id<Ctx>());
@@ -221,9 +220,9 @@ public:
      * @retval MINI_ERR_NOTSUPP  命令未找到, 或类型令牌校验失败 (类型不匹配)
      * @retval MINI_ERR_FAULT    命令处理逻辑返回失败 (用户回调返回 false)
      */
-    int dispatch(const char *name, const void *arg, size_t arg_len, void *ctx = nullptr,
+    int dispatch(const char* name, const void* arg, size_t arg_len, void* ctx = nullptr,
                  TypeIdToken expected_args_id = nullptr,
-                 TypeIdToken expected_ctx_id  = nullptr) const;
+                 TypeIdToken expected_ctx_id = nullptr) const;
 
     /**
      * @brief 类型安全命令分发 (携带强类型参数 + 可选上下文)
@@ -235,7 +234,7 @@ public:
      * @return 状态码 (参见 dispatch)
      */
     template <typename Args, typename Ctx = void>
-    int dispatch_secure(const char *name, const Args &arg, Ctx *ctx = nullptr) const
+    int dispatch_secure(const char* name, const Args& arg, Ctx* ctx = nullptr) const
     {
         return dispatch(name, &arg, sizeof(Args), ctx, get_type_id<Args>(), get_type_id<Ctx>());
     }
@@ -248,7 +247,7 @@ public:
      * @return 状态码 (参见 dispatch)
      */
     template <typename Ctx = void>
-    int dispatch_secure(const char *name, Ctx *ctx = nullptr) const
+    int dispatch_secure(const char* name, Ctx* ctx = nullptr) const
     {
         return dispatch(name, nullptr, 0, ctx, get_type_id<void>(), get_type_id<Ctx>());
     }
@@ -260,14 +259,14 @@ public:
      * @retval MINI_ERR_INVAL    命令名指针为空
      * @retval MINI_ERR_NOTSUPP  该命令未在表中, 无需注销
      */
-    int unregister_cmd(const char *name);
+    int unregister_cmd(const char* name);
 
     /**
      * @brief 查询指定命令是否已被注册
      * @param[in] name 命令名
      * @return true 已注册; false 未注册
      */
-    bool has_cmd(const char *name) const;
+    bool has_cmd(const char* name) const;
 
     /**
      * @brief 获取当前系统中已注册的命令总数

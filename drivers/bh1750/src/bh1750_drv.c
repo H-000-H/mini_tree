@@ -119,7 +119,7 @@ static void bh1750_hw_destroy(struct bh1750_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int bh1750_open(struct device *pdev, void *arg)
+static mt_err_t bh1750_open(struct device *pdev, void *arg)
 {
 	struct bh1750_device *dev;
 	struct dev_lifecycle *lc;
@@ -151,7 +151,7 @@ static int bh1750_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int bh1750_close(struct device *pdev)
+static mt_err_t bh1750_close(struct device *pdev)
 {
 	struct bh1750_device *dev;
 	struct dev_lifecycle *lc;

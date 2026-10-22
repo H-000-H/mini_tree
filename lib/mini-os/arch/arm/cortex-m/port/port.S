@@ -390,8 +390,8 @@ svc_handler:
     .equ    SCB_DCCIMVAC,         0xE000EF70  @ D-cache clean + invalidate by MVA to PoC
     .equ    SCB_DCCISW,           0xE000EF74  @ D-cache clean + invalidate by set/way
     .equ    MINI_OS_CACHE_LINE_BYTES, 32      @ M7 L1 cache line size
-    @ error-code literals for mini_os_dcache_ops; keep in sync with err.h
-    @ (ABI is fixed 32-bit, so the fallback values apply here; err.h itself
+    @ error-code literals for mini_os_dcache_ops; keep in sync with minierr.h
+    @ (ABI is fixed 32-bit, so the fallback values apply here; minierr.h itself
     @ cannot be included: redef.h typedefs are not assembler-safe)
     .equ    MINI_OS_ASM_OK,        0
     .equ    MINI_OS_ASM_ERR_INVAL, -1

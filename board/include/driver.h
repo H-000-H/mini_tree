@@ -29,14 +29,14 @@ void board_safety_register_shutdown(safety_shutdown_fn_t fn);
 /* -------------------------------------------------------------------------- */
 /* 用法: DRIVER_REGISTER(my_drv, "mt-xxx", my_probe, my_remove); */
 /* dtc-lite 扫描收录, 运行时无 strcmp */
-#define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)  \
-	int board_driver_probe_##name(struct device *pdev)  \
-	{                                                   \
-		return probe_fn(pdev);                      \
-	}                                                   \
-	int board_driver_remove_##name(struct device *pdev) \
-	{                                                   \
-		return remove_fn(pdev);                     \
+#define DRIVER_REGISTER(name, compat, probe_fn, remove_fn)      \
+	mt_err_t board_driver_probe_##name(struct device *pdev)  \
+	{                                                        \
+		return probe_fn(pdev);                           \
+	}                                                        \
+	mt_err_t board_driver_remove_##name(struct device *pdev) \
+	{                                                        \
+		return remove_fn(pdev);                          \
 	}
 
 #ifdef __cplusplus

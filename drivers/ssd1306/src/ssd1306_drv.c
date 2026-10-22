@@ -106,7 +106,7 @@ static void ssd1306_hw_destroy(struct ssd1306_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int ssd1306_open(struct device *pdev, void *arg)
+static mt_err_t ssd1306_open(struct device *pdev, void *arg)
 {
 	struct ssd1306_device *dev;
 	struct dev_lifecycle  *lc;
@@ -138,7 +138,7 @@ static int ssd1306_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int ssd1306_close(struct device *pdev)
+static mt_err_t ssd1306_close(struct device *pdev)
 {
 	struct ssd1306_device *dev;
 	struct dev_lifecycle  *lc;

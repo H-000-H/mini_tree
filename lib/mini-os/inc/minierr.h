@@ -1,11 +1,11 @@
 ﻿/**
- * @file err.h
+ * @file minierr.h
  * @author H-000-H
  * @brief Error codes
  * @copyright SPDX-License-Identifier: Apache-2.0
  */
-#ifndef ERR_H
-#define ERR_H
+#ifndef MINI_OS_ERR_H
+#define MINI_OS_ERR_H
 /**
  * @brief Error codes if config.h and compiler_compat.h are available using status.h otherwise using
  * self defined error codes

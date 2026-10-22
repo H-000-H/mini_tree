@@ -23,7 +23,7 @@
 extern "C"
 {
 #endif
-#include <err.h>
+#include "minierr.h"
 #include <port.h>
 #include <redef.h>
 #include <schedule.h>

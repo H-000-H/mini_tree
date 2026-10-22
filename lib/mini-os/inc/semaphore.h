@@ -6,7 +6,7 @@
  */
 #ifndef SEM_H
 #define SEM_H
-#include <err.h>
+#include "minierr.h"
 #if defined(__cplusplus)
 extern "C"
 {

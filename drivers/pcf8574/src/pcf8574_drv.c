@@ -118,7 +118,7 @@ static void pcf8574_hw_destroy(struct pcf8574_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int pcf8574_open(struct device *pdev, void *arg)
+static mt_err_t pcf8574_open(struct device *pdev, void *arg)
 {
 	struct pcf8574_device *dev;
 	struct dev_lifecycle  *lc;
@@ -150,7 +150,7 @@ static int pcf8574_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int pcf8574_close(struct device *pdev)
+static mt_err_t pcf8574_close(struct device *pdev)
 {
 	struct pcf8574_device *dev;
 	struct dev_lifecycle  *lc;

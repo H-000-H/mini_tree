@@ -9,7 +9,7 @@
  */
 #include <event.h>
 
-#include <err.h>
+#include "minierr.h"
 #include <list.h>
 #include <obj.h>
 #include <redef.h>

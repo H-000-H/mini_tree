@@ -9,7 +9,7 @@
  */
 #ifndef MINI_OS_OBJ_H
 #define MINI_OS_OBJ_H
-#include "err.h"
+#include "minierr.h"
 #include "memory.h"
 #include "redef.h"
 #if defined(__cplusplus)

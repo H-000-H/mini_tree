@@ -111,7 +111,7 @@ static void relay_hw_destroy(struct relay_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int relay_open(struct device *pdev, void *arg)
+static mt_err_t relay_open(struct device *pdev, void *arg)
 {
 	struct relay_device  *dev;
 	struct dev_lifecycle *lc;
@@ -143,7 +143,7 @@ static int relay_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int relay_close(struct device *pdev)
+static mt_err_t relay_close(struct device *pdev)
 {
 	struct relay_device  *dev;
 	struct dev_lifecycle *lc;

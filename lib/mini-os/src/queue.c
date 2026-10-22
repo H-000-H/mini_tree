@@ -10,7 +10,7 @@
  */
 #include <queue.h>
 
-#include <err.h>
+#include "minierr.h"
 #include <memory.h>
 #include <obj.h>
 #include <redef.h>

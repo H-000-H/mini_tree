@@ -9,7 +9,7 @@
 
 #include <memory.h>
 
-#include <err.h>
+#include "minierr.h"
 #include <mem_heap.h>
 #include <redef.h>
 

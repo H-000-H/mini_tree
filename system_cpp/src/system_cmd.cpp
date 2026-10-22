@@ -9,17 +9,17 @@
 
 #include <string.h>
 
-SystemCmd::SystemCmd() : m_count_(0)
+SystemCmd::SystemCmd() : count_(0)
 {
 }
 
-SystemCmd &SystemCmd::get_instance()
+SystemCmd& SystemCmd::get_instance()
 {
     static SystemCmd instance;
     return instance;
 }
 
-int SystemCmd::register_raw(const char *name, const RawHandler &wrapper, TypeIdToken args_id,
+int SystemCmd::register_raw(const char* name, const RawHandler& wrapper, TypeIdToken args_id,
                             TypeIdToken ctx_id)
 {
     if(name == nullptr)
@@ -31,44 +31,44 @@ int SystemCmd::register_raw(const char *name, const RawHandler &wrapper, TypeIdT
 
     mini_irq_state_t irq = mini_critical_enter();
 
-    if(m_count_ >= MaxCommands)
+    if(count_ >= MaxCommands)
     {
         mini_critical_exit(irq);
         return MINI_ERR_NOSPC;
     }
 
-    for(size_t i = 0; i < m_count_; i++)
+    for(size_t i = 0; i < count_; i++)
     {
-        if(strcmp(m_entries_[i].name_, name) == 0)
+        if(strcmp(entries_[i].name_, name) == 0)
         {
             mini_critical_exit(irq);
             return MINI_ERR_BUSY;
         }
     }
 
-    MINI_MEM_COPY(m_entries_[m_count_].name_, name, name_len + 1);
-    m_entries_[m_count_].node_.wrapper_ = wrapper;
-    m_entries_[m_count_].node_.args_id_ = args_id;
-    m_entries_[m_count_].node_.ctx_id_  = ctx_id;
-    m_count_++;
+    MINI_MEM_COPY(entries_[count_].name_, name, name_len + 1);
+    entries_[count_].node_.wrapper_ = wrapper;
+    entries_[count_].node_.args_id_ = args_id;
+    entries_[count_].node_.ctx_id_ = ctx_id;
+    count_++;
 
     mini_critical_exit(irq);
     return MINI_OK;
 }
 
-int SystemCmd::unregister_cmd(const char *name)
+int SystemCmd::unregister_cmd(const char* name)
 {
     if(name == nullptr)
         return MINI_ERR_INVAL;
 
     mini_irq_state_t irq = mini_critical_enter();
 
-    for(size_t i = 0; i < m_count_; i++)
+    for(size_t i = 0; i < count_; i++)
     {
-        if(strcmp(m_entries_[i].name_, name) == 0)
+        if(strcmp(entries_[i].name_, name) == 0)
         {
-            m_entries_[i] = m_entries_[m_count_ - 1]; /* 末项填补, 命令顺序无语义 */
-            m_count_--;
+            entries_[i] = entries_[count_ - 1]; /* 末项填补, 命令顺序无语义 */
+            count_--;
             mini_critical_exit(irq);
             return MINI_OK;
         }
@@ -78,7 +78,7 @@ int SystemCmd::unregister_cmd(const char *name)
     return MINI_ERR_NODEV;
 }
 
-int SystemCmd::dispatch(const char *name, const void *arg, size_t arg_len, void *ctx,
+int SystemCmd::dispatch(const char* name, const void* arg, size_t arg_len, void* ctx,
                         TypeIdToken expected_args_id, TypeIdToken expected_ctx_id) const
 {
     if(name == nullptr)
@@ -89,11 +89,11 @@ int SystemCmd::dispatch(const char *name, const void *arg, size_t arg_len, void 
 
     mini_irq_state_t irq = mini_critical_enter();
 
-    for(size_t i = 0; i < m_count_; i++)
+    for(size_t i = 0; i < count_; i++)
     {
-        if(strcmp(m_entries_[i].name_, name) == 0)
+        if(strcmp(entries_[i].name_, name) == 0)
         {
-            node  = m_entries_[i].node_; /* 拷贝后再退临界区: 回调里可能改表 */
+            node = entries_[i].node_; /* 拷贝后再退临界区: 回调里可能改表 */
             found = true;
             break;
         }
@@ -111,7 +111,7 @@ int SystemCmd::dispatch(const char *name, const void *arg, size_t arg_len, void 
     return node.wrapper_(arg, arg_len, ctx) ? MINI_OK : MINI_ERR_INVAL;
 }
 
-bool SystemCmd::has_cmd(const char *name) const
+bool SystemCmd::has_cmd(const char* name) const
 {
     if(name == nullptr)
         return false;
@@ -120,9 +120,9 @@ bool SystemCmd::has_cmd(const char *name) const
 
     mini_irq_state_t irq = mini_critical_enter();
 
-    for(size_t i = 0; i < m_count_; i++)
+    for(size_t i = 0; i < count_; i++)
     {
-        if(strcmp(m_entries_[i].name_, name) == 0)
+        if(strcmp(entries_[i].name_, name) == 0)
         {
             found = true;
             break;
@@ -137,7 +137,7 @@ bool SystemCmd::has_cmd(const char *name) const
 size_t SystemCmd::count() const
 {
     mini_irq_state_t irq = mini_critical_enter();
-    const size_t      sz = m_count_;
+    const size_t     sz = count_;
     mini_critical_exit(irq);
 
     return sz;

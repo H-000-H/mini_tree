@@ -104,8 +104,13 @@ lib/tinyusb/
 lib/lwip/
 lib/cJSON/
 lib/lvgl/
+# 同上: 软链形式需要不带尾斜杠的规则
+lib/lvgl
 lib/u8g2/
 lib/mbedtls/
+# 上面的尾斜杠只匹配真实目录; 若改用软链指向外部库 (如 ../../mbedtls),
+# git 会把软链当普通文件, 需下面这条不带斜杠的规则才能忽略。
+lib/mbedtls
 lib/CMSIS-DSP/
 lib/FlashDB/
 lib/SFUD/

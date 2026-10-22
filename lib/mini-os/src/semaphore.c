@@ -9,7 +9,7 @@
  */
 #include <semaphore.h>
 
-#include <err.h>
+#include "minierr.h"
 #include <list.h>
 #include <memory.h>
 #include <mini_config.h>

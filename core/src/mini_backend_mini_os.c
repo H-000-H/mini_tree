@@ -13,7 +13,7 @@
 #include "board_config.h"
 #include "compiler_compat.h"
 #include "config.h"
-#include "err.h"
+#include "minierr.h"
 #include "hal_amp.h"
 #include "memory.h"
 #include "mini_backend.h"
@@ -33,7 +33,7 @@
 /* -------------------------------------------------------------------------- */
 /* 公共换算                                                                    */
 /* -------------------------------------------------------------------------- */
-/* mini-os err.h 在可见 config.h / status.h 时数值已与 MINI_ERR_* 对齐, 零转换直通;
+/* mini-os minierr.h 在可见 config.h / status.h 时数值已与 MINI_ERR_* 对齐, 零转换直通;
  * 只有 AGAIN (非阻塞竞争 / 队列满空) 需对齐成 TIMEOUT */
 static int mini_err_from_mini_os(mini_os_err_t err)
 {

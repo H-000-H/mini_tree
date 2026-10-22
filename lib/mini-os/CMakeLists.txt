@@ -37,11 +37,13 @@ if(NOT DEFINED MINI_TREE_CONFIG)
 endif()
 set(MINI_OS_BUILD_EVENT ON)
 if(EXISTS "${MINI_TREE_CONFIG}")
-    # 事件组开关只认 CONFIG_MINI_OS_EVENT: Kconfig 里它默认关, 且没有任何符号
-    # select 它 (事件组不属于统一后端接口, 要用就手动开)。根 CMakeLists 已在配置期
-    # 跑 genconfig.py 把 Kconfig 求值结果回写 .config, 所以这里读到的就是当前生效值。
-    # 漏判的后果是 src/event.c 不编入, 而业务若已直调 mini_os_event_*
-    # -> 静态库阶段不报错, 链接 ELF 时才缺符号。
+    # The event-group switch honours CONFIG_MINI_OS_EVENT only: Kconfig defaults it to
+    # off and no symbol selects it (event groups are not part of the unified backend
+    # interface; enable it manually when needed). The top-level CMakeLists runs
+    # genconfig.py at configure time and writes the evaluated Kconfig result back to
+    # .config, so the value read here is the effective one. If this check is missed,
+    # src/event.c is not compiled in and a direct mini_os_event_* call only surfaces
+    # as an undefined symbol at ELF link time, not when building the static library.
     file(STRINGS "${MINI_TREE_CONFIG}" _mini_os_event REGEX "^CONFIG_MINI_OS_EVENT=y$")
     if(NOT _mini_os_event)
         set(MINI_OS_BUILD_EVENT OFF)
@@ -56,8 +58,9 @@ endif()
 
 set(MINI_OS_BUILD_TIMER ON)
 if(EXISTS "${MINI_TREE_CONFIG}")
-    # 软件定时器开关默认关, 要用就手动开 (CONFIG_MINI_OS_TIMER=y); 关闭时
-    # src/timer.c 不编入, 而 SysTick 也不会调 mini_os_timer_tick()。
+    # The software-timer switch defaults to off; enable it manually
+    # (CONFIG_MINI_OS_TIMER=y). When off, src/timer.c is not compiled in and
+    # SysTick never calls mini_os_timer_tick().
     file(STRINGS "${MINI_TREE_CONFIG}" _mini_os_timer REGEX "^CONFIG_MINI_OS_TIMER=y$")
     if(NOT _mini_os_timer)
         set(MINI_OS_BUILD_TIMER OFF)

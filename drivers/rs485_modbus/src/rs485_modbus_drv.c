@@ -160,7 +160,7 @@ static void rs485_modbus_hw_destroy(struct rs485_modbus_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int rs485_modbus_open(struct device *pdev, void *arg)
+static mt_err_t rs485_modbus_open(struct device *pdev, void *arg)
 {
 	struct rs485_modbus_device *dev;
 	struct dev_lifecycle	   *lc;
@@ -192,7 +192,7 @@ static int rs485_modbus_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int rs485_modbus_close(struct device *pdev)
+static mt_err_t rs485_modbus_close(struct device *pdev)
 {
 	struct rs485_modbus_device *dev;
 	struct dev_lifecycle	   *lc;

@@ -403,7 +403,7 @@ static mt_err_t st7789_do_draw_bitmap(struct st7789_device *lcd, int pos_x, int 
 /**
  * @brief fops.open：引用计数打开，首次调用绑定 DC/RST/背光引脚并初始化面板
  */
-static int st7789_open(struct device *pdev, void *arg)
+static mt_err_t st7789_open(struct device *pdev, void *arg)
 {
 	struct st7789_device *lcd;
 	struct dev_lifecycle *lc;
@@ -514,7 +514,7 @@ static int st7789_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用熄屏/灭背光并释放全部引脚
  */
-static int st7789_close(struct device *pdev)
+static mt_err_t st7789_close(struct device *pdev)
 {
 	struct st7789_device *lcd;
 	struct dev_lifecycle *lc;

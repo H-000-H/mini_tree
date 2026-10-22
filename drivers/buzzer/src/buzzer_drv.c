@@ -110,7 +110,7 @@ static void buzzer_hw_destroy(struct buzzer_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int buzzer_open(struct device *pdev, void *arg)
+static mt_err_t buzzer_open(struct device *pdev, void *arg)
 {
 	struct buzzer_device *dev;
 	struct dev_lifecycle *lc;
@@ -142,7 +142,7 @@ static int buzzer_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int buzzer_close(struct device *pdev)
+static mt_err_t buzzer_close(struct device *pdev)
 {
 	struct buzzer_device *dev;
 	struct dev_lifecycle *lc;

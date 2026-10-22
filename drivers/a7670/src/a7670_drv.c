@@ -117,7 +117,7 @@ static void a7670_hw_destroy(struct a7670_device *dev)
 /**
  * @brief fops.open：引用计数打开，首次调用初始化硬件
  */
-static int a7670_open(struct device *pdev, void *arg)
+static mt_err_t a7670_open(struct device *pdev, void *arg)
 {
 	struct a7670_device  *dev;
 	struct dev_lifecycle *lc;
@@ -149,7 +149,7 @@ static int a7670_open(struct device *pdev, void *arg)
 /**
  * @brief fops.close：引用计数关闭，末次调用释放硬件
  */
-static int a7670_close(struct device *pdev)
+static mt_err_t a7670_close(struct device *pdev)
 {
 	struct a7670_device  *dev;
 	struct dev_lifecycle *lc;
