@@ -39,13 +39,13 @@ int network_transport_disconnect(struct NetworkContext *context)
 	return NET_OK;
 }
 
-bool network_transport_is_connected(struct NetworkContext *context)
+bool network_transport_is_connected(const struct NetworkContext *context)
 {
 	return (context != NULL) && (context->tcp_client != NULL) &&
 	       context->tcp_client->is_connected;
 }
 
-bool network_transport_link_failed(struct NetworkContext *context)
+bool network_transport_link_failed(const struct NetworkContext *context)
 {
 	if (context == NULL || context->tcp_client == NULL)
 		return true;

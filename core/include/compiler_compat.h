@@ -28,7 +28,7 @@
 #ifdef __cplusplus
 #define MINI_TYPEOF(expr) decltype(expr)
 #else
-#define MINI_TYPEOF(expr) typeof(expr)
+#define MINI_TYPEOF(expr) __typeof__(expr)
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -391,14 +391,12 @@ enum { MINI_MAGIC_TABLE(MINI_MAGIC_ENUM) };
  * @brief nodiscard 属性
  * @details C++17 [[nodiscard]] / C 下退化为 MINI_WARN_UNUSED_RESULT
  */
-#ifdef __cplusplus
-#if MINI_WUR_ATTR_OK
+#if defined(__cplusplus) && __cplusplus >= 201703L
 #define MINI_NODISCARD [[nodiscard]]
+#elif MINI_WUR_ATTR_OK
+#define MINI_NODISCARD MINI_WARN_UNUSED_RESULT
 #else
 #define MINI_NODISCARD
-#endif
-#else
-#define MINI_NODISCARD MINI_WARN_UNUSED_RESULT
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -444,8 +442,42 @@ enum { MINI_MAGIC_TABLE(MINI_MAGIC_ENUM) };
  * @param[in] ptr    成员指针
  * @param[in] type   结构体类型
  * @param[in] member 成员名
+ * @note 三参用法 C / C++ 完全一致; C++ 分支把 ptr 类型钉死在 member 的声明类型上,
+ *       传错指针类型直接编译报错, C 分支则是静默强转.
+ * @note C++ 分支借助 offsetof 求偏移, 要求 type 为标准布局类型
  */
-#if MINI_GNU_EXT_OK
+#if defined(__cplusplus) && __cplusplus >= 201103L
+
+/**
+ * @brief container_of 的 C++ 实现 (非 const 成员指针)
+ * @param[in] ptr    成员指针
+ * @param[in] offset 成员相对结构体首地址的字节偏移
+ * @return 反推得到的外层指针
+ */
+template <typename Type, typename Member>
+MINI_STATIC_INLINE Type *MINI_CONTAINER_OF_IMPL(Member *ptr, size_t offset)
+{
+	return reinterpret_cast<Type *>(reinterpret_cast<char *>(ptr) - offset);
+}
+
+/**
+ * @brief container_of 的 C++ 实现 (const 成员指针)
+ * @param[in] ptr    成员指针
+ * @param[in] offset 成员相对结构体首地址的字节偏移
+ * @return 反推得到的外层常量指针
+ */
+template <typename Type, typename Member>
+MINI_STATIC_INLINE const Type *MINI_CONTAINER_OF_IMPL(const Member *ptr, size_t offset)
+{
+	return reinterpret_cast<const Type *>(reinterpret_cast<const char *>(ptr) - offset);
+}
+
+#undef container_of
+#define container_of(ptr, type, member)                                 \
+	MINI_CONTAINER_OF_IMPL<type, MINI_TYPEOF(((type *)0)->member)>( \
+		(ptr), (size_t)offsetof(type, member))
+
+#elif MINI_GNU_EXT_OK
 #undef container_of
 #define container_of(ptr, type, member)                                      \
 	({                                                                   \
@@ -483,10 +515,7 @@ enum { MINI_MAGIC_TABLE(MINI_MAGIC_ENUM) };
 /**
  * @brief 标记不可达分支
  */
-MINI_STATIC_INLINE MINI_NO_RETURN void unreachable(void)
-{
-	__builtin_unreachable();
-}
+#define MINI_UNREACHABLE() __builtin_unreachable()
 
 /* -------------------------------------------------------------------------- */
 /* mini_pre_execution 启动优先级 */
@@ -1014,7 +1043,7 @@ MINI_STATIC_INLINE void MINI_REG_FIELD_SET(uintptr_t addr, uint32_t mask, uint32
 #define MINI_ATOMIC_INT std::atomic<int>
 #define MINI_ATOMIC_UINT std::atomic<uint32_t>
 #define MINI_ATOMIC_BOOL std::atomic<bool>
-#define MINI_ATOMIC_INIT(val) std::atomic<int>(val)
+#define MINI_ATOMIC_INIT(val) (val)
 
 #define MINI_RELAXED std::memory_order_relaxed
 #define MINI_ACQUIRE std::memory_order_acquire

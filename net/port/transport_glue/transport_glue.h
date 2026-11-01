@@ -51,14 +51,14 @@ int network_transport_disconnect(struct NetworkContext *context);
  * @param[in] context 网络上下文
  * @return bool TCP 连接是否存活
  */
-bool network_transport_is_connected(struct NetworkContext *context);
+bool network_transport_is_connected(const struct NetworkContext *context);
 
 /**
  * @brief 查询底层建连是否已失败 (err 回调置空控制块)
  * @param[in] context 网络上下文
  * @return bool true 表示链路已失败, 无需再等待
  */
-bool network_transport_link_failed(struct NetworkContext *context);
+bool network_transport_link_failed(const struct NetworkContext *context);
 
 /**
  * @brief 传输层写入 (把数据全部压入底层 TX FIFO)

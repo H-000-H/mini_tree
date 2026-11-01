@@ -9,12 +9,32 @@
 #include "compiler_compat.h"
 #include "lwip/err.h"
 #include "system_log.h"
+
+static const char *const tag = "tcp_client";
 _Static_assert((TCP_CLIENT_TX_BUFFER_SIZE & (TCP_CLIENT_TX_BUFFER_SIZE - 1U)) == 0U,
 	       "TCP_CLIENT_TX_BUFFER_SIZE must be power of 2");
 _Static_assert((TCP_CLIENT_RX_BUFFER_SIZE & (TCP_CLIENT_RX_BUFFER_SIZE - 1U)) == 0U,
 	       "TCP_CLIENT_RX_BUFFER_SIZE must be power of 2");
 
-int tcp_client_poll_send(struct tcp_client_context *ctx)
+#if NO_SYS == 0
+/* RTOS 模式: 应用线程与 lwIP sent 回调都可能进 poll_send, 用互斥锁串行化 */
+#define TCP_CLIENT_TX_LOCK(ctx)                                        \
+	do {                                                               \
+		if (sys_mutex_valid(&(ctx)->tx_lock))                      \
+			sys_mutex_lock(&(ctx)->tx_lock);                     \
+	} while (0)
+#define TCP_CLIENT_TX_UNLOCK(ctx)                                      \
+	do {                                                               \
+		if (sys_mutex_valid(&(ctx)->tx_lock))                      \
+			sys_mutex_unlock(&(ctx)->tx_lock);                   \
+	} while (0)
+#else
+/* 裸机单线程: 全部回调和应用在同一上下文, 无竞争 */
+#define TCP_CLIENT_TX_LOCK(ctx)   ((void)0)
+#define TCP_CLIENT_TX_UNLOCK(ctx) ((void)0)
+#endif
+
+static int tcp_client_poll_send_locked(struct tcp_client_context *ctx)
 {
 	if (ctx == NULL || !ctx->is_connected || ctx->pcb == NULL)
 		return ERR_VAL;
@@ -24,28 +44,52 @@ int tcp_client_poll_send(struct tcp_client_context *ctx)
 	if (snd_buf_avail == 0)
 		return ERR_MEM;
 
-	uint8_t temp_buf[128];
+	/* 先把上次没交给 lwIP 的数据发出去: FIFO 已经消费过, 丢了就断流了 */
+	if (ctx->tx_staging_len == 0) {
+		uint16_t chunk = (snd_buf_avail < sizeof(ctx->tx_staging))
+					 ? snd_buf_avail
+					 : (uint16_t)sizeof(ctx->tx_staging);
+		uint16_t read_bytes = 0;
 
-	/*限制最大发送块大小*/
-	uint16_t chunk =
-		(snd_buf_avail < sizeof(temp_buf)) ? snd_buf_avail : (uint16_t)sizeof(temp_buf);
+		/* FIFO 空时 read_block 返回 BUFF_ERR_EMPTY, read_bytes 保持 0 */
+		MINI_IGNORE_RESULT(fifo_uni_read_block(&ctx->tx_fifo, ctx->tx_staging, chunk,
+						       &read_bytes));
+		if (read_bytes == 0)
+			return ERR_OK; /* 没有待发数据, 属于正常情况, 不是错误 */
 
-	uint16_t read_bytes = 0;
-
-	/* FIFO 空时 read_block 返回 BUFF_ERR_EMPTY, read_bytes 保持 0 */
-	MINI_IGNORE_RESULT(fifo_uni_read_block(&ctx->tx_fifo, temp_buf, chunk, &read_bytes));
-
-	if (read_bytes > 0) {
-		err_t err = tcp_write(ctx->pcb, temp_buf, read_bytes, TCP_WRITE_FLAG_COPY);
-
-		if (err == ERR_OK)
-			return ERR_OK;
-		else
-			MT_LOG_ERROR(tag, "tcp_write failed: %d\r\n", err);
+		ctx->tx_staging_len = read_bytes;
 	}
 
-	MT_LOG_ERROR(tag, "fifo buffer not read %d bytes\r\n", read_bytes);
-	return ERR_VAL;
+	err_t err = tcp_write(ctx->pcb, ctx->tx_staging, ctx->tx_staging_len,
+			      TCP_WRITE_FLAG_COPY);
+	if (err != ERR_OK) {
+		/* 数据留在 tx_staging, 等发送窗口释放后由 sent 回调重试 */
+		MT_LOG_WARN(tag, "tcp_write failed: %d, keep %u bytes\r\n", err,
+			    (unsigned int)ctx->tx_staging_len);
+		return ERR_MEM;
+	}
+
+	ctx->tx_staging_len = 0;
+	return ERR_OK;
+}
+
+/**
+ * @brief 触发刷新 TX FIFO 中排队的数据到网卡
+ * @note NO_SYS=0 (RT-Thread 等) 时这里会先取 tx_lock, 避免应用线程和 lwIP
+ *       sent 回调同时改动 tx_fifo / tx_staging
+ */
+int tcp_client_poll_send(struct tcp_client_context *ctx)
+{
+	if (ctx == NULL)
+		return ERR_ARG;
+
+	int ret;
+
+	TCP_CLIENT_TX_LOCK(ctx);
+	ret = tcp_client_poll_send_locked(ctx);
+	TCP_CLIENT_TX_UNLOCK(ctx);
+
+	return ret;
 }
 
 /**
@@ -103,14 +147,14 @@ static err_t tcp_client_receive_callback(void *arg, struct tcp_pcb *pcb, struct 
 	}
 
 	struct pbuf *buf	 = current_buf;
-	uint16_t     total_bytes = 0;
+	uint16_t     received_bytes = 0; /* 本次回调实际收到的全部字节 */
 
 	while (buf) {
 		if (buf->len > 0) {
 			uint16_t written = 0;
+			received_bytes = (uint16_t)(received_bytes + buf->len);
 			MINI_IGNORE_RESULT(fifo_uni_write_block(
 				&ctx->rx_fifo, (const uint8_t *)buf->payload, buf->len, &written));
-			total_bytes = (uint16_t)(total_bytes + written);
 			if (written < buf->len)
 				MT_LOG_WARN(tag, "RX FIFO full, dropped %u bytes\r\n",
 					    (unsigned int)(buf->len - written));
@@ -118,8 +162,8 @@ static err_t tcp_client_receive_callback(void *arg, struct tcp_pcb *pcb, struct 
 		buf = buf->next;
 	}
 
-	if (total_bytes > 0)
-		tcp_recved(pcb, total_bytes);
+	/* 窗口不在这里归还: 数据只是进了 FIFO, 还没被应用消费.
+	 * 归还点放在 tcp_client_read, 应用读得慢时窗口自然收缩, 对端跟着降速. */
 
 	pbuf_free(current_buf);
 	return ERR_OK;
@@ -184,6 +228,18 @@ int tcp_client_init_and_connect(struct tcp_client_context *ctx, const char *serv
 	ctx->server_ip	  = server_ip;
 	ctx->port	  = port;
 	ctx->is_connected = false;
+	ctx->tx_staging_len = 0;
+
+#if NO_SYS == 0
+	if (!sys_mutex_valid(&ctx->tx_lock)) {
+		err_t mutex_err = sys_mutex_new(&ctx->tx_lock);
+
+		if (mutex_err != ERR_OK) {
+			MT_LOG_ERROR(tag, "tx mutex create failed: %d\r\n", mutex_err);
+			return mutex_err;
+		}
+	}
+#endif
 
 	MINI_IGNORE_RESULT(fifo_uni_init(&ctx->rx_fifo, ctx->rx_buffer, TCP_CLIENT_RX_TX_BYTE_TYPE,
 					 TCP_CLIENT_RX_BUFFER_SIZE));
@@ -232,13 +288,19 @@ int tcp_client_send(struct tcp_client_context *ctx, const void *data, uint16_t l
 
 	uint16_t written = 0;
 
+	TCP_CLIENT_TX_LOCK(ctx);
 	MINI_IGNORE_RESULT(
 		fifo_uni_write_block(&ctx->tx_fifo, (const uint8_t *)data, len, &written));
-
-	tcp_client_poll_send(ctx);
+	(void)tcp_client_poll_send_locked(ctx);
+	TCP_CLIENT_TX_UNLOCK(ctx);
 
 	if (sent_len)
 		*sent_len = written;
+
+	/* FIFO 满: 只收下了一部分, 调用方按 sent_len 重试剩余数据 */
+	if (written < len)
+		return ERR_MEM;
+
 	return ERR_OK;
 }
 
@@ -251,6 +313,11 @@ int tcp_client_read(struct tcp_client_context *ctx, void *buf, uint16_t len, uin
 
 	MINI_IGNORE_RESULT(fifo_uni_read_block(&ctx->rx_fifo, (uint8_t *)buf, len, &read_bytes));
 	*recv_len = read_bytes;
+
+	/* 应用真正取走数据之后才归还接收窗口, 保证 FIFO 不会先于窗口被填满 */
+	if (read_bytes > 0 && ctx->pcb != NULL)
+		tcp_recved(ctx->pcb, read_bytes);
+
 	return ERR_OK;
 }
 
@@ -267,7 +334,8 @@ int tcp_client_disconnect(struct tcp_client_context *ctx)
 		tcp_close(ctx->pcb);
 		ctx->pcb = NULL;
 	}
-	ctx->is_connected = false;
+	ctx->is_connected   = false;
+	ctx->tx_staging_len = 0;
 	MT_LOG_INFO(tag, "client disconnected\r\n");
 	return ERR_OK;
 }

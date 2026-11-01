@@ -11,6 +11,7 @@ extern "C" {
 #endif
 #include "buffer.h"
 #include "lwip/pbuf.h"
+#include "lwip/sys.h"
 #include "lwip/tcp.h"
 #include <string.h>
 #ifndef CONFIG_TCP_CLIENT_RX_BUFFER_SIZE
@@ -25,6 +26,13 @@ extern "C" {
 #define TCP_CLIENT_TX_BUFFER_SIZE CONFIG_TCP_CLIENT_TX_BUFFER_SIZE
 #endif
 
+/** @brief 单次交给 lwIP 的最大发送块, 也是 tx_staging 的大小 */
+#ifndef CONFIG_TCP_CLIENT_TX_CHUNK_SIZE
+#define TCP_CLIENT_TX_CHUNK_SIZE 128
+#else
+#define TCP_CLIENT_TX_CHUNK_SIZE CONFIG_TCP_CLIENT_TX_CHUNK_SIZE
+#endif
+
 /**@brief TCP 客户端接收和发送数据的字节的颗粒度 */
 #ifndef CONFIG_TCP_CLIENT_RX_TX_BYTE_TYPE
 #define TCP_CLIENT_RX_TX_BYTE_TYPE 1
@@ -32,7 +40,6 @@ extern "C" {
 #define TCP_CLIENT_RX_TX_BYTE_TYPE CONFIG_TCP_CLIENT_RX_TX_BYTE_TYPE
 #endif
 
-static const char *tag = "tcp_client";
 /**
  * @brief TCP 客户端上下文结构体
  */
@@ -45,6 +52,11 @@ struct tcp_client_context {
 	struct fifo_uni_spsc tx_fifo;				   /**< 发送 FIFO */
 	uint8_t		     tx_buffer[TCP_CLIENT_TX_BUFFER_SIZE]; /**< 发送物理缓冲区 */
 	uint8_t		     rx_buffer[TCP_CLIENT_RX_BUFFER_SIZE]; /**< 接收物理缓冲区 */
+	uint8_t		     tx_staging[TCP_CLIENT_TX_CHUNK_SIZE]; /**< 已从 TX FIFO 取出、尚未写入 lwIP 的数据 */
+	uint16_t	     tx_staging_len;				   /**< tx_staging 中的有效字节数 */
+#if NO_SYS == 0
+	sys_mutex_t	     tx_lock;				   /**< 保护 tx_fifo / tx_staging (仅 RTOS 模式) */
+#endif
 };
 
 /**
