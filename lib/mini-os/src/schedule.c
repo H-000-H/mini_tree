@@ -278,7 +278,11 @@ mini_os_err_t mini_os_schedule_switch(void)
         if (mini_os_container_of(next_node, mini_os_thread_t, list_node)->sched_policy == MINI_OS_SCHED_NORMAL)
 #endif
         {
-            if (mini_os_current_thread != MINI_OS_NULL && next_priority == old_priority && mini_os_current_thread->state == MINI_OS_THREAD_STATE_READY && mini_os_current_thread->list_node.next != &mini_os_current_thread->list_node)
+            /* same-priority check: a mutex PI boost can re-link the running thread
+             * into another level without a switch, making the cached old_priority
+             * stale; the successor walk is only valid when the thread really sits
+             * in the selected level's list */
+            if (mini_os_current_thread != MINI_OS_NULL && next_priority == old_priority && mini_os_current_thread->priority == next_priority && mini_os_current_thread->state == MINI_OS_THREAD_STATE_READY && mini_os_current_thread->list_node.next != &mini_os_current_thread->list_node)
             {
                 /* round-robin: successor, wrap past the sentinel at the tail */
                 next_node = mini_os_current_thread->list_node.next;
